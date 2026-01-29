@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestión de Jugadores - Sistema de Gestión Deportiva</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <h1>⚽ Sistema de Gestión Deportiva</h1>
+      <nav class="nav">
+        <a class="nav-btn" href="index.html">Inicio</a>
+        <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
+        <a class="nav-btn" href="sorteo.html">Sorteo de Grupos</a>
+        <a class="nav-btn" href="gruposgen.html">Grupos</a>
+        <a class="nav-btn" href="partidos.html">Partidos</a>
+        <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="section active">
+      <div class="container">
+        <h2>👥 Gestión de Jugadores</h2>
+
+        <!-- Info del equipo -->
+        <div id="info-equipo" class="welcome-card" style="text-align:left; margin-bottom:1.5rem;">
+          <p>Cargando datos del equipo...</p>
+        </div>
+
+        <div class="action-bar" style="margin-bottom:1rem;">
+          <button class="btn btn-primary" onclick="mostrarModalCrearJugador()">
+            <i class="fas fa-plus"></i> Nuevo Jugador
+          </button>
+
+          <button class="btn btn-secondary" onclick="volverAEquipos()">
+            <i class="fas fa-arrow-left"></i> Volver a Equipos
+          </button>
+        </div>
+
+        <!-- Lista de jugadores -->
+        <div id="lista-jugadores" class="grid-container">
+          <!-- Se llena desde jugadores.js -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Jugador -->
+  <div id="modal-jugador" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="cerrarModal('modal-jugador')">&times;</span>
+      <h3 id="modal-jugador-titulo">Nuevo Jugador</h3>
+
+      <form id="form-jugador">
+        <input type="hidden" id="jugador-id" />
+        <input type="hidden" id="jugador-equipo-id" />
+
+        <div class="form-group">
+          <label for="jugador-nombre">Nombre:</label>
+          <input type="text" id="jugador-nombre" required />
+        </div>
+
+        <div class="form-group">
+          <label for="jugador-apellido">Apellido:</label>
+          <input type="text" id="jugador-apellido" required />
+        </div>
+
+        <div class="form-group">
+          <label for="jugador-ced">Cédula de Identidad:</label>
+          <input type="text" id="jugador-ced" />
+        </div>
+
+        <div class="form-group">
+          <label for="jugador-fecha">Fecha de nacimiento:</label>
+          <input type="date" id="jugador-fecha" />
+        </div>
+
+        <div class="form-group">
+          <label for="jugador-posicion">Posición:</label>
+          <select id="jugador-posicion">
+            <option value="">-- Seleccionar --</option>
+            <option value="Arquero">Arquero</option>
+            <option value="Defensa">Defensa</option>
+            <option value="Volante">Volante</option>
+            <option value="Delantero">Delantero</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="jugador-numero">Número de camiseta:</label>
+          <input type="number" id="jugador-numero" min="1" max="99" />
+        </div>
+
+        <div class="form-group" style="display:flex;align-items:center;gap:0.5rem;">
+          <input type="checkbox" id="jugador-capitan" />
+          <label for="jugador-capitan" style="margin:0;">¿Es capitán?</label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-success">Guardar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-jugador')">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/jugadores.js"></script>
+</body>
+</html>

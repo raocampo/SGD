@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SGD Gestión de Partidos</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="container">
+        <h1>⚽ Sistema de Gestión Deportiva</h1>
+
+        <!-- Botón hamburguesa -->
+        <button class="nav-toggle" id="nav-toggle">
+          <i class="fas fa-bars"></i>
+        </button>
+
+        <nav class="nav" id="main-nav">
+          <a class="nav-btn" href="index.html">Inicio</a>
+          <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
+          <a class="nav-btn" href="sorteo.html">Sorteo de Grupos</a>
+          <a class="nav-btn" href="gruposgen.html">Grupos</a>
+          <a class="nav-btn active" href="partidos.html">Partidos</a>
+          <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Sección Inicio -->
+    <main class="main">
+      <section class="section active">
+        <div class="container">
+          <h2>⚽ Gestión de Partidos</h2>
+
+          <!-- FORMULARIO DE FILTRO -->
+          <div class="config-card">
+            <h3>Filtrar Partidos</h3>
+
+            <div class="form-group">
+              <label for="select-campeonato">Campeonato:</label>
+              <select id="select-campeonato"></select>
+            </div>
+
+            <div class="form-group">
+              <label for="select-grupo">Grupo:</label>
+              <select id="select-grupo">
+                <option value="">— Todos —</option>
+              </select>
+            </div>
+
+            <h4>Opciones de Fixture</h4>
+            <div class="form-group">
+              <label>Modo:</label>
+              <label>
+                <input type="radio" name="modo-fixture" value="grupo" checked />
+                Por grupo
+              </label>
+              <label>
+                <input type="radio" name="modo-fixture" value="todos" />
+                Todos contra todos (campeonato)
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="chk-ida-vuelta" />
+                Fixture de ida y vuelta
+              </label>
+            </div>
+
+            <button class="btn btn-primary" onclick="cargarPartidos()">
+              <i class="fas fa-search"></i> Buscar
+            </button>
+          </div>
+
+          <!-- LISTA DE PARTIDOS -->
+          <div id="lista-partidos" class="grid-container">
+            <!-- Aquí se cargan los partidos -->
+          </div>
+
+          <div class="action-bar">
+            <button class="btn btn-primary" onclick="generarFixture()">
+              <i class="fas fa-calendar-plus"></i> Generar Fixture
+            </button>
+
+            <button class="btn btn-secondary" onclick="exportarFixture()">
+              <i class="fas fa-file-export"></i> Exportar Fixture
+            </button>
+
+            <button class="btn btn-success" onclick="abrirTarjetaFixture()">
+              <i class="fas fa-image"></i> Tarjeta de Jornada
+            </button>
+
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/core.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/partidos.js"></script>
+  </body>
+</html>

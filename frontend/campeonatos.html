@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SGD Gestión de Campeonatos</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="container">
+        <h1>⚽ Sistema de Gestión Deportiva</h1>
+        <button class="nav-toggle" id="nav-toggle">
+          <i class="fas fa-bars"></i>
+        </button>
+        <nav class="nav" id="main-nav">
+          <a class="nav-btn" href="index.html">Inicio</a>
+          <a class="nav-btn active" href="campeonatos.html">Campeonatos</a>
+          <a class="nav-btn" href="sorteo.html">Sorteo de Grupos</a>
+          <a class="nav-btn" href="gruposgen.html">Grupos</a>
+          <a class="nav-btn" href="partidos.html">Partidos</a>
+          <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Sección Campeonatos -->
+      <section id="campeonatos" class="section active">
+        <div class="container">
+          <h2>🏆 Gestión de Campeonatos</h2>
+
+          <div class="action-bar">
+            <button
+              class="btn btn-primary"
+              onclick="mostrarModalCrearCampeonato()"
+            >
+              <i class="fas fa-plus"></i> Nuevo Campeonato
+            </button>
+          </div>
+
+          <div id="lista-campeonatos" class="grid-container">
+            <!-- Los campeonatos se cargan por JS-->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Modal Campeonato -->
+    <div id="modal-campeonato" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="cerrarModal('modal-campeonato')"
+          >&times;</span
+        >
+        <h3 id="modal-campeonato-titulo">Nuevo Campeonato</h3>
+        <!--<form id="form-campeonato">
+        <input type="hidden" id="campeonato-id" />
+
+        <div class="form-group">
+          <label for="campeonato-nombre">Nombre del Campeonato:</label>
+          <input type="text" id="campeonato-nombre" required />
+        </div>
+
+        <div class="form-group">
+          <label for="campeonato-tipo">Tipo de Fútbol:</label>
+          <select id="campeonato-tipo" required>
+            <option value="futbol_11">Fútbol 11</option>
+            <option value="futbol_7">Fútbol 7</option>
+            <option value="futbol_5">Fútbol 5</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="campeonato-sistema">Sistema de Puntuación:</label>
+          <select id="campeonato-sistema" required>
+            <option value="tradicional">Tradicional (3-1-0)</option>
+            <option value="shootouts">Con Shootouts (Fútbol 7/5)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="campeonato-fecha-inicio">Fecha de Inicio:</label>
+          <input type="date" id="campeonato-fecha-inicio" required />
+        </div>
+
+        <div class="form-group">
+          <label for="campeonato-fecha-fin">Fecha de Fin:</label>
+          <input type="date" id="campeonato-fecha-fin" required />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group half">
+            <label for="campeonato-min-jugadores">Mínimo de jugadores por equipo:</label>
+            <input type="number" id="campeonato-min-jugadores" min="1" required />
+          </div>
+
+          <div class="form-group half">
+            <label for="campeonato-max-jugadores">Máximo de jugadores por equipo:</label>
+            <input type="number" id="campeonato-max-jugadores" min="1" required />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-success">Guardar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-campeonato')">
+            Cancelar
+          </button>
+        </div>
+      </form>-->
+        <form id="form-campeonato" enctype="multipart/form-data">
+          <input type="hidden" id="campeonato-id" />
+
+          <div class="form-group">
+            <label for="campeonato-nombre">Nombre del Campeonato:</label>
+            <input type="text" id="campeonato-nombre" required />
+          </div>
+
+          <div class="form-group">
+            <label for="campeonato-organizador">Organizador:</label>
+            <input
+              type="text"
+              id="campeonato-organizador"
+              placeholder="Liga, Escuela, Empresa, etc."
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="campeonato-logo">Logo del Campeonato:</label>
+            <input type="file" id="campeonato-logo" accept="image/*" />
+            <small>Formatos permitidos: JPG, PNG, WEBP. Máx: 2MB.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="campeonato-tipo">Tipo de Fútbol:</label>
+            <select id="campeonato-tipo" required>
+              <option value="futbol_11">Fútbol 11</option>
+              <option value="futbol_7">Fútbol 7</option>
+              <option value="futbol_5">Fútbol 5</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="campeonato-sistema">Sistema de Puntuación:</label>
+            <select id="campeonato-sistema" required>
+              <option value="tradicional">Tradicional (3-1-0)</option>
+              <option value="shootouts">Con Shootouts (Fútbol 7/5)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="campeonato-fecha-inicio">Fecha de Inicio:</label>
+            <input type="date" id="campeonato-fecha-inicio" required />
+          </div>
+
+          <div class="form-group">
+            <label for="campeonato-fecha-fin">Fecha de Fin:</label>
+            <input type="date" id="campeonato-fecha-fin" required />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="campeonato-min-jugadores">Mínimo de jugadores:</label>
+              <input
+                type="number"
+                id="campeonato-min-jugadores"
+                min="1"
+                required
+              />
+            </div>
+
+            <div class="form-group half">
+              <label for="campeonato-max-jugadores">Máximo de jugadores:</label>
+              <input
+                type="number"
+                id="campeonato-max-jugadores"
+                min="1"
+                required
+              />
+            </div>
+          </div>
+
+          <h4>🎨 Colores del campeonato</h4>
+
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="campeonato-color-primario">Color Primario:</label>
+              <input
+                type="color"
+                id="campeonato-color-primario"
+                value="#FACC15"
+              />
+            </div>
+
+            <div class="form-group half">
+              <label for="campeonato-color-secundario">Color Secundario:</label>
+              <input
+                type="color"
+                id="campeonato-color-secundario"
+                value="#111827"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="campeonato-color-acento">Color Acento:</label>
+            <input type="color" id="campeonato-color-acento" value="#22C55E" />
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-success">Guardar</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick="cerrarModal('modal-campeonato')"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="js/core.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/campeonatos.js"></script>
+  </body>
+</html>

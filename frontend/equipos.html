@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestión de Equipos - Sistema de Gestión Deportiva</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+<body>
+  <!-- Header reutilizado -->
+  <header class="header">
+    <div class="container">
+      <h1>⚽ Sistema de Gestión Deportiva</h1>
+      <nav class="nav">
+        <a class="nav-btn" href="index.html">Inicio</a>
+        <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
+        <a class="nav-btn" href="sorteo.html">Sorteo de Grupos</a>
+        <a class="nav-btn" href="gruposgen.html">Grupos</a>
+        <a class="nav-btn" href="partidos.html">Partidos</a>
+        <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="section active">
+      <div class="container">
+        <h2>🏟️ Gestión de Equipos</h2>
+
+        <!-- Info del campeonato -->
+        <div id="info-campeonato" class="welcome-card" style="text-align:left; margin-bottom:1.5rem;">
+          <p>Cargando datos del campeonato...</p>
+        </div>
+
+        <div class="action-bar" style="margin-bottom:1rem;">
+          <button class="btn btn-primary" onclick="mostrarModalCrearEquipo()">
+            <i class="fas fa-plus"></i> Nuevo Equipo
+          </button>
+
+          <button class="btn btn-secondary" onclick="window.location.href='campeonatos.html'">
+            <i class="fas fa-arrow-left"></i> Volver a Campeonatos
+          </button>
+        </div>
+
+        <!-- Lista de equipos -->
+        <div id="lista-equipos" class="grid-container">
+          <!-- Se llena desde equipos.js -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Equipo -->
+  <div id="modal-equipo" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="cerrarModal('modal-equipo')">&times;</span>
+      <h3 id="modal-equipo-titulo">Nuevo Equipo</h3>
+
+      <form id="form-equipo">
+        <input type="hidden" id="equipo-id" />
+        <input type="hidden" id="equipo-campeonato-id" />
+
+        <div class="form-group">
+          <label for="equipo-nombre">Nombre del Equipo:</label>
+          <input type="text" id="equipo-nombre" required />
+        </div>
+
+        <div class="form-group">
+          <label for="equipo-logo">Logo del Equipo:</label>
+          <input type="file" id="equipo-logo" name="logo" accept="image/*">
+        </div>
+
+        <div class="form-group">
+          <label for="equipo-director">Director Técnico:</label>
+          <input type="text" id="equipo-director" />
+        </div>
+
+        <div class="form-group">
+          <label for="equipo-asistente">Asistente Técnico:</label>
+          <input type="text" id="equipo-asistente" />
+        </div>
+
+        <div class="form-group">
+          <label for="equipo-color">Color del Equipo:</label>
+          <input type="text" id="equipo-color" placeholder="Ej: Azul, Rojo, Verde" />
+        </div>
+
+        <div class="form-group">
+          <label for="equipo-telefono">Teléfono de contacto:</label>
+          <input type="tel" id="equipo-telefono" />
+        </div>
+
+        <div class="form-group">
+          <label for="equipo-email">Email de contacto:</label>
+          <input type="email" id="equipo-email" />
+        </div>
+
+        <div class="form-group" style="display:flex;align-items:center;gap:0.5rem;">
+          <input type="checkbox" id="equipo-cabeza-serie" />
+          <label for="equipo-cabeza-serie" style="margin:0;">¿Cabeza de serie?</label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-success">Guardar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-equipo')">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/equipos.js"></script>
+</body>
+</html>

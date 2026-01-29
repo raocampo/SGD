@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fixture – Jornada</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="css/fixture.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+
+  <!-- html2canvas -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <!-- jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+  <div class="page">
+    <div class="flyer-wrapper">
+
+      <!-- ✅ Acciones arriba -->
+      <div class="acciones" id="acciones" style="display:none">
+        <button class="btn-descargar" id="btn-descargar-imagen">
+          <i class="fas fa-image"></i> Descargar imagen
+        </button>
+
+        <button class="btn-descargar" id="btn-descargar-pdf">
+          <i class="fas fa-file-pdf"></i> Descargar PDF
+        </button>
+
+        <button class="btn-descargar" id="btn-imprimir">
+          <i class="fas fa-print"></i> Imprimir
+        </button>
+      </div>
+
+      <!-- ✅ IMPORTANTE: NO lo dejes en display:none -->
+      <div id="flyer-root" class="flyer" style="display:block">
+        <!-- Se rellena desde fixture.js -->
+      </div>
+
+      <div id="mensaje-error" class="msg-error" style="display:none"></div>
+    </div>
+  </div>
+
+  <script src="./js/api.js"></script>
+  <script src="./js/fixture.js"></script>
+</body>
+</html>

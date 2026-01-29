@@ -1,0 +1,889 @@
+/* ============================
+   VARIABLES Y RESET
+============================ */
+:root {
+  --primary-color: #2c3e50;
+  --secondary-color: #3498db;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --danger-color: #e74c3c;
+  --light-color: #ecf0f1;
+  --dark-color: #2c3e50;
+
+  --bg-soft: #f8f9fa;
+  --radius-card: 12px;
+  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-soft);
+  color: #333;
+  line-height: 1.6;
+}
+
+/* Contenedor genérico */
+.container {
+  max-width: 120rem;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* ============================
+   HEADER Y NAVEGACIÓN
+============================ */
+.header {
+  background: linear-gradient(
+    135deg,
+    var(--primary-color),
+    var(--secondary-color)
+  );
+  color: white;
+  padding: 1rem 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.header .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  font-size: 1.8rem;
+}
+
+.nav {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  color: white;
+  padding: 8px 18px;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.nav-btn:hover,
+.nav-btn.active {
+  background: rgba(255, 255, 255, 0.32);
+  transform: translateY(-2px);
+}
+
+/* ============================
+   LAYOUT PRINCIPAL
+============================ */
+.main {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 20px;
+}
+
+.section {
+  display: none;
+}
+
+.section.active {
+  display: block;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================
+   TARJETAS / DASHBOARD
+============================ */
+.welcome-card {
+  background: #fff;
+  padding: 2rem;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.stat-card {
+  background: linear-gradient(
+    135deg,
+    var(--secondary-color),
+    var(--primary-color)
+  );
+  color: white;
+  padding: 1.4rem;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.stat-card i {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat-card h3 {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.9;
+}
+
+.stat-card span {
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+/* ============================
+   BOTONES GENERALES
+============================ */
+.btn {
+  padding: 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--secondary-color);
+  color: white;
+  margin-right: 1rem;
+}
+
+.btn-success {
+  background: var(--success-color);
+  color: white;
+}
+
+.btn-warning {
+  background: var(--warning-color);
+  color: white;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-danger {
+  background: var(--danger-color);
+  color: white;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================
+   MODALES
+============================ */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: none; /* oculto por defecto */
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+/* Cuando el modal tiene la clase "open" se muestra centrado */
+.modal.open {
+  display: flex;
+}
+
+.modal-content {
+  background: #ffffff;
+  color: #111827;
+  border-radius: 10px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh; /* no más alto que la ventana */
+  overflow-y: auto; /* scroll interno si se llena */
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.modal .close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.modal-content .form-group,
+.modal-content .form-row {
+  margin-bottom: 10px;
+}
+
+/* Formularios genéricos */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+/* ============================
+   NOTIFICACIONES (UNIFICADO)
+============================ */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 14px 18px;
+  color: white;
+  border-radius: 6px;
+  z-index: 10000;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  animation: slideInRight 0.3s ease;
+  min-width: 260px;
+  font-size: 0.9rem;
+}
+
+.notification.success {
+  background: var(--success-color);
+}
+.notification.error {
+  background: var(--danger-color);
+}
+.notification.info {
+  background: var(--secondary-color);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.campeonato-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin-right: 0.75rem;
+  border-radius: 6px;
+}
+.campeonato-header {
+  gap: 0.75rem;
+}
+
+/* ============================
+   SECCIÓN CAMPEONATOS
+============================ */
+.action-bar {
+  margin: 1rem 0 1.5rem;
+  display: flex;
+  justify-content: flex-start;
+  gap: 2rem;
+}
+
+/* ==== LISTADOS EN TARJETAS (campeonatos, equipos, jugadores) ==== */
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+/* Tarjeta de campeonato (si no lo tienes ya definido así) */
+.campeonato-card {
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-left: 4px solid var(--secondary-color);
+}
+
+.campeonato-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.campeonato-header h3 {
+  font-size: 1.3rem;
+}
+
+/* Tarjetas de equipos */
+.equipo-card-gestion {
+  background: #ffffff;
+  padding: 1.25rem 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-left: 4px solid var(--success-color);
+}
+
+/* === Tarjetas de gestión (campeonatos, equipos, jugadores) === */
+.campeonato-card,
+.equipo-card-gestion,
+.jugador-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-top: 4px solid var(--secondary-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.campeonato-card:hover,
+.equipo-card-gestion:hover,
+.jugador-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.equipo-card-gestion h4 {
+  margin-bottom: 0.5rem;
+  color: var(--primary-color);
+}
+
+.equipo-meta {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+}
+
+.campeonato-actions,
+.equipo-actions,
+.jugador-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.campeonato-actions .btn,
+.equipo-actions .btn,
+.jugador-actions .btn {
+  flex: 1 1 30%;
+  min-width: 110px;
+  justify-content: center;
+}
+
+/* Tarjetas de jugadores */
+.jugador-card {
+  background: #ffffff;
+  padding: 1.25rem 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-left: 4px solid var(--warning-color);
+}
+
+.jugador-card h4 {
+  margin-bottom: 0.5rem;
+  color: var(--primary-color);
+}
+
+.jugador-meta {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+/* ============================
+   SORTEO – CONFIGURACIÓN
+============================ */
+.sorteo-config {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 15px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  color: white;
+}
+
+.config-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.config-card h3 {
+  color: var(--dark-color);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* Reutilizamos form-group pero con labels claros sobre fondo morado */
+.sorteo-config .form-group label {
+  color: white;
+}
+
+/* ============================
+   SORTEO – RULETA Y GRUPOS
+============================ */
+
+/* Layout: ruleta + panel de grupos */
+.ruleta-area {
+  display: flex;
+  gap: 2rem;
+  margin: 2rem 0;
+  align-items: flex-start;
+}
+
+/* Contenedor ruleta */
+.ruleta-container {
+  flex: 1;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  padding: 1.5rem 1.5rem 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  color: white;
+  margin: 2rem auto;
+  min-height: 50rem;
+}
+
+.ruleta-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#ruletaCanvas {
+  border: 10px solid #e74c3c;
+  border-radius: 50%;
+  background: #f8f9fa;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.25);
+  transition: transform 3s cubic-bezier(0.2, 0.8, 0.3, 1);
+  max-width: 100%;
+  height: auto;
+}
+
+.ruleta-controls {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Panel de grupos a la derecha */
+.grupos-panel {
+  flex: 1;
+}
+
+.grupos-panel h3 {
+  margin-bottom: 0.8rem;
+  color: var(--primary-color);
+}
+
+/* Tarjetas de grupos */
+.grupos-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.grupo-card {
+  background: white;
+  padding: 1.2rem;
+  border-radius: 10px;
+  box-shadow: var(--shadow-soft);
+  border-top: 4px solid var(--secondary-color);
+}
+
+.grupo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.grupo-header h4 {
+  color: var(--secondary-color);
+  font-size: 1.1rem;
+}
+
+.contador-equipos {
+  background: var(--secondary-color);
+  color: white;
+  padding: 0.2rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+/* Equipos dentro de un grupo */
+.equipos-grupo {
+  min-height: 80px;
+}
+
+.equipo-en-grupo {
+  background: #e8f4fd;
+  padding: 0.55rem;
+  margin: 0.3rem 0;
+  border-radius: 5px;
+  border-left: 3px solid var(--secondary-color);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.posicion {
+  font-weight: bold;
+  color: #6c757d;
+  min-width: 18px;
+}
+
+.nombre-equipo {
+  flex: 1;
+}
+
+.cabeza-serie {
+  color: #f39c12;
+  margin-left: 0.3rem;
+}
+
+/* Estado vacío */
+.empty-equipos,
+.empty-state {
+  text-align: center;
+  padding: 1.4rem;
+  color: #6c757d;
+}
+
+.empty-state i,
+.empty-equipos i {
+  font-size: 2rem;
+  margin-bottom: 0.6rem;
+  display: block;
+}
+
+/* ============================
+   EQUIPOS PENDIENTES
+============================ */
+.equipos-pendientes {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 10px;
+  box-shadow: var(--shadow-soft);
+  margin-top: 2rem;
+}
+
+.equipos-pendientes h3 {
+  margin-bottom: 0.8rem;
+}
+
+.equipos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.equipo-card {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid var(--warning-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.equipo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.equipo-info strong {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.equipo-estado {
+  font-size: 0.78rem;
+  color: #6c757d;
+  background: #e9ecef;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+}
+
+/* Para asegurar que los logos se muestren bien y alineados */
+.equipo-logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.equipo-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.equipo-logo.placeholder {
+  width: 44px;
+  height: 44px;
+  background: #e0e0e0;
+  border-radius: 50%;
+}
+
+.equipo-actions {
+  margin-top: 10px;
+}
+
+/* Botón hamburguesa (oculto en escritorio) */
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.item-index {
+  display: inline-block;
+  min-width: 0.5rem;
+  font-weight: bold;
+  color: var(--secondary-color);
+  margin-right: 0.5rem;
+}
+
+/* === Layout de listados (campeonatos, equipos, jugadores) === */
+#lista-campeonatos,
+#equipos-lista,
+#jugadores-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  align-items: stretch;
+  margin-top: 2rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.form-row .half {
+  flex: 1;
+}
+
+/* ============================
+   RESPONSIVE
+============================ */
+@media (max-width: 900px) {
+  .header .container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .header h1 {
+    font-size: 1.5rem;
+  }
+
+  .nav {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .main {
+    margin: 1.5rem auto;
+    padding: 0 12px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .modal-content {
+    width: 95%;
+    margin: 1.5rem auto;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 1.4rem;
+  }
+
+  .ruleta-area {
+    flex-direction: column;
+  }
+
+  .grupos-panel {
+    width: 100%;
+  }
+
+  .ruleta-controls {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .ruleta-controls .form-group {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .grupos-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav {
+    padding: 7px 12px;
+    font-size: 0.8rem;
+  }
+
+  .welcome-card {
+    padding: 1.4rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .header .container {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .nav-toggle {
+    display: block;
+  }
+
+  .nav {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    margin-top: 0.5rem;
+    gap: 6px;
+  }
+
+  .nav.nav-open {
+    display: flex;
+  }
+
+  .nav-btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 8px 14px;
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 600px) {
+  .grid-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  .modal-content {
+    max-width: 100%;
+    padding: 16px;
+  }
+
+  .modal-content h3 {
+    font-size: 18px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+  }
+
+  .form-group input,
+  .form-group select {
+    font-size: 13px;
+  }
+}
+
+@media print {
+  header,
+  nav,
+  .export-toolbar,
+  .btn,
+  .nav-toggle {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  #zona-grupos-export {
+    box-shadow: none !important;
+  }
+}

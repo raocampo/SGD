@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sorteo de Grupos</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="container">
+        <h1>⚽ Sistema de Gestión Deportiva</h1>
+
+        <!-- Botón hamburguesa -->
+        <button class="nav-toggle" id="nav-toggle">
+          <i class="fas fa-bars"></i>
+        </button>
+
+        <nav class="nav" id="main-nav">
+          <a class="nav-btn" href="index.html">Inicio</a>
+          <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
+          <a class="nav-btn active" href="sorteo.html">Sorteo de Grupos</a>
+          <a class="nav-btn" href="gruposgen.html">Grupos</a>
+          <a class="nav-btn" href="partidos.html">Partidos</a>
+          <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Sección Sorteo con Ruleta -->
+      <section id="sorteo" class="section active">
+        <div class="container">
+          <h2>🎡 Sorteo de Grupos</h2>
+
+          <!-- Configuración del Sorteo -->
+          <div class="sorteo-config">
+            <div class="config-card">
+              <h3>Configuración del Sorteo</h3>
+              <div class="form-group">
+                <label for="select-campeonato">Seleccionar Campeonato:</label>
+                <!--<select
+                  id="select-campeonato"
+                  onchange="cargarEquiposCampeonato()"
+                >-->
+                <select id="select-campeonato">
+                  <option value="">-- Selecciona un campeonato --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="cantidad-grupos">Cantidad de Grupos:</label>
+                <input
+                  type="number"
+                  id="cantidad-grupos"
+                  min="2"
+                  max="8"
+                  value="4"
+                />
+              </div>
+              <div class="form-group">
+                <label for="sistema-sorteo">Sistema de Sorteo:</label>
+                <select id="sistema-sorteo" class="form-select">
+                  <option value="automatico">🔄 Automático (Aleatorio)</option>
+                  <option value="cabezas-serie">👑 Con Cabezas de Serie</option>
+                  <option value="manual">🎡 Manual con Ruleta</option>
+                </select>
+              </div>
+              <button class="btn btn-success" onclick="iniciarSorteo()">
+                <i class="fas fa-play"></i> Iniciar Sorteo
+              </button>
+            </div>
+          </div>
+
+          <!-- Área de la Ruleta -->
+          <div class="ruleta-area">
+            <div class="ruleta-container">
+              <canvas id="ruletaCanvas" width="500" height="500"></canvas>
+              <div class="ruleta-controls">
+                <button
+                  id="btn-girar"
+                  class="btn btn-warning"
+                  onclick="girarRuleta()"
+                >
+                  <i class="fas fa-sync-alt"></i> Girar Ruleta
+                </button>
+                <button
+                  id="btn-asignar"
+                  class="btn btn-primary"
+                  onclick="asignarEquipoSeleccionado()"
+                  disabled
+                >
+                  <i class="fas fa-arrow-right"></i> Asignar a Grupo
+                </button>
+              </div>
+
+              <button
+                id="btn-ver-grupos"
+                class="btn btn-secondary"
+                onclick="verGruposSorteo()"
+              >
+                👀 Ver grupos
+              </button>
+            </div>
+
+            <!-- Panel de Grupos (para modo auto, o si quieres mostrar vista rápida) -->
+            <div class="grupos-panel">
+              <h3>Grupos del Sorteo</h3>
+              <div id="lista-grupos" class="grupos-container">
+                <!-- Los grupos se generarán aquí -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Equipos Pendientes -->
+          <div class="equipos-pendientes">
+            <h3>Equipos Pendientes de Sorteo</h3>
+            <div id="lista-equipos-pendientes" class="equipos-grid"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/core.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/sorteo.js"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", async function () {
+        const select = document.getElementById("select-campeonato");
+        if (!select) return;
+
+        try {
+          const data = await CampeonatosAPI.obtenerTodos();
+          const lista = data.campeonatos || [];
+          select.innerHTML =
+            '<option value="">-- Selecciona un campeonato --</option>';
+          lista.forEach((camp) => {
+            const opt = document.createElement("option");
+            opt.value = camp.id;
+            opt.textContent = camp.nombre;
+            select.appendChild(opt);
+          });
+          console.log(
+            `✅ ${lista.length} campeonatos cargados en el select de sorteo`
+          );
+        } catch (err) {
+          console.error("Error cargando campeonatos en sorteo:", err);
+          mostrarNotificacion(
+            "Error cargando campeonatos para sorteo",
+            "error"
+          );
+        }
+      });
+    </script>
+  </body>
+</html>
