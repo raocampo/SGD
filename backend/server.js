@@ -43,6 +43,9 @@ const grupoRoutes = require("./routes/grupoRoutes");
 const sorteoRoutes = require("./routes/sorteoRoutes");
 const partidoRoutes = require("./routes/partidoRoutes");
 const tablaRoutes = require("./routes/tablaRoutes");
+const eventoRoutes = require("./routes/eventoRoutes");
+const canchaRoutes = require("./routes/canchaRoutes");
+
 
 app.use("/api/campeonatos", campeonatoRoutes);
 app.use("/api/equipos", equipoRoutes);
@@ -51,6 +54,8 @@ app.use("/api/grupos", grupoRoutes);
 app.use("/api/sorteo", sorteoRoutes);
 app.use("/api/partidos", partidoRoutes);
 app.use("/api/tablas", tablaRoutes);
+app.use("/api/eventos", eventoRoutes);
+app.use("/api/canchas", canchaRoutes);
 
 // =====================
 // Frontend (opcional)

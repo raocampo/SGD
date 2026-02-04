@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SGD - Eventos / Categorías</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="container">
+        <h1>⚽ Sistema de Gestión Deportiva</h1>
+
+        <button class="nav-toggle" id="nav-toggle">
+          <i class="fas fa-bars"></i>
+        </button>
+
+        <nav class="nav" id="main-nav">
+          <a class="nav-btn" href="index.html">Inicio</a>
+          <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
+          <a class="nav-btn active" href="eventos.html">Eventos / Categorías</a>
+          <a class="nav-btn" href="sorteo.html">Sorteo de Grupos</a>
+          <a class="nav-btn" href="gruposgen.html">Grupos</a>
+          <a class="nav-btn" href="partidos.html">Partidos</a>
+          <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="section active">
+        <div class="container">
+          <h2>📌 Eventos / Categorías</h2>
+
+          <!-- CREAR EVENTO -->
+          <div class="config-card">
+            <h3>Crear Evento (Categoría) dentro de un Campeonato</h3>
+
+            <div class="form-group">
+              <label for="select-campeonato">Campeonato:</label>
+              <select id="select-campeonato">
+                <option value="">— Selecciona un campeonato —</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="txt-nombre">Nombre del evento (categoría):</label>
+              <input
+                id="txt-nombre"
+                type="text"
+                placeholder="Ej: Copa Ciudad de Loja - Abierta"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="txt-organizador">Organizador (opcional):</label>
+              <input
+                id="txt-organizador"
+                type="text"
+                placeholder="Ej: Liga Deportiva Barrial..."
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="fecha-inicio">Fecha inicio:</label>
+              <input id="fecha-inicio" type="date" />
+            </div>
+
+            <div class="form-group">
+              <label for="fecha-fin">Fecha fin:</label>
+              <input id="fecha-fin" type="date" />
+            </div>
+
+            <hr />
+
+            <h4>Modalidad de juego</h4>
+
+            <div class="form-group">
+              <label for="select-modalidad">Modalidad:</label>
+              <select id="select-modalidad">
+                <option value="weekend">Solo fines de semana</option>
+                <option value="weekday">Solo entre semana</option>
+                <option value="mixed">Mixto (entre semana + fines de semana)</option>
+              </select>
+            </div>
+
+            <div class="grid-container" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="config-card" style="margin:0;">
+                <h4>Horario Fin de Semana (default)</h4>
+                <div class="form-group">
+                  <label>Sábado inicio:</label>
+                  <input id="sat-start" type="time" value="13:00" />
+                </div>
+                <div class="form-group">
+                  <label>Sábado fin:</label>
+                  <input id="sat-end" type="time" value="18:00" />
+                </div>
+                <div class="form-group">
+                  <label>Domingo inicio:</label>
+                  <input id="sun-start" type="time" value="08:00" />
+                </div>
+                <div class="form-group">
+                  <label>Domingo fin:</label>
+                  <input id="sun-end" type="time" value="17:00" />
+                </div>
+              </div>
+
+              <div class="config-card" style="margin:0;">
+                <h4>Horario Entre Semana (default)</h4>
+                <div class="form-group">
+                  <label>Inicio:</label>
+                  <input id="wk-start" type="time" value="19:00" />
+                </div>
+                <div class="form-group">
+                  <label>Fin:</label>
+                  <input id="wk-end" type="time" value="22:00" />
+                </div>
+                <p style="opacity:.8; font-size:.9rem;">
+                  * Por ahora se asume Lunes a Viernes. Luego lo afinamos para escoger días exactos.
+                </p>
+              </div>
+            </div>
+
+            <hr />
+
+            <h4>Canchas del evento</h4>
+
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="chk-multi-canchas" />
+                Este evento usa una o varias canchas (si no marcas, se creará sin canchas)
+              </label>
+            </div>
+
+            <div id="canchas-panel" style="display:none;">
+              <div class="form-group">
+                <label for="num-canchas">Cantidad de canchas:</label>
+                <input id="num-canchas" type="number" min="1" value="1" />
+              </div>
+
+              <div id="lista-canchas" class="grid-container" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+                <!-- inputs dinámicos -->
+              </div>
+
+              <p style="opacity:.8; font-size:.9rem;">
+                Si dejas nombres vacíos, se asignará “Cancha 1”, “Cancha 2”… (editable luego).
+              </p>
+            </div>
+
+            <div class="action-bar">
+              <button class="btn btn-primary" onclick="crearEvento()">
+                <i class="fas fa-plus"></i> Crear Evento
+              </button>
+              <button class="btn btn-secondary" onclick="cargarEventos()">
+                <i class="fas fa-rotate"></i> Recargar Lista
+              </button>
+            </div>
+          </div>
+
+          <!-- LISTA EVENTOS -->
+          <div class="config-card">
+            <h3>Eventos creados</h3>
+            <div id="lista-eventos" class="grid-container">
+              <!-- cards -->
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/core.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/eventos.js"></script>
+  </body>
+</html>
