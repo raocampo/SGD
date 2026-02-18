@@ -1,12 +1,62 @@
 const pool = require('../config/database');
 
 class Jugador {
+    static _columnasDocumentosAseguradas = false;
+
+    static async asegurarColumnasDocumentos() {
+        if (this._columnasDocumentosAseguradas) return;
+        await pool.query(`
+            ALTER TABLE jugadores
+            ADD COLUMN IF NOT EXISTS foto_cedula_url TEXT,
+            ADD COLUMN IF NOT EXISTS foto_carnet_url TEXT
+        `);
+        this._columnasDocumentosAseguradas = true;
+    }
+
+    /**
+     * Validación: un jugador no puede estar en dos equipos del mismo torneo/campeonato.
+     * Usa cédula como identificador único.
+     * @param {string} cedula
+     * @param {number} equipo_destino_id - equipo al que se asigna
+     * @param {number} [excluir_jugador_id] - al actualizar, excluir este jugador del chequeo
+     */
+    static async verificarJugadorUnicoPorCampeonato(cedula, equipo_destino_id, excluir_jugador_id = null) {
+        if (!cedula || !equipo_destino_id) return;
+
+        let q = `
+            SELECT j.id, j.nombre, j.apellido, e.nombre as equipo_nombre
+            FROM jugadores j
+            JOIN equipos e ON e.id = j.equipo_id
+            WHERE j.cedidentidad = $1
+              AND j.equipo_id != $2
+              AND e.campeonato_id = (
+                SELECT campeonato_id FROM equipos WHERE id = $2
+              )
+        `;
+        const params = [cedula, equipo_destino_id];
+        if (excluir_jugador_id) {
+            q += ` AND j.id != $3`;
+            params.push(excluir_jugador_id);
+        }
+        q += ` LIMIT 1`;
+
+        const r = await pool.query(q, params);
+        if (r.rows.length > 0) {
+            const otro = r.rows[0];
+            throw new Error(
+                `Un jugador no puede estar en dos equipos del mismo torneo. ` +
+                `La cédula ya está registrada en el equipo "${otro.equipo_nombre}".`
+            );
+        }
+    }
     
     // CREATE - Crear nuevo jugador
-    static async crear(equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan = false) {
+    static async crear(equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan = false, foto_cedula_url = null, foto_carnet_url = null) {
+        await this.asegurarColumnasDocumentos();
+
         // Verificar límites de jugadores en el equipo
         const equipoQuery = `
-            SELECT e.*, min_jugador, max_jugador 
+            SELECT e.*, c.min_jugador, c.max_jugador 
             FROM equipos e 
             JOIN campeonatos c ON e.campeonato_id = c.id 
             WHERE e.id = $1
@@ -26,15 +76,18 @@ class Jugador {
         const countResult = await pool.query(countQuery, [equipo_id]);
         const jugadoresActuales = parseInt(countResult.rows[0].count);
 
-        if (jugadoresActuales >= maxJugadores) {
+        if (maxJugadores != null && jugadoresActuales >= maxJugadores) {
             throw new Error(`Límite de ${maxJugadores} jugadores alcanzado en este equipo`);
         }
 
-        // Verificar si la Cedula ya existe
-        const cedQuery = 'SELECT id FROM jugadores WHERE cedIdentidad = $1';
-        const cedResult = await pool.query(cedQuery, [cedidentidad]);
+        // Verificar si la cédula ya existe en otro equipo del mismo campeonato
+        await this.verificarJugadorUnicoPorCampeonato(cedidentidad, equipo_id);
+
+        // Verificar cédula duplicada en el mismo equipo (fallback)
+        const cedQuery = 'SELECT id FROM jugadores WHERE cedidentidad = $1 AND equipo_id = $2';
+        const cedResult = await pool.query(cedQuery, [cedidentidad, equipo_id]);
         if (cedResult.rows.length > 0) {
-            throw new Error('La Cedula de Identidad ya está registrado en el sistema');
+            throw new Error('La cédula de identidad ya está registrada en este equipo');
         }
 
         // Verificar si el número de camiseta ya está en uso en el equipo
@@ -54,11 +107,22 @@ class Jugador {
         // Crear jugador
         const insertQuery = `
             INSERT INTO jugadores 
-            (equipo_id, nombre, apellido, cedIdentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+            (equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan, foto_cedula_url, foto_carnet_url) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
             RETURNING *
         `;
-        const values = [equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan];
+        const values = [
+            equipo_id,
+            nombre,
+            apellido,
+            cedidentidad,
+            fecha_nacimiento,
+            posicion,
+            numero_camiseta,
+            es_capitan,
+            foto_cedula_url,
+            foto_carnet_url,
+        ];
         
         const result = await pool.query(insertQuery, values);
         return result.rows[0];
@@ -66,6 +130,7 @@ class Jugador {
 
     // READ - Obtener jugadores por equipo
     static async obtenerPorEquipo(equipo_id) {
+        await this.asegurarColumnasDocumentos();
         const query = `
             SELECT j.*, e.nombre as nombre_equipo, c.nombre as nombre_campeonato
             FROM jugadores j 
@@ -80,6 +145,7 @@ class Jugador {
 
     // READ - Obtener jugador por ID
     static async obtenerPorId(id) {
+        await this.asegurarColumnasDocumentos();
         const query = `
             SELECT j.*, e.nombre as nombre_equipo, c.nombre as nombre_campeonato
             FROM jugadores j 
@@ -93,6 +159,7 @@ class Jugador {
 
     // READ - Obtener todos los jugadores
     static async obtenerTodos() {
+        await this.asegurarColumnasDocumentos();
         const query = `
             SELECT j.*, e.nombre as nombre_equipo, c.nombre as nombre_campeonato
             FROM jugadores j 
@@ -106,12 +173,29 @@ class Jugador {
 
     // UPDATE - Actualizar jugador
     static async actualizar(id, datos) {
+        await this.asegurarColumnasDocumentos();
+        // Si cambia equipo_id o cedidentidad, validar jugador único por campeonato
+        if (datos.equipo_id) {
+            const jugadorActual = await pool.query(
+                'SELECT cedidentidad FROM jugadores WHERE id = $1',
+                [id]
+            );
+            const cedula = datos.cedidentidad ?? jugadorActual.rows[0]?.cedidentidad;
+            if (cedula) {
+                await this.verificarJugadorUnicoPorCampeonato(cedula, datos.equipo_id, parseInt(id, 10));
+            }
+        }
+
         const campos = [];
         const valores = [];
         let contador = 1;
+        const allowed = new Set([
+            'equipo_id', 'nombre', 'apellido', 'cedidentidad', 'fecha_nacimiento',
+            'posicion', 'numero_camiseta', 'es_capitan', 'foto_cedula_url', 'foto_carnet_url'
+        ]);
 
         for (const [key, value] of Object.entries(datos)) {
-            if (value !== undefined) {
+            if (value !== undefined && allowed.has(key)) {
                 campos.push(`${key} = $${contador}`);
                 valores.push(value);
                 contador++;

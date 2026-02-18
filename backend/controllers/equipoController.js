@@ -11,15 +11,31 @@ const equipoController = {
         campeonato_id,
         nombre,
         director_tecnico,
+        asistente_tecnico,
+        medico,
         color_equipo,
+        color_primario,
+        color_secundario,
+        color_terciario,
         telefono,
         email,
+        cabeza_serie,
       } = req.body;
 
       // Validaciones básicas
       if (!campeonato_id || !nombre) {
         return res.status(400).json({
           error: "campeonato_id y nombre son obligatorios",
+        });
+      }
+      if (!director_tecnico || !String(director_tecnico).trim()) {
+        return res.status(400).json({
+          error: "El nombre del técnico o dueño es obligatorio",
+        });
+      }
+      if (!email || !String(email).trim()) {
+        return res.status(400).json({
+          error: "El correo electrónico es obligatorio",
         });
       }
 
@@ -30,11 +46,17 @@ const equipoController = {
       const nuevoEquipo = await Equipo.crear(
         campeonato_id,
         nombre,
-        director_tecnico,
-        color_equipo,
-        telefono,
-        email,
-        logo_url
+        director_tecnico?.trim(),
+        asistente_tecnico?.trim() || null,
+        medico?.trim() || null,
+        color_equipo || null,
+        color_primario || null,
+        color_secundario || null,
+        color_terciario || null,
+        telefono || null,
+        email?.trim(),
+        logo_url,
+        cabeza_serie
       );
 
       res.status(201).json({

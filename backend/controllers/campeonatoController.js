@@ -19,6 +19,9 @@ const campeonatoController = {
         color_primario,
         color_secundario,
         color_acento,
+        requiere_foto_cedula = false,
+        requiere_foto_carnet = false,
+        genera_carnets = false,
       } = req.body;
 
       // Validaciones básicas
@@ -54,7 +57,10 @@ const campeonatoController = {
         color_primario,
         color_secundario,
         color_acento,
-        logo_url
+        logo_url,
+        requiere_foto_cedula,
+        requiere_foto_carnet,
+        genera_carnets
       );
 
       res.status(201).json({
@@ -120,6 +126,22 @@ const campeonatoController = {
       const { id } = req.params;
       const datos = req.body;
 
+      if (datos.requiere_foto_cedula !== undefined) {
+        datos.requiere_foto_cedula =
+          datos.requiere_foto_cedula === true ||
+          String(datos.requiere_foto_cedula).toLowerCase() === "true";
+      }
+      if (datos.requiere_foto_carnet !== undefined) {
+        datos.requiere_foto_carnet =
+          datos.requiere_foto_carnet === true ||
+          String(datos.requiere_foto_carnet).toLowerCase() === "true";
+      }
+      if (datos.genera_carnets !== undefined) {
+        datos.genera_carnets =
+          datos.genera_carnets === true ||
+          String(datos.genera_carnets).toLowerCase() === "true";
+      }
+
       if (req.fileValidationError) {
         return res.status(400).json({ error: req.fileValidationError });
       }
@@ -161,11 +183,11 @@ const campeonatoController = {
         });
       }
 
-      if (camp.logo_url) {
+      if (campeonatoEliminado.logo_url) {
         const filePath = path.join(
           __dirname,
           "..",
-          camp.logo_url.replace(/^\//, "")
+          campeonatoEliminado.logo_url.replace(/^\//, "")
         );
         fs.unlink(filePath, (err) => {
           if (err) {
@@ -185,6 +207,39 @@ const campeonatoController = {
       console.error("Error eliminando campeonato:", error);
       res.status(500).json({
         error: "Error interno del servidor",
+        detalle: error.message,
+      });
+    }
+  },
+
+  // Cambiar estado del torneo
+  cambiarEstado: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { estado } = req.body;
+
+      if (!estado) {
+        return res.status(400).json({
+          error: "El campo 'estado' es obligatorio",
+        });
+      }
+
+      const campeonato = await Campeonato.cambiarEstado(id, estado);
+
+      if (!campeonato) {
+        return res.status(404).json({
+          error: "Campeonato no encontrado",
+        });
+      }
+
+      res.json({
+        mensaje: "✅ Estado actualizado",
+        campeonato,
+      });
+    } catch (error) {
+      console.error("Error cambiando estado:", error);
+      res.status(400).json({
+        error: error.message,
         detalle: error.message,
       });
     }

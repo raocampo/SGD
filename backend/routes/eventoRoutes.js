@@ -14,4 +14,10 @@ router.delete("/:id", eventoController.eliminarEvento);
 router.post("/:evento_id/canchas", eventoController.asignarCanchasAEvento);
 router.get("/:evento_id/canchas", eventoController.listarCanchasDeEvento);
 
+// Equipos del evento (evento_equipos)
+router.post("/:evento_id/equipos", eventoController.asignarEquipoAEvento);
+router.get("/:evento_id/equipos", eventoController.listarEquiposDeEvento);
+router.delete("/:evento_id/equipos/:equipo_id", eventoController.quitarEquipoDeEvento);
+
+
 module.exports = router;

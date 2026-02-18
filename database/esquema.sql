@@ -63,24 +63,6 @@ CREATE TABLE IF NOT EXISTS grupo_equipos (
     PRIMARY KEY (grupo_id, equipo_id)
 );
 
--- Tabla de Partidos
-CREATE TABLE IF NOT EXISTS partidos (
-    id SERIAL PRIMARY KEY,
-    campeonato_id INTEGER REFERENCES campeonatos(id) ON DELETE CASCADE,
-    grupo_id INTEGER REFERENCES grupos(id),
-    equipo_local_id INTEGER REFERENCES equipos(id),
-    equipo_visitante_id INTEGER REFERENCES equipos(id),
-    fecha_partido DATE,
-    hora_partido TIME,
-    cancha VARCHAR(100),
-    resultado_local INTEGER DEFAULT 0,
-    resultado_visitante INTEGER DEFAULT 0,
-    estado VARCHAR(20) DEFAULT 'pendiente',
-    jornada INTEGER,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Tabla de Goleadores
 CREATE TABLE IF NOT EXISTS goleadores (
     id SERIAL PRIMARY KEY,

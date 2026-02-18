@@ -7,10 +7,16 @@ class Equipo {
     campeonato_id,
     nombre,
     director_tecnico,
+    asistente_tecnico,
+    medico,
     color_equipo,
+    color_primario,
+    color_secundario,
+    color_terciario,
     telefono,
     email,
-    logo_url
+    logo_url,
+    cabeza_serie
   ) {
     // Verificar límite de equipos en el campeonato
     const limiteQuery = "SELECT max_equipos FROM campeonatos WHERE id = $1";
@@ -43,18 +49,24 @@ class Equipo {
     // Crear equipo
     const insertQuery = `
             INSERT INTO equipos 
-            (campeonato_id, nombre, director_tecnico, color_equipo, telefono, email, logo_url) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7) 
+            (campeonato_id, nombre, director_tecnico, asistente_tecnico, medico, color_equipo, color_primario, color_secundario, color_terciario, telefono, email, logo_url, cabeza_serie) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
             RETURNING *
         `;
     const values = [
       campeonato_id,
       nombre,
       director_tecnico,
-      color_equipo,
+      asistente_tecnico || null,
+      medico || null,
+      color_equipo || color_primario || null,
+      color_primario || null,
+      color_secundario || null,
+      color_terciario || null,
       telefono,
       email,
       logo_url,
+      cabeza_serie === true || cabeza_serie === "true",
     ];
 
     const result = await pool.query(insertQuery, values);
@@ -154,7 +166,12 @@ class Equipo {
       "campeonato_id",
       "nombre",
       "director_tecnico",
+      "asistente_tecnico",
+      "medico",
       "color_equipo",
+      "color_primario",
+      "color_secundario",
+      "color_terciario",
       "telefono",
       "email",
       "cabeza_serie",

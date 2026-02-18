@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Planilla de Juego - SGD</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="app-layout page-planilla">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">⚽ SGD</div>
+      <nav class="sidebar-nav">
+        <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+        <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+        <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+        <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+        <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+        <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+        <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+        <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+        <a class="nav-btn active" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+        <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+        <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+      </nav>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="top-bar">
+        <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+        <h1><i class="fas fa-clipboard-list"></i> Planilla de Juego</h1>
+      </header>
+
+      <main class="main">
+        <section class="section active">
+          <div class="container planilla-container">
+            <div class="planilla-top-actions">
+              <button class="btn btn-secondary" onclick="volverAPartidos()">
+                <i class="fas fa-arrow-left"></i> Volver a Partidos
+              </button>
+              <button class="btn btn-primary" onclick="recargarPlanilla()">
+                <i class="fas fa-rotate"></i> Recargar
+              </button>
+              <button class="btn btn-outline" onclick="toggleVistaPreviaPlanilla()">
+                <i class="fas fa-eye"></i> Vista Previa
+              </button>
+              <button class="btn btn-warning" onclick="imprimirVistaPrevia()">
+                <i class="fas fa-print"></i> Imprimir
+              </button>
+              <button class="btn btn-success" onclick="exportarPlanillaXLSX()">
+                <i class="fas fa-file-excel"></i> Exportar XLSX
+              </button>
+            </div>
+
+            <div id="bloque-contexto-planilla" class="config-card">
+              <h3>Seleccion Directa de Planillaje</h3>
+              <div class="planilla-score-grid">
+                <div class="form-group">
+                  <label for="select-evento-planilla">Evento (Categoria):</label>
+                  <select id="select-evento-planilla">
+                    <option value="">- Selecciona un evento -</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="select-jornada-planilla">Jornada:</label>
+                  <select id="select-jornada-planilla">
+                    <option value="">- Todas -</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="select-partido-planilla">Partido:</label>
+                  <select id="select-partido-planilla">
+                    <option value="">- Selecciona un partido -</option>
+                  </select>
+                </div>
+              </div>
+              <div class="planilla-inline-actions">
+                <button class="btn btn-primary" type="button" onclick="cargarPlanillaDesdeSelector()">
+                  <i class="fas fa-clipboard-check"></i> Cargar Planilla
+                </button>
+              </div>
+              <p class="form-hint">Este acceso es independiente del boton de planilla en las tarjetas de fixture.</p>
+            </div>
+
+            <div class="config-card" id="planilla-encabezado">
+              <h3>Cargando partido...</h3>
+            </div>
+
+            <form id="form-planilla" class="config-card">
+              <h3>Datos del Partido</h3>
+
+              <div class="planilla-score-grid">
+                <div class="form-group">
+                  <label for="resultado-local">Goles Local</label>
+                  <input type="number" id="resultado-local" min="0" value="0" />
+                </div>
+                <div class="form-group">
+                  <label for="resultado-visitante">Goles Visitante</label>
+                  <input type="number" id="resultado-visitante" min="0" value="0" />
+                </div>
+                <div class="form-group">
+                  <label for="estado-partido">Estado</label>
+                  <select id="estado-partido">
+                    <option value="programado">Programado</option>
+                    <option value="en_juego">En juego</option>
+                    <option value="finalizado" selected>Finalizado</option>
+                    <option value="suspendido">Suspendido</option>
+                  </select>
+                </div>
+              </div>
+
+              <h4>Planteles del Partido</h4>
+              <div class="planilla-planteles-grid">
+                <div class="planilla-plantel-card">
+                  <h5 id="titulo-plantel-local">Local</h5>
+                  <div id="plantel-local" class="planilla-plantel-list"></div>
+                </div>
+                <div class="planilla-plantel-card">
+                  <h5 id="titulo-plantel-visitante">Visitante</h5>
+                  <div id="plantel-visitante" class="planilla-plantel-list"></div>
+                </div>
+              </div>
+
+              <h4>Goleadores</h4>
+              <div id="lista-goles" class="planilla-rows"></div>
+              <div class="planilla-inline-actions">
+                <button type="button" class="btn btn-primary" onclick="agregarFilaGol()">
+                  <i class="fas fa-plus"></i> Agregar goleador
+                </button>
+              </div>
+
+              <h4>Tarjetas</h4>
+              <div id="lista-tarjetas" class="planilla-rows"></div>
+              <div class="planilla-inline-actions">
+                <button type="button" class="btn btn-primary" onclick="agregarFilaTarjeta()">
+                  <i class="fas fa-plus"></i> Agregar tarjeta
+                </button>
+              </div>
+
+              <h4>Pagos y Observaciones</h4>
+              <div class="planilla-score-grid">
+                <div class="form-group">
+                  <label for="pago-arbitraje">Pago arbitraje</label>
+                  <input type="number" id="pago-arbitraje" min="0" step="0.01" value="0" />
+                </div>
+                <div class="form-group">
+                  <label for="pago-local">Pago equipo local</label>
+                  <input type="number" id="pago-local" min="0" step="0.01" value="0" />
+                </div>
+                <div class="form-group">
+                  <label for="pago-visitante">Pago equipo visitante</label>
+                  <input type="number" id="pago-visitante" min="0" step="0.01" value="0" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="observaciones-planilla">Observaciones</label>
+                <textarea id="observaciones-planilla" rows="3" placeholder="Novedades, sanciones, observaciones de mesa/arbitraje..."></textarea>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-success">
+                  <i class="fas fa-save"></i> Guardar Planilla
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="volverAPartidos()">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+
+            <section id="planilla-preview-card" class="config-card planilla-preview-card" style="display:none;">
+              <div class="planilla-preview-toolbar">
+                <h3><i class="fas fa-file-lines"></i> Vista Previa Oficial de Planilla</h3>
+                <div class="planilla-preview-toolbar-actions">
+                  <button type="button" class="btn btn-warning btn-xs" onclick="imprimirVistaPrevia()">
+                    <i class="fas fa-print"></i> Imprimir
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-xs" onclick="toggleVistaPreviaPlanilla()">
+                    <i class="fas fa-times"></i> Ocultar
+                  </button>
+                </div>
+              </div>
+              <div id="planilla-preview-content"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="nav-overlay" id="nav-overlay"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="js/core.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/planilla.js"></script>
+  </body>
+</html>

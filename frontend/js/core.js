@@ -1,146 +1,127 @@
-// core.js
-// ======================
-// Estado global base
-// ======================
-window.AppState = window.AppState || {
-  campeonatos: [],
-  equipos: [],
-  grupos: [],
-  sorteo: {
-    campeonatoSeleccionado: null,
-    equiposPendientes: [],
-    gruposCreados: []
-  }
-};
+// frontend/js/core.js
 
-// ======================
-// Notificaciones
-// ======================
-function mostrarNotificacion(mensaje, tipo = "info") {
-  console.log(`${tipo.toUpperCase()}: ${mensaje}`);
+(function () {
+  // ✅ Centraliza config aquí (y api.js usa window.API_BASE_URL)
+  window.API_BASE_URL = window.API_BASE_URL || "http://localhost:5000/api";
 
-  const existing = document.querySelectorAll(".notification");
-  if (existing.length > 5) {
-    existing[0].remove();
-  }
+  // =========================
+  // Notificaciones
+  // =========================
+  window.mostrarNotificacion = function (mensaje, tipo = "info") {
+    // Si ya tienes un sistema de toast, aquí puedes integrar.
+    console.log(`${tipo.toUpperCase()}: ${mensaje}`);
 
-  const noti = document.createElement("div");
-  noti.className = `notification ${tipo}`;
-  noti.textContent = mensaje;
+    const existing = document.querySelector(".toast-notificacion");
+    if (existing) existing.remove();
 
-  document.body.appendChild(noti);
+    const toast = document.createElement("div");
+    toast.className = "toast-notificacion";
+    toast.textContent = mensaje;
 
-  setTimeout(() => {
-    if (noti.parentNode) {
-      noti.remove();
-    }
-  }, 3000);
-}
+    // estilos mínimos (si ya tienes CSS, puedes borrar esto)
+    toast.style.position = "fixed";
+    toast.style.top = "20px";
+    toast.style.right = "20px";
+    toast.style.zIndex = 9999;
+    toast.style.padding = "12px 16px";
+    toast.style.borderRadius = "10px";
+    toast.style.color = "#fff";
+    toast.style.fontWeight = "600";
+    toast.style.boxShadow = "0 10px 25px rgba(0,0,0,.2)";
+    toast.style.background =
+      tipo === "success"
+        ? "#16a34a"
+        : tipo === "error"
+        ? "#ef4444"
+        : tipo === "warning"
+        ? "#f59e0b"
+        : "#3b82f6";
 
-// ======================
-// Overlay de "cargando"
-// ======================
-let overlayCargando = null;
+    document.body.appendChild(toast);
 
-function mostrarCargando(texto = "Cargando...") {
-  if (!document.body) return;
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
+  };
 
-  if (!overlayCargando) {
-    overlayCargando = document.createElement("div");
-    overlayCargando.style.position = "fixed";
-    overlayCargando.style.inset = "0";
-    overlayCargando.style.background = "rgba(0,0,0,0.35)";
-    overlayCargando.style.display = "flex";
-    overlayCargando.style.alignItems = "center";
-    overlayCargando.style.justifyContent = "center";
-    overlayCargando.style.zIndex = "9999";
-    overlayCargando.innerHTML = `
-      <div style="
-        background: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        font-size: 0.95rem;
-        display: flex;
-        align-items: center;
-        gap: .6rem;
-      ">
-        <span class="spinner" style="
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          border: 2px solid #3498db;
-          border-top-color: transparent;
-          animation: spin 0.7s linear infinite;
-        "></span>
-        <span id="texto-cargando">${texto}</span>
-      </div>
-    `;
-    document.body.appendChild(overlayCargando);
-  } else {
-    const textoEl = overlayCargando.querySelector("#texto-cargando");
-    if (textoEl) textoEl.textContent = texto;
-    overlayCargando.style.display = "flex";
-  }
-}
+  // =========================
+  // Modal helpers
+  // =========================
+  window.abrirModal = function (modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.style.display = "flex";
+    modal.classList.add("open");
+    document.body.classList.add("modal-open");
+  };
 
-function ocultarCargando() {
-  if (overlayCargando) {
-    overlayCargando.style.display = "none";
-  }
-}
-
-// ======================
-// Modales
-// ======================
-function abrirModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) {
-    modal.style.display = "flex";  /*block*/
-  }
-}
-
-function cerrarModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) {
+  window.cerrarModal = function (modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
     modal.style.display = "none";
-  }
-}
+    modal.classList.remove("open");
+    if (!document.querySelector(".modal.open")) {
+      document.body.classList.remove("modal-open");
+    }
+  };
 
-// 🔁 Compatibilidad con código antiguo (mostrarModal / ocultarModal)
-function mostrarModal(id) {
-  console.warn("mostrarModal está deprecado, usa abrirModal(id)");
-  abrirModal(id);
-}
+  // No cerramos modal por clic fuera.
+  // Se cierra solo por accion explicita: boton "X", "Cancelar" o cerrarModal(...).
 
-function ocultarModal(id) {
-  console.warn("ocultarModal está deprecado, usa cerrarModal(id)");
-  cerrarModal(id);
-}
+  // =========================
+  // Menú hamburguesa / Sidebar
+  // =========================
+  document.addEventListener("DOMContentLoaded", () => {
+    const toggle = document.getElementById("nav-toggle");
+    const sidebar = document.getElementById("sidebar");
+    const nav = document.getElementById("main-nav");
+    let overlay = document.getElementById("nav-overlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "nav-overlay";
+      overlay.className = "nav-overlay";
+      document.body.appendChild(overlay);
+    }
 
-// ======================
-// Menú hamburguesa
-// ======================
-function inicializarMenuHamburguesa() {
-  const toggle = document.getElementById("nav-toggle");
-  const nav = document.getElementById("main-nav");
+    const target = sidebar || nav;
+    if (!target) return;
 
-  if (!toggle || !nav) return;
+    function isMobile() {
+      return window.innerWidth <= 768;
+    }
+    function setInitialState() {
+      if (isMobile()) {
+        target.classList.add("collapsed");
+        target.classList.remove("nav-open");
+      } else {
+        target.classList.remove("collapsed");
+      }
+    }
+    setInitialState();
+    window.addEventListener("resize", setInitialState);
 
-  toggle.addEventListener("click", () => {
-    nav.classList.toggle("nav-open");
-  });
-
-  nav.querySelectorAll("a.nav-btn").forEach((link) => {
-    link.addEventListener("click", () => {
-      nav.classList.remove("nav-open");
+    if (toggle && target) {
+      toggle.addEventListener("click", () => {
+        if (isMobile()) {
+          target.classList.toggle("nav-open");
+          overlay.classList.toggle("active");
+        } else {
+          target.classList.toggle("collapsed");
+        }
+      });
+    }
+    overlay.addEventListener("click", () => {
+      if (sidebar) sidebar.classList.remove("nav-open");
+      if (nav) nav.classList.remove("nav-open");
+      overlay.classList.remove("active");
     });
   });
-}
 
-// ======================
-// Bootstrap global
-// ======================
-document.addEventListener("DOMContentLoaded", () => {
-  inicializarMenuHamburguesa();
-});
+  // =========================
+  // Querystring helper
+  // =========================
+  window.getQueryParam = function (key) {
+    const url = new URL(window.location.href);
+    return url.searchParams.get(key);
+  };
+})();

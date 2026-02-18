@@ -24,6 +24,11 @@ router.get('/', campeonatoController.obtenerCampeonatos);        // READ ALL
 router.get('/:id', campeonatoController.obtenerCampeonato);      // READ ONE
 
 // ===============================
+// CAMBIAR ESTADO
+// ===============================
+router.put("/:id/estado", campeonatoController.cambiarEstado);
+
+// ===============================
 // ACTUALIZAR CAMPEONATO (con logo)
 // ===============================
 router.put(

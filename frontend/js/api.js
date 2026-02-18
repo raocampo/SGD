@@ -1,237 +1,90 @@
-// Configuración de la API
-const API_BASE_URL = "http://localhost:5000/api";
-const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+// frontend/js/api.js
+(() => {
+  // Evita redeclarar si el script se carga 2 veces
+  if (window.API_BASE_URL && window.ApiClient) {
+    // si ya existen los wrappers, no hagas nada
+    if (window.CampeonatosAPI && window.EventosAPI) return;
+  }
 
-// Utilidad para hacer requests a la API
-class ApiClient {
-  static async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
+  // Cambia solo esto si tu backend usa otro puerto
+  window.API_BASE_URL = window.API_BASE_URL || "http://localhost:5000/api";
 
-    const config = {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-      ...options,
-    };
+  window.ApiClient = window.ApiClient || {
+    async request(method, endpoint, body = null) {
+      const url = `${window.API_BASE_URL}${endpoint}`;
+      const options = {
+        method,
+        headers: { "Content-Type": "application/json" },
+      };
+      if (body) options.body = JSON.stringify(body);
 
-    if (config.body && typeof config.body === "object") {
-      config.body = JSON.stringify(config.body);
-    }
+      const resp = await fetch(url, options);
+      const contentType = resp.headers.get("content-type") || "";
 
-    try {
-      const response = await fetch(url, config);
+      let data = null;
+      if (contentType.includes("application/json")) data = await resp.json();
+      else data = await resp.text();
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      if (!resp.ok) {
+        const msg =
+          data && data.message ? data.message : data || "Error HTTP";
+        throw new Error(msg);
       }
+      return data;
+    },
 
-      return await response.json();
-    } catch (error) {
-      console.error("Error en la petición API:", error);
-      mostrarNotificacion(`Error: ${error.message}`, "error");
-      throw error;
-    }
-  }
+    get(endpoint) {
+      return this.request("GET", endpoint);
+    },
+    post(endpoint, body) {
+      return this.request("POST", endpoint, body);
+    },
+    put(endpoint, body) {
+      return this.request("PUT", endpoint, body);
+    },
+    delete(endpoint) {
+      return this.request("DELETE", endpoint);
+    },
+  };
 
-  static async get(endpoint) {
-    return this.request(endpoint);
-  }
+  // =========================
+  // ✅ APIs “bonitas” (wrappers)
+  // =========================
+  window.CampeonatosAPI = window.CampeonatosAPI || {
+    obtenerTodos() {
+      // Ajusta si tu endpoint real es otro
+      return window.ApiClient.get("/campeonatos");
+    },
+    obtenerPorId(id) {
+      return window.ApiClient.get(`/campeonatos/${id}`);
+    },
+    crear(payload) {
+      return window.ApiClient.post("/campeonatos", payload);
+    },
+    actualizar(id, payload) {
+      return window.ApiClient.put(`/campeonatos/${id}`, payload);
+    },
+    eliminar(id) {
+      return window.ApiClient.delete(`/campeonatos/${id}`);
+    },
+  };
 
-  static async post(endpoint, data) {
-    return this.request(endpoint, {
-      method: "POST",
-      body: data,
-    });
-  }
-
-  static async put(endpoint, data) {
-    return this.request(endpoint, {
-      method: "PUT",
-      body: data,
-    });
-  }
-
-  static async delete(endpoint) {
-    return this.request(endpoint, {
-      method: "DELETE",
-    });
-  }
-}
-
-// Módulo de Campeonatos
-const CampeonatosAPI = {
-  async obtenerTodos() {
-    return await ApiClient.get("/campeonatos");
-  },
-
-  async obtenerPorId(id) {
-    return await ApiClient.get(`/campeonatos/${id}`);
-  },
-
-  async crear(campeonato) {
-    return await ApiClient.post("/campeonatos", campeonato);
-  },
-
-  async actualizar(id, campeonato) {
-    return await ApiClient.put(`/campeonatos/${id}`, campeonato);
-  },
-
-  async eliminar(id) {
-    return await ApiClient.delete(`/campeonatos/${id}`);
-  },
-};
-
-// Módulo de Equipos
-const EquiposAPI = {
-  async obtenerPorCampeonato(campeonatoId) {
-    return await ApiClient.get(`/equipos/campeonato/${campeonatoId}`);
-  },
-
-  async crear(equipo) {
-    return await ApiClient.post("/equipos", equipo);
-  },
-
-  async designarCabezaSerie(equipoId, esCabezaSerie) {
-    return await ApiClient.put(`/equipos/${equipoId}/cabeza-serie`, {
-      es_cabeza_serie: esCabezaSerie,
-    });
-  },
-};
-
-// Módulo de Grupos
-const GruposAPI = {
-  async crear(campeonatoId, cantidadGrupos) {
-    return await ApiClient.post("/grupos", {
-      campeonato_id: campeonatoId,
-      cantidad_grupos: cantidadGrupos,
-    });
-  },
-
-  async obtenerPorCampeonato(campeonatoId) {
-    return await ApiClient.get(`/grupos/campeonato/${campeonatoId}`);
-  },
-};
-
-// Módulo de Sorteo
-const SorteoAPI = {
-  async aleatorio(campeonatoId, cantidadGrupos) {
-    return await ApiClient.post("/sorteo/aleatorio", {
-      campeonato_id: campeonatoId,
-      cantidad_grupos: cantidadGrupos,
-    });
-  },
-
-  async conCabezaSerie(campeonatoId, cantidadGrupos) {
-    return await ApiClient.post("/sorteo/cabeza-serie", {
-      campeonato_id: campeonatoId,
-      cantidad_grupos: cantidadGrupos,
-    });
-  },
-};
-
-// Módulo de Tablas
-const TablasAPI = {
-  async obtenerPorGrupo(grupoId) {
-    return await ApiClient.get(`/tablas/grupo/${grupoId}`);
-  },
-
-  async obtenerPorCampeonato(campeonatoId) {
-    return await ApiClient.get(`/tablas/campeonato/${campeonatoId}`);
-  },
-};
-
-// Utilidades de la UI
-/*function mostrarNotificacion(mensaje, tipo = 'info') {
-    // Crear notificación temporal
-    const notification = document.createElement('div');
-    notification.className = `notification ${tipo}`;
-    notification.textContent = mensaje;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 20px;
-        background: ${tipo === 'error' ? '#e74c3c' : tipo === 'success' ? '#27ae60' : '#3498db'};
-        color: white;
-        border-radius: 5px;
-        z-index: 10000;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-    `;
-
-    document.body.appendChild(notification);
-
-    // Remover después de 3 segundos
-    setTimeout(() => {
-        notification.remove();
-    }, 3000);
-}*/
-function mostrarNotificacion(mensaje, tipo = "info") {
-  console.log(`🔔 ${tipo.toUpperCase()}: ${mensaje}`);
-
-  // Crear notificación temporal
-  const notification = document.createElement("div");
-  notification.className = `notification ${tipo}`;
-  notification.textContent = mensaje;
-  notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 20px;
-        background: ${tipo === "error" ? "#e74c3c" : tipo === "success" ? "#27ae60" : "#3498db"};
-        color: white;
-        border-radius: 5px;
-        z-index: 10000;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-        animation: slideInRight 0.3s ease;
-    `;
-
-  // Asegurarnos de que el body existe antes de appendChild
-  if (document.body) {
-    document.body.appendChild(notification);
-  } else {
-    // Si el body no está disponible, usar console.log
-    console.log(`NOTIFICATION [${tipo}]: ${mensaje}`);
-    return;
-  }
-
-  // Remover después de 3 segundos
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.remove();
-    }
-  }, 3000);
-}
-
-function mostrarCargando(mensaje = "Cargando...") {
-  // Puedes implementar un spinner o mensaje de carga
-  console.log(mensaje);
-}
-
-function ocultarCargando() {
-  // Ocultar el spinner o mensaje de carga
-  console.log("Carga completada");
-}
-
-// === EVENTOS API ===
-const EventosAPI = {
-  obtenerTodos: () => ApiClient.get("/eventos"),
-  obtenerPorId: (id) => ApiClient.get(`/eventos/${id}`),
-  crear: (data) => ApiClient.post("/eventos", data),
-  actualizar: (id, data) => ApiClient.put(`/eventos/${id}`, data),
-  eliminar: (id) => ApiClient.delete(`/eventos/${id}`),
-
-  // pivote evento_canchas
-  asignarCancha: (eventoId, canchaId) =>
-    ApiClient.post(`/eventos/${eventoId}/canchas`, { cancha_id: canchaId }),
-
-  listarCanchas: (eventoId) => ApiClient.get(`/eventos/${eventoId}/canchas`),
-};
-
-// === CANCHAS API ===
-const CanchasAPI = {
-  obtenerTodas: () => ApiClient.get("/canchas"),
-  crear: (data) => ApiClient.post("/canchas", data),
-  actualizar: (id, data) => ApiClient.put(`/canchas/${id}`, data),
-  eliminar: (id) => ApiClient.delete(`/canchas/${id}`),
-};
+  window.EventosAPI = window.EventosAPI || {
+    obtenerPorCampeonato(campeonatoId) {
+      // Ajusta si tu endpoint real es otro (ej: /eventos?campeonato_id=ID)
+      return window.ApiClient.get(`/eventos/campeonato/${campeonatoId}`);
+    },
+    obtenerPorId(id) {
+      return window.ApiClient.get(`/eventos/${id}`);
+    },
+    crear(payload) {
+      return window.ApiClient.post("/eventos", payload);
+    },
+    actualizar(id, payload) {
+      return window.ApiClient.put(`/eventos/${id}`, payload);
+    },
+    eliminar(id) {
+      return window.ApiClient.delete(`/eventos/${id}`);
+    },
+  };
+})();

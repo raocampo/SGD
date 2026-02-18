@@ -1,0 +1,406 @@
+let tablasEventoSeleccionado = null;
+let tablasEventosCache = [];
+
+const TABLAS_TAB_IDS = ["tab-posiciones", "tab-goleadores", "tab-tarjetas", "tab-fair-play"];
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (!window.location.pathname.endsWith("tablas.html")) return;
+
+  inicializarTabs();
+  inicializarAcciones();
+
+  const eventoDesdeURL = new URLSearchParams(window.location.search).get("evento");
+  await cargarEventos(eventoDesdeURL ? Number(eventoDesdeURL) : null);
+
+  if (eventoDesdeURL) {
+    tablasEventoSeleccionado = Number(eventoDesdeURL);
+    await buscarTablasEvento();
+  } else {
+    limpiarPaneles();
+  }
+});
+
+function inicializarTabs() {
+  document.querySelectorAll("#tablas-main-tabs .partidos-main-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.getAttribute("data-tablas-target");
+      cambiarTablasTab(target);
+    });
+  });
+}
+
+function inicializarAcciones() {
+  const btnBuscar = document.getElementById("btn-buscar-tablas");
+  const btnRecargar = document.getElementById("btn-recargar-eventos");
+  const selectEvento = document.getElementById("select-evento-tablas");
+
+  if (btnBuscar) btnBuscar.addEventListener("click", buscarTablasEvento);
+  if (btnRecargar) {
+    btnRecargar.addEventListener("click", async () => {
+      await cargarEventos(tablasEventoSeleccionado);
+      mostrarNotificacion("Eventos recargados", "success");
+    });
+  }
+
+  if (selectEvento) {
+    selectEvento.addEventListener("change", () => {
+      tablasEventoSeleccionado = selectEvento.value ? Number(selectEvento.value) : null;
+    });
+  }
+}
+
+function cambiarTablasTab(tabId) {
+  const objetivo = TABLAS_TAB_IDS.includes(tabId) ? tabId : "tab-posiciones";
+
+  document.querySelectorAll("#tablas-main-tabs .partidos-main-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.getAttribute("data-tablas-target") === objetivo);
+  });
+
+  document.querySelectorAll(".page-tablas .partidos-tab-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.id === objetivo);
+  });
+}
+
+async function cargarEventos(eventoPreseleccionado = null) {
+  const select = document.getElementById("select-evento-tablas");
+  if (!select) return;
+
+  try {
+    const resp = await ApiClient.get("/eventos");
+    const eventos = resp.eventos || resp || [];
+    tablasEventosCache = eventos;
+
+    select.innerHTML = '<option value="">- Selecciona un evento -</option>';
+
+    eventos.forEach((e) => {
+      const label = e.nombre || `Evento ${e.id}`;
+      select.innerHTML += `<option value="${e.id}">${escaparHtml(label)}</option>`;
+    });
+
+    if (eventoPreseleccionado && eventos.some((e) => Number(e.id) === Number(eventoPreseleccionado))) {
+      select.value = String(eventoPreseleccionado);
+      tablasEventoSeleccionado = Number(eventoPreseleccionado);
+    }
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion("Error cargando eventos", "error");
+  }
+}
+
+async function buscarTablasEvento() {
+  const select = document.getElementById("select-evento-tablas");
+  if (!tablasEventoSeleccionado && select?.value) {
+    tablasEventoSeleccionado = Number(select.value);
+  }
+
+  if (!tablasEventoSeleccionado) {
+    mostrarNotificacion("Selecciona un evento primero", "warning");
+    limpiarPaneles();
+    return;
+  }
+
+  setCargandoPaneles();
+
+  try {
+    const [posiciones, goleadores, tarjetas, fairPlay] = await Promise.all([
+      ApiClient.get(`/tablas/evento/${tablasEventoSeleccionado}/posiciones`),
+      ApiClient.get(`/tablas/evento/${tablasEventoSeleccionado}/goleadores`),
+      ApiClient.get(`/tablas/evento/${tablasEventoSeleccionado}/tarjetas`),
+      ApiClient.get(`/tablas/evento/${tablasEventoSeleccionado}/fair-play`),
+    ]);
+
+    renderPosiciones(posiciones);
+    renderGoleadores(goleadores);
+    renderTarjetas(tarjetas);
+    renderFairPlay(fairPlay);
+
+    mostrarNotificacion("Tablas actualizadas", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "Error cargando tablas", "error");
+    limpiarPaneles("No se pudo cargar la informacion del evento.");
+  }
+}
+
+function setCargandoPaneles() {
+  ["tablas-posiciones", "tablas-goleadores", "tablas-tarjetas", "tablas-fair-play"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Cargando datos...</p>
+      </div>
+    `;
+  });
+}
+
+function limpiarPaneles(mensaje = "Selecciona un evento y presiona Buscar para ver tablas.") {
+  const html = `
+    <div class="empty-state">
+      <i class="fas fa-table"></i>
+      <p>${escaparHtml(mensaje)}</p>
+    </div>
+  `;
+
+  const posiciones = document.getElementById("tablas-posiciones");
+  const goleadores = document.getElementById("tablas-goleadores");
+  const tarjetas = document.getElementById("tablas-tarjetas");
+  const fairPlay = document.getElementById("tablas-fair-play");
+
+  if (posiciones) posiciones.innerHTML = html;
+  if (goleadores) goleadores.innerHTML = html;
+  if (tarjetas) tarjetas.innerHTML = html;
+  if (fairPlay) fairPlay.innerHTML = html;
+}
+
+function renderPosiciones(data) {
+  const cont = document.getElementById("tablas-posiciones");
+  if (!cont) return;
+
+  const grupos = data?.grupos || [];
+  if (!grupos.length) {
+    cont.innerHTML = renderVacio("No existen grupos o equipos para este evento.");
+    return;
+  }
+
+  const nombreEvento = data?.evento?.nombre || "Evento";
+  const nombreCampeonato = data?.evento?.campeonato_nombre || "Campeonato";
+
+  const resumen = `
+    <div class="card tablas-resumen-card">
+      <p><strong>Campeonato:</strong> ${escaparHtml(nombreCampeonato)}</p>
+      <p><strong>Evento:</strong> ${escaparHtml(nombreEvento)}</p>
+      <p><strong>Grupos:</strong> ${Number(data.total_grupos || grupos.length)}</p>
+      <p><strong>Equipos:</strong> ${Number(data.total_equipos || 0)}</p>
+    </div>
+  `;
+
+  const gruposHtml = grupos
+    .map((g) => {
+      const tabla = Array.isArray(g.tabla) ? g.tabla : [];
+      const tituloGrupo = g?.grupo?.letra_grupo && g.grupo.letra_grupo !== "-"
+        ? `Grupo ${g.grupo.letra_grupo}`
+        : g?.grupo?.nombre_grupo || "Tabla general";
+
+      return `
+        <div class="card tablas-grupo-card">
+          <h3>${escaparHtml(tituloGrupo)}</h3>
+          ${renderTablaPosiciones(tabla)}
+        </div>
+      `;
+    })
+    .join("");
+
+  cont.innerHTML = `${resumen}<div class="tablas-grid">${gruposHtml}</div>`;
+}
+
+function renderTablaPosiciones(tabla) {
+  if (!tabla.length) {
+    return renderVacio("Sin partidos finalizados para calcular posiciones.");
+  }
+
+  const rows = tabla
+    .map((row, idx) => {
+      const est = row.estadisticas || {};
+      return `
+        <tr>
+          <td>${Number(row.posicion || idx + 1)}</td>
+          <td>${escaparHtml(row?.equipo?.nombre || "-")}</td>
+          <td>${Number(est.partidos_jugados || 0)}</td>
+          <td>${Number(est.partidos_ganados || 0)}</td>
+          <td>${Number(est.partidos_empatados || 0)}</td>
+          <td>${Number(est.partidos_perdidos || 0)}</td>
+          <td>${Number(est.goles_favor || 0)}</td>
+          <td>${Number(est.goles_contra || 0)}</td>
+          <td>${Number(est.diferencia_goles || 0)}</td>
+          <td><strong>${Number(row.puntos || 0)}</strong></td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="tabla-scroll">
+      <table class="tabla-estadistica">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Equipo</th>
+            <th>PJ</th>
+            <th>PG</th>
+            <th>PE</th>
+            <th>PP</th>
+            <th>GF</th>
+            <th>GC</th>
+            <th>DG</th>
+            <th>PTS</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderGoleadores(data) {
+  const cont = document.getElementById("tablas-goleadores");
+  if (!cont) return;
+
+  const lista = data?.goleadores || [];
+  if (!lista.length) {
+    cont.innerHTML = renderVacio(data?.mensaje || "No hay registros de goleadores para este evento.");
+    return;
+  }
+
+  const rows = lista
+    .map((g, idx) => {
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escaparHtml(g.jugador_nombre || "-")}</td>
+          <td>${escaparHtml(g.equipo_nombre || "-")}</td>
+          <td>${Number(g.goles || 0)}</td>
+          <td>${Number(g.partidos_con_gol || 0)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  cont.innerHTML = `
+    <div class="card">
+      <h3>Goleadores del Evento</h3>
+      <div class="tabla-scroll">
+        <table class="tabla-estadistica">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Jugador</th>
+              <th>Equipo</th>
+              <th>Goles</th>
+              <th>Partidos con gol</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderTarjetas(data) {
+  const cont = document.getElementById("tablas-tarjetas");
+  if (!cont) return;
+
+  const lista = data?.tarjetas || [];
+  if (!lista.length) {
+    cont.innerHTML = renderVacio(data?.mensaje || "No hay registros de tarjetas para este evento.");
+    return;
+  }
+
+  const rows = lista
+    .map((t, idx) => {
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escaparHtml(t.equipo_nombre || "-")}</td>
+          <td>${Number(t.amarillas || 0)}</td>
+          <td>${Number(t.rojas || 0)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  cont.innerHTML = `
+    <div class="card">
+      <h3>Resumen de Tarjetas</h3>
+      <div class="tabla-scroll">
+        <table class="tabla-estadistica">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Equipo</th>
+              <th>Amarillas</th>
+              <th>Rojas</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderFairPlay(data) {
+  const cont = document.getElementById("tablas-fair-play");
+  if (!cont) return;
+
+  const lista = data?.fair_play || [];
+  if (!lista.length) {
+    cont.innerHTML = renderVacio("No hay datos suficientes para calcular fair play.");
+    return;
+  }
+
+  const rows = lista
+    .map((f, idx) => {
+      return `
+        <tr>
+          <td>${Number(f.posicion || idx + 1)}</td>
+          <td>${escaparHtml(f.equipo_nombre || "-")}</td>
+          <td>${Number(f.amarillas || 0)}</td>
+          <td>${Number(f.rojas || 0)}</td>
+          <td>${Number(f.uniformidad || 0).toFixed(2)}</td>
+          <td>${Number(f.comportamiento || 0).toFixed(2)}</td>
+          <td>${Number(f.puntualidad || 0).toFixed(2)}</td>
+          <td>${Number(f.penalizacion || 0).toFixed(2)}</td>
+          <td>${Number(f.bonificacion || 0).toFixed(2)}</td>
+          <td><strong>${Number(f.puntaje_fair_play || 0).toFixed(2)}</strong></td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  cont.innerHTML = `
+    <div class="card">
+      <h3>Tabla Fair Play</h3>
+      <p class="tablas-fair-play-help">Formula: base + bonificaciones (uniformidad/comportamiento/puntualidad) - penalizacion por tarjetas.</p>
+      <div class="tabla-scroll">
+        <table class="tabla-estadistica">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Equipo</th>
+              <th>Amarillas</th>
+              <th>Rojas</th>
+              <th>Uniformidad</th>
+              <th>Comportamiento</th>
+              <th>Puntualidad</th>
+              <th>Penalizacion</th>
+              <th>Bonificacion</th>
+              <th>Puntaje</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderVacio(mensaje) {
+  return `
+    <div class="empty-state">
+      <i class="fas fa-circle-info"></i>
+      <p>${escaparHtml(mensaje)}</p>
+    </div>
+  `;
+}
+
+function escaparHtml(valor) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
