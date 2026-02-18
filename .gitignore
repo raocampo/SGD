@@ -53,6 +53,9 @@ coverage/
 # Archivos de prueba
 test-results/
 
+# Uploads (archivos generados en runtime)
+backend/uploads/
+
 # Variables de entorno sensibles
 *.pem
 *.key
