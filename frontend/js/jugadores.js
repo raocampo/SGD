@@ -2,48 +2,410 @@
 
 let equipoId = null;
 let campeonatoId = null;
+let eventoId = null;
 let equipoActual = null;
+let jugadorActualEnEdicion = null;
+let modoDirecto = false;
 
-// límites configurados en el campeonato
 let minJugadoresPorEquipo = null;
 let maxJugadoresPorEquipo = null;
 
-// arreglo local con los jugadores del equipo
-let jugadoresActuales = [];
+let reglasDocumentos = {
+  requiere_foto_cedula: false,
+  requiere_foto_carnet: false,
+};
 
-// ======================
-// Utilidad
-// ======================
+let campeonatoMeta = {
+  id: null,
+  nombre: "",
+  organizador: "",
+  logo_url: "",
+  genera_carnets: false,
+};
+
+let jugadoresActuales = [];
+let vistaJugadores = localStorage.getItem("sgd_vista_jugadores") || "cards";
+vistaJugadores = vistaJugadores === "table" ? "table" : "cards";
+
+const BACKEND_BASE = (window.API_BASE_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
+
 function obtenerParametroUrl(nombre) {
   const params = new URLSearchParams(window.location.search);
   return params.get(nombre);
 }
 
-// ======================
-// Inicio de página
-// ======================
-document.addEventListener("DOMContentLoaded", async () => {
-  if (!window.location.pathname.endsWith("jugadores.html")) {
+function normalizarArchivoUrl(valor) {
+  if (!valor) return "";
+  const s = String(valor).trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith("/")) return `${BACKEND_BASE}${s}`;
+  return `${BACKEND_BASE}/${s}`;
+}
+
+function renderLinkDocumento(url, texto) {
+  if (!url) return "No cargado";
+  const href = normalizarArchivoUrl(url);
+  if (!href) return "No cargado";
+  return `<a href="${href}" target="_blank" rel="noopener noreferrer">${texto}</a>`;
+}
+
+function renderEstadoDocumento(url, etiqueta) {
+  return url
+    ? `<span class="badge-estado estado-en_curso">${etiqueta}: cargado</span>`
+    : `<span class="badge-estado estado-borrador">${etiqueta}: pendiente</span>`;
+}
+
+function escapeHtml(valor) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatearFecha(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+  return d.toLocaleDateString("es-EC");
+}
+
+function normalizarCedulaValor(valor) {
+  return String(valor || "").replace(/\D/g, "");
+}
+
+function eventoRequeridoParaReportes() {
+  const selectEvento = document.getElementById("select-evento-jugador");
+  if (!selectEvento) return false;
+  const categoriasDisponibles = Array.from(selectEvento.options || []).filter((o) => o.value);
+  return categoriasDisponibles.length > 0;
+}
+
+function contextoListoParaReportes() {
+  if (!equipoId || !campeonatoId) return false;
+  if (modoDirecto && eventoRequeridoParaReportes() && !eventoId) return false;
+  return true;
+}
+
+function actualizarEstadoPanelReportes() {
+  const bloque = document.getElementById("bloque-reportes-jugadores");
+  const hint = document.getElementById("reportes-jugadores-hint");
+  if (!bloque) return;
+
+  const habilitado = contextoListoParaReportes();
+  bloque.classList.toggle("reportes-jugadores-disabled", !habilitado);
+
+  [
+    "btn-descargar-plantilla-jugadores",
+    "btn-importar-jugadores-file",
+    "btn-importar-docs-zip",
+    "btn-ver-reporte-jugadores",
+    "btn-imprimir-reporte-jugadores",
+    "btn-pdf-reporte-jugadores",
+    "reporte-jugadores-tipo",
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !habilitado;
+  });
+
+  if (hint) {
+    hint.textContent = habilitado
+      ? "Selecciona el tipo de reporte y ejecuta la acción."
+      : "Selecciona campeonato, categoría y equipo para habilitar las acciones.";
+  }
+}
+
+function actualizarBotonesVistaJugadores() {
+  const btnCards = document.getElementById("btn-vista-jugadores-cards");
+  const btnTable = document.getElementById("btn-vista-jugadores-table");
+  if (btnCards) btnCards.classList.toggle("active", vistaJugadores === "cards");
+  if (btnTable) btnTable.classList.toggle("active", vistaJugadores === "table");
+}
+
+function cambiarVistaJugadores(vista = "cards") {
+  vistaJugadores = vista === "table" ? "table" : "cards";
+  localStorage.setItem("sgd_vista_jugadores", vistaJugadores);
+  actualizarBotonesVistaJugadores();
+  renderListadoJugadores();
+}
+
+function cambiarPestanaJugadores(tabId = "tab-jugadores-gestion") {
+  const tabs = [
+    { buttonId: "btn-tab-jugadores-gestion", panelId: "tab-jugadores-gestion" },
+    { buttonId: "btn-tab-jugadores-reportes", panelId: "tab-jugadores-reportes" },
+  ];
+
+  tabs.forEach((item) => {
+    const btn = document.getElementById(item.buttonId);
+    const panel = document.getElementById(item.panelId);
+    const activo = item.panelId === tabId;
+
+    if (btn) btn.classList.toggle("active", activo);
+    if (panel) panel.classList.toggle("active", activo);
+  });
+}
+
+function actualizarResumenReglasDocumentos() {
+  const el = document.getElementById("resumen-docs-jugador");
+  if (!el) return;
+
+  const reqCedula = reglasDocumentos.requiere_foto_cedula;
+  const reqCarnet = reglasDocumentos.requiere_foto_carnet;
+
+  if (!reqCedula && !reqCarnet) {
+    el.innerHTML = "<strong>Documentos jugador:</strong> cédula y carnet opcionales.";
     return;
   }
 
-  equipoId = obtenerParametroUrl("equipo");
-  campeonatoId = obtenerParametroUrl("campeonato");
+  const partes = [];
+  partes.push(reqCedula ? "foto de cédula requerida" : "foto de cédula opcional");
+  partes.push(reqCarnet ? "foto carnet requerida" : "foto carnet opcional");
+  el.innerHTML = `<strong>Documentos jugador:</strong> ${partes.join(" • ")}`;
+}
 
+function actualizarResumenCarnets() {
+  const el = document.getElementById("resumen-carnets-jugador");
+  if (!el) return;
+
+  if (campeonatoMeta.genera_carnets) {
+    el.innerHTML = "<strong>Carnets:</strong> habilitado para este campeonato.";
+    el.style.color = "#166534";
+    return;
+  }
+
+  el.innerHTML = "<strong>Carnets:</strong> no habilitado para este campeonato.";
+  el.style.color = "#6b7280";
+}
+
+function actualizarEstadoRequisitosEnModal(jugador = null) {
+  const reqCedula = reglasDocumentos.requiere_foto_cedula;
+  const reqCarnet = reglasDocumentos.requiere_foto_carnet;
+
+  const inputCedula = document.getElementById("jugador-foto-cedula");
+  const inputCarnet = document.getElementById("jugador-foto-carnet");
+  const hintCedula = document.getElementById("hint-foto-cedula");
+  const hintCarnet = document.getElementById("hint-foto-carnet");
+  const prevCedula = document.getElementById("preview-foto-cedula-actual");
+  const prevCarnet = document.getElementById("preview-foto-carnet-actual");
+
+  if (!inputCedula || !inputCarnet || !hintCedula || !hintCarnet) return;
+
+  inputCedula.required = reqCedula && !jugador?.foto_cedula_url;
+  inputCarnet.required = reqCarnet && !jugador?.foto_carnet_url;
+
+  hintCedula.textContent = reqCedula
+    ? "Requerido para este campeonato."
+    : "Opcional para este campeonato.";
+  hintCarnet.textContent = reqCarnet
+    ? "Requerido para este campeonato."
+    : "Opcional para este campeonato.";
+
+  if (prevCedula) {
+    prevCedula.innerHTML = jugador?.foto_cedula_url
+      ? `Documento actual: ${renderLinkDocumento(jugador.foto_cedula_url, "Ver foto de cédula")}`
+      : "";
+  }
+  if (prevCarnet) {
+    prevCarnet.innerHTML = jugador?.foto_carnet_url
+      ? `Documento actual: ${renderLinkDocumento(jugador.foto_carnet_url, "Ver foto carnet")}`
+      : "";
+  }
+}
+
+function limpiarVistaSinEquipo() {
+  const info = document.getElementById("info-equipo");
+  const lista = document.getElementById("lista-jugadores");
+  const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
+  const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
+  jugadoresActuales = [];
+  if (info) info.style.display = "none";
+  if (bloqueNomina) bloqueNomina.style.display = "none";
+  if (bloqueCarnets) bloqueCarnets.style.display = "none";
+  actualizarEstadoPanelReportes();
+  if (lista) {
+    lista.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-user-friends"></i>
+        <p>Selecciona campeonato, categoría y equipo para gestionar jugadores.</p>
+      </div>
+    `;
+  }
+}
+
+async function inicializarModoDirecto() {
+  const bloque = document.getElementById("bloque-contexto-jugadores");
+  const btnVolver = document.getElementById("btn-volver-equipos");
+  if (bloque) bloque.style.display = "block";
+  if (btnVolver) btnVolver.style.display = "none";
+
+  await cargarCampeonatosSelectDirecto();
+  limpiarVistaSinEquipo();
+  actualizarEstadoPanelReportes();
+}
+
+async function cargarCampeonatosSelectDirecto() {
+  const select = document.getElementById("select-campeonato-jugador");
+  if (!select) return;
+
+  select.innerHTML = '<option value="">— Selecciona un campeonato —</option>';
+
+  try {
+    const data = await (window.CampeonatosAPI?.obtenerTodos?.() || window.ApiClient?.get?.("/campeonatos"));
+    const lista = Array.isArray(data) ? data : (data.campeonatos || data.data || []);
+
+    lista.forEach((c) => {
+      select.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+    });
+
+    if (campeonatoId) {
+      select.value = String(campeonatoId);
+      await cargarEventosSelectDirecto(campeonatoId);
+      await cargarEquiposSelectDirecto(campeonatoId, eventoId);
+    }
+
+    select.onchange = async () => {
+      campeonatoId = select.value ? Number.parseInt(select.value, 10) : null;
+      eventoId = null;
+      equipoId = null;
+      await cargarEventosSelectDirecto(campeonatoId);
+      await cargarEquiposSelectDirecto(campeonatoId, null);
+      limpiarVistaSinEquipo();
+      actualizarEstadoPanelReportes();
+    };
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion("Error cargando campeonatos", "error");
+  }
+}
+
+async function cargarEventosSelectDirecto(campId) {
+  const select = document.getElementById("select-evento-jugador");
+  if (!select) return;
+
+  select.innerHTML = '<option value="">— Todas las categorías —</option>';
+  if (!campId) return;
+
+  try {
+    const data = await (window.EventosAPI?.obtenerPorCampeonato?.(campId) || window.ApiClient?.get?.(`/eventos/campeonato/${campId}`));
+    const lista = Array.isArray(data) ? data : (data.eventos || data.data || []);
+
+    lista.forEach((e) => {
+      select.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+    });
+
+    if (eventoId) {
+      select.value = String(eventoId);
+    }
+
+    select.onchange = async () => {
+      eventoId = select.value ? Number.parseInt(select.value, 10) : null;
+      equipoId = null;
+      await cargarEquiposSelectDirecto(campId, eventoId);
+      limpiarVistaSinEquipo();
+      actualizarEstadoPanelReportes();
+    };
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function cargarEquiposSelectDirecto(campId, evtId = null) {
+  const select = document.getElementById("select-equipo-jugador");
+  if (!select) return;
+
+  select.innerHTML = '<option value="">— Selecciona un equipo —</option>';
+  if (!campId) return;
+
+  try {
+    const data = await window.ApiClient.get(`/equipos/campeonato/${campId}`);
+    let equipos = Array.isArray(data) ? data : (data.equipos || data.data || []);
+
+    if (evtId) {
+      try {
+        const dataEvento = await window.ApiClient.get(`/eventos/${evtId}/equipos`);
+        const idsEvento = new Set((dataEvento.equipos || []).map((e) => e.id));
+        equipos = equipos.filter((e) => idsEvento.has(e.id));
+      } catch (errorEvento) {
+        console.warn("No se pudo filtrar equipos por evento:", errorEvento);
+      }
+    }
+
+    equipos.forEach((e) => {
+      select.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+    });
+
+    if (equipoId) {
+      select.value = String(equipoId);
+    }
+
+    select.onchange = () => {
+      equipoId = select.value ? Number.parseInt(select.value, 10) : null;
+      actualizarEstadoPanelReportes();
+    };
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion("Error cargando equipos", "error");
+  }
+}
+
+async function cargarJugadoresDesdeSeleccion() {
+  if (!campeonatoId) {
+    mostrarNotificacion("Selecciona un campeonato", "warning");
+    return;
+  }
   if (!equipoId) {
-    mostrarNotificacion("❌ Falta el ID del equipo", "error");
-    window.location.href = "campeonatos.html";
+    mostrarNotificacion("Selecciona un equipo", "warning");
+    return;
+  }
+
+  const params = new URLSearchParams();
+  params.set("campeonato", String(campeonatoId));
+  params.set("equipo", String(equipoId));
+  if (eventoId) params.set("evento", String(eventoId));
+  history.replaceState({}, "", `jugadores.html?${params.toString()}`);
+
+  await cargarContextoEquipo();
+}
+
+async function cargarContextoEquipo() {
+  if (!equipoId) {
+    limpiarVistaSinEquipo();
     return;
   }
 
   await cargarInfoEquipo();
-  await cargarJugadores();
   await cargarConfigCampeonato();
+  await cargarJugadores();
+  actualizarEstadoRequisitosEnModal(null);
+  actualizarEstadoPanelReportes();
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (!window.location.pathname.endsWith("jugadores.html")) return;
+
+  inicializarImportadorJugadores();
+  inicializarImportadorDocsZip();
+
+  equipoId = obtenerParametroUrl("equipo") ? Number.parseInt(obtenerParametroUrl("equipo"), 10) : null;
+  campeonatoId = obtenerParametroUrl("campeonato") ? Number.parseInt(obtenerParametroUrl("campeonato"), 10) : null;
+  eventoId = obtenerParametroUrl("evento") ? Number.parseInt(obtenerParametroUrl("evento"), 10) : null;
+
+  modoDirecto = !equipoId;
+  actualizarBotonesVistaJugadores();
+  cambiarPestanaJugadores("tab-jugadores-gestion");
+  actualizarEstadoPanelReportes();
+
+  if (modoDirecto) {
+    await inicializarModoDirecto();
+    return;
+  }
+
+  await cargarContextoEquipo();
+  actualizarEstadoPanelReportes();
 });
 
-// ======================
-// Datos del EQUIPO
-// ======================
 async function cargarInfoEquipo() {
   try {
     const data = await ApiClient.get(`/equipos/${equipoId}`);
@@ -52,25 +414,20 @@ async function cargarInfoEquipo() {
     const cont = document.getElementById("info-equipo");
     if (!cont) return;
 
-    // Tarjeta de resumen del equipo + línea para resumen de jugadores
+    cont.style.display = "block";
     cont.innerHTML = `
       <div class="campeonato-resumen-card">
         <h3>${equipoActual.nombre}</h3>
-        <p><strong>Director Técnico:</strong> ${
-          equipoActual.director_tecnico || "Sin asignar"
-        }</p>
-        <p><strong>Asistente:</strong> ${
-          equipoActual.asistente_tecnico || "-"
-        }</p>
+        <p><strong>Director Técnico:</strong> ${equipoActual.director_tecnico || "Sin asignar"}</p>
+        <p><strong>Asistente:</strong> ${equipoActual.asistente_tecnico || "-"}</p>
         <p><strong>Color:</strong> ${equipoActual.color_equipo || "-"}</p>
-        <p><strong>Cabeza de serie:</strong> ${
-          equipoActual.cabeza_serie ? "Sí" : "No"
-        }</p>
+        <p><strong>Cabeza de serie:</strong> ${equipoActual.cabeza_serie ? "Sí" : "No"}</p>
         <p id="resumen-jugadores" class="jugadores-resumen-linea"></p>
+        <p id="resumen-docs-jugador" class="jugadores-resumen-linea"></p>
+        <p id="resumen-carnets-jugador" class="jugadores-resumen-linea"></p>
       </div>
     `;
 
-    // campo oculto del formulario
     document.getElementById("jugador-equipo-id").value = equipoActual.id;
   } catch (error) {
     console.error("Error cargando equipo:", error);
@@ -78,38 +435,55 @@ async function cargarInfoEquipo() {
   }
 }
 
-// Configuración de min / max del campeonato
 async function cargarConfigCampeonato() {
+  if (!campeonatoId && equipoActual?.campeonato_id) {
+    campeonatoId = Number.parseInt(equipoActual.campeonato_id, 10);
+  }
   if (!campeonatoId) return;
 
   try {
     const resp = await CampeonatosAPI.obtenerPorId(campeonatoId);
-    const camp = resp.campeonato;
+    const camp = resp.campeonato || resp;
 
-    // Usa los nombres reales de tus columnas
+    campeonatoMeta = {
+      id: camp.id || campeonatoId,
+      nombre: camp.nombre || "",
+      organizador: camp.organizador || "",
+      logo_url: camp.logo_url || "",
+      genera_carnets: camp.genera_carnets === true || camp.genera_carnets === "true",
+    };
+
     minJugadoresPorEquipo = camp.min_jugador || null;
     maxJugadoresPorEquipo = camp.max_jugador || null;
 
+    reglasDocumentos = {
+      requiere_foto_cedula: camp.requiere_foto_cedula === true || camp.requiere_foto_cedula === "true",
+      requiere_foto_carnet: camp.requiere_foto_carnet === true || camp.requiere_foto_carnet === "true",
+    };
+
     actualizarResumenJugadores();
+    actualizarResumenReglasDocumentos();
+    actualizarResumenCarnets();
   } catch (error) {
     console.error("Error cargando configuración de campeonato:", error);
   }
 }
 
 function volverAEquipos() {
-  if (campeonatoId) {
-    window.location.href = `equipos.html?campeonato=${campeonatoId}`;
-  } else {
+  if (!campeonatoId) {
     window.location.href = "campeonatos.html";
+    return;
   }
+
+  const params = new URLSearchParams();
+  params.set("campeonato", String(campeonatoId));
+  if (eventoId) params.set("evento", String(eventoId));
+  window.location.href = `equipos.html?${params.toString()}`;
 }
 
-// ======================
-// JUGADORES
-// ======================
 async function cargarJugadores() {
   const cont = document.getElementById("lista-jugadores");
-  if (!cont) return;
+  if (!cont || !equipoId) return;
 
   cont.innerHTML = "<p>Cargando jugadores...</p>";
 
@@ -118,71 +492,489 @@ async function cargarJugadores() {
 
     let jugadores = [];
     if (Array.isArray(data)) jugadores = data;
-    else if (data.jugadores && Array.isArray(data.jugadores))
-      jugadores = data.jugadores;
+    else if (data.jugadores && Array.isArray(data.jugadores)) jugadores = data.jugadores;
     else if (data.data && Array.isArray(data.data)) jugadores = data.data;
 
-    jugadoresActuales = jugadores; // guardamos en el arreglo local
+    jugadoresActuales = jugadores;
 
     if (jugadores.length === 0) {
-      cont.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-user-slash"></i>
-          <p>No hay jugadores registrados en este equipo.</p>
-        </div>
-      `;
+      renderListadoJugadores();
       actualizarResumenJugadores();
+      renderPlantillaNominaJugadores();
+      renderPlantillaCarnets();
       return;
     }
 
-    cont.innerHTML = "";
-    jugadores.forEach((jugador, index) => {
-      const div = document.createElement("div");
-      div.className = "equipo-card";
-
-      div.innerHTML = `
-        <h3>
-          <span class="item-index">${index + 1}.</span>
-          ${jugador.nombre} ${jugador.apellido || ""}
-        </h3>
-        <p><strong>Número:</strong> ${jugador.numero_camiseta || "-"}</p>
-        <p><strong>Posición:</strong> ${jugador.posicion || "-"}</p>
-        <p><strong>Cédula de Identidad:</strong> ${
-          jugador.cedidentidad || "-"
-        }</p>
-        <p><strong>Fecha nac.:</strong> ${
-          jugador.fecha_nacimiento
-            ? new Date(jugador.fecha_nacimiento).toLocaleDateString("es-ES")
-            : "-"
-        }</p>
-        <p><strong>Capitán:</strong> ${jugador.es_capitan ? "Sí" : "No"}</p>
-
-        <div class="jugador-actions">
-          <button class="btn btn-warning" onclick="editarJugador(${
-            jugador.id
-          })">
-            <i class="fas fa-edit"></i> Editar
-          </button>
-          <button class="btn btn-danger" onclick="eliminarJugador(${
-            jugador.id
-          })">
-            <i class="fas fa-trash"></i> Eliminar
-          </button>
-        </div>
-      `;
-
-      cont.appendChild(div);
-    });
+    renderListadoJugadores();
 
     actualizarResumenJugadores();
+    renderPlantillaNominaJugadores();
+    renderPlantillaCarnets();
   } catch (error) {
     console.error("Error cargando jugadores:", error);
     mostrarNotificacion("Error cargando jugadores", "error");
     cont.innerHTML = "<p>Error cargando jugadores.</p>";
+    renderPlantillaNominaJugadores();
+    renderPlantillaCarnets();
   }
 }
 
-// Línea de resumen "Jugadores: X / Y"
+function renderTarjetasJugadores(jugadores) {
+  return jugadores
+    .map((jugador, index) => {
+      return `
+        <div class="equipo-card">
+          <h3>
+            <span class="item-index">${index + 1}.</span>
+            ${escapeHtml(jugador.nombre || "")} ${escapeHtml(jugador.apellido || "")}
+          </h3>
+          <p><strong>Número:</strong> ${escapeHtml(jugador.numero_camiseta || "-")}</p>
+          <p><strong>Posición:</strong> ${escapeHtml(jugador.posicion || "-")}</p>
+          <p><strong>Cédula de Identidad:</strong> ${escapeHtml(jugador.cedidentidad || "-")}</p>
+          <p><strong>Fecha nac.:</strong> ${escapeHtml(formatearFecha(jugador.fecha_nacimiento))}</p>
+          <p><strong>Capitán:</strong> ${jugador.es_capitan ? "Sí" : "No"}</p>
+          <p><strong>Documentos:</strong> ${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carnet")}</p>
+
+          <div class="jugador-actions">
+            <button class="btn btn-warning" onclick="editarJugador(${jugador.id})">
+              <i class="fas fa-edit"></i> Editar
+            </button>
+            <button class="btn btn-danger" onclick="eliminarJugador(${jugador.id})">
+              <i class="fas fa-trash"></i> Eliminar
+            </button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderTablaJugadores(jugadores) {
+  const filas = jugadores
+    .map((jugador, index) => {
+      return `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(`${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "—")}</td>
+          <td>${escapeHtml(jugador.cedidentidad || "-")}</td>
+          <td>${escapeHtml(formatearFecha(jugador.fecha_nacimiento))}</td>
+          <td>${escapeHtml(jugador.posicion || "-")}</td>
+          <td>${escapeHtml(jugador.numero_camiseta || "-")}</td>
+          <td>${jugador.es_capitan ? "Sí" : "No"}</td>
+          <td>${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carnet")}</td>
+          <td class="list-table-actions">
+            <button class="btn btn-warning" onclick="editarJugador(${jugador.id})">
+              <i class="fas fa-edit"></i> Editar
+            </button>
+            <button class="btn btn-danger" onclick="eliminarJugador(${jugador.id})">
+              <i class="fas fa-trash"></i> Eliminar
+            </button>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="list-table-wrap">
+      <table class="list-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Jugador</th>
+            <th>Cédula</th>
+            <th>F. Nac.</th>
+            <th>Posición</th>
+            <th>N°</th>
+            <th>Capitán</th>
+            <th>Documentos</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderListadoJugadores() {
+  const cont = document.getElementById("lista-jugadores");
+  if (!cont) return;
+
+  if (!jugadoresActuales.length) {
+    cont.classList.remove("list-mode-table");
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-user-slash"></i>
+        <p>No hay jugadores registrados en este equipo.</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (vistaJugadores === "table") {
+    cont.classList.add("list-mode-table");
+    cont.innerHTML = renderTablaJugadores(jugadoresActuales);
+    return;
+  }
+
+  cont.classList.remove("list-mode-table");
+  cont.innerHTML = renderTarjetasJugadores(jugadoresActuales);
+}
+
+function obtenerNombreEventoActual() {
+  const selectEvento = document.getElementById("select-evento-jugador");
+  if (selectEvento && selectEvento.value) {
+    const opt = selectEvento.options[selectEvento.selectedIndex];
+    if (opt) return opt.textContent || "";
+  }
+  return eventoId ? `Evento ${eventoId}` : "Todas las categorías";
+}
+
+function renderPlantillaNominaJugadores() {
+  const zona = document.getElementById("nomina-jugadores-export");
+  if (!zona) return;
+
+  if (!equipoActual || !jugadoresActuales.length) {
+    zona.innerHTML = '<p class="empty-state">No hay jugadores para generar la nómina.</p>';
+    return;
+  }
+
+  const logoCampeonato = normalizarArchivoUrl(campeonatoMeta.logo_url);
+  const filas = jugadoresActuales
+    .map((j, idx) => {
+      const estadoCed = j.foto_cedula_url ? "Cargada" : "Pendiente";
+      const estadoCarn = j.foto_carnet_url ? "Cargada" : "Pendiente";
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escapeHtml(`${j.nombre || ""} ${j.apellido || ""}`.trim())}</td>
+          <td>${escapeHtml(j.cedidentidad || "—")}</td>
+          <td>${escapeHtml(formatearFecha(j.fecha_nacimiento))}</td>
+          <td>${escapeHtml(j.posicion || "—")}</td>
+          <td>${escapeHtml(j.numero_camiseta || "—")}</td>
+          <td>${j.es_capitan ? "Sí" : "No"}</td>
+          <td>${estadoCed}</td>
+          <td>${estadoCarn}</td>
+          <td>&nbsp;</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  zona.innerHTML = `
+    <div class="nomina-sheet">
+      <div class="nomina-head">
+        <div class="nomina-head-logo">
+          ${logoCampeonato ? `<img src="${logoCampeonato}" alt="Logo campeonato" />` : "<div class='logo-fallback'>SGD</div>"}
+        </div>
+        <div class="nomina-head-main">
+          <h3>Nómina Oficial de Jugadores</h3>
+          <p><strong>Campeonato:</strong> ${escapeHtml(campeonatoMeta.nombre || "—")}</p>
+          <p><strong>Organizador:</strong> ${escapeHtml(campeonatoMeta.organizador || "—")}</p>
+          <p><strong>Categoría:</strong> ${escapeHtml(obtenerNombreEventoActual())}</p>
+          <p><strong>Equipo:</strong> ${escapeHtml(equipoActual.nombre || "—")}</p>
+        </div>
+        <div class="nomina-head-meta">
+          <p><strong>Fecha:</strong> ${escapeHtml(new Date().toLocaleDateString("es-EC"))}</p>
+          <p><strong>Total:</strong> ${jugadoresActuales.length}</p>
+        </div>
+      </div>
+
+      <div class="nomina-table-wrap">
+        <table class="nomina-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Jugador</th>
+              <th>Cédula</th>
+              <th>F. Nac.</th>
+              <th>Posición</th>
+              <th>N°</th>
+              <th>Cap.</th>
+              <th>Foto Céd.</th>
+              <th>Foto Carnet</th>
+              <th>Firma</th>
+            </tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderPlantillaCarnets() {
+  const zona = document.getElementById("carnets-jugadores-export");
+  if (!zona) return;
+
+  if (!campeonatoMeta.genera_carnets) {
+    zona.innerHTML = "<p class='empty-state'>Este campeonato no tiene habilitada la emisión de carnets.</p>";
+    return;
+  }
+
+  if (!equipoActual || !jugadoresActuales.length) {
+    zona.innerHTML = "<p class='empty-state'>No hay jugadores para generar carnets.</p>";
+    return;
+  }
+
+  const logoCampeonato = normalizarArchivoUrl(campeonatoMeta.logo_url);
+  const cards = jugadoresActuales
+    .map((j) => {
+      const foto = normalizarArchivoUrl(j.foto_carnet_url || j.foto_cedula_url);
+      return `
+        <article class="carnet-card">
+          <header class="carnet-header">
+            <div class="carnet-org">${escapeHtml(campeonatoMeta.organizador || "Organizador")}</div>
+            <div class="carnet-title">CARNET DE JUGADOR</div>
+          </header>
+          <div class="carnet-body">
+            <div class="carnet-foto-wrap">
+              ${
+                foto
+                  ? `<img src="${foto}" alt="Foto jugador" class="carnet-foto" />`
+                  : `<div class="carnet-foto carnet-foto-empty"><i class="fas fa-user"></i></div>`
+              }
+            </div>
+            <div class="carnet-data">
+              <p><strong>Nombre:</strong> ${escapeHtml(`${j.nombre || ""} ${j.apellido || ""}`.trim())}</p>
+              <p><strong>Cédula:</strong> ${escapeHtml(j.cedidentidad || "—")}</p>
+              <p><strong>Equipo:</strong> ${escapeHtml(equipoActual.nombre || "—")}</p>
+              <p><strong>N°:</strong> ${escapeHtml(j.numero_camiseta || "—")}</p>
+            </div>
+          </div>
+          <footer class="carnet-footer">
+            <div class="carnet-campeonato">${escapeHtml(campeonatoMeta.nombre || "Campeonato")}</div>
+            ${
+              logoCampeonato
+                ? `<img src="${logoCampeonato}" alt="Logo campeonato" class="carnet-logo" />`
+                : "<span class='carnet-logo-fallback'>SGD</span>"
+            }
+          </footer>
+        </article>
+      `;
+    })
+    .join("");
+
+  zona.innerHTML = `<div class="carnets-grid">${cards}</div>`;
+}
+
+function mostrarPlantillaNominaJugadores() {
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para ver reportes", "warning");
+    return;
+  }
+  cambiarPestanaJugadores("tab-jugadores-reportes");
+  renderPlantillaNominaJugadores();
+  const bloque = document.getElementById("bloque-nomina-jugadores");
+  const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
+  if (bloque) bloque.style.display = "block";
+  if (bloqueCarnets) bloqueCarnets.style.display = "none";
+  bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function mostrarPlantillaCarnets() {
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para ver reportes", "warning");
+    return;
+  }
+  if (!campeonatoMeta.genera_carnets) {
+    mostrarNotificacion("Este campeonato no tiene habilitada la generación de carnets", "warning");
+    return;
+  }
+  cambiarPestanaJugadores("tab-jugadores-reportes");
+  renderPlantillaCarnets();
+  const bloque = document.getElementById("bloque-carnets-jugadores");
+  const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
+  if (bloque) bloque.style.display = "block";
+  if (bloqueNomina) bloqueNomina.style.display = "none";
+  bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function imprimirNodoEnVentana(node, titulo = "Impresión") {
+  if (!node) return;
+  const hrefBase = window.location.href;
+  const html = `
+    <!DOCTYPE html>
+    <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <base href="${escapeHtml(hrefBase)}" />
+        <title>${escapeHtml(titulo)}</title>
+        <link rel="stylesheet" href="css/style.css" />
+      </head>
+      <body class="print-solo">
+        ${node.outerHTML}
+      </body>
+    </html>
+  `;
+  const w = window.open("", "_blank", "width=1280,height=900");
+  if (!w) {
+    mostrarNotificacion("No se pudo abrir la ventana de impresión", "error");
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => {
+    w.print();
+  }, 350);
+}
+
+async function exportarNodoPDF(node, nombreArchivo) {
+  if (!node || !window.html2canvas || !window.jspdf?.jsPDF) {
+    throw new Error("No se pudo preparar la exportación PDF");
+  }
+
+  const canvas = await window.html2canvas(node, {
+    backgroundColor: "#ffffff",
+    scale: 2,
+    useCORS: true,
+    windowWidth: Math.max(node.scrollWidth, node.clientWidth),
+    windowHeight: Math.max(node.scrollHeight, node.clientHeight),
+  });
+
+  const imgData = canvas.toDataURL("image/png");
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+
+  pdf.save(nombreArchivo);
+}
+
+function imprimirNominaJugadores() {
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para imprimir", "warning");
+    return;
+  }
+  if (!jugadoresActuales.length) {
+    mostrarNotificacion("No hay jugadores para imprimir", "warning");
+    return;
+  }
+  renderPlantillaNominaJugadores();
+  const zona = document.getElementById("nomina-jugadores-export");
+  imprimirNodoEnVentana(zona, "Nómina de Jugadores");
+}
+
+async function exportarNominaJugadoresPDF() {
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para exportar", "warning");
+    return;
+  }
+  if (!jugadoresActuales.length) {
+    mostrarNotificacion("No hay jugadores para exportar", "warning");
+    return;
+  }
+  try {
+    renderPlantillaNominaJugadores();
+    const zona = document.getElementById("nomina-jugadores-export");
+    const slugEquipo = valorTextoImportacion(equipoActual?.nombre || "equipo")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    await exportarNodoPDF(zona, `nomina_jugadores_${slugEquipo || "equipo"}.pdf`);
+    mostrarNotificacion("Nómina exportada en PDF", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo exportar la nómina", "error");
+  }
+}
+
+function imprimirCarnetsJugadores() {
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para imprimir", "warning");
+    return;
+  }
+  if (!campeonatoMeta.genera_carnets) {
+    mostrarNotificacion("Este campeonato no tiene habilitada la generación de carnets", "warning");
+    return;
+  }
+  if (!jugadoresActuales.length) {
+    mostrarNotificacion("No hay jugadores para imprimir carnets", "warning");
+    return;
+  }
+  renderPlantillaCarnets();
+  const zona = document.getElementById("carnets-jugadores-export");
+  imprimirNodoEnVentana(zona, "Carnets de Jugadores");
+}
+
+async function exportarCarnetsPDF() {
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para exportar", "warning");
+    return;
+  }
+  if (!campeonatoMeta.genera_carnets) {
+    mostrarNotificacion("Este campeonato no tiene habilitada la generación de carnets", "warning");
+    return;
+  }
+  if (!jugadoresActuales.length) {
+    mostrarNotificacion("No hay jugadores para exportar carnets", "warning");
+    return;
+  }
+  try {
+    renderPlantillaCarnets();
+    const zona = document.getElementById("carnets-jugadores-export");
+    const slugEquipo = valorTextoImportacion(equipoActual?.nombre || "equipo")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    await exportarNodoPDF(zona, `carnets_jugadores_${slugEquipo || "equipo"}.pdf`);
+    mostrarNotificacion("Carnets exportados en PDF", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo exportar carnets", "error");
+  }
+}
+
+function obtenerTipoReporteJugadores() {
+  const select = document.getElementById("reporte-jugadores-tipo");
+  return select?.value || "nomina";
+}
+
+function verReporteJugadores() {
+  const tipo = obtenerTipoReporteJugadores();
+  if (tipo === "carnets") {
+    mostrarPlantillaCarnets();
+    return;
+  }
+  mostrarPlantillaNominaJugadores();
+}
+
+function imprimirReporteJugadores() {
+  const tipo = obtenerTipoReporteJugadores();
+  if (tipo === "carnets") {
+    imprimirCarnetsJugadores();
+    return;
+  }
+  imprimirNominaJugadores();
+}
+
+async function exportarReporteJugadoresPDF() {
+  const tipo = obtenerTipoReporteJugadores();
+  if (tipo === "carnets") {
+    await exportarCarnetsPDF();
+    return;
+  }
+  await exportarNominaJugadoresPDF();
+}
+
 function actualizarResumenJugadores() {
   const resumenEl = document.getElementById("resumen-jugadores");
   if (!resumenEl) return;
@@ -197,46 +989,42 @@ function actualizarResumenJugadores() {
   }
 
   if (minJugadoresPorEquipo && total < minJugadoresPorEquipo) {
-    texto += ` — ⚠️ Debajo del mínimo ${minJugadoresPorEquipo})`;
+    texto += ` - Debajo del minimo (${minJugadoresPorEquipo})`;
     color = "#e67e22";
-  }else if (
-    maxJugadoresPorEquipo &&
-    total > maxJugadoresPorEquipo
-  ) {
-    texto += ` — ❌ Excede el máximo permitido`;
-    color = "#c0392b"; // rojo error
+  } else if (maxJugadoresPorEquipo && total > maxJugadoresPorEquipo) {
+    texto += " - Excede el maximo permitido";
+    color = "#c0392b";
   }
 
   resumenEl.textContent = texto;
   resumenEl.style.color = color;
 }
 
-// ======================
-// Modal Crear / Editar
-// ======================
 function mostrarModalCrearJugador() {
-  // No dejar crear si ya estamos en el máximo
-  if (
-    maxJugadoresPorEquipo &&
-    jugadoresActuales.length >= maxJugadoresPorEquipo
-  ) {
-    mostrarNotificacion(
-      `Ya alcanzaste el máximo de ${maxJugadoresPorEquipo} jugadores para este equipo`,
-      "warning"
-    );
+  if (!equipoId) {
+    mostrarNotificacion("Selecciona un equipo primero", "warning");
+    return;
+  }
+
+  if (maxJugadoresPorEquipo && jugadoresActuales.length >= maxJugadoresPorEquipo) {
+    mostrarNotificacion(`Ya alcanzaste el maximo de ${maxJugadoresPorEquipo} jugadores para este equipo`, "warning");
     return;
   }
 
   const titulo = document.getElementById("modal-jugador-titulo");
   const form = document.getElementById("form-jugador");
 
+  jugadorActualEnEdicion = null;
   if (titulo) titulo.textContent = "Nuevo Jugador";
   if (form) form.reset();
 
   document.getElementById("jugador-id").value = "";
   document.getElementById("jugador-equipo-id").value = equipoId;
   document.getElementById("jugador-capitan").checked = false;
+  document.getElementById("jugador-foto-cedula").value = "";
+  document.getElementById("jugador-foto-carnet").value = "";
 
+  actualizarEstadoRequisitosEnModal(null);
   abrirModal("modal-jugador");
 }
 
@@ -244,6 +1032,7 @@ async function editarJugador(id) {
   try {
     const data = await ApiClient.get(`/jugadores/${id}`);
     const jugador = data.jugador || data;
+    jugadorActualEnEdicion = jugador;
 
     const titulo = document.getElementById("modal-jugador-titulo");
     if (titulo) titulo.textContent = "Editar Jugador";
@@ -253,13 +1042,14 @@ async function editarJugador(id) {
     document.getElementById("jugador-nombre").value = jugador.nombre || "";
     document.getElementById("jugador-apellido").value = jugador.apellido || "";
     document.getElementById("jugador-ced").value = jugador.cedidentidad || "";
-    document.getElementById("jugador-fecha").value =
-      jugador.fecha_nacimiento || "";
+    document.getElementById("jugador-fecha").value = jugador.fecha_nacimiento ? String(jugador.fecha_nacimiento).split("T")[0] : "";
     document.getElementById("jugador-posicion").value = jugador.posicion || "";
-    document.getElementById("jugador-numero").value =
-      jugador.numero_camiseta || "";
+    document.getElementById("jugador-numero").value = jugador.numero_camiseta || "";
     document.getElementById("jugador-capitan").checked = !!jugador.es_capitan;
+    document.getElementById("jugador-foto-cedula").value = "";
+    document.getElementById("jugador-foto-carnet").value = "";
 
+    actualizarEstadoRequisitosEnModal(jugador);
     abrirModal("modal-jugador");
   } catch (error) {
     console.error("Error cargando jugador:", error);
@@ -267,66 +1057,90 @@ async function editarJugador(id) {
   }
 }
 
-// ======================
-// Guardar jugador
-// ======================
-document
-  .getElementById("form-jugador")
-  .addEventListener("submit", async (e) => {
-    e.preventDefault();
+async function guardarJugadorConFormData({ id, fd }) {
+  const url = id ? `${window.API_BASE_URL}/jugadores/${id}` : `${window.API_BASE_URL}/jugadores`;
 
-    const id = document.getElementById("jugador-id").value;
-    const body = {
-      equipo_id: parseInt(document.getElementById("jugador-equipo-id").value),
-      nombre: document.getElementById("jugador-nombre").value.trim(),
-      apellido: document.getElementById("jugador-apellido").value.trim(),
-      cedidentidad: document.getElementById("jugador-ced").value.trim(),
-      fecha_nacimiento: document.getElementById("jugador-fecha").value || null,
-      posicion: document.getElementById("jugador-posicion").value || null,
-      numero_camiseta: document.getElementById("jugador-numero").value
-        ? parseInt(document.getElementById("jugador-numero").value)
-        : null,
-      es_capitan: document.getElementById("jugador-capitan").checked,
-    };
-
-    if (!body.nombre) {
-      mostrarNotificacion("El nombre del jugador es obligatorio", "error");
-      return;
-    }
-
-    // Si estamos creando (no editando) y ya llegamos al máximo -> bloquear
-    if (
-      !id &&
-      maxJugadoresPorEquipo &&
-      jugadoresActuales.length >= maxJugadoresPorEquipo
-    ) {
-      mostrarNotificacion(
-        `No puedes agregar más de ${maxJugadoresPorEquipo} jugadores en este equipo`,
-        "warning"
-      );
-      return;
-    }
-
-    try {
-      if (id) {
-        await ApiClient.put(`/jugadores/${id}`, body);
-        mostrarNotificacion("Jugador actualizado correctamente", "success");
-      } else {
-        await ApiClient.post("/jugadores", body);
-        mostrarNotificacion("Jugador creado correctamente", "success");
-      }
-
-      cerrarModal("modal-jugador");
-      await cargarJugadores(); // esto vuelve a llenar jugadoresActuales y actualiza el resumen
-    } catch (error) {
-      console.error("Error guardando jugador:", error);
-      mostrarNotificacion("Error guardando el jugador", "error");
-    }
+  const resp = await fetch(url, {
+    method: id ? "PUT" : "POST",
+    body: fd,
   });
 
-// ======================
-// Eliminar jugador
-// ======================
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(data.error || data.detalle || "Error guardando jugador");
+  }
+
+  return data;
+}
+
+document.getElementById("form-jugador").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  if (!equipoId) {
+    mostrarNotificacion("Selecciona un equipo primero", "warning");
+    return;
+  }
+
+  const id = document.getElementById("jugador-id").value;
+  const equipoJugador = Number.parseInt(document.getElementById("jugador-equipo-id").value, 10);
+  const nombre = document.getElementById("jugador-nombre").value.trim();
+  const apellido = document.getElementById("jugador-apellido").value.trim();
+  const cedidentidad = document.getElementById("jugador-ced").value.trim();
+
+  const fechaNacimiento = document.getElementById("jugador-fecha").value || "";
+  const posicion = document.getElementById("jugador-posicion").value || "";
+  const numeroRaw = document.getElementById("jugador-numero").value;
+  const esCapitan = document.getElementById("jugador-capitan").checked;
+  const fotoCedulaFile = document.getElementById("jugador-foto-cedula").files?.[0] || null;
+  const fotoCarnetFile = document.getElementById("jugador-foto-carnet").files?.[0] || null;
+
+  if (!nombre || !apellido || !cedidentidad) {
+    mostrarNotificacion("Nombre, apellido y cédula son obligatorios", "error");
+    return;
+  }
+
+  if (!id && maxJugadoresPorEquipo && jugadoresActuales.length >= maxJugadoresPorEquipo) {
+    mostrarNotificacion(`No puedes agregar mas de ${maxJugadoresPorEquipo} jugadores en este equipo`, "warning");
+    return;
+  }
+
+  const tieneCedulaActual = Boolean(jugadorActualEnEdicion?.foto_cedula_url);
+  const tieneCarnetActual = Boolean(jugadorActualEnEdicion?.foto_carnet_url);
+
+  if (reglasDocumentos.requiere_foto_cedula && !fotoCedulaFile && !(id && tieneCedulaActual)) {
+    mostrarNotificacion("Este campeonato exige foto de cédula", "warning");
+    return;
+  }
+
+  if (reglasDocumentos.requiere_foto_carnet && !fotoCarnetFile && !(id && tieneCarnetActual)) {
+    mostrarNotificacion("Este campeonato exige foto carnet", "warning");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("equipo_id", String(equipoJugador));
+  fd.append("nombre", nombre);
+  fd.append("apellido", apellido);
+  fd.append("cedidentidad", cedidentidad);
+  if (fechaNacimiento) fd.append("fecha_nacimiento", fechaNacimiento);
+  if (posicion) fd.append("posicion", posicion);
+  if (numeroRaw) fd.append("numero_camiseta", String(Number.parseInt(numeroRaw, 10)));
+  fd.append("es_capitan", esCapitan ? "true" : "false");
+
+  if (fotoCedulaFile) fd.append("foto_cedula", fotoCedulaFile);
+  if (fotoCarnetFile) fd.append("foto_carnet", fotoCarnetFile);
+
+  try {
+    await guardarJugadorConFormData({ id, fd });
+    mostrarNotificacion(id ? "Jugador actualizado correctamente" : "Jugador creado correctamente", "success");
+    cerrarModal("modal-jugador");
+    await cargarJugadores();
+  } catch (error) {
+    console.error("Error guardando jugador:", error);
+    mostrarNotificacion(error.message || "Error guardando el jugador", "error");
+  }
+});
+
 async function eliminarJugador(id) {
   if (!confirm("¿Seguro que deseas eliminar este jugador?")) return;
 
@@ -339,3 +1153,554 @@ async function eliminarJugador(id) {
     mostrarNotificacion("Error eliminando el jugador", "error");
   }
 }
+
+const CAMPOS_IMPORTACION_JUGADORES = [
+  "nombre",
+  "apellido",
+  "cedidentidad",
+  "fecha_nacimiento",
+  "posicion",
+  "numero_camiseta",
+  "es_capitan",
+  "foto_cedula_url",
+  "foto_carnet_url",
+];
+
+const ALIAS_CAMPOS_IMPORTACION = {
+  nombre: ["nombre", "nombres", "nombre_jugador", "jugador_nombre", "nombres_jugador"],
+  apellido: ["apellido", "apellidos", "apellido_jugador", "jugador_apellido", "apellidos_jugador"],
+  nombre_completo: [
+    "nombre_completo",
+    "nombres_apellidos",
+    "apellidos_nombres",
+    "jugador",
+    "nombre_y_apellido",
+  ],
+  cedidentidad: [
+    "cedidentidad",
+    "cedula",
+    "cedula_identidad",
+    "cedula_de_identidad",
+    "dni",
+    "documento",
+    "identificacion",
+  ],
+  fecha_nacimiento: ["fecha_nacimiento", "nacimiento", "fecha_de_nacimiento", "fecha_nac"],
+  posicion: ["posicion", "pos", "puesto"],
+  numero_camiseta: ["numero_camiseta", "numero", "camiseta", "dorsal", "num_camiseta", "nro_camiseta"],
+  es_capitan: ["es_capitan", "capitan", "capitan_si_no", "es_capitan_si_no"],
+  foto_cedula_url: ["foto_cedula_url", "foto_cedula", "url_foto_cedula", "cedula_foto_url"],
+  foto_carnet_url: ["foto_carnet_url", "foto_carnet", "url_foto_carnet", "carnet_foto_url"],
+};
+
+function normalizarClaveImportacion(valor) {
+  return String(valor || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function valorTextoImportacion(valor) {
+  if (valor === null || valor === undefined) return "";
+  return String(valor).trim();
+}
+
+function valorBooleanoImportacion(valor) {
+  const normalizado = normalizarClaveImportacion(valor);
+  return ["si", "s", "true", "1", "x", "yes"].includes(normalizado);
+}
+
+function valorNumeroImportacion(valor) {
+  const texto = valorTextoImportacion(valor).replace(/[^\d-]/g, "");
+  if (!texto) return null;
+  const numero = Number.parseInt(texto, 10);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function valorFechaImportacion(valor) {
+  if (!valor && valor !== 0) return null;
+
+  if (typeof valor === "number" && window.XLSX?.SSF?.parse_date_code) {
+    const dateCode = window.XLSX.SSF.parse_date_code(valor);
+    if (dateCode?.y && dateCode?.m && dateCode?.d) {
+      const yyyy = String(dateCode.y).padStart(4, "0");
+      const mm = String(dateCode.m).padStart(2, "0");
+      const dd = String(dateCode.d).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+  }
+
+  if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
+    const yyyy = String(valor.getFullYear()).padStart(4, "0");
+    const mm = String(valor.getMonth() + 1).padStart(2, "0");
+    const dd = String(valor.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  const texto = valorTextoImportacion(valor);
+  if (!texto) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(texto)) return texto.slice(0, 10);
+
+  const m = texto.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (m) {
+    const dd = String(m[1]).padStart(2, "0");
+    const mm = String(m[2]).padStart(2, "0");
+    const yyyy = m[3].length === 2 ? `20${m[3]}` : m[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  const parsed = new Date(texto);
+  if (!Number.isNaN(parsed.getTime())) {
+    const yyyy = String(parsed.getFullYear()).padStart(4, "0");
+    const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+    const dd = String(parsed.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return null;
+}
+
+function obtenerValorAliasFila(mapaNormalizado, aliases) {
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(mapaNormalizado, alias)) {
+      const valor = mapaNormalizado[alias];
+      if (valor !== null && valor !== undefined && String(valor).trim() !== "") {
+        return valor;
+      }
+    }
+  }
+  return null;
+}
+
+function normalizarFilaImportacionJugador(fila) {
+  const mapaNormalizado = {};
+  Object.entries(fila || {}).forEach(([key, val]) => {
+    const nk = normalizarClaveImportacion(key);
+    if (!nk) return;
+    mapaNormalizado[nk] = val;
+  });
+
+  const nombre = valorTextoImportacion(
+    obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.nombre)
+  );
+  let apellido = valorTextoImportacion(
+    obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.apellido)
+  );
+  let nombreFinal = nombre;
+  const nombreCompleto = valorTextoImportacion(
+    obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.nombre_completo)
+  );
+  if ((!nombreFinal || !apellido) && nombreCompleto) {
+    const partes = nombreCompleto.split(/\s+/).filter(Boolean);
+    if (partes.length >= 2) {
+      if (!nombreFinal) nombreFinal = partes.slice(0, partes.length - 1).join(" ");
+      if (!apellido) apellido = partes[partes.length - 1];
+    } else if (!nombreFinal) {
+      nombreFinal = nombreCompleto;
+    }
+  }
+  const cedidentidad = valorTextoImportacion(
+    obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.cedidentidad)
+  );
+  const fecha_nacimiento = valorFechaImportacion(
+    obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.fecha_nacimiento)
+  );
+  const posicion = valorTextoImportacion(
+    obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.posicion)
+  );
+  const numero_camiseta = valorNumeroImportacion(
+    obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.numero_camiseta)
+  );
+  const es_capitan = valorBooleanoImportacion(
+    obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.es_capitan)
+  );
+  const foto_cedula_url = valorTextoImportacion(
+    obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.foto_cedula_url)
+  );
+  const foto_carnet_url = valorTextoImportacion(
+    obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.foto_carnet_url)
+  );
+
+  const filaVacia =
+    !nombre &&
+    !apellido &&
+    !cedidentidad &&
+    !fecha_nacimiento &&
+    !posicion &&
+    numero_camiseta === null &&
+    !foto_cedula_url &&
+    !foto_carnet_url;
+  const filaVaciaConNombre =
+    !nombreFinal &&
+    !apellido &&
+    !cedidentidad &&
+    !fecha_nacimiento &&
+    !posicion &&
+    numero_camiseta === null &&
+    !foto_cedula_url &&
+    !foto_carnet_url;
+  if (filaVacia || filaVaciaConNombre) return null;
+
+  return {
+    nombre: nombreFinal,
+    apellido,
+    cedidentidad,
+    fecha_nacimiento,
+    posicion,
+    numero_camiseta,
+    es_capitan,
+    foto_cedula_url,
+    foto_carnet_url,
+  };
+}
+
+function leerArchivoComoArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo seleccionado"));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function procesarArchivoImportacionJugadores(file) {
+  if (!window.XLSX) {
+    throw new Error("No se cargo la libreria XLSX para importar");
+  }
+
+  const arrayBuffer = await leerArchivoComoArrayBuffer(file);
+  const wb = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+  const sheetName = wb.SheetNames[0];
+  const sheet = wb.Sheets[sheetName];
+  if (!sheet) throw new Error("El archivo no contiene hojas válidas");
+
+  const filasRaw = window.XLSX.utils.sheet_to_json(sheet, {
+    defval: "",
+    raw: true,
+  });
+
+  if (!filasRaw.length) {
+    throw new Error("El archivo no tiene filas para importar");
+  }
+
+  const jugadores = [];
+  const erroresLocales = [];
+
+  filasRaw.forEach((fila, idx) => {
+    const nroFila = idx + 2;
+    const normalizada = normalizarFilaImportacionJugador(fila);
+    if (!normalizada) return;
+
+    if (!normalizada.nombre || !normalizada.apellido || !normalizada.cedidentidad) {
+      erroresLocales.push(`Fila ${nroFila}: nombre, apellido y cedidentidad son obligatorios`);
+      return;
+    }
+
+    jugadores.push(normalizada);
+  });
+
+  if (!jugadores.length) {
+    const msgError = erroresLocales.length
+      ? `No hay filas validas para importar.\n${erroresLocales.slice(0, 8).join("\n")}`
+      : "No hay filas validas para importar.";
+    throw new Error(msgError);
+  }
+
+  return { jugadores, erroresLocales, totalLeidas: filasRaw.length };
+}
+
+function inicializarImportadorJugadores() {
+  const input = document.getElementById("import-jugadores-file");
+  if (!input || input.dataset.inicializado === "1") return;
+  input.dataset.inicializado = "1";
+
+  input.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    input.value = "";
+    if (!file) return;
+
+    if (!contextoListoParaReportes()) {
+      mostrarNotificacion("Selecciona campeonato, categoría y equipo antes de importar jugadores", "warning");
+      return;
+    }
+
+    try {
+      mostrarNotificacion("Procesando archivo de jugadores...", "info");
+      const { jugadores, erroresLocales, totalLeidas } = await procesarArchivoImportacionJugadores(file);
+
+      const resultado = await ApiClient.post("/jugadores/importar-masivo", {
+        equipo_id: equipoId,
+        jugadores,
+      });
+
+      const totalErroresBackend = Number(resultado?.total_errores || 0);
+      const totalCreado = Number(resultado?.total_creados || 0);
+
+      await cargarJugadores();
+
+      const resumen = [
+        `Importacion completada para el equipo ${equipoActual?.nombre || equipoId}.`,
+        `Filas leidas: ${totalLeidas}`,
+        `Filas enviadas: ${jugadores.length}`,
+        `Jugadores creados: ${totalCreado}`,
+        `Errores en backend: ${totalErroresBackend}`,
+      ];
+
+      if (erroresLocales.length) {
+        resumen.push(`Filas omitidas localmente: ${erroresLocales.length}`);
+      }
+      if (Array.isArray(resultado?.errores) && resultado.errores.length) {
+        const preview = resultado.errores
+          .slice(0, 5)
+          .map((x) => `Fila ${x.fila}: ${x.error}`)
+          .join("\n");
+        resumen.push(`Primeros errores backend:\n${preview}`);
+      }
+
+      alert(resumen.join("\n"));
+      mostrarNotificacion("Importacion finalizada", totalErroresBackend ? "warning" : "success");
+    } catch (error) {
+      console.error("Error importando jugadores:", error);
+      mostrarNotificacion(error.message || "No se pudo importar el archivo", "error");
+    }
+  });
+}
+
+function abrirImportadorJugadores() {
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para importar jugadores", "warning");
+    return;
+  }
+
+  const input = document.getElementById("import-jugadores-file");
+  if (!input) {
+    mostrarNotificacion("No se encontro el control para importar archivo", "error");
+    return;
+  }
+  input.click();
+}
+
+function detectarTipoDocumentoDesdeNombre(filename) {
+  const name = String(filename || "").toLowerCase();
+  if (/(carnet|carne|idcard|id_card|credencial)/.test(name)) return "carnet";
+  if (/(cedula|c[eé]dula|dni|documento|identidad|ci)/.test(name)) return "cedula";
+  return "";
+}
+
+function extraerCedulaDesdeNombre(filename) {
+  const base = String(filename || "")
+    .split(/[\\/]/)
+    .pop()
+    ?.replace(/\.[^.]+$/, "") || "";
+  const match = base.match(/\d{8,15}/);
+  return match ? normalizarCedulaValor(match[0]) : "";
+}
+
+function mimePorExtension(nombre) {
+  const n = String(nombre || "").toLowerCase();
+  if (n.endsWith(".png")) return "image/png";
+  if (n.endsWith(".jpg") || n.endsWith(".jpeg")) return "image/jpeg";
+  if (n.endsWith(".webp")) return "image/webp";
+  if (n.endsWith(".gif")) return "image/gif";
+  if (n.endsWith(".bmp")) return "image/bmp";
+  return "application/octet-stream";
+}
+
+function inicializarImportadorDocsZip() {
+  const input = document.getElementById("import-docs-zip-file");
+  if (!input || input.dataset.inicializado === "1") return;
+  input.dataset.inicializado = "1";
+
+  input.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    input.value = "";
+    if (!file) return;
+
+    if (!contextoListoParaReportes()) {
+      mostrarNotificacion("Selecciona campeonato, categoría y equipo para importar documentos", "warning");
+      return;
+    }
+    if (!jugadoresActuales.length) {
+      mostrarNotificacion("No hay jugadores cargados en el equipo seleccionado", "warning");
+      return;
+    }
+    if (!window.JSZip) {
+      mostrarNotificacion("No se pudo cargar JSZip para leer el archivo .zip", "error");
+      return;
+    }
+
+    try {
+      mostrarNotificacion("Procesando ZIP de documentos...", "info");
+      const zip = await window.JSZip.loadAsync(file);
+      const entries = Object.values(zip.files || {}).filter((f) => !f.dir);
+
+      const mapDocs = new Map();
+      for (const entry of entries) {
+        const ced = extraerCedulaDesdeNombre(entry.name);
+        const tipo = detectarTipoDocumentoDesdeNombre(entry.name);
+        if (!ced || !tipo) continue;
+        if (!mapDocs.has(ced)) mapDocs.set(ced, {});
+        mapDocs.get(ced)[tipo] = entry;
+      }
+
+      let actualizados = 0;
+      let sinMatch = 0;
+      const errores = [];
+
+      for (const jugador of jugadoresActuales) {
+        const ced = normalizarCedulaValor(jugador.cedidentidad);
+        if (!ced) continue;
+        const docs = mapDocs.get(ced);
+        if (!docs?.cedula && !docs?.carnet) {
+          sinMatch += 1;
+          continue;
+        }
+
+        const fd = new FormData();
+        if (docs.cedula) {
+          const blobCed = await docs.cedula.async("blob");
+          const nameCed = docs.cedula.name.split(/[\\/]/).pop() || `cedula_${ced}.jpg`;
+          fd.append("foto_cedula", new File([blobCed], nameCed, { type: mimePorExtension(nameCed) }));
+        }
+        if (docs.carnet) {
+          const blobCar = await docs.carnet.async("blob");
+          const nameCar = docs.carnet.name.split(/[\\/]/).pop() || `carnet_${ced}.jpg`;
+          fd.append("foto_carnet", new File([blobCar], nameCar, { type: mimePorExtension(nameCar) }));
+        }
+
+        if (![...fd.keys()].length) continue;
+
+        try {
+          const resp = await fetch(`${window.API_BASE_URL}/jugadores/${jugador.id}`, {
+            method: "PUT",
+            body: fd,
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            throw new Error(data.error || data.detalle || `Error HTTP ${resp.status}`);
+          }
+          actualizados += 1;
+        } catch (errorJugador) {
+          errores.push(`Cédula ${jugador.cedidentidad}: ${errorJugador.message}`);
+        }
+      }
+
+      await cargarJugadores();
+
+      const resumen = [
+        `ZIP procesado: ${file.name}`,
+        `Jugadores actualizados: ${actualizados}`,
+        `Jugadores sin coincidencia por cédula: ${sinMatch}`,
+        `Errores: ${errores.length}`,
+      ];
+      if (errores.length) {
+        resumen.push(`Detalle:\n${errores.slice(0, 8).join("\n")}`);
+      }
+      alert(resumen.join("\n"));
+      mostrarNotificacion("Importación ZIP finalizada", errores.length ? "warning" : "success");
+    } catch (error) {
+      console.error("Error importando ZIP de documentos:", error);
+      mostrarNotificacion(error.message || "No se pudo procesar el ZIP", "error");
+    }
+  });
+}
+
+function abrirImportadorDocsZip() {
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para importar documentos", "warning");
+    return;
+  }
+  const input = document.getElementById("import-docs-zip-file");
+  if (!input) {
+    mostrarNotificacion("No se encontró el control para importar ZIP", "error");
+    return;
+  }
+  input.click();
+}
+
+function descargarPlantillaJugadores() {
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para descargar plantilla", "warning");
+    return;
+  }
+  if (!window.XLSX) {
+    mostrarNotificacion("No se cargo la libreria XLSX para exportar plantilla", "error");
+    return;
+  }
+
+  const filasPlantilla = [
+    CAMPOS_IMPORTACION_JUGADORES,
+    [
+      "Juan",
+      "Perez",
+      "0102030405",
+      "2001-05-20",
+      "Volante",
+      "10",
+      "No",
+      "https://tu-dominio.com/documentos/cedula_juan_perez.jpg",
+      "https://tu-dominio.com/documentos/carnet_juan_perez.jpg",
+    ],
+  ];
+
+  const wsDatos = window.XLSX.utils.aoa_to_sheet(filasPlantilla);
+  wsDatos["!cols"] = [
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 14 },
+    { wch: 38 },
+    { wch: 38 },
+  ];
+
+  const instrucciones = [
+    ["INSTRUCCIONES PARA IMPORTAR JUGADORES"],
+    ["1) No cambies los nombres de las columnas de la hoja Datos."],
+    ["2) Campos obligatorios: nombre, apellido, cedidentidad."],
+    ["3) fecha_nacimiento en formato YYYY-MM-DD o DD/MM/YYYY."],
+    ["4) es_capitan: Si/No (tambien acepta True/False, 1/0)."],
+    ["5) numero_camiseta solo numeros enteros."],
+    ["6) foto_cedula_url y foto_carnet_url son opcionales: usa URL publica o ruta ya servida por backend."],
+    ["7) Importa por equipo: selecciona campeonato/categoria/equipo antes de subir archivo."],
+  ];
+  const wsInstrucciones = window.XLSX.utils.aoa_to_sheet(instrucciones);
+  wsInstrucciones["!cols"] = [{ wch: 95 }];
+
+  const wb = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb, wsDatos, "Datos");
+  window.XLSX.utils.book_append_sheet(wb, wsInstrucciones, "Instrucciones");
+
+  const slugEquipo = valorTextoImportacion(equipoActual?.nombre || "general")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const filename = `plantilla_jugadores_${slugEquipo || "general"}.xlsx`;
+  window.XLSX.writeFile(wb, filename);
+}
+
+window.cargarJugadoresDesdeSeleccion = cargarJugadoresDesdeSeleccion;
+window.cambiarPestanaJugadores = cambiarPestanaJugadores;
+window.cambiarVistaJugadores = cambiarVistaJugadores;
+window.mostrarModalCrearJugador = mostrarModalCrearJugador;
+window.editarJugador = editarJugador;
+window.eliminarJugador = eliminarJugador;
+window.volverAEquipos = volverAEquipos;
+window.abrirImportadorJugadores = abrirImportadorJugadores;
+window.abrirImportadorDocsZip = abrirImportadorDocsZip;
+window.descargarPlantillaJugadores = descargarPlantillaJugadores;
+window.verReporteJugadores = verReporteJugadores;
+window.imprimirReporteJugadores = imprimirReporteJugadores;
+window.exportarReporteJugadoresPDF = exportarReporteJugadoresPDF;
+window.mostrarPlantillaNominaJugadores = mostrarPlantillaNominaJugadores;
+window.imprimirNominaJugadores = imprimirNominaJugadores;
+window.exportarNominaJugadoresPDF = exportarNominaJugadoresPDF;
+window.mostrarPlantillaCarnets = mostrarPlantillaCarnets;
+window.imprimirCarnetsJugadores = imprimirCarnetsJugadores;
+window.exportarCarnetsPDF = exportarCarnetsPDF;

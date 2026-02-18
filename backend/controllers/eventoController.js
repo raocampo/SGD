@@ -1,3 +1,4 @@
+// controllers/eventoController.js
 const pool = require("../config/database");
 
 function pick(v, fallback = null) {
@@ -6,13 +7,16 @@ function pick(v, fallback = null) {
 
 function parseTimeHHMM(value, fallback) {
   if (!value) return fallback;
-  // admite "19:00" o "19:00:00"
   const s = String(value).trim();
   if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) return s.length === 5 ? `${s}:00` : s;
   return fallback;
 }
 
-const EventoController = {
+const eventoController = {
+  // =====================================================
+  // CRUD EVENTOS
+  // =====================================================
+
   // POST /eventos
   async crearEvento(req, res) {
     try {
@@ -22,8 +26,6 @@ const EventoController = {
         organizador,
         fecha_inicio,
         fecha_fin,
-
-        // vienen del frontend (aunque aún no existan columnas, las usaremos si las agregaste)
         modalidad,
         horarios,
       } = req.body;
@@ -32,8 +34,9 @@ const EventoController = {
         return res.status(400).json({ error: "Faltan campos obligatorios." });
       }
 
-      // defaults
+      // defaults (según lo que ya definiste)
       const mod = (modalidad || "weekend").toLowerCase();
+
       const wkStart = parseTimeHHMM(horarios?.weekday?.start, "19:00:00");
       const wkEnd = parseTimeHHMM(horarios?.weekday?.end, "22:00:00");
 
@@ -42,8 +45,6 @@ const EventoController = {
       const sunStart = parseTimeHHMM(horarios?.weekend?.sun_start, "08:00:00");
       const sunEnd = parseTimeHHMM(horarios?.weekend?.sun_end, "17:00:00");
 
-      // Si NO agregaste columnas, puedes quitar estas columnas del INSERT y listo.
-      // Como tú ya vas a dejar “fino”, recomiendo mantenerlas.
       const query = `
         INSERT INTO eventos (
           campeonato_id, nombre, organizador, fecha_inicio, fecha_fin, estado,
@@ -129,7 +130,8 @@ const EventoController = {
         WHERE e.id = $1
       `;
       const result = await pool.query(q, [id]);
-      if (!result.rows.length) return res.status(404).json({ error: "Evento no encontrado." });
+      if (!result.rows.length)
+        return res.status(404).json({ error: "Evento no encontrado." });
       return res.json({ evento: result.rows[0] });
     } catch (error) {
       console.error("Error obtenerEvento:", error);
@@ -147,7 +149,6 @@ const EventoController = {
       let i = 1;
 
       for (const [k, v] of Object.entries(req.body)) {
-        // no permitir actualizar id
         if (k === "id") continue;
         campos.push(`${k} = $${i}`);
         valores.push(v);
@@ -155,7 +156,9 @@ const EventoController = {
       }
 
       if (!campos.length) {
-        return res.status(400).json({ error: "No hay campos para actualizar." });
+        return res
+          .status(400)
+          .json({ error: "No hay campos para actualizar." });
       }
 
       valores.push(id);
@@ -166,7 +169,8 @@ const EventoController = {
         RETURNING *
       `;
       const result = await pool.query(q, valores);
-      if (!result.rows.length) return res.status(404).json({ error: "Evento no encontrado." });
+      if (!result.rows.length)
+        return res.status(404).json({ error: "Evento no encontrado." });
       return res.json({ evento: result.rows[0] });
     } catch (error) {
       console.error("Error actualizarEvento:", error);
@@ -180,13 +184,18 @@ const EventoController = {
       const { id } = req.params;
       const q = `DELETE FROM eventos WHERE id = $1 RETURNING *`;
       const result = await pool.query(q, [id]);
-      if (!result.rows.length) return res.status(404).json({ error: "Evento no encontrado." });
+      if (!result.rows.length)
+        return res.status(404).json({ error: "Evento no encontrado." });
       return res.json({ evento: result.rows[0] });
     } catch (error) {
       console.error("Error eliminarEvento:", error);
       return res.status(500).json({ error: "Error eliminando evento." });
     }
   },
+
+  // =====================================================
+  // CANCHAS DEL EVENTO (evento_canchas)
+  // =====================================================
 
   // POST /eventos/:evento_id/canchas   body: { cancha_ids: [1,2,3] }
   async asignarCanchasAEvento(req, res) {
@@ -196,15 +205,17 @@ const EventoController = {
       const { cancha_ids } = req.body;
 
       if (!Array.isArray(cancha_ids)) {
-        return res.status(400).json({ error: "cancha_ids debe ser un arreglo." });
+        return res
+          .status(400)
+          .json({ error: "cancha_ids debe ser un arreglo." });
       }
 
       await client.query("BEGIN");
 
-      // limpiamos asignaciones previas
-      await client.query(`DELETE FROM evento_canchas WHERE evento_id = $1`, [evento_id]);
+      await client.query(`DELETE FROM evento_canchas WHERE evento_id = $1`, [
+        evento_id,
+      ]);
 
-      // insertamos nuevas
       for (const cid of cancha_ids) {
         await client.query(
           `INSERT INTO evento_canchas (evento_id, cancha_id) VALUES ($1,$2)`,
@@ -217,7 +228,9 @@ const EventoController = {
     } catch (error) {
       await client.query("ROLLBACK");
       console.error("Error asignarCanchasAEvento:", error);
-      return res.status(500).json({ error: "Error asignando canchas al evento." });
+      return res
+        .status(500)
+        .json({ error: "Error asignando canchas al evento." });
     } finally {
       client.release();
     }
@@ -238,9 +251,99 @@ const EventoController = {
       return res.json({ canchas: result.rows });
     } catch (error) {
       console.error("Error listarCanchasDeEvento:", error);
-      return res.status(500).json({ error: "Error listando canchas del evento." });
+      return res
+        .status(500)
+        .json({ error: "Error listando canchas del evento." });
+    }
+  },
+
+  // =====================================================
+  // EQUIPOS DEL EVENTO (evento_equipos)
+  // =====================================================
+
+  // POST /eventos/:evento_id/equipos  body: { equipo_id: 123 }
+  async asignarEquipoAEvento(req, res) {
+    try {
+      const evento_id = parseInt(req.params.evento_id, 10);
+      const equipo_id = parseInt(req.body.equipo_id, 10);
+
+      if (!Number.isFinite(evento_id) || !Number.isFinite(equipo_id)) {
+        return res
+          .status(400)
+          .json({ message: "evento_id y equipo_id son obligatorios" });
+      }
+
+      await pool.query(
+        `
+        INSERT INTO evento_equipos (evento_id, equipo_id)
+        VALUES ($1, $2)
+        ON CONFLICT (evento_id, equipo_id) DO NOTHING
+      `,
+        [evento_id, equipo_id]
+      );
+
+      return res.json({ ok: true, message: "Equipo asignado al evento" });
+    } catch (error) {
+      console.error("asignarEquipoAEvento:", error);
+      return res
+        .status(500)
+        .json({ message: "Error asignando equipo al evento" });
+    }
+  },
+
+  // GET /eventos/:evento_id/equipos
+  async listarEquiposDeEvento(req, res) {
+    try {
+      const evento_id = parseInt(req.params.evento_id, 10);
+      if (!Number.isFinite(evento_id)) {
+        return res.status(400).json({ message: "evento_id inválido" });
+      }
+
+      const result = await pool.query(
+        `
+        SELECT e.*
+        FROM equipos e
+        JOIN evento_equipos ee ON ee.equipo_id = e.id
+        WHERE ee.evento_id = $1
+        ORDER BY e.nombre
+      `,
+        [evento_id]
+      );
+
+      return res.json({ equipos: result.rows });
+    } catch (error) {
+      console.error("listarEquiposDeEvento:", error);
+      return res
+        .status(500)
+        .json({ message: "Error listando equipos del evento" });
+    }
+  },
+
+  // DELETE /eventos/:evento_id/equipos/:equipo_id
+  async quitarEquipoDeEvento(req, res) {
+    try {
+      const evento_id = parseInt(req.params.evento_id, 10);
+      const equipo_id = parseInt(req.params.equipo_id, 10);
+
+      if (!Number.isFinite(evento_id) || !Number.isFinite(equipo_id)) {
+        return res
+          .status(400)
+          .json({ message: "evento_id y equipo_id inválidos" });
+      }
+
+      await pool.query(
+        `DELETE FROM evento_equipos WHERE evento_id = $1 AND equipo_id = $2`,
+        [evento_id, equipo_id]
+      );
+
+      return res.json({ ok: true, message: "Equipo quitado del evento" });
+    } catch (error) {
+      console.error("quitarEquipoDeEvento:", error);
+      return res
+        .status(500)
+        .json({ message: "Error quitando equipo del evento" });
     }
   },
 };
 
-module.exports = EventoController;
+module.exports = eventoController;

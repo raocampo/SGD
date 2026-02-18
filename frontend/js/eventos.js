@@ -1,108 +1,139 @@
-// frontend/js/eventos.js
+// frontend/js/eventos.js  ✅ (EVENTOS/CATEGORÍAS)
 
 let campeonatoSeleccionado = null;
+let eventosCache = [];
+let vistaEventos = localStorage.getItem("sgd_vista_eventos") || "cards";
+vistaEventos = vistaEventos === "table" ? "table" : "cards";
+
+function escapeHtml(valor) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function actualizarBotonesVistaEventos() {
+  const btnCards = document.getElementById("btn-vista-eventos-cards");
+  const btnTable = document.getElementById("btn-vista-eventos-table");
+  if (btnCards) btnCards.classList.toggle("active", vistaEventos === "cards");
+  if (btnTable) btnTable.classList.toggle("active", vistaEventos === "table");
+}
+
+function cambiarVistaEventos(vista = "cards") {
+  vistaEventos = vista === "table" ? "table" : "cards";
+  localStorage.setItem("sgd_vista_eventos", vistaEventos);
+  actualizarBotonesVistaEventos();
+  renderListadoEventos();
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("eventos.html")) return;
+  actualizarBotonesVistaEventos();
 
-  wireUI();
-  await cargarCampeonatos();
-  await cargarEventos();
+  await cargarCampeonatosSelect();
+
+  // si vienes desde campeonatos.html?campeonato=1
+  const params = new URLSearchParams(window.location.search);
+  const cId = params.get("campeonato");
+  if (cId) {
+    campeonatoSeleccionado = parseInt(cId, 10);
+    const sel = document.getElementById("select-campeonato");
+    sel.value = String(campeonatoSeleccionado);
+    await cargarEventos();
+  }
 });
 
-function wireUI() {
-  const selCamp = document.getElementById("select-campeonato");
-  selCamp.onchange = async () => {
-    campeonatoSeleccionado = selCamp.value || null;
-    await cargarEventos();
-  };
+async function cargarCampeonatosSelect() {
+  const select = document.getElementById("select-campeonato");
+  select.innerHTML = `<option value="">— Selecciona un campeonato —</option>`;
 
-  const chk = document.getElementById("chk-multi-canchas");
-  chk.onchange = () => {
-    document.getElementById("canchas-panel").style.display = chk.checked
-      ? "block"
-      : "none";
-    if (chk.checked) renderCanchasInputs();
-  };
-
-  const num = document.getElementById("num-canchas");
-  num.oninput = () => renderCanchasInputs();
-
-  // nav toggle si tu core.js no lo hace
-  const toggle = document.getElementById("nav-toggle");
-  if (toggle) {
-    toggle.addEventListener("click", () => {
-      const nav = document.getElementById("main-nav");
-      nav.classList.toggle("open");
-    });
-  }
-}
-
-async function cargarCampeonatos() {
   try {
-    // si ya tienes CampeonatosAPI lo usamos, si no, cae al GET directo
-    let data;
-    if (window.CampeonatosAPI?.obtenerTodos) {
-      data = await CampeonatosAPI.obtenerTodos();
-    } else {
-      data = await ApiClient.get("/campeonatos");
-    }
+    const data = await CampeonatosAPI.obtenerTodos();
+    const lista = Array.isArray(data) ? data : (data.campeonatos || data.data || []);
 
-    const lista = data.campeonatos || data || [];
-    const select = document.getElementById("select-campeonato");
-
-    select.innerHTML = `<option value="">— Selecciona un campeonato —</option>`;
     lista.forEach((c) => {
       select.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
     });
+
+    select.onchange = async () => {
+      campeonatoSeleccionado = select.value ? parseInt(select.value, 10) : null;
+      eventosCache = [];
+      document.getElementById("lista-eventos").innerHTML = "";
+    };
   } catch (err) {
     console.error(err);
     mostrarNotificacion("Error cargando campeonatos", "error");
   }
 }
 
+// botón "Cargar Eventos"
 async function cargarEventos() {
   const cont = document.getElementById("lista-eventos");
   cont.innerHTML = "<p>Cargando eventos...</p>";
 
+  const select = document.getElementById("select-campeonato");
+  campeonatoSeleccionado = select.value ? parseInt(select.value, 10) : null;
+
+  if (!campeonatoSeleccionado) {
+    eventosCache = [];
+    cont.innerHTML = "";
+    mostrarNotificacion("Selecciona un campeonato", "warning");
+    return;
+  }
+
   try {
-    let url = "/eventos";
-    if (campeonatoSeleccionado) url = `/eventos/campeonato/${campeonatoSeleccionado}`;
-
-    const resp = await ApiClient.get(url);
-    const eventos = resp.eventos || resp || [];
-
-    if (!eventos.length) {
-      cont.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-calendar"></i>
-          <p>No hay eventos registrados.</p>
-        </div>`;
-      return;
-    }
-
-    cont.innerHTML = eventos.map(renderEventoCard).join("");
+    const resp = await EventosAPI.obtenerPorCampeonato(campeonatoSeleccionado);
+    const eventos = Array.isArray(resp) ? resp : (resp.eventos || resp.data || []);
+    eventosCache = eventos;
+    renderListadoEventos();
   } catch (err) {
     console.error(err);
-    mostrarNotificacion("Error cargando eventos", "error");
+    eventosCache = [];
     cont.innerHTML = "";
+    mostrarNotificacion("Error cargando eventos", "error");
   }
+}
+
+function renderListadoEventos() {
+  const cont = document.getElementById("lista-eventos");
+  if (!cont) return;
+
+  if (!eventosCache.length) {
+    cont.classList.remove("list-mode-table");
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-layer-group"></i>
+        <p>No hay eventos/categorías creadas en este campeonato.</p>
+      </div>`;
+    return;
+  }
+
+  if (vistaEventos === "table") {
+    cont.classList.add("list-mode-table");
+    cont.innerHTML = renderTablaEventos(eventosCache);
+    return;
+  }
+
+  cont.classList.remove("list-mode-table");
+  cont.innerHTML = eventosCache.map(renderEventoCard).join("");
 }
 
 function renderEventoCard(e) {
   return `
     <div class="campeonato-card">
       <div class="campeonato-header">
-        <h3>${e.nombre}</h3>
+        <h3>${escapeHtml(e.nombre || "Evento")}</h3>
       </div>
-
       <div class="campeonato-info">
-        <p><strong>Campeonato:</strong> ${e.campeonato_nombre || e.campeonato_id || "-"}</p>
-        <p><strong>Fecha:</strong> ${e.fecha_inicio || "-"} → ${e.fecha_fin || "-"}</p>
-        <p><strong>Estado:</strong> ${e.estado || "activo"}</p>
+        <p><strong>Modalidad:</strong> ${escapeHtml(e.modalidad || "-")}</p>
+        <p><strong>Fechas:</strong> ${escapeHtml(e.fecha_inicio || "-")} - ${escapeHtml(e.fecha_fin || "-")}</p>
       </div>
-
       <div class="campeonato-actions">
+        <button class="btn btn-primary" onclick="irAElegirEquipos(${e.id})">
+          <i class="fas fa-users"></i> Equipos
+        </button>
         <button class="btn btn-warning" onclick="editarEvento(${e.id})">
           <i class="fas fa-edit"></i> Editar
         </button>
@@ -114,148 +145,89 @@ function renderEventoCard(e) {
   `;
 }
 
-function renderCanchasInputs() {
-  const n = Math.max(1, parseInt(document.getElementById("num-canchas").value || "1"));
-  const cont = document.getElementById("lista-canchas");
+function renderTablaEventos(eventos) {
+  const filas = eventos
+    .map((e, index) => {
+      return `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(e.nombre || "—")}</td>
+          <td>${escapeHtml(e.modalidad || "-")}</td>
+          <td>${escapeHtml(e.fecha_inicio || "-")}</td>
+          <td>${escapeHtml(e.fecha_fin || "-")}</td>
+          <td class="list-table-actions">
+            <button class="btn btn-primary" onclick="irAElegirEquipos(${e.id})">
+              <i class="fas fa-users"></i> Equipos
+            </button>
+            <button class="btn btn-warning" onclick="editarEvento(${e.id})">
+              <i class="fas fa-edit"></i> Editar
+            </button>
+            <button class="btn btn-danger" onclick="eliminarEvento(${e.id})">
+              <i class="fas fa-trash"></i> Eliminar
+            </button>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
 
-  let html = "";
-  for (let i = 1; i <= n; i++) {
-    html += `
-      <div class="config-card" style="margin:0;">
-        <h4>Cancha ${i}</h4>
-        <div class="form-group">
-          <label>Nombre:</label>
-          <input type="text" class="cancha-nombre" placeholder="Cancha ${i}" />
-        </div>
-        <div class="form-group">
-          <label>Ubicación (opcional):</label>
-          <input type="text" class="cancha-ubicacion" placeholder="Ej: Barrio..., Estadio..." />
-        </div>
-      </div>
-    `;
-  }
-  cont.innerHTML = html;
+  return `
+    <div class="list-table-wrap">
+      <table class="list-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Evento / Categoría</th>
+            <th>Modalidad</th>
+            <th>Fecha inicio</th>
+            <th>Fecha fin</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+  `;
 }
 
-/**
- * Crear evento + canchas
- * Backend esperado:
- *  POST /eventos
- *  POST /canchas
- *  POST /eventos/:evento_id/canchas   (o /evento-canchas)
- *
- * Si tus rutas se llaman distinto, dime y lo ajusto.
- */
+function irAElegirEquipos(eventoId) {
+  // aquí enlazamos a una pantalla de equipos por evento
+  // (puede ser equipos.html si lo adaptas, o una nueva equipos_evento.html)
+  window.location.href = `equipos.html?campeonato=${campeonatoSeleccionado}&evento=${eventoId}`;
+}
+
 async function crearEvento() {
   if (!campeonatoSeleccionado) {
     mostrarNotificacion("Selecciona un campeonato", "warning");
     return;
   }
 
-  const nombre = (document.getElementById("txt-nombre").value || "").trim();
-  if (!nombre) {
-    mostrarNotificacion("Ingresa el nombre del evento (categoría)", "warning");
+  const nombre = document.getElementById("evt-nombre").value.trim();
+  const modalidad = document.getElementById("evt-modalidad").value;
+  const fecha_inicio = document.getElementById("evt-fecha-inicio").value;
+  const fecha_fin = document.getElementById("evt-fecha-fin").value;
+
+  if (!nombre || !fecha_inicio || !fecha_fin) {
+    mostrarNotificacion("Completa nombre + fechas", "warning");
     return;
   }
-
-  const organizador = (document.getElementById("txt-organizador").value || "").trim();
-
-  const fecha_inicio = document.getElementById("fecha-inicio").value;
-  const fecha_fin = document.getElementById("fecha-fin").value;
-  if (!fecha_inicio || !fecha_fin) {
-    mostrarNotificacion("Completa fecha inicio y fin", "warning");
-    return;
-  }
-  if (fecha_fin < fecha_inicio) {
-    mostrarNotificacion("La fecha fin no puede ser menor a la fecha inicio", "warning");
-    return;
-  }
-
-  const modalidad = document.getElementById("select-modalidad").value; // weekend | weekday | mixed
-
-  // horarios
-  const horarios = {
-    weekend: {
-      sat_start: document.getElementById("sat-start").value || "13:00",
-      sat_end: document.getElementById("sat-end").value || "18:00",
-      sun_start: document.getElementById("sun-start").value || "08:00",
-      sun_end: document.getElementById("sun-end").value || "17:00",
-    },
-    weekday: {
-      start: document.getElementById("wk-start").value || "19:00",
-      end: document.getElementById("wk-end").value || "22:00",
-    },
-  };
-
-  const usarCanchas = document.getElementById("chk-multi-canchas").checked;
 
   try {
-    // 1) Crear evento
-    const eventoPayload = {
-      campeonato_id: parseInt(campeonatoSeleccionado),
-      nombre,
-      organizador: organizador || null,
-      fecha_inicio,
-      fecha_fin,
-
-      // OJO: en tu DB aún no existe "modalidad".
-      // Igual lo mandamos para que el backend lo use al generar fixture.
-      modalidad,
-      horarios,
-    };
-
-    const respEvento = await ApiClient.post("/eventos", eventoPayload);
-    const evento = respEvento.evento || respEvento;
-    if (!evento?.id) throw new Error("No se recibió ID del evento");
-
-    // 2) Crear canchas + vincular
-    if (usarCanchas) {
-      const n = Math.max(1, parseInt(document.getElementById("num-canchas").value || "1"));
-
-      const nombres = Array.from(document.querySelectorAll(".cancha-nombre")).map((x) => (x.value || "").trim());
-      const ubicaciones = Array.from(document.querySelectorAll(".cancha-ubicacion")).map((x) => (x.value || "").trim());
-
-      const canchaIds = [];
-
-      for (let i = 0; i < n; i++) {
-        const cPayload = {
-          nombre: nombres[i] || `Cancha ${i + 1}`,
-          ubicacion: ubicaciones[i] || null,
-        };
-
-        const respCancha = await ApiClient.post("/canchas", cPayload);
-        const cancha = respCancha.cancha || respCancha;
-        if (cancha?.id) canchaIds.push(cancha.id);
-      }
-
-      // vincular evento_canchas
-      // Endpoint sugerido:
-      // POST /eventos/:evento_id/canchas  body: { cancha_ids: [..] }
-      await ApiClient.post(`/eventos/${evento.id}/canchas`, {
-        cancha_ids: canchaIds,
-      });
-    }
-
-    mostrarNotificacion("Evento creado correctamente", "success");
-
-    // limpiar campos
-    document.getElementById("txt-nombre").value = "";
-    document.getElementById("txt-organizador").value = "";
-    document.getElementById("chk-multi-canchas").checked = false;
-    document.getElementById("canchas-panel").style.display = "none";
-
+    await EventosAPI.crear({ campeonato_id: campeonatoSeleccionado, nombre, modalidad, fecha_inicio, fecha_fin });
+    mostrarNotificacion("Evento creado", "success");
+    document.getElementById("evt-nombre").value = "";
     await cargarEventos();
   } catch (err) {
     console.error(err);
-    mostrarNotificacion("Error creando evento", "error");
+    mostrarNotificacion(err.message || "Error creando evento", "error");
   }
 }
 
 async function eliminarEvento(id) {
-  if (!confirm("¿Seguro que quieres eliminar este evento?")) return;
+  if (!confirm("¿Eliminar este evento/categoría?")) return;
 
   try {
-    await ApiClient.delete(`/eventos/${id}`);
+    await EventosAPI.eliminar(id);
     mostrarNotificacion("Evento eliminado", "success");
     await cargarEventos();
   } catch (err) {
@@ -264,34 +236,19 @@ async function eliminarEvento(id) {
   }
 }
 
+// (opcional) editar rápido por prompt
 async function editarEvento(id) {
+  const nuevoNombre = prompt("Nuevo nombre del evento:", "");
+  if (!nuevoNombre) return;
+
   try {
-    const resp = await ApiClient.get(`/eventos/${id}`);
-    const e = resp.evento || resp;
-    if (!e) {
-      mostrarNotificacion("No se pudo cargar el evento", "error");
-      return;
-    }
-
-    const nuevoNombre = prompt("Nombre del evento:", e.nombre || "");
-    if (!nuevoNombre) return;
-
-    const nuevaInicio = prompt("Fecha inicio (YYYY-MM-DD):", e.fecha_inicio || "");
-    if (!nuevaInicio) return;
-
-    const nuevaFin = prompt("Fecha fin (YYYY-MM-DD):", e.fecha_fin || "");
-    if (!nuevaFin) return;
-
-    await ApiClient.put(`/eventos/${id}`, {
-      nombre: nuevoNombre,
-      fecha_inicio: nuevaInicio,
-      fecha_fin: nuevaFin,
-    });
-
+    await EventosAPI.actualizar(id, { nombre: nuevoNombre });
     mostrarNotificacion("Evento actualizado", "success");
     await cargarEventos();
   } catch (err) {
     console.error(err);
-    mostrarNotificacion("Error editando evento", "error");
+    mostrarNotificacion("Error actualizando evento", "error");
   }
 }
+
+window.cambiarVistaEventos = cambiarVistaEventos;

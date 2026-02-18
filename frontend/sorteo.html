@@ -11,27 +11,29 @@
     />
   </head>
 
-  <body>
-    <!-- Header -->
-    <header class="header">
-      <div class="container">
-        <h1>⚽ Sistema de Gestión Deportiva</h1>
+  <body class="app-layout page-sorteo">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">⚽ SGD</div>
+      <nav class="sidebar-nav">
+        <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+        <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+        <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+        <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+        <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+        <a class="nav-btn active" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+        <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+        <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+        <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+        <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+        <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+      </nav>
+    </aside>
 
-        <!-- Botón hamburguesa -->
-        <button class="nav-toggle" id="nav-toggle">
-          <i class="fas fa-bars"></i>
-        </button>
-
-        <nav class="nav" id="main-nav">
-          <a class="nav-btn" href="index.html">Inicio</a>
-          <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
-          <a class="nav-btn active" href="sorteo.html">Sorteo de Grupos</a>
-          <a class="nav-btn" href="gruposgen.html">Grupos</a>
-          <a class="nav-btn" href="partidos.html">Partidos</a>
-          <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
-        </nav>
-      </div>
-    </header>
+    <div class="main-wrapper">
+      <header class="top-bar">
+        <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+        <h1>🎡 Sorteo de Grupos</h1>
+      </header>
 
     <main class="main">
       <!-- Sección Sorteo con Ruleta -->
@@ -45,12 +47,14 @@
               <h3>Configuración del Sorteo</h3>
               <div class="form-group">
                 <label for="select-campeonato">Seleccionar Campeonato:</label>
-                <!--<select
-                  id="select-campeonato"
-                  onchange="cargarEquiposCampeonato()"
-                >-->
                 <select id="select-campeonato">
                   <option value="">-- Selecciona un campeonato --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="select-evento">Seleccionar Categoría (Evento):</label>
+                <select id="select-evento">
+                  <option value="">-- Selecciona una categoría --</option>
                 </select>
               </div>
               <div class="form-group">
@@ -74,6 +78,24 @@
               <button class="btn btn-success" onclick="iniciarSorteo()">
                 <i class="fas fa-play"></i> Iniciar Sorteo
               </button>
+              <button class="btn btn-danger" onclick="reiniciarSorteo()">
+                <i class="fas fa-rotate-left"></i> Reiniciar Sorteo
+              </button>
+              <button
+                id="btn-ver-grupos"
+                class="btn btn-secondary"
+                onclick="verGruposSorteo()"
+                style="display: none"
+              >
+                <i class="fas fa-layer-group"></i> Ver grupos
+              </button>
+            </div>
+          </div>
+
+          <div id="sorteo-finalizado-banner" class="card sorteo-finalizado-banner">
+            <div>
+              <strong>✅ Sorteo completado.</strong>
+              <span>Los grupos ya están conformados. Presiona "Reiniciar Sorteo" para comenzar uno nuevo.</span>
             </div>
           </div>
 
@@ -98,14 +120,6 @@
                   <i class="fas fa-arrow-right"></i> Asignar a Grupo
                 </button>
               </div>
-
-              <button
-                id="btn-ver-grupos"
-                class="btn btn-secondary"
-                onclick="verGruposSorteo()"
-              >
-                👀 Ver grupos
-              </button>
             </div>
 
             <!-- Panel de Grupos (para modo auto, o si quieres mostrar vista rápida) -->
@@ -125,38 +139,12 @@
         </div>
       </section>
     </main>
+    </div>
+
+    <div class="nav-overlay" id="nav-overlay"></div>
 
     <script src="js/core.js"></script>
     <script src="js/api.js"></script>
     <script src="js/sorteo.js"></script>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", async function () {
-        const select = document.getElementById("select-campeonato");
-        if (!select) return;
-
-        try {
-          const data = await CampeonatosAPI.obtenerTodos();
-          const lista = data.campeonatos || [];
-          select.innerHTML =
-            '<option value="">-- Selecciona un campeonato --</option>';
-          lista.forEach((camp) => {
-            const opt = document.createElement("option");
-            opt.value = camp.id;
-            opt.textContent = camp.nombre;
-            select.appendChild(opt);
-          });
-          console.log(
-            `✅ ${lista.length} campeonatos cargados en el select de sorteo`
-          );
-        } catch (err) {
-          console.error("Error cargando campeonatos en sorteo:", err);
-          mostrarNotificacion(
-            "Error cargando campeonatos para sorteo",
-            "error"
-          );
-        }
-      });
-    </script>
   </body>
 </html>

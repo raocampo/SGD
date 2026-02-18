@@ -10,23 +10,29 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 </head>
 
-<body>
-  <header class="header">
-    <div class="container">
-      <h1>⚽ Sistema de Gestión Deportiva</h1>
-      <button class="nav-toggle" id="nav-toggle">
-        <i class="fas fa-bars"></i>
-      </button>
-      <nav class="nav" id="main-nav">
-        <a class="nav-btn" href="index.html">Inicio</a>
-        <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
-        <a class="nav-btn" href="sorteo.html">Sorteo</a>
-        <a class="nav-btn active" href="gruposgen.html">Grupos</a>
-        <a class="nav-btn" href="partidos.html">Partidos</a>
-        <a class="nav-btn" href="tablas.html">Tablas</a>
-      </nav>
-    </div>
-  </header>
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ SGD</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+      <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+      <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+      <a class="nav-btn active" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+      <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+      <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+      <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>📋 Grupos del Campeonato</h1>
+    </header>
 
   <main class="main">
     <section class="section active">
@@ -90,6 +96,9 @@
       </div>
     </section>
   </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>

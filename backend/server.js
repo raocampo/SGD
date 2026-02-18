@@ -45,7 +45,8 @@ const partidoRoutes = require("./routes/partidoRoutes");
 const tablaRoutes = require("./routes/tablaRoutes");
 const eventoRoutes = require("./routes/eventoRoutes");
 const canchaRoutes = require("./routes/canchaRoutes");
-
+const eliminatoriaRoutes = require("./routes/eliminatoriaRoutes");
+const finanzaRoutes = require("./routes/finanzaRoutes");
 
 app.use("/api/campeonatos", campeonatoRoutes);
 app.use("/api/equipos", equipoRoutes);
@@ -56,6 +57,8 @@ app.use("/api/partidos", partidoRoutes);
 app.use("/api/tablas", tablaRoutes);
 app.use("/api/eventos", eventoRoutes);
 app.use("/api/canchas", canchaRoutes);
+app.use("/api/eliminatorias", eliminatoriaRoutes);
+app.use("/api/finanzas", finanzaRoutes);
 
 // =====================
 // Frontend (opcional)
@@ -81,13 +84,17 @@ app.get("/", (req, res) => {
       "/salud",
       "/testDb",
       "/tablas",
+      "/api/eventos",
       "/api/campeonatos",
+      "/api/canchas",
       "/api/equipos",
       "/api/jugadores",
       "/api/grupos",
       "/api/sorteo",
       "/api/partidos",
       "/api/tablas",
+      "/api/eliminatorias",
+      "/api/finanzas",
       "/uploads",
     ],
   });
@@ -146,13 +153,16 @@ app.listen(PORT, () => {
   console.log(`⚽ Servidor corriendo en http://localhost:${PORT}`);
   console.log(`🔗 Endpoints disponibles:`);
   console.log(`   http://localhost:${PORT}/`);
+  console.log(`   http://localhost:${PORT}/api/eventos`);
   console.log(`   http://localhost:${PORT}/api/campeonatos`);
+  console.log(`   http://localhost:${PORT}/api/canchas`);
   console.log(`   http://localhost:${PORT}/api/equipos`);
   console.log(`   http://localhost:${PORT}/api/jugadores`);
   console.log(`   http://localhost:${PORT}/api/grupos`);
   console.log(`   http://localhost:${PORT}/api/sorteo`);
   console.log(`   http://localhost:${PORT}/api/partidos`);
   console.log(`   http://localhost:${PORT}/api/tablas`);
+  console.log(`   http://localhost:${PORT}/api/finanzas`);
   console.log(`   http://localhost:${PORT}/tablas`);
   console.log(`📂 Uploads: http://localhost:${PORT}/uploads`);
 });

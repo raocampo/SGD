@@ -1,6 +1,11 @@
 // frontend/js/gruposgen.js
-const API_BASE = "http://localhost:5000/api";
 const BACKEND_BASE = "http://localhost:5000"; // para logos si vienen como /uploads/...
+
+let contextoGrupos = {
+  campeonatoId: null,
+  eventoId: null,
+  eventoNombre: "",
+};
 
 function getQueryParam(name) {
   const params = new URLSearchParams(window.location.search);
@@ -15,28 +20,82 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await cargarCampeonatosEnSelect(select);
 
-  // Auto-seleccionar campeonato si viene por URL ?campeonato=ID
-  const campeonatoParam = getQueryParam("campeonato");
-  if (campeonatoParam) {
-    select.value = campeonatoParam;
-    await cargarYMostrarGrupos(campeonatoParam);
+  const campeonatoParam = Number.parseInt(getQueryParam("campeonato") || "", 10);
+  const eventoParam = Number.parseInt(getQueryParam("evento") || "", 10);
+
+  if (Number.isFinite(eventoParam) && eventoParam > 0) {
+    await aplicarContextoEventoDesdeURL(eventoParam, select, campeonatoParam);
+  } else if (Number.isFinite(campeonatoParam) && campeonatoParam > 0) {
+    select.value = String(campeonatoParam);
+    contextoGrupos = {
+      campeonatoId: campeonatoParam,
+      eventoId: null,
+      eventoNombre: "",
+    };
+    await cargarYMostrarGrupos({ campeonatoId: campeonatoParam, eventoId: null });
   }
 
   select.addEventListener("change", async () => {
     const id = select.value;
     if (!id) return;
-    await cargarYMostrarGrupos(id);
+
+    const campeonatoId = Number.parseInt(id, 10);
+    contextoGrupos = {
+      campeonatoId,
+      eventoId: null,
+      eventoNombre: "",
+    };
+
+    await cargarYMostrarGrupos({ campeonatoId, eventoId: null });
   });
 
   btnRecargar.addEventListener("click", async () => {
-    const id = select.value;
-    if (!id) {
+    const campeonatoId = Number.parseInt(select.value || "", 10);
+    const eventoId = getEventoIdActual();
+
+    if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
       mostrarNotificacion("Selecciona un campeonato", "warning");
       return;
     }
-    await cargarYMostrarGrupos(id);
+
+    await cargarYMostrarGrupos({ campeonatoId, eventoId });
   });
 });
+
+async function aplicarContextoEventoDesdeURL(
+  eventoId,
+  selectCampeonato,
+  campeonatoIdFallback = null
+) {
+  let campeonatoId = Number.isFinite(campeonatoIdFallback)
+    ? campeonatoIdFallback
+    : null;
+  let eventoNombre = "";
+
+  try {
+    const data = await ApiClient.get(`/eventos/${eventoId}`);
+    const evento = data.evento || data || {};
+    campeonatoId = Number.parseInt(evento.campeonato_id, 10) || campeonatoId;
+    eventoNombre = evento.nombre || "";
+  } catch (e) {
+    console.warn("No se pudo cargar detalle del evento para contexto:", e);
+  }
+
+  if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
+    mostrarNotificacion("No se pudo resolver el campeonato del evento", "warning");
+    return;
+  }
+
+  selectCampeonato.value = String(campeonatoId);
+
+  contextoGrupos = {
+    campeonatoId,
+    eventoId,
+    eventoNombre,
+  };
+
+  await cargarYMostrarGrupos({ campeonatoId, eventoId, eventoNombre });
+}
 
 async function cargarCampeonatosEnSelect(select) {
   try {
@@ -53,7 +112,7 @@ async function cargarCampeonatosEnSelect(select) {
   }
 }
 
-async function cargarCabeceraCampeonato(campeonatoId) {
+async function cargarCabeceraCampeonato(campeonatoId, eventoNombre = "") {
   try {
     const data = await ApiClient.get(`/campeonatos/${campeonatoId}`);
     const camp = data.campeonato || data;
@@ -72,9 +131,13 @@ async function cargarCabeceraCampeonato(campeonatoId) {
       const tipo = (camp.tipo_futbol || "").replaceAll("_", " ").toUpperCase();
       const fi = formatearFecha(camp.fecha_inicio);
       const ff = formatearFecha(camp.fecha_fin);
-      detalleEl.textContent = `${tipo}${
+      const detalleBase = `${tipo}${
         fi || ff ? ` • ${fi}${ff ? " - " + ff : ""}` : ""
       }`;
+      const detalleEvento = eventoNombre
+        ? ` • CATEGORÍA: ${String(eventoNombre).toUpperCase()}`
+        : "";
+      detalleEl.textContent = `${detalleBase}${detalleEvento}`;
     }
     const orgLogoEl = document.getElementById("poster-org-logo");
 
@@ -139,20 +202,36 @@ function aplicarLayoutPorCantidadGrupos(cant) {
   else posterGrupos.classList.add("cols-3"); // 5 o 6 grupos -> 3 columnas se ve mejor
 }
 
-async function cargarYMostrarGrupos(campeonatoId) {
+async function cargarYMostrarGrupos(ctx) {
   const posterGrupos = document.getElementById("poster-grupos");
   if (!posterGrupos) return;
 
   posterGrupos.innerHTML = "<p style='padding:12px'>Cargando grupos...</p>";
+  const campeonatoId =
+    typeof ctx === "object"
+      ? Number.parseInt(ctx.campeonatoId, 10)
+      : Number.parseInt(ctx, 10);
+  const eventoId =
+    typeof ctx === "object" ? Number.parseInt(ctx.eventoId, 10) : null;
+  const eventoNombre =
+    typeof ctx === "object" ? String(ctx.eventoNombre || "") : "";
 
-  // ✅ llenar cabecera arriba
-  await cargarCabeceraCampeonato(campeonatoId);
+  if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
+    posterGrupos.innerHTML =
+      "<p style='padding:12px'>Selecciona un campeonato válido.</p>";
+    return;
+  }
+
+  // llenar cabecera arriba
+  await cargarCabeceraCampeonato(campeonatoId, eventoNombre);
 
   try {
-    const res = await fetch(
-      `${API_BASE}/grupos/campeonato/${campeonatoId}/completo`
-    );
-    const data = await res.json();
+    const endpoint =
+      Number.isFinite(eventoId) && eventoId > 0
+        ? `/grupos/evento/${eventoId}/completo`
+        : `/grupos/campeonato/${campeonatoId}/completo`;
+
+    const data = await ApiClient.get(endpoint);
 
     const grupos = data.grupos || [];
     aplicarLayoutPorCantidadGrupos(grupos.length);
@@ -161,7 +240,11 @@ async function cargarYMostrarGrupos(campeonatoId) {
       posterGrupos.innerHTML = `
         <div class="empty-state">
           <i class="fas fa-users-slash"></i>
-          <p>No hay grupos creados para este campeonato.</p>
+          <p>${
+            Number.isFinite(eventoId) && eventoId > 0
+              ? "No hay grupos creados para esta categoría."
+              : "No hay grupos creados para este campeonato."
+          }</p>
         </div>`;
       return;
     }
@@ -289,7 +372,10 @@ async function exportarGruposPNG() {
 
   const a = document.createElement("a");
   a.href = dataUrl;
-  a.download = `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}.png`;
+  const baseName = getEventoIdActual()
+    ? `grupos_evento_${getEventoIdActual()}`
+    : `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}`;
+  a.download = `${baseName}.png`;
   a.click();
 }
 
@@ -327,7 +413,10 @@ async function exportarPDF() {
     pdf.addImage(imgData, "PNG", (pageWidth - newW) / 2, y, newW, newH);
   }
 
-  pdf.save(`grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}.pdf`);
+  const baseName = getEventoIdActual()
+    ? `grupos_evento_${getEventoIdActual()}`
+    : `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}`;
+  pdf.save(`${baseName}.pdf`);
 }
 
 async function compartirRedes() {
@@ -348,7 +437,9 @@ async function compartirRedes() {
 
   const file = new File(
     [blob],
-    `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}.png`,
+    getEventoIdActual()
+      ? `grupos_evento_${getEventoIdActual()}.png`
+      : `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}.png`,
     {
       type: "image/png",
     }
@@ -384,9 +475,18 @@ async function compartirRedes() {
 }
 
 function getCampeonatoIdActual() {
+  if (contextoGrupos.campeonatoId) return String(contextoGrupos.campeonatoId);
+
   const select = document.getElementById("select-campeonato-grupos");
   if (select && select.value) return select.value;
 
   const params = new URLSearchParams(window.location.search);
   return params.get("campeonato");
+}
+
+function getEventoIdActual() {
+  if (contextoGrupos.eventoId) return String(contextoGrupos.eventoId);
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get("evento");
 }

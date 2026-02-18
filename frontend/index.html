@@ -1,70 +1,42 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistema de Gestión Deportiva - Inicio</title>
+  <title>Portal de Torneos - Sistema de Gestión Deportiva</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/portal.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 </head>
-
 <body>
-  <header class="header">
+  <header class="portal-header">
     <div class="container">
-      <h1>⚽ Sistema de Gestión Deportiva</h1>
-      <button class="nav-toggle" id="nav-toggle">
-        <i class="fas fa-bars"></i>
-      </button>
-      <nav class="nav" id="main-nav">
-        <a class="nav-btn active" href="index.html">Inicio</a>
-        <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
-        <a class="nav-btn" href="sorteo.html">Sorteo de Grupos</a>
-        <a class="nav-btn" href="gruposgen.html">Grupos</a>
-        <a class="nav-btn" href="partidos.html">Partidos</a>
-        <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
+      <h1>⚽ Portal de Torneos</h1>
+      <p>Información pública de campeonatos y competencias</p>
+      <nav class="portal-nav">
+        <a href="admin.html"><i class="fas fa-cog"></i> Acceso Administración</a>
       </nav>
     </div>
   </header>
 
   <main class="main">
-    <section id="inicio" class="section active">
-      <div class="container">
-        <div class="welcome-card">
-          <h2>¡Bienvenido al Sistema de Gestión Deportiva!</h2>
-          <p>
-            Gestiona tus campeonatos, equipos, jugadores y mucho más de forma profesional.
-          </p>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <i class="fas fa-trophy"></i>
-              <h3>Campeonatos</h3>
-              <span id="stats-campeonatos">0</span>
-            </div>
-            <div class="stat-card">
-              <i class="fas fa-users"></i>
-              <h3>Equipos</h3>
-              <span id="stats-equipos">0</span>
-            </div>
-            <div class="stat-card">
-              <i class="fas fa-futbol"></i>
-              <h3>Jugadores</h3>
-              <span id="stats-jugadores">0</span>
-            </div>
-            <div class="stat-card">
-              <i class="fas fa-table"></i>
-              <h3>Partidos</h3>
-              <span id="stats-partidos">0</span>
-            </div>
-          </div>
+    <div class="container">
+      <section id="portal-inicio" class="portal-section active">
+        <h2>Torneos y campeonatos</h2>
+        <div id="portal-lista-campeonatos" class="grid-container">
+          <p class="empty-msg">Cargando...</p>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <section id="portal-detalle" class="portal-section">
+        <button class="btn btn-secondary" onclick="portalVolver()"><i class="fas fa-arrow-left"></i> Volver</button>
+        <div id="portal-detalle-contenido"></div>
+      </section>
+    </div>
   </main>
 
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/portal.js"></script>
 </body>
-
 </html>

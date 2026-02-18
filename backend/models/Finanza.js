@@ -1,0 +1,412 @@
+const pool = require("../config/database");
+
+const TIPOS_MOVIMIENTO = new Set(["cargo", "abono"]);
+const CONCEPTOS_MOVIMIENTO = new Set([
+  "inscripcion",
+  "arbitraje",
+  "multa",
+  "pago",
+  "ajuste",
+  "otro",
+]);
+const ESTADOS_MOVIMIENTO = new Set([
+  "pendiente",
+  "parcial",
+  "pagado",
+  "vencido",
+  "anulado",
+]);
+
+class Finanza {
+  static _esquemaAsegurado = false;
+
+  static async asegurarEsquema(client = pool) {
+    if (this._esquemaAsegurado && client === pool) return;
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS finanzas_movimientos (
+        id SERIAL PRIMARY KEY,
+        campeonato_id INTEGER NOT NULL REFERENCES campeonatos(id) ON DELETE CASCADE,
+        evento_id INTEGER REFERENCES eventos(id) ON DELETE SET NULL,
+        equipo_id INTEGER NOT NULL REFERENCES equipos(id) ON DELETE CASCADE,
+        partido_id INTEGER REFERENCES partidos(id) ON DELETE SET NULL,
+        tipo_movimiento VARCHAR(10) NOT NULL CHECK (tipo_movimiento IN ('cargo', 'abono')),
+        concepto VARCHAR(20) NOT NULL CHECK (concepto IN ('inscripcion','arbitraje','multa','pago','ajuste','otro')),
+        descripcion TEXT,
+        monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+        estado VARCHAR(20) NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','parcial','pagado','vencido','anulado')),
+        fecha_movimiento DATE NOT NULL DEFAULT CURRENT_DATE,
+        fecha_vencimiento DATE,
+        metodo_pago VARCHAR(30),
+        referencia VARCHAR(120),
+        origen VARCHAR(20) NOT NULL DEFAULT 'manual',
+        origen_clave VARCHAR(120) UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_finanzas_movimientos_campeonato ON finanzas_movimientos(campeonato_id)`
+    );
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_finanzas_movimientos_evento ON finanzas_movimientos(evento_id)`
+    );
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_finanzas_movimientos_equipo ON finanzas_movimientos(equipo_id)`
+    );
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_finanzas_movimientos_estado ON finanzas_movimientos(estado)`
+    );
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_finanzas_movimientos_fecha ON finanzas_movimientos(fecha_movimiento)`
+    );
+
+    if (client === pool) this._esquemaAsegurado = true;
+  }
+
+  static normalizarTipo(tipo) {
+    const valor = String(tipo || "").trim().toLowerCase();
+    if (!TIPOS_MOVIMIENTO.has(valor)) {
+      throw new Error("tipo_movimiento invalido. Use: cargo o abono");
+    }
+    return valor;
+  }
+
+  static normalizarConcepto(concepto) {
+    const valor = String(concepto || "").trim().toLowerCase();
+    if (!CONCEPTOS_MOVIMIENTO.has(valor)) {
+      throw new Error(
+        "concepto invalido. Use: inscripcion, arbitraje, multa, pago, ajuste u otro"
+      );
+    }
+    return valor;
+  }
+
+  static normalizarEstado(estado, tipo) {
+    if (estado === undefined || estado === null || estado === "") {
+      return tipo === "abono" ? "pagado" : "pendiente";
+    }
+    const valor = String(estado).trim().toLowerCase();
+    if (!ESTADOS_MOVIMIENTO.has(valor)) {
+      throw new Error(
+        "estado invalido. Use: pendiente, parcial, pagado, vencido o anulado"
+      );
+    }
+    return valor;
+  }
+
+  static parseNumeroPositivo(valor, campo) {
+    const num = Number.parseFloat(valor);
+    if (!Number.isFinite(num) || num <= 0) {
+      throw new Error(`${campo} debe ser un numero mayor que cero`);
+    }
+    return Number(num.toFixed(2));
+  }
+
+  static parseEntero(valor, campo) {
+    const num = Number.parseInt(valor, 10);
+    if (!Number.isFinite(num) || num <= 0) {
+      throw new Error(`${campo} invalido`);
+    }
+    return num;
+  }
+
+  static parseFecha(valor, campo) {
+    if (!valor) return null;
+    const s = String(valor).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      throw new Error(`${campo} debe tener formato YYYY-MM-DD`);
+    }
+    return s;
+  }
+
+  static async resolverCampeonatoIdPorEquipo(equipo_id, client = pool) {
+    const r = await client.query(
+      "SELECT campeonato_id FROM equipos WHERE id = $1 LIMIT 1",
+      [equipo_id]
+    );
+    if (!r.rows.length) throw new Error("Equipo no encontrado");
+    return Number(r.rows[0].campeonato_id);
+  }
+
+  static async crearMovimiento(data = {}, client = pool) {
+    await this.asegurarEsquema(client);
+
+    const equipo_id = this.parseEntero(data.equipo_id, "equipo_id");
+    const tipo_movimiento = this.normalizarTipo(data.tipo_movimiento);
+    const concepto = this.normalizarConcepto(data.concepto);
+    const monto = this.parseNumeroPositivo(data.monto, "monto");
+
+    const campeonato_id = data.campeonato_id
+      ? this.parseEntero(data.campeonato_id, "campeonato_id")
+      : await this.resolverCampeonatoIdPorEquipo(equipo_id, client);
+
+    const evento_id =
+      data.evento_id === undefined || data.evento_id === null || data.evento_id === ""
+        ? null
+        : this.parseEntero(data.evento_id, "evento_id");
+    const partido_id =
+      data.partido_id === undefined || data.partido_id === null || data.partido_id === ""
+        ? null
+        : this.parseEntero(data.partido_id, "partido_id");
+
+    const estado = this.normalizarEstado(data.estado, tipo_movimiento);
+    const fecha_movimiento = this.parseFecha(data.fecha_movimiento, "fecha_movimiento");
+    const fecha_vencimiento = this.parseFecha(data.fecha_vencimiento, "fecha_vencimiento");
+    const descripcion = (data.descripcion || "").toString().trim() || null;
+    const metodo_pago = (data.metodo_pago || "").toString().trim() || null;
+    const referencia = (data.referencia || "").toString().trim() || null;
+    const origen = ((data.origen || "manual").toString().trim() || "manual").slice(0, 20);
+    const origen_clave = (data.origen_clave || "").toString().trim() || null;
+
+    if (evento_id) {
+      const ev = await client.query(
+        "SELECT id FROM eventos WHERE id = $1 AND campeonato_id = $2 LIMIT 1",
+        [evento_id, campeonato_id]
+      );
+      if (!ev.rows.length) {
+        throw new Error("evento_id no pertenece al campeonato indicado");
+      }
+    }
+
+    const q = `
+      INSERT INTO finanzas_movimientos (
+        campeonato_id,
+        evento_id,
+        equipo_id,
+        partido_id,
+        tipo_movimiento,
+        concepto,
+        descripcion,
+        monto,
+        estado,
+        fecha_movimiento,
+        fecha_vencimiento,
+        metodo_pago,
+        referencia,
+        origen,
+        origen_clave
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,
+        COALESCE($10::date, CURRENT_DATE),
+        $11,$12,$13,$14,$15
+      )
+      RETURNING *
+    `;
+    const values = [
+      campeonato_id,
+      evento_id,
+      equipo_id,
+      partido_id,
+      tipo_movimiento,
+      concepto,
+      descripcion,
+      monto,
+      estado,
+      fecha_movimiento,
+      fecha_vencimiento,
+      metodo_pago,
+      referencia,
+      origen,
+      origen_clave,
+    ];
+
+    const r = await client.query(q, values);
+    return r.rows[0];
+  }
+
+  static async listarMovimientos(filtros = {}) {
+    await this.asegurarEsquema();
+
+    const where = [];
+    const values = [];
+    let i = 1;
+
+    const addEq = (campo, valor) => {
+      if (valor === undefined || valor === null || valor === "") return;
+      where.push(`fm.${campo} = $${i++}`);
+      values.push(valor);
+    };
+
+    if (filtros.campeonato_id) {
+      addEq("campeonato_id", this.parseEntero(filtros.campeonato_id, "campeonato_id"));
+    }
+    if (filtros.evento_id) {
+      addEq("evento_id", this.parseEntero(filtros.evento_id, "evento_id"));
+    }
+    if (filtros.equipo_id) {
+      addEq("equipo_id", this.parseEntero(filtros.equipo_id, "equipo_id"));
+    }
+    addEq("tipo_movimiento", filtros.tipo_movimiento);
+    addEq("concepto", filtros.concepto);
+    addEq("estado", filtros.estado);
+
+    if (filtros.desde) {
+      where.push(`fm.fecha_movimiento >= $${i++}`);
+      values.push(this.parseFecha(filtros.desde, "desde"));
+    }
+    if (filtros.hasta) {
+      where.push(`fm.fecha_movimiento <= $${i++}`);
+      values.push(this.parseFecha(filtros.hasta, "hasta"));
+    }
+
+    const limitRaw = Number.parseInt(filtros.limit ?? filtros.limite ?? 200, 10);
+    const limit = Number.isFinite(limitRaw)
+      ? Math.max(1, Math.min(1000, limitRaw))
+      : 200;
+
+    const q = `
+      SELECT fm.*,
+             e.nombre AS equipo_nombre,
+             c.nombre AS campeonato_nombre,
+             ev.nombre AS evento_nombre
+      FROM finanzas_movimientos fm
+      JOIN equipos e ON e.id = fm.equipo_id
+      JOIN campeonatos c ON c.id = fm.campeonato_id
+      LEFT JOIN eventos ev ON ev.id = fm.evento_id
+      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+      ORDER BY fm.fecha_movimiento DESC, fm.id DESC
+      LIMIT ${limit}
+    `;
+
+    const r = await pool.query(q, values);
+    return r.rows;
+  }
+
+  static async obtenerEstadoCuentaEquipo(equipo_id, filtros = {}) {
+    await this.asegurarEsquema();
+
+    const eqId = this.parseEntero(equipo_id, "equipo_id");
+    const eqR = await pool.query(
+      `
+      SELECT e.id, e.nombre, e.campeonato_id, c.nombre AS campeonato_nombre
+      FROM equipos e
+      JOIN campeonatos c ON c.id = e.campeonato_id
+      WHERE e.id = $1
+      LIMIT 1
+    `,
+      [eqId]
+    );
+    if (!eqR.rows.length) throw new Error("Equipo no encontrado");
+
+    const where = ["equipo_id = $1"];
+    const whereFm = ["fm.equipo_id = $1"];
+    const values = [eqId];
+    let i = 2;
+
+    if (filtros.campeonato_id) {
+      where.push(`campeonato_id = $${i++}`);
+      whereFm.push(`fm.campeonato_id = $${i - 1}`);
+      values.push(this.parseEntero(filtros.campeonato_id, "campeonato_id"));
+    }
+    if (filtros.evento_id) {
+      where.push(`evento_id = $${i++}`);
+      whereFm.push(`fm.evento_id = $${i - 1}`);
+      values.push(this.parseEntero(filtros.evento_id, "evento_id"));
+    }
+
+    const whereSql = `WHERE ${where.join(" AND ")}`;
+
+    const resumenQ = `
+      SELECT
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS total_cargos,
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'abono' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS total_abonos,
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' AND estado IN ('pendiente','parcial','vencido') THEN monto ELSE 0 END), 0)::numeric(12,2) AS cargos_pendientes,
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' AND estado IN ('pendiente','parcial','vencido') AND fecha_vencimiento IS NOT NULL AND fecha_vencimiento < CURRENT_DATE THEN monto ELSE 0 END), 0)::numeric(12,2) AS cargos_vencidos
+      FROM finanzas_movimientos
+      ${whereSql}
+    `;
+    const resumenR = await pool.query(resumenQ, values);
+    const resumenRaw = resumenR.rows[0] || {};
+
+    const movimientosQ = `
+      SELECT fm.*,
+             ev.nombre AS evento_nombre
+      FROM finanzas_movimientos fm
+      LEFT JOIN eventos ev ON ev.id = fm.evento_id
+      WHERE ${whereFm.join(" AND ")}
+      ORDER BY fm.fecha_movimiento DESC, fm.id DESC
+      LIMIT 250
+    `;
+    const movimientosR = await pool.query(movimientosQ, values);
+
+    const totalCargos = Number(resumenRaw.total_cargos || 0);
+    const totalAbonos = Number(resumenRaw.total_abonos || 0);
+    const saldo = Number((totalCargos - totalAbonos).toFixed(2));
+
+    return {
+      equipo: eqR.rows[0],
+      resumen: {
+        total_cargos: totalCargos,
+        total_abonos: totalAbonos,
+        saldo,
+        cargos_pendientes: Number(resumenRaw.cargos_pendientes || 0),
+        cargos_vencidos: Number(resumenRaw.cargos_vencidos || 0),
+        estado: saldo > 0 ? "deudor" : "al_dia",
+      },
+      movimientos: movimientosR.rows,
+    };
+  }
+
+  static async obtenerMorosidad(filtros = {}) {
+    await this.asegurarEsquema();
+
+    const where = [];
+    const values = [];
+    let i = 1;
+
+    if (filtros.campeonato_id) {
+      where.push(`fm.campeonato_id = $${i++}`);
+      values.push(this.parseEntero(filtros.campeonato_id, "campeonato_id"));
+    }
+    if (filtros.evento_id) {
+      where.push(`fm.evento_id = $${i++}`);
+      values.push(this.parseEntero(filtros.evento_id, "evento_id"));
+    }
+
+    const baseWhere = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const incluirSaldados =
+      String(filtros.incluir_saldados || "").toLowerCase() === "true";
+
+    const q = `
+      SELECT
+        e.id AS equipo_id,
+        e.nombre AS equipo_nombre,
+        c.id AS campeonato_id,
+        c.nombre AS campeonato_nombre,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS total_cargos,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS total_abonos,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.estado IN ('pendiente','parcial','vencido') AND fm.fecha_vencimiento IS NOT NULL AND fm.fecha_vencimiento < CURRENT_DATE THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS saldo_vencido
+      FROM finanzas_movimientos fm
+      JOIN equipos e ON e.id = fm.equipo_id
+      JOIN campeonatos c ON c.id = fm.campeonato_id
+      ${baseWhere}
+      GROUP BY e.id, e.nombre, c.id, c.nombre
+      ORDER BY (COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)
+        - COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)) DESC,
+        e.nombre ASC
+    `;
+    const r = await pool.query(q, values);
+
+    const filas = r.rows.map((row) => {
+      const total_cargos = Number(row.total_cargos || 0);
+      const total_abonos = Number(row.total_abonos || 0);
+      const saldo = Number((total_cargos - total_abonos).toFixed(2));
+      const saldo_vencido = Number(row.saldo_vencido || 0);
+      return {
+        ...row,
+        total_cargos,
+        total_abonos,
+        saldo,
+        saldo_vencido,
+        estado_morosidad: saldo > 0 ? "moroso" : "al_dia",
+      };
+    });
+
+    return incluirSaldados ? filas : filas.filter((f) => f.saldo > 0);
+  }
+}
+
+module.exports = Finanza;

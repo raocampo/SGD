@@ -1,11 +1,39 @@
-const {Pool} = require('pg');
+const { Pool } = require("pg");
+const path = require("path");
+const dotenv = require("dotenv");
+
+// 1) Carga preferente desde backend/.env
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+// 2) Carga opcional desde .env del cwd (sin sobreescribir lo ya cargado)
+dotenv.config({ path: path.resolve(process.cwd(), ".env"), override: false });
+
+const dbUser = String(process.env.DB_USER || "postgres").trim();
+const dbHost = String(process.env.DB_HOST || "localhost").trim();
+const dbName = String(process.env.DB_NAME || "gestionDeportiva").trim();
+const dbPasswordRaw = process.env.DB_PASSWORD;
+const dbPortRaw = Number.parseInt(process.env.DB_PORT || "5432", 10);
+const dbPort = Number.isFinite(dbPortRaw) ? dbPortRaw : 5432;
+
+if (
+  dbPasswordRaw === undefined ||
+  dbPasswordRaw === null ||
+  String(dbPasswordRaw).trim() === ""
+) {
+  console.warn(
+    "⚠️ DB_PASSWORD no definido en .env. Configura backend/.env para evitar errores SCRAM."
+  );
+}
 
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'gestionDeportiva',
-  password: 'R@o78965412',
-  port: 5432,
+  user: dbUser,
+  host: dbHost,
+  database: dbName,
+  // Debe llegar como string para SCRAM-SHA-256.
+  password:
+    dbPasswordRaw === undefined || dbPasswordRaw === null
+      ? undefined
+      : String(dbPasswordRaw),
+  port: dbPort,
 });
 
 /*pool.connect((err, client, release) => {
@@ -18,10 +46,10 @@ const pool = new Pool({
   }
 });*/
 
-pool.on('error', (err, client) => {
-    console.error('❌ Error inesperado en la base de datos:', err);
+pool.on("error", (err) => {
+  console.error("❌ Error inesperado en la base de datos:", err);
 });
 
-console.log('📊 Configuración de base de datos cargada');
+console.log("📊 Configuración de base de datos cargada");
 
 module.exports = pool;

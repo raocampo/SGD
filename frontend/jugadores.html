@@ -7,28 +7,66 @@
   <link rel="stylesheet" href="css/style.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 </head>
-<body>
-  <header class="header">
-    <div class="container">
-      <h1>⚽ Sistema de Gestión Deportiva</h1>
-      <nav class="nav">
-        <a class="nav-btn" href="index.html">Inicio</a>
-        <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
-        <a class="nav-btn" href="sorteo.html">Sorteo de Grupos</a>
-        <a class="nav-btn" href="gruposgen.html">Grupos</a>
-        <a class="nav-btn" href="partidos.html">Partidos</a>
-        <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
-      </nav>
-    </div>
-  </header>
+<body class="app-layout page-jugadores">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ SGD</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+      <a class="nav-btn active" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+      <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+      <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+      <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+      <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+      <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>👥 Gestión de Jugadores</h1>
+    </header>
 
   <main class="main">
     <section class="section active">
       <div class="container">
         <h2>👥 Gestión de Jugadores</h2>
 
+        <div id="bloque-contexto-jugadores" class="config-card" style="display:none;">
+          <h3>Seleccionar Contexto</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="select-campeonato-jugador">Campeonato:</label>
+              <select id="select-campeonato-jugador">
+                <option value="">— Selecciona un campeonato —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="select-evento-jugador">Categoría (evento):</label>
+              <select id="select-evento-jugador">
+                <option value="">— Todas las categorías —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="select-equipo-jugador">Equipo:</label>
+              <select id="select-equipo-jugador">
+                <option value="">— Selecciona un equipo —</option>
+              </select>
+            </div>
+          </div>
+          <div class="partidos-busqueda-actions">
+            <button class="btn btn-primary" onclick="cargarJugadoresDesdeSeleccion()">
+              <i class="fas fa-search"></i> Cargar jugadores
+            </button>
+          </div>
+        </div>
+
         <!-- Info del equipo -->
-        <div id="info-equipo" class="welcome-card" style="text-align:left; margin-bottom:1.5rem;">
+        <div id="info-equipo" class="welcome-card" style="text-align:left; margin-bottom:1.5rem; display:none;">
           <p>Cargando datos del equipo...</p>
         </div>
 
@@ -37,18 +75,153 @@
             <i class="fas fa-plus"></i> Nuevo Jugador
           </button>
 
-          <button class="btn btn-secondary" onclick="volverAEquipos()">
+          <button class="btn btn-secondary" id="btn-volver-equipos" onclick="volverAEquipos()">
             <i class="fas fa-arrow-left"></i> Volver a Equipos
           </button>
         </div>
 
-        <!-- Lista de jugadores -->
-        <div id="lista-jugadores" class="grid-container">
-          <!-- Se llena desde jugadores.js -->
+        <input
+          type="file"
+          id="import-jugadores-file"
+          accept=".xlsx,.xls,.csv"
+          style="display:none;"
+        />
+        <input
+          type="file"
+          id="import-docs-zip-file"
+          accept=".zip,application/zip,application/x-zip-compressed"
+          style="display:none;"
+        />
+
+        <div class="jugadores-main-tabs">
+          <button
+            id="btn-tab-jugadores-gestion"
+            class="jugadores-main-tab active"
+            type="button"
+            onclick="cambiarPestanaJugadores('tab-jugadores-gestion')"
+          >
+            Jugadores
+          </button>
+          <button
+            id="btn-tab-jugadores-reportes"
+            class="jugadores-main-tab"
+            type="button"
+            onclick="cambiarPestanaJugadores('tab-jugadores-reportes')"
+          >
+            Reportes e Importaciones
+          </button>
+        </div>
+
+        <div id="tab-jugadores-reportes" class="jugadores-tab-panel">
+        <div id="bloque-reportes-jugadores" class="config-card">
+          <h3><i class="fas fa-chart-bar"></i> Reportes e Importaciones</h3>
+
+          <div id="reportes-jugadores-hint" class="form-hint">
+            Selecciona campeonato, categoría y equipo para habilitar las acciones.
+          </div>
+
+          <div class="reportes-jugadores-grid">
+            <div class="reportes-jugadores-col">
+              <h4>Importaciones</h4>
+              <div class="reportes-actions">
+                <button class="btn btn-outline" id="btn-descargar-plantilla-jugadores" type="button" onclick="descargarPlantillaJugadores()">
+                  <i class="fas fa-file-arrow-down"></i> Plantilla Jugadores
+                </button>
+                <button class="btn btn-success" id="btn-importar-jugadores-file" type="button" onclick="abrirImportadorJugadores()">
+                  <i class="fas fa-file-import"></i> Importar Jugadores
+                </button>
+                <button class="btn btn-warning" id="btn-importar-docs-zip" type="button" onclick="abrirImportadorDocsZip()">
+                  <i class="fas fa-file-zipper"></i> Importar Docs ZIP
+                </button>
+              </div>
+            </div>
+
+            <div class="reportes-jugadores-col">
+              <h4>Reportes</h4>
+              <div class="form-group">
+                <label for="reporte-jugadores-tipo">Tipo de reporte:</label>
+                <select id="reporte-jugadores-tipo">
+                  <option value="nomina">Nómina de jugadores</option>
+                  <option value="carnets">Carnets de jugadores</option>
+                </select>
+              </div>
+              <div class="reportes-actions">
+                <button class="btn btn-outline" id="btn-ver-reporte-jugadores" type="button" onclick="verReporteJugadores()">
+                  <i class="fas fa-eye"></i> Ver Reporte
+                </button>
+                <button class="btn btn-warning" id="btn-imprimir-reporte-jugadores" type="button" onclick="imprimirReporteJugadores()">
+                  <i class="fas fa-print"></i> Imprimir
+                </button>
+                <button class="btn btn-danger" id="btn-pdf-reporte-jugadores" type="button" onclick="exportarReporteJugadoresPDF()">
+                  <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="bloque-nomina-jugadores" class="config-card" style="display:none;">
+          <div class="fixture-accordion-actions">
+            <button class="btn btn-warning" type="button" onclick="imprimirNominaJugadores()">
+              <i class="fas fa-print"></i> Imprimir
+            </button>
+            <button class="btn btn-danger" type="button" onclick="exportarNominaJugadoresPDF()">
+              <i class="fas fa-file-pdf"></i> Exportar PDF
+            </button>
+          </div>
+          <div id="nomina-jugadores-export" class="jugadores-nomina-board">
+            <p class="empty-state">Carga un equipo con jugadores para generar la nómina.</p>
+          </div>
+        </div>
+
+        <div id="bloque-carnets-jugadores" class="config-card" style="display:none;">
+          <div class="fixture-accordion-actions">
+            <button class="btn btn-warning" type="button" onclick="imprimirCarnetsJugadores()">
+              <i class="fas fa-print"></i> Imprimir Carnets
+            </button>
+            <button class="btn btn-danger" type="button" onclick="exportarCarnetsPDF()">
+              <i class="fas fa-file-pdf"></i> Exportar Carnets PDF
+            </button>
+          </div>
+          <div id="carnets-jugadores-export" class="carnets-board">
+            <p class="empty-state">Activa la generación de carnets en el campeonato para visualizar esta plantilla.</p>
+          </div>
+        </div>
+        </div>
+
+        <div id="tab-jugadores-gestion" class="jugadores-tab-panel active">
+          <div class="action-bar" style="margin-bottom:1rem;">
+            <div class="list-view-toggle" id="jugadores-view-toggle" aria-label="Cambiar vista de jugadores">
+              <button
+                type="button"
+                id="btn-vista-jugadores-cards"
+                class="list-view-btn active"
+                onclick="cambiarVistaJugadores('cards')"
+              >
+                <i class="fas fa-th-large"></i> Tarjetas
+              </button>
+              <button
+                type="button"
+                id="btn-vista-jugadores-table"
+                class="list-view-btn"
+                onclick="cambiarVistaJugadores('table')"
+              >
+                <i class="fas fa-table"></i> Tabla
+              </button>
+            </div>
+          </div>
+
+          <!-- Lista de jugadores -->
+          <div id="lista-jugadores" class="grid-container">
+            <!-- Se llena desde jugadores.js -->
+          </div>
         </div>
       </div>
     </section>
   </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
 
   <!-- Modal Jugador -->
   <div id="modal-jugador" class="modal">
@@ -73,6 +246,20 @@
         <div class="form-group">
           <label for="jugador-ced">Cédula de Identidad:</label>
           <input type="text" id="jugador-ced" />
+        </div>
+
+        <div class="form-group">
+          <label for="jugador-foto-cedula">Foto de cédula (opcional):</label>
+          <input type="file" id="jugador-foto-cedula" accept="image/*" />
+          <small id="hint-foto-cedula" class="form-hint">Opcional para este campeonato.</small>
+          <div id="preview-foto-cedula-actual" class="form-hint"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="jugador-foto-carnet">Foto carnet (opcional):</label>
+          <input type="file" id="jugador-foto-carnet" accept="image/*" />
+          <small id="hint-foto-carnet" class="form-hint">Opcional para este campeonato.</small>
+          <div id="preview-foto-carnet-actual" class="form-hint"></div>
         </div>
 
         <div class="form-group">
@@ -112,6 +299,10 @@
   </div>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/jugadores.js"></script>

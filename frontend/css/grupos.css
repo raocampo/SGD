@@ -57,10 +57,9 @@ body {
 
 /* ===== POSTER EXPORT (GRUPOS) ===== */
 .poster{
-  width: min(120rem, 100%);
-  /*min-height: 120rem;*/
+  width: min(108rem, 100%);
   margin: 0 auto;
-  padding: 4rem;
+  padding: clamp(1.25rem, 2.4vw, 2.8rem);
   background: radial-gradient(circle at top, #0b2b3a 0%, #041018 60%, #000 100%);
   color: #fff;
   box-sizing: border-box;
@@ -70,54 +69,53 @@ body {
 }
 
 .poster-titulo{
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: clamp(1rem, 2vw, 2.25rem);
+  margin-bottom: clamp(1rem, 2vw, 2rem);
 }
 
 .poster-header{
-  /*display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-bottom: 2rem;*/
   display:flex;
-  flex-direction: column;     /* ✅ apila logo + textos */
+  flex-direction: column;
   align-items:center;
   justify-content:center;
-  gap: 1.2rem;
-  margin-bottom: 2rem;
+  gap: .75rem;
+  width: 100%;
   text-align: center;
 }
 
 .poster-title{
-  font-size: 4rem;
+  font-size: clamp(2rem, 4.3vw, 4.1rem);
   font-weight: 900;
   text-align: center;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   line-height: 1.05;
+  margin: 0 auto;
+  max-width: 18ch;
 }
 
 .poster-subtitle{
-  font-size: 2rem;
+  font-size: clamp(1.2rem, 2.2vw, 2.2rem);
   text-align: center;
   opacity: .9;
-  margin-bottom: 8px;
+  margin-bottom: .25rem;
   text-transform: uppercase;
 }
 
 .poster-detail{
-  font-size: 1rem;
+  font-size: clamp(.9rem, 1.1vw, 1.1rem);
   opacity: .85;
   text-align: center;
 }
 
 .poster-org-logo{
-  /*width: 10rem;
-  border-radius: 5rem;
-  margin: 0 auto;*/
-  width: 10rem;
-  height: 10rem;
+  width: clamp(5.5rem, 8vw, 10rem);
+  height: clamp(5.5rem, 8vw, 10rem);
   border-radius: 999px;
-  object-fit: cover;               /* ✅ se ve pro */
+  object-fit: cover;
   background: rgba(0,0,0,.25);
   border: 2px solid rgba(255,255,255,.15);
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
@@ -126,9 +124,8 @@ body {
 
 .poster-grids{
   display:grid;
-  /*grid-template-columns: repeat(4, 1fr);*/
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: clamp(.8rem, 1.2vw, 1.4rem);
 }
 
 .poster-col{
@@ -139,50 +136,51 @@ body {
 }
 
 .col-header{
-  padding: 14px 16px;
+  padding: .75rem .9rem;
   font-weight: 900;
-  font-size: 22px;
+  font-size: clamp(1rem, 1.1vw, 1.3rem);
   background: rgba(255,255,255,.08);
   text-align:center;
-  letter-spacing: 1px;
+  letter-spacing: .5px;
 }
 
 .col-body{
-  padding: 14px;
+  padding: .8rem .85rem;
 }
 
 .team-row{
   display:flex;
   align-items:center;
-  gap: 12px;
-  padding: 10px 0;
+  gap: .55rem;
+  padding: .5rem 0;
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
 
 .team-row:last-child{ border-bottom: none; }
 
 .team-logo{
-  width: 44px;
-  height: 44px;
+  width: clamp(28px, 2.2vw, 44px);
+  height: clamp(28px, 2.2vw, 44px);
   object-fit: contain;
   background: rgba(255,255,255,.06);
-  border-radius: 10px;
-  padding: 6px;
+  border-radius: 8px;
+  padding: 4px;
   box-sizing:border-box;
 }
 
 .team-logo.placeholder{
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: clamp(28px, 2.2vw, 44px);
+  height: clamp(28px, 2.2vw, 44px);
+  border-radius: 8px;
   background: rgba(255,255,255,.10);
 }
 
 .team-name{
   font-weight: 700;
-  font-size: 16px;
+  font-size: clamp(.84rem, .86vw, 1rem);
   line-height: 1.1;
   text-transform: uppercase;
+  word-break: break-word;
 }
 
 @media print {
@@ -210,6 +208,11 @@ body {
   #poster-grupos.cols-3 { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 640px) {
+  .poster-titulo{
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
   #poster-grupos.cols-2,
   #poster-grupos.cols-3,
   #poster-grupos.cols-4 { grid-template-columns: 1fr; }

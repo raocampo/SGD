@@ -1,0 +1,1246 @@
+// frontend/js/planilla.js
+
+let partidoId = null;
+let eventoId = null;
+let dataPlanilla = null;
+let equiposPartido = {
+  local: { id: null, nombre: "Local" },
+  visitante: { id: null, nombre: "Visitante" },
+};
+let documentosRequeridos = {
+  foto_cedula: false,
+  foto_carnet: false,
+};
+let eventosPlanillaCache = [];
+let partidosSelectorCache = [];
+let jornadaSelectorActual = "";
+
+function qp(nombre) {
+  const params = new URLSearchParams(window.location.search);
+  return params.get(nombre);
+}
+
+function aEntero(valor, fallback = 0) {
+  const n = Number.parseInt(valor, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function aDecimal(valor, fallback = 0) {
+  const n = Number.parseFloat(valor);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizarFechaISO(valor) {
+  if (!valor) return "";
+  const str = String(valor);
+  if (str.includes("T")) return str.split("T")[0];
+  return str.slice(0, 10);
+}
+
+function formatearFecha(valor) {
+  const iso = normalizarFechaISO(valor);
+  if (!iso) return "Por definir";
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
+
+function formatearMoneda(valor) {
+  const n = aDecimal(valor, 0);
+  return new Intl.NumberFormat("es-EC", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+  }).format(n);
+}
+
+function escapeHtml(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function obtenerTipoFutbolPlanilla() {
+  const tipo = String(dataPlanilla?.partido?.tipo_futbol || "").toLowerCase();
+  if (tipo.includes("11")) return "futbol_11";
+  if (tipo.includes("sala")) return "futbol_sala";
+  if (tipo.includes("5")) return "futbol_5";
+  if (tipo.includes("7")) return "futbol_7";
+  return "futbol_7";
+}
+
+function obtenerConfigExportacionPlanilla(tipoFutbol) {
+  const esFutbol11 = String(tipoFutbol || "").includes("11");
+
+  if (esFutbol11) {
+    return {
+      sheetName: "PLANILLAJUEGO FUTBOL 11",
+      jugadores: { inicio: 16, fin: 41 },
+      meta: {
+        fecha: "D6",
+        cancha: "N7",
+        ciudad: "E8",
+        equipoLocal: "E14",
+        equipoVisitante: "N14",
+        resultadoLocal: "G7",
+        resultadoVisitante: "P7",
+      },
+      tarjetasResumen: {
+        amarillasRow: 47,
+        rojasRow: 48,
+        colLocal: "G",
+        colVisitante: "P",
+      },
+      observaciones: {
+        rowInicio: 51,
+        colLocal: "B",
+        colVisitante: "K",
+      },
+      pagos: {
+        arbitrajeRow: 57,
+        tarjetasRojasRow: 58,
+        tarjetasAmarillasRow: 59,
+        inscripcionRow: 60,
+        colLocal: "E",
+        colVisitante: "N",
+      },
+    };
+  }
+
+  return {
+    sheetName: "PLANILLAJUEGO FUTBOL 7, 5, SALA",
+    jugadores: { inicio: 16, fin: 30 },
+    meta: {
+      fecha: "D6",
+      cancha: "N7",
+      ciudad: "E8",
+      equipoLocal: "E14",
+      equipoVisitante: "N14",
+      resultadoLocal: "G7",
+      resultadoVisitante: "P7",
+    },
+    tarjetasResumen: {
+      amarillasRow: 36,
+      rojasRow: 37,
+      colLocal: "G",
+      colVisitante: "P",
+    },
+    observaciones: {
+      rowInicio: 40,
+      colLocal: "B",
+      colVisitante: "K",
+    },
+    pagos: {
+      arbitrajeRow: 46,
+      tarjetasRojasRow: 47,
+      tarjetasAmarillasRow: 48,
+      inscripcionRow: 49,
+      colLocal: "E",
+      colVisitante: "N",
+    },
+  };
+}
+
+function setCellValue(sheet, cellRef, value) {
+  if (!sheet || !cellRef) return;
+  const cell = sheet[cellRef] || {};
+
+  if (value === null || value === undefined || value === "") {
+    cell.t = "s";
+    cell.v = "";
+    cell.w = undefined;
+    sheet[cellRef] = cell;
+    return;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    cell.t = "n";
+    cell.v = value;
+  } else {
+    cell.t = "s";
+    cell.v = String(value);
+  }
+
+  cell.w = undefined;
+  sheet[cellRef] = cell;
+}
+
+function limpiarRangoFilas(sheet, filaInicio, filaFin, columnas) {
+  for (let fila = filaInicio; fila <= filaFin; fila += 1) {
+    columnas.forEach((col) => setCellValue(sheet, `${col}${fila}`, ""));
+  }
+}
+
+function sumarEnMapa(map, key, value = 1) {
+  const actual = map.get(key) || 0;
+  map.set(key, actual + value);
+}
+
+function construirIndicesEventos(payload) {
+  const golesPorJugador = new Map();
+  const amarillasPorJugador = new Map();
+  const rojasPorJugador = new Map();
+
+  let totalAmarillasLocal = 0;
+  let totalRojasLocal = 0;
+  let totalAmarillasVisitante = 0;
+  let totalRojasVisitante = 0;
+
+  const jugadoresPorId = new Map();
+  [...(dataPlanilla?.plantel_local || []), ...(dataPlanilla?.plantel_visitante || [])].forEach((j) => {
+    jugadoresPorId.set(Number(j.id), j);
+  });
+
+  (payload.goles || []).forEach((g) => {
+    const jugadorId = Number(g.jugador_id);
+    if (!Number.isFinite(jugadorId)) return;
+    const goles = aEntero(g.goles, 0);
+    if (goles <= 0) return;
+    sumarEnMapa(golesPorJugador, jugadorId, goles);
+  });
+
+  (payload.tarjetas || []).forEach((t) => {
+    const jugadorId = Number(t.jugador_id);
+    const jugador = jugadoresPorId.get(jugadorId);
+    const equipoId = Number(t.equipo_id) || Number(jugador?.equipo_id);
+    const tipo = String(t.tipo_tarjeta || "").toLowerCase();
+
+    if (tipo === "amarilla") {
+      if (Number.isFinite(jugadorId)) sumarEnMapa(amarillasPorJugador, jugadorId, 1);
+      if (equipoId === Number(equiposPartido.local.id)) totalAmarillasLocal += 1;
+      if (equipoId === Number(equiposPartido.visitante.id)) totalAmarillasVisitante += 1;
+    } else if (tipo === "roja") {
+      if (Number.isFinite(jugadorId)) sumarEnMapa(rojasPorJugador, jugadorId, 1);
+      if (equipoId === Number(equiposPartido.local.id)) totalRojasLocal += 1;
+      if (equipoId === Number(equiposPartido.visitante.id)) totalRojasVisitante += 1;
+    }
+  });
+
+  return {
+    golesPorJugador,
+    amarillasPorJugador,
+    rojasPorJugador,
+    totalAmarillasLocal,
+    totalRojasLocal,
+    totalAmarillasVisitante,
+    totalRojasVisitante,
+  };
+}
+
+function llenarPlantelExcel(sheet, cfg, jugadores, stats) {
+  const maxFilas = cfg.jugadores.fin - cfg.jugadores.inicio + 1;
+  const lista = (jugadores || []).slice(0, maxFilas);
+
+  limpiarRangoFilas(sheet, cfg.jugadores.inicio, cfg.jugadores.fin, [
+    cfg.colNumero,
+    cfg.colNombre,
+    cfg.colGol,
+    cfg.colAmarilla,
+    cfg.colRoja,
+  ]);
+
+  lista.forEach((j, index) => {
+    const fila = cfg.jugadores.inicio + index;
+    const jugadorId = Number(j.id);
+
+    const numero = j.numero_camiseta || index + 1;
+    const nombre = `${j.apellido || ""} ${j.nombre || ""}`.trim();
+    const goles = stats.golesPorJugador.get(jugadorId) || "";
+    const amarillas = stats.amarillasPorJugador.get(jugadorId) || "";
+    const rojas = stats.rojasPorJugador.get(jugadorId) || "";
+
+    setCellValue(sheet, `${cfg.colNumero}${fila}`, numero);
+    setCellValue(sheet, `${cfg.colNombre}${fila}`, nombre);
+    setCellValue(sheet, `${cfg.colGol}${fila}`, goles);
+    setCellValue(sheet, `${cfg.colAmarilla}${fila}`, amarillas);
+    setCellValue(sheet, `${cfg.colRoja}${fila}`, rojas);
+  });
+}
+
+function llenarHojaListaJugadores(wb, partido, plantelLocal = []) {
+  const sheet = wb.Sheets["LISTAJUGADORES"];
+  if (!sheet) return;
+
+  const categoria = partido.evento_nombre || partido.campeonato_nombre || "Sin categoria";
+  const directorTecnico = partido.equipo_local_director_tecnico || "";
+
+  setCellValue(sheet, "E6", partido.equipo_local_nombre || "");
+  setCellValue(sheet, "E7", categoria);
+  setCellValue(sheet, "F36", directorTecnico);
+
+  for (let fila = 10; fila <= 29; fila += 1) {
+    setCellValue(sheet, `C${fila}`, "");
+    setCellValue(sheet, `D${fila}`, "");
+    setCellValue(sheet, `F${fila}`, "");
+    setCellValue(sheet, `G${fila}`, "");
+  }
+
+  plantelLocal.slice(0, 20).forEach((j, index) => {
+    const fila = 10 + index;
+    setCellValue(sheet, `C${fila}`, j.numero_camiseta || index + 1);
+    setCellValue(sheet, `D${fila}`, j.apellido || "");
+    setCellValue(sheet, `F${fila}`, j.nombre || "");
+    setCellValue(sheet, `G${fila}`, j.cedidentidad || "");
+  });
+}
+
+function nombreJugador(j) {
+  return `${j?.nombre || ""} ${j?.apellido || ""}`.trim();
+}
+
+function obtenerJugadoresEquipo(equipoId) {
+  if (!dataPlanilla) return [];
+  if (Number(equipoId) === Number(equiposPartido.local.id)) {
+    return dataPlanilla.plantel_local || [];
+  }
+  if (Number(equipoId) === Number(equiposPartido.visitante.id)) {
+    return dataPlanilla.plantel_visitante || [];
+  }
+  return [];
+}
+
+function buscarJugadorPorId(jugadorId) {
+  const todos = [
+    ...(dataPlanilla?.plantel_local || []),
+    ...(dataPlanilla?.plantel_visitante || []),
+  ];
+  return todos.find((j) => Number(j.id) === Number(jugadorId)) || null;
+}
+
+function renderEncabezado() {
+  const cont = document.getElementById("planilla-encabezado");
+  if (!cont || !dataPlanilla?.partido) return;
+
+  const p = dataPlanilla.partido;
+  const fecha = formatearFecha(p.fecha_partido);
+  const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
+  const grupo = p.letra_grupo ? `Grupo ${p.letra_grupo}` : "Sin grupo";
+
+  const reqCed = documentosRequeridos.foto_cedula ? "Cédula: requerida" : "Cédula: opcional";
+  const reqCar = documentosRequeridos.foto_carnet ? "Carnet: requerido" : "Carnet: opcional";
+
+  cont.innerHTML = `
+    <h3>${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre}</h3>
+    <p><strong>Partido:</strong> #${p.id} • <strong>${grupo}</strong> • Jornada ${p.jornada || "-"}</p>
+    <p><strong>Fecha:</strong> ${fecha} • <strong>Hora:</strong> ${hora} • <strong>Cancha:</strong> ${p.cancha || "Por definir"}</p>
+    <p><strong>Requisitos documentos:</strong> ${reqCed} • ${reqCar}</p>
+  `;
+
+  const ttlLocal = document.getElementById("titulo-plantel-local");
+  const ttlVisit = document.getElementById("titulo-plantel-visitante");
+  if (ttlLocal) ttlLocal.textContent = p.equipo_local_nombre || "Local";
+  if (ttlVisit) ttlVisit.textContent = p.equipo_visitante_nombre || "Visitante";
+}
+
+function renderPlantel(idContenedor, jugadores) {
+  const cont = document.getElementById(idContenedor);
+  if (!cont) return;
+
+  if (!jugadores?.length) {
+    cont.innerHTML = "<p class='form-hint'>No hay jugadores registrados en este equipo.</p>";
+    return;
+  }
+
+  cont.innerHTML = jugadores
+    .map((j) => {
+      const docs = [];
+      if (documentosRequeridos.foto_cedula) {
+        docs.push(j.foto_cedula_url ? "Cédula OK" : "Cédula pendiente");
+      }
+      if (documentosRequeridos.foto_carnet) {
+        docs.push(j.foto_carnet_url ? "Carnet OK" : "Carnet pendiente");
+      }
+      const docsTxt = docs.length ? ` • ${docs.join(" • ")}` : "";
+
+      return `
+        <div class="planilla-plantel-item">
+          <strong>#${j.numero_camiseta || "-"}</strong>
+          <span>${nombreJugador(j)}</span>
+          <small>${j.posicion || "-"}${docsTxt}</small>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function cargarCamposBase() {
+  if (!dataPlanilla?.partido) return;
+
+  const p = dataPlanilla.partido;
+  const plan = dataPlanilla.planilla || {};
+
+  document.getElementById("resultado-local").value = aEntero(p.resultado_local, 0);
+  document.getElementById("resultado-visitante").value = aEntero(p.resultado_visitante, 0);
+  document.getElementById("estado-partido").value = p.estado || "finalizado";
+
+  document.getElementById("pago-arbitraje").value = aDecimal(plan.pago_arbitraje, 0);
+  document.getElementById("pago-local").value = aDecimal(plan.pago_local, 0);
+  document.getElementById("pago-visitante").value = aDecimal(plan.pago_visitante, 0);
+  document.getElementById("observaciones-planilla").value = plan.observaciones || "";
+}
+
+function opcionesEquiposHtml(selectedEquipoId) {
+  const localSelected = Number(selectedEquipoId) === Number(equiposPartido.local.id) ? "selected" : "";
+  const visitSelected = Number(selectedEquipoId) === Number(equiposPartido.visitante.id) ? "selected" : "";
+
+  return `
+    <option value="${equiposPartido.local.id}" ${localSelected}>${equiposPartido.local.nombre}</option>
+    <option value="${equiposPartido.visitante.id}" ${visitSelected}>${equiposPartido.visitante.nombre}</option>
+  `;
+}
+
+function poblarSelectJugadores(selectJugador, equipoId, selectedJugadorId = null) {
+  const jugadores = obtenerJugadoresEquipo(equipoId);
+  selectJugador.innerHTML = '<option value="">- Selecciona jugador -</option>';
+
+  jugadores.forEach((j) => {
+    const selected = Number(selectedJugadorId) === Number(j.id) ? "selected" : "";
+    const label = `#${j.numero_camiseta || "-"} ${nombreJugador(j)}`;
+    selectJugador.innerHTML += `<option value="${j.id}" ${selected}>${label}</option>`;
+  });
+}
+
+function agregarFilaGol(item = null) {
+  const lista = document.getElementById("lista-goles");
+  if (!lista) return;
+
+  const equipoId = Number(item?.equipo_id || item?.equipoId || equiposPartido.local.id);
+  const jugadorId = Number(item?.jugador_id || "") || null;
+
+  const row = document.createElement("div");
+  row.className = "planilla-row planilla-row-gol";
+
+  row.innerHTML = `
+    <div class="form-group">
+      <label>Equipo</label>
+      <select class="row-equipo">${opcionesEquiposHtml(equipoId)}</select>
+    </div>
+    <div class="form-group">
+      <label>Jugador</label>
+      <select class="row-jugador"></select>
+    </div>
+    <div class="form-group">
+      <label>Goles</label>
+      <input class="row-goles" type="number" min="1" value="${aEntero(item?.goles, 1)}" />
+    </div>
+    <div class="form-group">
+      <label>Tipo</label>
+      <select class="row-tipo-gol">
+        <option value="campo" ${String(item?.tipo_gol || "campo") === "campo" ? "selected" : ""}>Campo</option>
+        <option value="penal" ${String(item?.tipo_gol || "") === "penal" ? "selected" : ""}>Penal</option>
+        <option value="autogol" ${String(item?.tipo_gol || "") === "autogol" ? "selected" : ""}>Autogol</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Minuto</label>
+      <input class="row-minuto" type="number" min="1" max="200" value="${item?.minuto || ""}" />
+    </div>
+    <div class="planilla-row-actions">
+      <button type="button" class="btn btn-danger btn-xs row-remove"><i class="fas fa-trash"></i></button>
+    </div>
+  `;
+
+  const selectEquipo = row.querySelector(".row-equipo");
+  const selectJugador = row.querySelector(".row-jugador");
+
+  function syncPlayers() {
+    poblarSelectJugadores(selectJugador, Number(selectEquipo.value), jugadorId);
+  }
+
+  selectEquipo.addEventListener("change", () => {
+    poblarSelectJugadores(selectJugador, Number(selectEquipo.value));
+    actualizarVistaPreviaPlanilla(true);
+  });
+
+  row.querySelector(".row-remove").addEventListener("click", () => {
+    row.remove();
+    actualizarVistaPreviaPlanilla(true);
+  });
+
+  syncPlayers();
+  lista.appendChild(row);
+  actualizarVistaPreviaPlanilla(true);
+}
+
+function agregarFilaTarjeta(item = null) {
+  const lista = document.getElementById("lista-tarjetas");
+  if (!lista) return;
+
+  const equipoId = Number(item?.equipo_id || item?.equipoId || equiposPartido.local.id);
+  const jugadorId = Number(item?.jugador_id || "") || null;
+  const tipo = String(item?.tipo_tarjeta || "amarilla").toLowerCase();
+
+  const row = document.createElement("div");
+  row.className = "planilla-row planilla-row-tarjeta";
+
+  row.innerHTML = `
+    <div class="form-group">
+      <label>Equipo</label>
+      <select class="row-equipo">${opcionesEquiposHtml(equipoId)}</select>
+    </div>
+    <div class="form-group">
+      <label>Jugador</label>
+      <select class="row-jugador"></select>
+    </div>
+    <div class="form-group">
+      <label>Tarjeta</label>
+      <select class="row-tipo-tarjeta">
+        <option value="amarilla" ${tipo === "amarilla" ? "selected" : ""}>Amarilla</option>
+        <option value="roja" ${tipo === "roja" ? "selected" : ""}>Roja</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Minuto</label>
+      <input class="row-minuto" type="number" min="1" max="200" value="${item?.minuto || ""}" />
+    </div>
+    <div class="form-group">
+      <label>Observación</label>
+      <input class="row-observacion" type="text" value="${item?.observacion || ""}" />
+    </div>
+    <div class="planilla-row-actions">
+      <button type="button" class="btn btn-danger btn-xs row-remove"><i class="fas fa-trash"></i></button>
+    </div>
+  `;
+
+  const selectEquipo = row.querySelector(".row-equipo");
+  const selectJugador = row.querySelector(".row-jugador");
+
+  function syncPlayers() {
+    poblarSelectJugadores(selectJugador, Number(selectEquipo.value), jugadorId);
+  }
+
+  selectEquipo.addEventListener("change", () => {
+    poblarSelectJugadores(selectJugador, Number(selectEquipo.value));
+    actualizarVistaPreviaPlanilla(true);
+  });
+
+  row.querySelector(".row-remove").addEventListener("click", () => {
+    row.remove();
+    actualizarVistaPreviaPlanilla(true);
+  });
+
+  syncPlayers();
+  lista.appendChild(row);
+  actualizarVistaPreviaPlanilla(true);
+}
+
+function renderFilasEventos() {
+  const listaGoles = document.getElementById("lista-goles");
+  const listaTarjetas = document.getElementById("lista-tarjetas");
+  if (!listaGoles || !listaTarjetas) return;
+
+  listaGoles.innerHTML = "";
+  listaTarjetas.innerHTML = "";
+
+  const goles = Array.isArray(dataPlanilla?.goleadores) ? dataPlanilla.goleadores : [];
+  const tarjetas = Array.isArray(dataPlanilla?.tarjetas) ? dataPlanilla.tarjetas : [];
+
+  if (!goles.length) agregarFilaGol();
+  else {
+    goles.forEach((g) => {
+      const jugador = buscarJugadorPorId(g.jugador_id);
+      agregarFilaGol({
+        equipo_id: g.equipo_id || jugador?.equipo_id || equiposPartido.local.id,
+        jugador_id: g.jugador_id,
+        goles: g.goles,
+        tipo_gol: g.tipo_gol,
+        minuto: g.minuto,
+      });
+    });
+  }
+
+  if (!tarjetas.length) agregarFilaTarjeta();
+  else {
+    tarjetas.forEach((t) => {
+      const jugador = buscarJugadorPorId(t.jugador_id);
+      agregarFilaTarjeta({
+        equipo_id: t.equipo_id || jugador?.equipo_id || equiposPartido.local.id,
+        jugador_id: t.jugador_id,
+        tipo_tarjeta: t.tipo_tarjeta,
+        minuto: t.minuto,
+        observacion: t.observacion,
+      });
+    });
+  }
+
+  actualizarVistaPreviaPlanilla(true);
+}
+
+function actualizarVisibilidadContenidoPlanilla(mostrar) {
+  const encabezado = document.getElementById("planilla-encabezado");
+  const form = document.getElementById("form-planilla");
+  const preview = document.getElementById("planilla-preview-card");
+
+  if (encabezado) encabezado.style.display = mostrar ? "block" : "none";
+  if (form) form.style.display = mostrar ? "block" : "none";
+
+  if (!mostrar && preview) {
+    preview.style.display = "none";
+    preview.dataset.visible = "false";
+  }
+}
+
+function poblarJornadasSelectorPlanilla() {
+  const selectJornada = document.getElementById("select-jornada-planilla");
+  if (!selectJornada) return;
+
+  const jornadas = Array.from(
+    new Set(partidosSelectorCache.map((p) => Number(p.jornada)).filter((j) => Number.isFinite(j)))
+  ).sort((a, b) => a - b);
+
+  selectJornada.innerHTML = '<option value="">- Todas -</option>';
+  jornadas.forEach((j) => {
+    selectJornada.innerHTML += `<option value="${j}">Jornada ${j}</option>`;
+  });
+
+  if (jornadaSelectorActual && jornadas.includes(Number(jornadaSelectorActual))) {
+    selectJornada.value = String(jornadaSelectorActual);
+  } else {
+    jornadaSelectorActual = "";
+  }
+}
+
+function poblarPartidosSelectorPlanilla() {
+  const selectPartido = document.getElementById("select-partido-planilla");
+  if (!selectPartido) return;
+
+  let partidos = [...partidosSelectorCache];
+  if (jornadaSelectorActual) {
+    partidos = partidos.filter((p) => String(p.jornada || "") === String(jornadaSelectorActual));
+  }
+
+  partidos.sort((a, b) => {
+    const ja = Number(a.jornada) || 0;
+    const jb = Number(b.jornada) || 0;
+    if (ja !== jb) return ja - jb;
+    return String(a.fecha_partido || "").localeCompare(String(b.fecha_partido || ""));
+  });
+
+  selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
+  partidos.forEach((p) => {
+    const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
+    const label = `J${p.jornada || "-"} • ${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre} • ${formatearFecha(p.fecha_partido)} ${hora}`;
+    selectPartido.innerHTML += `<option value="${p.id}">${escapeHtml(label)}</option>`;
+  });
+
+  if (Number.isFinite(Number(partidoId))) {
+    const existe = partidos.some((p) => Number(p.id) === Number(partidoId));
+    if (existe) selectPartido.value = String(partidoId);
+  }
+}
+
+function obtenerUltimaJornadaDisponible(partidos = []) {
+  const jornadas = Array.from(
+    new Set(partidos.map((p) => Number(p.jornada)).filter((j) => Number.isFinite(j)))
+  ).sort((a, b) => a - b);
+
+  if (!jornadas.length) return "";
+  return String(jornadas[jornadas.length - 1]);
+}
+
+async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
+  const eventoNum = Number(eventoSeleccionado);
+  const selectPartido = document.getElementById("select-partido-planilla");
+  if (!Number.isFinite(eventoNum) || eventoNum <= 0) {
+    partidosSelectorCache = [];
+    jornadaSelectorActual = "";
+    poblarJornadasSelectorPlanilla();
+    if (selectPartido) {
+      selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
+    }
+    return;
+  }
+
+  try {
+    const resp = await ApiClient.get(`/partidos/evento/${eventoNum}`);
+    partidosSelectorCache = Array.isArray(resp) ? resp : (resp.partidos || []);
+    let jornadaFijadaPorPartido = false;
+
+    if (Number.isFinite(Number(partidoId))) {
+      const partidoMatch = partidosSelectorCache.find((p) => Number(p.id) === Number(partidoId));
+      if (partidoMatch && Number.isFinite(Number(partidoMatch.jornada))) {
+        jornadaSelectorActual = String(partidoMatch.jornada);
+        jornadaFijadaPorPartido = true;
+      }
+    }
+
+    if (!jornadaFijadaPorPartido && !jornadaSelectorActual) {
+      // Sugerimos la ultima jornada por defecto, pero el usuario puede cambiarla libremente.
+      jornadaSelectorActual = obtenerUltimaJornadaDisponible(partidosSelectorCache);
+    }
+
+    poblarJornadasSelectorPlanilla();
+    poblarPartidosSelectorPlanilla();
+  } catch (error) {
+    console.error("Error cargando partidos para planillaje directo:", error);
+    mostrarNotificacion("Error cargando partidos del evento", "error");
+    partidosSelectorCache = [];
+    jornadaSelectorActual = "";
+    poblarJornadasSelectorPlanilla();
+    if (selectPartido) {
+      selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
+    }
+  }
+}
+
+async function cargarEventosSelectorPlanilla() {
+  const selectEvento = document.getElementById("select-evento-planilla");
+  const selectJornada = document.getElementById("select-jornada-planilla");
+  const selectPartido = document.getElementById("select-partido-planilla");
+  if (!selectEvento || !selectJornada || !selectPartido) return;
+
+  selectEvento.innerHTML = '<option value="">- Selecciona un evento -</option>';
+
+  try {
+    const resp = await ApiClient.get("/eventos");
+    eventosPlanillaCache = Array.isArray(resp) ? resp : (resp.eventos || []);
+
+    eventosPlanillaCache.forEach((e) => {
+      selectEvento.innerHTML += `<option value="${e.id}">${escapeHtml(e.nombre)} (${escapeHtml(e.categoria || "Sin categoria")})</option>`;
+    });
+
+    selectEvento.addEventListener("change", async () => {
+      eventoId = selectEvento.value ? Number(selectEvento.value) : null;
+      jornadaSelectorActual = "";
+      partidoId = NaN;
+      await cargarPartidosSelectorPorEvento(eventoId);
+      actualizarVisibilidadContenidoPlanilla(false);
+    });
+
+    selectJornada.addEventListener("change", () => {
+      jornadaSelectorActual = selectJornada.value || "";
+      poblarPartidosSelectorPlanilla();
+    });
+
+    selectPartido.addEventListener("change", () => {
+      const idSel = Number(selectPartido.value);
+      partidoId = Number.isFinite(idSel) ? idSel : NaN;
+    });
+
+    if (Number.isFinite(Number(eventoId))) {
+      selectEvento.value = String(eventoId);
+      await cargarPartidosSelectorPorEvento(eventoId);
+    }
+  } catch (error) {
+    console.error("Error cargando eventos para planillaje directo:", error);
+    mostrarNotificacion("Error cargando eventos", "error");
+  }
+}
+
+async function sincronizarSelectoresDesdePlanillaActual() {
+  const selectEvento = document.getElementById("select-evento-planilla");
+  const selectJornada = document.getElementById("select-jornada-planilla");
+  const selectPartido = document.getElementById("select-partido-planilla");
+  const p = dataPlanilla?.partido;
+  if (!selectEvento || !selectJornada || !selectPartido || !p) return;
+
+  const eventoActual = Number(p.evento_id || eventoId);
+  if (Number.isFinite(eventoActual) && eventoActual > 0) {
+    eventoId = eventoActual;
+    if (String(selectEvento.value) !== String(eventoActual)) {
+      selectEvento.value = String(eventoActual);
+      await cargarPartidosSelectorPorEvento(eventoActual);
+    } else if (!partidosSelectorCache.length) {
+      await cargarPartidosSelectorPorEvento(eventoActual);
+    }
+  }
+
+  if (Number.isFinite(Number(p.jornada))) {
+    jornadaSelectorActual = String(p.jornada);
+    selectJornada.value = jornadaSelectorActual;
+  }
+
+  poblarPartidosSelectorPlanilla();
+  if (Number.isFinite(Number(partidoId))) {
+    selectPartido.value = String(partidoId);
+  }
+}
+
+async function cargarPlanillaDesdeSelector() {
+  const selectEvento = document.getElementById("select-evento-planilla");
+  const selectPartido = document.getElementById("select-partido-planilla");
+
+  const idPartido = Number(selectPartido?.value);
+  const idEvento = Number(selectEvento?.value);
+
+  if (!Number.isFinite(idPartido) || idPartido <= 0) {
+    mostrarNotificacion("Selecciona un partido para cargar su planilla", "warning");
+    return;
+  }
+
+  partidoId = idPartido;
+  eventoId = Number.isFinite(idEvento) ? idEvento : null;
+
+  const params = new URLSearchParams();
+  params.set("partido", String(partidoId));
+  if (eventoId) params.set("evento", String(eventoId));
+  window.history.replaceState({}, "", `planilla.html?${params.toString()}`);
+
+  await cargarPlanilla();
+}
+
+async function cargarPlanilla() {
+  if (!Number.isFinite(Number(partidoId)) || Number(partidoId) <= 0) return;
+
+  try {
+    const resp = await ApiClient.get(`/partidos/${partidoId}/planilla`);
+    dataPlanilla = resp;
+
+    const p = dataPlanilla.partido || {};
+    equiposPartido = {
+      local: { id: p.equipo_local_id, nombre: p.equipo_local_nombre || "Local" },
+      visitante: { id: p.equipo_visitante_id, nombre: p.equipo_visitante_nombre || "Visitante" },
+    };
+
+    documentosRequeridos = {
+      foto_cedula: dataPlanilla.documentos_requeridos?.foto_cedula === true,
+      foto_carnet: dataPlanilla.documentos_requeridos?.foto_carnet === true,
+    };
+
+    renderEncabezado();
+    cargarCamposBase();
+    renderPlantel("plantel-local", dataPlanilla.plantel_local || []);
+    renderPlantel("plantel-visitante", dataPlanilla.plantel_visitante || []);
+    renderFilasEventos();
+    actualizarVisibilidadContenidoPlanilla(true);
+    await sincronizarSelectoresDesdePlanillaActual();
+    actualizarVistaPreviaPlanilla(true);
+  } catch (error) {
+    console.error("Error cargando planilla:", error);
+    mostrarNotificacion(error.message || "Error cargando planilla", "error");
+  }
+}
+
+function recolectarPayloadPlanilla() {
+  const goles = [];
+  const tarjetas = [];
+
+  document.querySelectorAll(".planilla-row-gol").forEach((row) => {
+    const equipoId = aEntero(row.querySelector(".row-equipo")?.value, NaN);
+    const jugadorId = aEntero(row.querySelector(".row-jugador")?.value, NaN);
+    const golesNum = aEntero(row.querySelector(".row-goles")?.value, 0);
+    const tipoGol = String(row.querySelector(".row-tipo-gol")?.value || "campo").trim().toLowerCase();
+    const minutoRaw = row.querySelector(".row-minuto")?.value;
+    const minuto = minutoRaw ? aEntero(minutoRaw, null) : null;
+
+    if (!Number.isFinite(equipoId) || !Number.isFinite(jugadorId) || golesNum <= 0) return;
+
+    goles.push({
+      equipo_id: equipoId,
+      jugador_id: jugadorId,
+      goles: golesNum,
+      tipo_gol: tipoGol || "campo",
+      minuto,
+    });
+  });
+
+  document.querySelectorAll(".planilla-row-tarjeta").forEach((row) => {
+    const equipoId = aEntero(row.querySelector(".row-equipo")?.value, NaN);
+    const jugadorId = aEntero(row.querySelector(".row-jugador")?.value, NaN);
+    const tipoTarjeta = String(row.querySelector(".row-tipo-tarjeta")?.value || "").trim().toLowerCase();
+    const minutoRaw = row.querySelector(".row-minuto")?.value;
+    const observacion = String(row.querySelector(".row-observacion")?.value || "").trim();
+
+    if (!Number.isFinite(equipoId) || !Number.isFinite(jugadorId) || !tipoTarjeta) return;
+
+    tarjetas.push({
+      equipo_id: equipoId,
+      jugador_id: jugadorId,
+      tipo_tarjeta: tipoTarjeta,
+      minuto: minutoRaw ? aEntero(minutoRaw, null) : null,
+      observacion: observacion || null,
+    });
+  });
+
+  return {
+    resultado_local: aEntero(document.getElementById("resultado-local")?.value, 0),
+    resultado_visitante: aEntero(document.getElementById("resultado-visitante")?.value, 0),
+    estado: String(document.getElementById("estado-partido")?.value || "finalizado"),
+    observaciones: String(document.getElementById("observaciones-planilla")?.value || "").trim(),
+    pagos: {
+      pago_arbitraje: aDecimal(document.getElementById("pago-arbitraje")?.value, 0),
+      pago_local: aDecimal(document.getElementById("pago-local")?.value, 0),
+      pago_visitante: aDecimal(document.getElementById("pago-visitante")?.value, 0),
+    },
+    goles,
+    tarjetas,
+  };
+}
+
+function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
+  const filas = [];
+  for (let i = 0; i < maxFilas; i += 1) {
+    const j = jugadores[i] || null;
+    const jugadorId = Number(j?.id);
+    const numero = j ? j.numero_camiseta || i + 1 : "";
+    const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
+    const goles = j ? stats.golesPorJugador.get(jugadorId) || "" : "";
+    const amarillas = j ? stats.amarillasPorJugador.get(jugadorId) || "" : "";
+    const rojas = j ? stats.rojasPorJugador.get(jugadorId) || "" : "";
+
+    filas.push(`
+      <tr>
+        <td>${numero}</td>
+        <td>${escapeHtml(nombre)}</td>
+        <td>${goles}</td>
+        <td>${amarillas}</td>
+        <td>${rojas}</td>
+      </tr>
+    `);
+  }
+  return filas.join("");
+}
+
+function renderListaEventosVistaPrevia(payload) {
+  const jugadoresMap = new Map();
+  [...(dataPlanilla?.plantel_local || []), ...(dataPlanilla?.plantel_visitante || [])].forEach((j) => {
+    jugadoresMap.set(Number(j.id), nombreJugador(j));
+  });
+
+  const golesItems = (payload.goles || []).map((g) => {
+    const nombre = jugadoresMap.get(Number(g.jugador_id)) || `Jugador ${g.jugador_id}`;
+    const equipoTxt =
+      Number(g.equipo_id) === Number(equiposPartido.local.id)
+        ? equiposPartido.local.nombre
+        : equiposPartido.visitante.nombre;
+    const minuto = g.minuto ? `min ${g.minuto}` : "min -";
+    return `<li><strong>${escapeHtml(equipoTxt)}</strong>: ${escapeHtml(nombre)} (${g.goles}) - ${escapeHtml(minuto)}</li>`;
+  });
+
+  const tarjetasItems = (payload.tarjetas || []).map((t) => {
+    const nombre = jugadoresMap.get(Number(t.jugador_id)) || `Jugador ${t.jugador_id}`;
+    const equipoTxt =
+      Number(t.equipo_id) === Number(equiposPartido.local.id)
+        ? equiposPartido.local.nombre
+        : equiposPartido.visitante.nombre;
+    const minuto = t.minuto ? `min ${t.minuto}` : "min -";
+    const tipo = String(t.tipo_tarjeta || "").toUpperCase();
+    return `<li><strong>${escapeHtml(equipoTxt)}</strong>: ${escapeHtml(nombre)} - ${escapeHtml(tipo)} (${escapeHtml(minuto)})</li>`;
+  });
+
+  return {
+    golesHtml: golesItems.length ? golesItems.join("") : "<li>Sin goles registrados.</li>",
+    tarjetasHtml: tarjetasItems.length ? tarjetasItems.join("") : "<li>Sin tarjetas registradas.</li>",
+  };
+}
+
+function actualizarVistaPreviaPlanilla(soloSiVisible = true) {
+  const card = document.getElementById("planilla-preview-card");
+  const cont = document.getElementById("planilla-preview-content");
+  if (!card || !cont || !dataPlanilla?.partido) return;
+  if (soloSiVisible && card.dataset.visible !== "true") return;
+
+  const p = dataPlanilla.partido;
+  const payload = recolectarPayloadPlanilla();
+  const stats = construirIndicesEventos(payload);
+  const cfg = obtenerConfigExportacionPlanilla(obtenerTipoFutbolPlanilla());
+  const maxFilas = cfg.jugadores.fin - cfg.jugadores.inicio + 1;
+  const fecha = formatearFecha(p.fecha_partido);
+  const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
+  const categoria = p.evento_nombre || "Sin categoria";
+  const tipoFutbol = String(p.tipo_futbol || "").replaceAll("_", " ").toUpperCase();
+  const grupo = p.letra_grupo ? `Grupo ${p.letra_grupo}` : "Sin grupo";
+
+  const filasLocal = renderFilasVistaPreviaEquipo(dataPlanilla.plantel_local || [], stats, maxFilas);
+  const filasVisit = renderFilasVistaPreviaEquipo(dataPlanilla.plantel_visitante || [], stats, maxFilas);
+  const eventos = renderListaEventosVistaPrevia(payload);
+
+  cont.innerHTML = `
+    <div class="planilla-preview-sheet">
+      <div class="planilla-preview-head">
+        <h4 class="preview-title">${escapeHtml(p.campeonato_nombre || "Planilla de Juego")}</h4>
+        <p class="preview-subtitle">${escapeHtml(categoria)} • ${escapeHtml(tipoFutbol)} • ${escapeHtml(grupo)}</p>
+      </div>
+
+      <div class="planilla-preview-meta">
+        <div class="meta-item"><strong>Partido</strong>#${p.id}</div>
+        <div class="meta-item"><strong>Fecha</strong>${fecha}</div>
+        <div class="meta-item"><strong>Hora</strong>${hora}</div>
+        <div class="meta-item"><strong>Cancha</strong>${escapeHtml(p.cancha || "Por definir")}</div>
+      </div>
+
+      <div class="planilla-preview-score">
+        <div class="team-name">${escapeHtml(p.equipo_local_nombre || equiposPartido.local.nombre)}</div>
+        <div class="score-box">${aEntero(payload.resultado_local, 0)} - ${aEntero(payload.resultado_visitante, 0)}</div>
+        <div class="team-name">${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</div>
+      </div>
+
+      <div class="planilla-preview-columns">
+        <article class="planilla-preview-team">
+          <h4>Plantel Local</h4>
+          <table class="planilla-preview-table">
+            <thead>
+              <tr><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+            </thead>
+            <tbody>${filasLocal}</tbody>
+          </table>
+        </article>
+        <article class="planilla-preview-team">
+          <h4>Plantel Visitante</h4>
+          <table class="planilla-preview-table">
+            <thead>
+              <tr><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+            </thead>
+            <tbody>${filasVisit}</tbody>
+          </table>
+        </article>
+      </div>
+
+      <div class="planilla-preview-foot">
+        <div class="planilla-preview-box">
+          <h5>Goleadores</h5>
+          <ul class="planilla-preview-list">${eventos.golesHtml}</ul>
+          <h5 style="margin-top:0.8rem;">Tarjetas</h5>
+          <ul class="planilla-preview-list">${eventos.tarjetasHtml}</ul>
+          <h5 style="margin-top:0.8rem;">Observaciones</h5>
+          <div class="planilla-preview-observ">${escapeHtml(payload.observaciones || "Sin observaciones.")}</div>
+        </div>
+        <div class="planilla-preview-box">
+          <h5>Pagos</h5>
+          <div class="planilla-preview-payments">
+            <div class="row"><span>Arbitraje</span><strong>${formatearMoneda(payload.pagos.pago_arbitraje)}</strong></div>
+            <div class="row"><span>Inscripcion Local</span><strong>${formatearMoneda(payload.pagos.pago_local)}</strong></div>
+            <div class="row"><span>Inscripcion Visitante</span><strong>${formatearMoneda(payload.pagos.pago_visitante)}</strong></div>
+            <div class="row"><span>TA Local / Visitante</span><strong>${stats.totalAmarillasLocal} / ${stats.totalAmarillasVisitante}</strong></div>
+            <div class="row"><span>TR Local / Visitante</span><strong>${stats.totalRojasLocal} / ${stats.totalRojasVisitante}</strong></div>
+            <div class="row"><span>Estado</span><strong>${payload.estado || "-"}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleVistaPreviaPlanilla() {
+  const card = document.getElementById("planilla-preview-card");
+  if (!card) return;
+
+  const visible = card.dataset.visible === "true";
+  if (visible) {
+    card.style.display = "none";
+    card.dataset.visible = "false";
+    return;
+  }
+
+  card.style.display = "block";
+  card.dataset.visible = "true";
+  actualizarVistaPreviaPlanilla(false);
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function imprimirVistaPrevia() {
+  if (!dataPlanilla?.partido) {
+    mostrarNotificacion("Carga primero una planilla para imprimir", "warning");
+    return;
+  }
+
+  const card = document.getElementById("planilla-preview-card");
+  if (!card) return;
+
+  if (card.dataset.visible !== "true") {
+    card.style.display = "block";
+    card.dataset.visible = "true";
+  }
+  actualizarVistaPreviaPlanilla(false);
+
+  window.setTimeout(() => {
+    window.print();
+  }, 120);
+}
+
+async function guardarPlanilla(e) {
+  e.preventDefault();
+
+  if (!partidoId) {
+    mostrarNotificacion("No se encontró el ID del partido", "error");
+    return;
+  }
+
+  const payload = recolectarPayloadPlanilla();
+
+  try {
+    await ApiClient.put(`/partidos/${partidoId}/planilla`, payload);
+    mostrarNotificacion("Planilla guardada correctamente", "success");
+    await cargarPlanilla();
+  } catch (error) {
+    console.error("Error guardando planilla:", error);
+    mostrarNotificacion(error.message || "Error guardando planilla", "error");
+  }
+}
+
+async function exportarPlanillaXLSX() {
+  if (!window.XLSX || !dataPlanilla?.partido) {
+    mostrarNotificacion("No se pudo preparar la exportacion", "warning");
+    return;
+  }
+
+  const p = dataPlanilla.partido;
+  const payload = recolectarPayloadPlanilla();
+  const tipoFutbol = obtenerTipoFutbolPlanilla();
+  const cfg = obtenerConfigExportacionPlanilla(tipoFutbol);
+
+  try {
+    const templateResp = await fetch("templates/PlanillaJuego.xlsx", { cache: "no-store" });
+    if (!templateResp.ok) {
+      throw new Error("No se pudo cargar la plantilla base de planilla");
+    }
+
+    const buffer = await templateResp.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: "array", cellStyles: true });
+    const sheet = wb.Sheets[cfg.sheetName];
+
+    if (!sheet) {
+      throw new Error(`No existe la hoja "${cfg.sheetName}" en la plantilla`);
+    }
+
+    const stats = construirIndicesEventos(payload);
+
+    setCellValue(sheet, cfg.meta.fecha, formatearFecha(p.fecha_partido));
+    setCellValue(sheet, cfg.meta.cancha, p.cancha || "");
+    if (p.ciudad) setCellValue(sheet, cfg.meta.ciudad, p.ciudad);
+    setCellValue(sheet, cfg.meta.equipoLocal, p.equipo_local_nombre || equiposPartido.local.nombre);
+    setCellValue(sheet, cfg.meta.equipoVisitante, p.equipo_visitante_nombre || equiposPartido.visitante.nombre);
+    setCellValue(sheet, cfg.meta.resultadoLocal, aEntero(payload.resultado_local, 0));
+    setCellValue(sheet, cfg.meta.resultadoVisitante, aEntero(payload.resultado_visitante, 0));
+
+    llenarPlantelExcel(
+      sheet,
+      {
+        jugadores: cfg.jugadores,
+        colNumero: "B",
+        colNombre: "C",
+        colGol: "G",
+        colAmarilla: "H",
+        colRoja: "I",
+      },
+      dataPlanilla.plantel_local || [],
+      stats
+    );
+
+    llenarPlantelExcel(
+      sheet,
+      {
+        jugadores: cfg.jugadores,
+        colNumero: "K",
+        colNombre: "L",
+        colGol: "P",
+        colAmarilla: "Q",
+        colRoja: "R",
+      },
+      dataPlanilla.plantel_visitante || [],
+      stats
+    );
+
+    setCellValue(
+      sheet,
+      `${cfg.tarjetasResumen.colLocal}${cfg.tarjetasResumen.amarillasRow}`,
+      stats.totalAmarillasLocal || ""
+    );
+    setCellValue(
+      sheet,
+      `${cfg.tarjetasResumen.colLocal}${cfg.tarjetasResumen.rojasRow}`,
+      stats.totalRojasLocal || ""
+    );
+    setCellValue(
+      sheet,
+      `${cfg.tarjetasResumen.colVisitante}${cfg.tarjetasResumen.amarillasRow}`,
+      stats.totalAmarillasVisitante || ""
+    );
+    setCellValue(
+      sheet,
+      `${cfg.tarjetasResumen.colVisitante}${cfg.tarjetasResumen.rojasRow}`,
+      stats.totalRojasVisitante || ""
+    );
+
+    const pagoArbitraje = aDecimal(payload.pagos.pago_arbitraje, 0);
+    const pagoLocal = aDecimal(payload.pagos.pago_local, 0);
+    const pagoVisitante = aDecimal(payload.pagos.pago_visitante, 0);
+
+    setCellValue(sheet, `${cfg.pagos.colLocal}${cfg.pagos.arbitrajeRow}`, pagoArbitraje || "");
+    setCellValue(sheet, `${cfg.pagos.colVisitante}${cfg.pagos.arbitrajeRow}`, pagoArbitraje || "");
+    setCellValue(
+      sheet,
+      `${cfg.pagos.colLocal}${cfg.pagos.tarjetasRojasRow}`,
+      `ROJAS: ${stats.totalRojasLocal || 0}`
+    );
+    setCellValue(
+      sheet,
+      `${cfg.pagos.colLocal}${cfg.pagos.tarjetasAmarillasRow}`,
+      `AMARILLAS: ${stats.totalAmarillasLocal || 0}`
+    );
+    setCellValue(
+      sheet,
+      `${cfg.pagos.colVisitante}${cfg.pagos.tarjetasRojasRow}`,
+      `ROJAS: ${stats.totalRojasVisitante || 0}`
+    );
+    setCellValue(
+      sheet,
+      `${cfg.pagos.colVisitante}${cfg.pagos.tarjetasAmarillasRow}`,
+      `AMARILLAS: ${stats.totalAmarillasVisitante || 0}`
+    );
+    setCellValue(sheet, `${cfg.pagos.colLocal}${cfg.pagos.inscripcionRow}`, pagoLocal || "");
+    setCellValue(sheet, `${cfg.pagos.colVisitante}${cfg.pagos.inscripcionRow}`, pagoVisitante || "");
+
+    const observaciones = payload.observaciones || "";
+    setCellValue(sheet, `${cfg.observaciones.colLocal}${cfg.observaciones.rowInicio}`, observaciones);
+    setCellValue(sheet, `${cfg.observaciones.colVisitante}${cfg.observaciones.rowInicio}`, observaciones);
+
+    llenarHojaListaJugadores(wb, p, dataPlanilla.plantel_local || []);
+
+    const slugTipo = tipoFutbol.replace("futbol_", "f");
+    XLSX.writeFile(wb, `planilla_partido_${p.id}_${slugTipo}.xlsx`);
+    mostrarNotificacion("Planilla exportada con formato oficial", "success");
+  } catch (error) {
+    console.error("Error exportando planilla:", error);
+    mostrarNotificacion(error.message || "Error exportando planilla", "error");
+  }
+}
+
+function volverAPartidos() {
+  if (eventoId) {
+    window.location.href = `partidos.html?evento=${eventoId}`;
+    return;
+  }
+  window.location.href = "partidos.html";
+}
+
+function recargarPlanilla() {
+  if (!Number.isFinite(Number(partidoId)) || Number(partidoId) <= 0) {
+    mostrarNotificacion("Selecciona primero un partido", "warning");
+    return;
+  }
+  cargarPlanilla();
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (!window.location.pathname.endsWith("planilla.html")) return;
+
+  partidoId = aEntero(qp("partido"), NaN);
+  eventoId = aEntero(qp("evento"), NaN);
+  if (!Number.isFinite(Number(eventoId))) eventoId = null;
+
+  const formPlanilla = document.getElementById("form-planilla");
+  formPlanilla?.addEventListener("submit", guardarPlanilla);
+  formPlanilla?.addEventListener("input", () => actualizarVistaPreviaPlanilla(true));
+  formPlanilla?.addEventListener("change", () => actualizarVistaPreviaPlanilla(true));
+
+  await cargarEventosSelectorPlanilla();
+
+  if (Number.isFinite(Number(partidoId)) && Number(partidoId) > 0) {
+    await cargarPlanilla();
+  } else {
+    actualizarVisibilidadContenidoPlanilla(false);
+  }
+});
+
+window.agregarFilaGol = agregarFilaGol;
+window.agregarFilaTarjeta = agregarFilaTarjeta;
+window.cargarPlanillaDesdeSelector = cargarPlanillaDesdeSelector;
+window.exportarPlanillaXLSX = exportarPlanillaXLSX;
+window.imprimirVistaPrevia = imprimirVistaPrevia;
+window.toggleVistaPreviaPlanilla = toggleVistaPreviaPlanilla;
+window.volverAPartidos = volverAPartidos;
+window.recargarPlanilla = recargarPlanilla;

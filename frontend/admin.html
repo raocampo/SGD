@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Gestión Deportiva - Panel de Administración</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ SGD</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn active" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+      <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+      <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+      <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+      <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+      <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+      <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>🏠 Panel de Administración</h1>
+    </header>
+
+  <main class="main">
+    <section id="inicio" class="section active">
+      <div class="container">
+        <div class="welcome-card">
+          <h2>¡Bienvenido al Sistema de Gestión Deportiva!</h2>
+          <p>
+            Gestiona tus campeonatos, equipos, jugadores y mucho más de forma profesional.
+          </p>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <i class="fas fa-calendar"></i>
+              <h3>Eventos</h3>
+              <span id="stats-eventos">0</span>
+            </div>
+            <div class="stat-card">
+              <i class="fas fa-trophy"></i>
+              <h3>Campeonatos</h3>
+              <span id="stats-campeonatos">0</span>
+            </div>
+            <div class="stat-card">
+              <i class="fas fa-users"></i>
+              <h3>Equipos</h3>
+              <span id="stats-equipos">0</span>
+            </div>
+            <div class="stat-card">
+              <i class="fas fa-futbol"></i>
+              <h3>Jugadores</h3>
+              <span id="stats-jugadores">0</span>
+            </div>
+            <div class="stat-card">
+              <i class="fas fa-table"></i>
+              <h3>Partidos</h3>
+              <span id="stats-partidos">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if (typeof initStatsAdmin === "function") initStatsAdmin();
+    else document.addEventListener("DOMContentLoaded", () => {
+      const path = window.location.pathname;
+      if (path.endsWith("admin.html") || path.includes("admin.html")) {
+        fetch(`${window.API_BASE_URL || "/api"}/eventos`).then(r=>r.json()).then(d=>{
+          const n = (d.eventos||d||[]).length;
+          const el = document.getElementById("stats-eventos"); if(el) el.textContent = n;
+        }).catch(()=>{});
+        fetch(`${window.API_BASE_URL || "/api"}/campeonatos`).then(r=>r.json()).then(d=>{
+          const n = (d.campeonatos||d||[]).length;
+          const el = document.getElementById("stats-campeonatos"); if(el) el.textContent = n;
+        }).catch(()=>{});
+        fetch(`${window.API_BASE_URL || "/api"}/equipos`).then(r=>r.json()).then(d=>{
+          const n = (d.equipos||d||[]).length;
+          const el = document.getElementById("stats-equipos"); if(el) el.textContent = n;
+        }).catch(()=>{});
+      }
+    });
+  </script>
+</body>
+
+</html>

@@ -1,17 +1,33 @@
-const express = require('express');
+// routes/grupoRoutes.js
+const express = require("express");
 const router = express.Router();
-const grupoController = require('../controllers/grupoController');
+const grupoController = require("../controllers/grupoController");
 
-// 🔄 CRUD Completo para Grupos
-router.post('/', grupoController.crearGrupos);                              // CREATE grupos
-router.get('/campeonato/:campeonato_id', grupoController.obtenerGruposPorCampeonato); // READ por campeonato
-router.get('/:id', grupoController.obtenerGrupo);                           // READ uno con detalles
-router.get('/campeonato/:campeonato_id/completo', grupoController.obtenerGruposConEquipos); // READ con equipos
-router.put('/:id', grupoController.actualizarGrupo);                        // UPDATE
-router.delete('/:id', grupoController.eliminarGrupo);                       // DELETE
+// ===============================
+// EVENTO (NUEVO)
+// ===============================
+router.post("/evento/crear", grupoController.crearGruposPorEvento);
+router.get("/evento/:evento_id", grupoController.obtenerGruposPorEvento);
+router.get("/evento/:evento_id/completo", grupoController.obtenerGruposPorEventoCompleto);
+// Compatibilidad con frontend que consulta por campeonato
+router.get("/campeonato/:campeonato_id", grupoController.obtenerGruposPorCampeonato);
+router.get(
+  "/campeonato/:campeonato_id/completo",
+  grupoController.obtenerGruposPorCampeonatoCompleto
+);
 
-// 🔧 Rutas para asignación de equipos
-router.post('/asignar-equipo', grupoController.asignarEquipoAGrupo);        // Asignar equipo
-router.post('/remover-equipo', grupoController.removerEquipoDeGrupo);       // Remover equipo
+// ===============================
+// GRUPO / EQUIPOS
+// ===============================
+router.get("/:id", grupoController.obtenerGrupo);
+router.get("/:grupo_id/equipos", grupoController.obtenerEquiposDelGrupo);
+router.post("/:grupo_id/equipos", grupoController.asignarEquipo);
+router.delete("/:grupo_id/equipos/:equipo_id", grupoController.removerEquipo);
+
+// ===============================
+// CRUD GRUPO
+// ===============================
+router.put("/:id", grupoController.actualizarGrupo);
+router.delete("/:id", grupoController.eliminarGrupo);
 
 module.exports = router;

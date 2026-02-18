@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plantilla de Fixture</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/grupos.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body class="page-fixture">
+    <header class="header">
+      <div class="container">
+        <h1>Plantilla de Fixture</h1>
+        <div class="fixture-top-actions">
+          <button class="btn btn-secondary" onclick="volverPartidos()">
+            <i class="fas fa-arrow-left"></i> Volver a Partidos
+          </button>
+          <button class="btn btn-secondary" onclick="exportarFixturePNG()">
+            <i class="fas fa-image"></i> Exportar PNG
+          </button>
+          <button class="btn btn-danger" onclick="exportarFixturePDF()">
+            <i class="fas fa-file-pdf"></i> Exportar PDF
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="section active">
+        <div class="container">
+          <div id="fixture-export" class="poster fixture-poster">
+            <div class="poster-titulo">
+              <div class="poster-org">
+                <img
+                  id="fixture-org-logo"
+                  class="poster-org-logo"
+                  crossorigin="anonymous"
+                  referrerpolicy="no-referrer"
+                  alt="Logo Organizador"
+                />
+              </div>
+              <div class="poster-header">
+                <div class="poster-titles">
+                  <div id="fixture-organizador" class="poster-subtitle">ORGANIZA: —</div>
+                  <div id="fixture-titulo" class="poster-title">FIXTURE DEL EVENTO</div>
+                  <div id="fixture-detalle" class="poster-detail">—</div>
+                  <div id="fixture-filtros" class="poster-detail">—</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="fixture-view-tabs" id="fixture-view-tabs">
+              <button type="button" class="fixture-view-btn active" data-fixture-view="todos" onclick="cambiarVistaFixture('todos')">
+                Todos
+              </button>
+              <button type="button" class="fixture-view-btn" data-fixture-view="grupo" onclick="cambiarVistaFixture('grupo')">
+                Por Grupo
+              </button>
+              <button type="button" class="fixture-view-btn" data-fixture-view="jornada" onclick="cambiarVistaFixture('jornada')">
+                Por Jornada
+              </button>
+            </div>
+
+            <div id="fixture-grupos" class="poster-grids">
+              <div class="empty-state">
+                <i class="fas fa-futbol"></i>
+                <p>Cargando plantilla...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="js/core.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/fixtureplantilla.js"></script>
+  </body>
+</html>
