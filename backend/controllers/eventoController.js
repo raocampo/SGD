@@ -1,5 +1,6 @@
 // controllers/eventoController.js
 const pool = require("../config/database");
+let eventoEsquemaAsegurado = false;
 
 function pick(v, fallback = null) {
   return v === undefined ? fallback : v;
@@ -12,6 +13,53 @@ function parseTimeHHMM(value, fallback) {
   return fallback;
 }
 
+async function asegurarEsquemaEventos() {
+  if (eventoEsquemaAsegurado) return;
+
+  const colR = await pool.query(`
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'eventos'
+      AND column_name = 'campeonato_id'
+    LIMIT 1
+  `);
+
+  if (!colR.rows.length) {
+    await pool.query(`ALTER TABLE eventos ADD COLUMN campeonato_id INTEGER`);
+
+    // Compatibilidad con esquema legado donde campeonatos apuntaba a eventos.
+    await pool.query(`
+      UPDATE eventos e
+      SET campeonato_id = c.id
+      FROM campeonatos c
+      WHERE c.evento_id = e.id
+        AND e.campeonato_id IS NULL
+    `);
+  }
+
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_eventos_campeonato'
+      ) THEN
+        ALTER TABLE eventos
+        ADD CONSTRAINT fk_eventos_campeonato
+        FOREIGN KEY (campeonato_id) REFERENCES campeonatos(id) ON DELETE CASCADE;
+      END IF;
+    END $$;
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_eventos_campeonato_id ON eventos(campeonato_id)
+  `);
+
+  eventoEsquemaAsegurado = true;
+}
+
 const eventoController = {
   // =====================================================
   // CRUD EVENTOS
@@ -20,6 +68,8 @@ const eventoController = {
   // POST /eventos
   async crearEvento(req, res) {
     try {
+      await asegurarEsquemaEventos();
+
       const {
         campeonato_id,
         nombre,
@@ -83,6 +133,8 @@ const eventoController = {
   // GET /eventos
   async listarEventos(req, res) {
     try {
+      await asegurarEsquemaEventos();
+
       const q = `
         SELECT e.*,
                c.nombre AS campeonato_nombre
@@ -101,6 +153,8 @@ const eventoController = {
   // GET /eventos/campeonato/:campeonato_id
   async listarEventosPorCampeonato(req, res) {
     try {
+      await asegurarEsquemaEventos();
+
       const { campeonato_id } = req.params;
       const q = `
         SELECT e.*,
@@ -121,6 +175,8 @@ const eventoController = {
   // GET /eventos/:id
   async obtenerEvento(req, res) {
     try {
+      await asegurarEsquemaEventos();
+
       const { id } = req.params;
       const q = `
         SELECT e.*,
@@ -142,6 +198,8 @@ const eventoController = {
   // PUT /eventos/:id
   async actualizarEvento(req, res) {
     try {
+      await asegurarEsquemaEventos();
+
       const { id } = req.params;
 
       const campos = [];
