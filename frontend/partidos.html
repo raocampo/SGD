@@ -5,104 +5,208 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SGD Gestión de Partidos</title>
     <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/grupos.css" />
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
   </head>
 
-  <body>
-    <!-- Header -->
-    <header class="header">
-      <div class="container">
-        <h1>⚽ Sistema de Gestión Deportiva</h1>
+  <body class="app-layout page-partidos">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">⚽ SGD</div>
+      <nav class="sidebar-nav">
+        <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+        <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+        <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+        <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+        <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+        <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+        <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+        <a class="nav-btn active" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+        <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+        <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+        <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+      </nav>
+    </aside>
 
-        <!-- Botón hamburguesa -->
-        <button class="nav-toggle" id="nav-toggle">
-          <i class="fas fa-bars"></i>
-        </button>
+    <div class="main-wrapper">
+      <header class="top-bar">
+        <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+        <h1>⚽ Gestión de Partidos</h1>
+      </header>
 
-        <nav class="nav" id="main-nav">
-          <a class="nav-btn" href="index.html">Inicio</a>
-          <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
-          <a class="nav-btn" href="sorteo.html">Sorteo de Grupos</a>
-          <a class="nav-btn" href="gruposgen.html">Grupos</a>
-          <a class="nav-btn active" href="partidos.html">Partidos</a>
-          <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
-        </nav>
-      </div>
-    </header>
-
-    <!-- Sección Inicio -->
     <main class="main">
       <section class="section active">
         <div class="container">
           <h2>⚽ Gestión de Partidos</h2>
 
-          <!-- FORMULARIO DE FILTRO -->
-          <div class="config-card">
-            <h3>Filtrar Partidos</h3>
-
-            <div class="form-group">
-              <label for="select-campeonato">Campeonato:</label>
-              <select id="select-campeonato"></select>
-            </div>
-
-            <div class="form-group">
-              <label for="select-grupo">Grupo:</label>
-              <select id="select-grupo">
-                <option value="">— Todos —</option>
-              </select>
-            </div>
-
-            <h4>Opciones de Fixture</h4>
-            <div class="form-group">
-              <label>Modo:</label>
-              <label>
-                <input type="radio" name="modo-fixture" value="grupo" checked />
-                Por grupo
-              </label>
-              <label>
-                <input type="radio" name="modo-fixture" value="todos" />
-                Todos contra todos (campeonato)
-              </label>
-            </div>
-
-            <div class="form-group">
-              <label>
-                <input type="checkbox" id="chk-ida-vuelta" />
-                Fixture de ida y vuelta
-              </label>
-            </div>
-
-            <button class="btn btn-primary" onclick="cargarPartidos()">
-              <i class="fas fa-search"></i> Buscar
+          <div class="partidos-main-tabs" id="partidos-main-tabs">
+            <button
+              type="button"
+              class="partidos-main-tab active"
+              data-tab-target="tab-filtrar"
+              onclick="cambiarPestanaPartidos('tab-filtrar')"
+            >
+              Filtrar Partidos
+            </button>
+            <button
+              type="button"
+              class="partidos-main-tab"
+              data-tab-target="tab-plantilla"
+              onclick="cambiarPestanaPartidos('tab-plantilla')"
+            >
+              Plantilla Fixture
             </button>
           </div>
 
-          <!-- LISTA DE PARTIDOS -->
-          <div id="lista-partidos" class="grid-container">
-            <!-- Aquí se cargan los partidos -->
+          <div id="tab-filtrar" class="partidos-tab-panel active">
+            <div class="config-card">
+              <h3>Filtrar Partidos</h3>
+
+              <div class="form-group">
+                <label for="select-evento">Evento (Categoría):</label>
+                <select id="select-evento"></select>
+              </div>
+
+              <div class="form-group">
+                <label for="select-grupo">Grupo:</label>
+                <select id="select-grupo">
+                  <option value="">— Todos —</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="select-jornada">Jornada:</label>
+                <select id="select-jornada">
+                  <option value="">— Todas —</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="input-fecha">Fecha:</label>
+                <input type="date" id="input-fecha" />
+              </div>
+
+              <div class="partidos-busqueda-actions">
+                <button class="btn btn-primary" onclick="cargarPartidos()">
+                  <i class="fas fa-search"></i> Buscar
+                </button>
+              </div>
+
+              <hr class="partidos-divider" />
+
+              <h4>Generación de Fixture</h4>
+
+              <div class="fixture-generation-options">
+                <div class="form-group checkbox-inline-control">
+                  <input type="checkbox" id="chk-ida-vuelta" />
+                  <label for="chk-ida-vuelta">Fixture ida y vuelta</label>
+                </div>
+
+                <div class="form-group checkbox-inline-control">
+                  <input type="checkbox" id="chk-programacion-manual" />
+                  <label for="chk-programacion-manual">Programación manual (sin fecha/hora/cancha)</label>
+                </div>
+              </div>
+
+            <div class="fixture-generation-actions">
+              <button class="btn btn-success" onclick="generarFixtureEvento()">
+                <i class="fas fa-calendar-plus"></i> Generar Fixture (Evento)
+              </button>
+            </div>
           </div>
 
-          <div class="action-bar">
-            <button class="btn btn-primary" onclick="generarFixture()">
-              <i class="fas fa-calendar-plus"></i> Generar Fixture
-            </button>
+            <div class="action-bar">
+              <div class="list-view-toggle" id="partidos-view-toggle" aria-label="Cambiar vista de partidos">
+                <button
+                  type="button"
+                  id="btn-vista-partidos-cards"
+                  class="list-view-btn active"
+                  onclick="cambiarVistaPartidos('cards')"
+                >
+                  <i class="fas fa-th-large"></i> Tarjetas
+                </button>
+                <button
+                  type="button"
+                  id="btn-vista-partidos-table"
+                  class="list-view-btn"
+                  onclick="cambiarVistaPartidos('table')"
+                >
+                  <i class="fas fa-table"></i> Tabla
+                </button>
+              </div>
+            </div>
 
-            <button class="btn btn-secondary" onclick="exportarFixture()">
-              <i class="fas fa-file-export"></i> Exportar Fixture
-            </button>
+            <div id="lista-partidos" class="grid-container"></div>
+          </div>
 
-            <button class="btn btn-success" onclick="abrirTarjetaFixture()">
-              <i class="fas fa-image"></i> Tarjeta de Jornada
-            </button>
+          <div id="tab-plantilla" class="partidos-tab-panel">
+            <div class="fixture-accordion-actions">
+              <button class="btn btn-outline" onclick="cambiarPestanaPartidos('tab-filtrar')">
+                <i class="fas fa-list"></i> Volver a Cards
+              </button>
+              <button class="btn btn-secondary" onclick="exportarFixturePNG()">
+                <i class="fas fa-image"></i> Exportar fixture PNG
+              </button>
+              <button class="btn btn-danger" onclick="exportarFixturePDF()">
+                <i class="fas fa-file-pdf"></i> Exportar fixture PDF
+              </button>
+              <button class="btn btn-primary" onclick="abrirPlantillaFixturePantallaCompleta()">
+                <i class="fas fa-up-right-from-square"></i> Abrir en otra pantalla
+              </button>
+            </div>
 
+            <div id="fixture-export" class="poster fixture-poster">
+              <div class="poster-titulo">
+                <div class="poster-org">
+                  <img
+                    id="fixture-org-logo"
+                    class="poster-org-logo"
+                    crossorigin="anonymous"
+                    referrerpolicy="no-referrer"
+                    alt="Logo Organizador"
+                  />
+                </div>
+                <div class="poster-header">
+                  <div class="poster-titles">
+                    <div id="fixture-organizador" class="poster-subtitle">ORGANIZA: —</div>
+                    <div id="fixture-titulo" class="poster-title">FIXTURE DEL EVENTO</div>
+                    <div id="fixture-detalle" class="poster-detail">—</div>
+                    <div id="fixture-filtros" class="poster-detail">—</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="fixture-view-tabs" id="fixture-view-tabs">
+                <button type="button" class="fixture-view-btn active" data-fixture-view="todos" onclick="cambiarVistaFixture('todos')">
+                  Todos
+                </button>
+                <button type="button" class="fixture-view-btn" data-fixture-view="grupo" onclick="cambiarVistaFixture('grupo')">
+                  Por Grupo
+                </button>
+                <button type="button" class="fixture-view-btn" data-fixture-view="jornada" onclick="cambiarVistaFixture('jornada')">
+                  Por Jornada
+                </button>
+              </div>
+
+              <div id="fixture-grupos" class="poster-grids">
+                <div class="empty-state">
+                  <i class="fas fa-futbol"></i>
+                  <p>Carga partidos para visualizar la plantilla del fixture.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
     </main>
+    </div>
 
+    <div class="nav-overlay" id="nav-overlay"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="js/core.js"></script>
     <script src="js/api.js"></script>
     <script src="js/partidos.js"></script>

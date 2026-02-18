@@ -2,116 +2,237 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestión de Equipos - Sistema de Gestión Deportiva</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gestión de Equipos</title>
+
   <link rel="stylesheet" href="css/style.css" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 </head>
-<body>
-  <!-- Header reutilizado -->
-  <header class="header">
-    <div class="container">
-      <h1>⚽ Sistema de Gestión Deportiva</h1>
-      <nav class="nav">
-        <a class="nav-btn" href="index.html">Inicio</a>
-        <a class="nav-btn" href="campeonatos.html">Campeonatos</a>
-        <a class="nav-btn" href="sorteo.html">Sorteo de Grupos</a>
-        <a class="nav-btn" href="gruposgen.html">Grupos</a>
-        <a class="nav-btn" href="partidos.html">Partidos</a>
-        <a class="nav-btn" href="tablas.html">Tablas de Posición</a>
-      </nav>
-    </div>
-  </header>
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ SGD</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+      <a class="nav-btn active" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+      <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+      <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+      <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+      <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+      <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+      <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
 
-  <main class="main">
-    <section class="section active">
-      <div class="container">
-        <h2>🏟️ Gestión de Equipos</h2>
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú">
+        <i class="fas fa-bars"></i>
+      </button>
+      <h1>🏟️ Gestión de Equipos</h1>
+    </header>
 
-        <!-- Info del campeonato -->
-        <div id="info-campeonato" class="welcome-card" style="text-align:left; margin-bottom:1.5rem;">
-          <p>Cargando datos del campeonato...</p>
+  <main class="container">
+    <!-- Selector Campeonato / Evento -->
+    <div class="card">
+      <h3>Seleccionar Campeonato y Evento</h3>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Campeonato</label>
+          <select id="select-campeonato" class="input">
+            <option value="">— Selecciona un campeonato —</option>
+          </select>
         </div>
 
-        <div class="action-bar" style="margin-bottom:1rem;">
-          <button class="btn btn-primary" onclick="mostrarModalCrearEquipo()">
-            <i class="fas fa-plus"></i> Nuevo Equipo
-          </button>
-
-          <button class="btn btn-secondary" onclick="window.location.href='campeonatos.html'">
-            <i class="fas fa-arrow-left"></i> Volver a Campeonatos
-          </button>
-        </div>
-
-        <!-- Lista de equipos -->
-        <div id="lista-equipos" class="grid-container">
-          <!-- Se llena desde equipos.js -->
+        <div class="form-group">
+          <label>Evento / Categoría</label>
+          <select id="select-evento" class="input">
+            <option value="">— Selecciona un evento —</option>
+          </select>
         </div>
       </div>
-    </section>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="btn-cargar-equipos" onclick="cargarEquipos()">
+          <i class="fas fa-search"></i> Cargar Equipos
+        </button>
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div class="card" id="info-contexto" style="display:none;"></div>
+
+    <!-- Acciones -->
+    <div class="actions">
+      <button class="btn btn-success" onclick="mostrarModalCrearEquipo()">
+        <i class="fas fa-plus"></i> Nuevo Equipo
+      </button>
+
+      <button class="btn btn-primary" onclick="irASorteo()">
+        <i class="fas fa-random"></i> Ir a Sorteo
+      </button>
+
+      <button class="btn btn-secondary" onclick="window.location.href='eventos.html'">
+        <i class="fas fa-arrow-left"></i> Volver a Eventos
+      </button>
+    </div>
+
+    <div class="actions">
+      <div class="list-view-toggle" id="equipos-view-toggle" aria-label="Cambiar vista de equipos">
+        <button
+          type="button"
+          id="btn-vista-equipos-cards"
+          class="list-view-btn active"
+          onclick="cambiarVistaEquipos('cards')"
+        >
+          <i class="fas fa-th-large"></i> Tarjetas
+        </button>
+        <button
+          type="button"
+          id="btn-vista-equipos-table"
+          class="list-view-btn"
+          onclick="cambiarVistaEquipos('table')"
+        >
+          <i class="fas fa-table"></i> Tabla
+        </button>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <div id="lista-equipos" class="grid"></div>
   </main>
+  </div>
 
-  <!-- Modal Equipo -->
-  <div id="modal-equipo" class="modal">
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <!-- Modal -->
+  <div id="modal-equipo" class="modal" style="display:none;">
     <div class="modal-content">
-      <span class="close" onclick="cerrarModal('modal-equipo')">&times;</span>
-      <h3 id="modal-equipo-titulo">Nuevo Equipo</h3>
+      <div class="modal-header">
+        <h3 id="modal-titulo">Crear Equipo</h3>
+        <button class="modal-close" onclick="cerrarModal('modal-equipo')">×</button>
+      </div>
 
-      <form id="form-equipo">
-        <input type="hidden" id="equipo-id" />
-        <input type="hidden" id="equipo-campeonato-id" />
-
-        <div class="form-group">
-          <label for="equipo-nombre">Nombre del Equipo:</label>
-          <input type="text" id="equipo-nombre" required />
-        </div>
-
-        <div class="form-group">
-          <label for="equipo-logo">Logo del Equipo:</label>
-          <input type="file" id="equipo-logo" name="logo" accept="image/*">
-        </div>
-
-        <div class="form-group">
-          <label for="equipo-director">Director Técnico:</label>
-          <input type="text" id="equipo-director" />
-        </div>
-
-        <div class="form-group">
-          <label for="equipo-asistente">Asistente Técnico:</label>
-          <input type="text" id="equipo-asistente" />
-        </div>
-
-        <div class="form-group">
-          <label for="equipo-color">Color del Equipo:</label>
-          <input type="text" id="equipo-color" placeholder="Ej: Azul, Rojo, Verde" />
-        </div>
-
-        <div class="form-group">
-          <label for="equipo-telefono">Teléfono de contacto:</label>
-          <input type="tel" id="equipo-telefono" />
-        </div>
-
-        <div class="form-group">
-          <label for="equipo-email">Email de contacto:</label>
-          <input type="email" id="equipo-email" />
-        </div>
-
-        <div class="form-group" style="display:flex;align-items:center;gap:0.5rem;">
-          <input type="checkbox" id="equipo-cabeza-serie" />
-          <label for="equipo-cabeza-serie" style="margin:0;">¿Cabeza de serie?</label>
-        </div>
-
-        <div class="form-actions">
-          <button type="submit" class="btn btn-success">Guardar</button>
-          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-equipo')">
-            Cancelar
+      <div class="modal-body">
+        <div class="modal-tabs">
+          <button type="button" class="modal-tab active" data-tab="nuevo">
+            <i class="fas fa-plus-circle"></i> Crear equipo nuevo
+          </button>
+          <button type="button" class="modal-tab" data-tab="existente">
+            <i class="fas fa-link"></i> Asignar equipo existente
           </button>
         </div>
-      </form>
+
+        <!-- Panel: Crear equipo nuevo -->
+        <div id="panel-nuevo" class="modal-panel active">
+          <div class="form-equipo-nuevo">
+            <div class="form-group">
+              <label>Nombre del equipo <span class="req">*</span></label>
+              <input type="text" id="equipo-nombre" placeholder="Ej: Rock United" required />
+            </div>
+
+            <div class="form-group">
+              <label>Técnico o Dueño <span class="req">*</span></label>
+              <input type="text" id="equipo-dt" placeholder="Nombre completo" required />
+            </div>
+
+            <div class="form-group">
+              <label>Asistente técnico</label>
+              <input type="text" id="equipo-at" placeholder="Nombre del asistente" />
+            </div>
+
+            <div class="form-group">
+              <label>Médico (opcional)</label>
+              <input type="text" id="equipo-medico" placeholder="Nombre del médico" />
+            </div>
+
+            <div class="form-group">
+              <label>Logo del equipo</label>
+              <input type="file" id="equipo-logo" accept="image/jpeg,image/png,image/webp,image/jpg" />
+              <small class="form-hint">JPG, PNG o WEBP. Máx. 2MB</small>
+            </div>
+
+            <div class="form-group">
+              <label>Colores del equipo</label>
+              <div class="colores-equipo">
+                <div class="color-row">
+                  <span class="color-label">Primario</span>
+                  <div class="color-picker-wrap">
+                    <button type="button" class="color-preview" id="preview-primario" title="Clic para elegir color" style="background:#e53935"></button>
+                    <input type="text" id="equipo-color-primario" placeholder="#hex" maxlength="7" />
+                  </div>
+                  <div class="color-dropdown" id="dropdown-primario">
+                    <div class="color-palette" data-target="equipo-color-primario"></div>
+                    <input type="text" class="color-hex-input" placeholder="#hex" maxlength="7" />
+                  </div>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Secundario</span>
+                  <div class="color-picker-wrap">
+                    <button type="button" class="color-preview" id="preview-secundario" title="Clic para elegir color" style="background:#1e88e5"></button>
+                    <input type="text" id="equipo-color-secundario" placeholder="#hex" maxlength="7" />
+                  </div>
+                  <div class="color-dropdown" id="dropdown-secundario">
+                    <div class="color-palette" data-target="equipo-color-secundario"></div>
+                    <input type="text" class="color-hex-input" placeholder="#hex" maxlength="7" />
+                  </div>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Terciario</span>
+                  <div class="color-picker-wrap">
+                    <button type="button" class="color-preview" id="preview-terciario" title="Clic para elegir color" style="background:#43a047"></button>
+                    <input type="text" id="equipo-color-terciario" placeholder="#hex" maxlength="7" />
+                  </div>
+                  <div class="color-dropdown" id="dropdown-terciario">
+                    <div class="color-palette" data-target="equipo-color-terciario"></div>
+                    <input type="text" class="color-hex-input" placeholder="#hex" maxlength="7" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Número de celular <span class="req">*</span></label>
+              <input type="tel" id="equipo-telefono" placeholder="Ej: 0991234567" required />
+            </div>
+
+            <div class="form-group">
+              <label>Correo electrónico <span class="req">*</span></label>
+              <input type="email" id="equipo-email" placeholder="equipo@ejemplo.com" required />
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="equipo-cabeza-serie" />
+                Es cabeza de serie
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel: Asignar equipo existente -->
+        <div id="panel-existente" class="modal-panel" style="display:none;">
+          <p class="form-hint" style="margin-bottom:1rem;">Selecciona un equipo ya registrado en el campeonato para asignarlo a la categoría (evento) elegida.</p>
+          <div class="form-group">
+            <label>Equipo existente</label>
+            <select id="select-equipo-existente">
+              <option value="">— Selecciona un equipo —</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('modal-equipo')">Cancelar</button>
+        <button class="btn btn-success" onclick="guardarEquipo()">Guardar</button>
+      </div>
     </div>
   </div>
 
-  <!-- Scripts -->
+  <!-- Scripts (IMPORTANTE: core.js antes) -->
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/equipos.js"></script>
