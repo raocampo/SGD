@@ -1,6 +1,6 @@
 # Bitácora de Avances - SGD
 
-Ultima actualizacion: 2026-02-18
+Ultima actualizacion: 2026-02-19
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,32 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-02-19
+- Planillaje migrado a flujo de captura directa estilo formulario oficial:
+  - se elimino la dependencia operativa de seleccionar goleador/tarjeta fila por fila,
+  - ahora el ingreso principal se hace por jugador (columnas `G`, `TA`, `TR`) para local y visitante.
+- Marcador automatico integrado al formulario:
+  - `Goles Local` y `Goles Visitante` se calculan por suma de goles ingresados en la tabla de jugadores,
+  - los resultados se envian al backend dentro del mismo payload de guardado.
+- Formulario de planilla redisenado con estructura tipo planilla impresa (segun referencia):
+  - cabecera con organizador, tipo de futbol, logos y metadatos del partido,
+  - bloque visual de faltas para futbol 7/5/sala,
+  - seccion de captura por jugador en dos tablas (local/visitante),
+  - footer por equipo con resumen de tarjetas, director tecnico y pagos.
+- Exportacion e impresion:
+  - nuevo boton `Exportar PDF` que imprime directamente el formulario oficial,
+  - `Imprimir Vista Previa` mantiene impresion de la vista previa alternativa,
+  - estilos de impresion separados por modo (`print-planilla-form` / `print-planilla-preview`).
+- Vista previa oficial mejorada y mantenida:
+  - pestañas de vista previa: `Formato PDF` y `Resumen Anterior`,
+  - la vista anterior se mantiene como respaldo para comparacion y continuidad.
+- Backend ajustado para soportar cabecera oficial de planilla:
+  - `backend/models/Partido.js` ahora incluye en `obtenerPlanilla`:
+    - `max_jugador`,
+    - `campeonato_organizador`,
+    - `campeonato_logo_url`.
+- Se mantiene exportacion XLSX oficial ya implementada previamente, alineada con `templates/PlanillaJuego.xlsx`.
 
 ### 2026-02-18
 - Modulo financiero base implementado (backend + frontend):
@@ -255,12 +281,14 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 
 ## En Curso
 - Carga de equipos reales para pruebas funcionales de sorteo -> grupos -> fixture.
+- Pulido visual final de planillaje oficial (alineaciones finas, espacios y ajustes de impresion en distintos tamanos de papel).
 
 ## Pendientes Prioritarios
 - Ejecutar pruebas end-to-end con datos reales (validar que todo el flujo quede estable).
 - Consolidar autenticacion y roles (RBAC) minimo.
 - Revisar y ordenar archivos legacy/antiguos para reducir deuda tecnica.
 - Continuar modulo financiero: multas automaticas, bloqueos por morosidad y reportes de ingresos.
+- Ajustar detalles de UX del nuevo formulario de planilla segun retroalimentacion de operacion en campo.
 
 ## Checklist de Pruebas Siguiente Sesion
 1. Crear/seleccionar campeonato y evento.

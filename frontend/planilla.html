@@ -45,10 +45,13 @@
                 <i class="fas fa-rotate"></i> Recargar
               </button>
               <button class="btn btn-outline" onclick="toggleVistaPreviaPlanilla()">
-                <i class="fas fa-eye"></i> Vista Previa
+                <i class="fas fa-eye"></i> Vista Previa (Opcional)
               </button>
               <button class="btn btn-warning" onclick="imprimirVistaPrevia()">
-                <i class="fas fa-print"></i> Imprimir
+                <i class="fas fa-print"></i> Imprimir Vista Previa
+              </button>
+              <button class="btn btn-danger" onclick="exportarPlanillaPDF()">
+                <i class="fas fa-file-pdf"></i> Exportar PDF
               </button>
               <button class="btn btn-success" onclick="exportarPlanillaXLSX()">
                 <i class="fas fa-file-excel"></i> Exportar XLSX
@@ -92,14 +95,29 @@
             <form id="form-planilla" class="config-card">
               <h3>Datos del Partido</h3>
 
+              <div class="planilla-score-grid planilla-meta-extra-grid">
+                <div class="form-group">
+                  <label for="arbitro-planilla">Arbitro</label>
+                  <input type="text" id="arbitro-planilla" placeholder="Nombre del arbitro" />
+                </div>
+                <div class="form-group">
+                  <label for="delegado-planilla">Delegado del partido</label>
+                  <input type="text" id="delegado-planilla" placeholder="Delegado" />
+                </div>
+                <div class="form-group">
+                  <label for="ciudad-planilla">Ciudad</label>
+                  <input type="text" id="ciudad-planilla" placeholder="Ciudad" />
+                </div>
+              </div>
+
               <div class="planilla-score-grid">
                 <div class="form-group">
                   <label for="resultado-local">Goles Local</label>
-                  <input type="number" id="resultado-local" min="0" value="0" />
+                  <input type="number" id="resultado-local" min="0" value="0" readonly />
                 </div>
                 <div class="form-group">
                   <label for="resultado-visitante">Goles Visitante</label>
-                  <input type="number" id="resultado-visitante" min="0" value="0" />
+                  <input type="number" id="resultado-visitante" min="0" value="0" readonly />
                 </div>
                 <div class="form-group">
                   <label for="estado-partido">Estado</label>
@@ -111,6 +129,9 @@
                   </select>
                 </div>
               </div>
+              <p class="form-hint">El resultado se calcula automaticamente desde la planilla de jugadores.</p>
+
+              <div id="planilla-faltas-visual" class="planilla-faltas-visual"></div>
 
               <h4>Planteles del Partido</h4>
               <div class="planilla-planteles-grid">
@@ -124,36 +145,75 @@
                 </div>
               </div>
 
-              <h4>Goleadores</h4>
-              <div id="lista-goles" class="planilla-rows"></div>
-              <div class="planilla-inline-actions">
-                <button type="button" class="btn btn-primary" onclick="agregarFilaGol()">
-                  <i class="fas fa-plus"></i> Agregar goleador
-                </button>
-              </div>
-
-              <h4>Tarjetas</h4>
-              <div id="lista-tarjetas" class="planilla-rows"></div>
-              <div class="planilla-inline-actions">
-                <button type="button" class="btn btn-primary" onclick="agregarFilaTarjeta()">
-                  <i class="fas fa-plus"></i> Agregar tarjeta
-                </button>
+              <h4>Registro Oficial por Jugador</h4>
+              <div class="planilla-captura-grid">
+                <div class="planilla-captura-card">
+                  <h5 id="captura-titulo-local">Local</h5>
+                  <div id="captura-local"></div>
+                </div>
+                <div class="planilla-captura-card">
+                  <h5 id="captura-titulo-visitante">Visitante</h5>
+                  <div id="captura-visitante"></div>
+                </div>
               </div>
 
               <h4>Pagos y Observaciones</h4>
-              <div class="planilla-score-grid">
-                <div class="form-group">
-                  <label for="pago-arbitraje">Pago arbitraje</label>
-                  <input type="number" id="pago-arbitraje" min="0" step="0.01" value="0" />
-                </div>
-                <div class="form-group">
-                  <label for="pago-local">Pago equipo local</label>
-                  <input type="number" id="pago-local" min="0" step="0.01" value="0" />
-                </div>
-                <div class="form-group">
-                  <label for="pago-visitante">Pago equipo visitante</label>
-                  <input type="number" id="pago-visitante" min="0" step="0.01" value="0" />
-                </div>
+              <div class="planilla-footer-grid">
+                <article class="planilla-footer-team">
+                  <h5 id="footer-equipo-local">Local</h5>
+                  <div class="planilla-footer-line">
+                    <span>DIRIGENTE / DIRECTOR TECNICO</span>
+                    <strong id="footer-dt-local">-</strong>
+                  </div>
+                  <div class="planilla-footer-row">
+                    <label for="resumen-ta-local">Tarjetas amarillas</label>
+                    <input type="number" id="resumen-ta-local" value="0" readonly />
+                  </div>
+                  <div class="planilla-footer-row">
+                    <label for="resumen-tr-local">Tarjetas rojas</label>
+                    <input type="number" id="resumen-tr-local" value="0" readonly />
+                  </div>
+                  <div class="planilla-footer-row">
+                    <label for="pago-arbitraje">Arbitraje</label>
+                    <input type="number" id="pago-arbitraje" min="0" step="0.01" value="0" />
+                  </div>
+                  <div class="planilla-footer-row">
+                    <label for="tarifas-local">Tarifas (A/R)</label>
+                    <input type="text" id="tarifas-local" value="A: 0 | R: 0" readonly />
+                  </div>
+                  <div class="planilla-footer-row">
+                    <label for="pago-local">Inscripción</label>
+                    <input type="number" id="pago-local" min="0" step="0.01" value="0" />
+                  </div>
+                </article>
+
+                <article class="planilla-footer-team">
+                  <h5 id="footer-equipo-visitante">Visitante</h5>
+                  <div class="planilla-footer-line">
+                    <span>DIRIGENTE / DIRECTOR TECNICO</span>
+                    <strong id="footer-dt-visitante">-</strong>
+                  </div>
+                  <div class="planilla-footer-row">
+                    <label for="resumen-ta-visitante">Tarjetas amarillas</label>
+                    <input type="number" id="resumen-ta-visitante" value="0" readonly />
+                  </div>
+                  <div class="planilla-footer-row">
+                    <label for="resumen-tr-visitante">Tarjetas rojas</label>
+                    <input type="number" id="resumen-tr-visitante" value="0" readonly />
+                  </div>
+                  <div class="planilla-footer-row">
+                    <label for="pago-arbitraje-vista">Arbitraje</label>
+                    <input type="number" id="pago-arbitraje-vista" value="0" readonly />
+                  </div>
+                  <div class="planilla-footer-row">
+                    <label for="tarifas-visitante">Tarifas (A/R)</label>
+                    <input type="text" id="tarifas-visitante" value="A: 0 | R: 0" readonly />
+                  </div>
+                  <div class="planilla-footer-row">
+                    <label for="pago-visitante">Inscripción</label>
+                    <input type="number" id="pago-visitante" min="0" step="0.01" value="0" />
+                  </div>
+                </article>
               </div>
 
               <div class="form-group">
@@ -174,6 +234,14 @@
             <section id="planilla-preview-card" class="config-card planilla-preview-card" style="display:none;">
               <div class="planilla-preview-toolbar">
                 <h3><i class="fas fa-file-lines"></i> Vista Previa Oficial de Planilla</h3>
+                <div class="planilla-preview-mode-switch" id="planilla-preview-mode-switch">
+                  <button type="button" class="btn btn-xs btn-outline active" data-planilla-vista="oficial">
+                    <i class="fas fa-file-lines"></i> Formato PDF
+                  </button>
+                  <button type="button" class="btn btn-xs btn-outline" data-planilla-vista="resumen">
+                    <i class="fas fa-table-list"></i> Resumen Anterior
+                  </button>
+                </div>
                 <div class="planilla-preview-toolbar-actions">
                   <button type="button" class="btn btn-warning btn-xs" onclick="imprimirVistaPrevia()">
                     <i class="fas fa-print"></i> Imprimir

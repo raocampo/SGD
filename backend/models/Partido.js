@@ -911,6 +911,9 @@ class Partido {
     const partidoQ = `
       SELECT p.*,
              c.tipo_futbol,
+             c.max_jugador,
+             c.organizador AS campeonato_organizador,
+             c.logo_url AS campeonato_logo_url,
              c.nombre AS campeonato_nombre,
              COALESCE(c.requiere_foto_cedula, false) AS requiere_foto_cedula,
              COALESCE(c.requiere_foto_carnet, false) AS requiere_foto_carnet,
