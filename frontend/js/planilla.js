@@ -68,12 +68,21 @@ function normalizarArchivoUrl(url) {
   if (!url) return "";
   const raw = String(url).trim();
   if (!raw) return "";
-  if (/^https?:\/\//i.test(raw)) return raw;
+  const normal = raw.replaceAll("\\", "/");
+  if (/^https?:\/\//i.test(normal)) return normal;
 
   const apiBase = String(window.API_BASE_URL || "http://localhost:5000/api");
   const backendBase = apiBase.replace(/\/api\/?$/i, "");
-  if (raw.startsWith("/")) return `${backendBase}${raw}`;
-  return `${backendBase}/${raw}`;
+  if (normal.startsWith(`${backendBase}/`)) return normal;
+  if (normal.startsWith("/")) return `${backendBase}${normal}`;
+  return `${backendBase}/${normal}`;
+}
+
+function etiquetaGrupoPartido(p = {}) {
+  if (p.letra_grupo) return `Grupo ${p.letra_grupo}`;
+  if (p.nombre_grupo) return p.nombre_grupo;
+  if (Number.isFinite(Number(p.grupo_id)) && Number(p.grupo_id) > 0) return `Grupo ${p.grupo_id}`;
+  return "Sin grupo";
 }
 
 function formatearTipoFutbolTexto(tipo) {
@@ -269,7 +278,7 @@ function llenarPlantelExcel(sheet, cfg, jugadores, stats) {
     const fila = cfg.jugadores.inicio + index;
     const jugadorId = Number(j.id);
 
-    const numero = j.numero_camiseta || index + 1;
+    const numero = j.numero_camiseta || "";
     const nombre = `${j.apellido || ""} ${j.nombre || ""}`.trim();
     const goles = stats.golesPorJugador.get(jugadorId) || "";
     const amarillas = stats.amarillasPorJugador.get(jugadorId) || "";
@@ -303,7 +312,7 @@ function llenarHojaListaJugadores(wb, partido, plantelLocal = []) {
 
   plantelLocal.slice(0, 20).forEach((j, index) => {
     const fila = 10 + index;
-    setCellValue(sheet, `C${fila}`, j.numero_camiseta || index + 1);
+    setCellValue(sheet, `C${fila}`, j.numero_camiseta || "");
     setCellValue(sheet, `D${fila}`, j.apellido || "");
     setCellValue(sheet, `F${fila}`, j.nombre || "");
     setCellValue(sheet, `G${fila}`, j.cedidentidad || "");
@@ -340,13 +349,14 @@ function renderEncabezado() {
   const p = dataPlanilla.partido;
   const fecha = formatearFecha(p.fecha_partido);
   const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
-  const grupo = p.letra_grupo ? `Grupo ${p.letra_grupo}` : "Sin grupo";
+  const grupo = etiquetaGrupoPartido(p);
   const jornada = Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
   const tipoTxt = formatearTipoFutbolTexto(p.tipo_futbol);
   const orgTxt = p.campeonato_organizador || p.campeonato_nombre || "Organizador";
   const logoCampeonato = normalizarArchivoUrl(p.campeonato_logo_url);
   const logoLocal = normalizarArchivoUrl(p.equipo_local_logo_url);
   const logoVisit = normalizarArchivoUrl(p.equipo_visitante_logo_url);
+  const logosDerecha = [logoLocal, logoVisit].filter(Boolean);
   const resultadoLocal = aEntero(document.getElementById("resultado-local")?.value, aEntero(p.resultado_local, 0));
   const resultadoVisit = aEntero(document.getElementById("resultado-visitante")?.value, aEntero(p.resultado_visitante, 0));
 
@@ -354,7 +364,7 @@ function renderEncabezado() {
   const reqCar = documentosRequeridos.foto_carnet ? "Carnet: requerido" : "Carnet: opcional";
 
   cont.innerHTML = `
-    <div class="planilla-head-sheet">
+    <div class="planilla-head-sheet${logosDerecha.length ? "" : " no-right-logos"}">
       <div class="planilla-head-logo-slot">
         ${
           logoCampeonato
@@ -367,17 +377,24 @@ function renderEncabezado() {
         <h3>PLANILLA DE JUEGO</h3>
         <p class="planilla-head-type">${escapeHtml(tipoTxt)}</p>
       </div>
-      <div class="planilla-head-logo-stack">
-        ${
-          logoLocal
-            ? `<img src="${logoLocal}" alt="Logo local" class="planilla-head-logo-mini" />`
-            : "<div class='planilla-head-logo-mini-fallback'>L</div>"
-        }
-        ${
-          logoVisit
-            ? `<img src="${logoVisit}" alt="Logo visitante" class="planilla-head-logo-mini" />`
-            : "<div class='planilla-head-logo-mini-fallback'>V</div>"
-        }
+      <div class="planilla-head-logo-stack" ${logosDerecha.length ? "" : "aria-hidden='true'"}>
+        ${logosDerecha
+          .map(
+            (src, idx) =>
+              `<img src="${src}" alt="Logo ${idx === 0 ? "local" : "visitante"}" class="planilla-head-logo-mini" />`
+          )
+          .join("")}
+      </div>
+    </div>
+    <div class="planilla-head-score-strip">
+      <div class="planilla-head-score-team">
+        <span id="head-resultado-local" class="planilla-head-score-box">${resultadoLocal}</span>
+        <span class="planilla-head-score-name">${escapeHtml(p.equipo_local_nombre || "Local")}</span>
+      </div>
+      <div class="planilla-head-score-sep">:</div>
+      <div class="planilla-head-score-team">
+        <span id="head-resultado-visitante" class="planilla-head-score-box">${resultadoVisit}</span>
+        <span class="planilla-head-score-name">${escapeHtml(p.equipo_visitante_nombre || "Visitante")}</span>
       </div>
     </div>
     <div class="planilla-head-meta-grid">
@@ -387,26 +404,24 @@ function renderEncabezado() {
       <div><strong>Hora:</strong> <span id="head-hora">${escapeHtml(hora)}</span></div>
       <div><strong>Cancha:</strong> <span id="head-cancha">${escapeHtml(p.cancha || "Por definir")}</span></div>
       <div><strong>Ciudad:</strong> <span id="head-ciudad">${escapeHtml(p.ciudad || "Por definir")}</span></div>
-      <div><strong>Resultado:</strong> <span id="head-resultado-local">${resultadoLocal}</span></div>
-      <div><strong>Resultado:</strong> <span id="head-resultado-visitante">${resultadoVisit}</span></div>
     </div>
     <p class="planilla-head-docs"><strong>Requisitos documentos:</strong> ${reqCed} • ${reqCar}</p>
   `;
 
-  const ttlLocal = document.getElementById("titulo-plantel-local");
-  const ttlVisit = document.getElementById("titulo-plantel-visitante");
   const ttlCapLocal = document.getElementById("captura-titulo-local");
   const ttlCapVisit = document.getElementById("captura-titulo-visitante");
   const ttlFootLocal = document.getElementById("footer-equipo-local");
   const ttlFootVisit = document.getElementById("footer-equipo-visitante");
+  const ttlPagoLocal = document.getElementById("pago-equipo-local");
+  const ttlPagoVisit = document.getElementById("pago-equipo-visitante");
   const dtLocal = document.getElementById("footer-dt-local");
   const dtVisit = document.getElementById("footer-dt-visitante");
-  if (ttlLocal) ttlLocal.textContent = p.equipo_local_nombre || "Local";
-  if (ttlVisit) ttlVisit.textContent = p.equipo_visitante_nombre || "Visitante";
   if (ttlCapLocal) ttlCapLocal.textContent = p.equipo_local_nombre || "Local";
   if (ttlCapVisit) ttlCapVisit.textContent = p.equipo_visitante_nombre || "Visitante";
   if (ttlFootLocal) ttlFootLocal.textContent = p.equipo_local_nombre || "Local";
   if (ttlFootVisit) ttlFootVisit.textContent = p.equipo_visitante_nombre || "Visitante";
+  if (ttlPagoLocal) ttlPagoLocal.textContent = p.equipo_local_nombre || "Local";
+  if (ttlPagoVisit) ttlPagoVisit.textContent = p.equipo_visitante_nombre || "Visitante";
   if (dtLocal) dtLocal.textContent = p.equipo_local_director_tecnico || "-";
   if (dtVisit) dtVisit.textContent = p.equipo_visitante_director_tecnico || "-";
 
@@ -467,8 +482,8 @@ function actualizarHeaderResultado(local, visitante) {
 
 function actualizarPanelPagosEspejo() {
   const arbitraje = aDecimal(document.getElementById("pago-arbitraje")?.value, 0);
-  const espejo = document.getElementById("pago-arbitraje-vista");
-  if (espejo) espejo.value = String(arbitraje);
+  const arbitrajeEspejo = document.getElementById("pago-arbitraje-vista");
+  if (arbitrajeEspejo) arbitrajeEspejo.value = String(arbitraje);
 }
 
 function calcularTotalesCaptura() {
@@ -479,9 +494,9 @@ function calcularTotalesCaptura() {
 
   document.querySelectorAll(".planilla-player-row").forEach((row) => {
     const equipoId = Number(row.dataset.equipoId);
-    const goles = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 30);
-    const ta = valorNoNegativoEntero(row.querySelector(".cap-ta")?.value, 0, 5);
-    const tr = valorNoNegativoEntero(row.querySelector(".cap-tr")?.value, 0, 3);
+    const goles = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
+    const ta = valorNoNegativoEntero(row.querySelector(".cap-ta")?.value, 0, 99);
+    const tr = valorNoNegativoEntero(row.querySelector(".cap-tr")?.value, 0, 99);
 
     if (equipoId === Number(equiposPartido.local.id)) {
       out.local.goles += goles;
@@ -503,15 +518,11 @@ function actualizarResumenFooterDesdeCaptura() {
   const trLocal = document.getElementById("resumen-tr-local");
   const taVisit = document.getElementById("resumen-ta-visitante");
   const trVisit = document.getElementById("resumen-tr-visitante");
-  const tarifasLocal = document.getElementById("tarifas-local");
-  const tarifasVisit = document.getElementById("tarifas-visitante");
 
   if (taLocal) taLocal.value = String(tot.local.ta);
   if (trLocal) trLocal.value = String(tot.local.tr);
   if (taVisit) taVisit.value = String(tot.visitante.ta);
   if (trVisit) trVisit.value = String(tot.visitante.tr);
-  if (tarifasLocal) tarifasLocal.value = `A: ${tot.local.ta} | R: ${tot.local.tr}`;
-  if (tarifasVisit) tarifasVisit.value = `A: ${tot.visitante.ta} | R: ${tot.visitante.tr}`;
 }
 
 function renderPlantel(idContenedor, jugadores) {
@@ -573,7 +584,8 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, statsInicia
       const goles = statsIniciales.golesPorJugador.get(jugadorId) || "";
       const amarillas = statsIniciales.amarillasPorJugador.get(jugadorId) || "";
       const rojas = statsIniciales.rojasPorJugador.get(jugadorId) || "";
-      const numero = j.numero_camiseta || idx + 1;
+      const item = idx + 1;
+      const numero = j.numero_camiseta || "-";
       const nombre = nombreJugador(j) || `Jugador ${idx + 1}`;
       const docs = [];
       if (documentosRequeridos.foto_cedula) docs.push(j.foto_cedula_url ? "Cedula OK" : "Cedula pendiente");
@@ -582,14 +594,15 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, statsInicia
 
       return `
         <tr class="planilla-player-row" data-equipo-id="${equipoId}" data-jugador-id="${j.id}">
+          <td>${item}</td>
           <td>${numero}</td>
           <td>
             <strong>${escapeHtml(nombre)}</strong>
             ${docsHtml}
           </td>
-          <td><input class="cap-goles" type="number" min="0" max="30" step="1" value="${goles}" /></td>
-          <td><input class="cap-ta" type="number" min="0" max="5" step="1" value="${amarillas}" /></td>
-          <td><input class="cap-tr" type="number" min="0" max="3" step="1" value="${rojas}" /></td>
+          <td><input class="cap-goles" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${goles}" /></td>
+          <td><input class="cap-ta" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${amarillas}" /></td>
+          <td><input class="cap-tr" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${rojas}" /></td>
         </tr>
       `;
     })
@@ -599,17 +612,9 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, statsInicia
     <div class="planilla-captura-table-wrap">
       <table class="planilla-captura-table">
         <thead>
-          <tr><th>N°</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+          <tr><th>Item</th><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
         </thead>
         <tbody>${filas}</tbody>
-        <tfoot>
-          <tr>
-            <td colspan="2">Totales</td>
-            <td class="cap-total-goles">0</td>
-            <td class="cap-total-ta">0</td>
-            <td class="cap-total-tr">0</td>
-          </tr>
-        </tfoot>
       </table>
     </div>
   `;
@@ -624,9 +629,9 @@ function recalcularTotalesCapturaEquipo(idContenedor) {
   let totalTr = 0;
 
   cont.querySelectorAll(".planilla-player-row").forEach((row) => {
-    totalGoles += valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 30);
-    totalTa += valorNoNegativoEntero(row.querySelector(".cap-ta")?.value, 0, 5);
-    totalTr += valorNoNegativoEntero(row.querySelector(".cap-tr")?.value, 0, 3);
+    totalGoles += valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
+    totalTa += valorNoNegativoEntero(row.querySelector(".cap-ta")?.value, 0, 99);
+    totalTr += valorNoNegativoEntero(row.querySelector(".cap-tr")?.value, 0, 99);
   });
 
   const golesCell = cont.querySelector(".cap-total-goles");
@@ -665,8 +670,8 @@ function conectarEventosCaptura() {
     input.addEventListener("input", (e) => {
       const target = e.target;
       if (!(target instanceof HTMLInputElement)) return;
-      const max = target.classList.contains("cap-goles") ? 30 : target.classList.contains("cap-ta") ? 5 : 3;
-      const valor = valorNoNegativoEntero(target.value, 0, max);
+      const limpio = String(target.value || "").replace(/\D+/g, "").slice(0, 2);
+      const valor = valorNoNegativoEntero(limpio, 0, 99);
       target.value = valor ? String(valor) : "";
       recalcularTotalesCapturaEquipo("captura-local");
       recalcularTotalesCapturaEquipo("captura-visitante");
@@ -705,17 +710,40 @@ function cargarCamposBase() {
   const p = dataPlanilla.partido;
   const plan = dataPlanilla.planilla || {};
 
-  document.getElementById("resultado-local").value = aEntero(p.resultado_local, 0);
-  document.getElementById("resultado-visitante").value = aEntero(p.resultado_visitante, 0);
-  document.getElementById("estado-partido").value = p.estado || "finalizado";
+  const inputResultadoLocal = document.getElementById("resultado-local");
+  const inputResultadoVisit = document.getElementById("resultado-visitante");
+  const inputEstado = document.getElementById("estado-partido");
+  const inputPagoTaLocal = document.getElementById("pago-ta-local");
+  const inputPagoTrLocal = document.getElementById("pago-tr-local");
+  const inputPagoTaVisitante = document.getElementById("pago-ta-visitante");
+  const inputPagoTrVisitante = document.getElementById("pago-tr-visitante");
+  const inputPagoArbitraje = document.getElementById("pago-arbitraje");
+  const inputPagoLocal = document.getElementById("pago-local");
+  const inputPagoVisitante = document.getElementById("pago-visitante");
+  const inputObserv = document.getElementById("observaciones-planilla");
+  const inputArbitro = document.getElementById("arbitro-planilla");
+  const inputDelegado = document.getElementById("delegado-planilla");
+  const inputCiudad = document.getElementById("ciudad-planilla");
 
-  document.getElementById("pago-arbitraje").value = aDecimal(plan.pago_arbitraje, 0);
-  document.getElementById("pago-local").value = aDecimal(plan.pago_local, 0);
-  document.getElementById("pago-visitante").value = aDecimal(plan.pago_visitante, 0);
-  document.getElementById("observaciones-planilla").value = plan.observaciones || "";
-  document.getElementById("arbitro-planilla").value = p.arbitro || "";
-  document.getElementById("delegado-planilla").value = p.delegado_partido || "";
-  document.getElementById("ciudad-planilla").value = p.ciudad || "";
+  if (inputResultadoLocal) inputResultadoLocal.value = aEntero(p.resultado_local, 0);
+  if (inputResultadoVisit) inputResultadoVisit.value = aEntero(p.resultado_visitante, 0);
+  if (inputEstado) inputEstado.value = p.estado || "finalizado";
+
+  if (inputPagoTaLocal) inputPagoTaLocal.value = aDecimal(plan.pago_ta_local, aDecimal(plan.pago_ta, 0));
+  if (inputPagoTrLocal) inputPagoTrLocal.value = aDecimal(plan.pago_tr_local, aDecimal(plan.pago_tr, 0));
+  if (inputPagoTaVisitante) {
+    inputPagoTaVisitante.value = aDecimal(plan.pago_ta_visitante, aDecimal(plan.pago_ta, 0));
+  }
+  if (inputPagoTrVisitante) {
+    inputPagoTrVisitante.value = aDecimal(plan.pago_tr_visitante, aDecimal(plan.pago_tr, 0));
+  }
+  if (inputPagoArbitraje) inputPagoArbitraje.value = aDecimal(plan.pago_arbitraje, 0);
+  if (inputPagoLocal) inputPagoLocal.value = aDecimal(plan.pago_local, 0);
+  if (inputPagoVisitante) inputPagoVisitante.value = aDecimal(plan.pago_visitante, 0);
+  if (inputObserv) inputObserv.value = plan.observaciones || "";
+  if (inputArbitro) inputArbitro.value = p.arbitro || "";
+  if (inputDelegado) inputDelegado.value = p.delegado_partido || "";
+  if (inputCiudad) inputCiudad.value = p.ciudad || "";
 
   actualizarPanelPagosEspejo();
   actualizarHeaderMetaEditable();
@@ -1145,8 +1173,6 @@ async function cargarPlanilla() {
 
     renderEncabezado();
     cargarCamposBase();
-    renderPlantel("plantel-local", dataPlanilla.plantel_local || []);
-    renderPlantel("plantel-visitante", dataPlanilla.plantel_visitante || []);
     renderCapturaOficialPorJugador();
     actualizarVisibilidadContenidoPlanilla(true);
     await sincronizarSelectoresDesdePlanillaActual();
@@ -1168,9 +1194,9 @@ function recolectarPayloadPlanilla() {
       const jugadorId = Number(row.dataset.jugadorId);
       if (!Number.isFinite(equipoId) || !Number.isFinite(jugadorId)) return;
 
-      const golesNum = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 30);
-      const amarillasNum = valorNoNegativoEntero(row.querySelector(".cap-ta")?.value, 0, 5);
-      const rojasNum = valorNoNegativoEntero(row.querySelector(".cap-tr")?.value, 0, 3);
+      const golesNum = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
+      const amarillasNum = valorNoNegativoEntero(row.querySelector(".cap-ta")?.value, 0, 99);
+      const rojasNum = valorNoNegativoEntero(row.querySelector(".cap-tr")?.value, 0, 99);
 
       if (golesNum > 0) {
         goles.push({
@@ -1246,8 +1272,22 @@ function recolectarPayloadPlanilla() {
     resultado_local: aEntero(document.getElementById("resultado-local")?.value, 0),
     resultado_visitante: aEntero(document.getElementById("resultado-visitante")?.value, 0),
     estado: String(document.getElementById("estado-partido")?.value || "finalizado"),
+    arbitro: String(document.getElementById("arbitro-planilla")?.value || "").trim(),
+    delegado_partido: String(document.getElementById("delegado-planilla")?.value || "").trim(),
+    ciudad: String(document.getElementById("ciudad-planilla")?.value || "").trim(),
     observaciones: String(document.getElementById("observaciones-planilla")?.value || "").trim(),
     pagos: {
+      pago_ta_local: aDecimal(document.getElementById("pago-ta-local")?.value, 0),
+      pago_ta_visitante: aDecimal(document.getElementById("pago-ta-visitante")?.value, 0),
+      pago_tr_local: aDecimal(document.getElementById("pago-tr-local")?.value, 0),
+      pago_tr_visitante: aDecimal(document.getElementById("pago-tr-visitante")?.value, 0),
+      // Compatibilidad con campos globales anteriores
+      pago_ta:
+        aDecimal(document.getElementById("pago-ta-local")?.value, 0) +
+        aDecimal(document.getElementById("pago-ta-visitante")?.value, 0),
+      pago_tr:
+        aDecimal(document.getElementById("pago-tr-local")?.value, 0) +
+        aDecimal(document.getElementById("pago-tr-visitante")?.value, 0),
       pago_arbitraje: aDecimal(document.getElementById("pago-arbitraje")?.value, 0),
       pago_local: aDecimal(document.getElementById("pago-local")?.value, 0),
       pago_visitante: aDecimal(document.getElementById("pago-visitante")?.value, 0),
@@ -1262,7 +1302,8 @@ function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
   for (let i = 0; i < maxFilas; i += 1) {
     const j = jugadores[i] || null;
     const jugadorId = Number(j?.id);
-    const numero = j ? j.numero_camiseta || i + 1 : "";
+    const item = i + 1;
+    const numero = j ? j.numero_camiseta || "" : "";
     const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
     const goles = j ? stats.golesPorJugador.get(jugadorId) || "" : "";
     const amarillas = j ? stats.amarillasPorJugador.get(jugadorId) || "" : "";
@@ -1270,6 +1311,7 @@ function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
 
     filas.push(`
       <tr>
+        <td>${item}</td>
         <td>${numero}</td>
         <td>${escapeHtml(nombre)}</td>
         <td>${goles}</td>
@@ -1321,11 +1363,15 @@ function obtenerModeloPlanillaOficial() {
 }
 
 function obtenerMaxFilasVistaPreviaPlanilla() {
-  const cfg = obtenerConfigExportacionPlanilla(obtenerTipoFutbolPlanilla());
-  const filasPorPlantilla = cfg.jugadores.fin - cfg.jugadores.inicio + 1;
-  const maxCamp = aEntero(dataPlanilla?.partido?.max_jugador, 0);
-  if (maxCamp > 0) return Math.min(Math.max(maxCamp, 1), 60);
-  return filasPorPlantilla;
+  const localCount = Array.isArray(dataPlanilla?.plantel_local)
+    ? dataPlanilla.plantel_local.length
+    : 0;
+  const visitanteCount = Array.isArray(dataPlanilla?.plantel_visitante)
+    ? dataPlanilla.plantel_visitante.length
+    : 0;
+  // En vista previa/impresion priorizamos una hoja compacta.
+  const filasNecesarias = Math.max(localCount, visitanteCount, 8);
+  return Math.min(filasNecesarias, 18);
 }
 
 function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
@@ -1333,7 +1379,8 @@ function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
   for (let i = 0; i < maxFilas; i += 1) {
     const j = jugadores[i] || null;
     const jugadorId = Number(j?.id);
-    const numero = j ? j.numero_camiseta || i + 1 : i + 1;
+    const item = i + 1;
+    const numero = j ? j.numero_camiseta || "" : "";
     const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
     const goles = j ? stats.golesPorJugador.get(jugadorId) || "" : "";
     const amarillas = j ? stats.amarillasPorJugador.get(jugadorId) || "" : "";
@@ -1341,6 +1388,7 @@ function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
 
     filas.push(`
       <tr>
+        <td>${item}</td>
         <td>${numero}</td>
         <td>${escapeHtml(nombre)}</td>
         <td>${goles}</td>
@@ -1378,11 +1426,12 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
 
   const modelo = obtenerModeloPlanillaOficial();
   const tituloModelo = modelo === "futbol_11_indor" ? "FUTBOL 11 / INDOR" : "FUTBOL 7 / 5 / SALA";
-  const grupo = p.letra_grupo ? `Grupo ${p.letra_grupo}` : "Sin grupo";
+  const grupo = etiquetaGrupoPartido(p);
   const jornada = Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
   const arbitro = String(document.getElementById("arbitro-planilla")?.value || p.arbitro || "");
   const delegado = String(document.getElementById("delegado-planilla")?.value || p.delegado_partido || "");
   const ciudad = String(document.getElementById("ciudad-planilla")?.value || p.ciudad || "");
+  const logoOrg = normalizarArchivoUrl(p.campeonato_logo_url);
 
   const filasLocal = renderFilasVistaPreviaOficialEquipo(dataPlanilla.plantel_local || [], stats, maxFilas);
   const filasVisit = renderFilasVistaPreviaOficialEquipo(dataPlanilla.plantel_visitante || [], stats, maxFilas);
@@ -1390,9 +1439,16 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
   cont.innerHTML = `
     <div class="planilla-oficial-sheet ${modelo}">
       <header class="planilla-oficial-head">
-        <p class="planilla-oficial-org">${escapeHtml(p.campeonato_organizador || p.campeonato_nombre || "SGD")}</p>
-        <h4>PLANILLA DE JUEGO</h4>
-        <p class="planilla-oficial-type">${escapeHtml(tituloModelo)}</p>
+        <div class="planilla-oficial-head-text">
+          <p class="planilla-oficial-org">${escapeHtml(p.campeonato_organizador || p.campeonato_nombre || "SGD")}</p>
+          <h4>PLANILLA DE JUEGO</h4>
+          <p class="planilla-oficial-type">${escapeHtml(tituloModelo)}</p>
+        </div>
+        ${
+          logoOrg
+            ? `<div class="planilla-oficial-head-logo-box"><img src="${logoOrg}" alt="Logo organizador" class="planilla-oficial-org-logo" /></div>`
+            : ""
+        }
       </header>
 
       <div class="planilla-oficial-meta">
@@ -1427,14 +1483,15 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           <div class="planilla-oficial-team-title">EQUIPO: ${escapeHtml(p.equipo_local_nombre || equiposPartido.local.nombre)}</div>
           <table class="planilla-oficial-table">
             <thead>
-              <tr><th>N°</th><th>Nombre</th><th>Gol</th><th>TA</th><th>TR</th></tr>
+              <tr><th>Item</th><th>N</th><th>Nombre</th><th>Gol</th><th>TA</th><th>TR</th></tr>
             </thead>
             <tbody>${filasLocal}</tbody>
           </table>
           <div class="planilla-oficial-team-notes">
             <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(p.equipo_local_director_tecnico || "________________")}</p>
-            <p><strong>Tarjetas amarillas:</strong> ${stats.totalAmarillasLocal}</p>
-            <p><strong>Tarjetas rojas:</strong> ${stats.totalRojasLocal}</p>
+            <p class="planilla-oficial-signature-line"><strong>Firma:</strong> ____________________________</p>
+            <p><strong>Tarjetas amarillas:</strong> ${Number(stats.totalAmarillasLocal || 0)}</p>
+            <p><strong>Tarjetas rojas:</strong> ${Number(stats.totalRojasLocal || 0)}</p>
           </div>
         </article>
 
@@ -1442,29 +1499,65 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           <div class="planilla-oficial-team-title">EQUIPO: ${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</div>
           <table class="planilla-oficial-table">
             <thead>
-              <tr><th>N°</th><th>Nombre</th><th>Gol</th><th>TA</th><th>TR</th></tr>
+              <tr><th>Item</th><th>N</th><th>Nombre</th><th>Gol</th><th>TA</th><th>TR</th></tr>
             </thead>
             <tbody>${filasVisit}</tbody>
           </table>
           <div class="planilla-oficial-team-notes">
             <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(p.equipo_visitante_director_tecnico || "________________")}</p>
-            <p><strong>Tarjetas amarillas:</strong> ${stats.totalAmarillasVisitante}</p>
-            <p><strong>Tarjetas rojas:</strong> ${stats.totalRojasVisitante}</p>
+            <p class="planilla-oficial-signature-line"><strong>Firma:</strong> ____________________________</p>
+            <p><strong>Tarjetas amarillas:</strong> ${Number(stats.totalAmarillasVisitante || 0)}</p>
+            <p><strong>Tarjetas rojas:</strong> ${Number(stats.totalRojasVisitante || 0)}</p>
           </div>
         </article>
       </div>
 
       <div class="planilla-oficial-footer">
-        <div class="planilla-oficial-observ">
-          <strong>OBSERVACIONES:</strong>
-          <p>${escapeHtml(payload.observaciones || "Sin observaciones.")}</p>
+        <strong>PAGOS</strong>
+        <div class="planilla-footer-grid">
+          <article class="planilla-footer-team">
+            <h5>${escapeHtml(p.equipo_local_nombre || equiposPartido.local.nombre)}</h5>
+            <div class="planilla-footer-row">
+              <label>Inscripción</label>
+              <input type="text" value="${formatearMoneda(payload.pagos.pago_local)}" readonly />
+            </div>
+            <div class="planilla-footer-row">
+              <label>Arbitraje</label>
+              <input type="text" value="${formatearMoneda(payload.pagos.pago_arbitraje)}" readonly />
+            </div>
+            <div class="planilla-footer-row">
+              <label>Tarjetas amarillas</label>
+              <input type="text" value="${formatearMoneda(payload.pagos.pago_ta_local)}" readonly />
+            </div>
+            <div class="planilla-footer-row">
+              <label>Tarjetas rojas</label>
+              <input type="text" value="${formatearMoneda(payload.pagos.pago_tr_local)}" readonly />
+            </div>
+          </article>
+          <article class="planilla-footer-team">
+            <h5>${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</h5>
+            <div class="planilla-footer-row">
+              <label>Inscripción</label>
+              <input type="text" value="${formatearMoneda(payload.pagos.pago_visitante)}" readonly />
+            </div>
+            <div class="planilla-footer-row">
+              <label>Arbitraje</label>
+              <input type="text" value="${formatearMoneda(payload.pagos.pago_arbitraje)}" readonly />
+            </div>
+            <div class="planilla-footer-row">
+              <label>Tarjetas amarillas</label>
+              <input type="text" value="${formatearMoneda(payload.pagos.pago_ta_visitante)}" readonly />
+            </div>
+            <div class="planilla-footer-row">
+              <label>Tarjetas rojas</label>
+              <input type="text" value="${formatearMoneda(payload.pagos.pago_tr_visitante)}" readonly />
+            </div>
+          </article>
         </div>
-        <div class="planilla-oficial-pagos">
-          <div><strong>ARBITRAJE:</strong> ${formatearMoneda(payload.pagos.pago_arbitraje)}</div>
-          <div><strong>INSCRIPCION LOCAL:</strong> ${formatearMoneda(payload.pagos.pago_local)}</div>
-          <div><strong>INSCRIPCION VISITANTE:</strong> ${formatearMoneda(payload.pagos.pago_visitante)}</div>
-          <div><strong>AMARILLAS L/V:</strong> ${stats.totalAmarillasLocal} / ${stats.totalAmarillasVisitante}</div>
-          <div><strong>ROJAS L/V:</strong> ${stats.totalRojasLocal} / ${stats.totalRojasVisitante}</div>
+
+        <div class="planilla-oficial-observ">
+          <strong>OBSERVACIONES</strong>
+          <p>${escapeHtml(payload.observaciones || "Sin observaciones.")}</p>
         </div>
       </div>
     </div>
@@ -1477,7 +1570,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
 
   const categoria = p.evento_nombre || "Sin categoria";
   const tipoFutbol = String(p.tipo_futbol || "").replaceAll("_", " ").toUpperCase();
-  const grupo = p.letra_grupo ? `Grupo ${p.letra_grupo}` : "Sin grupo";
+  const grupo = etiquetaGrupoPartido(p);
   const filasLocal = renderFilasVistaPreviaEquipo(dataPlanilla.plantel_local || [], stats, maxFilas);
   const filasVisit = renderFilasVistaPreviaEquipo(dataPlanilla.plantel_visitante || [], stats, maxFilas);
   const eventos = renderListaEventosVistaPrevia(payload);
@@ -1507,7 +1600,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
           <h4>Plantel Local</h4>
           <table class="planilla-preview-table">
             <thead>
-              <tr><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+              <tr><th>Item</th><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
             </thead>
             <tbody>${filasLocal}</tbody>
           </table>
@@ -1516,7 +1609,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
           <h4>Plantel Visitante</h4>
           <table class="planilla-preview-table">
             <thead>
-              <tr><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+              <tr><th>Item</th><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
             </thead>
             <tbody>${filasVisit}</tbody>
           </table>
@@ -1535,11 +1628,12 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
         <div class="planilla-preview-box">
           <h5>Pagos</h5>
           <div class="planilla-preview-payments">
-            <div class="row"><span>Arbitraje</span><strong>${formatearMoneda(payload.pagos.pago_arbitraje)}</strong></div>
-            <div class="row"><span>Inscripcion Local</span><strong>${formatearMoneda(payload.pagos.pago_local)}</strong></div>
-            <div class="row"><span>Inscripcion Visitante</span><strong>${formatearMoneda(payload.pagos.pago_visitante)}</strong></div>
-            <div class="row"><span>TA Local / Visitante</span><strong>${stats.totalAmarillasLocal} / ${stats.totalAmarillasVisitante}</strong></div>
-            <div class="row"><span>TR Local / Visitante</span><strong>${stats.totalRojasLocal} / ${stats.totalRojasVisitante}</strong></div>
+            <div class="row"><span>Total TA</span><strong>${Number(stats.totalAmarillasLocal || 0) + Number(stats.totalAmarillasVisitante || 0)}</strong></div>
+            <div class="row"><span>Total TR</span><strong>${Number(stats.totalRojasLocal || 0) + Number(stats.totalRojasVisitante || 0)}</strong></div>
+            <div class="row"><span>Pago TA Local</span><strong>${formatearMoneda(payload.pagos.pago_ta_local)}</strong></div>
+            <div class="row"><span>Pago TA Visitante</span><strong>${formatearMoneda(payload.pagos.pago_ta_visitante)}</strong></div>
+            <div class="row"><span>Pago TR Local</span><strong>${formatearMoneda(payload.pagos.pago_tr_local)}</strong></div>
+            <div class="row"><span>Pago TR Visitante</span><strong>${formatearMoneda(payload.pagos.pago_tr_visitante)}</strong></div>
             <div class="row"><span>Estado</span><strong>${payload.estado || "-"}</strong></div>
           </div>
         </div>
@@ -1612,41 +1706,583 @@ function toggleVistaPreviaPlanilla() {
   card.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function ejecutarImpresionConClase(cssClass) {
-  document.body.classList.remove("print-planilla-form", "print-planilla-preview");
-  if (cssClass) document.body.classList.add(cssClass);
-
-  window.setTimeout(() => {
-    window.print();
-    window.setTimeout(() => {
-      document.body.classList.remove("print-planilla-form", "print-planilla-preview");
-    }, 250);
-  }, 120);
+function activarModoVistaOficial() {
+  modoVistaPreviaPlanilla = "oficial";
+  document
+    .querySelectorAll("#planilla-preview-mode-switch button[data-planilla-vista]")
+    .forEach((btn) => {
+      const activo = btn.dataset.planillaVista === "oficial";
+      btn.classList.toggle("active", activo);
+    });
 }
 
-function exportarPlanillaPDF() {
-  if (!dataPlanilla?.partido) {
-    mostrarNotificacion("Carga primero una planilla para exportar PDF", "warning");
-    return;
-  }
-  ejecutarImpresionConClase("print-planilla-form");
-}
-
-function imprimirVistaPrevia() {
-  if (!dataPlanilla?.partido) {
-    mostrarNotificacion("Carga primero una planilla para imprimir", "warning");
-    return;
-  }
-
+function prepararVistaPreviaOficialParaPDF() {
   const card = document.getElementById("planilla-preview-card");
-  if (!card) return;
+  if (!card) return null;
 
+  activarModoVistaOficial();
   if (card.dataset.visible !== "true") {
     card.style.display = "block";
     card.dataset.visible = "true";
   }
   actualizarVistaPreviaPlanilla(false);
-  ejecutarImpresionConClase("print-planilla-preview");
+  return card.querySelector(".planilla-oficial-sheet");
+}
+
+async function cargarImagenComoDataUrl(url, timeoutMs = 700) {
+  const normalizada = normalizarArchivoUrl(url);
+  if (!normalizada) return null;
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const resp = await fetch(normalizada, { cache: "force-cache", signal: controller.signal });
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("No se pudo leer imagen"));
+      reader.readAsDataURL(blob);
+    });
+  } catch (_error) {
+    return null;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+function construirFilasPlantelPdf(jugadores, stats, maxFilas) {
+  const body = [[
+    { text: "Item", style: "thCenter" },
+    { text: "N", style: "thCenter" },
+    { text: "Nombre", style: "thLeft" },
+    { text: "Gol", style: "thCenter" },
+    { text: "TA", style: "thCenter" },
+    { text: "TR", style: "thCenter" },
+  ]];
+
+  for (let i = 0; i < maxFilas; i += 1) {
+    const j = jugadores[i] || null;
+    const jugadorId = Number(j?.id);
+    const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
+    const numero = j ? String(j.numero_camiseta || "") : "";
+    const goles = j ? String(stats.golesPorJugador.get(jugadorId) || "") : "";
+    const ta = j ? String(stats.amarillasPorJugador.get(jugadorId) || "") : "";
+    const tr = j ? String(stats.rojasPorJugador.get(jugadorId) || "") : "";
+
+    body.push([
+      { text: String(i + 1), style: "tdCenter" },
+      { text: numero, style: "tdCenter" },
+      { text: nombre, style: "tdLeft" },
+      { text: goles, style: "tdCenter" },
+      { text: ta, style: "tdCenter" },
+      { text: tr, style: "tdCenter" },
+    ]);
+  }
+
+  return body;
+}
+
+function construirBloqueTarjetasEquipoPdf(totalTa, totalTr) {
+  return {
+    table: {
+      widths: ["*", 26],
+      body: [
+        [{ text: "Tarjetas amarillas", style: "footLabel" }, { text: String(totalTa), style: "footValueCenter" }],
+        [{ text: "Tarjetas rojas", style: "footLabel" }, { text: String(totalTr), style: "footValueCenter" }],
+      ],
+    },
+    layout: {
+      hLineWidth: () => 0.6,
+      vLineWidth: () => 0.6,
+      hLineColor: () => "#9ca3af",
+      vLineColor: () => "#9ca3af",
+      paddingLeft: () => 3,
+      paddingRight: () => 3,
+      paddingTop: () => 2,
+      paddingBottom: () => 2,
+    },
+  };
+}
+
+function construirBloquePagosPdf(localNombre, visitNombre, pagos = {}) {
+  const layoutTabla = {
+    hLineWidth: () => 0.6,
+    vLineWidth: () => 0.6,
+    hLineColor: () => "#9ca3af",
+    vLineColor: () => "#9ca3af",
+    paddingLeft: () => 3.5,
+    paddingRight: () => 3.5,
+    paddingTop: () => 3,
+    paddingBottom: () => 3,
+  };
+
+  const filasPago = (inscripcion, pagoTa, pagoTr) => [
+    [{ text: "Inscripción", style: "footLabel" }, { text: formatearMoneda(inscripcion), style: "footValue" }],
+    [{ text: "Arbitraje", style: "footLabel" }, { text: formatearMoneda(pagos.pago_arbitraje), style: "footValue" }],
+    [{ text: "Tarjetas amarillas", style: "footLabel" }, { text: formatearMoneda(pagoTa), style: "footValue" }],
+    [{ text: "Tarjetas rojas", style: "footLabel" }, { text: formatearMoneda(pagoTr), style: "footValue" }],
+  ];
+
+  return {
+    table: {
+      widths: ["*", 6, "*"],
+      body: [[
+        {
+          stack: [
+            {
+              table: { widths: ["*"], body: [[{ text: localNombre, style: "footTeamTitle" }]] },
+              layout: {
+                hLineWidth: () => 0.6,
+                vLineWidth: () => 0.6,
+                hLineColor: () => "#9ca3af",
+                vLineColor: () => "#9ca3af",
+                paddingLeft: () => 3,
+                paddingRight: () => 3,
+                paddingTop: () => 2,
+                paddingBottom: () => 2,
+              },
+              margin: [0, 0, 0, 2],
+            },
+            {
+              table: {
+                widths: ["*", 58],
+                body: filasPago(pagos.pago_local, pagos.pago_ta_local, pagos.pago_tr_local),
+              },
+              layout: layoutTabla,
+            },
+          ],
+        },
+        { text: "", border: [false, false, false, false] },
+        {
+          stack: [
+            {
+              table: { widths: ["*"], body: [[{ text: visitNombre, style: "footTeamTitle" }]] },
+              layout: {
+                hLineWidth: () => 0.6,
+                vLineWidth: () => 0.6,
+                hLineColor: () => "#9ca3af",
+                vLineColor: () => "#9ca3af",
+                paddingLeft: () => 3,
+                paddingRight: () => 3,
+                paddingTop: () => 2,
+                paddingBottom: () => 2,
+              },
+              margin: [0, 0, 0, 2],
+            },
+            {
+              table: {
+                widths: ["*", 58],
+                body: filasPago(pagos.pago_visitante, pagos.pago_ta_visitante, pagos.pago_tr_visitante),
+              },
+              layout: layoutTabla,
+            },
+          ],
+        },
+      ]],
+    },
+    layout: {
+      hLineWidth: () => 0,
+      vLineWidth: () => 0,
+      paddingLeft: () => 0,
+      paddingRight: () => 0,
+      paddingTop: () => 0,
+      paddingBottom: () => 0,
+    },
+  };
+}
+
+function construirBloqueFaltasPdf() {
+  const filaNumeros = () =>
+    [1, 2, 3, 4, 5, 6].map((n) => ({
+      text: String(n),
+      alignment: "center",
+      bold: true,
+      color: n === 6 ? "#ffffff" : "#334155",
+      fillColor: n === 6 ? "#dc2626" : "#ffffff",
+      border: [true, true, true, true],
+    }));
+
+  return {
+    table: {
+      widths: ["*", 11, 11, 11, 11, 11, 11],
+      body: [
+        [{ text: "FALTAS 1ER", bold: true, fontSize: 7.6 }, ...filaNumeros()],
+        [{ text: "FALTAS 2DO", bold: true, fontSize: 7.6 }, ...filaNumeros()],
+      ],
+    },
+    layout: {
+      hLineWidth: () => 0.5,
+      vLineWidth: () => 0.5,
+      hLineColor: () => "#cbd5e1",
+      vLineColor: () => "#cbd5e1",
+      paddingLeft: () => 2,
+      paddingRight: () => 2,
+      paddingTop: () => 1,
+      paddingBottom: () => 1,
+    },
+  };
+}
+
+async function imprimirPDFPlanilla() {
+  if (!dataPlanilla?.partido) {
+    mostrarNotificacion("Carga primero una planilla para exportar PDF", "warning");
+    return;
+  }
+
+  if (!window.pdfMake || typeof window.pdfMake.createPdf !== "function") {
+    mostrarNotificacion("No se pudo cargar el generador de PDF", "error");
+    return;
+  }
+
+  const pdfTab = window.open("", "_blank");
+  if (!pdfTab) {
+    mostrarNotificacion("El navegador bloqueó la nueva pestaña del PDF", "warning");
+    return;
+  }
+
+  pdfTab.document.title = `Planilla Partido ${dataPlanilla.partido.id}`;
+  pdfTab.document.body.innerHTML = "<p style='font-family:Arial,sans-serif;padding:12px;'>Generando PDF...</p>";
+
+  try {
+    const p = dataPlanilla.partido;
+    const payload = recolectarPayloadPlanilla();
+    const stats = construirIndicesEventos(payload);
+    const fecha = formatearFecha(p.fecha_partido);
+    const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
+    const jornada = Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
+    const grupo = etiquetaGrupoPartido(p);
+    const arbitro = String(document.getElementById("arbitro-planilla")?.value || p.arbitro || "");
+    const delegado = String(document.getElementById("delegado-planilla")?.value || p.delegado_partido || "");
+    const ciudad = String(document.getElementById("ciudad-planilla")?.value || p.ciudad || "");
+    const modelo = obtenerModeloPlanillaOficial();
+    const tituloModelo = modelo === "futbol_11_indor" ? "FUTBOL 11 / INDOR" : "FUTBOL 7 / 5 / SALA";
+    const localNombre = p.equipo_local_nombre || equiposPartido.local.nombre;
+    const visitNombre = p.equipo_visitante_nombre || equiposPartido.visitante.nombre;
+    const localDt = p.equipo_local_director_tecnico || "-";
+    const visitDt = p.equipo_visitante_director_tecnico || "-";
+    const maxFilasObjetivo = modelo === "futbol_7_5_sala" ? 20 : 18;
+    const maxFilas = maxFilasObjetivo;
+    const alturaFilaPlantel = modelo === "futbol_7_5_sala" ? 10 : 9;
+    const alturaCabeceraPlantel = 10;
+    const bodyLocal = construirFilasPlantelPdf(dataPlanilla.plantel_local || [], stats, maxFilas);
+    const bodyVisit = construirFilasPlantelPdf(dataPlanilla.plantel_visitante || [], stats, maxFilas);
+    const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
+
+    const docDefinition = {
+      pageSize: "A4",
+      pageMargins: [8, 8, 8, 8],
+      defaultStyle: { fontSize: 8.2, color: "#111827" },
+      content: [
+        {
+          columns: [
+            logoOrg
+              ? {
+                  width: 56,
+                  image: logoOrg,
+                  fit: [54, 54],
+                  alignment: "left",
+                  margin: [0, 2, 0, 0],
+                }
+              : { width: 56, text: "" },
+            {
+              width: "*",
+              stack: [
+                {
+                  text: p.campeonato_organizador || p.campeonato_nombre || "SGD",
+                  alignment: "center",
+                  bold: true,
+                  fontSize: 10.5,
+                },
+                { text: "PLANILLA DE JUEGO", alignment: "center", bold: true, fontSize: 17, margin: [0, 1, 0, 0] },
+                { text: tituloModelo, alignment: "center", bold: true, fontSize: 10.5, margin: [0, 1, 0, 0] },
+              ],
+              margin: [0, 3, 0, 0],
+            },
+            { width: 56, text: "" },
+          ],
+          margin: [0, 0, 0, 36],
+        },
+        {
+          table: {
+            widths: ["*", "*", "*", "*"],
+            body: [
+              [
+                { text: [{ text: "Fecha: ", bold: true }, fecha] },
+                { text: [{ text: "Hora: ", bold: true }, hora] },
+                { text: [{ text: "Cancha: ", bold: true }, p.cancha || "Por definir"] },
+                { text: [{ text: "Ciudad: ", bold: true }, ciudad || "Por definir"] },
+              ],
+              [
+                { text: [{ text: "Arbitro: ", bold: true }, arbitro || "________________"] },
+                { text: [{ text: "Delegado: ", bold: true }, delegado || "________________"] },
+                { text: [{ text: "Partido: ", bold: true }, `#${p.id}`] },
+                { text: [{ text: `${jornada}: `, bold: true }, grupo] },
+              ],
+            ],
+          },
+          layout: {
+            hLineWidth: () => 0.6,
+            vLineWidth: () => 0.6,
+            hLineColor: () => "#cbd5e1",
+            vLineColor: () => "#cbd5e1",
+            paddingLeft: () => 4,
+            paddingRight: () => 4,
+            paddingTop: () => 4,
+            paddingBottom: () => 4,
+          },
+          margin: [0, 0, 0, 6],
+        },
+        {
+          table: {
+            widths: ["*", 30, 10, 30, "*"],
+            body: [[
+              { text: localNombre, alignment: "center", bold: true, fontSize: 11.5, border: [false, false, false, false], margin: [0, 13, 0, 0] },
+              { text: String(aEntero(payload.resultado_local, 0)), alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
+              { text: ":", alignment: "center", bold: true, fontSize: 16.5, border: [false, false, false, false], margin: [0, 12, 0, 0] },
+              { text: String(aEntero(payload.resultado_visitante, 0)), alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
+              { text: visitNombre, alignment: "center", bold: true, fontSize: 11.5, border: [false, false, false, false], margin: [0, 13, 0, 0] },
+            ]],
+            heights: () => 48,
+          },
+          layout: {
+            hLineWidth: (i) => (i === 0 || i === 1 ? 0 : 0),
+            vLineWidth: (i) => (i === 1 || i === 2 || i === 3 || i === 4 ? 0.6 : 0),
+            hLineColor: () => "#94a3b8",
+            vLineColor: () => "#94a3b8",
+            paddingTop: () => 6,
+            paddingBottom: () => 6,
+          },
+          margin: [0, 0, 0, 6],
+        },
+        ...(modelo === "futbol_7_5_sala"
+          ? [
+              {
+                columns: [
+                  construirBloqueFaltasPdf(),
+                  { width: 6, text: "" },
+                  construirBloqueFaltasPdf(),
+                ],
+                margin: [0, 0, 0, 4],
+              },
+            ]
+          : []),
+        {
+          columns: [
+            {
+              width: "*",
+              stack: [
+                { text: `EQUIPO: ${localNombre}`, style: "teamHead" },
+                {
+                  table: {
+                    headerRows: 1,
+                    widths: [20, 20, "*", 18, 18, 18],
+                    body: bodyLocal,
+                    heights: (row) => (row === 0 ? alturaCabeceraPlantel : alturaFilaPlantel),
+                  },
+                  layout: {
+                    hLineWidth: () => 0.5,
+                    vLineWidth: () => 0.5,
+                    hLineColor: () => "#cbd5e1",
+                    vLineColor: () => "#cbd5e1",
+                    paddingLeft: () => 2,
+                    paddingRight: () => 2,
+                    paddingTop: () => 2,
+                    paddingBottom: () => 2,
+                  },
+                },
+                { text: [{ text: "Dirigente / Director tecnico: ", bold: true }, localDt], margin: [0, 4, 0, 0] },
+                {
+                  table: {
+                    widths: [26, "*"],
+                    body: [
+                      [
+                        { text: "Firma:", bold: true, border: [false, false, false, false] },
+                        { text: "", border: [false, false, false, true] },
+                      ],
+                      [
+                        { text: "", border: [false, false, false, false] },
+                        { text: "", border: [false, false, false, true] },
+                      ],
+                      [
+                        { text: "", border: [false, false, false, false] },
+                        { text: "", border: [false, false, false, true] },
+                      ],
+                    ],
+                    heights: (row) => (row === 0 ? 11 : 12),
+                  },
+                  layout: {
+                    hLineWidth: () => 0,
+                    vLineWidth: () => 0,
+                    paddingLeft: () => 0,
+                    paddingRight: () => 0,
+                    paddingTop: () => 0,
+                    paddingBottom: () => 0,
+                  },
+                  margin: [0, 1, 0, 0],
+                },
+                {
+                  ...construirBloqueTarjetasEquipoPdf(
+                    Number(stats.totalAmarillasLocal || 0),
+                    Number(stats.totalRojasLocal || 0)
+                  ),
+                  margin: [0, 3, 0, 0],
+                },
+              ],
+            },
+            {
+              width: 6,
+              text: "",
+            },
+            {
+              width: "*",
+              stack: [
+                { text: `EQUIPO: ${visitNombre}`, style: "teamHead" },
+                {
+                  table: {
+                    headerRows: 1,
+                    widths: [20, 20, "*", 18, 18, 18],
+                    body: bodyVisit,
+                    heights: (row) => (row === 0 ? alturaCabeceraPlantel : alturaFilaPlantel),
+                  },
+                  layout: {
+                    hLineWidth: () => 0.5,
+                    vLineWidth: () => 0.5,
+                    hLineColor: () => "#cbd5e1",
+                    vLineColor: () => "#cbd5e1",
+                    paddingLeft: () => 2,
+                    paddingRight: () => 2,
+                    paddingTop: () => 2,
+                    paddingBottom: () => 2,
+                  },
+                },
+                { text: [{ text: "Dirigente / Director tecnico: ", bold: true }, visitDt], margin: [0, 4, 0, 0] },
+                {
+                  table: {
+                    widths: [26, "*"],
+                    body: [
+                      [
+                        { text: "Firma:", bold: true, border: [false, false, false, false] },
+                        { text: "", border: [false, false, false, true] },
+                      ],
+                      [
+                        { text: "", border: [false, false, false, false] },
+                        { text: "", border: [false, false, false, true] },
+                      ],
+                      [
+                        { text: "", border: [false, false, false, false] },
+                        { text: "", border: [false, false, false, true] },
+                      ],
+                    ],
+                    heights: (row) => (row === 0 ? 11 : 12),
+                  },
+                  layout: {
+                    hLineWidth: () => 0,
+                    vLineWidth: () => 0,
+                    paddingLeft: () => 0,
+                    paddingRight: () => 0,
+                    paddingTop: () => 0,
+                    paddingBottom: () => 0,
+                  },
+                  margin: [0, 1, 0, 0],
+                },
+                {
+                  ...construirBloqueTarjetasEquipoPdf(
+                    Number(stats.totalAmarillasVisitante || 0),
+                    Number(stats.totalRojasVisitante || 0)
+                  ),
+                  margin: [0, 3, 0, 0],
+                },
+              ],
+            },
+          ],
+          margin: [0, 0, 0, 6],
+        },
+        {
+          text: "PAGOS",
+          style: "sectionTitle",
+          margin: [0, 1, 0, 3],
+        },
+        {
+          ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos),
+          margin: [0, 0, 0, 4],
+        },
+        {
+          text: "OBSERVACIONES",
+          style: "sectionTitle",
+          margin: [0, 1, 0, 2],
+        },
+        {
+          table: {
+            widths: ["*"],
+            body: [
+              [{ text: payload.observaciones || "Sin observaciones." }],
+              [{ text: " " }],
+              [{ text: " " }],
+              [{ text: " " }],
+              [{ text: " " }],
+            ],
+            heights: () => 9,
+          },
+          layout: {
+            hLineWidth: () => 0.6,
+            vLineWidth: () => 0.6,
+            hLineColor: () => "#cbd5e1",
+            vLineColor: () => "#cbd5e1",
+            paddingLeft: () => 4,
+            paddingRight: () => 4,
+            paddingTop: () => 2,
+            paddingBottom: () => 2,
+          },
+        },
+      ],
+      styles: {
+        sectionTitle: { bold: true, fontSize: 8.8, color: "#0f172a" },
+        teamHead: { bold: true, fontSize: 8.6, margin: [0, 0, 0, 2] },
+        thCenter: { bold: true, alignment: "center", fillColor: "#eef4fb", fontSize: 8 },
+        thLeft: { bold: true, alignment: "left", fillColor: "#eef4fb", fontSize: 8 },
+        tdCenter: { alignment: "center", fontSize: 7.8 },
+        tdLeft: { alignment: "left", fontSize: 7.8 },
+        footTeamTitle: { bold: true, fillColor: "#f3f4f6", fontSize: 8.5 },
+        footLabel: { bold: true, fontSize: 7.8 },
+        footValue: { fontSize: 7.8, alignment: "right" },
+        footValueCenter: { fontSize: 8.2, alignment: "center", bold: true },
+      },
+    };
+
+    const pdfBlob = await new Promise((resolve, reject) => {
+      window.pdfMake.createPdf(docDefinition).getBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("No se pudo generar el PDF"));
+      });
+    });
+
+    if (!(pdfBlob instanceof Blob)) {
+      throw new Error("No se recibio un Blob valido del PDF");
+    }
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    pdfTab.location.href = blobUrl;
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+    mostrarNotificacion("PDF generado. Desde esa pestaña puedes imprimir o descargar.", "success");
+  } catch (error) {
+    console.error("Error generando PDF:", error);
+    try {
+      pdfTab.close();
+    } catch (_e) {
+      // sin accion
+    }
+    mostrarNotificacion("No se pudo generar el PDF", "error");
+  }
+}
+
+async function exportarPlanillaPDF() {
+  await imprimirPDFPlanilla();
+}
+
+function imprimirVistaPrevia() {
+  imprimirPDFPlanilla();
 }
 
 async function guardarPlanilla(e) {
@@ -1827,23 +2463,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   formPlanilla?.addEventListener("change", () => actualizarVistaPreviaPlanilla(true));
   inicializarModoVistaPreviaPlanilla();
 
-  document.getElementById("pago-arbitraje")?.addEventListener("input", () => {
-    actualizarPanelPagosEspejo();
+  ["pago-arbitraje"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("input", () => {
+      actualizarPanelPagosEspejo();
+    });
   });
   document.getElementById("ciudad-planilla")?.addEventListener("input", () => {
     actualizarHeaderMetaEditable();
-  });
-  document.getElementById("resultado-local")?.addEventListener("input", () => {
-    actualizarHeaderResultado(
-      aEntero(document.getElementById("resultado-local")?.value, 0),
-      aEntero(document.getElementById("resultado-visitante")?.value, 0)
-    );
-  });
-  document.getElementById("resultado-visitante")?.addEventListener("input", () => {
-    actualizarHeaderResultado(
-      aEntero(document.getElementById("resultado-local")?.value, 0),
-      aEntero(document.getElementById("resultado-visitante")?.value, 0)
-    );
   });
 
   await cargarEventosSelectorPlanilla();
@@ -1861,6 +2487,7 @@ window.cargarPlanillaDesdeSelector = cargarPlanillaDesdeSelector;
 window.exportarPlanillaXLSX = exportarPlanillaXLSX;
 window.exportarPlanillaPDF = exportarPlanillaPDF;
 window.imprimirVistaPrevia = imprimirVistaPrevia;
+window.imprimirPDFPlanilla = imprimirPDFPlanilla;
 window.toggleVistaPreviaPlanilla = toggleVistaPreviaPlanilla;
 window.volverAPartidos = volverAPartidos;
 window.recargarPlanilla = recargarPlanilla;

@@ -862,9 +862,22 @@ class Partido {
     `);
 
     await pool.query(`
+      ALTER TABLE partidos
+      ADD COLUMN IF NOT EXISTS arbitro TEXT,
+      ADD COLUMN IF NOT EXISTS delegado_partido TEXT,
+      ADD COLUMN IF NOT EXISTS ciudad TEXT
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS partido_planillas (
         id SERIAL PRIMARY KEY,
         partido_id INTEGER UNIQUE REFERENCES partidos(id) ON DELETE CASCADE,
+        pago_ta NUMERIC(10,2) DEFAULT 0,
+        pago_tr NUMERIC(10,2) DEFAULT 0,
+        pago_ta_local NUMERIC(10,2) DEFAULT 0,
+        pago_ta_visitante NUMERIC(10,2) DEFAULT 0,
+        pago_tr_local NUMERIC(10,2) DEFAULT 0,
+        pago_tr_visitante NUMERIC(10,2) DEFAULT 0,
         pago_arbitraje NUMERIC(10,2) DEFAULT 0,
         pago_local NUMERIC(10,2) DEFAULT 0,
         pago_visitante NUMERIC(10,2) DEFAULT 0,
@@ -872,6 +885,16 @@ class Partido {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    await pool.query(`
+      ALTER TABLE partido_planillas
+      ADD COLUMN IF NOT EXISTS pago_ta NUMERIC(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS pago_tr NUMERIC(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS pago_ta_local NUMERIC(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS pago_ta_visitante NUMERIC(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS pago_tr_local NUMERIC(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS pago_tr_visitante NUMERIC(10,2) DEFAULT 0
     `);
 
     await pool.query(`
@@ -918,6 +941,8 @@ class Partido {
              COALESCE(c.requiere_foto_cedula, false) AS requiere_foto_cedula,
              COALESCE(c.requiere_foto_carnet, false) AS requiere_foto_carnet,
              evt.nombre AS evento_nombre,
+             g.letra_grupo,
+             g.nombre_grupo,
              el.nombre AS equipo_local_nombre,
              ev.nombre AS equipo_visitante_nombre,
              el.director_tecnico AS equipo_local_director_tecnico,
@@ -927,6 +952,7 @@ class Partido {
       FROM partidos p
       LEFT JOIN campeonatos c ON c.id = p.campeonato_id
       LEFT JOIN eventos evt ON evt.id = p.evento_id
+      LEFT JOIN grupos g ON g.id = p.grupo_id
       JOIN equipos el ON el.id = p.equipo_local_id
       JOIN equipos ev ON ev.id = p.equipo_visitante_id
       WHERE p.id = $1
@@ -994,6 +1020,16 @@ class Partido {
         foto_carnet: partido.requiere_foto_carnet === true,
       },
       planilla: {
+        pago_ta_local: Number(planilla?.pago_ta_local ?? planilla?.pago_ta ?? 0),
+        pago_ta_visitante: Number(planilla?.pago_ta_visitante ?? planilla?.pago_ta ?? 0),
+        pago_tr_local: Number(planilla?.pago_tr_local ?? planilla?.pago_tr ?? 0),
+        pago_tr_visitante: Number(planilla?.pago_tr_visitante ?? planilla?.pago_tr ?? 0),
+        pago_ta:
+          Number(planilla?.pago_ta ?? 0) ||
+          Number(planilla?.pago_ta_local ?? 0) + Number(planilla?.pago_ta_visitante ?? 0),
+        pago_tr:
+          Number(planilla?.pago_tr ?? 0) ||
+          Number(planilla?.pago_tr_local ?? 0) + Number(planilla?.pago_tr_visitante ?? 0),
         pago_arbitraje: Number(planilla?.pago_arbitraje || 0),
         pago_local: Number(planilla?.pago_local || 0),
         pago_visitante: Number(planilla?.pago_visitante || 0),
@@ -1012,9 +1048,24 @@ class Partido {
     const resultadoLocal = Number.parseInt(datos.resultado_local, 10) || 0;
     const resultadoVisitante = Number.parseInt(datos.resultado_visitante, 10) || 0;
     const estado = datos.estado || "finalizado";
+    const arbitro = Object.prototype.hasOwnProperty.call(datos, "arbitro")
+      ? (datos.arbitro ?? "").toString().trim()
+      : null;
+    const delegadoPartido = Object.prototype.hasOwnProperty.call(datos, "delegado_partido")
+      ? (datos.delegado_partido ?? "").toString().trim()
+      : null;
+    const ciudad = Object.prototype.hasOwnProperty.call(datos, "ciudad")
+      ? (datos.ciudad ?? "").toString().trim()
+      : null;
     const goles = Array.isArray(datos.goles) ? datos.goles : [];
     const tarjetas = Array.isArray(datos.tarjetas) ? datos.tarjetas : [];
     const pagos = datos.pagos || {};
+    const pagoTaLocal = Number.parseFloat(pagos.pago_ta_local ?? pagos.pago_ta ?? 0) || 0;
+    const pagoTaVisitante = Number.parseFloat(pagos.pago_ta_visitante ?? pagos.pago_ta ?? 0) || 0;
+    const pagoTrLocal = Number.parseFloat(pagos.pago_tr_local ?? pagos.pago_tr ?? 0) || 0;
+    const pagoTrVisitante = Number.parseFloat(pagos.pago_tr_visitante ?? pagos.pago_tr ?? 0) || 0;
+    const pagoTa = Number.parseFloat(pagos.pago_ta ?? (pagoTaLocal + pagoTaVisitante)) || 0;
+    const pagoTr = Number.parseFloat(pagos.pago_tr ?? (pagoTrLocal + pagoTrVisitante)) || 0;
     const pagoArbitraje = Number.parseFloat(pagos.pago_arbitraje ?? 0) || 0;
     const pagoLocal = Number.parseFloat(pagos.pago_local ?? 0) || 0;
     const pagoVisitante = Number.parseFloat(pagos.pago_visitante ?? 0) || 0;
@@ -1039,28 +1090,56 @@ class Partido {
           UPDATE partidos
           SET resultado_local = $1,
               resultado_visitante = $2,
-              estado = $3
+              estado = $3,
+              arbitro = COALESCE($4, arbitro),
+              delegado_partido = COALESCE($5, delegado_partido),
+              ciudad = COALESCE($6, ciudad)
               ${setTs}
-          WHERE id = $4
+          WHERE id = $7
         `,
-        [resultadoLocal, resultadoVisitante, estado, partido_id]
+        [resultadoLocal, resultadoVisitante, estado, arbitro, delegadoPartido, ciudad, partido_id]
       );
 
       await client.query(
         `
           INSERT INTO partido_planillas
-            (partido_id, pago_arbitraje, pago_local, pago_visitante, observaciones, updated_at)
+            (
+              partido_id,
+              pago_ta, pago_tr,
+              pago_ta_local, pago_ta_visitante,
+              pago_tr_local, pago_tr_visitante,
+              pago_arbitraje, pago_local, pago_visitante,
+              observaciones, updated_at
+            )
           VALUES
-            ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
           ON CONFLICT (partido_id)
           DO UPDATE SET
+            pago_ta = EXCLUDED.pago_ta,
+            pago_tr = EXCLUDED.pago_tr,
+            pago_ta_local = EXCLUDED.pago_ta_local,
+            pago_ta_visitante = EXCLUDED.pago_ta_visitante,
+            pago_tr_local = EXCLUDED.pago_tr_local,
+            pago_tr_visitante = EXCLUDED.pago_tr_visitante,
             pago_arbitraje = EXCLUDED.pago_arbitraje,
             pago_local = EXCLUDED.pago_local,
             pago_visitante = EXCLUDED.pago_visitante,
             observaciones = EXCLUDED.observaciones,
             updated_at = CURRENT_TIMESTAMP
         `,
-        [partido_id, pagoArbitraje, pagoLocal, pagoVisitante, observaciones]
+        [
+          partido_id,
+          pagoTa,
+          pagoTr,
+          pagoTaLocal,
+          pagoTaVisitante,
+          pagoTrLocal,
+          pagoTrVisitante,
+          pagoArbitraje,
+          pagoLocal,
+          pagoVisitante,
+          observaciones,
+        ]
       );
 
       await client.query(`DELETE FROM goleadores WHERE partido_id = $1`, [partido_id]);

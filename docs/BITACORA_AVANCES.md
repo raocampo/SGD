@@ -14,6 +14,21 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-02-19
+- Correccion de bug critico en planillaje de pagos:
+  - los campos `Tarjetas amarillas (pago)` y `Tarjetas rojas (pago)` ahora son independientes por equipo (local/visitante),
+  - se elimino el comportamiento espejo que copiaba automaticamente el valor de un equipo al otro.
+- Planillaje financiero por equipo extendido:
+  - frontend usa nuevos campos separados:
+    - `pago_ta_local`, `pago_ta_visitante`,
+    - `pago_tr_local`, `pago_tr_visitante`,
+  - backend persiste estos campos en `partido_planillas` manteniendo compatibilidad con columnas globales previas (`pago_ta`, `pago_tr`).
+- Confirmacion funcional de criterio operativo:
+  - los totales de tarjetas ubicados bajo nomina (`Tarjetas amarillas/rojas`) se mantienen como conteo deportivo/Fair Play,
+  - pagos de tarjetas quedan exclusivamente en la seccion `Pagos y Observaciones`.
+- Ajustes de reporte (vista y PDF) alineados a operacion:
+  - bloque de pagos muestra importes por equipo (inscripcion, arbitraje, TA pago, TR pago),
+  - bajo firma se mantienen dos filas por equipo (Tarjetas amarillas / Tarjetas rojas),
+  - se elimino la linea compacta `TA | TR` para evitar ambiguedad.
 - Planillaje migrado a flujo de captura directa estilo formulario oficial:
   - se elimino la dependencia operativa de seleccionar goleador/tarjeta fila por fila,
   - ahora el ingreso principal se hace por jugador (columnas `G`, `TA`, `TR`) para local y visitante.
