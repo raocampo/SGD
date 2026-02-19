@@ -46,6 +46,7 @@ const tablaRoutes = require("./routes/tablaRoutes");
 const eventoRoutes = require("./routes/eventoRoutes");
 const canchaRoutes = require("./routes/canchaRoutes");
 const eliminatoriaRoutes = require("./routes/eliminatoriaRoutes");
+const finanzaRoutes = require("./routes/finanzaRoutes");
 
 app.use("/api/campeonatos", campeonatoRoutes);
 app.use("/api/equipos", equipoRoutes);
@@ -57,6 +58,7 @@ app.use("/api/tablas", tablaRoutes);
 app.use("/api/eventos", eventoRoutes);
 app.use("/api/canchas", canchaRoutes);
 app.use("/api/eliminatorias", eliminatoriaRoutes);
+app.use("/api/finanzas", finanzaRoutes);
 
 // =====================
 // Frontend (opcional)
@@ -92,6 +94,7 @@ app.get("/", (req, res) => {
       "/api/partidos",
       "/api/tablas",
       "/api/eliminatorias",
+      "/api/finanzas",
       "/uploads",
     ],
   });
@@ -159,6 +162,7 @@ app.listen(PORT, () => {
   console.log(`   http://localhost:${PORT}/api/sorteo`);
   console.log(`   http://localhost:${PORT}/api/partidos`);
   console.log(`   http://localhost:${PORT}/api/tablas`);
+  console.log(`   http://localhost:${PORT}/api/finanzas`);
   console.log(`   http://localhost:${PORT}/tablas`);
   console.log(`📂 Uploads: http://localhost:${PORT}/uploads`);
 });

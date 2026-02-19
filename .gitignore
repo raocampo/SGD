@@ -41,6 +41,9 @@ out/
 # Backups de base de datos (son archivos grandes)
 backups/*.sql
 backups/*.dump
+database/dump-*.sql
+database/*DBEAVER*.sql
+database/RESTAURACION_DBEAVER_*.md
 
 # Archivos temporales
 temp/
@@ -52,6 +55,9 @@ coverage/
 
 # Archivos de prueba
 test-results/
+
+# Uploads (archivos generados en runtime)
+backend/uploads/
 
 # Variables de entorno sensibles
 *.pem

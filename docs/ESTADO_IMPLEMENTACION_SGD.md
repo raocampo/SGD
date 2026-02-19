@@ -1,6 +1,6 @@
 # Estado de Implementación vs Propuesta SGD
 
-Ultima actualizacion: 2026-02-17
+Ultima actualizacion: 2026-02-18
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Módulo
@@ -18,7 +18,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 4 Portal publico | Alto | Portal operativo con vistas de campeonato/grupos/tablas; pendiente enriquecer secciones editoriales/noticias. |
 | 5 Roles y permisos (RBAC) | Pendiente | Aun sin autenticacion y perfiles de acceso. |
 | 6 Extras profesionales | Parcial | Exportaciones avanzadas parciales (PNG/PDF/XLSX planilla). Pendiente notificaciones, auditoria completa y reportes ejecutivos. |
-| 7 Modulo financiero | Parcial inicial | Base incorporada en planilla por partido (pagos arbitraje/local/visitante). Pendiente cuentas corrientes, multas automaticas, estado de deuda y reportes financieros. |
+| 7 Modulo financiero | Medio | Modulo base implementado con cuenta corriente por equipo (cargos/abonos), estado de cuenta y reporte de morosidad. Pendiente automatizacion de multas, reglas de bloqueo por morosidad y reportes ejecutivos avanzados. |
 
 ## Estado Detallado de lo Nuevo (Sesion actual)
 
@@ -43,12 +43,26 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Al guardar planilla se alimentan tablas `goleadores` y `tarjetas`, y resultados en `partidos`.
 - Con esto se actualizan fuentes para modulo de `tablas/estadisticas`.
 
+5. Modulo financiero base:
+- Nueva tabla `finanzas_movimientos` (migracion `006_finanzas_cuenta_corriente.sql`) para registrar:
+  - cargos/abonos por equipo,
+  - concepto, estado, vencimiento, metodo y referencia.
+- Nuevos endpoints backend:
+  - `GET /api/finanzas/movimientos`
+  - `POST /api/finanzas/movimientos`
+  - `GET /api/finanzas/equipo/:equipo_id/estado-cuenta`
+  - `GET /api/finanzas/morosidad`
+- Nueva pantalla administrativa `frontend/finanzas.html` con:
+  - filtros de movimientos,
+  - alta manual de movimientos,
+  - vista de morosidad y estado de cuenta por equipo.
+
 ## Pendientes Prioritarios Recomendados
 
 1. Modulo financiero completo (prioridad alta):
-- Crear tablas/entidades para cuenta corriente por equipo (cargos/abonos/saldo).
-- Registrar inscripcion, cobros por fecha, multas y estados de pago.
-- Reportes de morosidad e ingresos por campeonato/evento.
+- Automatizar multas por tarjetas/inasistencias y reglas de recargo.
+- Integrar reglas de bloqueo por morosidad (programacion/habilitacion).
+- Reportes ejecutivos: ingresos por fecha, categoria y campeonato con exportacion.
 
 2. Cierre de eliminatorias:
 - Definir flujo completo de cruces y UI (32vos/final, ida-vuelta, desempates).

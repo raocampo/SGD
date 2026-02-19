@@ -1,13 +1,39 @@
 const { Pool } = require("pg");
+const path = require("path");
+const dotenv = require("dotenv");
 
-require("dotenv").config();
+// 1) Carga preferente desde backend/.env
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+// 2) Carga opcional desde .env del cwd (sin sobreescribir lo ya cargado)
+dotenv.config({ path: path.resolve(process.cwd(), ".env"), override: false });
+
+const dbUser = String(process.env.DB_USER || "postgres").trim();
+const dbHost = String(process.env.DB_HOST || "localhost").trim();
+const dbName = String(process.env.DB_NAME || "gestionDeportiva").trim();
+const dbPasswordRaw = process.env.DB_PASSWORD;
+const dbPortRaw = Number.parseInt(process.env.DB_PORT || "5432", 10);
+const dbPort = Number.isFinite(dbPortRaw) ? dbPortRaw : 5432;
+
+if (
+  dbPasswordRaw === undefined ||
+  dbPasswordRaw === null ||
+  String(dbPasswordRaw).trim() === ""
+) {
+  console.warn(
+    "⚠️ DB_PASSWORD no definido en .env. Configura backend/.env para evitar errores SCRAM."
+  );
+}
 
 const pool = new Pool({
-  user: process.env.DB_USER || "postgres",
-  host: process.env.DB_HOST || "localhost",
-  database: process.env.DB_NAME || "gestionDeportiva",
-  password: process.env.DB_PASSWORD || "",
-  port: parseInt(process.env.DB_PORT || "5432", 10),
+  user: dbUser,
+  host: dbHost,
+  database: dbName,
+  // Debe llegar como string para SCRAM-SHA-256.
+  password:
+    dbPasswordRaw === undefined || dbPasswordRaw === null
+      ? undefined
+      : String(dbPasswordRaw),
+  port: dbPort,
 });
 
 /*pool.connect((err, client, release) => {

@@ -72,6 +72,19 @@
   // Menú hamburguesa / Sidebar
   // =========================
   document.addEventListener("DOMContentLoaded", () => {
+    const sidebarNav = document.querySelector(".sidebar-nav");
+    if (sidebarNav && !sidebarNav.querySelector('a[href="finanzas.html"]')) {
+      const finanzasLink = document.createElement("a");
+      const estaEnFinanzas = window.location.pathname.endsWith("finanzas.html");
+      finanzasLink.className = `nav-btn${estaEnFinanzas ? " active" : ""}`;
+      finanzasLink.href = "finanzas.html";
+      finanzasLink.innerHTML = '<i class="fas fa-wallet"></i> Finanzas';
+
+      const portalLink = sidebarNav.querySelector('a[href="index.html"]');
+      if (portalLink) sidebarNav.insertBefore(finanzasLink, portalLink);
+      else sidebarNav.appendChild(finanzasLink);
+    }
+
     const toggle = document.getElementById("nav-toggle");
     const sidebar = document.getElementById("sidebar");
     const nav = document.getElementById("main-nav");

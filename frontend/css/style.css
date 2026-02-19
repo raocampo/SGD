@@ -2528,3 +2528,62 @@ body.print-solo .carnet-card {
     grid-template-columns: 1fr;
   }
 }
+
+.page-finanzas .form-group-full {
+  grid-column: 1 / -1;
+}
+
+.page-finanzas .finanzas-grid-resumen {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.page-finanzas .fin-resumen-vacio {
+  color: #64748b;
+  margin-bottom: 0.75rem;
+}
+
+.page-finanzas .fin-resumen-cuenta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 0.4rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.page-finanzas .fin-saldo-deuda {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.page-finanzas .fin-saldo-ok {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.page-finanzas .badge {
+  display: inline-block;
+  border-radius: 999px;
+  border: 1px solid #dbe4ef;
+  padding: 0.2rem 0.6rem;
+  background: #f8fbff;
+  text-transform: capitalize;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 900px) {
+  .page-finanzas .finanzas-grid-resumen {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .page-finanzas .fin-resumen-cuenta {
+    grid-template-columns: 1fr;
+  }
+
+  .page-finanzas .tabla-estadistica {
+    min-width: 680px;
+  }
+}

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGD - Finanzas</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+
+<body class="app-layout page-finanzas">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ SGD</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+      <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+      <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+      <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+      <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+      <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+      <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menu"><i class="fas fa-bars"></i></button>
+      <h1><i class="fas fa-wallet"></i> Modulo Financiero</h1>
+    </header>
+
+    <main class="main">
+      <div class="container">
+        <div class="config-card">
+          <h3>Filtros</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fin-campeonato">Campeonato</label>
+              <select id="fin-campeonato">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fin-evento">Evento</label>
+              <select id="fin-evento">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fin-equipo">Equipo</label>
+              <select id="fin-equipo">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fin-tipo">Tipo</label>
+              <select id="fin-tipo">
+                <option value="">Todos</option>
+                <option value="cargo">Cargo</option>
+                <option value="abono">Abono</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fin-estado">Estado</label>
+              <select id="fin-estado">
+                <option value="">Todos</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="parcial">Parcial</option>
+                <option value="pagado">Pagado</option>
+                <option value="vencido">Vencido</option>
+                <option value="anulado">Anulado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fin-desde">Desde</label>
+              <input type="date" id="fin-desde" />
+            </div>
+            <div class="form-group">
+              <label for="fin-hasta">Hasta</label>
+              <input type="date" id="fin-hasta" />
+            </div>
+          </div>
+          <div class="partidos-actions">
+            <button type="button" class="btn btn-secondary" id="btn-fin-recargar"><i class="fas fa-rotate"></i> Recargar</button>
+            <button type="button" class="btn btn-primary" id="btn-fin-buscar"><i class="fas fa-search"></i> Buscar</button>
+          </div>
+        </div>
+
+        <div class="config-card">
+          <h3>Registrar Movimiento</h3>
+          <form id="fin-form-movimiento">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="mov-campeonato">Campeonato</label>
+                <select id="mov-campeonato" required></select>
+              </div>
+              <div class="form-group">
+                <label for="mov-evento">Evento (opcional)</label>
+                <select id="mov-evento">
+                  <option value="">Sin evento</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="mov-equipo">Equipo</label>
+                <select id="mov-equipo" required></select>
+              </div>
+              <div class="form-group">
+                <label for="mov-tipo">Tipo</label>
+                <select id="mov-tipo" required>
+                  <option value="cargo">Cargo</option>
+                  <option value="abono">Abono</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="mov-concepto">Concepto</label>
+                <select id="mov-concepto" required>
+                  <option value="inscripcion">Inscripcion</option>
+                  <option value="arbitraje">Arbitraje</option>
+                  <option value="multa">Multa</option>
+                  <option value="pago">Pago</option>
+                  <option value="ajuste">Ajuste</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="mov-monto">Monto</label>
+                <input type="number" id="mov-monto" min="0.01" step="0.01" required />
+              </div>
+              <div class="form-group">
+                <label for="mov-estado">Estado</label>
+                <select id="mov-estado">
+                  <option value="">Automatico</option>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="parcial">Parcial</option>
+                  <option value="pagado">Pagado</option>
+                  <option value="vencido">Vencido</option>
+                  <option value="anulado">Anulado</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="mov-fecha">Fecha</label>
+                <input type="date" id="mov-fecha" />
+              </div>
+              <div class="form-group">
+                <label for="mov-vencimiento">Vencimiento</label>
+                <input type="date" id="mov-vencimiento" />
+              </div>
+              <div class="form-group">
+                <label for="mov-metodo">Metodo pago</label>
+                <input type="text" id="mov-metodo" placeholder="efectivo, transferencia..." />
+              </div>
+              <div class="form-group">
+                <label for="mov-referencia">Referencia</label>
+                <input type="text" id="mov-referencia" placeholder="Comprobante, codigo..." />
+              </div>
+              <div class="form-group form-group-full">
+                <label for="mov-descripcion">Descripcion</label>
+                <textarea id="mov-descripcion" rows="2" placeholder="Detalle del movimiento..."></textarea>
+              </div>
+            </div>
+            <div class="partidos-actions">
+              <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Guardar movimiento</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="finanzas-grid-resumen">
+          <div class="card">
+            <h3>Morosidad por Equipo</h3>
+            <div id="fin-morosidad-contenido" class="tabla-scroll"></div>
+          </div>
+          <div class="card">
+            <h3>Estado de Cuenta (Equipo seleccionado)</h3>
+            <div id="fin-estado-cuenta-resumen" class="fin-resumen-vacio">Selecciona un equipo para visualizar su estado de cuenta.</div>
+            <div id="fin-estado-cuenta-movimientos" class="tabla-scroll"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Movimientos Financieros</h3>
+          <div id="fin-movimientos-contenido" class="tabla-scroll"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/finanzas.js"></script>
+</body>
+
+</html>

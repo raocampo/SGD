@@ -87,4 +87,34 @@
       return window.ApiClient.delete(`/eventos/${id}`);
     },
   };
+
+  window.FinanzasAPI = window.FinanzasAPI || {
+    listarMovimientos(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/finanzas/movimientos${suffix}`);
+    },
+    crearMovimiento(payload) {
+      return window.ApiClient.post("/finanzas/movimientos", payload);
+    },
+    estadoCuentaEquipo(equipoId, params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/finanzas/equipo/${equipoId}/estado-cuenta${suffix}`);
+    },
+    morosidad(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/finanzas/morosidad${suffix}`);
+    },
+  };
 })();

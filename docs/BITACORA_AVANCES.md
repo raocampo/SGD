@@ -8,11 +8,29 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Estado General
 - Backend y frontend funcionales para flujo base de campeonatos, eventos, equipos, grupos, partidos, tablas y portal.
 - Se corrigieron desalineaciones clave entre rutas, controladores, modelos y frontend.
+- Modulo financiero en estado funcional inicial con cuenta corriente y morosidad.
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
 
 ### 2026-02-18
+- Modulo financiero base implementado (backend + frontend):
+  - nueva migracion `database/migrations/006_finanzas_cuenta_corriente.sql`,
+  - nueva API `api/finanzas` con endpoints:
+    - `GET /api/finanzas/movimientos`
+    - `POST /api/finanzas/movimientos`
+    - `GET /api/finanzas/equipo/:equipo_id/estado-cuenta`
+    - `GET /api/finanzas/morosidad`
+  - nuevo modelo/controlador/rutas en backend:
+    - `backend/models/Finanza.js`
+    - `backend/controllers/finanzaController.js`
+    - `backend/routes/finanzaRoutes.js`
+  - nueva pantalla administrativa `frontend/finanzas.html` + `frontend/js/finanzas.js` para:
+    - registrar cargos/abonos,
+    - consultar movimientos,
+    - revisar morosidad por equipo,
+    - ver estado de cuenta detallado.
+- Navegacion global del admin actualizada para incluir `Finanzas` en sidebar mediante `frontend/js/core.js`.
 - Importacion masiva de jugadores habilitada de extremo a extremo:
   - backend: endpoint `POST /api/jugadores/importar-masivo`,
   - frontend: botones `Descargar Plantilla` e `Importar Archivo` en `jugadores.html`,
@@ -242,7 +260,7 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Ejecutar pruebas end-to-end con datos reales (validar que todo el flujo quede estable).
 - Consolidar autenticacion y roles (RBAC) minimo.
 - Revisar y ordenar archivos legacy/antiguos para reducir deuda tecnica.
-- Definir y comenzar modulo financiero (inscripciones, pagos, multas) segun alcance.
+- Continuar modulo financiero: multas automaticas, bloqueos por morosidad y reportes de ingresos.
 
 ## Checklist de Pruebas Siguiente Sesion
 1. Crear/seleccionar campeonato y evento.
