@@ -5,6 +5,7 @@ const REGLAS_DEFAULT = ["puntos", "diferencia_goles", "goles_favor"];
 const PESOS_FAIR_PLAY_DEFAULT = {
   amarilla: 1,
   roja: 3,
+  falta: 0.25,
   uniformidad: 2,
   comportamiento: 2,
   puntualidad: 1,
@@ -28,6 +29,18 @@ function aNumero(valor, fallback = 0) {
 
 function redondear2(valor) {
   return Math.round((aNumero(valor, 0) + Number.EPSILON) * 100) / 100;
+}
+
+function modalidadUsaFaltasFairPlay(tipoFutbol) {
+  const tipo = String(tipoFutbol || "").trim().toLowerCase();
+  return (
+    tipo.includes("futbol_7") ||
+    tipo.includes("futbol_5") ||
+    tipo.includes("futbol5") ||
+    tipo.includes("futbol7") ||
+    tipo.includes("sala") ||
+    tipo.includes("futsal")
+  );
 }
 
 function parsearReglas(raw) {
@@ -650,6 +663,122 @@ async function obtenerTarjetasEventoInterno(eventoId) {
   return { fuente, mensaje, tarjetas };
 }
 
+async function obtenerFaltasEventoInterno(eventoId) {
+  const mapa = new Map();
+  const equiposEvento = await obtenerEquiposEvento(eventoId);
+  for (const e of equiposEvento) {
+    mapa.set(Number(e.id), {
+      equipo_id: Number(e.id),
+      equipo_nombre: e.nombre,
+      faltas: 0,
+    });
+  }
+
+  const colsPartidos = await obtenerColumnasTabla("partidos");
+  const faltasLocalTotal = primeraColumnaDisponible(colsPartidos, [
+    "faltas_local_total",
+    "faltas_local",
+    "total_faltas_local",
+  ]);
+  const faltasVisitanteTotal = primeraColumnaDisponible(colsPartidos, [
+    "faltas_visitante_total",
+    "faltas_visitante",
+    "total_faltas_visitante",
+  ]);
+
+  const faltasLocal1 = primeraColumnaDisponible(colsPartidos, [
+    "faltas_local_1er",
+    "faltas_local_1",
+    "faltas_local_t1",
+    "faltas_local_primer_tiempo",
+  ]);
+  const faltasLocal2 = primeraColumnaDisponible(colsPartidos, [
+    "faltas_local_2do",
+    "faltas_local_2",
+    "faltas_local_t2",
+    "faltas_local_segundo_tiempo",
+  ]);
+  const faltasVisit1 = primeraColumnaDisponible(colsPartidos, [
+    "faltas_visitante_1er",
+    "faltas_visitante_1",
+    "faltas_visitante_t1",
+    "faltas_visitante_primer_tiempo",
+  ]);
+  const faltasVisit2 = primeraColumnaDisponible(colsPartidos, [
+    "faltas_visitante_2do",
+    "faltas_visitante_2",
+    "faltas_visitante_t2",
+    "faltas_visitante_segundo_tiempo",
+  ]);
+
+  const localExpr = faltasLocalTotal
+    ? `COALESCE(p.${faltasLocalTotal}, 0)::int`
+    : `(COALESCE(${faltasLocal1 ? `p.${faltasLocal1}` : "0"}, 0)::int + COALESCE(${faltasLocal2 ? `p.${faltasLocal2}` : "0"}, 0)::int)`;
+  const visitExpr = faltasVisitanteTotal
+    ? `COALESCE(p.${faltasVisitanteTotal}, 0)::int`
+    : `(COALESCE(${faltasVisit1 ? `p.${faltasVisit1}` : "0"}, 0)::int + COALESCE(${faltasVisit2 ? `p.${faltasVisit2}` : "0"}, 0)::int)`;
+
+  const tieneFuente = Boolean(
+    faltasLocalTotal ||
+      faltasVisitanteTotal ||
+      faltasLocal1 ||
+      faltasLocal2 ||
+      faltasVisit1 ||
+      faltasVisit2
+  );
+
+  if (!tieneFuente) {
+    return {
+      fuente: "sin_datos",
+      mensaje: "No se encontraron columnas de faltas en tabla partidos.",
+      faltas: Array.from(mapa.values()),
+    };
+  }
+
+  const q = `
+    SELECT
+      t.equipo_id,
+      t.equipo_nombre,
+      SUM(t.faltas)::int AS faltas
+    FROM (
+      SELECT
+        el.id AS equipo_id,
+        el.nombre AS equipo_nombre,
+        ${localExpr} AS faltas
+      FROM partidos p
+      JOIN equipos el ON el.id = p.equipo_local_id
+      WHERE p.evento_id = $1
+      UNION ALL
+      SELECT
+        ev.id AS equipo_id,
+        ev.nombre AS equipo_nombre,
+        ${visitExpr} AS faltas
+      FROM partidos p
+      JOIN equipos ev ON ev.id = p.equipo_visitante_id
+      WHERE p.evento_id = $1
+    ) t
+    GROUP BY t.equipo_id, t.equipo_nombre
+  `;
+  const r = await pool.query(q, [eventoId]);
+
+  for (const row of r.rows) {
+    const id = Number(row.equipo_id);
+    const actual = mapa.get(id) || {
+      equipo_id: id,
+      equipo_nombre: row.equipo_nombre || `Equipo ${id}`,
+      faltas: 0,
+    };
+    actual.faltas = aEntero(row.faltas, 0);
+    mapa.set(id, actual);
+  }
+
+  return {
+    fuente: "partidos",
+    mensaje: null,
+    faltas: Array.from(mapa.values()),
+  };
+}
+
 async function obtenerEvaluacionesFairPlay(eventoId) {
   const tablasCandidatas = ["fair_play_evaluaciones", "fairplay_evaluaciones"];
 
@@ -831,9 +960,15 @@ const tablaController = {
         return res.status(400).json({ error: "evento_id invalido" });
       }
 
+      const evento = await obtenerEventoConCampeonato(eventoId);
+      const usaFaltas = modalidadUsaFaltasFairPlay(evento?.tipo_futbol);
+
       const pesos = {
         amarilla: aNumero(req.query.peso_amarilla, PESOS_FAIR_PLAY_DEFAULT.amarilla),
         roja: aNumero(req.query.peso_roja, PESOS_FAIR_PLAY_DEFAULT.roja),
+        falta: usaFaltas
+          ? aNumero(req.query.peso_falta, PESOS_FAIR_PLAY_DEFAULT.falta)
+          : 0,
         uniformidad: aNumero(req.query.peso_uniformidad, PESOS_FAIR_PLAY_DEFAULT.uniformidad),
         comportamiento: aNumero(req.query.peso_comportamiento, PESOS_FAIR_PLAY_DEFAULT.comportamiento),
         puntualidad: aNumero(req.query.peso_puntualidad, PESOS_FAIR_PLAY_DEFAULT.puntualidad),
@@ -842,6 +977,9 @@ const tablaController = {
 
       const equipos = await obtenerEquiposEvento(eventoId);
       const tarjetasData = await obtenerTarjetasEventoInterno(eventoId);
+      const faltasData = usaFaltas
+        ? await obtenerFaltasEventoInterno(eventoId)
+        : { fuente: "no_aplica", faltas: [] };
       const evaluaciones = await obtenerEvaluacionesFairPlay(eventoId);
 
       const mapaEquipos = new Map();
@@ -861,15 +999,21 @@ const tablaController = {
       }
 
       const tarjetasMap = new Map(tarjetasData.tarjetas.map((t) => [Number(t.equipo_id), t]));
+      const faltasMap = new Map(faltasData.faltas.map((f) => [Number(f.equipo_id), f]));
       const fairPlay = Array.from(mapaEquipos.values()).map((eq) => {
         const t = tarjetasMap.get(eq.equipo_id) || { amarillas: 0, rojas: 0 };
+        const f = faltasMap.get(eq.equipo_id) || { faltas: 0 };
         const ev = evaluaciones.evaluaciones.get(eq.equipo_id) || {
           uniformidad: 0,
           comportamiento: 0,
           puntualidad: 0,
         };
 
-        const penalizacion = t.amarillas * pesos.amarilla + t.rojas * pesos.roja;
+        const faltas = usaFaltas ? aEntero(f.faltas, 0) : 0;
+        const penalizacion =
+          t.amarillas * pesos.amarilla +
+          t.rojas * pesos.roja +
+          faltas * pesos.falta;
         const bonificacion =
           ev.uniformidad * pesos.uniformidad +
           ev.comportamiento * pesos.comportamiento +
@@ -881,6 +1025,7 @@ const tablaController = {
           equipo_nombre: eq.equipo_nombre,
           amarillas: aEntero(t.amarillas, 0),
           rojas: aEntero(t.rojas, 0),
+          faltas,
           uniformidad: redondear2(ev.uniformidad),
           comportamiento: redondear2(ev.comportamiento),
           puntualidad: redondear2(ev.puntualidad),
@@ -894,6 +1039,7 @@ const tablaController = {
         if (b.puntaje_fair_play !== a.puntaje_fair_play) return b.puntaje_fair_play - a.puntaje_fair_play;
         if (a.rojas !== b.rojas) return a.rojas - b.rojas;
         if (a.amarillas !== b.amarillas) return a.amarillas - b.amarillas;
+        if (a.faltas !== b.faltas) return a.faltas - b.faltas;
         return String(a.equipo_nombre).localeCompare(String(b.equipo_nombre));
       });
 
@@ -908,8 +1054,10 @@ const tablaController = {
         pesos,
         fuentes: {
           tarjetas: tarjetasData.fuente,
+          faltas: faltasData.fuente,
           evaluaciones: evaluaciones.fuente,
         },
+        incluye_faltas: usaFaltas,
         fair_play: fairPlay,
       });
     } catch (error) {

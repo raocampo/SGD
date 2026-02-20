@@ -145,6 +145,40 @@ function nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin) {
 class Partido {
   static _columnaTimestampActualizacion = undefined;
   static _esquemaPlanillaAsegurado = false;
+  static _esquemaSecuenciaAsegurado = false;
+
+  static async asegurarEsquemaSecuencia() {
+    if (this._esquemaSecuenciaAsegurado) return;
+
+    await pool.query(`
+      ALTER TABLE partidos
+      ADD COLUMN IF NOT EXISTS numero_campeonato INTEGER
+    `);
+    await pool.query(`
+      WITH ranked AS (
+        SELECT
+          id,
+          ROW_NUMBER() OVER (
+            PARTITION BY campeonato_id
+            ORDER BY id
+          )::int AS rn
+        FROM partidos
+        WHERE campeonato_id IS NOT NULL
+      )
+      UPDATE partidos p
+      SET numero_campeonato = ranked.rn
+      FROM ranked
+      WHERE p.id = ranked.id
+        AND p.numero_campeonato IS NULL
+    `);
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_partidos_numero_campeonato
+      ON partidos(campeonato_id, numero_campeonato)
+      WHERE numero_campeonato IS NOT NULL
+    `);
+
+    this._esquemaSecuenciaAsegurado = true;
+  }
 
   static async obtenerEventoPorId(evento_id) {
     const q = `SELECT * FROM eventos WHERE id = $1`;
@@ -267,6 +301,8 @@ class Partido {
     jornada,
     evento_id
   ) {
+    await this.asegurarEsquemaSecuencia();
+
     if (equipo_local_id === equipo_visitante_id) {
       throw new Error("Un equipo no puede jugar contra sí mismo");
     }
@@ -285,9 +321,16 @@ class Partido {
     }
 
     const query = `
+      WITH next_num AS (
+        SELECT COALESCE(MAX(numero_campeonato), 0) + 1 AS next_num
+        FROM partidos
+        WHERE campeonato_id = $1
+      )
       INSERT INTO partidos 
-      (campeonato_id, evento_id, grupo_id, equipo_local_id, equipo_visitante_id, fecha_partido, hora_partido, cancha, jornada) 
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      (campeonato_id, evento_id, grupo_id, equipo_local_id, equipo_visitante_id, fecha_partido, hora_partido, cancha, jornada, numero_campeonato) 
+      SELECT
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,next_num.next_num
+      FROM next_num
       RETURNING *
     `;
     const values = [
@@ -574,6 +617,8 @@ class Partido {
   // READS
   // ===============================
   static async obtenerPorGrupo(grupo_id) {
+    await this.asegurarEsquemaSecuencia();
+
     const q = `
       SELECT p.*,
              el.nombre AS equipo_local_nombre,
@@ -594,6 +639,8 @@ class Partido {
   }
 
   static async obtenerPorEvento(evento_id) {
+    await this.asegurarEsquemaSecuencia();
+
     const q = `
       SELECT p.*,
              el.nombre AS equipo_local_nombre,
@@ -607,13 +654,15 @@ class Partido {
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
       WHERE p.evento_id = $1
-      ORDER BY p.jornada, g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.id
+      ORDER BY p.jornada, g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
     const r = await pool.query(q, [evento_id]);
     return r.rows;
   }
 
   static async obtenerPorEventoYJornada(evento_id, jornada) {
+    await this.asegurarEsquemaSecuencia();
+
     const q = `
       SELECT p.*,
              el.nombre AS equipo_local_nombre,
@@ -627,13 +676,15 @@ class Partido {
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
       WHERE p.evento_id = $1 AND p.jornada = $2
-      ORDER BY g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.id
+      ORDER BY g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
     const r = await pool.query(q, [evento_id, jornada]);
     return r.rows;
   }
 
   static async obtenerPorCampeonato(campeonato_id) {
+    await this.asegurarEsquemaSecuencia();
+
     const q = `
       SELECT p.*,
              el.nombre AS equipo_local_nombre,
@@ -647,13 +698,15 @@ class Partido {
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
       WHERE p.campeonato_id = $1
-      ORDER BY p.jornada, g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.id
+      ORDER BY p.jornada, g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
     const r = await pool.query(q, [campeonato_id]);
     return r.rows;
   }
 
   static async obtenerPorCampeonatoYJornada(campeonato_id, jornada) {
+    await this.asegurarEsquemaSecuencia();
+
     const q = `
       SELECT p.*,
              el.nombre AS equipo_local_nombre,
@@ -667,13 +720,15 @@ class Partido {
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
       WHERE p.campeonato_id = $1 AND p.jornada = $2
-      ORDER BY g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.id
+      ORDER BY g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
     const r = await pool.query(q, [campeonato_id, jornada]);
     return r.rows;
   }
 
   static async obtenerPorId(id) {
+    await this.asegurarEsquemaSecuencia();
+
     const q = `
       SELECT p.*,
              el.nombre as equipo_local_nombre,

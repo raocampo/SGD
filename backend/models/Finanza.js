@@ -36,6 +36,7 @@ class Finanza {
         monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
         estado VARCHAR(20) NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','parcial','pagado','vencido','anulado')),
         fecha_movimiento DATE NOT NULL DEFAULT CURRENT_DATE,
+        numero_recibo_campeonato INTEGER,
         fecha_vencimiento DATE,
         metodo_pago VARCHAR(30),
         referencia VARCHAR(120),
@@ -44,6 +45,10 @@ class Finanza {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+    await client.query(`
+      ALTER TABLE finanzas_movimientos
+      ADD COLUMN IF NOT EXISTS numero_recibo_campeonato INTEGER
     `);
 
     await client.query(
@@ -61,6 +66,37 @@ class Finanza {
     await client.query(
       `CREATE INDEX IF NOT EXISTS idx_finanzas_movimientos_fecha ON finanzas_movimientos(fecha_movimiento)`
     );
+    await client.query(`
+      WITH maximos AS (
+        SELECT
+          campeonato_id,
+          COALESCE(MAX(numero_recibo_campeonato), 0)::int AS max_num
+        FROM finanzas_movimientos
+        WHERE numero_recibo_campeonato IS NOT NULL
+        GROUP BY campeonato_id
+      ),
+      ranked AS (
+        SELECT
+          fm.id,
+          (COALESCE(mx.max_num, 0) + ROW_NUMBER() OVER (
+            PARTITION BY fm.campeonato_id
+            ORDER BY fm.id
+          ))::int AS rn
+        FROM finanzas_movimientos fm
+        LEFT JOIN maximos mx ON mx.campeonato_id = fm.campeonato_id
+        WHERE fm.numero_recibo_campeonato IS NULL
+          AND COALESCE(fm.origen, 'manual') = 'manual'
+      )
+      UPDATE finanzas_movimientos fm
+      SET numero_recibo_campeonato = ranked.rn
+      FROM ranked
+      WHERE fm.id = ranked.id
+    `);
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_finanzas_movimientos_num_recibo
+      ON finanzas_movimientos(campeonato_id, numero_recibo_campeonato)
+      WHERE numero_recibo_campeonato IS NOT NULL
+    `);
 
     if (client === pool) this._esquemaAsegurado = true;
   }
@@ -342,6 +378,7 @@ class Finanza {
     const referencia = (data.referencia || "").toString().trim() || null;
     const origen = ((data.origen || "manual").toString().trim() || "manual").slice(0, 20);
     const origen_clave = (data.origen_clave || "").toString().trim() || null;
+    const generarRecibo = origen === "manual";
 
     if (evento_id) {
       const ev = await client.query(
@@ -354,6 +391,12 @@ class Finanza {
     }
 
     const q = `
+      WITH next_num AS (
+        SELECT COALESCE(MAX(numero_recibo_campeonato), 0) + 1 AS next_num
+        FROM finanzas_movimientos
+        WHERE campeonato_id = $1
+          AND numero_recibo_campeonato IS NOT NULL
+      )
       INSERT INTO finanzas_movimientos (
         campeonato_id,
         evento_id,
@@ -365,17 +408,19 @@ class Finanza {
         monto,
         estado,
         fecha_movimiento,
+        numero_recibo_campeonato,
         fecha_vencimiento,
         metodo_pago,
         referencia,
         origen,
         origen_clave
       )
-      VALUES (
+      SELECT
         $1,$2,$3,$4,$5,$6,$7,$8,$9,
         COALESCE($10::date, CURRENT_DATE),
+        CASE WHEN $16::boolean THEN next_num.next_num ELSE NULL END,
         $11,$12,$13,$14,$15
-      )
+      FROM next_num
       RETURNING *
     `;
     const values = [
@@ -394,6 +439,7 @@ class Finanza {
       referencia,
       origen,
       origen_clave,
+      generarRecibo,
     ];
 
     const r = await client.query(q, values);

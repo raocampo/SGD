@@ -88,11 +88,37 @@ async function asegurarEsquemaEventos() {
     ALTER TABLE eventos
     ADD COLUMN IF NOT EXISTS costo_inscripcion NUMERIC(12,2) DEFAULT 0
   `);
+  await pool.query(`
+    ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS numero_campeonato INTEGER
+  `);
 
   await pool.query(`
     UPDATE eventos
     SET costo_inscripcion = 0
     WHERE costo_inscripcion IS NULL
+  `);
+  await pool.query(`
+    WITH ranked AS (
+      SELECT
+        id,
+        ROW_NUMBER() OVER (
+          PARTITION BY campeonato_id
+          ORDER BY id
+        )::int AS rn
+      FROM eventos
+      WHERE campeonato_id IS NOT NULL
+    )
+    UPDATE eventos e
+    SET numero_campeonato = ranked.rn
+    FROM ranked
+    WHERE e.id = ranked.id
+      AND e.numero_campeonato IS NULL
+  `);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_eventos_numero_campeonato
+    ON eventos(campeonato_id, numero_campeonato)
+    WHERE numero_campeonato IS NOT NULL
   `);
 
   await resolverColumnaActualizacionEvento();
@@ -138,15 +164,23 @@ const eventoController = {
       const costoInscripcion = parseDecimalNonNegative(costo_inscripcion, 0);
 
       const query = `
+        WITH next_num AS (
+          SELECT COALESCE(MAX(numero_campeonato), 0) + 1 AS next_num
+          FROM eventos
+          WHERE campeonato_id = $1
+        )
         INSERT INTO eventos (
           campeonato_id, nombre, organizador, fecha_inicio, fecha_fin, estado,
           modalidad,
           costo_inscripcion,
           horario_weekday_inicio, horario_weekday_fin,
           horario_sab_inicio, horario_sab_fin,
-          horario_dom_inicio, horario_dom_fin
+          horario_dom_inicio, horario_dom_fin,
+          numero_campeonato
         )
-        VALUES ($1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13)
+        SELECT
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,next_num.next_num
+        FROM next_num
         RETURNING *
       `;
 
@@ -184,7 +218,7 @@ const eventoController = {
                c.nombre AS campeonato_nombre
         FROM eventos e
         JOIN campeonatos c ON e.campeonato_id = c.id
-        ORDER BY e.id DESC
+        ORDER BY e.campeonato_id DESC, e.numero_campeonato DESC, e.id DESC
       `;
       const result = await pool.query(q);
       return res.json({ eventos: result.rows });
@@ -206,7 +240,7 @@ const eventoController = {
         FROM eventos e
         JOIN campeonatos c ON e.campeonato_id = c.id
         WHERE e.campeonato_id = $1
-        ORDER BY e.id DESC
+        ORDER BY e.numero_campeonato ASC, e.id ASC
       `;
       const result = await pool.query(q, [campeonato_id]);
       return res.json({ eventos: result.rows });

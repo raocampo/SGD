@@ -13,6 +13,7 @@ class Campeonato {
       ADD COLUMN IF NOT EXISTS requiere_foto_cedula BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS requiere_foto_carnet BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS genera_carnets BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS numero_organizador INTEGER,
       ADD COLUMN IF NOT EXISTS costo_arbitraje NUMERIC(12,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS costo_tarjeta_amarilla NUMERIC(12,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS costo_tarjeta_roja NUMERIC(12,2) DEFAULT 0,
@@ -25,6 +26,27 @@ class Campeonato {
         costo_tarjeta_amarilla = COALESCE(costo_tarjeta_amarilla, 0),
         costo_tarjeta_roja = COALESCE(costo_tarjeta_roja, 0),
         costo_carnet = COALESCE(costo_carnet, 0)
+    `);
+    await pool.query(`
+      WITH ranked AS (
+        SELECT
+          id,
+          ROW_NUMBER() OVER (
+            PARTITION BY LOWER(COALESCE(TRIM(organizador), 'sin_organizador'))
+            ORDER BY id
+          )::int AS rn
+        FROM campeonatos
+      )
+      UPDATE campeonatos c
+      SET numero_organizador = ranked.rn
+      FROM ranked
+      WHERE c.id = ranked.id
+        AND c.numero_organizador IS NULL
+    `);
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_campeonatos_org_numero
+      ON campeonatos ((LOWER(COALESCE(TRIM(organizador), 'sin_organizador'))), numero_organizador)
+      WHERE numero_organizador IS NOT NULL
     `);
     this._columnasDocumentosAseguradas = true;
   }
@@ -62,6 +84,12 @@ class Campeonato {
     await this.asegurarColumnasDocumentos();
 
     const query = `
+      WITH next_num AS (
+        SELECT COALESCE(MAX(numero_organizador), 0) + 1 AS next_num
+        FROM campeonatos
+        WHERE LOWER(COALESCE(TRIM(organizador), 'sin_organizador')) =
+          LOWER(COALESCE(TRIM($2), 'sin_organizador'))
+      )
       INSERT INTO campeonatos
       (
         nombre,
@@ -84,12 +112,13 @@ class Campeonato {
         costo_tarjeta_amarilla,
         costo_tarjeta_roja,
         costo_carnet,
-        estado
+        estado,
+        numero_organizador
       )
-      VALUES
-      (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,'borrador'
-      )
+      SELECT
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,'borrador',
+        next_num.next_num
+      FROM next_num
       RETURNING *
     `;
 
