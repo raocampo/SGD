@@ -1,0 +1,190 @@
+# SGD - Sistema de Gestion Deportiva
+
+Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
+
+Estado del proyecto (2026-02-20): funcional en flujo principal con pendientes de cierre en RBAC, eliminatorias completas y financiero avanzado.
+
+## Tabla de Contenidos
+- [1. Vision General](#1-vision-general)
+- [2. Arquitectura](#2-arquitectura)
+- [3. Estructura del Repositorio](#3-estructura-del-repositorio)
+- [4. Requisitos](#4-requisitos)
+- [5. Configuracion Rapida](#5-configuracion-rapida)
+- [6. Scripts](#6-scripts)
+- [7. Endpoints Utiles](#7-endpoints-utiles)
+- [8. Modulos Implementados](#8-modulos-implementados)
+- [9. Documentacion del Proyecto](#9-documentacion-del-proyecto)
+- [10. Flujo de Trabajo Recomendado](#10-flujo-de-trabajo-recomendado)
+- [11. Pendientes Prioritarios](#11-pendientes-prioritarios)
+- [12. Solucion de Problemas](#12-solucion-de-problemas)
+
+## 1. Vision General
+El objetivo de SGD es centralizar la operacion de torneos amateur/semi-profesionales, desde la inscripcion hasta reportes deportivos y financieros.
+
+Flujo principal operativo:
+1. Crear campeonato.
+2. Crear eventos/categorias.
+3. Registrar equipos y jugadores.
+4. Realizar sorteo y crear grupos.
+5. Generar fixture.
+6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
+7. Consultar tablas y portal publico.
+
+## 2. Arquitectura
+- Backend: Node.js + Express + PostgreSQL.
+- Frontend: HTML/CSS/JS vanilla (multi-pagina administrativa).
+- Almacenamiento de archivos: `backend/uploads/` (logos, fotos, adjuntos).
+- Exportaciones: XLSX y PDF para planillaje/plantillas.
+
+## 3. Estructura del Repositorio
+```text
+backend/
+  config/
+  controllers/
+  models/
+  routes/
+  uploads/
+  server.js
+  .env.example
+
+database/
+  esquema.sql
+  migrations/
+
+docs/
+  BITACORA_AVANCES.md
+  ESTADO_IMPLEMENTACION_SGD.md
+  CAMBIOS_IMPLEMENTADOS.md
+  propuestaDesarrolloSGD.md
+
+frontend/
+  *.html
+  css/
+  js/
+  templates/
+```
+
+## 4. Requisitos
+- Node.js 18+ (recomendado 20 LTS)
+- PostgreSQL 14+
+- NPM 9+
+
+## 5. Configuracion Rapida
+### 5.1 Backend
+```bash
+cd backend
+npm install
+```
+
+Crear archivo `backend/.env` (basado en `backend/.env.example`):
+```env
+DB_USER=postgres
+DB_HOST=localhost
+DB_NAME=gestionDeportiva
+DB_PASSWORD=tu_password
+DB_PORT=5432
+PORT=5000
+```
+
+### 5.2 Base de datos
+1. Crear base de datos `gestionDeportiva`.
+2. Cargar esquema base.
+3. Aplicar migraciones pendientes en orden.
+
+Ejemplo:
+```bash
+psql -U postgres -d gestionDeportiva -f database/esquema.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/001_reglas_desempate.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/002_eliminatorias.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/003_equipos_medico.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/004_equipos_colores.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/005_jugadores_planilla_finanzas_base.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/006_finanzas_cuenta_corriente.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/007_eventos_campeonato_id_compat.sql
+```
+
+### 5.3 Ejecutar
+```bash
+cd backend
+npm run dev
+```
+
+Abrir en navegador:
+- Admin/Frontend servido por backend: `http://localhost:5000/admin.html`
+- Portal: `http://localhost:5000/index.html`
+
+Tambien puedes abrir frontend con servidor estatico (por ejemplo Live Server), siempre que `window.API_BASE_URL` apunte al backend.
+
+## 6. Scripts
+En `backend/package.json`:
+- `npm run dev`: inicia con nodemon.
+- `npm start`: inicia servidor en modo normal.
+
+## 7. Endpoints Utiles
+- Salud del servidor: `GET /salud`
+- Test de conexion DB: `GET /testDb`
+- Listado de tablas DB: `GET /tablas`
+
+APIs principales:
+- `/api/campeonatos`
+- `/api/eventos`
+- `/api/equipos`
+- `/api/jugadores`
+- `/api/sorteo`
+- `/api/grupos`
+- `/api/partidos`
+- `/api/tablas`
+- `/api/eliminatorias`
+- `/api/finanzas`
+
+## 8. Modulos Implementados
+Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
+- Campeonatos: alto
+- Eventos/categorias: alto
+- Equipos: alto
+- Jugadores: medio-alto
+- Sorteo y grupos: alto
+- Fixture/partidos: alto
+- Planillaje oficial: alto (en pulido UX final)
+- Tablas/estadisticas: medio-alto
+- Portal publico: alto
+- Finanzas: medio
+- RBAC/seguridad: pendiente
+
+## 9. Documentacion del Proyecto
+- Indice general de documentos: `docs/INDICE_DOCUMENTACION.md`
+- Bitacora operativa viva: `docs/BITACORA_AVANCES.md`
+- Estado por modulo vs propuesta: `docs/ESTADO_IMPLEMENTACION_SGD.md`
+- Cambios implementados historicos: `docs/CAMBIOS_IMPLEMENTADOS.md`
+- Propuesta base del proyecto: `docs/propuestaDesarrolloSGD.md`
+
+## 10. Flujo de Trabajo Recomendado
+1. Antes de comenzar:
+   - Revisar `docs/BITACORA_AVANCES.md`.
+   - Verificar `git status` limpio.
+2. Durante la sesion:
+   - Registrar decisiones y cambios relevantes.
+3. Al cerrar sesion:
+   - Actualizar bitacora (fecha, avances, pendientes).
+   - Actualizar estado de implementacion si cambia alcance.
+   - Commit con mensaje claro por modulo.
+
+## 11. Pendientes Prioritarios
+1. Pruebas E2E con datos reales (flujo completo).
+2. Cierre de planillaje oficial (detalle visual y de impresion).
+3. RBAC (autenticacion + roles).
+4. Eliminatorias completas (llaves y reglas operativas).
+5. Financiero avanzado (multas automaticas, bloqueos por morosidad, reportes ejecutivos).
+
+## 12. Solucion de Problemas
+- `DB_PASSWORD no definido`: configurar `backend/.env`.
+- Error 404 de imagen/logo: verificar rutas en `backend/uploads` y URL normalizada.
+- Frontend no conecta API: revisar `API_BASE_URL` y puerto del backend.
+- Verificacion rapida:
+  - `http://localhost:5000/salud`
+  - `http://localhost:5000/testDb`
+
+## Notas de Versionado
+- `backend/uploads/` debe permanecer fuera del versionado (runtime).
+- Dumps pesados de DB deben mantenerse fuera del flujo principal de commits.
+- No incluir secretos reales en archivos `.env`.
