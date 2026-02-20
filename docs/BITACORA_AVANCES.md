@@ -45,6 +45,48 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - categoria/evento incorpora `costo_inscripcion` para cuenta corriente por equipo.
 - Compatibilidades backend reforzadas:
   - soporte de columnas de timestamp alternativas (`updated_at` / `update_at`) en actualizacion de eventos y partidos.
+- Nuevos reportes operativos en modulo financiero:
+  - al registrar `Movimiento` se genera recibo de pago imprimible (con opcion de reimpresion),
+  - se agregaron reportes imprimibles para:
+    - estado de cuenta del equipo (incluye resumen + movimientos),
+    - morosidad por equipo,
+    - movimientos financieros filtrados en pantalla.
+- Mejora funcional en carnets de jugadores:
+  - selector de fuente de foto para anverso (`automatico`, `solo carnet`, `solo cedula`),
+  - se incorpora `categoria` visible en el carnet,
+  - se incorpora codigo QR que direcciona al portal del torneo/categoria.
+- Portal publico mejorado para QR:
+  - `index.html` ahora soporta abrir campeonato/categoria por query params (`?campeonato=ID&evento=ID`).
+- Ajustes solicitados en modulo de carnets y tablas:
+  - carnet muestra nombre real de categoria (no `Evento X`) usando contexto activo de evento,
+  - exportacion/impresion de carnets ajustada a tamano fisico por tarjeta (`8.5cm x 5.5cm`) con layout A4,
+  - modulo `Tablas` reorganizado a 2 columnas para reducir scroll horizontal en posiciones.
+- Fair Play ampliado por modalidad:
+  - para futbol 7 / futbol 5 / sala se incorpora conteo y penalizacion por faltas,
+  - para futbol 11 e indor se mantiene comportamiento anterior (sin faltas en calculo).
+- Finanzas (estado de cuenta) simplificado:
+  - resumen en pantalla y reporte impreso ahora priorizan valores operativos por concepto:
+    - inscripcion (cargo/pago/saldo),
+    - arbitraje (pago/saldo),
+    - tarjetas amarillas (pago/saldo),
+    - tarjetas rojas (pago/saldo),
+  - se elimina visualmente del resumen el bloque confuso de `saldo total` y `cargos pendientes`.
+- Campeonatos/Eventos/Equipos:
+  - fechas de campeonato normalizadas para evitar textos con sufijo `T...` y conservar fechas al editar,
+  - en crear evento las fechas se rellenan automaticamente desde el campeonato seleccionado,
+  - selector de colores en equipos simplificado a controles tipo color (alineado al estilo de campeonatos),
+  - bloque de costos del formulario de campeonato ajustado para mejor alineacion visual.
+- Ajuste terminologico UX:
+  - se estandariza el texto visible a `Categoria/Categorias` en pantallas clave para evitar confusion con el termino tecnico `evento`.
+- Modulo de auspiciantes implementado:
+  - nueva migracion `database/migrations/008_auspiciantes.sql`,
+  - nueva API `api/auspiciantes` (listar por campeonato, crear, actualizar y eliminar con logo),
+  - nueva pantalla administrativa `frontend/auspiciantes.html` + `frontend/js/auspiciantes.js`.
+- Reporteria con membrete + pie de auspiciantes:
+  - reportes financieros (recibo, estado de cuenta, morosidad, movimientos) ahora generan encabezado con membrete del campeonato/organizador,
+  - recibo de pago ajustado segun observacion operativa (titulo centrado, sin subtitulo redundante, mas espacio para firmas),
+  - pie de reportes financieros incorpora logos de auspiciantes activos,
+  - plantillas de `Grupos` y `Fixture` ahora muestran logos de auspiciantes en pie para impresion/exportacion.
 
 ### 2026-02-19
 - Correccion de bug critico en planillaje de pagos:

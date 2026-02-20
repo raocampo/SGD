@@ -59,6 +59,10 @@ test-results/
 # Uploads (archivos generados en runtime)
 backend/uploads/
 
+# Evidencias locales de pruebas visuales/reportes
+docs/capturaImg/
+docs/reportes/
+
 # Variables de entorno sensibles
 *.pem
 *.key
