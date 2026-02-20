@@ -45,6 +45,23 @@
     delete(endpoint) {
       return this.request("DELETE", endpoint);
     },
+    async requestForm(method, endpoint, formData) {
+      const url = `${window.API_BASE_URL}${endpoint}`;
+      const resp = await fetch(url, {
+        method,
+        body: formData,
+      });
+      const contentType = resp.headers.get("content-type") || "";
+      let data = null;
+      if (contentType.includes("application/json")) data = await resp.json();
+      else data = await resp.text();
+      if (!resp.ok) {
+        const msg =
+          data && data.message ? data.message : data || "Error HTTP";
+        throw new Error(msg);
+      }
+      return data;
+    },
   };
 
   // =========================
@@ -115,6 +132,22 @@
       });
       const suffix = qs.toString() ? `?${qs.toString()}` : "";
       return window.ApiClient.get(`/finanzas/morosidad${suffix}`);
+    },
+  };
+
+  window.AuspiciantesAPI = window.AuspiciantesAPI || {
+    listarPorCampeonato(campeonatoId, soloActivos = false) {
+      const qs = soloActivos ? "?activo=1" : "";
+      return window.ApiClient.get(`/auspiciantes/campeonato/${campeonatoId}${qs}`);
+    },
+    crear(formData) {
+      return window.ApiClient.requestForm("POST", "/auspiciantes", formData);
+    },
+    actualizar(id, formData) {
+      return window.ApiClient.requestForm("PUT", `/auspiciantes/${id}`, formData);
+    },
+    eliminar(id) {
+      return window.ApiClient.delete(`/auspiciantes/${id}`);
     },
   };
 })();

@@ -8,6 +8,7 @@ let vistaFixture = "todos";
 let partidos = [];
 
 let contexto = {
+  campeonatoId: null,
   campeonatoNombre: "",
   organizador: "",
   tipoFutbol: "",
@@ -15,6 +16,7 @@ let contexto = {
   fechaFin: "",
   eventoNombre: "",
   logoUrl: null,
+  auspiciantes: [],
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -54,6 +56,7 @@ async function cargarContexto() {
     const camp = campResp.campeonato || campResp || {};
 
     contexto = {
+      campeonatoId,
       campeonatoNombre: camp.nombre || "Campeonato",
       organizador: camp.organizador || "No registrado",
       tipoFutbol: (camp.tipo_futbol || "").replaceAll("_", " ").toUpperCase(),
@@ -61,9 +64,13 @@ async function cargarContexto() {
       fechaFin: formatearFecha(camp.fecha_fin),
       eventoNombre: contexto.eventoNombre,
       logoUrl: normalizarLogoUrl(camp.logo_url || null),
+      auspiciantes: await cargarAuspiciantesFixture(campeonatoId),
     };
+    renderAuspiciantesFixture(contexto.auspiciantes);
   } catch (error) {
     console.warn("No se pudo cargar contexto de plantilla:", error);
+    contexto.auspiciantes = [];
+    renderAuspiciantesFixture([]);
   }
 }
 
@@ -131,6 +138,8 @@ function actualizarCabecera() {
     logoEl.removeAttribute("src");
     logoEl.style.display = "none";
   }
+
+  renderAuspiciantesFixture(contexto.auspiciantes || []);
 }
 
 function cambiarVistaFixture(vista) {
@@ -354,6 +363,52 @@ function normalizarLogoUrl(logoUrl) {
   if (/^https?:\/\//i.test(logoUrl)) return logoUrl;
   if (logoUrl.startsWith("/")) return `${BACKEND_BASE}${logoUrl}`;
   return `${BACKEND_BASE}/${logoUrl}`;
+}
+
+async function cargarAuspiciantesFixture(campeonatoId) {
+  const id = Number.parseInt(campeonatoId, 10);
+  if (!Number.isFinite(id) || id <= 0) return [];
+  try {
+    const data = await ApiClient.get(`/auspiciantes/campeonato/${id}?activo=1`);
+    return Array.isArray(data?.auspiciantes) ? data.auspiciantes : [];
+  } catch (error) {
+    console.warn("No se pudieron cargar auspiciantes para fixture:", error);
+    return [];
+  }
+}
+
+function renderAuspiciantesFixture(lista = []) {
+  const wrap = document.getElementById("fixture-sponsors");
+  const grid = document.getElementById("fixture-sponsors-grid");
+  if (!wrap || !grid) return;
+
+  if (!Array.isArray(lista) || !lista.length) {
+    wrap.style.display = "none";
+    grid.innerHTML = "";
+    return;
+  }
+
+  grid.innerHTML = lista
+    .map((a) => {
+      const nombre = String(a?.nombre || "Auspiciante")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+      const logo = normalizarLogoUrl(a?.logo_url || "");
+      return `
+        <div class="sponsor-item">
+          ${
+            logo
+              ? `<img src="${logo}" alt="${nombre}" crossorigin="anonymous" referrerpolicy="no-referrer" />`
+              : `<div class="sponsor-name">${nombre}</div>`
+          }
+        </div>
+      `;
+    })
+    .join("");
+  wrap.style.display = "block";
 }
 
 function normalizarFechaISO(valor) {

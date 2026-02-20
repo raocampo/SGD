@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SGD - Eventos (Categorías)</title>
+    <title>SGD - Categorías</title>
     <link rel="stylesheet" href="css/style.css" />
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
@@ -17,7 +17,7 @@
       <nav class="sidebar-nav">
         <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
         <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
-        <a class="nav-btn active" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+        <a class="nav-btn active" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
         <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
         <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
         <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
@@ -32,7 +32,7 @@
     <div class="main-wrapper">
       <header class="top-bar">
         <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
-        <h1>📌 Eventos (Categorías)</h1>
+        <h1>📌 Categorías</h1>
       </header>
 
     <main class="main">
@@ -53,10 +53,10 @@
           </div>
 
           <div class="config-card">
-            <h3>Crear Evento (Categoría)</h3>
+            <h3>Crear Categoría</h3>
 
             <div class="form-group">
-              <label>Nombre del evento/categoría:</label>
+              <label>Nombre de la categoría:</label>
               <input
                 id="evt-nombre"
                 type="text"
@@ -75,12 +75,13 @@
 
             <div class="form-group">
               <label>Fecha inicio:</label>
-              <input id="evt-fecha-inicio" type="date" />
+              <input id="evt-fecha-inicio" type="date" readonly />
             </div>
 
             <div class="form-group">
               <label>Fecha fin:</label>
-              <input id="evt-fecha-fin" type="date" />
+              <input id="evt-fecha-fin" type="date" readonly />
+              <small class="form-hint">Estas fechas se cargan automáticamente desde el campeonato seleccionado.</small>
             </div>
 
             <div class="form-group">
@@ -100,7 +101,7 @@
           </div>
 
           <div class="action-bar">
-            <div class="list-view-toggle" id="eventos-view-toggle" aria-label="Cambiar vista de eventos">
+            <div class="list-view-toggle" id="eventos-view-toggle" aria-label="Cambiar vista de Categorías">
               <button
                 type="button"
                 id="btn-vista-eventos-cards"
@@ -133,3 +134,5 @@
     <script src="js/eventos.js"></script>
   </body>
 </html>
+
+

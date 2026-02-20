@@ -3,6 +3,7 @@
 let equipoId = null;
 let campeonatoId = null;
 let eventoId = null;
+let eventoNombreActual = "";
 let equipoActual = null;
 let jugadorActualEnEdicion = null;
 let modoDirecto = false;
@@ -297,10 +298,17 @@ async function cargarEventosSelectDirecto(campId) {
 
     if (eventoId) {
       select.value = String(eventoId);
+      const optSel = select.options[select.selectedIndex];
+      if (optSel?.textContent && String(optSel.value || "").trim()) {
+        eventoNombreActual = optSel.textContent.trim();
+      }
     }
 
     select.onchange = async () => {
       eventoId = select.value ? Number.parseInt(select.value, 10) : null;
+      const optSel = select.options[select.selectedIndex];
+      eventoNombreActual =
+        eventoId && optSel?.textContent ? optSel.textContent.trim() : "";
       equipoId = null;
       await cargarEquiposSelectDirecto(campId, eventoId);
       limpiarVistaSinEquipo();
@@ -369,6 +377,20 @@ async function cargarJugadoresDesdeSeleccion() {
   await cargarContextoEquipo();
 }
 
+async function cargarNombreEventoActual() {
+  if (!eventoId) {
+    eventoNombreActual = "";
+    return;
+  }
+  try {
+    const data = await window.ApiClient.get(`/eventos/${eventoId}`);
+    const evento = data?.evento || data;
+    eventoNombreActual = (evento?.nombre || "").toString().trim();
+  } catch (_) {
+    eventoNombreActual = "";
+  }
+}
+
 async function cargarContextoEquipo() {
   if (!equipoId) {
     limpiarVistaSinEquipo();
@@ -396,12 +418,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   actualizarBotonesVistaJugadores();
   cambiarPestanaJugadores("tab-jugadores-gestion");
   actualizarEstadoPanelReportes();
+  document
+    .getElementById("carnet-foto-anverso")
+    ?.addEventListener("change", () => {
+      if (document.getElementById("bloque-carnets-jugadores")?.style.display === "block") {
+        renderPlantillaCarnets();
+      }
+    });
 
   if (modoDirecto) {
     await inicializarModoDirecto();
     return;
   }
 
+  await cargarNombreEventoActual();
   await cargarContextoEquipo();
   actualizarEstadoPanelReportes();
 });
@@ -624,11 +654,50 @@ function renderListadoJugadores() {
 
 function obtenerNombreEventoActual() {
   const selectEvento = document.getElementById("select-evento-jugador");
-  if (selectEvento && selectEvento.value) {
+  if (selectEvento) {
     const opt = selectEvento.options[selectEvento.selectedIndex];
-    if (opt) return opt.textContent || "";
+    if (opt && String(opt.value || "").trim()) return (opt.textContent || "").trim();
+    if (eventoId) {
+      const porValor = Array.from(selectEvento.options || []).find(
+        (x) => Number.parseInt(x.value, 10) === Number(eventoId)
+      );
+      if (porValor?.textContent) return porValor.textContent.trim();
+    }
   }
-  return eventoId ? `Evento ${eventoId}` : "Todas las categorías";
+  if (eventoNombreActual) return eventoNombreActual;
+  return eventoId ? "Categoría seleccionada" : "Todas las categorías";
+}
+
+function obtenerModoFotoAnversoCarnet() {
+  const select = document.getElementById("carnet-foto-anverso");
+  const valor = String(select?.value || "auto").trim().toLowerCase();
+  if (valor === "cedula" || valor === "carnet") return valor;
+  return "auto";
+}
+
+function obtenerFotoAnversoCarnet(jugador) {
+  const modo = obtenerModoFotoAnversoCarnet();
+  const fotoCarnet = normalizarArchivoUrl(jugador?.foto_carnet_url);
+  const fotoCedula = normalizarArchivoUrl(jugador?.foto_cedula_url);
+
+  if (modo === "carnet") return fotoCarnet || fotoCedula;
+  if (modo === "cedula") return fotoCedula || fotoCarnet;
+  return fotoCarnet || fotoCedula;
+}
+
+function construirUrlPortalParticipacion() {
+  const params = new URLSearchParams();
+  if (campeonatoId) params.set("campeonato", String(campeonatoId));
+  if (eventoId) params.set("evento", String(eventoId));
+
+  const base = `${window.location.origin}${window.location.pathname.replace(/[^/]+$/, "index.html")}`;
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+function construirQrUrlParticipacion() {
+  const urlDestino = construirUrlPortalParticipacion();
+  return `https://api.qrserver.com/v1/create-qr-code/?size=108x108&margin=0&data=${encodeURIComponent(urlDestino)}`;
 }
 
 function renderPlantillaNominaJugadores() {
@@ -719,9 +788,12 @@ function renderPlantillaCarnets() {
   }
 
   const logoCampeonato = normalizarArchivoUrl(campeonatoMeta.logo_url);
+  const categoriaActual = obtenerNombreEventoActual();
+  const urlPortalParticipacion = construirUrlPortalParticipacion();
+  const qrUrlParticipacion = construirQrUrlParticipacion();
   const cards = jugadoresActuales
     .map((j) => {
-      const foto = normalizarArchivoUrl(j.foto_carnet_url || j.foto_cedula_url);
+      const foto = obtenerFotoAnversoCarnet(j);
       return `
         <article class="carnet-card">
           <header class="carnet-header">
@@ -739,17 +811,26 @@ function renderPlantillaCarnets() {
             <div class="carnet-data">
               <p><strong>Nombre:</strong> ${escapeHtml(`${j.nombre || ""} ${j.apellido || ""}`.trim())}</p>
               <p><strong>Cédula:</strong> ${escapeHtml(j.cedidentidad || "—")}</p>
+              <p><strong>Categoría:</strong> ${escapeHtml(categoriaActual || "—")}</p>
               <p><strong>Equipo:</strong> ${escapeHtml(equipoActual.nombre || "—")}</p>
               <p><strong>N°:</strong> ${escapeHtml(j.numero_camiseta || "—")}</p>
             </div>
           </div>
           <footer class="carnet-footer">
-            <div class="carnet-campeonato">${escapeHtml(campeonatoMeta.nombre || "Campeonato")}</div>
-            ${
-              logoCampeonato
-                ? `<img src="${logoCampeonato}" alt="Logo campeonato" class="carnet-logo" />`
-                : "<span class='carnet-logo-fallback'>SGD</span>"
-            }
+            <div class="carnet-footer-main">
+              <div class="carnet-campeonato">${escapeHtml(campeonatoMeta.nombre || "Campeonato")}</div>
+              <div class="carnet-categoria">${escapeHtml(categoriaActual || "Categoría")}</div>
+            </div>
+            <div class="carnet-footer-media">
+              ${
+                logoCampeonato
+                  ? `<img src="${logoCampeonato}" alt="Logo campeonato" class="carnet-logo" />`
+                  : "<span class='carnet-logo-fallback'>SGD</span>"
+              }
+              <a href="${escapeHtml(urlPortalParticipacion)}" target="_blank" rel="noopener noreferrer" class="carnet-qr-link" title="Abrir página del torneo">
+                <img src="${escapeHtml(qrUrlParticipacion)}" alt="QR torneo" class="carnet-qr" />
+              </a>
+            </div>
           </footer>
         </article>
       `;
@@ -789,6 +870,12 @@ function mostrarPlantillaCarnets() {
   if (bloque) bloque.style.display = "block";
   if (bloqueNomina) bloqueNomina.style.display = "none";
   bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function activarLayoutCarnetsA4(activar) {
+  const zona = document.getElementById("carnets-jugadores-export");
+  if (!zona) return;
+  zona.classList.toggle("carnets-a4-layout", Boolean(activar));
 }
 
 function imprimirNodoEnVentana(node, titulo = "Impresión") {
@@ -859,6 +946,161 @@ async function exportarNodoPDF(node, nombreArchivo) {
   pdf.save(nombreArchivo);
 }
 
+function obtenerHostsPermitidosImagenesPDF() {
+  const hosts = new Set([String(window.location.host || "").toLowerCase(), "api.qrserver.com"]);
+  try {
+    const hostBackend = new URL(BACKEND_BASE).host;
+    if (hostBackend) hosts.add(String(hostBackend).toLowerCase());
+  } catch (_) {
+    // ignore
+  }
+  return hosts;
+}
+
+function esImagenPermitidaParaPDF(src, hostsPermitidos) {
+  if (!src) return false;
+  try {
+    const url = new URL(src, window.location.href);
+    if (url.protocol === "data:" || url.protocol === "blob:") return true;
+    if (!/^https?:$/i.test(url.protocol)) return false;
+    const host = String(url.host || "").toLowerCase();
+    if (!host) return true;
+    if (host === "tu-dominio.com" || host.endsWith(".tu-dominio.com")) return false;
+    return hostsPermitidos.has(host);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function esperarImagenesEnNodo(node, timeoutMs = 1400) {
+  if (!node) return;
+  const imagenes = Array.from(node.querySelectorAll("img"));
+  if (!imagenes.length) return;
+
+  await Promise.all(
+    imagenes.map(
+      (img) =>
+        new Promise((resolve) => {
+          if (img.complete) return resolve();
+          let timeoutId = null;
+          const onDone = () => {
+            if (timeoutId) window.clearTimeout(timeoutId);
+            img.removeEventListener("load", onDone);
+            img.removeEventListener("error", onDone);
+            resolve();
+          };
+          timeoutId = window.setTimeout(onDone, timeoutMs);
+          img.addEventListener("load", onDone, { once: true });
+          img.addEventListener("error", onDone, { once: true });
+        })
+    )
+  );
+}
+
+async function exportarCarnetsEnPDFA4(node, nombreArchivo) {
+  if (!node || !window.html2canvas || !window.jspdf?.jsPDF) {
+    throw new Error("No se pudo preparar la exportación PDF");
+  }
+
+  const cards = Array.from(node.querySelectorAll(".carnet-card"));
+  if (!cards.length) {
+    throw new Error("No hay carnets para exportar");
+  }
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  const columnas = 2;
+  const anchoCarnetMm = 85;
+  const altoCarnetMm = 55;
+  const margenHorizontalMm = 12;
+  const margenSuperiorMm = 10;
+  const espacioHorizontalMm = Math.max(
+    8,
+    pageWidth - (margenHorizontalMm * 2 + anchoCarnetMm * columnas)
+  );
+  const espacioVerticalMm = 6;
+
+  const filasPorPagina = Math.max(
+    1,
+    Math.floor((pageHeight - margenSuperiorMm * 2 + espacioVerticalMm) / (altoCarnetMm + espacioVerticalMm))
+  );
+  const carnetsPorPagina = filasPorPagina * columnas;
+
+  const restaurar = cards.map((card) => ({
+    card,
+    minHeight: card.style.minHeight,
+    maxHeight: card.style.maxHeight,
+    height: card.style.height,
+    overflow: card.style.overflow,
+  }));
+  const pixelVacio = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+  const hostsPermitidos = obtenerHostsPermitidosImagenesPDF();
+  const restaurarImagenes = [];
+  const imagenes = Array.from(node.querySelectorAll("img"));
+
+  for (const item of restaurar) {
+    item.card.style.minHeight = "auto";
+    item.card.style.maxHeight = "none";
+    item.card.style.height = "auto";
+    item.card.style.overflow = "visible";
+  }
+  for (const img of imagenes) {
+    const srcAttr = img.getAttribute("src") || "";
+    const srcReal = img.currentSrc || srcAttr;
+    if (!esImagenPermitidaParaPDF(srcReal, hostsPermitidos)) {
+      restaurarImagenes.push({ img, src: srcAttr });
+      img.setAttribute("src", pixelVacio);
+    } else {
+      img.setAttribute("crossorigin", "anonymous");
+      img.setAttribute("referrerpolicy", "no-referrer");
+    }
+  }
+
+  await new Promise((resolve) => window.requestAnimationFrame(resolve));
+  await esperarImagenesEnNodo(node, 1200);
+
+  try {
+    for (let i = 0; i < cards.length; i += 1) {
+      if (i > 0 && i % carnetsPorPagina === 0) {
+        pdf.addPage();
+      }
+
+      const pos = i % carnetsPorPagina;
+      const fila = Math.floor(pos / columnas);
+      const columna = pos % columnas;
+
+      const x = margenHorizontalMm + columna * (anchoCarnetMm + espacioHorizontalMm);
+      const y = margenSuperiorMm + fila * (altoCarnetMm + espacioVerticalMm);
+
+      const canvas = await window.html2canvas(cards[i], {
+        backgroundColor: "#ffffff",
+        scale: 1.25,
+        useCORS: true,
+        logging: false,
+        imageTimeout: 1200,
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.88);
+      pdf.addImage(imgData, "JPEG", x, y, anchoCarnetMm, altoCarnetMm, undefined, "FAST");
+    }
+  } finally {
+    for (const item of restaurar) {
+      item.card.style.minHeight = item.minHeight;
+      item.card.style.maxHeight = item.maxHeight;
+      item.card.style.height = item.height;
+      item.card.style.overflow = item.overflow;
+    }
+    for (const item of restaurarImagenes) {
+      item.img.setAttribute("src", item.src);
+    }
+  }
+
+  pdf.save(nombreArchivo);
+}
+
 function imprimirNominaJugadores() {
   if (!contextoListoParaReportes()) {
     mostrarNotificacion("Selecciona campeonato, categoría y equipo para imprimir", "warning");
@@ -911,8 +1153,10 @@ function imprimirCarnetsJugadores() {
     return;
   }
   renderPlantillaCarnets();
+  activarLayoutCarnetsA4(true);
   const zona = document.getElementById("carnets-jugadores-export");
   imprimirNodoEnVentana(zona, "Carnets de Jugadores");
+  setTimeout(() => activarLayoutCarnetsA4(false), 450);
 }
 
 async function exportarCarnetsPDF() {
@@ -928,18 +1172,33 @@ async function exportarCarnetsPDF() {
     mostrarNotificacion("No hay jugadores para exportar carnets", "warning");
     return;
   }
+  const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
+  const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
+  const displayCarnetsPrev = bloqueCarnets ? bloqueCarnets.style.display : null;
+  const displayNominaPrev = bloqueNomina ? bloqueNomina.style.display : null;
   try {
     renderPlantillaCarnets();
+    if (bloqueCarnets) bloqueCarnets.style.display = "block";
+    if (bloqueNomina) bloqueNomina.style.display = "none";
+    activarLayoutCarnetsA4(true);
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
     const zona = document.getElementById("carnets-jugadores-export");
+    if (!zona || zona.clientWidth < 50 || zona.clientHeight < 50) {
+      throw new Error("No se pudo preparar la vista de carnets para exportar");
+    }
     const slugEquipo = valorTextoImportacion(equipoActual?.nombre || "equipo")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "");
-    await exportarNodoPDF(zona, `carnets_jugadores_${slugEquipo || "equipo"}.pdf`);
+    await exportarCarnetsEnPDFA4(zona, `carnets_jugadores_${slugEquipo || "equipo"}.pdf`);
     mostrarNotificacion("Carnets exportados en PDF", "success");
   } catch (error) {
     console.error(error);
     mostrarNotificacion(error.message || "No se pudo exportar carnets", "error");
+  } finally {
+    activarLayoutCarnetsA4(false);
+    if (bloqueCarnets && displayCarnetsPrev !== null) bloqueCarnets.style.display = displayCarnetsPrev;
+    if (bloqueNomina && displayNominaPrev !== null) bloqueNomina.style.display = displayNominaPrev;
   }
 }
 

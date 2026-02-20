@@ -73,16 +73,31 @@
   // =========================
   document.addEventListener("DOMContentLoaded", () => {
     const sidebarNav = document.querySelector(".sidebar-nav");
-    if (sidebarNav && !sidebarNav.querySelector('a[href="finanzas.html"]')) {
-      const finanzasLink = document.createElement("a");
-      const estaEnFinanzas = window.location.pathname.endsWith("finanzas.html");
-      finanzasLink.className = `nav-btn${estaEnFinanzas ? " active" : ""}`;
-      finanzasLink.href = "finanzas.html";
-      finanzasLink.innerHTML = '<i class="fas fa-wallet"></i> Finanzas';
+    if (sidebarNav) {
+      const linkEventos = sidebarNav.querySelector('a[href="eventos.html"]');
+      if (linkEventos) linkEventos.innerHTML = '<i class="fas fa-calendar-alt"></i> Categorías';
 
-      const portalLink = sidebarNav.querySelector('a[href="index.html"]');
-      if (portalLink) sidebarNav.insertBefore(finanzasLink, portalLink);
-      else sidebarNav.appendChild(finanzasLink);
+      const ensureNavLink = (href, html, isActive) => {
+        let link = sidebarNav.querySelector(`a[href="${href}"]`);
+        if (!link) {
+          link = document.createElement("a");
+          link.className = `nav-btn${isActive ? " active" : ""}`;
+          link.href = href;
+          link.innerHTML = html;
+          const portalLink = sidebarNav.querySelector('a[href="index.html"]');
+          if (portalLink) sidebarNav.insertBefore(link, portalLink);
+          else sidebarNav.appendChild(link);
+          return;
+        }
+        link.innerHTML = html;
+        link.classList.toggle("active", Boolean(isActive));
+      };
+
+      ensureNavLink(
+        "finanzas.html",
+        '<i class="fas fa-wallet"></i> Finanzas',
+        window.location.pathname.endsWith("finanzas.html")
+      );
     }
 
     const toggle = document.getElementById("nav-toggle");

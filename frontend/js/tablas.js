@@ -38,7 +38,7 @@ function inicializarAcciones() {
   if (btnRecargar) {
     btnRecargar.addEventListener("click", async () => {
       await cargarEventos(tablasEventoSeleccionado);
-      mostrarNotificacion("Eventos recargados", "success");
+      mostrarNotificacion("Categorías recargadas", "success");
     });
   }
 
@@ -70,10 +70,10 @@ async function cargarEventos(eventoPreseleccionado = null) {
     const eventos = resp.eventos || resp || [];
     tablasEventosCache = eventos;
 
-    select.innerHTML = '<option value="">- Selecciona un evento -</option>';
+    select.innerHTML = '<option value="">- Selecciona una categoría -</option>';
 
     eventos.forEach((e) => {
-      const label = e.nombre || `Evento ${e.id}`;
+      const label = e.nombre || `Categoría ${e.id}`;
       select.innerHTML += `<option value="${e.id}">${escaparHtml(label)}</option>`;
     });
 
@@ -83,7 +83,7 @@ async function cargarEventos(eventoPreseleccionado = null) {
     }
   } catch (error) {
     console.error(error);
-    mostrarNotificacion("Error cargando eventos", "error");
+    mostrarNotificacion("Error cargando categorías", "error");
   }
 }
 
@@ -94,7 +94,7 @@ async function buscarTablasEvento() {
   }
 
   if (!tablasEventoSeleccionado) {
-    mostrarNotificacion("Selecciona un evento primero", "warning");
+    mostrarNotificacion("Selecciona una categoría primero", "warning");
     limpiarPaneles();
     return;
   }
@@ -118,7 +118,7 @@ async function buscarTablasEvento() {
   } catch (error) {
     console.error(error);
     mostrarNotificacion(error.message || "Error cargando tablas", "error");
-    limpiarPaneles("No se pudo cargar la informacion del evento.");
+    limpiarPaneles("No se pudo cargar la información de la categoría.");
   }
 }
 
@@ -135,7 +135,7 @@ function setCargandoPaneles() {
   });
 }
 
-function limpiarPaneles(mensaje = "Selecciona un evento y presiona Buscar para ver tablas.") {
+function limpiarPaneles(mensaje = "Selecciona una categoría y presiona Buscar para ver tablas.") {
   const html = `
     <div class="empty-state">
       <i class="fas fa-table"></i>
@@ -170,7 +170,7 @@ function renderPosiciones(data) {
   const resumen = `
     <div class="card tablas-resumen-card">
       <p><strong>Campeonato:</strong> ${escaparHtml(nombreCampeonato)}</p>
-      <p><strong>Evento:</strong> ${escaparHtml(nombreEvento)}</p>
+      <p><strong>Evento:</strong> ${escaparHtml(nombrecategoría)}</p>
       <p><strong>Grupos:</strong> ${Number(data.total_grupos || grupos.length)}</p>
       <p><strong>Equipos:</strong> ${Number(data.total_equipos || 0)}</p>
     </div>
@@ -222,7 +222,7 @@ function renderTablaPosiciones(tabla) {
 
   return `
     <div class="tabla-scroll">
-      <table class="tabla-estadistica">
+      <table class="tabla-estadistica tabla-estadistica-posiciones">
         <thead>
           <tr>
             <th>#</th>
@@ -336,6 +336,7 @@ function renderFairPlay(data) {
   if (!cont) return;
 
   const lista = data?.fair_play || [];
+  const incluyeFaltas = data?.incluye_faltas === true;
   if (!lista.length) {
     cont.innerHTML = renderVacio("No hay datos suficientes para calcular fair play.");
     return;
@@ -349,6 +350,7 @@ function renderFairPlay(data) {
           <td>${escaparHtml(f.equipo_nombre || "-")}</td>
           <td>${Number(f.amarillas || 0)}</td>
           <td>${Number(f.rojas || 0)}</td>
+          ${incluyeFaltas ? `<td>${Number(f.faltas || 0)}</td>` : ""}
           <td>${Number(f.uniformidad || 0).toFixed(2)}</td>
           <td>${Number(f.comportamiento || 0).toFixed(2)}</td>
           <td>${Number(f.puntualidad || 0).toFixed(2)}</td>
@@ -363,7 +365,7 @@ function renderFairPlay(data) {
   cont.innerHTML = `
     <div class="card">
       <h3>Tabla Fair Play</h3>
-      <p class="tablas-fair-play-help">Formula: base + bonificaciones (uniformidad/comportamiento/puntualidad) - penalizacion por tarjetas.</p>
+      <p class="tablas-fair-play-help">Formula: base + bonificaciones (uniformidad/comportamiento/puntualidad) - penalizacion por tarjetas${incluyeFaltas ? " y faltas" : ""}.</p>
       <div class="tabla-scroll">
         <table class="tabla-estadistica">
           <thead>
@@ -372,6 +374,7 @@ function renderFairPlay(data) {
               <th>Equipo</th>
               <th>Amarillas</th>
               <th>Rojas</th>
+              ${incluyeFaltas ? "<th>Faltas</th>" : ""}
               <th>Uniformidad</th>
               <th>Comportamiento</th>
               <th>Puntualidad</th>
@@ -404,3 +407,5 @@ function escaparHtml(valor) {
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+

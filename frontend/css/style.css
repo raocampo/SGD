@@ -75,9 +75,10 @@ body {
   gap: 0.25rem;
 }
 .sidebar-nav .nav-btn {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1.45rem minmax(0, 1fr);
   align-items: center;
-  gap: 0.75rem;
+  column-gap: 0.72rem;
   padding: 10px 14px;
   border-radius: 8px;
   color: white;
@@ -89,6 +90,17 @@ body {
   font-size: 0.95rem;
   width: 100%;
   text-align: left;
+}
+.sidebar-nav .nav-btn i {
+  width: 1.45rem;
+  min-width: 1.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  text-align: center;
+  line-height: 1;
+  margin: 0;
 }
 .sidebar-nav .nav-btn:hover,
 .sidebar-nav .nav-btn.active {
@@ -1141,6 +1153,17 @@ body {
   flex: 1;
 }
 
+.modal-content .campeonato-costos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem 1rem;
+  align-items: end;
+}
+
+.modal-content .campeonato-costos-grid .form-group {
+  margin-bottom: 0;
+}
+
 /* ============================
    RESPONSIVE
 ============================ */
@@ -1295,6 +1318,10 @@ body {
 @media (max-width: 768px) {
   .form-row {
     flex-direction: column;
+  }
+
+  .modal-content .campeonato-costos-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2991,7 +3018,7 @@ body.modal-open {
 
 .page-tablas .tablas-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -3033,6 +3060,21 @@ body.modal-open {
 .page-tablas .tablas-fair-play-help {
   margin-bottom: 0.65rem;
   color: #475569;
+}
+
+.page-tablas .tablas-grupo-card .tabla-scroll {
+  overflow-x: visible;
+}
+
+.page-tablas .tabla-estadistica-posiciones {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.page-tablas .tabla-estadistica-posiciones th,
+.page-tablas .tabla-estadistica-posiciones td {
+  font-size: 0.82rem;
+  padding: 0.38rem 0.32rem;
 }
 
 /* ============================
@@ -3124,6 +3166,24 @@ body.modal-open {
   width: 100%;
 }
 
+.carnets-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.8rem;
+  margin-bottom: 0.7rem;
+}
+
+.carnets-mode-group {
+  min-width: 240px;
+  max-width: 340px;
+}
+
+.carnets-mode-group select {
+  width: 100%;
+}
+
 .carnets-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
@@ -3136,6 +3196,8 @@ body.modal-open {
   overflow: hidden;
   background: linear-gradient(145deg, #ffffff 0%, #f6f9fd 100%);
   box-shadow: 0 8px 20px rgba(16, 42, 67, 0.12);
+  min-height: 5.5cm;
+  width: 100%;
 }
 
 .carnet-header {
@@ -3197,7 +3259,24 @@ body.modal-open {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.7rem;
+}
+
+.carnet-footer-main {
+  min-width: 0;
+}
+
+.carnet-footer-media {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
+}
+
+.carnet-categoria {
+  margin-top: 0.12rem;
+  font-size: 0.69rem;
+  color: #475569;
+  font-weight: 700;
 }
 
 .carnet-campeonato {
@@ -3219,6 +3298,38 @@ body.modal-open {
   font-size: 0.7rem;
   font-weight: 700;
   color: #475569;
+}
+
+.carnet-qr-link {
+  display: inline-flex;
+  border-radius: 6px;
+  border: 1px solid #d5dfeb;
+  background: #fff;
+  padding: 2px;
+}
+
+.carnet-qr {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+}
+
+.carnets-board.carnets-a4-layout {
+  width: 19cm;
+  margin: 0 auto;
+}
+
+.carnets-board.carnets-a4-layout .carnets-grid {
+  grid-template-columns: repeat(2, 8.5cm);
+  justify-content: space-between;
+  gap: 0.45cm 0.5cm;
+}
+
+.carnets-board.carnets-a4-layout .carnet-card {
+  width: 8.5cm;
+  min-height: 5.5cm;
+  max-height: 5.5cm;
+  box-shadow: none;
 }
 
 .reportes-jugadores-grid {
@@ -3293,6 +3404,16 @@ body.modal-open {
     min-width: 740px;
   }
 
+  .carnets-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .carnets-mode-group {
+    min-width: 0;
+    max-width: none;
+  }
+
   .reportes-jugadores-grid {
     grid-template-columns: 1fr;
   }
@@ -3313,6 +3434,19 @@ body.print-solo .carnet-card {
   break-inside: avoid;
 }
 
+body.print-solo .carnets-grid {
+  grid-template-columns: repeat(2, 8.5cm);
+  justify-content: space-between;
+  gap: 0.45cm 0.5cm;
+}
+
+body.print-solo .carnet-card {
+  width: 8.5cm;
+  min-height: 5.5cm;
+  max-height: 5.5cm;
+  box-shadow: none;
+}
+
 @media (max-width: 900px) {
   .page-tablas .tabla-estadistica {
     min-width: 560px;
@@ -3325,6 +3459,12 @@ body.print-solo .carnet-card {
     gap: 0.4rem;
   }
 
+  .page-tablas .tablas-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1180px) {
   .page-tablas .tablas-grid {
     grid-template-columns: 1fr;
   }
@@ -3371,10 +3511,28 @@ body.page-finanzas {
   justify-content: space-between;
   gap: 0.65rem;
   margin-bottom: 0.55rem;
+  flex-wrap: wrap;
 }
 
 .page-finanzas .fin-card-headline h3 {
   margin-bottom: 0;
+}
+
+.page-finanzas .fin-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.page-auspiciantes .aus-logo-thumb {
+  width: 72px;
+  height: 38px;
+  object-fit: contain;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #fff;
+  padding: 2px;
 }
 
 .page-finanzas .fin-toggle-btn {

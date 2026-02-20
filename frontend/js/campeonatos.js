@@ -26,6 +26,21 @@ function parseMontoNoNegativo(valor, fallback = 0) {
   return Number(n.toFixed(2));
 }
 
+function formatearFechaSolo(valor) {
+  if (!valor) return "—";
+  const texto = String(valor).trim();
+  if (!texto) return "—";
+  if (texto.includes("T")) return texto.split("T")[0];
+  return texto.slice(0, 10);
+}
+
+function obtenerNumeroCampeonatoVisible(camp, fallback = null) {
+  const n = Number.parseInt(camp?.numero_organizador, 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  if (Number.isFinite(Number(fallback)) && Number(fallback) > 0) return Number(fallback);
+  return null;
+}
+
 function obtenerMetadatosCampeonato(camp) {
   const tipoFutbol = (camp.tipo_futbol || "").replace("_", " ");
   const sistema = camp.sistema_puntuacion || "tradicional";
@@ -39,8 +54,8 @@ function obtenerMetadatosCampeonato(camp) {
     archivado: "Archivado",
   };
   const estadoLabel = estadoMap[estadoRaw] || estadoRaw;
-  const fechaInicio = camp.fecha_inicio || "—";
-  const fechaFin = camp.fecha_fin || "—";
+  const fechaInicio = formatearFechaSolo(camp.fecha_inicio);
+  const fechaFin = formatearFechaSolo(camp.fecha_fin);
   const jugadoresMinMax = `${camp.min_jugador || "Mín"} - ${camp.max_jugador || "Máx"}`;
   const carnets = camp.genera_carnets === true || camp.genera_carnets === "true" ? "Habilitados" : "No habilitados";
   const costoArbitraje = parseMontoNoNegativo(camp.costo_arbitraje, 0);
@@ -80,13 +95,14 @@ function renderCampeonatoCard(camp) {
   const meta = obtenerMetadatosCampeonato(camp);
   const logoUrl = normalizarLogoCampeonato(camp.logo_url);
   const logoHtml = logoUrl ? `<img class="camp-logo" src="${logoUrl}" alt="Logo" />` : "";
+  const numero = obtenerNumeroCampeonatoVisible(camp);
 
   return `
     <div class="campeonato-card">
       <div class="campeonato-header">
         ${logoHtml}
         <div>
-          <h3>${escapeHtml(camp.nombre)}</h3>
+          <h3>${numero ? `#${numero} - ` : ""}${escapeHtml(camp.nombre)}</h3>
           <p class="camp-organizador">
             <strong>Organiza:</strong> ${escapeHtml(camp.organizador || "No registrado")}
           </p>
@@ -129,9 +145,10 @@ function renderTablaCampeonatos(campeonatos) {
   const filas = campeonatos
     .map((camp, index) => {
       const meta = obtenerMetadatosCampeonato(camp);
+      const numero = obtenerNumeroCampeonatoVisible(camp, index + 1);
       return `
         <tr>
-          <td>${index + 1}</td>
+          <td>${numero}</td>
           <td>${escapeHtml(camp.nombre || "—")}</td>
           <td>${escapeHtml(camp.organizador || "No registrado")}</td>
           <td>${escapeHtml(meta.tipoFutbol || "—")}</td>
@@ -320,9 +337,9 @@ async function editarCampeonato(id) {
       camp.sistema_puntuacion || "tradicional";
 
     document.getElementById("campeonato-fecha-inicio").value =
-      camp.fecha_inicio || "";
+      formatearFechaSolo(camp.fecha_inicio).replace("—", "");
     document.getElementById("campeonato-fecha-fin").value =
-      camp.fecha_fin || "";
+      formatearFechaSolo(camp.fecha_fin).replace("—", "");
 
     document.getElementById("campeonato-min-jugadores").value =
       camp.min_jugador || "";

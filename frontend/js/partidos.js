@@ -21,6 +21,7 @@ let fixtureContexto = {
   fechaFin: "",
   eventoNombre: "",
   logoUrl: null,
+  auspiciantes: [],
 };
 
 function escapeHtml(valor) {
@@ -30,6 +31,13 @@ function escapeHtml(valor) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function obtenerNumeroPartidoVisible(partido, fallback = null) {
+  const n = Number.parseInt(partido?.numero_campeonato, 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  if (Number.isFinite(Number(fallback)) && Number(fallback) > 0) return Number(fallback);
+  return null;
 }
 
 function actualizarBotonesVistaPartidos() {
@@ -81,7 +89,7 @@ async function cargarEventos() {
     eventosCache = lista;
 
     const select = document.getElementById("select-evento");
-    select.innerHTML = '<option value="">- Selecciona un evento -</option>';
+    select.innerHTML = '<option value="">- Selecciona una categoría -</option>';
 
     lista.forEach((e) => {
       select.innerHTML += `<option value="${e.id}">${e.nombre} (${e.categoria || "Sin categoria"})</option>`;
@@ -101,7 +109,7 @@ async function cargarEventos() {
       actualizarCabeceraFixture();
     };
   } catch (error) {
-    mostrarNotificacion("Error cargando eventos", "error");
+    mostrarNotificacion("Error cargando categorías", "error");
     console.error(error);
   }
 }
@@ -144,6 +152,7 @@ async function cargarContextoFixture(eventoId) {
       fechaFin: "",
       eventoNombre: "",
       logoUrl: null,
+      auspiciantes: [],
     };
     return;
   }
@@ -157,13 +166,15 @@ async function cargarContextoFixture(eventoId) {
     }
 
     const campeonatoId = Number.parseInt(evento?.campeonato_id, 10);
-    const eventoNombre = evento?.nombre || "Evento";
+    const eventoNombre = evento?.nombre || "Categoría";
 
     if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
       fixtureContexto.eventoNombre = eventoNombre;
       fixtureContexto.campeonatoNombre = "FIXTURE";
       fixtureContexto.organizador = "No registrado";
       fixtureContexto.logoUrl = null;
+      fixtureContexto.auspiciantes = [];
+      renderAuspiciantesFixture([]);
       return;
     }
 
@@ -179,9 +190,13 @@ async function cargarContextoFixture(eventoId) {
       fechaFin: formatearFecha(camp.fecha_fin),
       eventoNombre,
       logoUrl: normalizarLogoUrl(camp.logo_url || null),
+      auspiciantes: await cargarAuspiciantesFixture(campeonatoId),
     };
+    renderAuspiciantesFixture(fixtureContexto.auspiciantes);
   } catch (error) {
     console.warn("No se pudo cargar contexto del fixture:", error);
+    fixtureContexto.auspiciantes = [];
+    renderAuspiciantesFixture([]);
   }
 }
 
@@ -190,7 +205,7 @@ async function cargarPartidos() {
   cont.innerHTML = "<p>Cargando partidos...</p>";
 
   if (!eventoSeleccionado) {
-    mostrarNotificacion("Selecciona un evento", "warning");
+    mostrarNotificacion("Selecciona una categoría", "warning");
     limpiarPartidosUI();
     return;
   }
@@ -322,6 +337,7 @@ function actualizarTabsVistaFixture() {
 }
 
 function renderPartidoCard(p) {
+  const numero = obtenerNumeroPartidoVisible(p);
   return `
     <div class="campeonato-card">
       <div class="campeonato-header">
@@ -329,6 +345,7 @@ function renderPartidoCard(p) {
       </div>
 
       <div class="campeonato-info">
+        <p><strong>N° Partido:</strong> ${escapeHtml(numero || "-")}</p>
         <p><strong>Grupo:</strong> ${escapeHtml(p.letra_grupo ? `Grupo ${p.letra_grupo}` : "-")}</p>
         <p><strong>Jornada:</strong> ${escapeHtml(p.jornada || "-")}</p>
         <p><strong>Fecha:</strong> ${escapeHtml(formatearFechaPartido(p.fecha_partido))}</p>
@@ -354,6 +371,7 @@ function renderPartidoCard(p) {
 function renderTablaPartidos(partidos) {
   const filas = partidos
     .map((p, index) => {
+      const numero = obtenerNumeroPartidoVisible(p, index + 1);
       const local = escapeHtml(p.equipo_local_nombre || "Local");
       const visita = escapeHtml(p.equipo_visitante_nombre || "Visitante");
       const grupo = escapeHtml(p.letra_grupo ? `Grupo ${p.letra_grupo}` : "-");
@@ -364,7 +382,7 @@ function renderTablaPartidos(partidos) {
 
       return `
         <tr>
-          <td>${index + 1}</td>
+          <td>${numero}</td>
           <td>${local} vs ${visita}</td>
           <td>${grupo}</td>
           <td>${jornada}</td>
@@ -475,12 +493,14 @@ function agruparPartidosPorJornada(partidos) {
 }
 
 function renderLineaPartido(p, mostrarGrupo = false) {
+  const numero = obtenerNumeroPartidoVisible(p);
   const fecha = formatearFechaPartido(p.fecha_partido);
   const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
   const cancha = p.cancha || "Cancha por definir";
   const grupo = p.letra_grupo ? `Grupo ${p.letra_grupo}` : "Sin grupo";
   const metaBase = `${fecha} • ${hora} • ${cancha}`;
-  const meta = mostrarGrupo ? `${grupo} • ${metaBase}` : metaBase;
+  const metaNumero = numero ? `Partido #${numero} • ` : "";
+  const meta = mostrarGrupo ? `${metaNumero}${grupo} • ${metaBase}` : `${metaNumero}${metaBase}`;
 
   return `
     <div class="fixture-match-row">
@@ -624,6 +644,8 @@ function actualizarCabeceraFixture() {
     logoEl.removeAttribute("src");
     logoEl.style.display = "none";
   }
+
+  renderAuspiciantesFixture(fixtureContexto.auspiciantes || []);
 }
 
 async function eliminarPartido(id) {
@@ -683,7 +705,7 @@ async function editarPartido(id) {
 
 async function generarFixtureEvento() {
   if (!eventoSeleccionado) {
-    mostrarNotificacion("Selecciona un evento primero.", "warning");
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
     return;
   }
 
@@ -756,7 +778,7 @@ async function exportarFixturePDF() {
 
 function abrirPlantillaFixturePantallaCompleta() {
   if (!eventoSeleccionado) {
-    mostrarNotificacion("Selecciona un evento primero.", "warning");
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
     return;
   }
 
@@ -785,6 +807,47 @@ function normalizarLogoUrl(logoUrl) {
   if (/^https?:\/\//i.test(logoUrl)) return logoUrl;
   if (logoUrl.startsWith("/")) return `${BACKEND_BASE}${logoUrl}`;
   return `${BACKEND_BASE}/${logoUrl}`;
+}
+
+async function cargarAuspiciantesFixture(campeonatoId) {
+  const id = Number.parseInt(campeonatoId, 10);
+  if (!Number.isFinite(id) || id <= 0) return [];
+  try {
+    const data = await ApiClient.get(`/auspiciantes/campeonato/${id}?activo=1`);
+    return Array.isArray(data?.auspiciantes) ? data.auspiciantes : [];
+  } catch (error) {
+    console.warn("No se pudieron cargar auspiciantes para fixture:", error);
+    return [];
+  }
+}
+
+function renderAuspiciantesFixture(lista = []) {
+  const wrap = document.getElementById("fixture-sponsors");
+  const grid = document.getElementById("fixture-sponsors-grid");
+  if (!wrap || !grid) return;
+
+  if (!Array.isArray(lista) || !lista.length) {
+    wrap.style.display = "none";
+    grid.innerHTML = "";
+    return;
+  }
+
+  grid.innerHTML = lista
+    .map((a) => {
+      const nombre = escapeHtml(a?.nombre || "Auspiciante");
+      const logo = normalizarLogoUrl(a?.logo_url || "");
+      return `
+        <div class="sponsor-item">
+          ${
+            logo
+              ? `<img src="${logo}" alt="${nombre}" crossorigin="anonymous" referrerpolicy="no-referrer" />`
+              : `<div class="sponsor-name">${nombre}</div>`
+          }
+        </div>
+      `;
+    })
+    .join("");
+  wrap.style.display = "block";
 }
 
 function normalizarFechaISO(valor) {
@@ -820,3 +883,5 @@ window.editarPartido = editarPartido;
 window.eliminarPartido = eliminarPartido;
 window.abrirPlanillaPartido = abrirPlanillaPartido;
 window.cambiarVistaPartidos = cambiarVistaPartidos;
+
+

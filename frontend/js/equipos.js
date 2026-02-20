@@ -18,6 +18,18 @@ function escapeHtml(valor) {
     .replace(/'/g, "&#39;");
 }
 
+function obtenerNumeroEquipoVisible(equipo, fallback = null) {
+  if (Number.isFinite(Number(eventoIdSeleccionado)) && Number(eventoIdSeleccionado) > 0) {
+    if (Number.isFinite(Number(fallback)) && Number(fallback) > 0) return Number(fallback);
+    return null;
+  }
+
+  const n = Number.parseInt(equipo?.numero_campeonato, 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  if (Number.isFinite(Number(fallback)) && Number(fallback) > 0) return Number(fallback);
+  return null;
+}
+
 function actualizarBotonesVistaEquipos() {
   const btnCards = document.getElementById("btn-vista-equipos-cards");
   const btnTable = document.getElementById("btn-vista-equipos-table");
@@ -36,7 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("equipos.html")) return;
   actualizarBotonesVistaEquipos();
 
-  // Parámetros URL (si viene desde eventos)
+  // Parámetros URL (si viene desde Categorías)
   const params = new URLSearchParams(window.location.search);
   eventoIdSeleccionado = params.get("evento") ? parseInt(params.get("evento"), 10) : null;
   campeonatoId = params.get("campeonato") ? parseInt(params.get("campeonato"), 10) : null;
@@ -77,7 +89,7 @@ async function cargarCampeonatosSelect() {
     select.onchange = async () => {
       campeonatoId = select.value ? parseInt(select.value, 10) : null;
       eventoIdSeleccionado = null;
-      document.getElementById("select-evento").innerHTML = '<option value="">— Selecciona un evento —</option>';
+      document.getElementById("select-evento").innerHTML = '<option value="">— Selecciona una categoría —</option>';
       document.getElementById("lista-equipos").innerHTML = "";
       document.getElementById("info-contexto").style.display = "none";
       if (campeonatoId) {
@@ -91,7 +103,7 @@ async function cargarCampeonatosSelect() {
 }
 
 // ======================
-// Cargar eventos (categorías) en el select
+// Cargar Categorías en el select
 // ======================
 async function cargarEventosSelect() {
   const select = document.getElementById("select-evento");
@@ -168,8 +180,8 @@ async function cargarEquipos() {
         const dataEvento = await window.ApiClient.get(`/eventos/${eventoIdSeleccionado}/equipos`);
         const idsEvento = new Set((dataEvento.equipos || []).map((e) => e.id));
         equipos = equipos.filter((e) => idsEvento.has(e.id));
-      } catch (errorEvento) {
-        console.warn("No se pudo filtrar equipos por categoría:", errorEvento);
+      } catch (errorcategoría) {
+        console.warn("No se pudo filtrar equipos por categoría:", errorcategoría);
       }
     }
 
@@ -215,11 +227,12 @@ function renderListadoEquipos() {
 function renderEquipoCard(equipo, index = 0) {
   const baseUrl = (window.API_BASE_URL || "").replace(/\/api\/?$/, "") || window.location.origin;
   const logoUrl = equipo.logo_url ? (equipo.logo_url.startsWith("http") ? equipo.logo_url : `${baseUrl}${equipo.logo_url}`) : "";
+  const numero = obtenerNumeroEquipoVisible(equipo, index + 1);
 
   return `
     <div class="equipo-card campeonato-card">
       <div class="equipo-header campeonato-header">
-        <span class="item-index">${index + 1}.</span>
+        <span class="item-index">${numero || index + 1}.</span>
         ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="equipo-logo">` : ""}
         <h4>${equipo.nombre}</h4>
       </div>
@@ -247,6 +260,7 @@ function renderTablaEquipos(equipos) {
   const baseUrl = (window.API_BASE_URL || "").replace(/\/api\/?$/, "") || window.location.origin;
   const filas = equipos
     .map((equipo, index) => {
+      const numero = obtenerNumeroEquipoVisible(equipo, index + 1);
       const logoUrl = equipo.logo_url
         ? (equipo.logo_url.startsWith("http") ? equipo.logo_url : `${baseUrl}${equipo.logo_url}`)
         : "";
@@ -256,7 +270,7 @@ function renderTablaEquipos(equipos) {
 
       return `
         <tr>
-          <td>${index + 1}</td>
+          <td>${numero}</td>
           <td>${logo}</td>
           <td>${escapeHtml(equipo.nombre || "—")}</td>
           <td>${escapeHtml(equipo.director_tecnico || "-")}</td>
@@ -301,11 +315,6 @@ function renderTablaEquipos(equipos) {
 // ======================
 // Modal crear / editar
 // ======================
-const COLORES_PALETA = [
-  "#e53935","#d81b60","#8e24aa","#5e35b1","#3949ab","#1e88e5","#039be5","#00acc1","#00897b",
-  "#43a047","#7cb342","#c0ca33","#fdd835","#ffb300","#fb8c00","#f4511e","#6d4c41","#757575","#212121"
-];
-
 function mostrarModalCrearEquipo() {
   const selectCamp = document.getElementById("select-campeonato");
   campeonatoId = selectCamp?.value ? parseInt(selectCamp.value, 10) : null;
@@ -324,16 +333,12 @@ function mostrarModalCrearEquipo() {
   document.getElementById("equipo-medico").value = "";
   document.getElementById("equipo-telefono").value = "";
   document.getElementById("equipo-email").value = "";
-  document.getElementById("equipo-color-primario").value = "";
-  document.getElementById("equipo-color-secundario").value = "";
-  document.getElementById("equipo-color-terciario").value = "";
+  document.getElementById("equipo-color-primario").value = "#e53935";
+  document.getElementById("equipo-color-secundario").value = "#1e88e5";
+  document.getElementById("equipo-color-terciario").value = "#43a047";
   document.getElementById("equipo-cabeza-serie").checked = false;
-  document.getElementById("preview-primario").style.background = "#e53935";
-  document.getElementById("preview-secundario").style.background = "#1e88e5";
-  document.getElementById("preview-terciario").style.background = "#43a047";
   const logoInput = document.getElementById("equipo-logo");
   if (logoInput) logoInput.value = "";
-  document.querySelectorAll(".color-dropdown").forEach((d) => d.classList.remove("open"));
   cargarEquiposExistentesEnSelect();
   abrirModal("modal-equipo");
 }
@@ -349,67 +354,6 @@ function activarTabEquipo(tab) {
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".modal-tab").forEach((btn) => {
     btn.addEventListener("click", () => activarTabEquipo(btn.dataset.tab));
-  });
-
-  function initColorPicker(previewId, inputId, dropdownId, defaultColor) {
-    const preview = document.getElementById(previewId);
-    const input = document.getElementById(inputId);
-    const dropdown = document.getElementById(dropdownId);
-    const palette = dropdown?.querySelector(".color-palette");
-    const hexInput = dropdown?.querySelector(".color-hex-input");
-
-    if (!palette || palette.dataset.inited) return;
-    palette.dataset.inited = "1";
-
-    COLORES_PALETA.forEach((c) => {
-      const sw = document.createElement("button");
-      sw.type = "button";
-      sw.className = "color-swatch";
-      sw.style.background = c;
-      sw.dataset.color = c;
-      sw.addEventListener("click", () => {
-        input.value = c;
-        preview.style.background = c;
-        if (hexInput) hexInput.value = c;
-        dropdown?.classList.remove("open");
-      });
-      palette.appendChild(sw);
-    });
-
-    function setColor(val) {
-      if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-        input.value = val;
-        preview.style.background = val;
-      }
-    }
-
-    preview?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      document.querySelectorAll(".color-dropdown.open").forEach((d) => d.classList.remove("open"));
-      dropdown?.classList.toggle("open");
-      if (hexInput) hexInput.value = input.value || defaultColor;
-    });
-
-    input?.addEventListener("input", () => setColor(input.value));
-    input?.addEventListener("change", () => setColor(input.value));
-
-    if (hexInput) {
-      hexInput.addEventListener("input", () => setColor(hexInput.value));
-      hexInput.addEventListener("change", () => {
-        setColor(hexInput.value);
-        dropdown?.classList.remove("open");
-      });
-    }
-  }
-
-  initColorPicker("preview-primario", "equipo-color-primario", "dropdown-primario", "#e53935");
-  initColorPicker("preview-secundario", "equipo-color-secundario", "dropdown-secundario", "#1e88e5");
-  initColorPicker("preview-terciario", "equipo-color-terciario", "dropdown-terciario", "#43a047");
-
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".color-dropdown") && !e.target.closest(".color-preview")) {
-      document.querySelectorAll(".color-dropdown.open").forEach((d) => d.classList.remove("open"));
-    }
   });
 });
 
@@ -432,7 +376,7 @@ async function cargarEquiposExistentesEnSelect() {
 
 
 // ======================
-// Guardar equipo (crear nuevo o asignar existente a evento)
+// Guardar equipo (crear nuevo o asignar existente a categoría)
 // ======================
 async function guardarEquipo() {
   const tabActivo = document.querySelector(".modal-tab.active")?.dataset?.tab;
@@ -448,7 +392,7 @@ async function guardarEquipo() {
       return;
     }
     if (!eventoIdSeleccionado) {
-      mostrarNotificacion("Para asignar equipo a categoría, selecciona un evento primero", "warning");
+      mostrarNotificacion("Para asignar equipo a categoría, Selecciona una categoría primero", "warning");
       return;
     }
     try {
@@ -569,9 +513,6 @@ async function editarEquipo(id) {
     document.getElementById("equipo-color-primario").value = c1;
     document.getElementById("equipo-color-secundario").value = c2;
     document.getElementById("equipo-color-terciario").value = c3;
-    document.getElementById("preview-primario").style.background = c1;
-    document.getElementById("preview-secundario").style.background = c2;
-    document.getElementById("preview-terciario").style.background = c3;
 
     document.getElementById("equipo-cabeza-serie").checked =
       equipo.cabeza_serie === true || equipo.cabeza_serie === "true";
@@ -579,7 +520,6 @@ async function editarEquipo(id) {
     const logoInput = document.getElementById("equipo-logo");
     if (logoInput) logoInput.value = "";
 
-    document.querySelectorAll(".color-dropdown").forEach((d) => d.classList.remove("open"));
     abrirModal("modal-equipo");
   } catch (error) {
     console.error("Error cargando equipo para edición:", error);
@@ -645,3 +585,5 @@ window.eliminarEquipo = eliminarEquipo;
 window.irASorteo = irASorteo;
 window.irAJugadores = irAJugadores;
 window.cambiarVistaEquipos = cambiarVistaEquipos;
+
+

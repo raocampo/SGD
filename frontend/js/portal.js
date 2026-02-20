@@ -1,6 +1,16 @@
 const API = window.API_BASE_URL || "http://localhost:5000/api";
 const BACKEND_BASE = API.replace(/\/api\/?$/, "");
 
+function leerContextoPortalDesdeUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const campeonato = Number.parseInt(params.get("campeonato") || "", 10);
+  const evento = Number.parseInt(params.get("evento") || "", 10);
+  return {
+    campeonatoId: Number.isFinite(campeonato) && campeonato > 0 ? campeonato : null,
+    eventoId: Number.isFinite(evento) && evento > 0 ? evento : null,
+  };
+}
+
 function normalizarLogoUrl(logoUrl) {
   if (!logoUrl) return "";
   const s = String(logoUrl).trim();
@@ -51,7 +61,7 @@ async function portalCargarCampeonatos() {
   }
 }
 
-async function portalVerCampeonato(campeonatoId) {
+async function portalVerCampeonato(campeonatoId, options = {}) {
   document.getElementById("portal-inicio").classList.remove("active");
   document.getElementById("portal-detalle").classList.add("active");
   const cont = document.getElementById("portal-detalle-contenido");
@@ -64,6 +74,11 @@ async function portalVerCampeonato(campeonatoId) {
     ]);
     const camp = campRes.campeonato || campRes;
     const eventos = eventosRes.eventos || eventosRes || [];
+    const eventoObjetivo = Number.parseInt(options?.eventoId || "", 10);
+    const eventosFiltrados =
+      Number.isFinite(eventoObjetivo) && eventoObjetivo > 0
+        ? eventos.filter((ev) => Number(ev.id) === eventoObjetivo)
+        : eventos;
 
     let html = `
       <div class="portal-card">
@@ -72,7 +87,7 @@ async function portalVerCampeonato(campeonatoId) {
       </div>
     `;
 
-    for (const ev of eventos) {
+    for (const ev of eventosFiltrados) {
       const partidosRes = await fetch(`${API}/partidos/evento/${ev.id}`).then((r) => r.json());
       const partidos = partidosRes.partidos || partidosRes || [];
       const gruposRes = await fetch(`${API}/grupos/evento/${ev.id}`)
@@ -147,4 +162,10 @@ function portalVolver() {
 window.portalVerCampeonato = portalVerCampeonato;
 window.portalVolver = portalVolver;
 
-document.addEventListener("DOMContentLoaded", portalCargarCampeonatos);
+document.addEventListener("DOMContentLoaded", async () => {
+  await portalCargarCampeonatos();
+  const { campeonatoId, eventoId } = leerContextoPortalDesdeUrl();
+  if (campeonatoId) {
+    portalVerCampeonato(campeonatoId, { eventoId });
+  }
+});

@@ -46,6 +46,14 @@ function formatearFecha(valor) {
   return `${d}/${m}/${y}`;
 }
 
+function obtenerNumeroPartidoVisible(partido) {
+  const n = Number.parseInt(partido?.numero_campeonato, 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  const fallback = Number.parseInt(partido?.id, 10);
+  if (Number.isFinite(fallback) && fallback > 0) return fallback;
+  return null;
+}
+
 function formatearMoneda(valor) {
   const n = aDecimal(valor, 0);
   return new Intl.NumberFormat("es-EC", {
@@ -468,7 +476,7 @@ function renderEncabezado() {
       </div>
     </div>
     <div class="planilla-head-meta-grid">
-      <div><strong>Partido:</strong> #${p.id}</div>
+      <div><strong>Partido:</strong> #${obtenerNumeroPartidoVisible(p) || "-"}</div>
       <div><strong>${escapeHtml(jornada)}</strong> • ${escapeHtml(grupo)}</div>
       <div><strong>Fecha:</strong> <span id="head-fecha">${fecha}</span></div>
       <div><strong>Hora:</strong> <span id="head-hora">${escapeHtml(hora)}</span></div>
@@ -1083,7 +1091,8 @@ function poblarPartidosSelectorPlanilla() {
   selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
   partidos.forEach((p) => {
     const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
-    const label = `J${p.jornada || "-"} • ${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre} • ${formatearFecha(p.fecha_partido)} ${hora}`;
+    const numeroPartido = obtenerNumeroPartidoVisible(p) || "-";
+    const label = `P${numeroPartido} • J${p.jornada || "-"} • ${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre} • ${formatearFecha(p.fecha_partido)} ${hora}`;
     selectPartido.innerHTML += `<option value="${p.id}">${escapeHtml(label)}</option>`;
   });
 
@@ -1153,7 +1162,7 @@ async function cargarEventosSelectorPlanilla() {
   const selectPartido = document.getElementById("select-partido-planilla");
   if (!selectEvento || !selectJornada || !selectPartido) return;
 
-  selectEvento.innerHTML = '<option value="">- Selecciona un evento -</option>';
+  selectEvento.innerHTML = '<option value="">- Selecciona una categoría -</option>';
 
   try {
     const resp = await ApiClient.get("/eventos");
@@ -1186,8 +1195,8 @@ async function cargarEventosSelectorPlanilla() {
       await cargarPartidosSelectorPorEvento(eventoId);
     }
   } catch (error) {
-    console.error("Error cargando eventos para planillaje directo:", error);
-    mostrarNotificacion("Error cargando eventos", "error");
+    console.error("Error cargando Categorías para planillaje directo:", error);
+    mostrarNotificacion("Error cargando Categorías", "error");
   }
 }
 
@@ -1550,7 +1559,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
         <div><strong>Ciudad:</strong> ${escapeHtml(ciudad || "Por definir")}</div>
         <div><strong>Arbitro:</strong> ${escapeHtml(arbitro || "________________")}</div>
         <div><strong>Delegado:</strong> ${escapeHtml(delegado || "________________")}</div>
-        <div><strong>Partido:</strong> #${p.id}</div>
+        <div><strong>Partido:</strong> #${obtenerNumeroPartidoVisible(p) || "-"}</div>
         <div><strong>${escapeHtml(jornada)}</strong> • ${escapeHtml(grupo)}</div>
       </div>
 
@@ -1665,7 +1674,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
   const grupo = etiquetaGrupoPartido(p);
   const filasLocal = renderFilasVistaPreviaEquipo(dataPlanilla.plantel_local || [], stats, maxFilas);
   const filasVisit = renderFilasVistaPreviaEquipo(dataPlanilla.plantel_visitante || [], stats, maxFilas);
-  const eventos = renderListaEventosVistaPrevia(payload);
+  const eventosVistaPrevia = renderListaEventosVistaPrevia(payload);
 
   const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
   const scoreLocal = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_local, 0));
@@ -1679,7 +1688,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
       </div>
 
       <div class="planilla-preview-meta">
-        <div class="meta-item"><strong>Partido</strong>#${p.id}</div>
+        <div class="meta-item"><strong>Partido</strong>#${obtenerNumeroPartidoVisible(p) || "-"}</div>
         <div class="meta-item"><strong>Fecha</strong>${fecha}</div>
         <div class="meta-item"><strong>Hora</strong>${hora}</div>
         <div class="meta-item"><strong>Cancha</strong>${escapeHtml(p.cancha || "Por definir")}</div>
@@ -1715,9 +1724,9 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
       <div class="planilla-preview-foot">
         <div class="planilla-preview-box">
           <h5>Goleadores</h5>
-          <ul class="planilla-preview-list">${eventos.golesHtml}</ul>
+          <ul class="planilla-preview-list">${eventosVistaPrevia.golesHtml}</ul>
           <h5 style="margin-top:0.8rem;">Tarjetas</h5>
-          <ul class="planilla-preview-list">${eventos.tarjetasHtml}</ul>
+          <ul class="planilla-preview-list">${eventosVistaPrevia.tarjetasHtml}</ul>
           <h5 style="margin-top:0.8rem;">Observaciones</h5>
           <div class="planilla-preview-observ">${escapeHtml(payload.observaciones || "")}</div>
         </div>
@@ -2071,7 +2080,7 @@ async function imprimirPDFPlanilla() {
     return;
   }
 
-  pdfTab.document.title = `Planilla Partido ${dataPlanilla.partido.id}`;
+  pdfTab.document.title = `Planilla Partido ${obtenerNumeroPartidoVisible(dataPlanilla.partido) || dataPlanilla.partido.id}`;
   pdfTab.document.body.innerHTML = "<p style='font-family:Arial,sans-serif;padding:12px;'>Generando PDF...</p>";
 
   try {
@@ -2149,7 +2158,7 @@ async function imprimirPDFPlanilla() {
               [
                 { text: [{ text: "Arbitro: ", bold: true }, arbitro || "________________"] },
                 { text: [{ text: "Delegado: ", bold: true }, delegado || "________________"] },
-                { text: [{ text: "Partido: ", bold: true }, `#${p.id}`] },
+                { text: [{ text: "Partido: ", bold: true }, `#${obtenerNumeroPartidoVisible(p) || "-"}`] },
                 { text: [{ text: `${jornada}: `, bold: true }, grupo] },
               ],
             ],
@@ -2645,3 +2654,5 @@ window.imprimirPDFPlanilla = imprimirPDFPlanilla;
 window.toggleVistaPreviaPlanilla = toggleVistaPreviaPlanilla;
 window.volverAPartidos = volverAPartidos;
 window.recargarPlanilla = recargarPlanilla;
+
+

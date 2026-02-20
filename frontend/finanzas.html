@@ -15,7 +15,7 @@
     <nav class="sidebar-nav">
       <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
       <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
-      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
       <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
       <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
       <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
@@ -164,29 +164,42 @@
             </div>
             <div class="partidos-actions">
               <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Guardar movimiento</button>
+              <button type="button" class="btn btn-outline" id="btn-fin-recibo-ultimo">
+                <i class="fas fa-receipt"></i> Reimprimir último recibo
+              </button>
             </div>
           </form>
         </div>
 
         <div class="finanzas-grid-resumen">
           <div class="card fin-card-estado">
-            <h3>Estado de Cuenta (Equipo seleccionado)</h3>
+            <div class="fin-card-headline">
+              <h3>Estado de Cuenta (Equipo seleccionado)</h3>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-estado">
+                <i class="fas fa-print"></i> Imprimir estado
+              </button>
+            </div>
             <div id="fin-estado-cuenta-resumen" class="fin-resumen-vacio">Selecciona un equipo para visualizar su estado de cuenta.</div>
             <div id="fin-estado-cuenta-movimientos" class="tabla-scroll"></div>
           </div>
           <div class="card fin-card-morosidad">
             <div class="fin-card-headline">
               <h3>Morosidad por Equipo</h3>
-              <button
-                type="button"
-                class="fin-toggle-btn"
-                id="btn-toggle-morosidad"
-                title="Mostrar/ocultar morosidad"
-                aria-label="Mostrar u ocultar morosidad"
-                aria-expanded="true"
-              >
-                <i class="fas fa-times"></i>
-              </button>
+              <div class="fin-card-actions">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-morosidad">
+                  <i class="fas fa-print"></i> Imprimir morosidad
+                </button>
+                <button
+                  type="button"
+                  class="fin-toggle-btn"
+                  id="btn-toggle-morosidad"
+                  title="Mostrar/ocultar morosidad"
+                  aria-label="Mostrar u ocultar morosidad"
+                  aria-expanded="true"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
             </div>
             <div id="fin-morosidad-contenido" class="tabla-scroll"></div>
           </div>
@@ -195,16 +208,21 @@
         <div class="card">
           <div class="fin-card-headline">
             <h3>Movimientos Financieros</h3>
-            <button
-              type="button"
-              class="fin-toggle-btn"
-              id="btn-toggle-movimientos"
-              title="Mostrar/ocultar movimientos"
-              aria-label="Mostrar u ocultar movimientos"
-              aria-expanded="true"
-            >
-              <i class="fas fa-times"></i>
-            </button>
+            <div class="fin-card-actions">
+              <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-movimientos">
+                <i class="fas fa-print"></i> Imprimir movimientos
+              </button>
+              <button
+                type="button"
+                class="fin-toggle-btn"
+                id="btn-toggle-movimientos"
+                title="Mostrar/ocultar movimientos"
+                aria-label="Mostrar u ocultar movimientos"
+                aria-expanded="true"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
           </div>
           <div id="fin-movimientos-contenido" class="tabla-scroll"></div>
         </div>
@@ -220,3 +238,5 @@
 </body>
 
 </html>
+
+

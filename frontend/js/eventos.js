@@ -1,7 +1,8 @@
-// frontend/js/eventos.js  ✅ (EVENTOS/CATEGORÍAS)
+// frontend/js/eventos.js
 
 let campeonatoSeleccionado = null;
 let eventosCache = [];
+let campeonatosEventosCache = [];
 let vistaEventos = localStorage.getItem("sgd_vista_eventos") || "cards";
 vistaEventos = vistaEventos === "table" ? "table" : "cards";
 const formatoMoneda = new Intl.NumberFormat("es-EC", {
@@ -31,6 +32,41 @@ function formatearCostoInscripcion(valor) {
   return `$${formatoMoneda.format(numero)}`;
 }
 
+function formatearFechaSolo(valor) {
+  if (!valor) return "-";
+  const texto = String(valor).trim();
+  if (!texto) return "-";
+  if (texto.includes("T")) return texto.split("T")[0];
+  return texto.slice(0, 10);
+}
+
+function obtenerNumeroEventoVisible(evento, fallback = null) {
+  const n = Number.parseInt(evento?.numero_campeonato, 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  if (Number.isFinite(Number(fallback)) && Number(fallback) > 0) return Number(fallback);
+  return null;
+}
+
+function aplicarFechasDesdeCampeonato() {
+  const inicio = document.getElementById("evt-fecha-inicio");
+  const fin = document.getElementById("evt-fecha-fin");
+  if (!inicio || !fin) return;
+
+  const camp = campeonatosEventosCache.find(
+    (x) => Number(x.id) === Number(campeonatoSeleccionado)
+  );
+  if (!camp) {
+    inicio.value = "";
+    fin.value = "";
+    return;
+  }
+
+  const fechaInicio = formatearFechaSolo(camp.fecha_inicio);
+  const fechaFin = formatearFechaSolo(camp.fecha_fin);
+  inicio.value = fechaInicio === "-" ? "" : fechaInicio;
+  fin.value = fechaFin === "-" ? "" : fechaFin;
+}
+
 function actualizarBotonesVistaEventos() {
   const btnCards = document.getElementById("btn-vista-eventos-cards");
   const btnTable = document.getElementById("btn-vista-eventos-table");
@@ -58,6 +94,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     campeonatoSeleccionado = parseInt(cId, 10);
     const sel = document.getElementById("select-campeonato");
     sel.value = String(campeonatoSeleccionado);
+    aplicarFechasDesdeCampeonato();
     await cargarEventos();
   }
 });
@@ -69,6 +106,7 @@ async function cargarCampeonatosSelect() {
   try {
     const data = await CampeonatosAPI.obtenerTodos();
     const lista = Array.isArray(data) ? data : (data.campeonatos || data.data || []);
+    campeonatosEventosCache = lista;
 
     lista.forEach((c) => {
       select.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
@@ -76,6 +114,7 @@ async function cargarCampeonatosSelect() {
 
     select.onchange = async () => {
       campeonatoSeleccionado = select.value ? parseInt(select.value, 10) : null;
+      aplicarFechasDesdeCampeonato();
       eventosCache = [];
       document.getElementById("lista-eventos").innerHTML = "";
     };
@@ -85,10 +124,10 @@ async function cargarCampeonatosSelect() {
   }
 }
 
-// botón "Cargar Eventos"
+// botón "Cargar categorías"
 async function cargarEventos() {
   const cont = document.getElementById("lista-eventos");
-  cont.innerHTML = "<p>Cargando eventos...</p>";
+  cont.innerHTML = "<p>Cargando categorías...</p>";
 
   const select = document.getElementById("select-campeonato");
   campeonatoSeleccionado = select.value ? parseInt(select.value, 10) : null;
@@ -109,7 +148,7 @@ async function cargarEventos() {
     console.error(err);
     eventosCache = [];
     cont.innerHTML = "";
-    mostrarNotificacion("Error cargando eventos", "error");
+    mostrarNotificacion("Error cargando categorías", "error");
   }
 }
 
@@ -138,15 +177,16 @@ function renderListadoEventos() {
 }
 
 function renderEventoCard(e) {
+  const numero = obtenerNumeroEventoVisible(e);
   return `
     <div class="campeonato-card">
       <div class="campeonato-header">
-        <h3>${escapeHtml(e.nombre || "Evento")}</h3>
+        <h3>${numero ? `#${numero} - ` : ""}${escapeHtml(e.nombre || "Categoría")}</h3>
       </div>
       <div class="campeonato-info">
         <p><strong>Modalidad:</strong> ${escapeHtml(e.modalidad || "-")}</p>
         <p><strong>Costo inscripción:</strong> ${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</p>
-        <p><strong>Fechas:</strong> ${escapeHtml(e.fecha_inicio || "-")} - ${escapeHtml(e.fecha_fin || "-")}</p>
+        <p><strong>Fechas:</strong> ${escapeHtml(formatearFechaSolo(e.fecha_inicio))} - ${escapeHtml(formatearFechaSolo(e.fecha_fin))}</p>
       </div>
       <div class="campeonato-actions">
         <button class="btn btn-primary" onclick="irAElegirEquipos(${e.id})">
@@ -166,14 +206,15 @@ function renderEventoCard(e) {
 function renderTablaEventos(eventos) {
   const filas = eventos
     .map((e, index) => {
+      const numero = obtenerNumeroEventoVisible(e, index + 1);
       return `
         <tr>
-          <td>${index + 1}</td>
+          <td>${numero}</td>
           <td>${escapeHtml(e.nombre || "—")}</td>
           <td>${escapeHtml(e.modalidad || "-")}</td>
           <td>${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</td>
-          <td>${escapeHtml(e.fecha_inicio || "-")}</td>
-          <td>${escapeHtml(e.fecha_fin || "-")}</td>
+          <td>${escapeHtml(formatearFechaSolo(e.fecha_inicio))}</td>
+          <td>${escapeHtml(formatearFechaSolo(e.fecha_fin))}</td>
           <td class="list-table-actions">
             <button class="btn btn-primary" onclick="irAElegirEquipos(${e.id})">
               <i class="fas fa-users"></i> Equipos
@@ -300,3 +341,5 @@ async function editarEvento(id) {
 }
 
 window.cambiarVistaEventos = cambiarVistaEventos;
+
+

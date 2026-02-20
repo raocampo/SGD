@@ -14,7 +14,7 @@
     <nav class="sidebar-nav">
       <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
       <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
-      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
       <a class="nav-btn active" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
       <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
       <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
@@ -50,7 +50,7 @@
         <div class="form-group">
           <label>Evento / Categoría</label>
           <select id="select-evento" class="input">
-            <option value="">— Selecciona un evento —</option>
+            <option value="">— Selecciona una categoría —</option>
           </select>
         </div>
       </div>
@@ -76,7 +76,7 @@
       </button>
 
       <button class="btn btn-secondary" onclick="window.location.href='eventos.html'">
-        <i class="fas fa-arrow-left"></i> Volver a Eventos
+        <i class="fas fa-arrow-left"></i> Volver a Categorías
       </button>
     </div>
 
@@ -157,39 +157,18 @@
 
             <div class="form-group">
               <label>Colores del equipo</label>
-              <div class="colores-equipo">
-                <div class="color-row">
-                  <span class="color-label">Primario</span>
-                  <div class="color-picker-wrap">
-                    <button type="button" class="color-preview" id="preview-primario" title="Clic para elegir color" style="background:#e53935"></button>
-                    <input type="text" id="equipo-color-primario" placeholder="#hex" maxlength="7" />
-                  </div>
-                  <div class="color-dropdown" id="dropdown-primario">
-                    <div class="color-palette" data-target="equipo-color-primario"></div>
-                    <input type="text" class="color-hex-input" placeholder="#hex" maxlength="7" />
-                  </div>
+              <div class="form-row">
+                <div class="form-group half">
+                  <label for="equipo-color-primario">Color primario:</label>
+                  <input type="color" id="equipo-color-primario" value="#e53935" />
                 </div>
-                <div class="color-row">
-                  <span class="color-label">Secundario</span>
-                  <div class="color-picker-wrap">
-                    <button type="button" class="color-preview" id="preview-secundario" title="Clic para elegir color" style="background:#1e88e5"></button>
-                    <input type="text" id="equipo-color-secundario" placeholder="#hex" maxlength="7" />
-                  </div>
-                  <div class="color-dropdown" id="dropdown-secundario">
-                    <div class="color-palette" data-target="equipo-color-secundario"></div>
-                    <input type="text" class="color-hex-input" placeholder="#hex" maxlength="7" />
-                  </div>
+                <div class="form-group half">
+                  <label for="equipo-color-secundario">Color secundario:</label>
+                  <input type="color" id="equipo-color-secundario" value="#1e88e5" />
                 </div>
-                <div class="color-row">
-                  <span class="color-label">Terciario</span>
-                  <div class="color-picker-wrap">
-                    <button type="button" class="color-preview" id="preview-terciario" title="Clic para elegir color" style="background:#43a047"></button>
-                    <input type="text" id="equipo-color-terciario" placeholder="#hex" maxlength="7" />
-                  </div>
-                  <div class="color-dropdown" id="dropdown-terciario">
-                    <div class="color-palette" data-target="equipo-color-terciario"></div>
-                    <input type="text" class="color-hex-input" placeholder="#hex" maxlength="7" />
-                  </div>
+                <div class="form-group half">
+                  <label for="equipo-color-terciario">Color terciario:</label>
+                  <input type="color" id="equipo-color-terciario" value="#43a047" />
                 </div>
               </div>
             </div>
@@ -215,7 +194,7 @@
 
         <!-- Panel: Asignar equipo existente -->
         <div id="panel-existente" class="modal-panel" style="display:none;">
-          <p class="form-hint" style="margin-bottom:1rem;">Selecciona un equipo ya registrado en el campeonato para asignarlo a la categoría (evento) elegida.</p>
+          <p class="form-hint" style="margin-bottom:1rem;">Selecciona un equipo ya registrado en el campeonato para asignarlo a la categoría (categoría) elegida.</p>
           <div class="form-group">
             <label>Equipo existente</label>
             <select id="select-equipo-existente">
@@ -238,3 +217,5 @@
   <script src="js/equipos.js"></script>
 </body>
 </html>
+
+

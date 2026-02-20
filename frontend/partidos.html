@@ -18,7 +18,7 @@
       <nav class="sidebar-nav">
         <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
         <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
-        <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+        <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
         <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
         <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
         <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
@@ -65,7 +65,7 @@
               <h3>Filtrar Partidos</h3>
 
               <div class="form-group">
-                <label for="select-evento">Evento (Categoría):</label>
+                <label for="select-evento">Categoría:</label>
                 <select id="select-evento"></select>
               </div>
 
@@ -112,7 +112,7 @@
 
             <div class="fixture-generation-actions">
               <button class="btn btn-success" onclick="generarFixtureEvento()">
-                <i class="fas fa-calendar-plus"></i> Generar Fixture (Evento)
+                <i class="fas fa-calendar-plus"></i> Generar Fixture (categoría)
               </button>
             </div>
           </div>
@@ -196,6 +196,11 @@
                   <p>Carga partidos para visualizar la plantilla del fixture.</p>
                 </div>
               </div>
+
+              <div id="fixture-sponsors" class="poster-sponsors" style="display:none;">
+                <div class="sponsors-title">Auspician</div>
+                <div id="fixture-sponsors-grid" class="sponsors-grid"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -212,3 +217,5 @@
     <script src="js/partidos.js"></script>
   </body>
 </html>
+
+

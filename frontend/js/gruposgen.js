@@ -5,6 +5,7 @@ let contextoGrupos = {
   campeonatoId: null,
   eventoId: null,
   eventoNombre: "",
+  auspiciantes: [],
 };
 
 function getQueryParam(name) {
@@ -31,6 +32,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       campeonatoId: campeonatoParam,
       eventoId: null,
       eventoNombre: "",
+      auspiciantes: [],
     };
     await cargarYMostrarGrupos({ campeonatoId: campeonatoParam, eventoId: null });
   }
@@ -44,6 +46,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       campeonatoId,
       eventoId: null,
       eventoNombre: "",
+      auspiciantes: [],
     };
 
     await cargarYMostrarGrupos({ campeonatoId, eventoId: null });
@@ -92,6 +95,7 @@ async function aplicarContextoEventoDesdeURL(
     campeonatoId,
     eventoId,
     eventoNombre,
+    auspiciantes: [],
   };
 
   await cargarYMostrarGrupos({ campeonatoId, eventoId, eventoNombre });
@@ -224,6 +228,7 @@ async function cargarYMostrarGrupos(ctx) {
 
   // llenar cabecera arriba
   await cargarCabeceraCampeonato(campeonatoId, eventoNombre);
+  await cargarAuspiciantesGrupos(campeonatoId);
 
   try {
     const endpoint =
@@ -377,6 +382,46 @@ async function exportarGruposPNG() {
     : `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}`;
   a.download = `${baseName}.png`;
   a.click();
+}
+
+async function cargarAuspiciantesGrupos(campeonatoId) {
+  const wrap = document.getElementById("poster-sponsors");
+  const grid = document.getElementById("sponsors-grid");
+  if (!wrap || !grid) return;
+
+  wrap.style.display = "none";
+  grid.innerHTML = "";
+
+  if (!Number.isFinite(Number(campeonatoId)) || Number(campeonatoId) <= 0) return;
+
+  try {
+    const data = await ApiClient.get(`/auspiciantes/campeonato/${campeonatoId}?activo=1`);
+    const lista = Array.isArray(data?.auspiciantes) ? data.auspiciantes : [];
+    contextoGrupos.auspiciantes = lista;
+
+    if (!lista.length) return;
+
+    grid.innerHTML = lista
+      .map((a) => {
+        const logo = normalizarLogoUrl(a.logo_url || "");
+        const nombre = String(a.nombre || "Auspiciante");
+        return `
+          <div class="sponsor-item">
+            ${
+              logo
+                ? `<img src="${logo}" alt="${nombre}" crossorigin="anonymous" referrerpolicy="no-referrer" />`
+                : `<div class="sponsor-name">${nombre}</div>`
+            }
+          </div>
+        `;
+      })
+      .join("");
+
+    wrap.style.display = "block";
+  } catch (error) {
+    contextoGrupos.auspiciantes = [];
+    console.warn("No se pudieron cargar auspiciantes:", error);
+  }
 }
 
 async function exportarPDF() {

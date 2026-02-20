@@ -17,7 +17,7 @@
       <nav class="sidebar-nav">
         <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
         <a class="nav-btn active" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
-        <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Eventos</a>
+        <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
         <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
         <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
         <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
@@ -40,6 +40,19 @@
       <section id="campeonatos" class="section active">
         <div class="container">
           <h2>🏆 Gestión de Campeonatos</h2>
+
+          <div class="partidos-main-tabs" aria-label="Submódulos de campeonatos">
+            <button type="button" class="partidos-main-tab active">
+              <i class="fas fa-trophy"></i> Campeonatos
+            </button>
+            <button
+              type="button"
+              class="partidos-main-tab"
+              onclick="window.location.href='auspiciantes.html'"
+            >
+              <i class="fas fa-handshake"></i> Auspiciantes
+            </button>
+          </div>
 
           <div class="action-bar">
             <button
@@ -259,7 +272,7 @@
 
           <div class="form-group">
             <label>Configuración de costos del campeonato:</label>
-            <div class="form-row">
+            <div class="form-row campeonato-costos-grid">
               <div class="form-group half">
                 <label for="campeonato-costo-arbitraje">Costo arbitraje (por equipo):</label>
                 <input
@@ -333,3 +346,5 @@
     <script src="js/campeonatos.js"></script>
   </body>
 </html>
+
+
