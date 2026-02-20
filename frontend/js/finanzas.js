@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function inicializarFinanzas() {
   bindEventosFinanzas();
+  inicializarTogglesReportes();
   await cargarCatalogosFinanzas();
   await Promise.all([
     buscarMovimientosFinanzas(),
@@ -62,6 +63,34 @@ function bindEventosFinanzas() {
   document
     .getElementById("mov-campeonato")
     ?.addEventListener("change", sincronizarFormularioMovimiento);
+}
+
+function inicializarTogglesReportes() {
+  configurarToggleReporte("btn-toggle-morosidad", "fin-morosidad-contenido", true);
+  configurarToggleReporte("btn-toggle-movimientos", "fin-movimientos-contenido", true);
+}
+
+function configurarToggleReporte(btnId, targetId, expandedInicial = true) {
+  const btn = document.getElementById(btnId);
+  const target = document.getElementById(targetId);
+  if (!btn || !target) return;
+
+  const icon = () => btn.querySelector("i");
+
+  const renderEstado = (expanded) => {
+    target.style.display = expanded ? "" : "none";
+    btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+    const i = icon();
+    if (i) i.className = expanded ? "fas fa-times" : "fas fa-plus";
+  };
+
+  let expanded = expandedInicial;
+  renderEstado(expanded);
+
+  btn.addEventListener("click", () => {
+    expanded = !expanded;
+    renderEstado(expanded);
+  });
 }
 
 async function cargarCatalogosFinanzas() {
@@ -125,7 +154,7 @@ function sincronizarSelectoresPorCampeonato() {
   eventosFiltrados.forEach((e) => {
     const op = document.createElement("option");
     op.value = String(e.id);
-    op.textContent = e.nombre || `Evento ${e.id}`;
+    op.textContent = e.nombre || `Categoría ${e.id}`;
     eventoSelect.appendChild(op);
   });
 
@@ -166,11 +195,11 @@ function sincronizarFormularioMovimiento() {
   const prevEvento = eventoSelect.value;
   const prevEquipo = equipoSelect.value;
 
-  eventoSelect.innerHTML = '<option value="">Sin evento</option>';
+  eventoSelect.innerHTML = '<option value="">Sin categoría</option>';
   eventosFiltrados.forEach((e) => {
     const op = document.createElement("option");
     op.value = String(e.id);
-    op.textContent = e.nombre || `Evento ${e.id}`;
+    op.textContent = e.nombre || `Categoría ${e.id}`;
     eventoSelect.appendChild(op);
   });
 
@@ -259,10 +288,13 @@ async function cargarEstadoCuentaActual() {
       resumen.className = "fin-resumen-cuenta";
       resumen.innerHTML = `
         <div><strong>Equipo:</strong> ${escaparHtml(resp?.equipo?.nombre || "-")}</div>
-        <div><strong>Total Cargos:</strong> ${formatoMoneda(r.total_cargos)}</div>
-        <div><strong>Total Abonos:</strong> ${formatoMoneda(r.total_abonos)}</div>
-        <div><strong>Saldo:</strong> <span class="${r.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(r.saldo)}</span></div>
-        <div><strong>Pendiente:</strong> ${formatoMoneda(r.cargos_pendientes)}</div>
+        <div><strong>Cargo inscripción:</strong> ${formatoMoneda(r.cargos_inscripcion)}</div>
+        <div><strong>Abono inscripción:</strong> ${formatoMoneda(r.abonos_inscripcion)}</div>
+        <div><strong>Saldo inscripción:</strong> <span class="${r.saldo_inscripcion > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(r.saldo_inscripcion)}</span></div>
+        <div><strong>Saldo arbitraje:</strong> <span class="${r.saldo_arbitraje > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(r.saldo_arbitraje)}</span></div>
+        <div><strong>Saldo tarjetas:</strong> <span class="${r.saldo_multa > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(r.saldo_multa)}</span></div>
+        <div><strong>Saldo total:</strong> <span class="${r.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(r.saldo)}</span></div>
+        <div><strong>Cargos pendientes:</strong> ${formatoMoneda(r.cargos_pendientes)}</div>
         <div><strong>Vencido:</strong> ${formatoMoneda(r.cargos_vencidos)}</div>
       `;
     }
@@ -327,27 +359,27 @@ function renderTablaMovimientos(movimientos) {
     .map((m) => {
       return `
         <tr>
-          <td>${escaparHtml(m.fecha_movimiento || "-")}</td>
+          <td class="fin-col-fecha">${escaparHtml(formatearFechaFinanzas(m.fecha_movimiento))}</td>
           <td>${escaparHtml(m.campeonato_nombre || "-")}</td>
           <td>${escaparHtml(m.evento_nombre || "-")}</td>
           <td>${escaparHtml(m.equipo_nombre || "-")}</td>
           <td><span class="badge">${escaparHtml(m.tipo_movimiento || "-")}</span></td>
           <td>${escaparHtml(m.concepto || "-")}</td>
-          <td>${formatoMoneda(m.monto)}</td>
+          <td class="fin-col-monto">${formatoMoneda(m.monto)}</td>
           <td>${escaparHtml(m.estado || "-")}</td>
-          <td>${escaparHtml(m.descripcion || "-")}</td>
+          <td class="fin-col-descripcion">${escaparHtml(m.descripcion || "-")}</td>
         </tr>
       `;
     })
     .join("");
 
   cont.innerHTML = `
-    <table class="tabla-estadistica">
+    <table class="tabla-estadistica tabla-estadistica-compacta">
       <thead>
         <tr>
           <th>Fecha</th>
           <th>Campeonato</th>
-          <th>Evento</th>
+          <th>Categoría</th>
           <th>Equipo</th>
           <th>Tipo</th>
           <th>Concepto</th>
@@ -386,7 +418,7 @@ function renderMorosidad(equipos) {
     .join("");
 
   cont.innerHTML = `
-    <table class="tabla-estadistica">
+    <table class="tabla-estadistica tabla-estadistica-compacta">
       <thead>
         <tr>
           <th>#</th>
@@ -415,10 +447,10 @@ function renderTablaEstadoCuenta(items) {
     .map((m) => {
       return `
         <tr>
-          <td>${escaparHtml(m.fecha_movimiento || "-")}</td>
+          <td class="fin-col-fecha">${escaparHtml(formatearFechaFinanzas(m.fecha_movimiento))}</td>
           <td>${escaparHtml(m.tipo_movimiento || "-")}</td>
           <td>${escaparHtml(m.concepto || "-")}</td>
-          <td>${formatoMoneda(m.monto)}</td>
+          <td class="fin-col-monto">${formatoMoneda(m.monto)}</td>
           <td>${escaparHtml(m.estado || "-")}</td>
           <td>${escaparHtml(m.evento_nombre || "-")}</td>
         </tr>
@@ -427,7 +459,7 @@ function renderTablaEstadoCuenta(items) {
     .join("");
 
   cont.innerHTML = `
-    <table class="tabla-estadistica">
+    <table class="tabla-estadistica tabla-estadistica-compacta">
       <thead>
         <tr>
           <th>Fecha</th>
@@ -435,7 +467,7 @@ function renderTablaEstadoCuenta(items) {
           <th>Concepto</th>
           <th>Monto</th>
           <th>Estado</th>
-          <th>Evento</th>
+          <th>Categoría</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -451,6 +483,14 @@ function formatoMoneda(v) {
     currency: "USD",
     minimumFractionDigits: 2,
   }).format(n);
+}
+
+function formatearFechaFinanzas(valor) {
+  if (!valor) return "-";
+  const texto = String(valor).trim();
+  if (!texto) return "-";
+  if (texto.includes("T")) return texto.split("T")[0];
+  return texto.slice(0, 10);
 }
 
 function renderCargando(texto) {

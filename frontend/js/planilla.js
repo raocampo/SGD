@@ -55,6 +55,72 @@ function formatearMoneda(valor) {
   }).format(n);
 }
 
+function aDecimalOpcional(valor) {
+  if (valor === null || valor === undefined) return null;
+  const s = String(valor).trim();
+  if (!s) return null;
+  const n = Number.parseFloat(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function leerPagoInput(id) {
+  const n = aDecimalOpcional(document.getElementById(id)?.value);
+  return n === null ? 0 : n;
+}
+
+function tienePagosRegistrados(pagos = {}) {
+  return (
+    aDecimal(pagos.pago_local, 0) > 0 ||
+    aDecimal(pagos.pago_visitante, 0) > 0 ||
+    aDecimal(pagos.pago_arbitraje_local, 0) > 0 ||
+    aDecimal(pagos.pago_arbitraje_visitante, 0) > 0 ||
+    aDecimal(pagos.pago_ta_local, 0) > 0 ||
+    aDecimal(pagos.pago_ta_visitante, 0) > 0 ||
+    aDecimal(pagos.pago_tr_local, 0) > 0 ||
+    aDecimal(pagos.pago_tr_visitante, 0) > 0
+  );
+}
+
+function planillaSinDatosDeJuego(payload = {}) {
+  const goles = Array.isArray(payload.goles) ? payload.goles : [];
+  const tarjetas = Array.isArray(payload.tarjetas) ? payload.tarjetas : [];
+  return goles.length === 0 && tarjetas.length === 0 && !tienePagosRegistrados(payload.pagos || {});
+}
+
+function formatearMonedaPlanilla(valor, mostrarEnBlanco = false) {
+  const n = aDecimal(valor, 0);
+  if (mostrarEnBlanco && n <= 0) return "";
+  return formatearMoneda(n);
+}
+
+function formatearConteoPlanilla(valor, mostrarEnBlanco = false) {
+  const n = aEntero(valor, 0);
+  if (mostrarEnBlanco && n <= 0) return "";
+  return String(n);
+}
+
+function hayDatosEnFormularioPlanilla() {
+  const tot = calcularTotalesCaptura();
+  const hayCaptura =
+    tot.local.goles > 0 ||
+    tot.visitante.goles > 0 ||
+    tot.local.ta > 0 ||
+    tot.local.tr > 0 ||
+    tot.visitante.ta > 0 ||
+    tot.visitante.tr > 0;
+  const hayPagos = tienePagosRegistrados({
+    pago_local: leerPagoInput("pago-local"),
+    pago_visitante: leerPagoInput("pago-visitante"),
+    pago_arbitraje_local: leerPagoInput("pago-arbitraje-local"),
+    pago_arbitraje_visitante: leerPagoInput("pago-arbitraje-visitante"),
+    pago_ta_local: leerPagoInput("pago-ta-local"),
+    pago_ta_visitante: leerPagoInput("pago-ta-visitante"),
+    pago_tr_local: leerPagoInput("pago-tr-local"),
+    pago_tr_visitante: leerPagoInput("pago-tr-visitante"),
+  });
+  return hayCaptura || hayPagos;
+}
+
 function escapeHtml(valor) {
   return String(valor ?? "")
     .replaceAll("&", "&amp;")
@@ -358,7 +424,11 @@ function renderEncabezado() {
   const logoVisit = normalizarArchivoUrl(p.equipo_visitante_logo_url);
   const logosDerecha = [logoLocal, logoVisit].filter(Boolean);
   const resultadoLocal = aEntero(document.getElementById("resultado-local")?.value, aEntero(p.resultado_local, 0));
-  const resultadoVisit = aEntero(document.getElementById("resultado-visitante")?.value, aEntero(p.resultado_visitante, 0));
+  const resultadoVisit = aEntero(
+    document.getElementById("resultado-visitante")?.value,
+    aEntero(p.resultado_visitante, 0)
+  );
+  const marcadorVacio = !hayDatosEnFormularioPlanilla() && resultadoLocal === 0 && resultadoVisit === 0;
 
   const reqCed = documentosRequeridos.foto_cedula ? "Cédula: requerida" : "Cédula: opcional";
   const reqCar = documentosRequeridos.foto_carnet ? "Carnet: requerido" : "Carnet: opcional";
@@ -388,12 +458,12 @@ function renderEncabezado() {
     </div>
     <div class="planilla-head-score-strip">
       <div class="planilla-head-score-team">
-        <span id="head-resultado-local" class="planilla-head-score-box">${resultadoLocal}</span>
+        <span id="head-resultado-local" class="planilla-head-score-box">${marcadorVacio ? "" : resultadoLocal}</span>
         <span class="planilla-head-score-name">${escapeHtml(p.equipo_local_nombre || "Local")}</span>
       </div>
       <div class="planilla-head-score-sep">:</div>
       <div class="planilla-head-score-team">
-        <span id="head-resultado-visitante" class="planilla-head-score-box">${resultadoVisit}</span>
+        <span id="head-resultado-visitante" class="planilla-head-score-box">${marcadorVacio ? "" : resultadoVisit}</span>
         <span class="planilla-head-score-name">${escapeHtml(p.equipo_visitante_nombre || "Visitante")}</span>
       </div>
     </div>
@@ -476,14 +546,9 @@ function actualizarHeaderMetaEditable() {
 function actualizarHeaderResultado(local, visitante) {
   const localEl = document.getElementById("head-resultado-local");
   const visitEl = document.getElementById("head-resultado-visitante");
-  if (localEl) localEl.textContent = String(local);
-  if (visitEl) visitEl.textContent = String(visitante);
-}
-
-function actualizarPanelPagosEspejo() {
-  const arbitraje = aDecimal(document.getElementById("pago-arbitraje")?.value, 0);
-  const arbitrajeEspejo = document.getElementById("pago-arbitraje-vista");
-  if (arbitrajeEspejo) arbitrajeEspejo.value = String(arbitraje);
+  const marcadorVacio = !hayDatosEnFormularioPlanilla() && aEntero(local, 0) === 0 && aEntero(visitante, 0) === 0;
+  if (localEl) localEl.textContent = marcadorVacio ? "" : String(local);
+  if (visitEl) visitEl.textContent = marcadorVacio ? "" : String(visitante);
 }
 
 function calcularTotalesCaptura() {
@@ -717,7 +782,8 @@ function cargarCamposBase() {
   const inputPagoTrLocal = document.getElementById("pago-tr-local");
   const inputPagoTaVisitante = document.getElementById("pago-ta-visitante");
   const inputPagoTrVisitante = document.getElementById("pago-tr-visitante");
-  const inputPagoArbitraje = document.getElementById("pago-arbitraje");
+  const inputPagoArbitrajeLocal = document.getElementById("pago-arbitraje-local");
+  const inputPagoArbitrajeVisitante = document.getElementById("pago-arbitraje-visitante");
   const inputPagoLocal = document.getElementById("pago-local");
   const inputPagoVisitante = document.getElementById("pago-visitante");
   const inputObserv = document.getElementById("observaciones-planilla");
@@ -729,23 +795,47 @@ function cargarCamposBase() {
   if (inputResultadoVisit) inputResultadoVisit.value = aEntero(p.resultado_visitante, 0);
   if (inputEstado) inputEstado.value = p.estado || "finalizado";
 
-  if (inputPagoTaLocal) inputPagoTaLocal.value = aDecimal(plan.pago_ta_local, aDecimal(plan.pago_ta, 0));
-  if (inputPagoTrLocal) inputPagoTrLocal.value = aDecimal(plan.pago_tr_local, aDecimal(plan.pago_tr, 0));
+  const planillaSinDatos =
+    (dataPlanilla?.goleadores || []).length === 0 &&
+    (dataPlanilla?.tarjetas || []).length === 0 &&
+    aDecimal(plan.pago_local, 0) <= 0 &&
+    aDecimal(plan.pago_visitante, 0) <= 0 &&
+    aDecimal(plan.pago_arbitraje_local ?? plan.pago_arbitraje, 0) <= 0 &&
+    aDecimal(plan.pago_arbitraje_visitante ?? plan.pago_arbitraje, 0) <= 0 &&
+    aDecimal(plan.pago_ta_local, 0) <= 0 &&
+    aDecimal(plan.pago_ta_visitante, 0) <= 0 &&
+    aDecimal(plan.pago_tr_local, 0) <= 0 &&
+    aDecimal(plan.pago_tr_visitante, 0) <= 0;
+
+  if (inputPagoTaLocal) inputPagoTaLocal.value = planillaSinDatos ? "" : String(aDecimal(plan.pago_ta_local, aDecimal(plan.pago_ta, 0)));
+  if (inputPagoTrLocal) inputPagoTrLocal.value = planillaSinDatos ? "" : String(aDecimal(plan.pago_tr_local, aDecimal(plan.pago_tr, 0)));
   if (inputPagoTaVisitante) {
-    inputPagoTaVisitante.value = aDecimal(plan.pago_ta_visitante, aDecimal(plan.pago_ta, 0));
+    inputPagoTaVisitante.value = planillaSinDatos
+      ? ""
+      : String(aDecimal(plan.pago_ta_visitante, aDecimal(plan.pago_ta, 0)));
   }
   if (inputPagoTrVisitante) {
-    inputPagoTrVisitante.value = aDecimal(plan.pago_tr_visitante, aDecimal(plan.pago_tr, 0));
+    inputPagoTrVisitante.value = planillaSinDatos
+      ? ""
+      : String(aDecimal(plan.pago_tr_visitante, aDecimal(plan.pago_tr, 0)));
   }
-  if (inputPagoArbitraje) inputPagoArbitraje.value = aDecimal(plan.pago_arbitraje, 0);
-  if (inputPagoLocal) inputPagoLocal.value = aDecimal(plan.pago_local, 0);
-  if (inputPagoVisitante) inputPagoVisitante.value = aDecimal(plan.pago_visitante, 0);
+  if (inputPagoArbitrajeLocal) {
+    inputPagoArbitrajeLocal.value = planillaSinDatos
+      ? ""
+      : String(aDecimal(plan.pago_arbitraje_local, aDecimal(plan.pago_arbitraje, 0)));
+  }
+  if (inputPagoArbitrajeVisitante) {
+    inputPagoArbitrajeVisitante.value = planillaSinDatos
+      ? ""
+      : String(aDecimal(plan.pago_arbitraje_visitante, aDecimal(plan.pago_arbitraje, 0)));
+  }
+  if (inputPagoLocal) inputPagoLocal.value = planillaSinDatos ? "" : String(aDecimal(plan.pago_local, 0));
+  if (inputPagoVisitante) inputPagoVisitante.value = planillaSinDatos ? "" : String(aDecimal(plan.pago_visitante, 0));
   if (inputObserv) inputObserv.value = plan.observaciones || "";
   if (inputArbitro) inputArbitro.value = p.arbitro || "";
   if (inputDelegado) inputDelegado.value = p.delegado_partido || "";
   if (inputCiudad) inputCiudad.value = p.ciudad || "";
 
-  actualizarPanelPagosEspejo();
   actualizarHeaderMetaEditable();
   actualizarHeaderResultado(
     aEntero(document.getElementById("resultado-local")?.value, 0),
@@ -1277,20 +1367,19 @@ function recolectarPayloadPlanilla() {
     ciudad: String(document.getElementById("ciudad-planilla")?.value || "").trim(),
     observaciones: String(document.getElementById("observaciones-planilla")?.value || "").trim(),
     pagos: {
-      pago_ta_local: aDecimal(document.getElementById("pago-ta-local")?.value, 0),
-      pago_ta_visitante: aDecimal(document.getElementById("pago-ta-visitante")?.value, 0),
-      pago_tr_local: aDecimal(document.getElementById("pago-tr-local")?.value, 0),
-      pago_tr_visitante: aDecimal(document.getElementById("pago-tr-visitante")?.value, 0),
+      pago_ta_local: leerPagoInput("pago-ta-local"),
+      pago_ta_visitante: leerPagoInput("pago-ta-visitante"),
+      pago_tr_local: leerPagoInput("pago-tr-local"),
+      pago_tr_visitante: leerPagoInput("pago-tr-visitante"),
+      pago_arbitraje_local: leerPagoInput("pago-arbitraje-local"),
+      pago_arbitraje_visitante: leerPagoInput("pago-arbitraje-visitante"),
       // Compatibilidad con campos globales anteriores
-      pago_ta:
-        aDecimal(document.getElementById("pago-ta-local")?.value, 0) +
-        aDecimal(document.getElementById("pago-ta-visitante")?.value, 0),
-      pago_tr:
-        aDecimal(document.getElementById("pago-tr-local")?.value, 0) +
-        aDecimal(document.getElementById("pago-tr-visitante")?.value, 0),
-      pago_arbitraje: aDecimal(document.getElementById("pago-arbitraje")?.value, 0),
-      pago_local: aDecimal(document.getElementById("pago-local")?.value, 0),
-      pago_visitante: aDecimal(document.getElementById("pago-visitante")?.value, 0),
+      pago_ta: leerPagoInput("pago-ta-local") + leerPagoInput("pago-ta-visitante"),
+      pago_tr: leerPagoInput("pago-tr-local") + leerPagoInput("pago-tr-visitante"),
+      pago_arbitraje:
+        leerPagoInput("pago-arbitraje-local") + leerPagoInput("pago-arbitraje-visitante"),
+      pago_local: leerPagoInput("pago-local"),
+      pago_visitante: leerPagoInput("pago-visitante"),
     },
     goles,
     tarjetas,
@@ -1435,6 +1524,9 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
 
   const filasLocal = renderFilasVistaPreviaOficialEquipo(dataPlanilla.plantel_local || [], stats, maxFilas);
   const filasVisit = renderFilasVistaPreviaOficialEquipo(dataPlanilla.plantel_visitante || [], stats, maxFilas);
+  const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
+  const marcadorLocal = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_local, 0));
+  const marcadorVisit = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_visitante, 0));
 
   cont.innerHTML = `
     <div class="planilla-oficial-sheet ${modelo}">
@@ -1464,9 +1556,9 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
 
       <div class="planilla-oficial-score">
         <div class="team">${escapeHtml(p.equipo_local_nombre || equiposPartido.local.nombre)}</div>
-        <div class="result">${aEntero(payload.resultado_local, 0)}</div>
+        <div class="result">${marcadorLocal}</div>
         <div class="sep">:</div>
-        <div class="result">${aEntero(payload.resultado_visitante, 0)}</div>
+        <div class="result">${marcadorVisit}</div>
         <div class="team">${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</div>
       </div>
 
@@ -1490,8 +1582,8 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           <div class="planilla-oficial-team-notes">
             <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(p.equipo_local_director_tecnico || "________________")}</p>
             <p class="planilla-oficial-signature-line"><strong>Firma:</strong> ____________________________</p>
-            <p><strong>Tarjetas amarillas:</strong> ${Number(stats.totalAmarillasLocal || 0)}</p>
-            <p><strong>Tarjetas rojas:</strong> ${Number(stats.totalRojasLocal || 0)}</p>
+            <p><strong>Tarjetas amarillas:</strong> ${formatearConteoPlanilla(stats.totalAmarillasLocal, mostrarEnBlanco)}</p>
+            <p><strong>Tarjetas rojas:</strong> ${formatearConteoPlanilla(stats.totalRojasLocal, mostrarEnBlanco)}</p>
           </div>
         </article>
 
@@ -1506,8 +1598,8 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           <div class="planilla-oficial-team-notes">
             <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(p.equipo_visitante_director_tecnico || "________________")}</p>
             <p class="planilla-oficial-signature-line"><strong>Firma:</strong> ____________________________</p>
-            <p><strong>Tarjetas amarillas:</strong> ${Number(stats.totalAmarillasVisitante || 0)}</p>
-            <p><strong>Tarjetas rojas:</strong> ${Number(stats.totalRojasVisitante || 0)}</p>
+            <p><strong>Tarjetas amarillas:</strong> ${formatearConteoPlanilla(stats.totalAmarillasVisitante, mostrarEnBlanco)}</p>
+            <p><strong>Tarjetas rojas:</strong> ${formatearConteoPlanilla(stats.totalRojasVisitante, mostrarEnBlanco)}</p>
           </div>
         </article>
       </div>
@@ -1519,45 +1611,45 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
             <h5>${escapeHtml(p.equipo_local_nombre || equiposPartido.local.nombre)}</h5>
             <div class="planilla-footer-row">
               <label>Inscripción</label>
-              <input type="text" value="${formatearMoneda(payload.pagos.pago_local)}" readonly />
+              <input type="text" value="${formatearMonedaPlanilla(payload.pagos.pago_local, mostrarEnBlanco)}" readonly />
             </div>
             <div class="planilla-footer-row">
               <label>Arbitraje</label>
-              <input type="text" value="${formatearMoneda(payload.pagos.pago_arbitraje)}" readonly />
+              <input type="text" value="${formatearMonedaPlanilla(payload.pagos.pago_arbitraje_local, mostrarEnBlanco)}" readonly />
             </div>
             <div class="planilla-footer-row">
               <label>Tarjetas amarillas</label>
-              <input type="text" value="${formatearMoneda(payload.pagos.pago_ta_local)}" readonly />
+              <input type="text" value="${formatearMonedaPlanilla(payload.pagos.pago_ta_local, mostrarEnBlanco)}" readonly />
             </div>
             <div class="planilla-footer-row">
               <label>Tarjetas rojas</label>
-              <input type="text" value="${formatearMoneda(payload.pagos.pago_tr_local)}" readonly />
+              <input type="text" value="${formatearMonedaPlanilla(payload.pagos.pago_tr_local, mostrarEnBlanco)}" readonly />
             </div>
           </article>
           <article class="planilla-footer-team">
             <h5>${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</h5>
             <div class="planilla-footer-row">
               <label>Inscripción</label>
-              <input type="text" value="${formatearMoneda(payload.pagos.pago_visitante)}" readonly />
+              <input type="text" value="${formatearMonedaPlanilla(payload.pagos.pago_visitante, mostrarEnBlanco)}" readonly />
             </div>
             <div class="planilla-footer-row">
               <label>Arbitraje</label>
-              <input type="text" value="${formatearMoneda(payload.pagos.pago_arbitraje)}" readonly />
+              <input type="text" value="${formatearMonedaPlanilla(payload.pagos.pago_arbitraje_visitante, mostrarEnBlanco)}" readonly />
             </div>
             <div class="planilla-footer-row">
               <label>Tarjetas amarillas</label>
-              <input type="text" value="${formatearMoneda(payload.pagos.pago_ta_visitante)}" readonly />
+              <input type="text" value="${formatearMonedaPlanilla(payload.pagos.pago_ta_visitante, mostrarEnBlanco)}" readonly />
             </div>
             <div class="planilla-footer-row">
               <label>Tarjetas rojas</label>
-              <input type="text" value="${formatearMoneda(payload.pagos.pago_tr_visitante)}" readonly />
+              <input type="text" value="${formatearMonedaPlanilla(payload.pagos.pago_tr_visitante, mostrarEnBlanco)}" readonly />
             </div>
           </article>
         </div>
 
         <div class="planilla-oficial-observ">
           <strong>OBSERVACIONES</strong>
-          <p>${escapeHtml(payload.observaciones || "Sin observaciones.")}</p>
+          <p>${escapeHtml(payload.observaciones || "")}</p>
         </div>
       </div>
     </div>
@@ -1575,6 +1667,10 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
   const filasVisit = renderFilasVistaPreviaEquipo(dataPlanilla.plantel_visitante || [], stats, maxFilas);
   const eventos = renderListaEventosVistaPrevia(payload);
 
+  const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
+  const scoreLocal = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_local, 0));
+  const scoreVisit = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_visitante, 0));
+
   cont.innerHTML = `
     <div class="planilla-preview-sheet">
       <div class="planilla-preview-head">
@@ -1591,7 +1687,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
 
       <div class="planilla-preview-score">
         <div class="team-name">${escapeHtml(p.equipo_local_nombre || equiposPartido.local.nombre)}</div>
-        <div class="score-box">${aEntero(payload.resultado_local, 0)} - ${aEntero(payload.resultado_visitante, 0)}</div>
+        <div class="score-box">${scoreLocal}${scoreLocal !== "" || scoreVisit !== "" ? " - " : ""}${scoreVisit}</div>
         <div class="team-name">${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</div>
       </div>
 
@@ -1623,17 +1719,21 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
           <h5 style="margin-top:0.8rem;">Tarjetas</h5>
           <ul class="planilla-preview-list">${eventos.tarjetasHtml}</ul>
           <h5 style="margin-top:0.8rem;">Observaciones</h5>
-          <div class="planilla-preview-observ">${escapeHtml(payload.observaciones || "Sin observaciones.")}</div>
+          <div class="planilla-preview-observ">${escapeHtml(payload.observaciones || "")}</div>
         </div>
         <div class="planilla-preview-box">
           <h5>Pagos</h5>
           <div class="planilla-preview-payments">
-            <div class="row"><span>Total TA</span><strong>${Number(stats.totalAmarillasLocal || 0) + Number(stats.totalAmarillasVisitante || 0)}</strong></div>
-            <div class="row"><span>Total TR</span><strong>${Number(stats.totalRojasLocal || 0) + Number(stats.totalRojasVisitante || 0)}</strong></div>
-            <div class="row"><span>Pago TA Local</span><strong>${formatearMoneda(payload.pagos.pago_ta_local)}</strong></div>
-            <div class="row"><span>Pago TA Visitante</span><strong>${formatearMoneda(payload.pagos.pago_ta_visitante)}</strong></div>
-            <div class="row"><span>Pago TR Local</span><strong>${formatearMoneda(payload.pagos.pago_tr_local)}</strong></div>
-            <div class="row"><span>Pago TR Visitante</span><strong>${formatearMoneda(payload.pagos.pago_tr_visitante)}</strong></div>
+            <div class="row"><span>Total TA</span><strong>${formatearConteoPlanilla(Number(stats.totalAmarillasLocal || 0) + Number(stats.totalAmarillasVisitante || 0), mostrarEnBlanco)}</strong></div>
+            <div class="row"><span>Total TR</span><strong>${formatearConteoPlanilla(Number(stats.totalRojasLocal || 0) + Number(stats.totalRojasVisitante || 0), mostrarEnBlanco)}</strong></div>
+            <div class="row"><span>Inscripción Local</span><strong>${formatearMonedaPlanilla(payload.pagos.pago_local, mostrarEnBlanco)}</strong></div>
+            <div class="row"><span>Inscripción Visitante</span><strong>${formatearMonedaPlanilla(payload.pagos.pago_visitante, mostrarEnBlanco)}</strong></div>
+            <div class="row"><span>Arbitraje Local</span><strong>${formatearMonedaPlanilla(payload.pagos.pago_arbitraje_local, mostrarEnBlanco)}</strong></div>
+            <div class="row"><span>Arbitraje Visitante</span><strong>${formatearMonedaPlanilla(payload.pagos.pago_arbitraje_visitante, mostrarEnBlanco)}</strong></div>
+            <div class="row"><span>Pago TA Local</span><strong>${formatearMonedaPlanilla(payload.pagos.pago_ta_local, mostrarEnBlanco)}</strong></div>
+            <div class="row"><span>Pago TA Visitante</span><strong>${formatearMonedaPlanilla(payload.pagos.pago_ta_visitante, mostrarEnBlanco)}</strong></div>
+            <div class="row"><span>Pago TR Local</span><strong>${formatearMonedaPlanilla(payload.pagos.pago_tr_local, mostrarEnBlanco)}</strong></div>
+            <div class="row"><span>Pago TR Visitante</span><strong>${formatearMonedaPlanilla(payload.pagos.pago_tr_visitante, mostrarEnBlanco)}</strong></div>
             <div class="row"><span>Estado</span><strong>${payload.estado || "-"}</strong></div>
           </div>
         </div>
@@ -1785,13 +1885,19 @@ function construirFilasPlantelPdf(jugadores, stats, maxFilas) {
   return body;
 }
 
-function construirBloqueTarjetasEquipoPdf(totalTa, totalTr) {
+function construirBloqueTarjetasEquipoPdf(totalTa, totalTr, mostrarEnBlanco = false) {
   return {
     table: {
       widths: ["*", 26],
       body: [
-        [{ text: "Tarjetas amarillas", style: "footLabel" }, { text: String(totalTa), style: "footValueCenter" }],
-        [{ text: "Tarjetas rojas", style: "footLabel" }, { text: String(totalTr), style: "footValueCenter" }],
+        [
+          { text: "Tarjetas amarillas", style: "footLabel" },
+          { text: formatearConteoPlanilla(totalTa, mostrarEnBlanco), style: "footValueCenter" },
+        ],
+        [
+          { text: "Tarjetas rojas", style: "footLabel" },
+          { text: formatearConteoPlanilla(totalTr, mostrarEnBlanco), style: "footValueCenter" },
+        ],
       ],
     },
     layout: {
@@ -1807,7 +1913,7 @@ function construirBloqueTarjetasEquipoPdf(totalTa, totalTr) {
   };
 }
 
-function construirBloquePagosPdf(localNombre, visitNombre, pagos = {}) {
+function construirBloquePagosPdf(localNombre, visitNombre, pagos = {}, mostrarEnBlanco = false) {
   const layoutTabla = {
     hLineWidth: () => 0.6,
     vLineWidth: () => 0.6,
@@ -1819,11 +1925,23 @@ function construirBloquePagosPdf(localNombre, visitNombre, pagos = {}) {
     paddingBottom: () => 3,
   };
 
-  const filasPago = (inscripcion, pagoTa, pagoTr) => [
-    [{ text: "Inscripción", style: "footLabel" }, { text: formatearMoneda(inscripcion), style: "footValue" }],
-    [{ text: "Arbitraje", style: "footLabel" }, { text: formatearMoneda(pagos.pago_arbitraje), style: "footValue" }],
-    [{ text: "Tarjetas amarillas", style: "footLabel" }, { text: formatearMoneda(pagoTa), style: "footValue" }],
-    [{ text: "Tarjetas rojas", style: "footLabel" }, { text: formatearMoneda(pagoTr), style: "footValue" }],
+  const filasPago = (inscripcion, arbitraje, pagoTa, pagoTr) => [
+    [
+      { text: "Inscripción", style: "footLabel" },
+      { text: formatearMonedaPlanilla(inscripcion, mostrarEnBlanco), style: "footValue" },
+    ],
+    [
+      { text: "Arbitraje", style: "footLabel" },
+      { text: formatearMonedaPlanilla(arbitraje, mostrarEnBlanco), style: "footValue" },
+    ],
+    [
+      { text: "Tarjetas amarillas", style: "footLabel" },
+      { text: formatearMonedaPlanilla(pagoTa, mostrarEnBlanco), style: "footValue" },
+    ],
+    [
+      { text: "Tarjetas rojas", style: "footLabel" },
+      { text: formatearMonedaPlanilla(pagoTr, mostrarEnBlanco), style: "footValue" },
+    ],
   ];
 
   return {
@@ -1849,7 +1967,12 @@ function construirBloquePagosPdf(localNombre, visitNombre, pagos = {}) {
             {
               table: {
                 widths: ["*", 58],
-                body: filasPago(pagos.pago_local, pagos.pago_ta_local, pagos.pago_tr_local),
+                body: filasPago(
+                  pagos.pago_local,
+                  pagos.pago_arbitraje_local,
+                  pagos.pago_ta_local,
+                  pagos.pago_tr_local
+                ),
               },
               layout: layoutTabla,
             },
@@ -1875,7 +1998,12 @@ function construirBloquePagosPdf(localNombre, visitNombre, pagos = {}) {
             {
               table: {
                 widths: ["*", 58],
-                body: filasPago(pagos.pago_visitante, pagos.pago_ta_visitante, pagos.pago_tr_visitante),
+                body: filasPago(
+                  pagos.pago_visitante,
+                  pagos.pago_arbitraje_visitante,
+                  pagos.pago_ta_visitante,
+                  pagos.pago_tr_visitante
+                ),
               },
               layout: layoutTabla,
             },
@@ -1970,6 +2098,9 @@ async function imprimirPDFPlanilla() {
     const bodyLocal = construirFilasPlantelPdf(dataPlanilla.plantel_local || [], stats, maxFilas);
     const bodyVisit = construirFilasPlantelPdf(dataPlanilla.plantel_visitante || [], stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
+    const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
+    const marcadorLocal = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_local, 0));
+    const marcadorVisit = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_visitante, 0));
 
     const docDefinition = {
       pageSize: "A4",
@@ -2040,9 +2171,9 @@ async function imprimirPDFPlanilla() {
             widths: ["*", 30, 10, 30, "*"],
             body: [[
               { text: localNombre, alignment: "center", bold: true, fontSize: 11.5, border: [false, false, false, false], margin: [0, 13, 0, 0] },
-              { text: String(aEntero(payload.resultado_local, 0)), alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
+              { text: marcadorLocal, alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
               { text: ":", alignment: "center", bold: true, fontSize: 16.5, border: [false, false, false, false], margin: [0, 12, 0, 0] },
-              { text: String(aEntero(payload.resultado_visitante, 0)), alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
+              { text: marcadorVisit, alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
               { text: visitNombre, alignment: "center", bold: true, fontSize: 11.5, border: [false, false, false, false], margin: [0, 13, 0, 0] },
             ]],
             heights: () => 48,
@@ -2126,7 +2257,8 @@ async function imprimirPDFPlanilla() {
                 {
                   ...construirBloqueTarjetasEquipoPdf(
                     Number(stats.totalAmarillasLocal || 0),
-                    Number(stats.totalRojasLocal || 0)
+                    Number(stats.totalRojasLocal || 0),
+                    mostrarEnBlanco
                   ),
                   margin: [0, 3, 0, 0],
                 },
@@ -2191,7 +2323,8 @@ async function imprimirPDFPlanilla() {
                 {
                   ...construirBloqueTarjetasEquipoPdf(
                     Number(stats.totalAmarillasVisitante || 0),
-                    Number(stats.totalRojasVisitante || 0)
+                    Number(stats.totalRojasVisitante || 0),
+                    mostrarEnBlanco
                   ),
                   margin: [0, 3, 0, 0],
                 },
@@ -2206,7 +2339,7 @@ async function imprimirPDFPlanilla() {
           margin: [0, 1, 0, 3],
         },
         {
-          ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos),
+          ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos, mostrarEnBlanco),
           margin: [0, 0, 0, 4],
         },
         {
@@ -2218,7 +2351,7 @@ async function imprimirPDFPlanilla() {
           table: {
             widths: ["*"],
             body: [
-              [{ text: payload.observaciones || "Sin observaciones." }],
+              [{ text: payload.observaciones || "" }],
               [{ text: " " }],
               [{ text: " " }],
               [{ text: " " }],
@@ -2315,6 +2448,7 @@ async function exportarPlanillaXLSX() {
   const payload = recolectarPayloadPlanilla();
   const tipoFutbol = obtenerTipoFutbolPlanilla();
   const cfg = obtenerConfigExportacionPlanilla(tipoFutbol);
+  const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
 
   try {
     const templateResp = await fetch("templates/PlanillaJuego.xlsx", { cache: "no-store" });
@@ -2338,8 +2472,16 @@ async function exportarPlanillaXLSX() {
     if (ciudadPlanilla) setCellValue(sheet, cfg.meta.ciudad, ciudadPlanilla);
     setCellValue(sheet, cfg.meta.equipoLocal, p.equipo_local_nombre || equiposPartido.local.nombre);
     setCellValue(sheet, cfg.meta.equipoVisitante, p.equipo_visitante_nombre || equiposPartido.visitante.nombre);
-    setCellValue(sheet, cfg.meta.resultadoLocal, aEntero(payload.resultado_local, 0));
-    setCellValue(sheet, cfg.meta.resultadoVisitante, aEntero(payload.resultado_visitante, 0));
+    setCellValue(
+      sheet,
+      cfg.meta.resultadoLocal,
+      mostrarEnBlanco ? "" : aEntero(payload.resultado_local, 0)
+    );
+    setCellValue(
+      sheet,
+      cfg.meta.resultadoVisitante,
+      mostrarEnBlanco ? "" : aEntero(payload.resultado_visitante, 0)
+    );
 
     llenarPlantelExcel(
       sheet,
@@ -2372,52 +2514,69 @@ async function exportarPlanillaXLSX() {
     setCellValue(
       sheet,
       `${cfg.tarjetasResumen.colLocal}${cfg.tarjetasResumen.amarillasRow}`,
-      stats.totalAmarillasLocal || ""
+      mostrarEnBlanco ? "" : stats.totalAmarillasLocal || ""
     );
     setCellValue(
       sheet,
       `${cfg.tarjetasResumen.colLocal}${cfg.tarjetasResumen.rojasRow}`,
-      stats.totalRojasLocal || ""
+      mostrarEnBlanco ? "" : stats.totalRojasLocal || ""
     );
     setCellValue(
       sheet,
       `${cfg.tarjetasResumen.colVisitante}${cfg.tarjetasResumen.amarillasRow}`,
-      stats.totalAmarillasVisitante || ""
+      mostrarEnBlanco ? "" : stats.totalAmarillasVisitante || ""
     );
     setCellValue(
       sheet,
       `${cfg.tarjetasResumen.colVisitante}${cfg.tarjetasResumen.rojasRow}`,
-      stats.totalRojasVisitante || ""
+      mostrarEnBlanco ? "" : stats.totalRojasVisitante || ""
     );
 
-    const pagoArbitraje = aDecimal(payload.pagos.pago_arbitraje, 0);
+    const pagoArbitrajeLocal = aDecimal(payload.pagos.pago_arbitraje_local, 0);
+    const pagoArbitrajeVisitante = aDecimal(payload.pagos.pago_arbitraje_visitante, 0);
     const pagoLocal = aDecimal(payload.pagos.pago_local, 0);
     const pagoVisitante = aDecimal(payload.pagos.pago_visitante, 0);
 
-    setCellValue(sheet, `${cfg.pagos.colLocal}${cfg.pagos.arbitrajeRow}`, pagoArbitraje || "");
-    setCellValue(sheet, `${cfg.pagos.colVisitante}${cfg.pagos.arbitrajeRow}`, pagoArbitraje || "");
+    setCellValue(
+      sheet,
+      `${cfg.pagos.colLocal}${cfg.pagos.arbitrajeRow}`,
+      mostrarEnBlanco ? "" : pagoArbitrajeLocal || ""
+    );
+    setCellValue(
+      sheet,
+      `${cfg.pagos.colVisitante}${cfg.pagos.arbitrajeRow}`,
+      mostrarEnBlanco ? "" : pagoArbitrajeVisitante || ""
+    );
     setCellValue(
       sheet,
       `${cfg.pagos.colLocal}${cfg.pagos.tarjetasRojasRow}`,
-      `ROJAS: ${stats.totalRojasLocal || 0}`
+      mostrarEnBlanco ? "" : `ROJAS: ${stats.totalRojasLocal || 0}`
     );
     setCellValue(
       sheet,
       `${cfg.pagos.colLocal}${cfg.pagos.tarjetasAmarillasRow}`,
-      `AMARILLAS: ${stats.totalAmarillasLocal || 0}`
+      mostrarEnBlanco ? "" : `AMARILLAS: ${stats.totalAmarillasLocal || 0}`
     );
     setCellValue(
       sheet,
       `${cfg.pagos.colVisitante}${cfg.pagos.tarjetasRojasRow}`,
-      `ROJAS: ${stats.totalRojasVisitante || 0}`
+      mostrarEnBlanco ? "" : `ROJAS: ${stats.totalRojasVisitante || 0}`
     );
     setCellValue(
       sheet,
       `${cfg.pagos.colVisitante}${cfg.pagos.tarjetasAmarillasRow}`,
-      `AMARILLAS: ${stats.totalAmarillasVisitante || 0}`
+      mostrarEnBlanco ? "" : `AMARILLAS: ${stats.totalAmarillasVisitante || 0}`
     );
-    setCellValue(sheet, `${cfg.pagos.colLocal}${cfg.pagos.inscripcionRow}`, pagoLocal || "");
-    setCellValue(sheet, `${cfg.pagos.colVisitante}${cfg.pagos.inscripcionRow}`, pagoVisitante || "");
+    setCellValue(
+      sheet,
+      `${cfg.pagos.colLocal}${cfg.pagos.inscripcionRow}`,
+      mostrarEnBlanco ? "" : pagoLocal || ""
+    );
+    setCellValue(
+      sheet,
+      `${cfg.pagos.colVisitante}${cfg.pagos.inscripcionRow}`,
+      mostrarEnBlanco ? "" : pagoVisitante || ""
+    );
 
     const observaciones = payload.observaciones || "";
     setCellValue(sheet, `${cfg.observaciones.colLocal}${cfg.observaciones.rowInicio}`, observaciones);
@@ -2463,11 +2622,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   formPlanilla?.addEventListener("change", () => actualizarVistaPreviaPlanilla(true));
   inicializarModoVistaPreviaPlanilla();
 
-  ["pago-arbitraje"].forEach((id) => {
-    document.getElementById(id)?.addEventListener("input", () => {
-      actualizarPanelPagosEspejo();
-    });
-  });
   document.getElementById("ciudad-planilla")?.addEventListener("input", () => {
     actualizarHeaderMetaEditable();
   });

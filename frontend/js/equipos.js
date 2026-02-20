@@ -5,6 +5,7 @@ let campeonatoActual = null;
 let eventoIdSeleccionado = null;
 let totalEquiposInscritos = 0;
 let equiposCache = [];
+let equipoEditandoId = null;
 let vistaEquipos = localStorage.getItem("sgd_vista_equipos") || "cards";
 vistaEquipos = vistaEquipos === "table" ? "table" : "cards";
 
@@ -313,7 +314,10 @@ function mostrarModalCrearEquipo() {
     return;
   }
   document.getElementById("modal-titulo").textContent = "Agregar Equipo";
+  equipoEditandoId = null;
   activarTabEquipo("nuevo");
+  const tabExistente = document.querySelector('.modal-tab[data-tab="existente"]');
+  if (tabExistente) tabExistente.disabled = false;
   document.getElementById("equipo-nombre").value = "";
   document.getElementById("equipo-dt").value = "";
   document.getElementById("equipo-at").value = "";
@@ -435,8 +439,9 @@ async function guardarEquipo() {
   const usarExistente = tabActivo === "existente";
   const selectEvento = document.getElementById("select-evento");
   eventoIdSeleccionado = selectEvento?.value ? parseInt(selectEvento.value, 10) : null;
+  const estaEditando = Number.isFinite(Number(equipoEditandoId)) && Number(equipoEditandoId) > 0;
 
-  if (usarExistente) {
+  if (usarExistente && !estaEditando) {
     const equipoId = document.getElementById("select-equipo-existente").value;
     if (!equipoId) {
       mostrarNotificacion("Selecciona un equipo existente", "warning");
@@ -502,26 +507,28 @@ async function guardarEquipo() {
   }
 
   try {
-    const url = (window.API_BASE_URL || "http://localhost:5000/api").replace(/\/?$/, "") + "/equipos";
+    const baseUrl = (window.API_BASE_URL || "http://localhost:5000/api").replace(/\/?$/, "");
+    const url = estaEditando ? `${baseUrl}/equipos/${equipoEditandoId}` : `${baseUrl}/equipos`;
     const resp = await fetch(url, {
-      method: "POST",
+      method: estaEditando ? "PUT" : "POST",
       body: fd,
     });
     const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || "Error creando equipo");
+    if (!resp.ok) throw new Error(data.error || (estaEditando ? "Error actualizando equipo" : "Error creando equipo"));
 
-    let mensaje = "Equipo creado correctamente";
-    if (eventoIdSeleccionado && data.equipo) {
+    let mensaje = estaEditando ? "Equipo actualizado correctamente" : "Equipo creado correctamente";
+    if (!estaEditando && eventoIdSeleccionado && data.equipo) {
       try {
         await window.ApiClient.post(`/eventos/${eventoIdSeleccionado}/equipos`, { equipo_id: data.equipo.id });
         mensaje = "Equipo creado y asignado a la categoría";
       } catch (_) {}
     }
+    equipoEditandoId = null;
     mostrarNotificacion(mensaje, "success");
     cerrarModal("modal-equipo");
     cargarEquipos();
   } catch (err) {
-    mostrarNotificacion(err.message || "Error creando equipo", "error");
+    mostrarNotificacion(err.message || (estaEditando ? "Error actualizando equipo" : "Error creando equipo"), "error");
   }
 }
 
@@ -529,7 +536,55 @@ async function guardarEquipo() {
 // Editar / Eliminar
 // ======================
 async function editarEquipo(id) {
-  mostrarNotificacion("Editar equipo (próximamente)", "info");
+  if (!id) {
+    mostrarNotificacion("No se pudo identificar el equipo a editar", "warning");
+    return;
+  }
+
+  try {
+    const data = await window.ApiClient.get(`/equipos/${id}`);
+    const equipo = data?.equipo || data;
+    if (!equipo?.id) {
+      mostrarNotificacion("No se encontró el equipo", "warning");
+      return;
+    }
+
+    equipoEditandoId = Number(equipo.id);
+    document.getElementById("modal-titulo").textContent = "Editar Equipo";
+    activarTabEquipo("nuevo");
+
+    const tabExistente = document.querySelector('.modal-tab[data-tab="existente"]');
+    if (tabExistente) tabExistente.disabled = true;
+
+    document.getElementById("equipo-nombre").value = equipo.nombre || "";
+    document.getElementById("equipo-dt").value = equipo.director_tecnico || "";
+    document.getElementById("equipo-at").value = equipo.asistente_tecnico || "";
+    document.getElementById("equipo-medico").value = equipo.medico || "";
+    document.getElementById("equipo-telefono").value = equipo.telefono || "";
+    document.getElementById("equipo-email").value = equipo.email || "";
+
+    const c1 = equipo.color_primario || equipo.color_equipo || "#e53935";
+    const c2 = equipo.color_secundario || "#1e88e5";
+    const c3 = equipo.color_terciario || "#43a047";
+    document.getElementById("equipo-color-primario").value = c1;
+    document.getElementById("equipo-color-secundario").value = c2;
+    document.getElementById("equipo-color-terciario").value = c3;
+    document.getElementById("preview-primario").style.background = c1;
+    document.getElementById("preview-secundario").style.background = c2;
+    document.getElementById("preview-terciario").style.background = c3;
+
+    document.getElementById("equipo-cabeza-serie").checked =
+      equipo.cabeza_serie === true || equipo.cabeza_serie === "true";
+
+    const logoInput = document.getElementById("equipo-logo");
+    if (logoInput) logoInput.value = "";
+
+    document.querySelectorAll(".color-dropdown").forEach((d) => d.classList.remove("open"));
+    abrirModal("modal-equipo");
+  } catch (error) {
+    console.error("Error cargando equipo para edición:", error);
+    mostrarNotificacion(error.message || "Error cargando equipo para edición", "error");
+  }
 }
 
 async function eliminarEquipo(id) {

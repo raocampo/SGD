@@ -22,6 +22,10 @@ const campeonatoController = {
         requiere_foto_cedula = false,
         requiere_foto_carnet = false,
         genera_carnets = false,
+        costo_arbitraje = 0,
+        costo_tarjeta_amarilla = 0,
+        costo_tarjeta_roja = 0,
+        costo_carnet = 0,
       } = req.body;
 
       // Validaciones básicas
@@ -60,7 +64,11 @@ const campeonatoController = {
         logo_url,
         requiere_foto_cedula,
         requiere_foto_carnet,
-        genera_carnets
+        genera_carnets,
+        costo_arbitraje,
+        costo_tarjeta_amarilla,
+        costo_tarjeta_roja,
+        costo_carnet
       );
 
       res.status(201).json({

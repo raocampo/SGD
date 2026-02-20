@@ -27,6 +27,24 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - este archivo mantiene fecha vigente y nuevo bloque de sesion para continuidad inmediata.
 - Se mantiene foco operativo actual:
   - pruebas funcionales del planillaje con datos reales para capturar bugs de campo y cerrar ajustes UX/impresion.
+- Ajustes de navegacion global y responsive:
+  - sidebar administrativo configurado para iniciar contraido por defecto en todas las paginas con layout lateral,
+  - correccion de superposicion `sidebar/overlay` para que el menu sea clickeable en movil y no se cierre al intentar usar enlaces.
+- Ajustes UX en modulo financiero (`finanzas.html/js/css`):
+  - formularios de filtros y registro compactados por breakpoints para evitar desbordes horizontales,
+  - reordenamiento visual priorizando `Estado de Cuenta` y controles de reporte mas claros en pantallas pequenas,
+  - tablas de estado/morosidad/movimientos con modo compacto y mejor legibilidad responsive,
+  - toggles por seccion para expandir/colapsar `Morosidad` y `Movimientos` sin scroll excesivo.
+- Ajustes funcionales en reglas financieras:
+  - sincronizacion automatica de cargos de inscripcion por categoria/equipo al consultar estado/morosidad/listados,
+  - sincronizacion de planilla -> finanzas por equipo con cargos de arbitraje/multas y abonos registrados en planilla,
+  - estado de cuenta con resumen por concepto (inscripcion, arbitraje, multas) ademas de totales,
+  - filtro de movimientos para excluir por defecto registros internos de sistema (`origen='sistema'`).
+- Configuracion economica extendida:
+  - campeonato ahora gestiona costos base (`costo_arbitraje`, `costo_tarjeta_amarilla`, `costo_tarjeta_roja`, `costo_carnet`),
+  - categoria/evento incorpora `costo_inscripcion` para cuenta corriente por equipo.
+- Compatibilidades backend reforzadas:
+  - soporte de columnas de timestamp alternativas (`updated_at` / `update_at`) en actualizacion de eventos y partidos.
 
 ### 2026-02-19
 - Correccion de bug critico en planillaje de pagos:
@@ -310,14 +328,15 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
     - pendientes prioritarios (financiero, roles, eliminatorias, auditoria).
 
 ## En Curso
-- Carga de equipos reales para pruebas funcionales de sorteo -> grupos -> fixture.
+- Pruebas reales de operacion en planillaje y finanzas para cerrar ultimos bugs de consistencia contable.
 - Pulido visual final de planillaje oficial (alineaciones finas, espacios y ajustes de impresion en distintos tamanos de papel).
+- Ajustes UX finales en finanzas para pantallas pequenas (<= 1366 px) sin perder densidad de informacion.
 
 ## Pendientes Prioritarios
 - Ejecutar pruebas end-to-end con datos reales (validar que todo el flujo quede estable).
 - Consolidar autenticacion y roles (RBAC) minimo.
 - Revisar y ordenar archivos legacy/antiguos para reducir deuda tecnica.
-- Continuar modulo financiero: multas automaticas, bloqueos por morosidad y reportes de ingresos.
+- Continuar modulo financiero: sanciones/suspensiones por reglas deportivas, bloqueos por morosidad y reportes ejecutivos.
 - Ajustar detalles de UX del nuevo formulario de planilla segun retroalimentacion de operacion en campo.
 
 ## Checklist de Pruebas Siguiente Sesion

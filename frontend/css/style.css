@@ -50,13 +50,17 @@ body {
   height: 100vh;
   background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
   color: white;
-  z-index: 1000;
+  z-index: 10020;
   transition: transform 0.3s ease, width 0.3s ease;
   box-shadow: 4px 0 20px rgba(0,0,0,0.15);
   overflow-y: auto;
 }
 .sidebar.collapsed {
   transform: translateX(-100%);
+}
+
+.sidebar.nav-open {
+  transform: translateX(0);
 }
 .sidebar-header {
   padding: 1rem 1.25rem;
@@ -976,7 +980,7 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 9998;
+  z-index: 10010;
 }
 .nav-overlay.active {
   display: block;
@@ -3330,11 +3334,66 @@ body.print-solo .carnet-card {
   grid-column: 1 / -1;
 }
 
+body.page-finanzas {
+  overflow-x: hidden;
+}
+
+.page-finanzas .container {
+  max-width: 100%;
+  padding-inline: 1rem;
+}
+
+.page-finanzas .finanzas-form-card {
+  width: 100%;
+  max-width: 86rem;
+  margin: 0 auto 1rem;
+}
+
+.page-finanzas .finanzas-form-grid {
+  grid-template-columns: repeat(2, minmax(200px, 1fr));
+}
+
 .page-finanzas .finanzas-grid-resumen {
   display: grid;
-  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.page-finanzas .fin-card-estado,
+.page-finanzas .fin-card-morosidad {
+  width: 100%;
+}
+
+.page-finanzas .fin-card-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.55rem;
+}
+
+.page-finanzas .fin-card-headline h3 {
+  margin-bottom: 0;
+}
+
+.page-finanzas .fin-toggle-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  border: 1px solid #c9d8e8;
+  background: #f8fbff;
+  color: #1f3d5c;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.page-finanzas .fin-toggle-btn:hover {
+  background: #e8f2ff;
+  border-color: #8db4da;
 }
 
 .page-finanzas .fin-resumen-vacio {
@@ -3369,9 +3428,182 @@ body.print-solo .carnet-card {
   font-size: 0.8rem;
 }
 
-@media (max-width: 900px) {
+.page-finanzas .tabla-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #dbe4ef;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.page-finanzas .tabla-estadistica {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+}
+
+.page-finanzas .tabla-estadistica th,
+.page-finanzas .tabla-estadistica td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.52rem 0.55rem;
+  text-align: left;
+  font-size: 0.92rem;
+  vertical-align: top;
+}
+
+.page-finanzas .tabla-estadistica th {
+  background: #eef4fb;
+  color: #0f172a;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.page-finanzas .tabla-estadistica td.fin-col-fecha {
+  white-space: nowrap;
+  color: #334155;
+}
+
+.page-finanzas .tabla-estadistica td.fin-col-monto {
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-finanzas .tabla-estadistica td.fin-col-descripcion {
+  min-width: 220px;
+}
+
+.page-finanzas .tabla-estadistica-compacta {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.page-finanzas .tabla-estadistica-compacta th,
+.page-finanzas .tabla-estadistica-compacta td {
+  font-size: 0.82rem;
+  padding: 0.36rem 0.38rem;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.page-finanzas .tabla-estadistica-compacta td.fin-col-fecha {
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .page-finanzas .finanzas-form-card {
+    max-width: 54rem;
+  }
+
+  .page-finanzas .finanzas-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+
+  .page-finanzas .finanzas-form-grid .form-group {
+    width: 100%;
+    max-width: 19rem;
+    justify-self: center;
+  }
+
+  .page-finanzas .finanzas-form-grid .form-group.form-group-full {
+    max-width: 40rem;
+  }
+
   .page-finanzas .finanzas-grid-resumen {
     grid-template-columns: 1fr;
+  }
+
+  .page-finanzas .tabla-estadistica {
+    min-width: 760px;
+  }
+
+  .page-finanzas .tabla-estadistica th,
+  .page-finanzas .tabla-estadistica td {
+    padding: 0.42rem 0.45rem;
+    font-size: 0.84rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .page-finanzas .finanzas-form-card {
+    max-width: 46rem;
+  }
+
+  .page-finanzas .finanzas-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .page-finanzas .finanzas-form-grid .form-group {
+    max-width: 17.5rem;
+    justify-self: center;
+  }
+}
+
+@media (max-width: 900px) {
+  .page-finanzas .finanzas-form-card {
+    max-width: 42rem;
+  }
+
+  .page-finanzas .finanzas-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .page-finanzas .finanzas-form-grid .form-group {
+    max-width: 16.4rem;
+    justify-self: center;
+  }
+
+  .page-finanzas .finanzas-form-grid .form-group.form-group-full {
+    max-width: 34rem;
+  }
+
+  .page-finanzas .finanzas-grid-resumen {
+    grid-template-columns: 1fr;
+  }
+
+  .page-finanzas .tabla-estadistica {
+    min-width: 620px;
+  }
+
+  .page-finanzas .tabla-estadistica-compacta {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 780px) {
+  .page-finanzas .finanzas-form-card {
+    max-width: 92vw;
+  }
+
+  .page-finanzas .finanzas-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .page-finanzas .finanzas-form-grid .form-group {
+    max-width: 14.6rem;
+    width: 100%;
+  }
+
+  .page-finanzas .finanzas-form-grid .form-group.form-group-full {
+    max-width: 31rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-finanzas .finanzas-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-finanzas .finanzas-form-grid .form-group {
+    max-width: 30rem;
+  }
+
+  .page-finanzas .finanzas-form-grid .form-group.form-group-full {
+    max-width: 30rem;
   }
 }
 
@@ -3381,6 +3613,16 @@ body.print-solo .carnet-card {
   }
 
   .page-finanzas .tabla-estadistica {
-    min-width: 680px;
+    min-width: 540px;
+  }
+
+  .page-finanzas .tabla-estadistica th,
+  .page-finanzas .tabla-estadistica td {
+    padding: 0.34rem 0.36rem;
+    font-size: 0.78rem;
+  }
+
+  .page-finanzas .tabla-estadistica td.fin-col-descripcion {
+    min-width: 140px;
   }
 }

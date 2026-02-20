@@ -20,6 +20,12 @@ function escapeHtml(valor) {
     .replace(/'/g, "&#39;");
 }
 
+function parseMontoNoNegativo(valor, fallback = 0) {
+  const n = Number.parseFloat(String(valor ?? "").replace(",", "."));
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Number(n.toFixed(2));
+}
+
 function obtenerMetadatosCampeonato(camp) {
   const tipoFutbol = (camp.tipo_futbol || "").replace("_", " ");
   const sistema = camp.sistema_puntuacion || "tradicional";
@@ -37,6 +43,9 @@ function obtenerMetadatosCampeonato(camp) {
   const fechaFin = camp.fecha_fin || "—";
   const jugadoresMinMax = `${camp.min_jugador || "Mín"} - ${camp.max_jugador || "Máx"}`;
   const carnets = camp.genera_carnets === true || camp.genera_carnets === "true" ? "Habilitados" : "No habilitados";
+  const costoArbitraje = parseMontoNoNegativo(camp.costo_arbitraje, 0);
+  const costoTA = parseMontoNoNegativo(camp.costo_tarjeta_amarilla, 0);
+  const costoTR = parseMontoNoNegativo(camp.costo_tarjeta_roja, 0);
 
   return {
     tipoFutbol,
@@ -47,6 +56,9 @@ function obtenerMetadatosCampeonato(camp) {
     fechaFin,
     jugadoresMinMax,
     carnets,
+    costoArbitraje,
+    costoTA,
+    costoTR,
   };
 }
 
@@ -87,6 +99,7 @@ function renderCampeonatoCard(camp) {
         <p><strong>Sistema:</strong> ${escapeHtml(meta.sistema)}</p>
         <p><strong>Fechas:</strong> ${escapeHtml(meta.fechaInicio)} - ${escapeHtml(meta.fechaFin)}</p>
         <p><strong>Jugadores:</strong> ${escapeHtml(meta.jugadoresMinMax)}</p>
+        <p><strong>Costos:</strong> Arb ${meta.costoArbitraje.toFixed(2)} | TA ${meta.costoTA.toFixed(2)} | TR ${meta.costoTR.toFixed(2)}</p>
         <p><strong>Carnets:</strong> ${meta.carnets}</p>
       </div>
 
@@ -134,6 +147,7 @@ function renderTablaCampeonatos(campeonatos) {
             </select>
           </td>
           <td>${escapeHtml(meta.jugadoresMinMax)}</td>
+          <td>Arb ${meta.costoArbitraje.toFixed(2)} / TA ${meta.costoTA.toFixed(2)} / TR ${meta.costoTR.toFixed(2)}</td>
           <td>${meta.carnets}</td>
           <td class="list-table-actions">
             <button class="btn btn-primary" onclick="irAEventos(${camp.id})"><i class="fas fa-layer-group"></i> Eventos</button>
@@ -158,6 +172,7 @@ function renderTablaCampeonatos(campeonatos) {
             <th>Fechas</th>
             <th>Estado</th>
             <th>Jugadores</th>
+            <th>Costos</th>
             <th>Carnets</th>
             <th>Acciones</th>
           </tr>
@@ -261,6 +276,14 @@ function mostrarModalCrearCampeonato() {
   if (reqCedula) reqCedula.checked = false;
   if (reqCarnet) reqCarnet.checked = false;
   if (generaCarnets) generaCarnets.checked = false;
+  const costoArbitraje = document.getElementById("campeonato-costo-arbitraje");
+  const costoTA = document.getElementById("campeonato-costo-ta");
+  const costoTR = document.getElementById("campeonato-costo-tr");
+  const costoCarnet = document.getElementById("campeonato-costo-carnet");
+  if (costoArbitraje) costoArbitraje.value = "0";
+  if (costoTA) costoTA.value = "0";
+  if (costoTR) costoTR.value = "0";
+  if (costoCarnet) costoCarnet.value = "0";
 
   document.getElementById("campeonato-estado").value = "borrador";
   abrirModal("modal-campeonato");
@@ -327,6 +350,22 @@ async function editarCampeonato(id) {
       camp.requiere_foto_carnet === true || camp.requiere_foto_carnet === "true";
     document.getElementById("campeonato-genera-carnets").checked =
       camp.genera_carnets === true || camp.genera_carnets === "true";
+    document.getElementById("campeonato-costo-arbitraje").value = parseMontoNoNegativo(
+      camp.costo_arbitraje,
+      0
+    );
+    document.getElementById("campeonato-costo-ta").value = parseMontoNoNegativo(
+      camp.costo_tarjeta_amarilla,
+      0
+    );
+    document.getElementById("campeonato-costo-tr").value = parseMontoNoNegativo(
+      camp.costo_tarjeta_roja,
+      0
+    );
+    document.getElementById("campeonato-costo-carnet").value = parseMontoNoNegativo(
+      camp.costo_carnet,
+      0
+    );
 
     abrirModal("modal-campeonato");
   } catch (error) {
@@ -364,6 +403,22 @@ document
     const requiereFotoCedula = document.getElementById("campeonato-req-foto-cedula").checked;
     const requiereFotoCarnet = document.getElementById("campeonato-req-foto-carnet").checked;
     const generaCarnets = document.getElementById("campeonato-genera-carnets").checked;
+    const costoArbitraje = parseMontoNoNegativo(
+      document.getElementById("campeonato-costo-arbitraje").value,
+      0
+    );
+    const costoTarjetaAmarilla = parseMontoNoNegativo(
+      document.getElementById("campeonato-costo-ta").value,
+      0
+    );
+    const costoTarjetaRoja = parseMontoNoNegativo(
+      document.getElementById("campeonato-costo-tr").value,
+      0
+    );
+    const costoCarnet = parseMontoNoNegativo(
+      document.getElementById("campeonato-costo-carnet").value,
+      0
+    );
 
     const fileInput = document.getElementById("campeonato-logo");
     const file = fileInput.files[0];
@@ -401,6 +456,10 @@ document
     fd.append("requiere_foto_cedula", String(requiereFotoCedula));
     fd.append("requiere_foto_carnet", String(requiereFotoCarnet));
     fd.append("genera_carnets", String(generaCarnets));
+    fd.append("costo_arbitraje", String(costoArbitraje));
+    fd.append("costo_tarjeta_amarilla", String(costoTarjetaAmarilla));
+    fd.append("costo_tarjeta_roja", String(costoTarjetaRoja));
+    fd.append("costo_carnet", String(costoCarnet));
     fd.append("estado", document.getElementById("campeonato-estado").value);
 
     if (file) {

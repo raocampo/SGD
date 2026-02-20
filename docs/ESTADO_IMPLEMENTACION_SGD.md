@@ -18,7 +18,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 4 Portal publico | Alto | Portal operativo con vistas de campeonato/grupos/tablas; pendiente contenido editorial/noticias. |
 | 5 Roles y permisos (RBAC) | Pendiente | Aun sin autenticacion y perfiles de acceso. |
 | 6 Extras profesionales | Parcial | Exportaciones (PNG/PDF/XLSX) en modulos clave; pendiente notificaciones, auditoria completa y reportes ejecutivos. |
-| 7 Modulo financiero | Medio | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad. Pendiente automatizacion de multas, bloqueos por morosidad y reporteria avanzada. |
+| 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla. Pendiente reglas avanzadas de sancion/bloqueo y reporteria ejecutiva. |
 
 ## Estado Detallado del Alcance Actual
 
@@ -46,6 +46,9 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Registro de movimientos (cargo/abono).
 - Estado de cuenta por equipo.
 - Reporte de morosidad operativo.
+- Sincronizacion automatica de cargos de inscripcion por categoria/equipo.
+- Sincronizacion de planilla a finanzas (arbitraje, multas y abonos por equipo).
+- Resumen de estado de cuenta por concepto (inscripcion/arbitraje/multas) y total.
 
 ## Pendientes Prioritarios Recomendados
 
@@ -57,9 +60,9 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Flujo completo: campeonato -> evento -> equipos -> sorteo -> grupos -> fixture -> planilla -> tablas.
 
 3. Modulo financiero completo (prioridad alta):
-- Multas automaticas por reglas del torneo.
-- Bloqueos por morosidad.
-- Reportes ejecutivos de ingresos/pendientes.
+- Reglas de cobro y suspension por acumulacion de tarjetas segun tipo de futbol.
+- Bloqueos por morosidad parametrizables por campeonato/categoria.
+- Reportes ejecutivos de ingresos/pendientes con consolidado por campeonato y equipo.
 
 4. Seguridad y roles:
 - Login, sesion/JWT y perfiles (admin/organizador/arbitro/publico).

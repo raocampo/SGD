@@ -99,15 +99,27 @@
     const target = sidebar || nav;
     if (!target) return;
 
+    const SIDEBAR_MOBILE_BREAKPOINT = 1200;
     function isMobile() {
-      return window.innerWidth <= 768;
+      return window.innerWidth <= SIDEBAR_MOBILE_BREAKPOINT;
     }
     function setInitialState() {
+      if (sidebar) {
+        // Sidebar cerrado por defecto en todo el sistema.
+        sidebar.classList.add("collapsed");
+        sidebar.classList.remove("nav-open");
+        overlay.classList.remove("active");
+        return;
+      }
+
       if (isMobile()) {
         target.classList.add("collapsed");
         target.classList.remove("nav-open");
+        overlay.classList.remove("active");
       } else {
         target.classList.remove("collapsed");
+        target.classList.remove("nav-open");
+        overlay.classList.remove("active");
       }
     }
     setInitialState();

@@ -1,6 +1,7 @@
 // controllers/eventoController.js
 const pool = require("../config/database");
 let eventoEsquemaAsegurado = false;
+let eventoColumnaActualizacion = null;
 
 function pick(v, fallback = null) {
   return v === undefined ? fallback : v;
@@ -11,6 +12,32 @@ function parseTimeHHMM(value, fallback) {
   const s = String(value).trim();
   if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) return s.length === 5 ? `${s}:00` : s;
   return fallback;
+}
+
+function parseDecimalNonNegative(value, fallback = 0) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const num = Number.parseFloat(String(value).replace(",", "."));
+  if (!Number.isFinite(num) || num < 0) return fallback;
+  return Number(num.toFixed(2));
+}
+
+async function resolverColumnaActualizacionEvento() {
+  if (eventoColumnaActualizacion !== null) return eventoColumnaActualizacion;
+
+  const r = await pool.query(`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'eventos'
+      AND column_name IN ('updated_at', 'update_at')
+  `);
+
+  const cols = new Set(r.rows.map((row) => row.column_name));
+  if (cols.has("updated_at")) eventoColumnaActualizacion = "updated_at";
+  else if (cols.has("update_at")) eventoColumnaActualizacion = "update_at";
+  else eventoColumnaActualizacion = "";
+
+  return eventoColumnaActualizacion;
 }
 
 async function asegurarEsquemaEventos() {
@@ -57,6 +84,19 @@ async function asegurarEsquemaEventos() {
     CREATE INDEX IF NOT EXISTS idx_eventos_campeonato_id ON eventos(campeonato_id)
   `);
 
+  await pool.query(`
+    ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS costo_inscripcion NUMERIC(12,2) DEFAULT 0
+  `);
+
+  await pool.query(`
+    UPDATE eventos
+    SET costo_inscripcion = 0
+    WHERE costo_inscripcion IS NULL
+  `);
+
+  await resolverColumnaActualizacionEvento();
+
   eventoEsquemaAsegurado = true;
 }
 
@@ -78,6 +118,7 @@ const eventoController = {
         fecha_fin,
         modalidad,
         horarios,
+        costo_inscripcion,
       } = req.body;
 
       if (!campeonato_id || !nombre || !fecha_inicio || !fecha_fin) {
@@ -94,16 +135,18 @@ const eventoController = {
       const satEnd = parseTimeHHMM(horarios?.weekend?.sat_end, "18:00:00");
       const sunStart = parseTimeHHMM(horarios?.weekend?.sun_start, "08:00:00");
       const sunEnd = parseTimeHHMM(horarios?.weekend?.sun_end, "17:00:00");
+      const costoInscripcion = parseDecimalNonNegative(costo_inscripcion, 0);
 
       const query = `
         INSERT INTO eventos (
           campeonato_id, nombre, organizador, fecha_inicio, fecha_fin, estado,
           modalidad,
+          costo_inscripcion,
           horario_weekday_inicio, horario_weekday_fin,
           horario_sab_inicio, horario_sab_fin,
           horario_dom_inicio, horario_dom_fin
         )
-        VALUES ($1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12)
+        VALUES ($1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13)
         RETURNING *
       `;
 
@@ -114,6 +157,7 @@ const eventoController = {
         fecha_inicio,
         fecha_fin,
         mod,
+        costoInscripcion,
         wkStart,
         wkEnd,
         satStart,
@@ -208,6 +252,18 @@ const eventoController = {
 
       for (const [k, v] of Object.entries(req.body)) {
         if (k === "id") continue;
+        if (k === "costo_inscripcion") {
+          const costoParseado = parseDecimalNonNegative(v, null);
+          if (costoParseado === null) {
+            return res
+              .status(400)
+              .json({ error: "costo_inscripcion debe ser un número >= 0." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(costoParseado);
+          i++;
+          continue;
+        }
         campos.push(`${k} = $${i}`);
         valores.push(v);
         i++;
@@ -219,10 +275,15 @@ const eventoController = {
           .json({ error: "No hay campos para actualizar." });
       }
 
+      const colActualizacion = await resolverColumnaActualizacionEvento();
+      const setCampos = colActualizacion
+        ? `${campos.join(", ")}, ${colActualizacion} = CURRENT_TIMESTAMP`
+        : campos.join(", ");
+
       valores.push(id);
       const q = `
         UPDATE eventos
-        SET ${campos.join(", ")}, updated_at = CURRENT_TIMESTAMP
+        SET ${setCampos}
         WHERE id = $${i}
         RETURNING *
       `;

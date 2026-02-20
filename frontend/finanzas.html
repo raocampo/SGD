@@ -35,9 +35,9 @@
 
     <main class="main">
       <div class="container">
-        <div class="config-card">
+        <div class="config-card finanzas-form-card">
           <h3>Filtros</h3>
-          <div class="form-grid">
+          <div class="form-grid finanzas-form-grid">
             <div class="form-group">
               <label for="fin-campeonato">Campeonato</label>
               <select id="fin-campeonato">
@@ -45,7 +45,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="fin-evento">Evento</label>
+              <label for="fin-evento">Categoría</label>
               <select id="fin-evento">
                 <option value="">Todos</option>
               </select>
@@ -90,18 +90,18 @@
           </div>
         </div>
 
-        <div class="config-card">
+        <div class="config-card finanzas-form-card">
           <h3>Registrar Movimiento</h3>
           <form id="fin-form-movimiento">
-            <div class="form-grid">
+            <div class="form-grid finanzas-form-grid">
               <div class="form-group">
                 <label for="mov-campeonato">Campeonato</label>
                 <select id="mov-campeonato" required></select>
               </div>
               <div class="form-group">
-                <label for="mov-evento">Evento (opcional)</label>
+                <label for="mov-evento">Categoría (opcional)</label>
                 <select id="mov-evento">
-                  <option value="">Sin evento</option>
+                  <option value="">Sin categoría</option>
                 </select>
               </div>
               <div class="form-group">
@@ -169,19 +169,43 @@
         </div>
 
         <div class="finanzas-grid-resumen">
-          <div class="card">
-            <h3>Morosidad por Equipo</h3>
-            <div id="fin-morosidad-contenido" class="tabla-scroll"></div>
-          </div>
-          <div class="card">
+          <div class="card fin-card-estado">
             <h3>Estado de Cuenta (Equipo seleccionado)</h3>
             <div id="fin-estado-cuenta-resumen" class="fin-resumen-vacio">Selecciona un equipo para visualizar su estado de cuenta.</div>
             <div id="fin-estado-cuenta-movimientos" class="tabla-scroll"></div>
           </div>
+          <div class="card fin-card-morosidad">
+            <div class="fin-card-headline">
+              <h3>Morosidad por Equipo</h3>
+              <button
+                type="button"
+                class="fin-toggle-btn"
+                id="btn-toggle-morosidad"
+                title="Mostrar/ocultar morosidad"
+                aria-label="Mostrar u ocultar morosidad"
+                aria-expanded="true"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div id="fin-morosidad-contenido" class="tabla-scroll"></div>
+          </div>
         </div>
 
         <div class="card">
-          <h3>Movimientos Financieros</h3>
+          <div class="fin-card-headline">
+            <h3>Movimientos Financieros</h3>
+            <button
+              type="button"
+              class="fin-toggle-btn"
+              id="btn-toggle-movimientos"
+              title="Mostrar/ocultar movimientos"
+              aria-label="Mostrar u ocultar movimientos"
+              aria-expanded="true"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
           <div id="fin-movimientos-contenido" class="tabla-scroll"></div>
         </div>
       </div>

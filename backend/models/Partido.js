@@ -1,5 +1,6 @@
 // backend/models/Partido.js
 const pool = require("../config/database");
+const Finanza = require("./Finanza");
 
 // ===============================
 // Helpers (NO se redeclaran)
@@ -878,6 +879,8 @@ class Partido {
         pago_ta_visitante NUMERIC(10,2) DEFAULT 0,
         pago_tr_local NUMERIC(10,2) DEFAULT 0,
         pago_tr_visitante NUMERIC(10,2) DEFAULT 0,
+        pago_arbitraje_local NUMERIC(10,2) DEFAULT 0,
+        pago_arbitraje_visitante NUMERIC(10,2) DEFAULT 0,
         pago_arbitraje NUMERIC(10,2) DEFAULT 0,
         pago_local NUMERIC(10,2) DEFAULT 0,
         pago_visitante NUMERIC(10,2) DEFAULT 0,
@@ -894,7 +897,9 @@ class Partido {
       ADD COLUMN IF NOT EXISTS pago_ta_local NUMERIC(10,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS pago_ta_visitante NUMERIC(10,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS pago_tr_local NUMERIC(10,2) DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS pago_tr_visitante NUMERIC(10,2) DEFAULT 0
+      ADD COLUMN IF NOT EXISTS pago_tr_visitante NUMERIC(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS pago_arbitraje_local NUMERIC(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS pago_arbitraje_visitante NUMERIC(10,2) DEFAULT 0
     `);
 
     await pool.query(`
@@ -1024,13 +1029,18 @@ class Partido {
         pago_ta_visitante: Number(planilla?.pago_ta_visitante ?? planilla?.pago_ta ?? 0),
         pago_tr_local: Number(planilla?.pago_tr_local ?? planilla?.pago_tr ?? 0),
         pago_tr_visitante: Number(planilla?.pago_tr_visitante ?? planilla?.pago_tr ?? 0),
+        pago_arbitraje_local: Number(planilla?.pago_arbitraje_local ?? planilla?.pago_arbitraje ?? 0),
+        pago_arbitraje_visitante: Number(planilla?.pago_arbitraje_visitante ?? planilla?.pago_arbitraje ?? 0),
         pago_ta:
           Number(planilla?.pago_ta ?? 0) ||
           Number(planilla?.pago_ta_local ?? 0) + Number(planilla?.pago_ta_visitante ?? 0),
         pago_tr:
           Number(planilla?.pago_tr ?? 0) ||
           Number(planilla?.pago_tr_local ?? 0) + Number(planilla?.pago_tr_visitante ?? 0),
-        pago_arbitraje: Number(planilla?.pago_arbitraje || 0),
+        pago_arbitraje:
+          Number(planilla?.pago_arbitraje ?? 0) ||
+          Number(planilla?.pago_arbitraje_local ?? 0) +
+            Number(planilla?.pago_arbitraje_visitante ?? 0),
         pago_local: Number(planilla?.pago_local || 0),
         pago_visitante: Number(planilla?.pago_visitante || 0),
         observaciones: planilla?.observaciones || "",
@@ -1064,9 +1074,14 @@ class Partido {
     const pagoTaVisitante = Number.parseFloat(pagos.pago_ta_visitante ?? pagos.pago_ta ?? 0) || 0;
     const pagoTrLocal = Number.parseFloat(pagos.pago_tr_local ?? pagos.pago_tr ?? 0) || 0;
     const pagoTrVisitante = Number.parseFloat(pagos.pago_tr_visitante ?? pagos.pago_tr ?? 0) || 0;
+    const pagoArbitrajeLocal =
+      Number.parseFloat(pagos.pago_arbitraje_local ?? pagos.pago_arbitraje ?? 0) || 0;
+    const pagoArbitrajeVisitante =
+      Number.parseFloat(pagos.pago_arbitraje_visitante ?? pagos.pago_arbitraje ?? 0) || 0;
     const pagoTa = Number.parseFloat(pagos.pago_ta ?? (pagoTaLocal + pagoTaVisitante)) || 0;
     const pagoTr = Number.parseFloat(pagos.pago_tr ?? (pagoTrLocal + pagoTrVisitante)) || 0;
-    const pagoArbitraje = Number.parseFloat(pagos.pago_arbitraje ?? 0) || 0;
+    const pagoArbitraje =
+      Number.parseFloat(pagos.pago_arbitraje ?? (pagoArbitrajeLocal + pagoArbitrajeVisitante)) || 0;
     const pagoLocal = Number.parseFloat(pagos.pago_local ?? 0) || 0;
     const pagoVisitante = Number.parseFloat(pagos.pago_visitante ?? 0) || 0;
     const observaciones = (datos.observaciones || "").toString().trim();
@@ -1108,11 +1123,12 @@ class Partido {
               pago_ta, pago_tr,
               pago_ta_local, pago_ta_visitante,
               pago_tr_local, pago_tr_visitante,
+              pago_arbitraje_local, pago_arbitraje_visitante,
               pago_arbitraje, pago_local, pago_visitante,
               observaciones, updated_at
             )
           VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
           ON CONFLICT (partido_id)
           DO UPDATE SET
             pago_ta = EXCLUDED.pago_ta,
@@ -1121,6 +1137,8 @@ class Partido {
             pago_ta_visitante = EXCLUDED.pago_ta_visitante,
             pago_tr_local = EXCLUDED.pago_tr_local,
             pago_tr_visitante = EXCLUDED.pago_tr_visitante,
+            pago_arbitraje_local = EXCLUDED.pago_arbitraje_local,
+            pago_arbitraje_visitante = EXCLUDED.pago_arbitraje_visitante,
             pago_arbitraje = EXCLUDED.pago_arbitraje,
             pago_local = EXCLUDED.pago_local,
             pago_visitante = EXCLUDED.pago_visitante,
@@ -1135,6 +1153,8 @@ class Partido {
           pagoTaVisitante,
           pagoTrLocal,
           pagoTrVisitante,
+          pagoArbitrajeLocal,
+          pagoArbitrajeVisitante,
           pagoArbitraje,
           pagoLocal,
           pagoVisitante,
@@ -1185,6 +1205,17 @@ class Partido {
         );
       }
 
+      await this.sincronizarFinanzasPlanilla(client, partido, {
+        pagoLocal,
+        pagoVisitante,
+        pagoArbitrajeLocal,
+        pagoArbitrajeVisitante,
+        pagoTaLocal,
+        pagoTaVisitante,
+        pagoTrLocal,
+        pagoTrVisitante,
+      });
+
       await client.query("COMMIT");
       return this.obtenerPlanilla(partido_id);
     } catch (error) {
@@ -1192,6 +1223,282 @@ class Partido {
       throw error;
     } finally {
       client.release();
+    }
+  }
+
+  static async sincronizarFinanzasPlanilla(client, partido, montos = {}) {
+    await Finanza.asegurarEsquema(client);
+
+    const partidoId = Number(partido?.id);
+    if (!Number.isFinite(partidoId) || partidoId <= 0) return;
+
+    const campeonatoId = Number(partido?.campeonato_id);
+    if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) return;
+    const eventoIdRaw = Number(partido?.evento_id);
+    const eventoId = Number.isFinite(eventoIdRaw) && eventoIdRaw > 0 ? eventoIdRaw : null;
+    const equipoLocalId = Number(partido?.equipo_local_id);
+    const equipoVisitanteId = Number(partido?.equipo_visitante_id);
+
+    const keyPrefix = `planilla:${partidoId}:`;
+    await client.query(
+      `
+        DELETE FROM finanzas_movimientos
+        WHERE partido_id = $1
+          AND origen = 'planilla'
+          AND origen_clave LIKE $2
+      `,
+      [partidoId, `${keyPrefix}%`]
+    );
+
+    const valorPositivo = (v) => {
+      const n = Number.parseFloat(v);
+      if (!Number.isFinite(n) || n <= 0) return 0;
+      return Number(n.toFixed(2));
+    };
+
+    const costosR = await client.query(
+      `
+        SELECT
+          COALESCE(costo_arbitraje, 0)::numeric(12,2) AS costo_arbitraje,
+          COALESCE(costo_tarjeta_amarilla, 0)::numeric(12,2) AS costo_tarjeta_amarilla,
+          COALESCE(costo_tarjeta_roja, 0)::numeric(12,2) AS costo_tarjeta_roja
+        FROM campeonatos
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [campeonatoId]
+    );
+    const costos = costosR.rows[0] || {};
+    const costoArbitraje = valorPositivo(costos.costo_arbitraje);
+    const costoTarjetaAmarilla = valorPositivo(costos.costo_tarjeta_amarilla);
+    const costoTarjetaRoja = valorPositivo(costos.costo_tarjeta_roja);
+
+    const tarjetasR = await client.query(
+      `
+        SELECT
+          equipo_id,
+          COALESCE(SUM(CASE WHEN LOWER(tipo_tarjeta) = 'amarilla' THEN 1 ELSE 0 END), 0)::int AS amarillas,
+          COALESCE(SUM(CASE WHEN LOWER(tipo_tarjeta) = 'roja' THEN 1 ELSE 0 END), 0)::int AS rojas
+        FROM tarjetas
+        WHERE partido_id = $1
+        GROUP BY equipo_id
+      `,
+      [partidoId]
+    );
+    const tarjetasPorEquipo = new Map(
+      tarjetasR.rows.map((row) => [
+        Number.parseInt(row.equipo_id, 10),
+        {
+          amarillas: Number.parseInt(row.amarillas, 10) || 0,
+          rojas: Number.parseInt(row.rojas, 10) || 0,
+        },
+      ])
+    );
+
+    const tarjetasLocal = tarjetasPorEquipo.get(equipoLocalId) || {
+      amarillas: 0,
+      rojas: 0,
+    };
+    const tarjetasVisitante = tarjetasPorEquipo.get(equipoVisitanteId) || {
+      amarillas: 0,
+      rojas: 0,
+    };
+
+    const cargoArbitrajeLocal = valorPositivo(costoArbitraje);
+    const cargoArbitrajeVisitante = valorPositivo(costoArbitraje);
+    const cargoTaLocal = valorPositivo(tarjetasLocal.amarillas * costoTarjetaAmarilla);
+    const cargoTaVisitante = valorPositivo(
+      tarjetasVisitante.amarillas * costoTarjetaAmarilla
+    );
+    const cargoTrLocal = valorPositivo(tarjetasLocal.rojas * costoTarjetaRoja);
+    const cargoTrVisitante = valorPositivo(tarjetasVisitante.rojas * costoTarjetaRoja);
+
+    const movimientos = [
+      {
+        tipo_movimiento: "cargo",
+        estado: "pendiente",
+        equipo_id: equipoLocalId,
+        monto: cargoArbitrajeLocal,
+        concepto: "arbitraje",
+        descripcion: "Cargo arbitraje por partido",
+        origen_clave: `${keyPrefix}cargo:arbitraje:local`,
+      },
+      {
+        tipo_movimiento: "cargo",
+        estado: "pendiente",
+        equipo_id: equipoVisitanteId,
+        monto: cargoArbitrajeVisitante,
+        concepto: "arbitraje",
+        descripcion: "Cargo arbitraje por partido",
+        origen_clave: `${keyPrefix}cargo:arbitraje:visitante`,
+      },
+      {
+        tipo_movimiento: "cargo",
+        estado: "pendiente",
+        equipo_id: equipoLocalId,
+        monto: cargoTaLocal,
+        concepto: "multa",
+        descripcion: "Cargo por tarjetas amarillas",
+        origen_clave: `${keyPrefix}cargo:ta:local`,
+      },
+      {
+        tipo_movimiento: "cargo",
+        estado: "pendiente",
+        equipo_id: equipoVisitanteId,
+        monto: cargoTaVisitante,
+        concepto: "multa",
+        descripcion: "Cargo por tarjetas amarillas",
+        origen_clave: `${keyPrefix}cargo:ta:visitante`,
+      },
+      {
+        tipo_movimiento: "cargo",
+        estado: "pendiente",
+        equipo_id: equipoLocalId,
+        monto: cargoTrLocal,
+        concepto: "multa",
+        descripcion: "Cargo por tarjetas rojas",
+        origen_clave: `${keyPrefix}cargo:tr:local`,
+      },
+      {
+        tipo_movimiento: "cargo",
+        estado: "pendiente",
+        equipo_id: equipoVisitanteId,
+        monto: cargoTrVisitante,
+        concepto: "multa",
+        descripcion: "Cargo por tarjetas rojas",
+        origen_clave: `${keyPrefix}cargo:tr:visitante`,
+      },
+      {
+        tipo_movimiento: "abono",
+        estado: "pagado",
+        equipo_id: equipoLocalId,
+        monto: valorPositivo(montos.pagoLocal),
+        concepto: "inscripcion",
+        descripcion: "Pago inscripción (planilla de partido)",
+        origen_clave: `${keyPrefix}abono:inscripcion:local`,
+      },
+      {
+        tipo_movimiento: "abono",
+        estado: "pagado",
+        equipo_id: equipoVisitanteId,
+        monto: valorPositivo(montos.pagoVisitante),
+        concepto: "inscripcion",
+        descripcion: "Pago inscripción (planilla de partido)",
+        origen_clave: `${keyPrefix}abono:inscripcion:visitante`,
+      },
+      {
+        tipo_movimiento: "abono",
+        estado: "pagado",
+        equipo_id: equipoLocalId,
+        monto: valorPositivo(montos.pagoArbitrajeLocal),
+        concepto: "arbitraje",
+        descripcion: "Pago arbitraje (planilla de partido)",
+        origen_clave: `${keyPrefix}abono:arbitraje:local`,
+      },
+      {
+        tipo_movimiento: "abono",
+        estado: "pagado",
+        equipo_id: equipoVisitanteId,
+        monto: valorPositivo(montos.pagoArbitrajeVisitante),
+        concepto: "arbitraje",
+        descripcion: "Pago arbitraje (planilla de partido)",
+        origen_clave: `${keyPrefix}abono:arbitraje:visitante`,
+      },
+      {
+        tipo_movimiento: "abono",
+        estado: "pagado",
+        equipo_id: equipoLocalId,
+        monto: valorPositivo(montos.pagoTaLocal),
+        concepto: "multa",
+        descripcion: "Pago tarjetas amarillas (planilla de partido)",
+        origen_clave: `${keyPrefix}abono:ta:local`,
+      },
+      {
+        tipo_movimiento: "abono",
+        estado: "pagado",
+        equipo_id: equipoVisitanteId,
+        monto: valorPositivo(montos.pagoTaVisitante),
+        concepto: "multa",
+        descripcion: "Pago tarjetas amarillas (planilla de partido)",
+        origen_clave: `${keyPrefix}abono:ta:visitante`,
+      },
+      {
+        tipo_movimiento: "abono",
+        estado: "pagado",
+        equipo_id: equipoLocalId,
+        monto: valorPositivo(montos.pagoTrLocal),
+        concepto: "multa",
+        descripcion: "Pago tarjetas rojas (planilla de partido)",
+        origen_clave: `${keyPrefix}abono:tr:local`,
+      },
+      {
+        tipo_movimiento: "abono",
+        estado: "pagado",
+        equipo_id: equipoVisitanteId,
+        monto: valorPositivo(montos.pagoTrVisitante),
+        concepto: "multa",
+        descripcion: "Pago tarjetas rojas (planilla de partido)",
+        origen_clave: `${keyPrefix}abono:tr:visitante`,
+      },
+    ];
+
+    for (const mov of movimientos) {
+      if (!Number.isFinite(Number(mov.equipo_id)) || Number(mov.equipo_id) <= 0) continue;
+      if (mov.monto <= 0) continue;
+
+      await client.query(
+        `
+          INSERT INTO finanzas_movimientos (
+            campeonato_id,
+            evento_id,
+            equipo_id,
+            partido_id,
+            tipo_movimiento,
+            concepto,
+            descripcion,
+            monto,
+            estado,
+            fecha_movimiento,
+            metodo_pago,
+            referencia,
+            origen,
+            origen_clave
+          )
+          VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_DATE,
+            'planilla', $10, 'planilla', $11
+          )
+          ON CONFLICT (origen_clave)
+          DO UPDATE SET
+            campeonato_id = EXCLUDED.campeonato_id,
+            evento_id = EXCLUDED.evento_id,
+            equipo_id = EXCLUDED.equipo_id,
+            partido_id = EXCLUDED.partido_id,
+            tipo_movimiento = EXCLUDED.tipo_movimiento,
+            concepto = EXCLUDED.concepto,
+            descripcion = EXCLUDED.descripcion,
+            monto = EXCLUDED.monto,
+            estado = EXCLUDED.estado,
+            fecha_movimiento = EXCLUDED.fecha_movimiento,
+            metodo_pago = EXCLUDED.metodo_pago,
+            referencia = EXCLUDED.referencia,
+            origen = EXCLUDED.origen,
+            updated_at = CURRENT_TIMESTAMP
+        `,
+        [
+          campeonatoId,
+          eventoId,
+          mov.equipo_id,
+          partidoId,
+          mov.tipo_movimiento,
+          mov.concepto,
+          mov.descripcion,
+          mov.monto,
+          mov.estado,
+          `PARTIDO-${partidoId}`,
+          mov.origen_clave,
+        ]
+      );
     }
   }
 }

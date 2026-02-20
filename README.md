@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-02-20): funcional en flujo principal con pendientes de cierre en RBAC, eliminatorias completas y financiero avanzado.
+Estado del proyecto (2026-02-20): funcional en flujo principal con pendientes de cierre en RBAC, eliminatorias completas y reglas financieras avanzadas.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -29,6 +29,20 @@ Flujo principal operativo:
 5. Generar fixture.
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
+
+## Novedades Recientes (2026-02-20)
+- Sidebar administrativo unificado: inicia contraido por defecto y se corrigio la superposicion con overlay en movil.
+- Finanzas:
+  - estado de cuenta, morosidad y movimientos mejorados para responsive,
+  - toggles por seccion para reducir scroll en pantallas pequenas,
+  - estado de cuenta con resumen por concepto (inscripcion/arbitraje/multas),
+  - sincronizacion automatica de cargos de inscripcion por categoria/equipo.
+- Planilla -> Finanzas:
+  - registro de arbitraje y multas por equipo,
+  - abonos desde planilla aplicados a la cuenta corriente del equipo.
+- Configuracion economica extendida:
+  - campeonato con costos base (`costo_arbitraje`, `costo_tarjeta_amarilla`, `costo_tarjeta_roja`, `costo_carnet`),
+  - categoria/evento con `costo_inscripcion`.
 
 ## 2. Arquitectura
 - Backend: Node.js + Express + PostgreSQL.
@@ -148,7 +162,7 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 - Planillaje oficial: alto (en pulido UX final)
 - Tablas/estadisticas: medio-alto
 - Portal publico: alto
-- Finanzas: medio
+- Finanzas: medio-alto
 - RBAC/seguridad: pendiente
 
 ## 9. Documentacion del Proyecto

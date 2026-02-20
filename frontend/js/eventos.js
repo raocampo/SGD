@@ -4,6 +4,10 @@ let campeonatoSeleccionado = null;
 let eventosCache = [];
 let vistaEventos = localStorage.getItem("sgd_vista_eventos") || "cards";
 vistaEventos = vistaEventos === "table" ? "table" : "cards";
+const formatoMoneda = new Intl.NumberFormat("es-EC", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 function escapeHtml(valor) {
   return String(valor ?? "")
@@ -12,6 +16,19 @@ function escapeHtml(valor) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function normalizarCostoInscripcion(valor, fallback = null) {
+  if (valor === null || valor === undefined || valor === "") return fallback;
+  const numero = Number.parseFloat(String(valor).replace(",", "."));
+  if (!Number.isFinite(numero) || numero < 0) return fallback;
+  return Number(numero.toFixed(2));
+}
+
+function formatearCostoInscripcion(valor) {
+  const numero = Number.parseFloat(valor);
+  if (!Number.isFinite(numero)) return "$0.00";
+  return `$${formatoMoneda.format(numero)}`;
 }
 
 function actualizarBotonesVistaEventos() {
@@ -105,7 +122,7 @@ function renderListadoEventos() {
     cont.innerHTML = `
       <div class="empty-state">
         <i class="fas fa-layer-group"></i>
-        <p>No hay eventos/categorías creadas en este campeonato.</p>
+        <p>No hay categorías creadas en este campeonato.</p>
       </div>`;
     return;
   }
@@ -128,6 +145,7 @@ function renderEventoCard(e) {
       </div>
       <div class="campeonato-info">
         <p><strong>Modalidad:</strong> ${escapeHtml(e.modalidad || "-")}</p>
+        <p><strong>Costo inscripción:</strong> ${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</p>
         <p><strong>Fechas:</strong> ${escapeHtml(e.fecha_inicio || "-")} - ${escapeHtml(e.fecha_fin || "-")}</p>
       </div>
       <div class="campeonato-actions">
@@ -153,6 +171,7 @@ function renderTablaEventos(eventos) {
           <td>${index + 1}</td>
           <td>${escapeHtml(e.nombre || "—")}</td>
           <td>${escapeHtml(e.modalidad || "-")}</td>
+          <td>${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</td>
           <td>${escapeHtml(e.fecha_inicio || "-")}</td>
           <td>${escapeHtml(e.fecha_fin || "-")}</td>
           <td class="list-table-actions">
@@ -177,8 +196,9 @@ function renderTablaEventos(eventos) {
         <thead>
           <tr>
             <th>#</th>
-            <th>Evento / Categoría</th>
+            <th>Categoría</th>
             <th>Modalidad</th>
+            <th>Costo inscripción</th>
             <th>Fecha inicio</th>
             <th>Fecha fin</th>
             <th>Acciones</th>
@@ -206,6 +226,10 @@ async function crearEvento() {
   const modalidad = document.getElementById("evt-modalidad").value;
   const fecha_inicio = document.getElementById("evt-fecha-inicio").value;
   const fecha_fin = document.getElementById("evt-fecha-fin").value;
+  const costo_inscripcion = normalizarCostoInscripcion(
+    document.getElementById("evt-costo-inscripcion").value,
+    0
+  );
 
   if (!nombre || !fecha_inicio || !fecha_fin) {
     mostrarNotificacion("Completa nombre + fechas", "warning");
@@ -213,41 +237,65 @@ async function crearEvento() {
   }
 
   try {
-    await EventosAPI.crear({ campeonato_id: campeonatoSeleccionado, nombre, modalidad, fecha_inicio, fecha_fin });
-    mostrarNotificacion("Evento creado", "success");
+    await EventosAPI.crear({
+      campeonato_id: campeonatoSeleccionado,
+      nombre,
+      modalidad,
+      fecha_inicio,
+      fecha_fin,
+      costo_inscripcion,
+    });
+    mostrarNotificacion("Categoría creada", "success");
     document.getElementById("evt-nombre").value = "";
+    document.getElementById("evt-costo-inscripcion").value = "";
     await cargarEventos();
   } catch (err) {
     console.error(err);
-    mostrarNotificacion(err.message || "Error creando evento", "error");
+    mostrarNotificacion(err.message || "Error creando categoría", "error");
   }
 }
 
 async function eliminarEvento(id) {
-  if (!confirm("¿Eliminar este evento/categoría?")) return;
+  if (!confirm("¿Eliminar esta categoría?")) return;
 
   try {
     await EventosAPI.eliminar(id);
-    mostrarNotificacion("Evento eliminado", "success");
+    mostrarNotificacion("Categoría eliminada", "success");
     await cargarEventos();
   } catch (err) {
     console.error(err);
-    mostrarNotificacion("Error eliminando evento", "error");
+    mostrarNotificacion("Error eliminando categoría", "error");
   }
 }
 
 // (opcional) editar rápido por prompt
 async function editarEvento(id) {
-  const nuevoNombre = prompt("Nuevo nombre del evento:", "");
+  const evento = eventosCache.find((item) => Number(item.id) === Number(id));
+  const nuevoNombre = prompt(
+    "Nuevo nombre de la categoría:",
+    evento?.nombre || ""
+  );
   if (!nuevoNombre) return;
+  const costoActual = normalizarCostoInscripcion(evento?.costo_inscripcion, 0);
+  const nuevoCosto = prompt(
+    "Costo de inscripción (ej: 35.00):",
+    String(costoActual ?? 0)
+  );
+  const costo_inscripcion = normalizarCostoInscripcion(nuevoCosto, null);
+  if (nuevoCosto !== null && costo_inscripcion === null) {
+    mostrarNotificacion("Costo inválido. Usa solo números.", "warning");
+    return;
+  }
 
   try {
-    await EventosAPI.actualizar(id, { nombre: nuevoNombre });
-    mostrarNotificacion("Evento actualizado", "success");
+    const payload = { nombre: nuevoNombre };
+    if (costo_inscripcion !== null) payload.costo_inscripcion = costo_inscripcion;
+    await EventosAPI.actualizar(id, payload);
+    mostrarNotificacion("Categoría actualizada", "success");
     await cargarEventos();
   } catch (err) {
     console.error(err);
-    mostrarNotificacion("Error actualizando evento", "error");
+    mostrarNotificacion("Error actualizando categoría", "error");
   }
 }
 

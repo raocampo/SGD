@@ -130,6 +130,189 @@ class Finanza {
     return Number(r.rows[0].campeonato_id);
   }
 
+  static async obtenerCampeonatosConCostoInscripcion(client = pool) {
+    const r = await client.query(`
+      SELECT DISTINCT campeonato_id
+      FROM eventos
+      WHERE COALESCE(costo_inscripcion, 0) > 0
+    `);
+    return r.rows
+      .map((row) => Number.parseInt(row.campeonato_id, 10))
+      .filter((id) => Number.isFinite(id) && id > 0);
+  }
+
+  static async sincronizarCargosInscripcionCampeonato(campeonato_id, client = pool) {
+    const campeonatoId = this.parseEntero(campeonato_id, "campeonato_id");
+
+    const eventosR = await client.query(
+      `
+        SELECT id, COALESCE(costo_inscripcion, 0)::numeric(12,2) AS costo_inscripcion
+        FROM eventos
+        WHERE campeonato_id = $1
+      `,
+      [campeonatoId]
+    );
+
+    const clavesVigentes = [];
+
+    for (const ev of eventosR.rows) {
+      const eventoId = Number.parseInt(ev.id, 10);
+      const costo = Number.parseFloat(ev.costo_inscripcion || 0);
+      if (!Number.isFinite(eventoId) || eventoId <= 0) continue;
+      if (!Number.isFinite(costo) || costo <= 0) continue;
+
+      let equiposR;
+      try {
+        equiposR = await client.query(
+          `
+            SELECT DISTINCT x.equipo_id
+            FROM (
+              SELECT ee.equipo_id
+              FROM evento_equipos ee
+              WHERE ee.evento_id = $1
+              UNION
+              SELECT p.equipo_local_id AS equipo_id
+              FROM partidos p
+              WHERE p.evento_id = $1
+              UNION
+              SELECT p.equipo_visitante_id AS equipo_id
+              FROM partidos p
+              WHERE p.evento_id = $1
+            ) x
+            JOIN equipos e ON e.id = x.equipo_id
+            WHERE x.equipo_id IS NOT NULL
+              AND e.campeonato_id = $2
+          `,
+          [eventoId, campeonatoId]
+        );
+      } catch (error) {
+        const msg = String(error?.message || "").toLowerCase();
+        if (!msg.includes("evento_equipos")) throw error;
+        equiposR = await client.query(
+          `
+            SELECT DISTINCT x.equipo_id
+            FROM (
+              SELECT p.equipo_local_id AS equipo_id
+              FROM partidos p
+              WHERE p.evento_id = $1
+              UNION
+              SELECT p.equipo_visitante_id AS equipo_id
+              FROM partidos p
+              WHERE p.evento_id = $1
+            ) x
+            JOIN equipos e ON e.id = x.equipo_id
+            WHERE x.equipo_id IS NOT NULL
+              AND e.campeonato_id = $2
+          `,
+          [eventoId, campeonatoId]
+        );
+      }
+
+      for (const eq of equiposR.rows) {
+        const equipoId = Number.parseInt(eq.equipo_id, 10);
+        if (!Number.isFinite(equipoId) || equipoId <= 0) continue;
+        const origenClave = `inscripcion:evento:${eventoId}:equipo:${equipoId}`;
+        clavesVigentes.push(origenClave);
+
+        await client.query(
+          `
+            INSERT INTO finanzas_movimientos (
+              campeonato_id,
+              evento_id,
+              equipo_id,
+              tipo_movimiento,
+              concepto,
+              descripcion,
+              monto,
+              estado,
+              fecha_movimiento,
+              referencia,
+              origen,
+              origen_clave
+            )
+            VALUES (
+              $1, $2, $3, 'cargo', 'inscripcion',
+              'Cargo inscripción de categoría',
+              $4, 'pendiente', CURRENT_DATE,
+              $5, 'sistema', $6
+            )
+            ON CONFLICT (origen_clave)
+            DO UPDATE SET
+              campeonato_id = EXCLUDED.campeonato_id,
+              evento_id = EXCLUDED.evento_id,
+              equipo_id = EXCLUDED.equipo_id,
+              tipo_movimiento = EXCLUDED.tipo_movimiento,
+              concepto = EXCLUDED.concepto,
+              descripcion = EXCLUDED.descripcion,
+              monto = EXCLUDED.monto,
+              fecha_movimiento = EXCLUDED.fecha_movimiento,
+              referencia = EXCLUDED.referencia,
+              origen = EXCLUDED.origen,
+              updated_at = CURRENT_TIMESTAMP
+          `,
+          [
+            campeonatoId,
+            eventoId,
+            equipoId,
+            Number(costo.toFixed(2)),
+            `INSCRIPCION-E${eventoId}-EQ${equipoId}`,
+            origenClave,
+          ]
+        );
+      }
+    }
+
+    if (clavesVigentes.length) {
+      await client.query(
+        `
+          DELETE FROM finanzas_movimientos fm
+          WHERE fm.campeonato_id = $1
+            AND fm.origen = 'sistema'
+            AND fm.tipo_movimiento = 'cargo'
+            AND fm.concepto = 'inscripcion'
+            AND fm.origen_clave LIKE 'inscripcion:evento:%'
+            AND NOT (fm.origen_clave = ANY($2::text[]))
+        `,
+        [campeonatoId, clavesVigentes]
+      );
+    } else {
+      await client.query(
+        `
+          DELETE FROM finanzas_movimientos fm
+          WHERE fm.campeonato_id = $1
+            AND fm.origen = 'sistema'
+            AND fm.tipo_movimiento = 'cargo'
+            AND fm.concepto = 'inscripcion'
+            AND fm.origen_clave LIKE 'inscripcion:evento:%'
+        `,
+        [campeonatoId]
+      );
+    }
+  }
+
+  static async sincronizarCargosInscripcion(filtros = {}, client = pool) {
+    const campeonatos = new Set();
+
+    if (filtros.campeonato_id) {
+      campeonatos.add(this.parseEntero(filtros.campeonato_id, "campeonato_id"));
+    }
+
+    if (filtros.equipo_id) {
+      const equipoId = this.parseEntero(filtros.equipo_id, "equipo_id");
+      const campeonatoId = await this.resolverCampeonatoIdPorEquipo(equipoId, client);
+      campeonatos.add(campeonatoId);
+    }
+
+    if (campeonatos.size === 0) {
+      const ids = await this.obtenerCampeonatosConCostoInscripcion(client);
+      ids.forEach((id) => campeonatos.add(id));
+    }
+
+    for (const campeonatoId of campeonatos) {
+      await this.sincronizarCargosInscripcionCampeonato(campeonatoId, client);
+    }
+  }
+
   static async crearMovimiento(data = {}, client = pool) {
     await this.asegurarEsquema(client);
 
@@ -219,6 +402,7 @@ class Finanza {
 
   static async listarMovimientos(filtros = {}) {
     await this.asegurarEsquema();
+    await this.sincronizarCargosInscripcion(filtros, pool);
 
     const where = [];
     const values = [];
@@ -250,6 +434,12 @@ class Finanza {
     if (filtros.hasta) {
       where.push(`fm.fecha_movimiento <= $${i++}`);
       values.push(this.parseFecha(filtros.hasta, "hasta"));
+    }
+
+    const incluirSistema =
+      String(filtros.incluir_sistema || "").trim().toLowerCase() === "true";
+    if (!incluirSistema) {
+      where.push(`fm.origen <> 'sistema'`);
     }
 
     const limitRaw = Number.parseInt(filtros.limit ?? filtros.limite ?? 200, 10);
@@ -291,6 +481,14 @@ class Finanza {
     );
     if (!eqR.rows.length) throw new Error("Equipo no encontrado");
 
+    await this.sincronizarCargosInscripcion(
+      {
+        campeonato_id: filtros.campeonato_id || eqR.rows[0].campeonato_id,
+        equipo_id: eqId,
+      },
+      pool
+    );
+
     const where = ["equipo_id = $1"];
     const whereFm = ["fm.equipo_id = $1"];
     const values = [eqId];
@@ -313,6 +511,12 @@ class Finanza {
       SELECT
         COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS total_cargos,
         COALESCE(SUM(CASE WHEN tipo_movimiento = 'abono' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS total_abonos,
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' AND concepto = 'inscripcion' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS cargos_inscripcion,
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'abono' AND concepto = 'inscripcion' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS abonos_inscripcion,
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' AND concepto = 'arbitraje' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS cargos_arbitraje,
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'abono' AND concepto = 'arbitraje' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS abonos_arbitraje,
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' AND concepto = 'multa' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS cargos_multa,
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'abono' AND concepto = 'multa' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS abonos_multa,
         COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' AND estado IN ('pendiente','parcial','vencido') THEN monto ELSE 0 END), 0)::numeric(12,2) AS cargos_pendientes,
         COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' AND estado IN ('pendiente','parcial','vencido') AND fecha_vencimiento IS NOT NULL AND fecha_vencimiento < CURRENT_DATE THEN monto ELSE 0 END), 0)::numeric(12,2) AS cargos_vencidos
       FROM finanzas_movimientos
@@ -335,6 +539,15 @@ class Finanza {
     const totalCargos = Number(resumenRaw.total_cargos || 0);
     const totalAbonos = Number(resumenRaw.total_abonos || 0);
     const saldo = Number((totalCargos - totalAbonos).toFixed(2));
+    const cargosInscripcion = Number(resumenRaw.cargos_inscripcion || 0);
+    const abonosInscripcion = Number(resumenRaw.abonos_inscripcion || 0);
+    const saldoInscripcion = Number((cargosInscripcion - abonosInscripcion).toFixed(2));
+    const cargosArbitraje = Number(resumenRaw.cargos_arbitraje || 0);
+    const abonosArbitraje = Number(resumenRaw.abonos_arbitraje || 0);
+    const saldoArbitraje = Number((cargosArbitraje - abonosArbitraje).toFixed(2));
+    const cargosMulta = Number(resumenRaw.cargos_multa || 0);
+    const abonosMulta = Number(resumenRaw.abonos_multa || 0);
+    const saldoMulta = Number((cargosMulta - abonosMulta).toFixed(2));
 
     return {
       equipo: eqR.rows[0],
@@ -342,6 +555,15 @@ class Finanza {
         total_cargos: totalCargos,
         total_abonos: totalAbonos,
         saldo,
+        cargos_inscripcion: cargosInscripcion,
+        abonos_inscripcion: abonosInscripcion,
+        saldo_inscripcion: saldoInscripcion,
+        cargos_arbitraje: cargosArbitraje,
+        abonos_arbitraje: abonosArbitraje,
+        saldo_arbitraje: saldoArbitraje,
+        cargos_multa: cargosMulta,
+        abonos_multa: abonosMulta,
+        saldo_multa: saldoMulta,
         cargos_pendientes: Number(resumenRaw.cargos_pendientes || 0),
         cargos_vencidos: Number(resumenRaw.cargos_vencidos || 0),
         estado: saldo > 0 ? "deudor" : "al_dia",
@@ -352,6 +574,7 @@ class Finanza {
 
   static async obtenerMorosidad(filtros = {}) {
     await this.asegurarEsquema();
+    await this.sincronizarCargosInscripcion(filtros, pool);
 
     const where = [];
     const values = [];
