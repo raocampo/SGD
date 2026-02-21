@@ -4,10 +4,15 @@ let campeonatoId = null;
 let campeonatoActual = null;
 let eventoIdSeleccionado = null;
 let totalEquiposInscritos = 0;
+let totalEquiposCampeonato = 0;
 let equiposCache = [];
 let equipoEditandoId = null;
 let vistaEquipos = localStorage.getItem("sgd_vista_equipos") || "cards";
 vistaEquipos = vistaEquipos === "table" ? "table" : "cards";
+
+function usuarioEsTecnico() {
+  return !!window.Auth?.isTecnico?.();
+}
 
 function escapeHtml(valor) {
   return String(valor ?? "")
@@ -46,6 +51,7 @@ function cambiarVistaEquipos(vista = "cards") {
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("equipos.html")) return;
+  aplicarPermisosEquiposUI();
   actualizarBotonesVistaEquipos();
 
   // Parámetros URL (si viene desde Categorías)
@@ -70,6 +76,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     await cargarEquipos();
   }
 });
+
+function aplicarPermisosEquiposUI() {
+  if (!usuarioEsTecnico()) return;
+
+  const btnNuevo = document.querySelector('button[onclick="mostrarModalCrearEquipo()"]');
+  if (btnNuevo) btnNuevo.style.display = "none";
+
+  const btnSorteo = document.querySelector('button[onclick="irASorteo()"]');
+  if (btnSorteo) btnSorteo.style.display = "none";
+
+  const btnVolverCategorias = document.querySelector('button[onclick="window.location.href=\'eventos.html\'"]');
+  if (btnVolverCategorias) {
+    btnVolverCategorias.innerHTML = '<i class="fas fa-arrow-left"></i> Volver a Mi Portal';
+    btnVolverCategorias.onclick = () => {
+      window.location.href = "portal-tecnico.html";
+    };
+  }
+}
 
 // ======================
 // Cargar campeonatos en el select
@@ -139,6 +163,13 @@ async function cargarInfoContexto() {
       eventoIdSeleccionado && selectEvento
         ? selectEvento.options[selectEvento.selectedIndex]?.textContent || "No seleccionada"
         : "No seleccionada";
+    const resumenEquipos = eventoIdSeleccionado
+      ? `
+        <p><strong>Equipos activos en categoría:</strong> ${totalEquiposInscritos}</p>
+        <p><strong>Equipos creados en campeonato:</strong> ${totalEquiposCampeonato}</p>
+      `
+      : `<p><strong>Equipos creados en campeonato:</strong> ${totalEquiposCampeonato}</p>`;
+
     cont.style.display = "block";
     cont.innerHTML = `
       <h3>${campeonatoActual.nombre || "Campeonato"}</h3>
@@ -146,7 +177,7 @@ async function cargarInfoContexto() {
       <p><strong>Fútbol:</strong> ${(campeonatoActual.tipo_futbol || "N/A").replace("_", " ")}</p>
       <p><strong>Sistema:</strong> ${campeonatoActual.sistema_puntuacion || "N/A"}</p>
       <p><strong>Jugadores por equipo:</strong> ${campeonatoActual.min_jugador || "?"} - ${campeonatoActual.max_jugador || "?"}</p>
-      <p><strong>Equipos inscritos:</strong> ${totalEquiposInscritos}</p>
+      ${resumenEquipos}
       <p><strong>Estado:</strong> ${campeonatoActual.estado || "planificación"}</p>
     `;
   } catch (err) {
@@ -164,6 +195,8 @@ async function cargarEquipos() {
 
   if (!campeonatoId) {
     mostrarNotificacion("Selecciona un campeonato", "warning");
+    totalEquiposCampeonato = 0;
+    totalEquiposInscritos = 0;
     equiposCache = [];
     return;
   }
@@ -173,7 +206,9 @@ async function cargarEquipos() {
 
   try {
     const data = await window.ApiClient.get(`/equipos/campeonato/${campeonatoId}`);
-    let equipos = Array.isArray(data) ? data : (data.equipos || data.data || []);
+    const equiposCampeonato = Array.isArray(data) ? data : (data.equipos || data.data || []);
+    totalEquiposCampeonato = equiposCampeonato.length;
+    let equipos = [...equiposCampeonato];
 
     if (eventoIdSeleccionado) {
       try {
@@ -182,6 +217,8 @@ async function cargarEquipos() {
         equipos = equipos.filter((e) => idsEvento.has(e.id));
       } catch (errorcategoría) {
         console.warn("No se pudo filtrar equipos por categoría:", errorcategoría);
+        mostrarNotificacion("No se pudo cargar equipos activos de la categoría", "warning");
+        equipos = [];
       }
     }
 
@@ -193,6 +230,8 @@ async function cargarEquipos() {
   } catch (error) {
     console.error("Error cargando equipos:", error);
     mostrarNotificacion("Error cargando equipos", "error");
+    totalEquiposCampeonato = 0;
+    totalEquiposInscritos = 0;
     equiposCache = [];
     cont.innerHTML = "<p>Error cargando equipos.</p>";
   }
@@ -228,6 +267,16 @@ function renderEquipoCard(equipo, index = 0) {
   const baseUrl = (window.API_BASE_URL || "").replace(/\/api\/?$/, "") || window.location.origin;
   const logoUrl = equipo.logo_url ? (equipo.logo_url.startsWith("http") ? equipo.logo_url : `${baseUrl}${equipo.logo_url}`) : "";
   const numero = obtenerNumeroEquipoVisible(equipo, index + 1);
+  const accionesAdmin = usuarioEsTecnico()
+    ? ""
+    : `
+        <button class="btn btn-warning" onclick="editarEquipo(${equipo.id})">
+          <i class="fas fa-edit"></i> Editar
+        </button>
+        <button class="btn btn-danger" onclick="eliminarEquipo(${equipo.id})">
+          <i class="fas fa-trash"></i> Eliminar
+        </button>
+      `;
 
   return `
     <div class="equipo-card campeonato-card">
@@ -245,12 +294,7 @@ function renderEquipoCard(equipo, index = 0) {
         <button class="btn btn-primary" onclick="irAJugadores(${equipo.id})">
           <i class="fas fa-user-friends"></i> Jugadores
         </button>
-        <button class="btn btn-warning" onclick="editarEquipo(${equipo.id})">
-          <i class="fas fa-edit"></i> Editar
-        </button>
-        <button class="btn btn-danger" onclick="eliminarEquipo(${equipo.id})">
-          <i class="fas fa-trash"></i> Eliminar
-        </button>
+        ${accionesAdmin}
       </div>
     </div>
   `;
@@ -267,6 +311,16 @@ function renderTablaEquipos(equipos) {
       const logo = logoUrl
         ? `<img src="${logoUrl}" alt="Logo ${escapeHtml(equipo.nombre || "")}" class="list-table-logo" />`
         : "<span>—</span>";
+      const accionesAdmin = usuarioEsTecnico()
+        ? ""
+        : `
+            <button class="btn btn-warning" onclick="editarEquipo(${equipo.id})">
+              <i class="fas fa-edit"></i> Editar
+            </button>
+            <button class="btn btn-danger" onclick="eliminarEquipo(${equipo.id})">
+              <i class="fas fa-trash"></i> Eliminar
+            </button>
+          `;
 
       return `
         <tr>
@@ -280,12 +334,7 @@ function renderTablaEquipos(equipos) {
             <button class="btn btn-primary" onclick="irAJugadores(${equipo.id})">
               <i class="fas fa-user-friends"></i> Jugadores
             </button>
-            <button class="btn btn-warning" onclick="editarEquipo(${equipo.id})">
-              <i class="fas fa-edit"></i> Editar
-            </button>
-            <button class="btn btn-danger" onclick="eliminarEquipo(${equipo.id})">
-              <i class="fas fa-trash"></i> Eliminar
-            </button>
+            ${accionesAdmin}
           </td>
         </tr>
       `;
@@ -316,6 +365,10 @@ function renderTablaEquipos(equipos) {
 // Modal crear / editar
 // ======================
 function mostrarModalCrearEquipo() {
+  if (usuarioEsTecnico()) {
+    mostrarNotificacion("No autorizado para crear equipos", "warning");
+    return;
+  }
   const selectCamp = document.getElementById("select-campeonato");
   campeonatoId = selectCamp?.value ? parseInt(selectCamp.value, 10) : null;
   if (!campeonatoId) {
@@ -379,6 +432,10 @@ async function cargarEquiposExistentesEnSelect() {
 // Guardar equipo (crear nuevo o asignar existente a categoría)
 // ======================
 async function guardarEquipo() {
+  if (usuarioEsTecnico()) {
+    mostrarNotificacion("No autorizado para registrar o editar equipos", "warning");
+    return;
+  }
   const tabActivo = document.querySelector(".modal-tab.active")?.dataset?.tab;
   const usarExistente = tabActivo === "existente";
   const selectEvento = document.getElementById("select-evento");
@@ -480,6 +537,10 @@ async function guardarEquipo() {
 // Editar / Eliminar
 // ======================
 async function editarEquipo(id) {
+  if (usuarioEsTecnico()) {
+    mostrarNotificacion("No autorizado para editar equipos", "warning");
+    return;
+  }
   if (!id) {
     mostrarNotificacion("No se pudo identificar el equipo a editar", "warning");
     return;
@@ -528,6 +589,10 @@ async function editarEquipo(id) {
 }
 
 async function eliminarEquipo(id) {
+  if (usuarioEsTecnico()) {
+    mostrarNotificacion("No autorizado para eliminar equipos", "warning");
+    return;
+  }
   if (!confirm("¿Seguro que quieres eliminar este equipo?")) return;
   try {
     await window.ApiClient.delete(`/equipos/${id}`);
@@ -556,6 +621,10 @@ function irAJugadores(equipoId) {
 }
 
 function irASorteo() {
+  if (usuarioEsTecnico()) {
+    mostrarNotificacion("No autorizado para gestionar sorteo", "warning");
+    return;
+  }
   const selectCamp = document.getElementById("select-campeonato");
   const selectEvento = document.getElementById("select-evento");
 

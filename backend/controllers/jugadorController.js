@@ -1,5 +1,9 @@
 const Jugador = require('../models/Jugador');
 const pool = require("../config/database");
+const {
+    tecnicoPuedeAccederEquipo,
+    obtenerEquiposPermitidosTecnico,
+} = require("../services/roleScope");
 
 let columnasDocsCampeonatoAseguradas = false;
 
@@ -28,6 +32,13 @@ async function obtenerReglasDocumentosPorEquipo(equipo_id) {
     return r.rows[0] || { requiere_foto_cedula: false, requiere_foto_carnet: false };
 }
 
+async function validarAccesoTecnicoEquipo(req, res, equipoId, mensaje = "No autorizado para operar sobre este equipo") {
+    const permitido = await tecnicoPuedeAccederEquipo(req, equipoId);
+    if (permitido) return true;
+    res.status(403).json({ error: mensaje });
+    return false;
+}
+
 const jugadorController = {
 
     // CREAR - Nuevo jugador
@@ -46,6 +57,9 @@ const jugadorController = {
                 return res.status(400).json({
                     error: 'equipo_id, nombre, apellido y Cedula de Identidad son obligatorios'
                 });
+            }
+            if (!(await validarAccesoTecnicoEquipo(req, res, equipo_id))) {
+                return;
             }
 
             const reglasDocs = await obtenerReglasDocumentosPorEquipo(Number(equipo_id));
@@ -108,6 +122,9 @@ const jugadorController = {
 
             if (!Number.isFinite(equipo_id) || equipo_id <= 0) {
                 return res.status(400).json({ error: "equipo_id inválido" });
+            }
+            if (!(await validarAccesoTecnicoEquipo(req, res, equipo_id))) {
+                return;
             }
 
             if (!filas.length) {
@@ -211,6 +228,9 @@ const jugadorController = {
     obtenerJugadoresPorEquipo: async (req, res) => {
         try {
             const { equipo_id } = req.params;
+            if (!(await validarAccesoTecnicoEquipo(req, res, equipo_id))) {
+                return;
+            }
             
             const jugadores = await Jugador.obtenerPorEquipo(equipo_id);
             
@@ -232,7 +252,17 @@ const jugadorController = {
     // LEER - Obtener todos los jugadores
     obtenerTodosLosJugadores: async (req, res) => {
         try {
-            const jugadores = await Jugador.obtenerTodos();
+            const equiposPermitidos = await obtenerEquiposPermitidosTecnico(req);
+            let jugadores = [];
+
+            if (equiposPermitidos === null) {
+                jugadores = await Jugador.obtenerTodos();
+            } else {
+                const jugadoresPorEquipo = await Promise.all(
+                    equiposPermitidos.map((equipoId) => Jugador.obtenerPorEquipo(equipoId))
+                );
+                jugadores = jugadoresPorEquipo.flat();
+            }
             
             res.json({
                 mensaje: '👥 Todos los jugadores del sistema',
@@ -259,6 +289,9 @@ const jugadorController = {
                 return res.status(404).json({
                     error: 'Jugador no encontrado'
                 });
+            }
+            if (!(await validarAccesoTecnicoEquipo(req, res, jugador.equipo_id))) {
+                return;
             }
 
             res.json({
@@ -296,6 +329,12 @@ const jugadorController = {
                 return res.status(404).json({
                     error: 'Jugador no encontrado'
                 });
+            }
+            if (!(await validarAccesoTecnicoEquipo(req, res, jugadorActual.equipo_id))) {
+                return;
+            }
+            if (datos.equipo_id && !(await validarAccesoTecnicoEquipo(req, res, datos.equipo_id))) {
+                return;
             }
 
             const equipoEvaluar = Number(datos.equipo_id || jugadorActual.equipo_id);
@@ -340,6 +379,15 @@ const jugadorController = {
     eliminarJugador: async (req, res) => {
         try {
             const { id } = req.params;
+            const jugadorActual = await Jugador.obtenerPorId(id);
+            if (!jugadorActual) {
+                return res.status(404).json({
+                    error: 'Jugador no encontrado'
+                });
+            }
+            if (!(await validarAccesoTecnicoEquipo(req, res, jugadorActual.equipo_id))) {
+                return;
+            }
             const jugadorEliminado = await Jugador.eliminar(id);
 
             if (!jugadorEliminado) {
@@ -370,6 +418,21 @@ const jugadorController = {
             if (!jugador_id || !equipo_id) {
                 return res.status(400).json({
                     error: 'jugador_id y equipo_id son obligatorios'
+                });
+            }
+            if (!(await validarAccesoTecnicoEquipo(req, res, equipo_id))) {
+                return;
+            }
+
+            const jugadorActual = await Jugador.obtenerPorId(jugador_id);
+            if (!jugadorActual) {
+                return res.status(404).json({
+                    error: 'Jugador no encontrado'
+                });
+            }
+            if (Number(jugadorActual.equipo_id) !== Number(equipo_id)) {
+                return res.status(400).json({
+                    error: 'El jugador no pertenece al equipo seleccionado'
                 });
             }
 

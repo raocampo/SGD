@@ -48,6 +48,7 @@ const canchaRoutes = require("./routes/canchaRoutes");
 const eliminatoriaRoutes = require("./routes/eliminatoriaRoutes");
 const finanzaRoutes = require("./routes/finanzaRoutes");
 const auspicianteRoutes = require("./routes/auspicianteRoutes");
+const authRoutes = require("./routes/authRoutes");
 
 app.use("/api/campeonatos", campeonatoRoutes);
 app.use("/api/equipos", equipoRoutes);
@@ -61,6 +62,7 @@ app.use("/api/canchas", canchaRoutes);
 app.use("/api/eliminatorias", eliminatoriaRoutes);
 app.use("/api/finanzas", finanzaRoutes);
 app.use("/api/auspiciantes", auspicianteRoutes);
+app.use("/api/auth", authRoutes);
 
 // =====================
 // Frontend (opcional)
@@ -98,6 +100,7 @@ app.get("/", (req, res) => {
       "/api/eliminatorias",
       "/api/finanzas",
       "/api/auspiciantes",
+      "/api/auth/login",
       "/uploads",
     ],
   });
@@ -167,6 +170,7 @@ app.listen(PORT, () => {
   console.log(`   http://localhost:${PORT}/api/tablas`);
   console.log(`   http://localhost:${PORT}/api/finanzas`);
   console.log(`   http://localhost:${PORT}/api/auspiciantes`);
+  console.log(`   http://localhost:${PORT}/api/auth/login`);
   console.log(`   http://localhost:${PORT}/tablas`);
   console.log(`📂 Uploads: http://localhost:${PORT}/uploads`);
 });

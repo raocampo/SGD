@@ -1,5 +1,6 @@
 // controllers/eventoController.js
 const pool = require("../config/database");
+const { obtenerEquiposPermitidosTecnico } = require("../services/roleScope");
 let eventoEsquemaAsegurado = false;
 let eventoColumnaActualizacion = null;
 
@@ -462,8 +463,13 @@ const eventoController = {
       `,
         [evento_id]
       );
+      const permitidos = await obtenerEquiposPermitidosTecnico(req);
+      const equipos =
+        permitidos === null
+          ? result.rows
+          : result.rows.filter((e) => permitidos.includes(Number(e.id)));
 
-      return res.json({ equipos: result.rows });
+      return res.json({ equipos });
     } catch (error) {
       console.error("listarEquiposDeEvento:", error);
       return res

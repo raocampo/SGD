@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGD - Portal Técnico</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ SGD</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn active" href="portal-tecnico.html"><i class="fas fa-home"></i> Mi Portal</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Mi Equipo</a>
+      <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Inscribir Jugadores</a>
+      <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="finanzas.html"><i class="fas fa-wallet"></i> Finanzas Equipo</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>Portal Técnico / Dirigente</h1>
+    </header>
+
+    <main class="main">
+      <div class="container">
+        <div class="welcome-card">
+          <h2>Gestión de tu equipo</h2>
+          <p>Accede a inscripción de jugadores, tablas y estado financiero del equipo asignado.</p>
+          <div class="stats-grid">
+            <a class="stat-card" href="equipos.html"><i class="fas fa-users"></i><h3>Mi Equipo</h3></a>
+            <a class="stat-card" href="jugadores.html"><i class="fas fa-id-card"></i><h3>Jugadores</h3></a>
+            <a class="stat-card" href="tablas.html"><i class="fas fa-ranking-star"></i><h3>Tablas</h3></a>
+            <a class="stat-card" href="finanzas.html"><i class="fas fa-file-invoice-dollar"></i><h3>Finanzas</h3></a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+</body>
+
+</html>

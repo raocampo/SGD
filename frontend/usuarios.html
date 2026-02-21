@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGD - Usuarios y Roles</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ SGD</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="portal-admin.html"><i class="fas fa-home"></i> Mi Portal</a>
+      <a class="nav-btn active" href="usuarios.html"><i class="fas fa-user-shield"></i> Usuarios</a>
+      <a class="nav-btn" href="admin.html"><i class="fas fa-gauge"></i> Panel</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>Usuarios y Roles</h1>
+    </header>
+
+    <main class="main">
+      <div class="container">
+        <div class="config-card">
+          <h3>Nuevo usuario</h3>
+          <form id="usuarios-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="usr-nombre">Nombre</label>
+                <input id="usr-nombre" required />
+              </div>
+              <div class="form-group">
+                <label for="usr-email">Correo</label>
+                <input id="usr-email" type="email" required />
+              </div>
+              <div class="form-group">
+                <label for="usr-password">Contraseña</label>
+                <input id="usr-password" type="password" minlength="6" required />
+              </div>
+              <div class="form-group">
+                <label for="usr-rol">Rol</label>
+                <select id="usr-rol" required>
+                  <option value="administrador">Administrador</option>
+                  <option value="organizador">Organizador</option>
+                  <option value="tecnico">Técnico</option>
+                  <option value="dirigente">Dirigente</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="usr-equipo">Equipo (solo técnico/dirigente)</label>
+                <select id="usr-equipo">
+                  <option value="">Sin asignar</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="usr-activo">Estado</label>
+                <select id="usr-activo">
+                  <option value="true">Activo</option>
+                  <option value="false">Inactivo</option>
+                </select>
+              </div>
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-plus"></i> Crear usuario
+              </button>
+              <button type="button" id="btn-usuarios-recargar" class="btn btn-secondary">
+                <i class="fas fa-rotate"></i> Recargar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Listado de usuarios</h3>
+          <div class="tabla-scroll" id="usuarios-tabla-wrap">
+            <p>Cargando usuarios...</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/usuarios.js"></script>
+</body>
+
+</html>

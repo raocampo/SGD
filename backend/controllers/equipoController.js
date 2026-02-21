@@ -2,6 +2,17 @@
 const Equipo = require("../models/Equipo");
 const path = require("path");
 const fs = require("fs");
+const {
+  obtenerEquiposPermitidosTecnico,
+  tecnicoPuedeAccederEquipo,
+} = require("../services/roleScope");
+
+async function filtrarEquiposParaTecnico(req, equipos = []) {
+  const permitidos = await obtenerEquiposPermitidosTecnico(req);
+  if (permitidos === null) return equipos;
+  const set = new Set(permitidos);
+  return equipos.filter((e) => set.has(Number(e.id)));
+}
 
 const equipoController = {
   // CREAR - Nuevo equipo
@@ -85,7 +96,8 @@ const equipoController = {
   // LEER - Obtener TODOS los equipos
   obtenerTodosLosEquipos: async (req, res) => {
     try {
-      const equipos = await Equipo.obtenerTodos();
+      const equiposAll = await Equipo.obtenerTodos();
+      const equipos = await filtrarEquiposParaTecnico(req, equiposAll);
 
       res.json({
         mensaje: "📋 Todos los equipos del sistema",
@@ -106,7 +118,8 @@ const equipoController = {
     try {
       const { campeonato_id } = req.params;
 
-      const equipos = await Equipo.obtenerPorCampeonato(campeonato_id);
+      const equiposAll = await Equipo.obtenerPorCampeonato(campeonato_id);
+      const equipos = await filtrarEquiposParaTecnico(req, equiposAll);
 
       res.json({
         mensaje: `📋 Equipos del campeonato ${campeonato_id}`,
@@ -131,6 +144,12 @@ const equipoController = {
       if (!equipo) {
         return res.status(404).json({
           error: "Equipo no encontrado",
+        });
+      }
+      const permitido = await tecnicoPuedeAccederEquipo(req, id);
+      if (!permitido) {
+        return res.status(403).json({
+          error: "No autorizado para consultar este equipo",
         });
       }
 
@@ -367,7 +386,8 @@ const equipoController = {
     try {
       const { campeonato_id } = req.params;
 
-      const cabezasDeSerie = await Equipo.obtenerCabezasDeSerie(campeonato_id);
+      const cabezasAll = await Equipo.obtenerCabezasDeSerie(campeonato_id);
+      const cabezasDeSerie = await filtrarEquiposParaTecnico(req, cabezasAll);
 
       res.json({
         mensaje: `👑 Cabezas de serie del campeonato`,

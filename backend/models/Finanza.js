@@ -469,6 +469,15 @@ class Finanza {
     if (filtros.equipo_id) {
       addEq("equipo_id", this.parseEntero(filtros.equipo_id, "equipo_id"));
     }
+    if (Array.isArray(filtros.equipo_ids) && filtros.equipo_ids.length) {
+      const ids = filtros.equipo_ids
+        .map((x) => this.parseEntero(x, "equipo_id"))
+        .filter((x) => Number.isFinite(x) && x > 0);
+      if (ids.length) {
+        where.push(`fm.equipo_id = ANY($${i++}::int[])`);
+        values.push(ids);
+      }
+    }
     addEq("tipo_movimiento", filtros.tipo_movimiento);
     addEq("concepto", filtros.concepto);
     addEq("estado", filtros.estado);
@@ -633,6 +642,19 @@ class Finanza {
     if (filtros.evento_id) {
       where.push(`fm.evento_id = $${i++}`);
       values.push(this.parseEntero(filtros.evento_id, "evento_id"));
+    }
+    if (filtros.equipo_id) {
+      where.push(`fm.equipo_id = $${i++}`);
+      values.push(this.parseEntero(filtros.equipo_id, "equipo_id"));
+    }
+    if (Array.isArray(filtros.equipo_ids) && filtros.equipo_ids.length) {
+      const ids = filtros.equipo_ids
+        .map((x) => this.parseEntero(x, "equipo_id"))
+        .filter((x) => Number.isFinite(x) && x > 0);
+      if (ids.length) {
+        where.push(`fm.equipo_id = ANY($${i++}::int[])`);
+        values.push(ids);
+      }
     }
 
     const baseWhere = where.length ? `WHERE ${where.join(" AND ")}` : "";

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const upload = require("../config/multerConfig");
 const jugadorController = require('../controllers/jugadorController');
+const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 
 function setJugadoresFolder(req, res, next) {
   req.uploadFolder = "jugadores";
@@ -9,9 +10,16 @@ function setJugadoresFolder(req, res, next) {
 }
 
 // 🔄 CRUD Completo para Jugadores
-router.get('/', jugadorController.obtenerTodosLosJugadores);              // READ todos
+router.get(
+  '/',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  jugadorController.obtenerTodosLosJugadores
+);              // READ todos
 router.post(
   '/',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
   setJugadoresFolder,
   upload.fields([
     { name: "foto_cedula", maxCount: 1 },
@@ -19,11 +27,28 @@ router.post(
   ]),
   jugadorController.crearJugador
 );                         // CREATE
-router.post('/importar-masivo', jugadorController.importarJugadoresMasivo); // CREATE masivo (xlsx/csv procesado en frontend)
-router.get('/equipo/:equipo_id', jugadorController.obtenerJugadoresPorEquipo); // READ por equipo
-router.get('/:id', jugadorController.obtenerJugador);                     // READ uno
+router.post(
+  '/importar-masivo',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  jugadorController.importarJugadoresMasivo
+); // CREATE masivo (xlsx/csv procesado en frontend)
+router.get(
+  '/equipo/:equipo_id',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  jugadorController.obtenerJugadoresPorEquipo
+); // READ por equipo
+router.get(
+  '/:id',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  jugadorController.obtenerJugador
+);                     // READ uno
 router.put(
   '/:id',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
   setJugadoresFolder,
   upload.fields([
     { name: "foto_cedula", maxCount: 1 },
@@ -31,9 +56,19 @@ router.put(
   ]),
   jugadorController.actualizarJugador
 );                  // UPDATE
-router.delete('/:id', jugadorController.eliminarJugador);                 // DELETE
+router.delete(
+  '/:id',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  jugadorController.eliminarJugador
+);                 // DELETE
 
 // 🔧 Rutas especiales
-router.post('/designar-capitan', jugadorController.designarCapitan);      // Designar capitán
+router.post(
+  '/designar-capitan',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  jugadorController.designarCapitan
+);      // Designar capitán
 
 module.exports = router;

@@ -2,12 +2,15 @@ const express = require('express');
 const router = express.Router();
 const upload = require("../config/multerConfig");
 const campeonatoController = require('../controllers/campeonatoController');
+const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 
 // ===============================
 // CREAR CAMPEONATO (con logo)
 // ===============================
 router.post(
   '/',
+  requireAuth,
+  requireRoles("administrador", "organizador"),
   (req, res, next) => {
     // carpeta donde se guardarán los logos de campeonatos
     req.uploadFolder = "campeonatos";
@@ -26,13 +29,20 @@ router.get('/:id', campeonatoController.obtenerCampeonato);      // READ ONE
 // ===============================
 // CAMBIAR ESTADO
 // ===============================
-router.put("/:id/estado", campeonatoController.cambiarEstado);
+router.put(
+  "/:id/estado",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  campeonatoController.cambiarEstado
+);
 
 // ===============================
 // ACTUALIZAR CAMPEONATO (con logo)
 // ===============================
 router.put(
   '/:id',
+  requireAuth,
+  requireRoles("administrador", "organizador"),
   (req, res, next) => {
     req.uploadFolder = "campeonatos";
     next();
@@ -44,6 +54,11 @@ router.put(
 // ===============================
 // ELIMINAR CAMPEONATO
 // ===============================
-router.delete('/:id', campeonatoController.eliminarCampeonato);  // DELETE
+router.delete(
+  '/:id',
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  campeonatoController.eliminarCampeonato
+);  // DELETE
 
 module.exports = router;

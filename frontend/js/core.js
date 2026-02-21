@@ -1,14 +1,156 @@
 // frontend/js/core.js
 
 (function () {
-  // ✅ Centraliza config aquí (y api.js usa window.API_BASE_URL)
   window.API_BASE_URL = window.API_BASE_URL || "http://localhost:5000/api";
 
-  // =========================
-  // Notificaciones
-  // =========================
+  const AUTH_TOKEN_KEY = "sgd_auth_token";
+  const AUTH_USER_KEY = "sgd_auth_user";
+  const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html"]);
+  const TECNICO_ALLOWED_PAGES = new Set([
+    "portal-tecnico.html",
+    "equipos.html",
+    "jugadores.html",
+    "tablas.html",
+    "finanzas.html",
+    "index.html",
+    "portal.html",
+    "login.html",
+  ]);
+
+  function getCurrentPage() {
+    const path = window.location.pathname || "";
+    const page = path.split("/").pop() || "index.html";
+    return page.toLowerCase();
+  }
+
+  function esTecnicoOdirigente(user) {
+    const rol = String(user?.rol || "").toLowerCase();
+    return rol === "tecnico" || rol === "dirigente";
+  }
+
+  function getDefaultPageByRole(user) {
+    if (!user) return "login.html";
+    const rol = String(user.rol || "").toLowerCase();
+    if (rol === "administrador" || rol === "organizador") return "portal-admin.html";
+    if (rol === "tecnico" || rol === "dirigente") return "portal-tecnico.html";
+    return "login.html";
+  }
+
+  function canAccessPage(user, page) {
+    if (PUBLIC_PAGES.has(page)) return true;
+    if (!user) return false;
+    if (esTecnicoOdirigente(user)) return TECNICO_ALLOWED_PAGES.has(page);
+    return true;
+  }
+
+  function getStoredUser() {
+    try {
+      const raw = localStorage.getItem(AUTH_USER_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setStoredUser(user) {
+    if (!user) {
+      localStorage.removeItem(AUTH_USER_KEY);
+      return;
+    }
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  }
+
+  async function validarSesionActual() {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) return null;
+
+    try {
+      const resp = await fetch(`${window.API_BASE_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const user = data?.usuario || null;
+      if (!user) return null;
+      setStoredUser(user);
+      return user;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  window.Auth = window.Auth || {
+    getToken() {
+      return localStorage.getItem(AUTH_TOKEN_KEY) || "";
+    },
+    getUser() {
+      return getStoredUser();
+    },
+    setSession(token, user) {
+      if (token) localStorage.setItem(AUTH_TOKEN_KEY, token);
+      setStoredUser(user || null);
+    },
+    clearSession() {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_USER_KEY);
+    },
+    isAuthenticated() {
+      return !!this.getToken();
+    },
+    isTecnico() {
+      return esTecnicoOdirigente(this.getUser());
+    },
+    isAdminLike() {
+      const rol = String(this.getUser()?.rol || "").toLowerCase();
+      return rol === "administrador" || rol === "organizador";
+    },
+    getDefaultPage() {
+      return getDefaultPageByRole(this.getUser());
+    },
+    logout() {
+      this.clearSession();
+      window.location.href = "login.html";
+    },
+    handleUnauthorized() {
+      const page = getCurrentPage();
+      this.clearSession();
+      if (!PUBLIC_PAGES.has(page)) {
+        const next = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `login.html?next=${next}`;
+      }
+    },
+  };
+
+  if (!window.__sgdFetchAuthPatched) {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = function patchedFetch(input, init = {}) {
+      const requestUrl =
+        typeof input === "string"
+          ? input
+          : input?.url || "";
+      const apiBase = String(window.API_BASE_URL || "");
+      const isApiCall =
+        requestUrl.startsWith(apiBase) ||
+        requestUrl.startsWith("/api/") ||
+        requestUrl.includes("/api/");
+
+      if (!isApiCall) return nativeFetch(input, init);
+
+      const token = window.Auth?.getToken?.();
+      if (!token) return nativeFetch(input, init);
+
+      const headers = new Headers(init?.headers || (typeof input !== "string" ? input?.headers : undefined) || {});
+      if (!headers.has("Authorization")) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+
+      return nativeFetch(input, { ...init, headers });
+    };
+    window.__sgdFetchAuthPatched = true;
+  }
+
   window.mostrarNotificacion = function (mensaje, tipo = "info") {
-    // Si ya tienes un sistema de toast, aquí puedes integrar.
     console.log(`${tipo.toUpperCase()}: ${mensaje}`);
 
     const existing = document.querySelector(".toast-notificacion");
@@ -17,8 +159,6 @@
     const toast = document.createElement("div");
     toast.className = "toast-notificacion";
     toast.textContent = mensaje;
-
-    // estilos mínimos (si ya tienes CSS, puedes borrar esto)
     toast.style.position = "fixed";
     toast.style.top = "20px";
     toast.style.right = "20px";
@@ -38,15 +178,9 @@
         : "#3b82f6";
 
     document.body.appendChild(toast);
-
-    setTimeout(() => {
-      toast.remove();
-    }, 3000);
+    setTimeout(() => toast.remove(), 3000);
   };
 
-  // =========================
-  // Modal helpers
-  // =========================
   window.abrirModal = function (modalId) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
@@ -65,41 +199,106 @@
     }
   };
 
-  // No cerramos modal por clic fuera.
-  // Se cierra solo por accion explicita: boton "X", "Cancelar" o cerrarModal(...).
-
-  // =========================
-  // Menú hamburguesa / Sidebar
-  // =========================
-  document.addEventListener("DOMContentLoaded", () => {
+  function aplicarSidebarPorRol(user) {
     const sidebarNav = document.querySelector(".sidebar-nav");
-    if (sidebarNav) {
-      const linkEventos = sidebarNav.querySelector('a[href="eventos.html"]');
-      if (linkEventos) linkEventos.innerHTML = '<i class="fas fa-calendar-alt"></i> Categorías';
+    if (!sidebarNav) return;
 
-      const ensureNavLink = (href, html, isActive) => {
-        let link = sidebarNav.querySelector(`a[href="${href}"]`);
-        if (!link) {
-          link = document.createElement("a");
-          link.className = `nav-btn${isActive ? " active" : ""}`;
-          link.href = href;
-          link.innerHTML = html;
-          const portalLink = sidebarNav.querySelector('a[href="index.html"]');
-          if (portalLink) sidebarNav.insertBefore(link, portalLink);
-          else sidebarNav.appendChild(link);
-          return;
-        }
+    const linkEventos = sidebarNav.querySelector('a[href="eventos.html"]');
+    if (linkEventos) linkEventos.innerHTML = '<i class="fas fa-calendar-alt"></i> Categorías';
+
+    const ensureNavLink = (href, html, isActive) => {
+      let link = sidebarNav.querySelector(`a[href="${href}"]`);
+      if (!link) {
+        link = document.createElement("a");
+        link.className = `nav-btn${isActive ? " active" : ""}`;
+        link.href = href;
         link.innerHTML = html;
-        link.classList.toggle("active", Boolean(isActive));
-      };
+        const portalLink = sidebarNav.querySelector('a[href="index.html"]');
+        if (portalLink) sidebarNav.insertBefore(link, portalLink);
+        else sidebarNav.appendChild(link);
+        return;
+      }
+      link.innerHTML = html;
+      link.classList.toggle("active", Boolean(isActive));
+    };
 
+    ensureNavLink(
+      "finanzas.html",
+      '<i class="fas fa-wallet"></i> Finanzas',
+      window.location.pathname.endsWith("finanzas.html")
+    );
+    ensureNavLink(
+      "usuarios.html",
+      '<i class="fas fa-user-shield"></i> Usuarios',
+      window.location.pathname.endsWith("usuarios.html")
+    );
+
+    const tecnicoRestricted = [
+      "campeonatos.html",
+      "eventos.html",
+      "sorteo.html",
+      "gruposgen.html",
+      "partidos.html",
+      "planilla.html",
+      "auspiciantes.html",
+      "portal-admin.html",
+      "usuarios.html",
+    ];
+
+    if (esTecnicoOdirigente(user)) {
+      tecnicoRestricted.forEach((href) => {
+        const link = sidebarNav.querySelector(`a[href="${href}"]`);
+        if (link) link.remove();
+      });
       ensureNavLink(
-        "finanzas.html",
-        '<i class="fas fa-wallet"></i> Finanzas',
-        window.location.pathname.endsWith("finanzas.html")
+        "portal-tecnico.html",
+        '<i class="fas fa-user-shield"></i> Mi Portal',
+        window.location.pathname.endsWith("portal-tecnico.html")
+      );
+    } else {
+      ensureNavLink(
+        "portal-admin.html",
+        '<i class="fas fa-user-cog"></i> Mi Portal',
+        window.location.pathname.endsWith("portal-admin.html")
       );
     }
 
+    let logout = sidebarNav.querySelector('a[data-action="logout"]');
+    if (!logout) {
+      logout = document.createElement("a");
+      logout.href = "#";
+      logout.className = "nav-btn";
+      logout.dataset.action = "logout";
+      logout.innerHTML = '<i class="fas fa-right-from-bracket"></i> Cerrar sesión';
+      logout.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.Auth.logout();
+      });
+      sidebarNav.appendChild(logout);
+    }
+  }
+
+  function inyectarUsuarioTopbar(user) {
+    const topBar = document.querySelector(".top-bar");
+    if (!topBar || !user) return;
+
+    let badge = topBar.querySelector(".top-user-badge");
+    if (!badge) {
+      badge = document.createElement("div");
+      badge.className = "top-user-badge";
+      badge.style.marginLeft = "auto";
+      badge.style.padding = "6px 10px";
+      badge.style.borderRadius = "8px";
+      badge.style.background = "rgba(15,23,42,.08)";
+      badge.style.fontSize = "12px";
+      badge.style.fontWeight = "700";
+      topBar.appendChild(badge);
+    }
+    const rol = String(user.rol || "").toUpperCase();
+    badge.textContent = `${user.nombre || user.email || "Usuario"} (${rol})`;
+  }
+
+  function initMenuMovil() {
     const toggle = document.getElementById("nav-toggle");
     const sidebar = document.getElementById("sidebar");
     const nav = document.getElementById("main-nav");
@@ -120,7 +319,6 @@
     }
     function setInitialState() {
       if (sidebar) {
-        // Sidebar cerrado por defecto en todo el sistema.
         sidebar.classList.add("collapsed");
         sidebar.classList.remove("nav-open");
         overlay.classList.remove("active");
@@ -137,6 +335,7 @@
         overlay.classList.remove("active");
       }
     }
+
     setInitialState();
     window.addEventListener("resize", setInitialState);
 
@@ -150,16 +349,61 @@
         }
       });
     }
+
     overlay.addEventListener("click", () => {
       if (sidebar) sidebar.classList.remove("nav-open");
       if (nav) nav.classList.remove("nav-open");
       overlay.classList.remove("active");
     });
+  }
+
+  async function validarAccesoPagina() {
+    const page = getCurrentPage();
+    const token = window.Auth.getToken();
+
+    if (!token) {
+      if (!PUBLIC_PAGES.has(page)) {
+        const next = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `login.html?next=${next}`;
+        return false;
+      }
+      return true;
+    }
+
+    const user = (await validarSesionActual()) || null;
+    if (!user) {
+      window.Auth.clearSession();
+      if (!PUBLIC_PAGES.has(page)) {
+        const next = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `login.html?next=${next}`;
+        return false;
+      }
+      return true;
+    }
+
+    if (page === "login.html") {
+      window.location.href = getDefaultPageByRole(user);
+      return false;
+    }
+
+    if (!canAccessPage(user, page)) {
+      window.location.href = getDefaultPageByRole(user);
+      return false;
+    }
+
+    return true;
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const autorizado = await validarAccesoPagina();
+    if (!autorizado) return;
+
+    const user = window.Auth.getUser();
+    aplicarSidebarPorRol(user);
+    inyectarUsuarioTopbar(user);
+    initMenuMovil();
   });
 
-  // =========================
-  // Querystring helper
-  // =========================
   window.getQueryParam = function (key) {
     const url = new URL(window.location.href);
     return url.searchParams.get(key);

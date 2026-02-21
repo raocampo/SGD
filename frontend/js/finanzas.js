@@ -6,6 +6,7 @@ let finanzasState = {
   ultimoMovimientos: [],
   ultimoMorosidad: [],
   ultimoEstadoCuenta: null,
+  esTecnico: false,
 };
 
 function obtenerNumeroSecuencial(valor, fallback = null) {
@@ -22,6 +23,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function inicializarFinanzas() {
+  finanzasState.esTecnico = !!window.Auth?.isTecnico?.();
+  aplicarPermisosFinanzasUI();
   bindEventosFinanzas();
   inicializarTogglesReportes();
   await cargarCatalogosFinanzas();
@@ -30,6 +33,16 @@ async function inicializarFinanzas() {
     cargarMorosidadFinanzas(),
     cargarEstadoCuentaActual(),
   ]);
+}
+
+function aplicarPermisosFinanzasUI() {
+  if (!finanzasState.esTecnico) return;
+
+  const cardMovimiento = document.getElementById("fin-card-movimiento");
+  if (cardMovimiento) cardMovimiento.style.display = "none";
+
+  const cardMorosidad = document.querySelector(".fin-card-morosidad");
+  if (cardMorosidad) cardMorosidad.style.display = "none";
 }
 
 function bindEventosFinanzas() {
@@ -132,6 +145,21 @@ async function cargarCatalogosFinanzas() {
 
     llenarSelectCampeonatos("fin-campeonato", true);
     llenarSelectCampeonatos("mov-campeonato", false);
+    if (finanzasState.esTecnico && finanzasState.equipos.length > 0) {
+      const campeonatoUnico = Number(finanzasState.equipos[0].campeonato_id || 0);
+      if (Number.isFinite(campeonatoUnico) && campeonatoUnico > 0) {
+        const filtroCamp = document.getElementById("fin-campeonato");
+        const movCamp = document.getElementById("mov-campeonato");
+        if (filtroCamp) {
+          filtroCamp.value = String(campeonatoUnico);
+          filtroCamp.disabled = true;
+        }
+        if (movCamp) {
+          movCamp.value = String(campeonatoUnico);
+          movCamp.disabled = true;
+        }
+      }
+    }
     sincronizarSelectoresPorCampeonato();
     sincronizarFormularioMovimiento();
   } catch (error) {
@@ -196,6 +224,13 @@ function sincronizarSelectoresPorCampeonato() {
   }
   if ([...equipoSelect.options].some((x) => x.value === prevEquipo)) {
     equipoSelect.value = prevEquipo;
+  }
+
+  if (finanzasState.esTecnico) {
+    const equipoOpciones = [...equipoSelect.options].filter((x) => x.value);
+    if (equipoOpciones.length === 1) {
+      equipoSelect.value = equipoOpciones[0].value;
+    }
   }
 }
 
@@ -397,6 +432,11 @@ async function cargarEstadoCuentaActual() {
 
 async function guardarMovimientoFinanzas(e) {
   e.preventDefault();
+  if (finanzasState.esTecnico) {
+    mostrarNotificacion("No autorizado para registrar movimientos", "warning");
+    return;
+  }
+
   const payload = {
     campeonato_id: document.getElementById("mov-campeonato")?.value || "",
     evento_id: document.getElementById("mov-evento")?.value || null,

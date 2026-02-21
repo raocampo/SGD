@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const upload = require("../config/multerConfig");
 const auspicianteController = require("../controllers/auspicianteController");
+const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 
 function setAuspiciantesFolder(req, res, next) {
   req.uploadFolder = "auspiciantes";
@@ -15,6 +16,8 @@ router.get(
 
 router.post(
   "/",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
   setAuspiciantesFolder,
   upload.single("logo"),
   auspicianteController.crear
@@ -22,11 +25,18 @@ router.post(
 
 router.put(
   "/:id",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
   setAuspiciantesFolder,
   upload.single("logo"),
   auspicianteController.actualizar
 );
 
-router.delete("/:id", auspicianteController.eliminar);
+router.delete(
+  "/:id",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  auspicianteController.eliminar
+);
 
 module.exports = router;

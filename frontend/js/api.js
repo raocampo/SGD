@@ -1,75 +1,109 @@
 // frontend/js/api.js
 (() => {
-  // Evita redeclarar si el script se carga 2 veces
-  if (window.API_BASE_URL && window.ApiClient) {
-    // si ya existen los wrappers, no hagas nada
-    if (window.CampeonatosAPI && window.EventosAPI) return;
+  if (window.API_BASE_URL && window.ApiClient && window.CampeonatosAPI && window.EventosAPI) {
+    return;
   }
 
-  // Cambia solo esto si tu backend usa otro puerto
   window.API_BASE_URL = window.API_BASE_URL || "http://localhost:5000/api";
+
+  function authHeaders() {
+    const token = window.Auth?.getToken?.() || "";
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  async function parseResponse(resp) {
+    const contentType = resp.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) return resp.json();
+    return resp.text();
+  }
+
+  function extractErrorMessage(payload) {
+    if (!payload) return "Error HTTP";
+    if (typeof payload === "string") return payload;
+    if (payload.error) return payload.error;
+    if (payload.message) return payload.message;
+    return "Error HTTP";
+  }
+
+  async function handleHttpError(resp, endpoint) {
+    const data = await parseResponse(resp);
+    const msg = extractErrorMessage(data);
+    if (resp.status === 401 && !String(endpoint || "").includes("/auth/login")) {
+      window.Auth?.handleUnauthorized?.();
+    }
+    throw new Error(msg);
+  }
 
   window.ApiClient = window.ApiClient || {
     async request(method, endpoint, body = null) {
       const url = `${window.API_BASE_URL}${endpoint}`;
-      const options = {
-        method,
-        headers: { "Content-Type": "application/json" },
+      const headers = {
+        "Content-Type": "application/json",
+        ...authHeaders(),
       };
-      if (body) options.body = JSON.stringify(body);
+      const options = { method, headers };
+      if (body !== null && body !== undefined) {
+        options.body = JSON.stringify(body);
+      }
 
       const resp = await fetch(url, options);
-      const contentType = resp.headers.get("content-type") || "";
-
-      let data = null;
-      if (contentType.includes("application/json")) data = await resp.json();
-      else data = await resp.text();
-
-      if (!resp.ok) {
-        const msg =
-          data && data.message ? data.message : data || "Error HTTP";
-        throw new Error(msg);
-      }
-      return data;
+      if (!resp.ok) return handleHttpError(resp, endpoint);
+      return parseResponse(resp);
     },
 
     get(endpoint) {
       return this.request("GET", endpoint);
     },
+
     post(endpoint, body) {
       return this.request("POST", endpoint, body);
     },
+
     put(endpoint, body) {
       return this.request("PUT", endpoint, body);
     },
+
     delete(endpoint) {
       return this.request("DELETE", endpoint);
     },
+
     async requestForm(method, endpoint, formData) {
       const url = `${window.API_BASE_URL}${endpoint}`;
       const resp = await fetch(url, {
         method,
+        headers: { ...authHeaders() },
         body: formData,
       });
-      const contentType = resp.headers.get("content-type") || "";
-      let data = null;
-      if (contentType.includes("application/json")) data = await resp.json();
-      else data = await resp.text();
-      if (!resp.ok) {
-        const msg =
-          data && data.message ? data.message : data || "Error HTTP";
-        throw new Error(msg);
-      }
-      return data;
+      if (!resp.ok) return handleHttpError(resp, endpoint);
+      return parseResponse(resp);
     },
   };
 
-  // =========================
-  // ✅ APIs “bonitas” (wrappers)
-  // =========================
+  window.AuthAPI = window.AuthAPI || {
+    login(payload) {
+      return window.ApiClient.post("/auth/login", payload);
+    },
+    me() {
+      return window.ApiClient.get("/auth/me");
+    },
+    listarUsuarios() {
+      return window.ApiClient.get("/auth/usuarios");
+    },
+    crearUsuario(payload) {
+      return window.ApiClient.post("/auth/usuarios", payload);
+    },
+    asignarEquipo(usuarioId, equipoId) {
+      return window.ApiClient.post(`/auth/usuarios/${usuarioId}/equipos`, {
+        equipo_id: equipoId,
+      });
+    },
+    quitarEquipo(usuarioId, equipoId) {
+      return window.ApiClient.delete(`/auth/usuarios/${usuarioId}/equipos/${equipoId}`);
+    },
+  };
+
   window.CampeonatosAPI = window.CampeonatosAPI || {
     obtenerTodos() {
-      // Ajusta si tu endpoint real es otro
       return window.ApiClient.get("/campeonatos");
     },
     obtenerPorId(id) {
@@ -88,7 +122,6 @@
 
   window.EventosAPI = window.EventosAPI || {
     obtenerPorCampeonato(campeonatoId) {
-      // Ajusta si tu endpoint real es otro (ej: /eventos?campeonato_id=ID)
       return window.ApiClient.get(`/eventos/campeonato/${campeonatoId}`);
     },
     obtenerPorId(id) {

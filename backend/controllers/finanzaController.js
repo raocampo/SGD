@@ -1,4 +1,9 @@
 const Finanza = require("../models/Finanza");
+const {
+  esTecnicoOdirigente,
+  obtenerEquiposPermitidosTecnico,
+  tecnicoPuedeAccederEquipo,
+} = require("../services/roleScope");
 
 function statusParaError(error) {
   const msg = String(error?.message || "").toLowerCase();
@@ -19,6 +24,9 @@ function statusParaError(error) {
 const finanzaController = {
   async crearMovimiento(req, res) {
     try {
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        return res.status(403).json({ error: "No autorizado para registrar movimientos" });
+      }
       const movimiento = await Finanza.crearMovimiento(req.body || {});
       return res.status(201).json({
         ok: true,
@@ -33,7 +41,26 @@ const finanzaController = {
 
   async listarMovimientos(req, res) {
     try {
-      const movimientos = await Finanza.listarMovimientos(req.query || {});
+      const filtros = { ...(req.query || {}) };
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        const equiposPermitidos = await obtenerEquiposPermitidosTecnico(req);
+        if (!equiposPermitidos || !equiposPermitidos.length) {
+          return res.json({ ok: true, total: 0, movimientos: [] });
+        }
+
+        if (filtros.equipo_id) {
+          const autorizado = await tecnicoPuedeAccederEquipo(req, filtros.equipo_id);
+          if (!autorizado) {
+            return res.status(403).json({ error: "No autorizado para consultar este equipo" });
+          }
+        } else if (equiposPermitidos.length === 1) {
+          filtros.equipo_id = equiposPermitidos[0];
+        } else {
+          filtros.equipo_ids = equiposPermitidos;
+        }
+      }
+
+      const movimientos = await Finanza.listarMovimientos(filtros);
       return res.json({
         ok: true,
         total: movimientos.length,
@@ -48,6 +75,12 @@ const finanzaController = {
   async obtenerEstadoCuentaEquipo(req, res) {
     try {
       const equipo_id = Number.parseInt(req.params.equipo_id, 10);
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        const autorizado = await tecnicoPuedeAccederEquipo(req, equipo_id);
+        if (!autorizado) {
+          return res.status(403).json({ error: "No autorizado para consultar este equipo" });
+        }
+      }
       const estadoCuenta = await Finanza.obtenerEstadoCuentaEquipo(
         equipo_id,
         req.query || {}
@@ -64,7 +97,26 @@ const finanzaController = {
 
   async obtenerMorosidad(req, res) {
     try {
-      const equipos = await Finanza.obtenerMorosidad(req.query || {});
+      const filtros = { ...(req.query || {}) };
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        const equiposPermitidos = await obtenerEquiposPermitidosTecnico(req);
+        if (!equiposPermitidos || !equiposPermitidos.length) {
+          return res.json({ ok: true, total: 0, equipos: [] });
+        }
+
+        if (filtros.equipo_id) {
+          const autorizado = await tecnicoPuedeAccederEquipo(req, filtros.equipo_id);
+          if (!autorizado) {
+            return res.status(403).json({ error: "No autorizado para consultar este equipo" });
+          }
+        } else if (equiposPermitidos.length === 1) {
+          filtros.equipo_id = equiposPermitidos[0];
+        } else {
+          filtros.equipo_ids = equiposPermitidos;
+        }
+      }
+
+      const equipos = await Finanza.obtenerMorosidad(filtros);
       return res.json({
         ok: true,
         total: equipos.length,
