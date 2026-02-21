@@ -1,6 +1,6 @@
-# Indice de Documentacion SGD
+# Indice de Documentacion LT&C
 
-Ultima actualizacion: 2026-02-20
+Ultima actualizacion: 2026-02-21
 
 ## Documentos clave
 - `docs/BITACORA_AVANCES.md`
@@ -11,6 +11,8 @@ Ultima actualizacion: 2026-02-20
   - Documento base de alcance funcional del proyecto.
 - `docs/CAMBIOS_IMPLEMENTADOS.md`
   - Resumen historico de cambios estructurales ya incorporados.
+- `docs/PLAN_MOBILE_LT_C.md`
+  - Plan maestro por fases para adaptar LT&C a uso mobile web.
 
 ## Documentos de referencia operativa
 - `docs/PlanillaJuego.pdf`

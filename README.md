@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-02-20): funcional en flujo principal con pendientes de cierre en RBAC, eliminatorias completas y reglas financieras avanzadas.
+Estado del proyecto (2026-02-21): funcional en flujo principal con pendientes de cierre en RBAC, eliminatorias completas, roadmap mobile y reglas financieras avanzadas.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,14 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-02-20)
+## Novedades Recientes (2026-02-21)
+- Branding visible unificado a `LT&C (Loja Torneos & Competencias)` en frontend.
+- Landing renovada con:
+  - precios,
+  - auspiciantes en carrusel,
+  - contacto y redes oficiales.
+- Icono global web/sistema agregado (favicon LT&C) para todas las vistas que cargan `core.js`.
+- Plan de adaptacion mobile documentado en `docs/PLAN_MOBILE_LT_C.md`.
 - Sidebar administrativo unificado: inicia contraido por defecto y se corrigio la superposicion con overlay en movil.
 - Finanzas:
   - estado de cuenta, morosidad y movimientos mejorados para responsive,
@@ -69,6 +76,7 @@ docs/
   BITACORA_AVANCES.md
   ESTADO_IMPLEMENTACION_SGD.md
   CAMBIOS_IMPLEMENTADOS.md
+  PLAN_MOBILE_LT_C.md
   propuestaDesarrolloSGD.md
 
 frontend/
@@ -170,6 +178,7 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 - Bitacora operativa viva: `docs/BITACORA_AVANCES.md`
 - Estado por modulo vs propuesta: `docs/ESTADO_IMPLEMENTACION_SGD.md`
 - Cambios implementados historicos: `docs/CAMBIOS_IMPLEMENTADOS.md`
+- Plan de adaptacion mobile web: `docs/PLAN_MOBILE_LT_C.md`
 - Propuesta base del proyecto: `docs/propuestaDesarrolloSGD.md`
 
 ## 10. Flujo de Trabajo Recomendado
@@ -189,6 +198,7 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 3. RBAC (autenticacion + roles).
 4. Eliminatorias completas (llaves y reglas operativas).
 5. Financiero avanzado (multas automaticas, bloqueos por morosidad, reportes ejecutivos).
+6. Ejecucion de plan mobile web por fases (`docs/PLAN_MOBILE_LT_C.md`).
 
 ## 12. Solucion de Problemas
 - `DB_PASSWORD no definido`: configurar `backend/.env`.

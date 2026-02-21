@@ -1,6 +1,6 @@
-# Estado de Implementacion vs Propuesta SGD
+# Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-02-20
+Ultima actualizacion: 2026-02-21
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -19,6 +19,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 5 Roles y permisos (RBAC) | Pendiente | Aun sin autenticacion y perfiles de acceso. |
 | 6 Extras profesionales | Parcial | Exportaciones (PNG/PDF/XLSX) en modulos clave; pendiente notificaciones, auditoria completa y reportes ejecutivos. |
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla. Pendiente reglas avanzadas de sancion/bloqueo y reporteria ejecutiva. |
+| 8 Adaptacion mobile web | Pendiente-Iniciado | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; pendiente ejecucion por fases (responsive global, modulos criticos, operacion de campo, finanzas). |
 
 ## Estado Detallado del Alcance Actual
 
@@ -73,7 +74,11 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 6. Auditoria y trazabilidad:
 - Registro de cambios en fixture, planilla, sanciones y finanzas.
 
+7. Roadmap mobile:
+- Ejecutar `docs/PLAN_MOBILE_LT_C.md` por fases con prioridad en flujos operativos.
+
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`
 - Historial de cambios implementados: `docs/CAMBIOS_IMPLEMENTADOS.md`
 - Propuesta funcional original: `docs/propuestaDesarrolloSGD.md`
+- Plan mobile web: `docs/PLAN_MOBILE_LT_C.md`

@@ -1,9 +1,23 @@
-# Cambios implementados según propuesta SGD
+# Cambios implementados según propuesta LT&C
 
 > Seguimiento continuo actualizado: `docs/BITACORA_AVANCES.md`
 
 ## Resumen
 Se implementaron las recomendaciones priorizadas del documento `propuestaDesarrolloSGD.md`.
+
+---
+
+## 2026-02-21 - Branding LT&C y base mobile plan
+- Branding visible del frontend unificado a `LT&C (Loja Torneos & Competencias)`.
+- Landing renovada con:
+  - seccion de precios,
+  - carrusel de auspiciantes,
+  - ajustes de redes y contacto.
+- Icono global de web/sistema incorporado:
+  - `frontend/assets/ltc/favicon.svg`,
+  - aplicacion global desde `frontend/js/core.js`.
+- Plan mobile web creado:
+  - `docs/PLAN_MOBILE_LT_C.md` con fases, riesgos, criterios de aceptacion y checklist de ejecucion.
 
 ---
 

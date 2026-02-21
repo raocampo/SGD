@@ -31,6 +31,15 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - formulario ajustado en ancho/alto para mejor proporcion visual.
 - README actualizado para denominacion oficial del sistema:
   - de `SGD - Sistema de Gestion Deportiva` a `LT&C - Loja Torneos & Competencias`.
+- Iconografia del sistema/web incorporada:
+  - nuevo favicon LT&C (`frontend/assets/ltc/favicon.svg`),
+  - aplicacion global desde `frontend/js/core.js`.
+- Ajustes finales UX en portal admin y landing:
+  - se elimino leyenda inferior en bloque `Accesos rapidos` del portal administrador,
+  - hover del menu principal con linea amarilla,
+  - CTA de demo convertido en texto operativo y enlace principal a `registro`.
+- Plan mobile web creado:
+  - nuevo documento `docs/PLAN_MOBILE_LT_C.md` con roadmap por fases, criterios de aceptacion y checklist de ejecucion.
 
 ### 2026-02-20
 - Documentacion de continuidad sincronizada para evitar perdida de contexto entre sesiones:

@@ -5,6 +5,8 @@
 
   const AUTH_TOKEN_KEY = "sgd_auth_token";
   const AUTH_USER_KEY = "sgd_auth_user";
+  const BRAND_FAVICON_SVG = "assets/ltc/favicon.svg";
+  const BRAND_FAVICON_FALLBACK = "assets/ltc/Logo.jpeg";
   const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html", "register.html"]);
   const TECNICO_ALLOWED_PAGES = new Set([
     "portal-tecnico.html",
@@ -22,6 +24,28 @@
     const page = path.split("/").pop() || "index.html";
     return page.toLowerCase();
   }
+
+  function asegurarLinkHead({ rel, href, type }) {
+    if (!rel || !href) return;
+    const selector = `link[rel="${rel}"]`;
+    let link = document.head.querySelector(selector);
+    if (!link) {
+      link = document.createElement("link");
+      link.setAttribute("rel", rel);
+      document.head.appendChild(link);
+    }
+    link.setAttribute("href", href);
+    if (type) link.setAttribute("type", type);
+  }
+
+  function aplicarIconoGlobal() {
+    if (!document?.head) return;
+    asegurarLinkHead({ rel: "icon", href: BRAND_FAVICON_SVG, type: "image/svg+xml" });
+    asegurarLinkHead({ rel: "shortcut icon", href: BRAND_FAVICON_FALLBACK, type: "image/jpeg" });
+    asegurarLinkHead({ rel: "apple-touch-icon", href: BRAND_FAVICON_FALLBACK, type: "image/jpeg" });
+  }
+
+  aplicarIconoGlobal();
 
   function esTecnicoOdirigente(user) {
     const rol = String(user?.rol || "").toLowerCase();

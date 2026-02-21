@@ -67,6 +67,7 @@ body.ltc-landing {
 }
 
 .ltc-header-nav a {
+  position: relative;
   color: rgba(244, 250, 255, 0.95);
   text-decoration: none;
   font-size: 0.88rem;
@@ -75,8 +76,22 @@ body.ltc-landing {
   border-radius: 7px;
 }
 
-.ltc-header-nav a:hover {
-  background: rgba(255, 255, 255, 0.16);
+.ltc-header-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: 0.2rem;
+  height: 2px;
+  border-radius: 999px;
+  background: #f8dc6a;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.18s ease;
+}
+
+.ltc-header-nav a:hover::after {
+  transform: scaleX(1);
 }
 
 .ltc-header-actions {
