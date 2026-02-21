@@ -447,7 +447,7 @@ function renderEncabezado() {
         ${
           logoCampeonato
             ? `<img src="${logoCampeonato}" alt="Logo campeonato" class="planilla-head-logo-img" />`
-            : "<div class='planilla-head-logo-fallback'>SGD</div>"
+            : "<div class='planilla-head-logo-fallback'>LT&C</div>"
         }
       </div>
       <div class="planilla-head-title-slot">
@@ -1541,7 +1541,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
     <div class="planilla-oficial-sheet ${modelo}">
       <header class="planilla-oficial-head">
         <div class="planilla-oficial-head-text">
-          <p class="planilla-oficial-org">${escapeHtml(p.campeonato_organizador || p.campeonato_nombre || "SGD")}</p>
+          <p class="planilla-oficial-org">${escapeHtml(p.campeonato_organizador || p.campeonato_nombre || "LT&C")}</p>
           <h4>PLANILLA DE JUEGO</h4>
           <p class="planilla-oficial-type">${escapeHtml(tituloModelo)}</p>
         </div>
@@ -2131,7 +2131,7 @@ async function imprimirPDFPlanilla() {
               width: "*",
               stack: [
                 {
-                  text: p.campeonato_organizador || p.campeonato_nombre || "SGD",
+                  text: p.campeonato_organizador || p.campeonato_nombre || "LT&C",
                   alignment: "center",
                   bold: true,
                   fontSize: 10.5,
@@ -2654,5 +2654,6 @@ window.imprimirPDFPlanilla = imprimirPDFPlanilla;
 window.toggleVistaPreviaPlanilla = toggleVistaPreviaPlanilla;
 window.volverAPartidos = volverAPartidos;
 window.recargarPlanilla = recargarPlanilla;
+
 
 

@@ -2,6 +2,36 @@ const path = require("path");
 const fs = require("fs");
 const Campeonato = require("../models/Campeonato");
 
+function esOrganizador(user) {
+  return String(user?.rol || "").toLowerCase() === "organizador";
+}
+
+function organizadorCoincideConTexto(user, campeonato) {
+  const campo = String(campeonato?.organizador || "").trim().toLowerCase();
+  if (!campo) return false;
+  const nombre = String(user?.nombre || "").trim().toLowerCase();
+  const email = String(user?.email || "").trim().toLowerCase();
+  return campo === nombre || campo === email;
+}
+
+async function puedeAccederCampeonato(req, campeonato) {
+  if (!esOrganizador(req?.user)) return true;
+  if (!campeonato) return false;
+
+  const creador = Number.parseInt(campeonato.creador_usuario_id, 10);
+  const userId = Number.parseInt(req.user?.id, 10);
+  if (Number.isFinite(creador) && creador > 0) {
+    return creador === userId;
+  }
+
+  if (organizadorCoincideConTexto(req.user, campeonato)) {
+    await Campeonato.asignarCreador(campeonato.id, userId);
+    return true;
+  }
+
+  return false;
+}
+
 const campeonatoController = {
   // Crear nuevo campeonato
   crearCampeonato: async (req, res) => {
@@ -50,7 +80,7 @@ const campeonatoController = {
 
       const nuevoCampeonato = await Campeonato.crear(
         nombre,
-        organizador,
+        organizador || req.user?.nombre || req.user?.email || null,
         fecha_inicio,
         fecha_fin,
         tipo_futbol,
@@ -65,6 +95,7 @@ const campeonatoController = {
         requiere_foto_cedula,
         requiere_foto_carnet,
         genera_carnets,
+        req.user?.id || null,
         costo_arbitraje,
         costo_tarjeta_amarilla,
         costo_tarjeta_roja,
@@ -87,7 +118,16 @@ const campeonatoController = {
   // Obtener todos los campeonatos
   obtenerCampeonatos: async (req, res) => {
     try {
-      const campeonatos = await Campeonato.obtenerTodos();
+      const campeonatosAll = await Campeonato.obtenerTodos();
+      let campeonatos = campeonatosAll;
+
+      if (esOrganizador(req.user)) {
+        const filtrados = [];
+        for (const c of campeonatosAll) {
+          if (await puedeAccederCampeonato(req, c)) filtrados.push(c);
+        }
+        campeonatos = filtrados;
+      }
 
       res.json({
         mensaje: "📋 Lista de campeonatos",
@@ -114,6 +154,9 @@ const campeonatoController = {
           error: "Campeonato no encontrado",
         });
       }
+      if (!(await puedeAccederCampeonato(req, campeonato))) {
+        return res.status(403).json({ error: "No autorizado para consultar este campeonato" });
+      }
 
       res.json({
         mensaje: "📖 Detalles del campeonato",
@@ -133,6 +176,15 @@ const campeonatoController = {
     try {
       const { id } = req.params;
       const datos = req.body;
+      const campeonatoActual = await Campeonato.obtenerPorId(id);
+      if (!campeonatoActual) {
+        return res.status(404).json({
+          error: "Campeonato no encontrado",
+        });
+      }
+      if (!(await puedeAccederCampeonato(req, campeonatoActual))) {
+        return res.status(403).json({ error: "No autorizado para actualizar este campeonato" });
+      }
 
       if (datos.requiere_foto_cedula !== undefined) {
         datos.requiere_foto_cedula =
@@ -183,6 +235,16 @@ const campeonatoController = {
   eliminarCampeonato: async (req, res) => {
     try {
       const { id } = req.params;
+      const campeonatoActual = await Campeonato.obtenerPorId(id);
+      if (!campeonatoActual) {
+        return res.status(404).json({
+          error: "Campeonato no encontrado",
+        });
+      }
+      if (!(await puedeAccederCampeonato(req, campeonatoActual))) {
+        return res.status(403).json({ error: "No autorizado para eliminar este campeonato" });
+      }
+
       const campeonatoEliminado = await Campeonato.eliminar(id);
 
       if (!campeonatoEliminado) {
@@ -225,6 +287,13 @@ const campeonatoController = {
     try {
       const { id } = req.params;
       const { estado } = req.body;
+      const campeonatoActual = await Campeonato.obtenerPorId(id);
+      if (!campeonatoActual) {
+        return res.status(404).json({ error: "Campeonato no encontrado" });
+      }
+      if (!(await puedeAccederCampeonato(req, campeonatoActual))) {
+        return res.status(403).json({ error: "No autorizado para cambiar el estado de este campeonato" });
+      }
 
       if (!estado) {
         return res.status(400).json({

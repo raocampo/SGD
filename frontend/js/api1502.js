@@ -52,3 +52,4 @@
 
   window.ApiClient = ApiClientClass;
 })();
+

@@ -226,3 +226,4 @@ function escapeHtmlAuspiciante(v) {
 
 window.editarAuspiciante = editarAuspiciante;
 window.eliminarAuspiciante = eliminarAuspiciante;
+

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro | LT&C (Loja Torneos & Competencias)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+<body class="auth-page auth-page-register">
+  <main class="auth-shell">
+    <section class="auth-card auth-card-register">
+      <div class="auth-form-pane auth-form-pane-register">
+        <img src="assets/ltc/Logo.jpeg" alt="LT&C" class="auth-logo" />
+        <h1 class="auth-title">Ya queda menos...</h1>
+        <p class="auth-brand">LT&C (Loja Torneos & Competencias)</p>
+
+        <form id="register-form" class="auth-form">
+          <div class="auth-form-group">
+            <label for="register-email">E-mail</label>
+            <input id="register-email" type="email" autocomplete="email" class="auth-input" required />
+            <small class="auth-field-msg" id="register-email-msg"></small>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Tipo de cuenta</label>
+            <div class="auth-radio-row">
+              <label class="auth-radio-item">
+                <input type="radio" name="register-rol" value="organizador" checked />
+                Organizador
+              </label>
+              <label class="auth-radio-item">
+                <input type="radio" name="register-rol" value="dirigente" />
+                Dirigente
+              </label>
+              <label class="auth-radio-item">
+                <input type="radio" name="register-rol" value="tecnico" />
+                Técnico
+              </label>
+            </div>
+          </div>
+
+          <div class="auth-grid-2">
+            <div class="auth-form-group">
+              <label for="register-nombres">Nombre</label>
+              <input id="register-nombres" type="text" autocomplete="given-name" class="auth-input" required />
+              <small class="auth-field-msg" id="register-nombres-msg"></small>
+            </div>
+            <div class="auth-form-group">
+              <label for="register-apellidos">Apellidos</label>
+              <input id="register-apellidos" type="text" autocomplete="family-name" class="auth-input" required />
+              <small class="auth-field-msg" id="register-apellidos-msg"></small>
+            </div>
+          </div>
+
+          <div class="auth-grid-2">
+            <div class="auth-form-group">
+              <label for="register-password">Contraseña</label>
+              <input
+                id="register-password"
+                type="password"
+                autocomplete="new-password"
+                minlength="6"
+                class="auth-input"
+                required
+              />
+              <small class="auth-field-msg" id="register-password-msg"></small>
+            </div>
+            <div class="auth-form-group">
+              <label for="register-password-confirm">Confirmar contraseña</label>
+              <input
+                id="register-password-confirm"
+                type="password"
+                autocomplete="new-password"
+                minlength="6"
+                class="auth-input"
+                required
+              />
+              <small class="auth-field-msg" id="register-password-confirm-msg"></small>
+            </div>
+          </div>
+
+          <div class="auth-terms-row">
+            <label>
+              <input type="checkbox" id="register-terms" />
+              Acepto los términos y condiciones
+            </label>
+          </div>
+
+          <div class="auth-actions">
+            <button id="register-submit" type="submit" class="auth-btn auth-btn-primary" disabled>
+              Regístrame
+            </button>
+          </div>
+        </form>
+
+        <div class="auth-links auth-links-center">
+          <span>¿Ya tienes una cuenta?</span>
+          <a href="login.html">Iniciar sesión</a>
+        </div>
+      </div>
+
+      <div class="auth-media-pane">
+        <figure class="auth-shape">
+          <img src="assets/ltc/bannerLTC.jpg" alt="LT&C Registro" />
+        </figure>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/register.js"></script>
+</body>
+</html>
+

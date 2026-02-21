@@ -63,29 +63,85 @@ function inicializarNavegacion() {
 // Cargar estadísticas del dashboard
 async function cargarEstadisticasIniciales() {
     try {
-        const campeonatos = await CampeonatosAPI.obtenerTodos();
-        const stats = calcularEstadisticas(campeonatos.campeonatos || []);
-        
-        document.getElementById('stats-campeonatos').textContent = stats.campeonatos;
-        document.getElementById('stats-equipos').textContent = stats.equipos;
-        document.getElementById('stats-jugadores').textContent = stats.jugadores;
-        document.getElementById('stats-partidos').textContent = stats.partidos;
-        
+        const user = window.Auth?.getUser?.() || null;
+        const rol = String(user?.rol || "").toLowerCase();
+        const stats = await calcularEstadisticasReales(rol);
+
+        const set = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = String(value ?? 0);
+        };
+
+        set("stats-campeonatos", stats.campeonatos);
+        set("stats-eventos", stats.eventos);
+        set("stats-equipos", stats.equipos);
+        set("stats-jugadores", stats.jugadores);
+        set("stats-partidos", stats.partidos);
     } catch (error) {
-        console.error('Error cargando estadísticas:', error);
+        console.error("Error cargando estadísticas:", error);
     }
 }
 
-function calcularEstadisticas(campeonatos) {
-    // Por ahora retornamos datos de ejemplo
-    // En una implementación real, haríamos más llamadas a la API
+async function calcularEstadisticasReales(rol = "") {
+    const campResp = await CampeonatosAPI.obtenerTodos();
+    const campeonatos = Array.isArray(campResp)
+        ? campResp
+        : (campResp?.campeonatos || campResp?.data || []);
+
+    if (!campeonatos.length) {
+        return { campeonatos: 0, eventos: 0, equipos: 0, jugadores: 0, partidos: 0 };
+    }
+
+    // Para organizador, CampeonatosAPI ya devuelve solo sus campeonatos.
+    const campeonatoIds = campeonatos.map((c) => Number(c.id)).filter((x) => Number.isFinite(x) && x > 0);
+
+    const resultados = await Promise.all(
+        campeonatoIds.map(async (campeonatoId) => {
+            const [evResp, eqResp, paResp] = await Promise.all([
+                EventosAPI.obtenerPorCampeonato(campeonatoId).catch(() => ({ eventos: [] })),
+                window.ApiClient.get(`/equipos/campeonato/${campeonatoId}`).catch(() => ({ equipos: [] })),
+                window.ApiClient.get(`/partidos/campeonato/${campeonatoId}`).catch(() => ({ partidos: [] })),
+            ]);
+            return {
+                eventos: Array.isArray(evResp) ? evResp : (evResp?.eventos || []),
+                equipos: Array.isArray(eqResp) ? eqResp : (eqResp?.equipos || []),
+                partidos: Array.isArray(paResp) ? paResp : (paResp?.partidos || []),
+            };
+        })
+    );
+
+    const eventosMap = new Map();
+    const equiposMap = new Map();
+    let partidosTotal = 0;
+
+    resultados.forEach((r) => {
+        (r.eventos || []).forEach((e) => eventosMap.set(Number(e.id), e));
+        (r.equipos || []).forEach((e) => equiposMap.set(Number(e.id), e));
+        partidosTotal += (r.partidos || []).length;
+    });
+
+    const equipos = Array.from(equiposMap.values());
+    const jugadoresPorEquipo = await Promise.all(
+        equipos.map((equipo) =>
+            window.ApiClient
+                .get(`/jugadores/equipo/${equipo.id}`)
+                .then((r) => (Array.isArray(r) ? r.length : ((r?.jugadores || []).length)))
+                .catch(() => 0)
+        )
+    );
+    const jugadoresTotal = jugadoresPorEquipo.reduce((acc, n) => acc + (Number(n) || 0), 0);
+
     return {
         campeonatos: campeonatos.length,
-        equipos: campeonatos.reduce((acc, camp) => acc + (camp.max_equipos || 0), 0),
-        jugadores: campeonatos.reduce((acc, camp) => acc + (camp.max_jugadores || 0) * (camp.max_equipos || 0), 0),
-        partidos: campeonatos.length * 10 // Ejemplo
+        eventos: eventosMap.size,
+        equipos: equiposMap.size,
+        jugadores: jugadoresTotal,
+        partidos: partidosTotal,
     };
 }
+
+// Hook explícito usado por admin.html
+window.initStatsAdmin = cargarEstadisticasIniciales;
 
 // Inicializar modales
 function inicializarModales() {
@@ -255,3 +311,4 @@ async function cargarCampeonatosParaSorteo() {
         console.error('Error cargando campeonatos para sorteo:', error);
     }
 }
+

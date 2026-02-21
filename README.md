@@ -1,4 +1,4 @@
-# SGD - Sistema de Gestion Deportiva
+# LT&C - Loja Torneos & Competencias
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
@@ -19,7 +19,7 @@ Estado del proyecto (2026-02-20): funcional en flujo principal con pendientes de
 - [12. Solucion de Problemas](#12-solucion-de-problemas)
 
 ## 1. Vision General
-El objetivo de SGD es centralizar la operacion de torneos amateur/semi-profesionales, desde la inscripcion hasta reportes deportivos y financieros.
+El objetivo de LT&C (Loja Torneos & Competencias) es centralizar la operacion de torneos amateur/semi-profesionales, desde la inscripcion hasta reportes deportivos y financieros.
 
 Flujo principal operativo:
 1. Crear campeonato.

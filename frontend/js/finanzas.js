@@ -563,7 +563,7 @@ function renderMembreteReporte(campeonato, fallbackTitulo = "") {
         ${
           logo
             ? `<img src="${escaparHtml(logo)}" alt="Logo campeonato" class="fin-membrete-logo" />`
-            : `<div class="fin-membrete-logo-fallback">SGD</div>`
+            : `<div class="fin-membrete-logo-fallback">LT&C</div>`
         }
       </div>
       <div class="fin-membrete-center">
@@ -1290,3 +1290,4 @@ function escaparHtml(valor) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+

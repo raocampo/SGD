@@ -25,9 +25,32 @@ async function requireAuth(req, res, next) {
     }
 
     req.user = UsuarioAuth.limpiarUsuario(user);
+    const metodo = String(req.method || "").toUpperCase();
+    const esLectura = metodo === "GET" || metodo === "HEAD" || metodo === "OPTIONS";
+    if (req.user?.solo_lectura === true && !esLectura) {
+      return res.status(403).json({
+        error: "Tu cuenta está en modo solo lectura. No tienes permisos de modificación.",
+      });
+    }
     return next();
   } catch (error) {
     return res.status(401).json({ error: "Token inválido o expirado." });
+  }
+}
+
+async function optionalAuth(req, res, next) {
+  try {
+    const token = parseBearerToken(req);
+    if (!token) return next();
+
+    const payload = jwt.verify(token, getJwtSecret());
+    const user = await UsuarioAuth.obtenerPorId(payload?.id);
+    if (!user || !user.activo) return next();
+
+    req.user = UsuarioAuth.limpiarUsuario(user);
+    return next();
+  } catch (_) {
+    return next();
   }
 }
 
@@ -45,6 +68,7 @@ function requireRoles(...roles) {
 
 module.exports = {
   requireAuth,
+  optionalAuth,
   requireRoles,
   getJwtSecret,
 };

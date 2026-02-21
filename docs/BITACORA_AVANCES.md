@@ -1,6 +1,6 @@
-# Bitácora de Avances - SGD
+# Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-02-20
+Ultima actualizacion: 2026-02-21
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,25 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-02-21
+- Landing page LT&C ajustada con linea visual final:
+  - branding consolidado a `LT&C (Loja Torneos & Competencias)` en textos visibles del frontend,
+  - cabecera y pie de pagina en paleta LT&C (negro/amarillo/azules),
+  - enlaces reales integrados (Facebook, Instagram, WhatsApp y correo oficial).
+- Seccion de torneos mejorada:
+  - tarjetas de torneos/proximos torneos con imagenes locales,
+  - soporte visual para imagenes pequenas con fondo de respaldo `bannerLTC`,
+  - ajuste de tarjeta destacada para mayor altura.
+- Nueva seccion `Planes y Precios` incorporada en landing.
+- Seccion de auspiciantes redisenada:
+  - carrusel unico sin cards ni nombres,
+  - animacion acelerada para mejor dinamica visual.
+- Seccion `Escribenos` actualizada:
+  - texto `Sociales` corregido,
+  - formulario ajustado en ancho/alto para mejor proporcion visual.
+- README actualizado para denominacion oficial del sistema:
+  - de `SGD - Sistema de Gestion Deportiva` a `LT&C - Loja Torneos & Competencias`.
 
 ### 2026-02-20
 - Documentacion de continuidad sincronizada para evitar perdida de contexto entre sesiones:

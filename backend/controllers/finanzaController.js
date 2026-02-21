@@ -4,6 +4,10 @@ const {
   obtenerEquiposPermitidosTecnico,
   tecnicoPuedeAccederEquipo,
 } = require("../services/roleScope");
+const {
+  isOrganizador,
+  obtenerCampeonatoIdsOrganizador,
+} = require("../services/organizadorScope");
 
 function statusParaError(error) {
   const msg = String(error?.message || "").toLowerCase();
@@ -26,6 +30,22 @@ const finanzaController = {
     try {
       if (esTecnicoOdirigente(req.user?.rol)) {
         return res.status(403).json({ error: "No autorizado para registrar movimientos" });
+      }
+      if (isOrganizador(req.user)) {
+        const permitidos = await obtenerCampeonatoIdsOrganizador(req.user);
+        if (!permitidos.length) {
+          return res.status(403).json({ error: "No tienes campeonatos asignados" });
+        }
+        const payload = req.body || {};
+        let campId = payload.campeonato_id
+          ? Number.parseInt(payload.campeonato_id, 10)
+          : null;
+        if (!campId && payload.equipo_id) {
+          campId = await Finanza.resolverCampeonatoIdPorEquipo(payload.equipo_id);
+        }
+        if (!campId || !permitidos.includes(campId)) {
+          return res.status(403).json({ error: "No autorizado para registrar movimientos en ese campeonato" });
+        }
       }
       const movimiento = await Finanza.crearMovimiento(req.body || {});
       return res.status(201).json({
@@ -59,6 +79,20 @@ const finanzaController = {
           filtros.equipo_ids = equiposPermitidos;
         }
       }
+      if (isOrganizador(req.user)) {
+        const campeonatos = await obtenerCampeonatoIdsOrganizador(req.user);
+        if (!campeonatos.length) return res.json({ ok: true, total: 0, movimientos: [] });
+        if (filtros.campeonato_id) {
+          const campId = Number.parseInt(filtros.campeonato_id, 10);
+          if (!campeonatos.includes(campId)) {
+            return res.status(403).json({ error: "No autorizado para consultar ese campeonato" });
+          }
+        } else if (campeonatos.length === 1) {
+          filtros.campeonato_id = campeonatos[0];
+        } else {
+          filtros.campeonato_ids = campeonatos;
+        }
+      }
 
       const movimientos = await Finanza.listarMovimientos(filtros);
       return res.json({
@@ -78,6 +112,16 @@ const finanzaController = {
       if (esTecnicoOdirigente(req.user?.rol)) {
         const autorizado = await tecnicoPuedeAccederEquipo(req, equipo_id);
         if (!autorizado) {
+          return res.status(403).json({ error: "No autorizado para consultar este equipo" });
+        }
+      }
+      if (isOrganizador(req.user)) {
+        const campeonatos = await obtenerCampeonatoIdsOrganizador(req.user);
+        if (!campeonatos.length) {
+          return res.status(403).json({ error: "No tienes campeonatos asignados" });
+        }
+        const campIdEquipo = await Finanza.resolverCampeonatoIdPorEquipo(equipo_id);
+        if (!campeonatos.includes(campIdEquipo)) {
           return res.status(403).json({ error: "No autorizado para consultar este equipo" });
         }
       }
@@ -113,6 +157,20 @@ const finanzaController = {
           filtros.equipo_id = equiposPermitidos[0];
         } else {
           filtros.equipo_ids = equiposPermitidos;
+        }
+      }
+      if (isOrganizador(req.user)) {
+        const campeonatos = await obtenerCampeonatoIdsOrganizador(req.user);
+        if (!campeonatos.length) return res.json({ ok: true, total: 0, equipos: [] });
+        if (filtros.campeonato_id) {
+          const campId = Number.parseInt(filtros.campeonato_id, 10);
+          if (!campeonatos.includes(campId)) {
+            return res.status(403).json({ error: "No autorizado para consultar ese campeonato" });
+          }
+        } else if (campeonatos.length === 1) {
+          filtros.campeonato_id = campeonatos[0];
+        } else {
+          filtros.campeonato_ids = campeonatos;
         }
       }
 

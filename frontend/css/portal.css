@@ -1,21 +1,980 @@
-.portal-header { background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); color: white; padding: 1.5rem 0; }
-.portal-header h1 { font-size: 1.8rem; }
-.portal-nav { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
-.portal-nav a { color: rgba(255,255,255,0.9); text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; background: rgba(255,255,255,0.15); }
-.portal-nav a:hover { background: rgba(255,255,255,0.25); }
-.portal-section { display: none; }
-.portal-section.active { display: block; }
-.portal-card { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 1.5rem; margin-bottom: 1rem; }
-.portal-card h3 { margin-bottom: 1rem; color: #1e3a5f; }
-.partido-publico { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; padding: 0.8rem; border-bottom: 1px solid #eee; }
-.partido-publico:last-child { border-bottom: none; }
-.equipo-nombre { font-weight: 600; text-align: center; }
-.marcador { font-size: 1.5rem; font-weight: bold; text-align: center; }
-.tabla-posicion th, .tabla-posicion td { padding: 0.5rem 0.8rem; text-align: center; }
-.tabla-posicion th { background: #1e3a5f; color: white; }
-.tabla-posicion tr:nth-child(even) { background: #f8f9fa; }
-.empty-msg { color: #888; padding: 2rem; text-align: center; }
-.badge-estado { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; }
-.estado-en_curso { background: #d4edda; color: #155724; }
-.estado-inscripcion { background: #cce5ff; color: #004085; }
-.estado-finalizado { background: #e2e3e5; color: #383d41; }
+:root {
+  --ltc-navy: #2f3c4f;
+  --ltc-green: #0d9a86;
+  --ltc-green-dark: #0a7667;
+  --ltc-lime: #4d953b;
+  --ltc-light: #f5f7fb;
+  --ltc-ink: #2f3a4a;
+  --ltc-soft-border: #c9d6e4;
+}
+
+body.ltc-landing {
+  margin: 0;
+  font-family: "Sora", "Segoe UI", sans-serif;
+  background: #7277a9;
+  color: var(--ltc-ink);
+}
+
+.ltc-site-header {
+  position: sticky;
+  top: 0;
+  z-index: 120;
+  background: #000;
+  border-bottom: 1px solid rgba(248, 220, 106, 0.35);
+}
+
+.ltc-header-inner {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ltc-header-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #f3f8ff;
+  font-weight: 800;
+  text-decoration: none;
+  letter-spacing: 0.05em;
+}
+
+.ltc-header-brand-sub {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.5rem;
+  border: 1px solid #f8dc6a;
+  background: #0d0d0d;
+  color: #f8dc6a;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ltc-header-brand img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.ltc-header-nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.ltc-header-nav a {
+  color: rgba(244, 250, 255, 0.95);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.4rem 0.7rem;
+  border-radius: 7px;
+}
+
+.ltc-header-nav a:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.ltc-header-actions {
+  display: flex;
+  gap: 0.52rem;
+}
+
+.ltc-head-btn {
+  text-decoration: none;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.52rem 0.86rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.ltc-head-btn-ghost {
+  color: #f8dc6a;
+  border: 1px solid #f8dc6a;
+  background: #0d0d0d;
+}
+
+.ltc-head-btn-solid {
+  color: #fff;
+  background: #2f5e96;
+}
+
+.ltc-head-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.24);
+}
+
+.ltc-head-btn-ghost:hover {
+  background: #161616;
+}
+
+.ltc-head-btn-solid:hover {
+  background: #3a73b5;
+}
+
+.ltc-nav-toggle {
+  display: none;
+  margin-left: auto;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(248, 220, 106, 0.45);
+  border-radius: 10px;
+  background: #0d0d0d;
+  color: #f8dc6a;
+  cursor: pointer;
+}
+
+.ltc-main {
+  background: #f5f7fb;
+}
+
+.ltc-hero-showcase {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(130deg, rgba(24, 44, 69, 0.64), rgba(20, 66, 108, 0.56)),
+    url("../assets/ltc/bannerLTC.jpg") center center / cover no-repeat;
+  color: #fff;
+  padding: 3rem 0 4.8rem;
+}
+
+.ltc-hero-showcase::after {
+  content: none;
+}
+
+.ltc-hero-wrap {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1.12fr 0.88fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.ltc-hero-copy h1 {
+  margin: 0;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(2.2rem, 4.2vw, 4.1rem);
+  line-height: 1.02;
+  color: #fee174;
+  max-width: 15ch;
+}
+
+.ltc-hero-copy p {
+  margin: 1.25rem 0 0;
+  max-width: 48ch;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.ltc-hero-actions {
+  margin-top: 1.4rem;
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.ltc-demo-text {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.76rem 1rem;
+  border-radius: 5px;
+  border: 1px dashed rgba(248, 220, 106, 0.55);
+  color: #f8dc6a;
+  background: rgba(13, 13, 13, 0.35);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.ltc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.76rem 1rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.ltc-btn-demo {
+  background: #2f5e96;
+  color: #fff;
+}
+
+.ltc-btn-enter {
+  background: #fff;
+  color: #33455f;
+}
+
+.ltc-btn-back {
+  background: #2f5e96;
+  color: #fff;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.ltc-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(11, 31, 54, 0.18);
+}
+
+.ltc-btn-enter:hover {
+  background: #f3f7ff;
+}
+
+.ltc-hero-media {
+  position: relative;
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ltc-hero-media-shape {
+  width: min(380px, 100%);
+  aspect-ratio: 1 / 1;
+  border-radius: 35% 18% 28% 16%;
+  overflow: hidden;
+  transform: rotate(17deg);
+  box-shadow: 0 20px 36px rgba(4, 69, 60, 0.4);
+}
+
+.ltc-hero-media-shape img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: rotate(-17deg) scale(1.16);
+}
+
+.ltc-play-btn {
+  position: absolute;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 0;
+  background: #2f5e96;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(18, 67, 14, 0.34);
+}
+
+.ltc-teams-section {
+  padding: 2.2rem 0 0.8rem;
+}
+
+.ltc-section-title {
+  text-align: center;
+  margin-bottom: 1.1rem;
+}
+
+.ltc-section-title h2 {
+  margin: 0;
+  color: #2f3a4b;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(1.8rem, 3.6vw, 2.8rem);
+}
+
+.ltc-section-title p {
+  margin: 0.42rem 0 0;
+  color: #617691;
+}
+
+.portal-section {
+  display: none;
+}
+
+.portal-section.active {
+  display: block;
+}
+
+.portal-campeonatos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+  gap: 0.9rem;
+}
+
+.portal-campeonato-card {
+  background: #fff;
+  border: 1px solid #c7d8ec;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(33, 58, 88, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.portal-campeonato-card[role="button"] {
+  cursor: pointer;
+}
+
+.portal-campeonato-card:hover {
+  transform: translateY(-3px);
+  border-color: #9dbbe0;
+  box-shadow: 0 14px 26px rgba(22, 46, 76, 0.16);
+}
+
+.portal-card-featured {
+  grid-column: span 1;
+}
+
+.portal-card-featured .portal-card-media {
+  height: 270px;
+  background:
+    linear-gradient(130deg, rgba(13, 26, 41, 0.48), rgba(18, 54, 86, 0.42)),
+    url("../assets/ltc/bannerLTC.jpg") center center / cover no-repeat;
+}
+
+.portal-card-featured .portal-card-media img {
+  object-fit: contain;
+  padding: 0.35rem;
+}
+
+.portal-card-media {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  background:
+    linear-gradient(130deg, rgba(13, 26, 41, 0.48), rgba(18, 54, 86, 0.42)),
+    url("../assets/ltc/bannerLTC.jpg") center center / cover no-repeat;
+}
+
+.portal-card-media img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0.35rem;
+  display: block;
+}
+
+.portal-card-body {
+  padding: 0.9rem 0.95rem 1rem;
+}
+
+.portal-card-body h3 {
+  margin: 0.48rem 0 0.3rem;
+  font-size: 1.02rem;
+  color: #2f3a4a;
+}
+
+.portal-card-date {
+  margin: 0;
+  color: #5e748f;
+  font-size: 0.86rem;
+}
+
+.portal-card-btn {
+  margin-top: 0.75rem;
+  border: 1px solid #2f5e96;
+  border-radius: 8px;
+  background: #2f5e96;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.52rem 0.78rem;
+  cursor: pointer;
+  transition: background-color 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
+}
+
+.portal-card-btn:hover:not(:disabled) {
+  background: #3a73b5;
+  transform: translateY(-1px);
+}
+
+.portal-card-btn:disabled {
+  cursor: default;
+  opacity: 0.68;
+}
+
+.portal-card-upcoming .portal-card-media img {
+  filter: saturate(0.9);
+}
+
+.portal-card {
+  background: #fff;
+  border: 1px solid #c7d8ec;
+  border-radius: 18px;
+  box-shadow: 0 4px 12px rgba(35, 58, 92, 0.08);
+  padding: 1.1rem 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.portal-card h3 {
+  margin: 0.5rem 0 0.2rem;
+  color: #2f3a4a;
+  font-size: 1.08rem;
+}
+
+.portal-card h4 {
+  color: #315d95;
+}
+
+.portal-card p {
+  color: #5e748f;
+}
+
+.ltc-team-figure {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #f4f8ff;
+  border: 1px solid #dce6f2;
+}
+
+.partido-publico {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.62rem;
+  padding: 0.55rem 0.35rem;
+  border-bottom: 1px solid #e4edf8;
+}
+
+.partido-publico:last-child {
+  border-bottom: none;
+}
+
+.equipo-nombre {
+  text-align: center;
+  font-weight: 600;
+  color: #27486f;
+}
+
+.marcador {
+  font-weight: 700;
+  border-radius: 8px;
+  background: #eef4fd;
+  padding: 0.14rem 0.42rem;
+  color: #102f56;
+}
+
+.tabla-posicion {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.35rem;
+  font-size: 0.83rem;
+}
+
+.tabla-posicion th,
+.tabla-posicion td {
+  border: 1px solid #dce8f4;
+  padding: 0.34rem 0.3rem;
+  text-align: center;
+}
+
+.tabla-posicion th {
+  background: #1f4b7d;
+  color: #fff;
+}
+
+.empty-msg {
+  margin: 0;
+  text-align: center;
+  padding: 1.2rem 1rem;
+  color: #5b718d;
+  border: 1px dashed #cedae8;
+  border-radius: 12px;
+}
+
+.badge-estado {
+  display: inline-flex;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.estado-en_curso {
+  background: #daf7e7;
+  color: #1b7245;
+}
+
+.estado-inscripcion {
+  background: #dcecff;
+  color: #1c4f95;
+}
+
+.estado-borrador {
+  background: #ffefcc;
+  color: #865d0a;
+}
+
+.estado-finalizado {
+  background: #e8edf3;
+  color: #4b5c70;
+}
+
+.ltc-news-section {
+  padding: 2rem 0;
+}
+
+.ltc-news-grid {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.82fr) 1.18fr;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.ltc-ball-shape {
+  width: min(280px, 100%);
+  aspect-ratio: 1 / 1;
+  border-radius: 32% 18% 26% 18%;
+  overflow: hidden;
+  transform: rotate(15deg);
+  box-shadow: 0 14px 26px rgba(27, 60, 94, 0.18);
+  border: 6px solid #bfd5ef;
+}
+
+.ltc-ball-shape img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: rotate(-15deg) scale(1.2);
+}
+
+.ltc-news-copy h3 {
+  margin: 0 0 0.5rem;
+  color: #2f3a4c;
+  font-size: clamp(1.45rem, 2.5vw, 2.2rem);
+}
+
+.ltc-news-copy p {
+  margin: 0;
+  color: #4f637b;
+  max-width: 55ch;
+  font-size: 0.94rem;
+}
+
+.ltc-news-copy span {
+  display: inline-block;
+  margin-top: 0.65rem;
+  color: #2e4f78;
+  font-size: 0.82rem;
+}
+
+.ltc-about-section {
+  padding: 0.4rem 0 2rem;
+}
+
+.ltc-about-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.ltc-about-copy h3 {
+  margin: 0 0 0.4rem;
+  color: #2f3a4c;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(1.5rem, 3vw, 2.3rem);
+}
+
+.ltc-about-copy p {
+  margin: 0.42rem 0 0;
+  color: #4f637b;
+  max-width: 62ch;
+}
+
+.ltc-about-banner {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 14px 30px rgba(31, 58, 90, 0.2);
+}
+
+.ltc-about-banner img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.ltc-pricing-section {
+  padding: 0.6rem 0 2rem;
+}
+
+.ltc-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.ltc-pricing-card {
+  background: #fff;
+  border: 1px solid #c7d8ec;
+  border-radius: 14px;
+  padding: 1rem 0.95rem;
+  box-shadow: 0 8px 16px rgba(29, 53, 84, 0.1);
+}
+
+.ltc-pricing-card h3 {
+  margin: 0;
+  color: #2f3a4a;
+}
+
+.ltc-pricing-amount {
+  margin: 0.5rem 0 0.7rem;
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: #2f5e96;
+}
+
+.ltc-pricing-amount span {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #5f7590;
+}
+
+.ltc-pricing-card ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #4f637b;
+  font-size: 0.9rem;
+}
+
+.ltc-pricing-card li {
+  margin-bottom: 0.42rem;
+}
+
+.ltc-pricing-btn {
+  margin-top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  border: 1px solid #2f5e96;
+  color: #fff;
+  background: #2f5e96;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.52rem 0.85rem;
+}
+
+.ltc-pricing-btn:hover {
+  background: #3a73b5;
+}
+
+.ltc-pricing-card-highlight {
+  border-color: rgba(248, 220, 106, 0.85);
+  box-shadow: 0 12px 24px rgba(20, 38, 62, 0.15);
+}
+
+.ltc-sponsors-section {
+  padding: 0.8rem 0 2rem;
+}
+
+.ltc-sponsors-strip {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid #c7d8ec;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 14px rgba(25, 48, 78, 0.09);
+  padding: 1rem 0;
+}
+
+.ltc-sponsors-track {
+  display: flex;
+  align-items: center;
+  gap: 2.4rem;
+  width: max-content;
+  animation: ltcSponsorsMove 11s linear infinite;
+}
+
+.ltc-sponsors-track img {
+  height: 78px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+@keyframes ltcSponsorsMove {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ltc-contact-section {
+  margin-top: 1rem;
+  padding: 2.4rem 0 3.1rem;
+  position: relative;
+  background:
+    linear-gradient(150deg, rgba(23, 48, 76, 0.72), rgba(28, 94, 146, 0.64)),
+    url("../assets/ltc/bannerLTC.jpg") center center / cover no-repeat;
+  color: #fff;
+}
+
+.ltc-contact-section::before {
+  content: none;
+}
+
+.ltc-contact-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 30, 49, 0.22);
+}
+
+.ltc-contact-section > .container {
+  position: relative;
+  z-index: 3;
+}
+
+.ltc-contact-section h2 {
+  margin: 0;
+  text-align: center;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(2.15rem, 4.4vw, 3.25rem);
+  color: #f8dc6a;
+  text-shadow: 0 2px 10px rgba(6, 16, 28, 0.5);
+}
+
+.ltc-contact-section p {
+  margin: 0.45rem auto 1.25rem;
+  text-align: center;
+  max-width: 70ch;
+  color: #f4f9ff;
+  text-shadow: 0 1px 8px rgba(6, 16, 28, 0.5);
+  background: rgba(10, 28, 46, 0.34);
+  border: 1px solid rgba(223, 236, 250, 0.22);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+
+.ltc-contact-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1fr);
+  gap: 1.7rem;
+  align-items: stretch;
+}
+
+.ltc-contact-aside h4 {
+  margin: 0.45rem 0 0.15rem;
+  font-size: 1.1rem;
+}
+
+.ltc-contact-aside a {
+  color: #e8fffb;
+  text-decoration: none;
+}
+
+.ltc-contact-social-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.58rem;
+  margin-top: 0.2rem;
+}
+
+.ltc-contact-social-icons a {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(248, 220, 106, 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #f8dc6a;
+  background: rgba(4, 12, 20, 0.4);
+  text-decoration: none;
+}
+
+.ltc-contact-social-icons a:hover {
+  background: rgba(248, 220, 106, 0.15);
+}
+
+.ltc-contact-form {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1.35rem;
+  display: grid;
+  gap: 0.75rem;
+  min-height: 430px;
+  max-width: 620px;
+  width: 100%;
+  justify-self: center;
+  box-shadow: 0 16px 30px rgba(10, 28, 48, 0.28);
+}
+
+.ltc-contact-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.ltc-contact-form input,
+.ltc-contact-form textarea {
+  width: 100%;
+  border: 1px solid #d2dbe8;
+  border-radius: 6px;
+  padding: 0.72rem 0.78rem;
+  font-family: inherit;
+  font-size: 0.94rem;
+}
+
+.ltc-contact-form textarea {
+  min-height: 220px;
+}
+
+.ltc-contact-form button {
+  border: 0;
+  border-radius: 6px;
+  background: #2f5e96;
+  color: #fff;
+  font-weight: 700;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.ltc-contact-form button:hover {
+  background: #3a73b5;
+  transform: translateY(-1px);
+}
+
+.ltc-footer {
+  background: #000;
+  color: #f3f8ff;
+  border-top: 1px solid rgba(248, 220, 106, 0.35);
+  padding: 1.5rem 0 1.8rem;
+}
+
+.ltc-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+  flex-wrap: wrap;
+}
+
+.ltc-footer-copy {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(244, 250, 255, 0.95);
+}
+
+.ltc-footer-copy a {
+  color: #f8dc6a;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ltc-footer-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+}
+
+.ltc-footer-social a {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(248, 220, 106, 0.55);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #f8dc6a;
+  text-decoration: none;
+  background: #0d0d0d;
+}
+
+.ltc-footer-social a:hover {
+  background: rgba(248, 220, 106, 0.12);
+}
+
+@media (max-width: 980px) {
+  .ltc-hero-wrap,
+  .ltc-news-grid,
+  .ltc-contact-grid,
+  .ltc-about-grid,
+  .ltc-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ltc-hero-media {
+    min-height: 280px;
+  }
+
+  .portal-card-featured {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 840px) {
+  .ltc-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ltc-header-nav {
+    position: absolute;
+    top: 86px;
+    left: 0.8rem;
+    right: 0.8rem;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    background: #000;
+    border: 1px solid rgba(248, 220, 106, 0.28);
+    border-radius: 10px;
+    padding: 0.6rem;
+    box-shadow: 0 10px 28px rgba(21, 36, 58, 0.36);
+  }
+
+  .ltc-header-nav.open {
+    display: flex;
+  }
+
+  .ltc-header-actions {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .ltc-header-brand-sub {
+    display: none;
+  }
+
+  .ltc-header-actions {
+    display: none;
+  }
+
+  .ltc-hero-showcase {
+    padding-top: 2.5rem;
+  }
+
+  .ltc-hero-showcase::after {
+    bottom: -190px;
+  }
+
+  .partido-publico {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 0.28rem;
+  }
+
+  .ltc-contact-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ltc-footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

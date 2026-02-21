@@ -885,3 +885,4 @@ window.abrirPlanillaPartido = abrirPlanillaPartido;
 window.cambiarVistaPartidos = cambiarVistaPartidos;
 
 
+

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-label="Proximo torneo empresarial">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d1b2a"/>
+      <stop offset="100%" stop-color="#1b4965"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#g1)"/>
+  <circle cx="180" cy="150" r="120" fill="#f8dc6a" opacity="0.16"/>
+  <circle cx="1030" cy="560" r="170" fill="#f8dc6a" opacity="0.12"/>
+  <path d="M80 560 C 260 420, 420 640, 620 540 S 980 450, 1130 560" fill="none" stroke="#8ecae6" stroke-width="10" opacity="0.45"/>
+  <text x="90" y="290" fill="#f8dc6a" font-family="Arial, sans-serif" font-size="66" font-weight="700">PROXIMO TORNEO</text>
+  <text x="90" y="360" fill="#e5f2ff" font-family="Arial, sans-serif" font-size="48" font-weight="600">EMPRESARIAL LT&amp;C</text>
+</svg>

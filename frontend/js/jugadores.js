@@ -30,6 +30,25 @@ vistaJugadores = vistaJugadores === "table" ? "table" : "cards";
 
 const BACKEND_BASE = (window.API_BASE_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
+function rolUsuarioActual() {
+  return String(window.Auth?.getUser?.()?.rol || "").toLowerCase();
+}
+
+function usuarioSoloGestionJugadores() {
+  const rol = rolUsuarioActual();
+  return rol === "tecnico" || rol === "dirigente";
+}
+
+function tienePermisoReportesJugadores() {
+  return !usuarioSoloGestionJugadores();
+}
+
+function validarPermisoReportesJugadores() {
+  if (tienePermisoReportesJugadores()) return true;
+  mostrarNotificacion("Tu rol no tiene permisos para generar o visualizar reportes", "warning");
+  return false;
+}
+
 function obtenerParametroUrl(nombre) {
   const params = new URLSearchParams(window.location.search);
   return params.get(nombre);
@@ -95,26 +114,37 @@ function actualizarEstadoPanelReportes() {
   const hint = document.getElementById("reportes-jugadores-hint");
   if (!bloque) return;
 
-  const habilitado = contextoListoParaReportes();
-  bloque.classList.toggle("reportes-jugadores-disabled", !habilitado);
+  const habilitadoContexto = contextoListoParaReportes();
+  const habilitadoReportes = habilitadoContexto && tienePermisoReportesJugadores();
+  bloque.classList.toggle("reportes-jugadores-disabled", !habilitadoContexto);
 
   [
     "btn-descargar-plantilla-jugadores",
     "btn-importar-jugadores-file",
     "btn-importar-docs-zip",
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !habilitadoContexto;
+  });
+
+  [
     "btn-ver-reporte-jugadores",
     "btn-imprimir-reporte-jugadores",
     "btn-pdf-reporte-jugadores",
     "reporte-jugadores-tipo",
   ].forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.disabled = !habilitado;
+    if (el) el.disabled = !habilitadoReportes;
   });
 
   if (hint) {
-    hint.textContent = habilitado
-      ? "Selecciona el tipo de reporte y ejecuta la acción."
-      : "Selecciona campeonato, categoría y equipo para habilitar las acciones.";
+    if (!habilitadoContexto) {
+      hint.textContent = "Selecciona campeonato, categoría y equipo para habilitar las acciones.";
+    } else if (!tienePermisoReportesJugadores()) {
+      hint.textContent = "Tu rol puede gestionar jugadores, pero no generar reportes.";
+    } else {
+      hint.textContent = "Selecciona el tipo de reporte y ejecuta la acción.";
+    }
   }
 }
 
@@ -133,6 +163,11 @@ function cambiarVistaJugadores(vista = "cards") {
 }
 
 function cambiarPestanaJugadores(tabId = "tab-jugadores-gestion") {
+  if (tabId === "tab-jugadores-reportes" && !tienePermisoReportesJugadores()) {
+    mostrarNotificacion("Tu rol no tiene acceso a reportes", "warning");
+    tabId = "tab-jugadores-gestion";
+  }
+
   const tabs = [
     { buttonId: "btn-tab-jugadores-gestion", panelId: "tab-jugadores-gestion" },
     { buttonId: "btn-tab-jugadores-reportes", panelId: "tab-jugadores-reportes" },
@@ -146,6 +181,19 @@ function cambiarPestanaJugadores(tabId = "tab-jugadores-gestion") {
     if (btn) btn.classList.toggle("active", activo);
     if (panel) panel.classList.toggle("active", activo);
   });
+}
+
+function aplicarRestriccionesRolEnJugadores() {
+  if (!usuarioSoloGestionJugadores()) return;
+
+  const btnReportes = document.getElementById("btn-tab-jugadores-reportes");
+  const panelReportes = document.getElementById("tab-jugadores-reportes");
+  const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
+  const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
+  if (btnReportes) btnReportes.style.display = "none";
+  if (panelReportes) panelReportes.style.display = "none";
+  if (bloqueNomina) bloqueNomina.style.display = "none";
+  if (bloqueCarnets) bloqueCarnets.style.display = "none";
 }
 
 function actualizarResumenReglasDocumentos() {
@@ -416,6 +464,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   modoDirecto = !equipoId;
   actualizarBotonesVistaJugadores();
+  aplicarRestriccionesRolEnJugadores();
   cambiarPestanaJugadores("tab-jugadores-gestion");
   actualizarEstadoPanelReportes();
   document
@@ -735,7 +784,7 @@ function renderPlantillaNominaJugadores() {
     <div class="nomina-sheet">
       <div class="nomina-head">
         <div class="nomina-head-logo">
-          ${logoCampeonato ? `<img src="${logoCampeonato}" alt="Logo campeonato" />` : "<div class='logo-fallback'>SGD</div>"}
+          ${logoCampeonato ? `<img src="${logoCampeonato}" alt="Logo campeonato" />` : "<div class='logo-fallback'>LT&C</div>"}
         </div>
         <div class="nomina-head-main">
           <h3>Nómina Oficial de Jugadores</h3>
@@ -825,7 +874,7 @@ function renderPlantillaCarnets() {
               ${
                 logoCampeonato
                   ? `<img src="${logoCampeonato}" alt="Logo campeonato" class="carnet-logo" />`
-                  : "<span class='carnet-logo-fallback'>SGD</span>"
+                  : "<span class='carnet-logo-fallback'>LT&C</span>"
               }
               <a href="${escapeHtml(urlPortalParticipacion)}" target="_blank" rel="noopener noreferrer" class="carnet-qr-link" title="Abrir página del torneo">
                 <img src="${escapeHtml(qrUrlParticipacion)}" alt="QR torneo" class="carnet-qr" />
@@ -841,6 +890,7 @@ function renderPlantillaCarnets() {
 }
 
 function mostrarPlantillaNominaJugadores() {
+  if (!validarPermisoReportesJugadores()) return;
   if (!contextoListoParaReportes()) {
     mostrarNotificacion("Selecciona campeonato, categoría y equipo para ver reportes", "warning");
     return;
@@ -855,6 +905,7 @@ function mostrarPlantillaNominaJugadores() {
 }
 
 function mostrarPlantillaCarnets() {
+  if (!validarPermisoReportesJugadores()) return;
   if (!contextoListoParaReportes()) {
     mostrarNotificacion("Selecciona campeonato, categoría y equipo para ver reportes", "warning");
     return;
@@ -1102,6 +1153,7 @@ async function exportarCarnetsEnPDFA4(node, nombreArchivo) {
 }
 
 function imprimirNominaJugadores() {
+  if (!validarPermisoReportesJugadores()) return;
   if (!contextoListoParaReportes()) {
     mostrarNotificacion("Selecciona campeonato, categoría y equipo para imprimir", "warning");
     return;
@@ -1116,6 +1168,7 @@ function imprimirNominaJugadores() {
 }
 
 async function exportarNominaJugadoresPDF() {
+  if (!validarPermisoReportesJugadores()) return;
   if (!contextoListoParaReportes()) {
     mostrarNotificacion("Selecciona campeonato, categoría y equipo para exportar", "warning");
     return;
@@ -1140,6 +1193,7 @@ async function exportarNominaJugadoresPDF() {
 }
 
 function imprimirCarnetsJugadores() {
+  if (!validarPermisoReportesJugadores()) return;
   if (!contextoListoParaReportes()) {
     mostrarNotificacion("Selecciona campeonato, categoría y equipo para imprimir", "warning");
     return;
@@ -1160,6 +1214,7 @@ function imprimirCarnetsJugadores() {
 }
 
 async function exportarCarnetsPDF() {
+  if (!validarPermisoReportesJugadores()) return;
   if (!contextoListoParaReportes()) {
     mostrarNotificacion("Selecciona campeonato, categoría y equipo para exportar", "warning");
     return;
@@ -1208,6 +1263,7 @@ function obtenerTipoReporteJugadores() {
 }
 
 function verReporteJugadores() {
+  if (!validarPermisoReportesJugadores()) return;
   const tipo = obtenerTipoReporteJugadores();
   if (tipo === "carnets") {
     mostrarPlantillaCarnets();
@@ -1217,6 +1273,7 @@ function verReporteJugadores() {
 }
 
 function imprimirReporteJugadores() {
+  if (!validarPermisoReportesJugadores()) return;
   const tipo = obtenerTipoReporteJugadores();
   if (tipo === "carnets") {
     imprimirCarnetsJugadores();
@@ -1226,6 +1283,7 @@ function imprimirReporteJugadores() {
 }
 
 async function exportarReporteJugadoresPDF() {
+  if (!validarPermisoReportesJugadores()) return;
   const tipo = obtenerTipoReporteJugadores();
   if (tipo === "carnets") {
     await exportarCarnetsPDF();
@@ -1963,3 +2021,4 @@ window.exportarNominaJugadoresPDF = exportarNominaJugadoresPDF;
 window.mostrarPlantillaCarnets = mostrarPlantillaCarnets;
 window.imprimirCarnetsJugadores = imprimirCarnetsJugadores;
 window.exportarCarnetsPDF = exportarCarnetsPDF;
+

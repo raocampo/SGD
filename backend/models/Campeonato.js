@@ -13,6 +13,7 @@ class Campeonato {
       ADD COLUMN IF NOT EXISTS requiere_foto_cedula BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS requiere_foto_carnet BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS genera_carnets BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS creador_usuario_id INTEGER,
       ADD COLUMN IF NOT EXISTS numero_organizador INTEGER,
       ADD COLUMN IF NOT EXISTS costo_arbitraje NUMERIC(12,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS costo_tarjeta_amarilla NUMERIC(12,2) DEFAULT 0,
@@ -48,6 +49,30 @@ class Campeonato {
       ON campeonatos ((LOWER(COALESCE(TRIM(organizador), 'sin_organizador'))), numero_organizador)
       WHERE numero_organizador IS NOT NULL
     `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_campeonatos_creador_usuario
+      ON campeonatos(creador_usuario_id)
+    `);
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+            AND table_name = 'usuarios'
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'fk_campeonatos_creador_usuario'
+        ) THEN
+          ALTER TABLE campeonatos
+          ADD CONSTRAINT fk_campeonatos_creador_usuario
+          FOREIGN KEY (creador_usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL;
+        END IF;
+      END $$;
+    `);
     this._columnasDocumentosAseguradas = true;
   }
 
@@ -76,6 +101,7 @@ class Campeonato {
     requiere_foto_cedula = false,
     requiere_foto_carnet = false,
     genera_carnets = false,
+    creador_usuario_id = null,
     costo_arbitraje = 0,
     costo_tarjeta_amarilla = 0,
     costo_tarjeta_roja = 0,
@@ -108,6 +134,7 @@ class Campeonato {
         requiere_foto_cedula,
         requiere_foto_carnet,
         genera_carnets,
+        creador_usuario_id,
         costo_arbitraje,
         costo_tarjeta_amarilla,
         costo_tarjeta_roja,
@@ -116,7 +143,7 @@ class Campeonato {
         numero_organizador
       )
       SELECT
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,'borrador',
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'borrador',
         next_num.next_num
       FROM next_num
       RETURNING *
@@ -143,10 +170,25 @@ class Campeonato {
       this.parseDecimalNoNegativo(costo_tarjeta_amarilla, 0),
       this.parseDecimalNoNegativo(costo_tarjeta_roja, 0),
       this.parseDecimalNoNegativo(costo_carnet, 0),
+      creador_usuario_id ? Number.parseInt(creador_usuario_id, 10) : null,
     ];
 
     const result = await pool.query(query, values);
     return result.rows[0];
+  }
+
+  static async asignarCreador(id, usuarioId) {
+    await this.asegurarColumnasDocumentos();
+    const r = await pool.query(
+      `
+        UPDATE campeonatos
+        SET creador_usuario_id = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING *
+      `,
+      [Number.parseInt(usuarioId, 10), Number.parseInt(id, 10)]
+    );
+    return r.rows[0] || null;
   }
 
   // READ - Obtener todos los campeonatos

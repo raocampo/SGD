@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const pool = require("../config/database");
 
 const ROLES = new Set(["administrador", "organizador", "tecnico", "dirigente"]);
@@ -10,6 +11,10 @@ class UsuarioAuth {
     return String(email || "").trim().toLowerCase();
   }
 
+  static hashToken(token) {
+    return crypto.createHash("sha256").update(String(token || "")).digest("hex");
+  }
+
   static limpiarUsuario(row) {
     if (!row) return null;
     return {
@@ -18,6 +23,7 @@ class UsuarioAuth {
       email: row.email,
       rol: row.rol,
       activo: row.activo === true,
+      solo_lectura: row.solo_lectura === true,
       equipo_ids: Array.isArray(row.equipo_ids)
         ? row.equipo_ids.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0)
         : [],
@@ -37,9 +43,14 @@ class UsuarioAuth {
         password_hash TEXT NOT NULL,
         rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'organizador', 'tecnico', 'dirigente')),
         activo BOOLEAN NOT NULL DEFAULT TRUE,
+        solo_lectura BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+    await client.query(`
+      ALTER TABLE usuarios
+      ADD COLUMN IF NOT EXISTS solo_lectura BOOLEAN NOT NULL DEFAULT FALSE
     `);
     await client.query(`
       DO $$
@@ -81,6 +92,22 @@ class UsuarioAuth {
     await client.query(
       `CREATE INDEX IF NOT EXISTS idx_usuario_equipos_equipo ON usuario_equipos(equipo_id)`
     );
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS usuario_password_resets (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_usuario_password_resets_usuario ON usuario_password_resets(usuario_id)`
+    );
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_usuario_password_resets_expires ON usuario_password_resets(expires_at)`
+    );
 
     await this.asegurarAdminInicial(client);
 
@@ -88,12 +115,12 @@ class UsuarioAuth {
   }
 
   static async asegurarAdminInicial(client = pool) {
-    const adminEmail = this.normalizarEmail(
-      process.env.AUTH_ADMIN_EMAIL || process.env.ADMIN_EMAIL || "admin@sgd.local"
-    );
-    const adminPass = String(
-      process.env.AUTH_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || "Admin123*"
-    );
+    const adminEmailRaw = String(process.env.AUTH_ADMIN_EMAIL || process.env.ADMIN_EMAIL || "").trim();
+    const adminPassRaw = String(
+      process.env.AUTH_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || ""
+    ).trim();
+    const adminEmail = this.normalizarEmail(adminEmailRaw);
+    const adminPass = String(adminPassRaw);
     const adminNombre = String(process.env.AUTH_ADMIN_NOMBRE || "Administrador SGD");
 
     if (!adminEmail || !adminPass) return;
@@ -112,6 +139,17 @@ class UsuarioAuth {
       [adminNombre, adminEmail, hash]
     );
     console.log(`[auth] usuario administrador inicial creado: ${adminEmail}`);
+  }
+
+  static async contarUsuarios(client = pool) {
+    await this.asegurarEsquema(client);
+    const r = await client.query("SELECT COUNT(*)::int AS total FROM usuarios");
+    return Number(r.rows[0]?.total || 0);
+  }
+
+  static async requiereRegistroInicial(client = pool) {
+    const total = await this.contarUsuarios(client);
+    return total <= 0;
   }
 
   static async obtenerPorEmail(email, client = pool) {
@@ -174,6 +212,8 @@ class UsuarioAuth {
       data.activo === undefined
         ? true
         : data.activo === true || String(data.activo).toLowerCase() === "true";
+    const soloLectura =
+      data.solo_lectura === true || String(data.solo_lectura || "").toLowerCase() === "true";
 
     if (!nombre) throw new Error("nombre es obligatorio");
     if (!email) throw new Error("email es obligatorio");
@@ -190,13 +230,99 @@ class UsuarioAuth {
     const hash = await bcrypt.hash(password, 10);
     const r = await client.query(
       `
-        INSERT INTO usuarios (nombre, email, password_hash, rol, activo)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO usuarios (nombre, email, password_hash, rol, activo, solo_lectura)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
       `,
-      [nombre, email, hash, rol, activo]
+      [nombre, email, hash, rol, activo, soloLectura]
     );
     return this.limpiarUsuario(r.rows[0]);
+  }
+
+  static async actualizar(usuarioId, data = {}, client = pool) {
+    await this.asegurarEsquema(client);
+
+    const uId = Number.parseInt(usuarioId, 10);
+    if (!Number.isFinite(uId) || uId <= 0) throw new Error("usuario_id invalido");
+
+    const actual = await this.obtenerPorId(uId, client);
+    if (!actual) throw new Error("Usuario no encontrado");
+
+    const campos = [];
+    const valores = [];
+    let idx = 1;
+
+    if (data.nombre !== undefined) {
+      const nombre = String(data.nombre || "").trim();
+      if (!nombre) throw new Error("nombre es obligatorio");
+      campos.push(`nombre = $${idx++}`);
+      valores.push(nombre);
+    }
+
+    if (data.email !== undefined) {
+      const email = this.normalizarEmail(data.email);
+      if (!email) throw new Error("email es obligatorio");
+      const exists = await client.query(
+        "SELECT 1 FROM usuarios WHERE email = $1 AND id <> $2 LIMIT 1",
+        [email, uId]
+      );
+      if (exists.rows.length) throw new Error("Ya existe un usuario con ese email");
+      campos.push(`email = $${idx++}`);
+      valores.push(email);
+    }
+
+    if (data.password !== undefined && String(data.password || "").trim() !== "") {
+      const password = String(data.password || "");
+      if (password.length < 6) throw new Error("password debe tener al menos 6 caracteres");
+      const hash = await bcrypt.hash(password, 10);
+      campos.push(`password_hash = $${idx++}`);
+      valores.push(hash);
+    }
+
+    if (data.rol !== undefined) {
+      const rol = String(data.rol || "").trim().toLowerCase();
+      if (!ROLES.has(rol)) {
+        throw new Error("rol invalido. Use: administrador, organizador, tecnico o dirigente");
+      }
+      campos.push(`rol = $${idx++}`);
+      valores.push(rol);
+    }
+
+    if (data.activo !== undefined) {
+      const activo =
+        data.activo === true || String(data.activo || "").toLowerCase() === "true";
+      campos.push(`activo = $${idx++}`);
+      valores.push(activo);
+    }
+
+    if (data.solo_lectura !== undefined) {
+      const soloLectura =
+        data.solo_lectura === true || String(data.solo_lectura || "").toLowerCase() === "true";
+      campos.push(`solo_lectura = $${idx++}`);
+      valores.push(soloLectura);
+    }
+
+    if (!campos.length) throw new Error("No hay campos para actualizar");
+
+    valores.push(uId);
+    await client.query(
+      `
+        UPDATE usuarios
+        SET ${campos.join(", ")}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $${idx}
+      `,
+      valores
+    );
+
+    const actualizado = await this.obtenerPorId(uId, client);
+    if (!actualizado) return null;
+
+    if (actualizado.rol !== "tecnico" && actualizado.rol !== "dirigente") {
+      await client.query(`DELETE FROM usuario_equipos WHERE usuario_id = $1`, [uId]);
+    }
+
+    const refreshed = await this.obtenerPorId(uId, client);
+    return this.limpiarUsuario(refreshed);
   }
 
   static async validarCredenciales(email, password, client = pool) {
@@ -246,6 +372,114 @@ class UsuarioAuth {
       [uId, eId]
     );
     const actualizado = await this.obtenerPorId(uId, client);
+    return this.limpiarUsuario(actualizado);
+  }
+
+  static async eliminar(usuarioId, client = pool) {
+    await this.asegurarEsquema(client);
+    const uId = Number.parseInt(usuarioId, 10);
+    if (!Number.isFinite(uId) || uId <= 0) throw new Error("usuario_id invalido");
+
+    const r = await client.query(`DELETE FROM usuarios WHERE id = $1 RETURNING *`, [uId]);
+    return this.limpiarUsuario(r.rows[0] || null);
+  }
+
+  static async crearTokenRecuperacion(email, ttlMin = 45, client = pool) {
+    await this.asegurarEsquema(client);
+    const user = await this.obtenerPorEmail(email, client);
+    if (!user || !user.activo) return null;
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = this.hashToken(token);
+    const minutos = Number.isFinite(Number(ttlMin)) ? Math.max(5, Number(ttlMin)) : 45;
+
+    await client.query(
+      `
+        UPDATE usuario_password_resets
+        SET used_at = CURRENT_TIMESTAMP
+        WHERE usuario_id = $1
+          AND used_at IS NULL
+      `,
+      [user.id]
+    );
+
+    await client.query(
+      `
+        INSERT INTO usuario_password_resets (usuario_id, token_hash, expires_at)
+        VALUES ($1, $2, CURRENT_TIMESTAMP + ($3 * INTERVAL '1 minute'))
+      `,
+      [user.id, tokenHash, minutos]
+    );
+
+    return {
+      token,
+      usuario: this.limpiarUsuario(user),
+      expira_en_minutos: minutos,
+    };
+  }
+
+  static async resetearPasswordConToken(email, token, nuevoPassword, client = pool) {
+    await this.asegurarEsquema(client);
+
+    const password = String(nuevoPassword || "");
+    if (password.length < 6) {
+      throw new Error("password debe tener al menos 6 caracteres");
+    }
+    const tokenPlano = String(token || "").trim();
+    if (!tokenPlano) {
+      throw new Error("token es obligatorio");
+    }
+
+    const user = await this.obtenerPorEmail(email, client);
+    if (!user || !user.activo) {
+      throw new Error("Token inválido o expirado");
+    }
+
+    const tokenHash = this.hashToken(tokenPlano);
+    const tokenDb = await client.query(
+      `
+        SELECT id
+        FROM usuario_password_resets
+        WHERE usuario_id = $1
+          AND token_hash = $2
+          AND used_at IS NULL
+          AND expires_at > CURRENT_TIMESTAMP
+        ORDER BY id DESC
+        LIMIT 1
+      `,
+      [user.id, tokenHash]
+    );
+    const resetId = Number.parseInt(tokenDb.rows[0]?.id, 10);
+    if (!Number.isFinite(resetId) || resetId <= 0) {
+      throw new Error("Token inválido o expirado");
+    }
+
+    await client.query("BEGIN");
+    try {
+      const hash = await bcrypt.hash(password, 10);
+      await client.query(
+        `
+          UPDATE usuarios
+          SET password_hash = $1, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2
+        `,
+        [hash, user.id]
+      );
+      await client.query(
+        `
+          UPDATE usuario_password_resets
+          SET used_at = CURRENT_TIMESTAMP
+          WHERE id = $1
+        `,
+        [resetId]
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+
+    const actualizado = await this.obtenerPorId(user.id, client);
     return this.limpiarUsuario(actualizado);
   }
 

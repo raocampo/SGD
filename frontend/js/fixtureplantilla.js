@@ -437,3 +437,4 @@ window.cambiarVistaFixture = cambiarVistaFixture;
 window.exportarFixturePNG = exportarFixturePNG;
 window.exportarFixturePDF = exportarFixturePDF;
 window.volverPartidos = volverPartidos;
+

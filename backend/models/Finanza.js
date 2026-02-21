@@ -332,6 +332,11 @@ class Finanza {
     if (filtros.campeonato_id) {
       campeonatos.add(this.parseEntero(filtros.campeonato_id, "campeonato_id"));
     }
+    if (Array.isArray(filtros.campeonato_ids) && filtros.campeonato_ids.length) {
+      filtros.campeonato_ids.forEach((id) => {
+        campeonatos.add(this.parseEntero(id, "campeonato_id"));
+      });
+    }
 
     if (filtros.equipo_id) {
       const equipoId = this.parseEntero(filtros.equipo_id, "equipo_id");
@@ -462,6 +467,15 @@ class Finanza {
 
     if (filtros.campeonato_id) {
       addEq("campeonato_id", this.parseEntero(filtros.campeonato_id, "campeonato_id"));
+    }
+    if (Array.isArray(filtros.campeonato_ids) && filtros.campeonato_ids.length) {
+      const ids = filtros.campeonato_ids
+        .map((x) => this.parseEntero(x, "campeonato_id"))
+        .filter((x) => Number.isFinite(x) && x > 0);
+      if (ids.length) {
+        where.push(`fm.campeonato_id = ANY($${i++}::int[])`);
+        values.push(ids);
+      }
     }
     if (filtros.evento_id) {
       addEq("evento_id", this.parseEntero(filtros.evento_id, "evento_id"));
@@ -638,6 +652,15 @@ class Finanza {
     if (filtros.campeonato_id) {
       where.push(`fm.campeonato_id = $${i++}`);
       values.push(this.parseEntero(filtros.campeonato_id, "campeonato_id"));
+    }
+    if (Array.isArray(filtros.campeonato_ids) && filtros.campeonato_ids.length) {
+      const ids = filtros.campeonato_ids
+        .map((x) => this.parseEntero(x, "campeonato_id"))
+        .filter((x) => Number.isFinite(x) && x > 0);
+      if (ids.length) {
+        where.push(`fm.campeonato_id = ANY($${i++}::int[])`);
+        values.push(ids);
+      }
     }
     if (filtros.evento_id) {
       where.push(`fm.evento_id = $${i++}`);

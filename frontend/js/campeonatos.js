@@ -545,3 +545,4 @@ async function eliminarCampeonato(id) {
 // Si ya existen abajo en tu archivo original, mantenlas.
 // Si te faltan, me dices y te las dejo completas.
 window.cambiarVistaCampeonatos = cambiarVistaCampeonatos;
+

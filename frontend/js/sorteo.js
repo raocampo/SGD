@@ -555,3 +555,4 @@ window.girarRuleta = girarRuleta;
 window.asignarEquipoSeleccionado = asignarEquipoSeleccionado;
 window.verGruposSorteo = verGruposSorteo;
 window.reiniciarSorteo = reiniciarSorteo;
+

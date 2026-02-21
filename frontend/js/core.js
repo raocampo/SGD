@@ -5,7 +5,7 @@
 
   const AUTH_TOKEN_KEY = "sgd_auth_token";
   const AUTH_USER_KEY = "sgd_auth_user";
-  const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html"]);
+  const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html", "register.html"]);
   const TECNICO_ALLOWED_PAGES = new Set([
     "portal-tecnico.html",
     "equipos.html",
@@ -104,6 +104,13 @@
     isAdminLike() {
       const rol = String(this.getUser()?.rol || "").toLowerCase();
       return rol === "administrador" || rol === "organizador";
+    },
+    isAdministrador() {
+      const rol = String(this.getUser()?.rol || "").toLowerCase();
+      return rol === "administrador";
+    },
+    isReadOnly() {
+      return this.getUser()?.solo_lectura === true;
     },
     getDefaultPage() {
       return getDefaultPageByRole(this.getUser());
@@ -256,6 +263,10 @@
         window.location.pathname.endsWith("portal-tecnico.html")
       );
     } else {
+      const rol = String(user?.rol || "").toLowerCase();
+      if (rol !== "administrador" && rol !== "organizador") {
+        document.querySelectorAll('a[href="usuarios.html"]').forEach((lnk) => lnk.remove());
+      }
       ensureNavLink(
         "portal-admin.html",
         '<i class="fas fa-user-cog"></i> Mi Portal',
@@ -295,7 +306,8 @@
       topBar.appendChild(badge);
     }
     const rol = String(user.rol || "").toUpperCase();
-    badge.textContent = `${user.nombre || user.email || "Usuario"} (${rol})`;
+    const lectura = user?.solo_lectura === true ? " | SOLO LECTURA" : "";
+    badge.textContent = `${user.nombre || user.email || "Usuario"} (${rol}${lectura})`;
   }
 
   function initMenuMovil() {
@@ -381,7 +393,7 @@
       return true;
     }
 
-    if (page === "login.html") {
+    if (page === "login.html" || page === "register.html") {
       window.location.href = getDefaultPageByRole(user);
       return false;
     }
@@ -409,3 +421,4 @@
     return url.searchParams.get(key);
   };
 })();
+

@@ -80,8 +80,23 @@
   };
 
   window.AuthAPI = window.AuthAPI || {
+    bootstrapStatus() {
+      return window.ApiClient.get("/auth/bootstrap/status");
+    },
+    bootstrapRegister(payload) {
+      return window.ApiClient.post("/auth/bootstrap/register", payload);
+    },
+    registerPublic(payload) {
+      return window.ApiClient.post("/auth/register-public", payload);
+    },
     login(payload) {
       return window.ApiClient.post("/auth/login", payload);
+    },
+    forgotPassword(payload) {
+      return window.ApiClient.post("/auth/password/forgot", payload);
+    },
+    resetPassword(payload) {
+      return window.ApiClient.post("/auth/password/reset", payload);
     },
     me() {
       return window.ApiClient.get("/auth/me");
@@ -91,6 +106,12 @@
     },
     crearUsuario(payload) {
       return window.ApiClient.post("/auth/usuarios", payload);
+    },
+    actualizarUsuario(usuarioId, payload) {
+      return window.ApiClient.put(`/auth/usuarios/${usuarioId}`, payload);
+    },
+    eliminarUsuario(usuarioId) {
+      return window.ApiClient.delete(`/auth/usuarios/${usuarioId}`);
     },
     asignarEquipo(usuarioId, equipoId) {
       return window.ApiClient.post(`/auth/usuarios/${usuarioId}/equipos`, {
@@ -184,3 +205,4 @@
     },
   };
 })();
+

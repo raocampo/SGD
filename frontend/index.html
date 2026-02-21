@@ -3,40 +3,262 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Portal de Torneos - Sistema de Gestión Deportiva</title>
+  <title>LT&C | Loja Torneos & Competencias</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Sora:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/portal.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 </head>
-<body>
-  <header class="portal-header">
-    <div class="container">
-      <h1>⚽ Portal de Torneos</h1>
-      <p>Información pública de campeonatos y competencias</p>
-      <nav class="portal-nav">
-        <a href="login.html"><i class="fas fa-right-to-bracket"></i> Iniciar Sesión</a>
+<body class="ltc-landing">
+  <header class="ltc-site-header">
+    <div class="container ltc-header-inner">
+      <a class="ltc-header-brand" href="#home">
+        <img src="assets/ltc/Logo.jpeg" alt="LT&C" />
+        <span>LT&C</span>
+        <span class="ltc-header-brand-sub">(Loja Torneos & Competencias)</span>
+      </a>
+
+      <button class="ltc-nav-toggle" id="ltc-nav-toggle" aria-label="Abrir menu">
+        <i class="fas fa-bars"></i>
+      </button>
+
+      <nav class="ltc-header-nav" id="ltc-nav">
+        <a href="#home">Inicio</a>
+        <a href="#torneos">Torneos</a>
+        <a href="#precios">Precios</a>
+        <a href="#auspiciantes">Auspiciantes</a>
+        <a href="#nosotros">Nosotros</a>
+        <a href="#contacto">Contacto</a>
       </nav>
+
+      <div class="ltc-header-actions">
+        <a href="register.html" class="ltc-head-btn ltc-head-btn-ghost">Registrarse</a>
+        <a href="login.html" class="ltc-head-btn ltc-head-btn-solid">Ingresar</a>
+      </div>
     </div>
   </header>
 
-  <main class="main">
-    <div class="container">
-      <section id="portal-inicio" class="portal-section active">
-        <h2>Torneos y campeonatos</h2>
-        <div id="portal-lista-campeonatos" class="grid-container">
-          <p class="empty-msg">Cargando...</p>
+  <main class="ltc-main" id="home">
+    <section class="ltc-hero-showcase">
+      <div class="container ltc-hero-wrap">
+        <div class="ltc-hero-copy">
+          <h1>Organiza tus torneos de forma rápida</h1>
+          <p>
+            Gestiona campeonatos, categorías y equipos en una plataforma clara,
+            moderna y enfocada en el rendimiento deportivo.
+          </p>
+          <div class="ltc-hero-actions">
+            <span class="ltc-demo-text">EMPIEZA UNA DEMO</span>
+            <a href="register.html" class="ltc-btn ltc-btn-enter">Entra</a>
+          </div>
         </div>
-      </section>
+        <div class="ltc-hero-media">
+          <div class="ltc-hero-media-shape">
+            <img src="assets/ltc/bannerLTC.jpg" alt="LT&C Banner" />
+          </div>
+          <button class="ltc-play-btn" aria-label="Ver presentación">
+            <i class="fas fa-play"></i>
+          </button>
+        </div>
+      </div>
+    </section>
 
-      <section id="portal-detalle" class="portal-section">
-        <button class="btn btn-secondary" onclick="portalVolver()"><i class="fas fa-arrow-left"></i> Volver</button>
-        <div id="portal-detalle-contenido"></div>
-      </section>
-    </div>
+    <section class="ltc-section ltc-teams-section" id="torneos">
+      <div class="container">
+        <div class="ltc-section-title">
+          <h2>TORNEOS Y EQUIPOS EN LT&C</h2>
+          <p>Competiciones activas y organización profesional para cada categoría.</p>
+        </div>
+
+        <section id="portal-inicio" class="portal-section active">
+          <div id="portal-lista-campeonatos" class="portal-campeonatos-grid">
+            <p class="empty-msg">Cargando torneos...</p>
+          </div>
+        </section>
+
+        <section id="portal-detalle" class="portal-section">
+          <button class="ltc-btn ltc-btn-back" onclick="portalVolver()">
+            <i class="fas fa-arrow-left"></i>
+            Volver al listado
+          </button>
+          <div id="portal-detalle-contenido"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="ltc-news-section">
+      <div class="container ltc-news-grid">
+        <div class="ltc-news-ball">
+          <div class="ltc-ball-shape">
+            <img src="assets/ltc/bannerLTC.jpg" alt="Noticias LT&C" />
+          </div>
+        </div>
+        <article class="ltc-news-copy">
+          <h3>Últimas noticias</h3>
+          <p>
+            LT&C continúa fortaleciendo la experiencia del torneo con reportes deportivos,
+            control de planillas, carnets y módulos financieros para cada equipo.
+          </p>
+          <span>Loja Torneos & Competencias</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="ltc-about-section" id="nosotros">
+      <div class="container ltc-about-grid">
+        <article class="ltc-about-copy">
+          <h3>Loja Torneos & Competencias</h3>
+          <p>
+            LT&C impulsa campeonatos de futbol con una gestion ordenada de equipos,
+            jugadores, calendarios, reportes y control administrativo.
+          </p>
+          <p>
+            Nuestro objetivo es brindar una experiencia clara tanto para organizadores
+            como para dirigentes y aficionados.
+          </p>
+        </article>
+        <div class="ltc-about-banner">
+          <img src="assets/ltc/bannerLTC.jpg" alt="Banner LT&C" />
+        </div>
+      </div>
+    </section>
+
+    <section class="ltc-pricing-section" id="precios">
+      <div class="container">
+        <div class="ltc-section-title">
+          <h2>PLANES Y PRECIOS</h2>
+          <p>Escoge el plan ideal para organizar tus campeonatos con LT&C.</p>
+        </div>
+        <div class="ltc-pricing-grid">
+          <article class="ltc-pricing-card">
+            <h3>Plan Base</h3>
+            <p class="ltc-pricing-amount">$49 <span>/ torneo</span></p>
+            <ul>
+              <li>Gestión de categorías y equipos</li>
+              <li>Fixture y tablas automáticas</li>
+              <li>Portal público básico</li>
+            </ul>
+            <a href="register.html" class="ltc-pricing-btn">Comenzar</a>
+          </article>
+          <article class="ltc-pricing-card ltc-pricing-card-highlight">
+            <h3>Plan Competencia</h3>
+            <p class="ltc-pricing-amount">$89 <span>/ torneo</span></p>
+            <ul>
+              <li>Todo el Plan Base</li>
+              <li>Planillaje y reportes PDF</li>
+              <li>Módulo financiero y estado de cuenta</li>
+            </ul>
+            <a href="register.html" class="ltc-pricing-btn">Elegir Plan</a>
+          </article>
+          <article class="ltc-pricing-card">
+            <h3>Plan Premium</h3>
+            <p class="ltc-pricing-amount">$129 <span>/ torneo</span></p>
+            <ul>
+              <li>Todo el Plan Competencia</li>
+              <li>Carnets con QR y branding completo</li>
+              <li>Soporte prioritario LT&C</li>
+            </ul>
+            <a href="register.html" class="ltc-pricing-btn">Solicitar</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="ltc-sponsors-section" id="auspiciantes">
+      <div class="container">
+        <div class="ltc-section-title">
+          <h2>AUSPICIANTES</h2>
+          <p>Marcas que respaldan LT&C y el desarrollo deportivo local.</p>
+        </div>
+        <div class="ltc-sponsors-strip" aria-label="Auspiciantes LT&C">
+          <div class="ltc-sponsors-track">
+            <img src="assets/ltc/auspiciantes/CorpSimtelec.jpeg" alt="CorpSimtelec" />
+            <img src="assets/ltc/auspiciantes/DeportivoCat.jpeg" alt="Deportivo CAT" />
+            <img src="assets/ltc/auspiciantes/Rafa.jpeg" alt="Rafa" />
+            <img src="assets/ltc/auspiciantes/CorpSimtelec.jpeg" alt="" aria-hidden="true" />
+            <img src="assets/ltc/auspiciantes/DeportivoCat.jpeg" alt="" aria-hidden="true" />
+            <img src="assets/ltc/auspiciantes/Rafa.jpeg" alt="" aria-hidden="true" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ltc-contact-section" id="contacto">
+      <div class="container">
+        <h2>Escríbenos</h2>
+        <p>
+          Si quieres organizar tu campeonato con LT&C, contáctanos y te ayudamos a
+          implementar todo el flujo deportivo.
+        </p>
+
+        <div class="ltc-contact-grid">
+          <aside class="ltc-contact-aside">
+            <h4>Email</h4>
+            <a href="mailto:lojatorneosycompetencia@gmail.com">lojatorneosycompetencia@gmail.com</a>
+
+            <h4>Sociales</h4>
+            <div class="ltc-contact-social-icons">
+              <a href="https://www.facebook.com/LojaTorneosCompetencia" target="_blank" rel="noopener noreferrer" aria-label="Facebook LT&C">
+                <i class="fab fa-facebook-f"></i>
+              </a>
+              <a href="https://www.instagram.com/lojatorneoycompetencia" target="_blank" rel="noopener noreferrer" aria-label="Instagram LT&C">
+                <i class="fab fa-instagram"></i>
+              </a>
+              <a href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp LT&C">
+                <i class="fab fa-whatsapp"></i>
+              </a>
+            </div>
+          </aside>
+
+          <form class="ltc-contact-form" onsubmit="return false;">
+            <div class="ltc-contact-row">
+              <input type="text" placeholder="Nombre" />
+              <input type="tel" placeholder="Teléfono" />
+            </div>
+            <input type="email" placeholder="Email" />
+            <textarea rows="5" placeholder="Tu mensaje..."></textarea>
+            <button type="button">Send</button>
+          </form>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <footer class="ltc-footer">
+    <div class="container ltc-footer-inner">
+      <div class="ltc-footer-social">
+        <a href="https://www.facebook.com/LojaTorneosCompetencia" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+        <a href="https://www.instagram.com/lojatorneoycompetencia" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        <a href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+      </div>
+      <p class="ltc-footer-copy">LT&C &copy; Derechos reservados 2026</p>
+      <p class="ltc-footer-copy">
+        Desarrollado por
+        <a href="https://www.corpsimtelec.com" target="_blank" rel="noopener noreferrer">CorpSimtelec</a>
+      </p>
+    </div>
+  </footer>
 
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/portal.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const toggle = document.getElementById("ltc-nav-toggle");
+      const nav = document.getElementById("ltc-nav");
+      if (toggle && nav) {
+        toggle.addEventListener("click", () => nav.classList.toggle("open"));
+        nav.querySelectorAll("a").forEach((lnk) =>
+          lnk.addEventListener("click", () => nav.classList.remove("open"))
+        );
+      }
+    });
+  </script>
 </body>
 </html>
+

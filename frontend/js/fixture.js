@@ -339,3 +339,4 @@ async function exportarPDF(filename) {
 }
 
 document.addEventListener("DOMContentLoaded", cargarFixture);
+

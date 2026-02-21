@@ -4,14 +4,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SGD - Usuarios y Roles</title>
+  <title>LT&C - Usuarios y Roles</title>
   <link rel="stylesheet" href="css/style.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 </head>
 
 <body class="app-layout">
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">⚽ SGD</div>
+    <div class="sidebar-header">⚽ LT&C</div>
     <nav class="sidebar-nav">
       <a class="nav-btn" href="portal-admin.html"><i class="fas fa-home"></i> Mi Portal</a>
       <a class="nav-btn active" href="usuarios.html"><i class="fas fa-user-shield"></i> Usuarios</a>
@@ -31,7 +31,7 @@
     <main class="main">
       <div class="container">
         <div class="config-card">
-          <h3>Nuevo usuario</h3>
+          <h3 id="usuarios-form-title">Nuevo usuario</h3>
           <form id="usuarios-form">
             <div class="form-grid">
               <div class="form-group">
@@ -70,8 +70,11 @@
               </div>
             </div>
             <div class="actions">
-              <button type="submit" class="btn btn-success">
+              <button id="btn-usuarios-guardar" type="submit" class="btn btn-success">
                 <i class="fas fa-plus"></i> Crear usuario
+              </button>
+              <button type="button" id="btn-usuarios-cancelar" class="btn btn-warning" style="display:none;">
+                <i class="fas fa-xmark"></i> Cancelar edición
               </button>
               <button type="button" id="btn-usuarios-recargar" class="btn btn-secondary">
                 <i class="fas fa-rotate"></i> Recargar
@@ -82,6 +85,9 @@
 
         <div class="card">
           <h3>Listado de usuarios</h3>
+          <p id="usuarios-desc-rol" style="margin-top:-4px; margin-bottom:10px; color:#64748b; font-size:13px;">
+            Como administrador puedes visualizar, crear, editar y eliminar usuarios.
+          </p>
           <div class="tabla-scroll" id="usuarios-tabla-wrap">
             <p>Cargando usuarios...</p>
           </div>
@@ -98,3 +104,4 @@
 </body>
 
 </html>
+

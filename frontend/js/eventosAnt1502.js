@@ -297,3 +297,4 @@ async function quitarEquipoDelEvento(equipoId) {
     mostrarNotificacion("Error quitando equipo del evento", "error");
   }
 }
+

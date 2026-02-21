@@ -656,3 +656,4 @@ window.irAJugadores = irAJugadores;
 window.cambiarVistaEquipos = cambiarVistaEquipos;
 
 
+

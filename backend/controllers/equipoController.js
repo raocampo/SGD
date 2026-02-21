@@ -6,12 +6,24 @@ const {
   obtenerEquiposPermitidosTecnico,
   tecnicoPuedeAccederEquipo,
 } = require("../services/roleScope");
+const {
+  isOrganizador,
+  obtenerCampeonatoIdsOrganizador,
+  organizadorPuedeAccederCampeonato,
+} = require("../services/organizadorScope");
 
 async function filtrarEquiposParaTecnico(req, equipos = []) {
   const permitidos = await obtenerEquiposPermitidosTecnico(req);
   if (permitidos === null) return equipos;
   const set = new Set(permitidos);
   return equipos.filter((e) => set.has(Number(e.id)));
+}
+
+async function filtrarEquiposPorOrganizador(req, equipos = []) {
+  if (!isOrganizador(req?.user)) return equipos;
+  const ids = await obtenerCampeonatoIdsOrganizador(req.user);
+  const set = new Set(ids);
+  return equipos.filter((e) => set.has(Number(e.campeonato_id)));
 }
 
 const equipoController = {
@@ -48,6 +60,12 @@ const equipoController = {
         return res.status(400).json({
           error: "El correo electrónico es obligatorio",
         });
+      }
+      if (isOrganizador(req.user)) {
+        const puede = await organizadorPuedeAccederCampeonato(req.user, campeonato_id);
+        if (!puede) {
+          return res.status(403).json({ error: "No autorizado para crear equipo en ese campeonato" });
+        }
       }
 
       const logo_url = req.file
@@ -97,7 +115,8 @@ const equipoController = {
   obtenerTodosLosEquipos: async (req, res) => {
     try {
       const equiposAll = await Equipo.obtenerTodos();
-      const equipos = await filtrarEquiposParaTecnico(req, equiposAll);
+      const equiposTecnico = await filtrarEquiposParaTecnico(req, equiposAll);
+      const equipos = await filtrarEquiposPorOrganizador(req, equiposTecnico);
 
       res.json({
         mensaje: "📋 Todos los equipos del sistema",
@@ -117,9 +136,16 @@ const equipoController = {
   obtenerEquiposPorCampeonato: async (req, res) => {
     try {
       const { campeonato_id } = req.params;
+      if (isOrganizador(req.user)) {
+        const puede = await organizadorPuedeAccederCampeonato(req.user, campeonato_id);
+        if (!puede) {
+          return res.status(403).json({ error: "No autorizado para consultar ese campeonato" });
+        }
+      }
 
       const equiposAll = await Equipo.obtenerPorCampeonato(campeonato_id);
-      const equipos = await filtrarEquiposParaTecnico(req, equiposAll);
+      const equiposTecnico = await filtrarEquiposParaTecnico(req, equiposAll);
+      const equipos = await filtrarEquiposPorOrganizador(req, equiposTecnico);
 
       res.json({
         mensaje: `📋 Equipos del campeonato ${campeonato_id}`,
@@ -151,6 +177,12 @@ const equipoController = {
         return res.status(403).json({
           error: "No autorizado para consultar este equipo",
         });
+      }
+      if (isOrganizador(req.user)) {
+        const puede = await organizadorPuedeAccederCampeonato(req.user, equipo.campeonato_id);
+        if (!puede) {
+          return res.status(403).json({ error: "No autorizado para consultar este equipo" });
+        }
       }
 
       res.json({
@@ -260,6 +292,17 @@ const equipoController = {
     try {
       const { id } = req.params;
       const datos = req.body || {};
+      const equipoActual = await Equipo.obtenerPorId(id);
+      if (!equipoActual) {
+        return res.status(404).json({ error: "Equipo no encontrado" });
+      }
+      if (isOrganizador(req.user)) {
+        const campObjetivo = datos.campeonato_id || equipoActual.campeonato_id;
+        const puede = await organizadorPuedeAccederCampeonato(req.user, campObjetivo);
+        if (!puede) {
+          return res.status(403).json({ error: "No autorizado para actualizar este equipo" });
+        }
+      }
 
       // ✅ si subieron archivo, seteamos logo_url
       if (req.file) {
@@ -311,6 +354,18 @@ const equipoController = {
   eliminarEquipo: async (req, res) => {
     try {
       const { id } = req.params;
+      const equipoActual = await Equipo.obtenerPorId(id);
+      if (!equipoActual) {
+        return res.status(404).json({
+          error: "Equipo no encontrado",
+        });
+      }
+      if (isOrganizador(req.user)) {
+        const puede = await organizadorPuedeAccederCampeonato(req.user, equipoActual.campeonato_id);
+        if (!puede) {
+          return res.status(403).json({ error: "No autorizado para eliminar este equipo" });
+        }
+      }
       const equipoEliminado = await Equipo.eliminar(id);
 
       if (!equipoEliminado) {
@@ -355,6 +410,18 @@ const equipoController = {
     try {
       const { id } = req.params;
       const { cabeza_serie } = req.body;
+      const equipoActual = await Equipo.obtenerPorId(id);
+      if (!equipoActual) {
+        return res.status(404).json({
+          error: "Equipo no encontrado",
+        });
+      }
+      if (isOrganizador(req.user)) {
+        const puede = await organizadorPuedeAccederCampeonato(req.user, equipoActual.campeonato_id);
+        if (!puede) {
+          return res.status(403).json({ error: "No autorizado para modificar este equipo" });
+        }
+      }
 
       const equipoActualizado = await Equipo.designarCabezaSerie(
         id,
@@ -385,9 +452,16 @@ const equipoController = {
   obtenerCabezasDeSerie: async (req, res) => {
     try {
       const { campeonato_id } = req.params;
+      if (isOrganizador(req.user)) {
+        const puede = await organizadorPuedeAccederCampeonato(req.user, campeonato_id);
+        if (!puede) {
+          return res.status(403).json({ error: "No autorizado para consultar ese campeonato" });
+        }
+      }
 
       const cabezasAll = await Equipo.obtenerCabezasDeSerie(campeonato_id);
-      const cabezasDeSerie = await filtrarEquiposParaTecnico(req, cabezasAll);
+      const cabezasTecnico = await filtrarEquiposParaTecnico(req, cabezasAll);
+      const cabezasDeSerie = await filtrarEquiposPorOrganizador(req, cabezasTecnico);
 
       res.json({
         mensaje: `👑 Cabezas de serie del campeonato`,

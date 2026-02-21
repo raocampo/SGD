@@ -170,7 +170,7 @@ function renderPosiciones(data) {
   const resumen = `
     <div class="card tablas-resumen-card">
       <p><strong>Campeonato:</strong> ${escaparHtml(nombreCampeonato)}</p>
-      <p><strong>Evento:</strong> ${escaparHtml(nombrecategoría)}</p>
+      <p><strong>Evento:</strong> ${escaparHtml(nombreEvento)}</p>
       <p><strong>Grupos:</strong> ${Number(data.total_grupos || grupos.length)}</p>
       <p><strong>Equipos:</strong> ${Number(data.total_equipos || 0)}</p>
     </div>
@@ -407,5 +407,6 @@ function escaparHtml(valor) {
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
 
 
