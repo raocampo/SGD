@@ -10,6 +10,7 @@ router.post("/register-public", authController.registerPublic);
 router.post("/login", authController.login);
 router.post("/password/forgot", authController.solicitarRecuperacionPassword);
 router.post("/password/reset", authController.resetearPassword);
+router.get("/organizadores/:id/landing", authController.landingOrganizadorPublica);
 router.get("/me", requireAuth, authController.me);
 
 router.get(

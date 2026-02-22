@@ -1,9 +1,15 @@
 const path = require("path");
 const fs = require("fs");
+const pool = require("../config/database");
 const Campeonato = require("../models/Campeonato");
+const { obtenerPlanUsuarioPorId } = require("../services/planLimits");
 
 function esOrganizador(user) {
   return String(user?.rol || "").toLowerCase() === "organizador";
+}
+
+function esAdministrador(user) {
+  return String(user?.rol || "").toLowerCase() === "administrador";
 }
 
 function organizadorCoincideConTexto(user, campeonato) {
@@ -57,6 +63,13 @@ const campeonatoController = {
         costo_tarjeta_roja = 0,
         costo_carnet = 0,
       } = req.body;
+      const userId = Number.parseInt(req.user?.id, 10);
+      const plan = Number.isFinite(userId) && userId > 0
+        ? await obtenerPlanUsuarioPorId(userId)
+        : null;
+      const esAdmin = esAdministrador(req.user);
+      const limiteJugadoresPlan = plan?.max_jugadores_por_equipo;
+      const limiteEquiposPlan = plan?.max_equipos_por_campeonato;
 
       // Validaciones básicas
       /*if (!nombre || !tipo_futbol) {
@@ -67,6 +80,67 @@ const campeonatoController = {
       if (!nombre || !fecha_inicio || !fecha_fin) {
         return res.status(400).json({
           error: "nombre, fecha_inicio y fecha_fin son obligatorios",
+        });
+      }
+
+      if (!esAdmin && plan?.max_campeonatos !== null && plan?.max_campeonatos !== undefined) {
+        const nombreUser = String(req.user?.nombre || "").trim().toLowerCase();
+        const emailUser = String(req.user?.email || "").trim().toLowerCase();
+        const countR = await pool.query(
+          `
+            SELECT COUNT(*)::int AS total
+            FROM campeonatos
+            WHERE creador_usuario_id = $1
+               OR (
+                 creador_usuario_id IS NULL
+                 AND LOWER(COALESCE(TRIM(organizador), '')) = ANY($2::text[])
+               )
+          `,
+          [userId, [nombreUser, emailUser].filter(Boolean)]
+        );
+        const totalActual = Number(countR.rows[0]?.total || 0);
+        if (totalActual >= plan.max_campeonatos) {
+          return res.status(400).json({
+            error: `Tu plan ${plan.nombre} permite máximo ${plan.max_campeonatos} campeonatos`,
+          });
+        }
+      }
+
+      if (
+        !esAdmin &&
+        limiteEquiposPlan !== null &&
+        limiteEquiposPlan !== undefined &&
+        max_equipos !== undefined &&
+        max_equipos !== null &&
+        String(max_equipos).trim() !== ""
+      ) {
+        const maxEquiposNum = Number.parseInt(max_equipos, 10);
+        if (Number.isFinite(maxEquiposNum) && maxEquiposNum > limiteEquiposPlan) {
+          return res.status(400).json({
+            error: `Tu plan ${plan.nombre} permite máximo ${limiteEquiposPlan} equipos por campeonato`,
+          });
+        }
+      }
+
+      if (
+        !esAdmin &&
+        limiteJugadoresPlan !== null &&
+        limiteJugadoresPlan !== undefined &&
+        max_jugador !== undefined &&
+        max_jugador !== null &&
+        String(max_jugador).trim() !== ""
+      ) {
+        const maxJugadoresNum = Number.parseInt(max_jugador, 10);
+        if (Number.isFinite(maxJugadoresNum) && maxJugadoresNum > limiteJugadoresPlan) {
+          return res.status(400).json({
+            error: `Tu plan ${plan.nombre} permite máximo ${limiteJugadoresPlan} jugadores por equipo`,
+          });
+        }
+      }
+
+      if (!esAdmin && genera_carnets === true && plan?.permite_carnets === false) {
+        return res.status(400).json({
+          error: `Tu plan ${plan.nombre} no permite generar carnets`,
         });
       }
 
@@ -186,6 +260,44 @@ const campeonatoController = {
         return res.status(403).json({ error: "No autorizado para actualizar este campeonato" });
       }
 
+      const userId = Number.parseInt(req.user?.id, 10);
+      const plan = Number.isFinite(userId) && userId > 0
+        ? await obtenerPlanUsuarioPorId(userId)
+        : null;
+      const esAdmin = esAdministrador(req.user);
+
+      if (
+        !esAdmin &&
+        plan?.max_equipos_por_campeonato !== null &&
+        plan?.max_equipos_por_campeonato !== undefined &&
+        datos.max_equipos !== undefined &&
+        datos.max_equipos !== null &&
+        String(datos.max_equipos).trim() !== ""
+      ) {
+        const maxEquiposNum = Number.parseInt(datos.max_equipos, 10);
+        if (Number.isFinite(maxEquiposNum) && maxEquiposNum > plan.max_equipos_por_campeonato) {
+          return res.status(400).json({
+            error: `Tu plan ${plan.nombre} permite máximo ${plan.max_equipos_por_campeonato} equipos por campeonato`,
+          });
+        }
+      }
+
+      if (
+        !esAdmin &&
+        plan?.max_jugadores_por_equipo !== null &&
+        plan?.max_jugadores_por_equipo !== undefined &&
+        datos.max_jugador !== undefined &&
+        datos.max_jugador !== null &&
+        String(datos.max_jugador).trim() !== ""
+      ) {
+        const maxJugadoresNum = Number.parseInt(datos.max_jugador, 10);
+        if (Number.isFinite(maxJugadoresNum) && maxJugadoresNum > plan.max_jugadores_por_equipo) {
+          return res.status(400).json({
+            error: `Tu plan ${plan.nombre} permite máximo ${plan.max_jugadores_por_equipo} jugadores por equipo`,
+          });
+        }
+      }
+
       if (datos.requiere_foto_cedula !== undefined) {
         datos.requiere_foto_cedula =
           datos.requiere_foto_cedula === true ||
@@ -200,6 +312,12 @@ const campeonatoController = {
         datos.genera_carnets =
           datos.genera_carnets === true ||
           String(datos.genera_carnets).toLowerCase() === "true";
+
+        if (!esAdmin && datos.genera_carnets === true && plan?.permite_carnets === false) {
+          return res.status(400).json({
+            error: `Tu plan ${plan.nombre} no permite generar carnets`,
+          });
+        }
       }
 
       if (req.fileValidationError) {

@@ -7,6 +7,12 @@ const {
   obtenerEquipoIdsOrganizador,
 } = require("../services/organizadorScope");
 const { enviarEmailRecuperacionPassword } = require("../services/emailService");
+const {
+  normalizarPlanCodigo,
+  esPlanPublico,
+  esPlanPagado,
+  obtenerPlan,
+} = require("../services/planLimits");
 const ROLES_REGISTRO_PUBLICO = new Set(["organizador", "dirigente", "tecnico"]);
 
 function signToken(user) {
@@ -28,6 +34,10 @@ function esAdministrador(user) {
 function estaContenido(subset = [], superset = []) {
   const setSuper = new Set((superset || []).map((x) => Number.parseInt(x, 10)));
   return (subset || []).every((x) => setSuper.has(Number.parseInt(x, 10)));
+}
+
+function planLandingHabilitado(planCodigo) {
+  return esPlanPagado(planCodigo);
 }
 
 async function listarUsuariosVisiblesPorOrganizador(user) {
@@ -107,6 +117,7 @@ const authController = {
       const email = String(req.body?.email || "").trim();
       const password = String(req.body?.password || "");
       const rolSolicitado = String(req.body?.rol || "").trim().toLowerCase();
+      const planCodigoRaw = String(req.body?.plan_codigo || "demo").trim().toLowerCase();
 
       if (!nombre || !email || !password || !rolSolicitado) {
         return res.status(400).json({ error: "nombre, email, password y rol son obligatorios" });
@@ -114,6 +125,11 @@ const authController = {
       if (!ROLES_REGISTRO_PUBLICO.has(rolSolicitado)) {
         return res.status(400).json({ error: "rol invalido. Use: organizador, dirigente o tecnico" });
       }
+      if (!esPlanPublico(planCodigoRaw)) {
+        return res.status(400).json({ error: "plan invalido. Use: demo, free, base, competencia o premium" });
+      }
+      const planCodigo = normalizarPlanCodigo(planCodigoRaw, "demo");
+      const plan = obtenerPlan(planCodigo);
 
       const creado = await UsuarioAuth.crear({
         nombre,
@@ -121,7 +137,9 @@ const authController = {
         password,
         rol: rolSolicitado,
         activo: true,
-        solo_lectura: true,
+        solo_lectura: false,
+        plan_codigo: planCodigo,
+        plan_estado: "activo",
       });
 
       const user = await UsuarioAuth.obtenerPorId(creado.id);
@@ -132,7 +150,7 @@ const authController = {
         ok: true,
         token,
         usuario: limpio,
-        mensaje: "Cuenta creada en modo solo lectura",
+        mensaje: `Cuenta creada en plan ${plan?.nombre || planCodigo}`,
       });
     } catch (error) {
       console.error("Error registerPublic:", error);
@@ -199,10 +217,87 @@ const authController = {
     }
   },
 
+  async landingOrganizadorPublica(req, res) {
+    try {
+      const organizadorId = Number.parseInt(req.params?.id, 10);
+      if (!Number.isFinite(organizadorId) || organizadorId <= 0) {
+        return res.status(400).json({ error: "id de organizador invalido" });
+      }
+
+      const userRow = await UsuarioAuth.obtenerPorId(organizadorId);
+      const organizador = UsuarioAuth.limpiarUsuario(userRow);
+      if (!organizador || organizador.activo !== true) {
+        return res.status(404).json({ error: "Organizador no encontrado" });
+      }
+      if (String(organizador.rol || "").toLowerCase() !== "organizador") {
+        return res.status(404).json({ error: "Perfil no disponible para landing pública" });
+      }
+
+      if (!planLandingHabilitado(organizador.plan_codigo)) {
+        return res.status(403).json({
+          error:
+            "La landing pública está disponible solo para organizadores con plan pagado (Base, Competencia o Premium).",
+        });
+      }
+      if (String(organizador.plan_estado || "activo").toLowerCase() !== "activo") {
+        return res.status(403).json({
+          error: "La landing pública del organizador está suspendida.",
+        });
+      }
+
+      const aliasOrganizador = [
+        String(organizador.nombre || "").trim().toLowerCase(),
+        String(organizador.email || "").trim().toLowerCase(),
+      ].filter(Boolean);
+
+      const campeonatosR = await pool.query(
+        `
+          SELECT
+            c.*,
+            (
+              SELECT COUNT(*)::int
+              FROM eventos e
+              WHERE e.campeonato_id = c.id
+            ) AS total_categorias,
+            (
+              SELECT COUNT(*)::int
+              FROM equipos eq
+              WHERE eq.campeonato_id = c.id
+            ) AS total_equipos
+          FROM campeonatos c
+          WHERE c.creador_usuario_id = $1
+             OR (
+               c.creador_usuario_id IS NULL
+               AND LOWER(COALESCE(TRIM(c.organizador), '')) = ANY($2::text[])
+             )
+          ORDER BY c.fecha_inicio DESC NULLS LAST, c.id DESC
+        `,
+        [organizadorId, aliasOrganizador]
+      );
+
+      return res.json({
+        ok: true,
+        organizador: {
+          id: organizador.id,
+          nombre: organizador.nombre,
+          email: organizador.email,
+          plan_codigo: organizador.plan_codigo,
+          plan_nombre: obtenerPlan(organizador.plan_codigo)?.nombre || "Plan",
+          landing_url: `/index.html?organizador=${organizador.id}`,
+        },
+        campeonatos: campeonatosR.rows || [],
+      });
+    } catch (error) {
+      console.error("Error landingOrganizadorPublica:", error);
+      return res.status(500).json({ error: "No se pudo cargar la landing del organizador" });
+    }
+  },
+
   async crearUsuario(req, res) {
     try {
       const body = { ...(req.body || {}) };
       const equipoId = Number.parseInt(body?.equipo_id, 10);
+      const esAdmin = esAdministrador(req.user);
 
       if (isOrganizador(req.user)) {
         if (!Number.isFinite(equipoId) || equipoId <= 0) {
@@ -213,6 +308,17 @@ const authController = {
           return res.status(403).json({ error: "No autorizado para crear usuarios en ese equipo" });
         }
         body.rol = "dirigente";
+        body.plan_codigo = req.user?.plan_codigo || "free";
+        body.plan_estado = "activo";
+      } else if (esAdmin) {
+        const rolDestino = String(body?.rol || "").trim().toLowerCase();
+        if (rolDestino === "organizador") {
+          body.plan_codigo = normalizarPlanCodigo(body?.plan_codigo, "free");
+          body.plan_estado =
+            String(body?.plan_estado || "activo").trim().toLowerCase() === "suspendido"
+              ? "suspendido"
+              : "activo";
+        }
       }
 
       const user = await UsuarioAuth.crear(body);

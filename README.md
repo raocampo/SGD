@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-02-21): funcional en flujo principal con pendientes de cierre en RBAC, eliminatorias completas, roadmap mobile y reglas financieras avanzadas.
+Estado del proyecto (2026-02-22): funcional en flujo principal con pendientes de cierre en RBAC, eliminatorias completas, roadmap mobile y reglas financieras avanzadas.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,14 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-02-21)
+## Novedades Recientes (2026-02-22)
+- Planes por organizador operativos en usuarios:
+  - administrador puede crear/editar organizadores con `plan` y `estado del plan`.
+- Landing pública por organizador habilitada para planes pagados:
+  - endpoint `GET /api/auth/organizadores/:id/landing`,
+  - acceso web con `index.html?organizador=ID`,
+  - disponible para `base`, `competencia` y `premium`.
+- Portal de organizador (`portal-admin.html`) ahora muestra acceso directo para abrir/copiar su landing pública cuando su plan lo permite.
 - Branding visible unificado a `LT&C (Loja Torneos & Competencias)` en frontend.
 - Landing renovada con:
   - precios,
@@ -123,6 +130,12 @@ psql -U postgres -d gestionDeportiva -f database/migrations/004_equipos_colores.
 psql -U postgres -d gestionDeportiva -f database/migrations/005_jugadores_planilla_finanzas_base.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/006_finanzas_cuenta_corriente.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/007_eventos_campeonato_id_compat.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/008_auspiciantes.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/009_numeracion_secuencial.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/010_auth_roles.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/011_auth_password_reset.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/012_usuarios_solo_lectura.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/013_planes_usuarios.sql
 ```
 
 ### 5.3 Ejecutar
@@ -158,6 +171,7 @@ APIs principales:
 - `/api/tablas`
 - `/api/eliminatorias`
 - `/api/finanzas`
+- `/api/auth/organizadores/:id/landing`
 
 ## 8. Modulos Implementados
 Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
@@ -196,9 +210,19 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 1. Pruebas E2E con datos reales (flujo completo).
 2. Cierre de planillaje oficial (detalle visual y de impresion).
 3. RBAC (autenticacion + roles).
-4. Eliminatorias completas (llaves y reglas operativas).
-5. Financiero avanzado (multas automaticas, bloqueos por morosidad, reportes ejecutivos).
-6. Ejecucion de plan mobile web por fases (`docs/PLAN_MOBILE_LT_C.md`).
+4. Completar perfil de organizador en usuarios: agregar `nombre de la organizacion` y `logo` al crear/editar usuario organizador.
+5. Habilitar en portal del organizador la creacion y gestion de usuarios con rol `dirigente` y `tecnico`.
+6. En registro publico desde cards de planes pagados, agregar campos:
+   - `nombre de la organizacion` (obligatorio),
+   - `logo` (opcional),
+   - `lema` (opcional).
+7. Implementar flujo comercial de onboarding:
+   - al seleccionar plan pagado -> formulario de registro completo -> pagina/formulario de cobro -> pasarela de pago.
+8. Eliminatorias completas (llaves y reglas operativas).
+9. Financiero avanzado (multas automaticas, bloqueos por morosidad, reportes ejecutivos).
+10. Plan mobile orientado a app instalable en tiendas:
+   - Android (Play Store),
+   - iOS (App Store).
 
 ## 12. Solucion de Problemas
 - `DB_PASSWORD no definido`: configurar `backend/.env`.

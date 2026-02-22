@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const pool = require("../config/database");
+const { normalizarPlanCodigo } = require("../services/planLimits");
 
 const ROLES = new Set(["administrador", "organizador", "tecnico", "dirigente"]);
 
@@ -24,6 +25,8 @@ class UsuarioAuth {
       rol: row.rol,
       activo: row.activo === true,
       solo_lectura: row.solo_lectura === true,
+      plan_codigo: normalizarPlanCodigo(row.plan_codigo, "premium"),
+      plan_estado: String(row.plan_estado || "activo").toLowerCase(),
       equipo_ids: Array.isArray(row.equipo_ids)
         ? row.equipo_ids.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0)
         : [],
@@ -44,6 +47,8 @@ class UsuarioAuth {
         rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'organizador', 'tecnico', 'dirigente')),
         activo BOOLEAN NOT NULL DEFAULT TRUE,
         solo_lectura BOOLEAN NOT NULL DEFAULT FALSE,
+        plan_codigo VARCHAR(24) NOT NULL DEFAULT 'premium',
+        plan_estado VARCHAR(20) NOT NULL DEFAULT 'activo',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -51,6 +56,50 @@ class UsuarioAuth {
     await client.query(`
       ALTER TABLE usuarios
       ADD COLUMN IF NOT EXISTS solo_lectura BOOLEAN NOT NULL DEFAULT FALSE
+    `);
+    await client.query(`
+      ALTER TABLE usuarios
+      ADD COLUMN IF NOT EXISTS plan_codigo VARCHAR(24) NOT NULL DEFAULT 'premium'
+    `);
+    await client.query(`
+      ALTER TABLE usuarios
+      ADD COLUMN IF NOT EXISTS plan_estado VARCHAR(20) NOT NULL DEFAULT 'activo'
+    `);
+    await client.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'usuarios_plan_codigo_check'
+            AND conrelid = 'usuarios'::regclass
+        ) THEN
+          ALTER TABLE usuarios DROP CONSTRAINT usuarios_plan_codigo_check;
+        END IF;
+
+        ALTER TABLE usuarios
+        ADD CONSTRAINT usuarios_plan_codigo_check
+        CHECK (plan_codigo IN ('demo', 'free', 'base', 'competencia', 'premium'));
+      EXCEPTION WHEN duplicate_object THEN
+        NULL;
+      END $$;
+    `);
+    await client.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'usuarios_plan_estado_check'
+            AND conrelid = 'usuarios'::regclass
+        ) THEN
+          ALTER TABLE usuarios DROP CONSTRAINT usuarios_plan_estado_check;
+        END IF;
+
+        ALTER TABLE usuarios
+        ADD CONSTRAINT usuarios_plan_estado_check
+        CHECK (plan_estado IN ('activo', 'suspendido'));
+      EXCEPTION WHEN duplicate_object THEN
+        NULL;
+      END $$;
     `);
     await client.query(`
       DO $$
@@ -214,6 +263,10 @@ class UsuarioAuth {
         : data.activo === true || String(data.activo).toLowerCase() === "true";
     const soloLectura =
       data.solo_lectura === true || String(data.solo_lectura || "").toLowerCase() === "true";
+    const planCodigo = normalizarPlanCodigo(data.plan_codigo, "premium");
+    const planEstado = String(data.plan_estado || "activo").trim().toLowerCase() === "suspendido"
+      ? "suspendido"
+      : "activo";
 
     if (!nombre) throw new Error("nombre es obligatorio");
     if (!email) throw new Error("email es obligatorio");
@@ -230,11 +283,11 @@ class UsuarioAuth {
     const hash = await bcrypt.hash(password, 10);
     const r = await client.query(
       `
-        INSERT INTO usuarios (nombre, email, password_hash, rol, activo, solo_lectura)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO usuarios (nombre, email, password_hash, rol, activo, solo_lectura, plan_codigo, plan_estado)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
       `,
-      [nombre, email, hash, rol, activo, soloLectura]
+      [nombre, email, hash, rol, activo, soloLectura, planCodigo, planEstado]
     );
     return this.limpiarUsuario(r.rows[0]);
   }
@@ -300,6 +353,21 @@ class UsuarioAuth {
         data.solo_lectura === true || String(data.solo_lectura || "").toLowerCase() === "true";
       campos.push(`solo_lectura = $${idx++}`);
       valores.push(soloLectura);
+    }
+
+    if (data.plan_codigo !== undefined) {
+      const planCodigo = normalizarPlanCodigo(data.plan_codigo, "premium");
+      campos.push(`plan_codigo = $${idx++}`);
+      valores.push(planCodigo);
+    }
+
+    if (data.plan_estado !== undefined) {
+      const planEstado =
+        String(data.plan_estado || "").trim().toLowerCase() === "suspendido"
+          ? "suspendido"
+          : "activo";
+      campos.push(`plan_estado = $${idx++}`);
+      valores.push(planEstado);
     }
 
     if (!campos.length) throw new Error("No hay campos para actualizar");

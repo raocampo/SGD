@@ -67,6 +67,16 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 4. Seguridad y roles:
 - Login, sesion/JWT y perfiles (admin/organizador/arbitro/publico).
+- Completar alta/edicion de usuario organizador con datos de perfil:
+  - nombre de la organizacion,
+  - logo de la organizacion.
+- Extender portal de organizador para gestion de usuarios internos:
+  - alta de dirigentes,
+  - alta de tecnicos.
+- Completar onboarding comercial de planes pagados:
+  - desde card de plan -> registro con datos de organizacion (`nombre organizacion` obligatorio, `logo` opcional, `lema` opcional),
+  - paso a formulario/pagina de cobro,
+  - integracion con pasarela de pago y confirmacion de activacion de plan.
 
 5. Eliminatorias:
 - Consolidar llaves, progresion y reglas de desempate segun formato.
@@ -75,7 +85,10 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Registro de cambios en fixture, planilla, sanciones y finanzas.
 
 7. Roadmap mobile:
-- Ejecutar `docs/PLAN_MOBILE_LT_C.md` por fases con prioridad en flujos operativos.
+- Reorientar ejecucion de `docs/PLAN_MOBILE_LT_C.md` a app movil publicable en tiendas.
+- Objetivo de salida:
+  - Android (Play Store),
+  - iOS (App Store).
 
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`

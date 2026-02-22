@@ -1,4 +1,27 @@
 (function () {
+  const PLANES_VALIDOS = new Set(["demo", "free", "base", "competencia", "premium"]);
+  const PLANES_LABEL = {
+    demo: "Demo",
+    free: "Free",
+    base: "Base",
+    competencia: "Competencia",
+    premium: "Premium",
+  };
+
+  let planSeleccionado = "demo";
+
+  function obtenerPlanDesdeUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const raw = String(params.get("plan") || "").trim().toLowerCase();
+    return PLANES_VALIDOS.has(raw) ? raw : "demo";
+  }
+
+  function renderPlanSeleccionado() {
+    const el = document.getElementById("register-plan-info");
+    if (!el) return;
+    el.textContent = `Plan seleccionado: ${PLANES_LABEL[planSeleccionado] || "Demo"}`;
+  }
+
   function getNextPath() {
     const params = new URLSearchParams(window.location.search);
     const raw = params.get("next");
@@ -80,6 +103,7 @@
         email,
         rol,
         password,
+        plan_codigo: planSeleccionado,
       },
     };
   }
@@ -101,7 +125,7 @@
       if (!token || !usuario) throw new Error("No se pudo crear la cuenta");
 
       window.Auth.setSession(token, usuario);
-      mostrarNotificacion("Cuenta creada en modo solo lectura", "success");
+      mostrarNotificacion(`Cuenta creada en plan ${PLANES_LABEL[planSeleccionado] || "Demo"}`, "success");
       redirigirPostLogin();
     } catch (error) {
       console.error(error);
@@ -134,6 +158,8 @@
 
   document.addEventListener("DOMContentLoaded", async () => {
     if (!window.location.pathname.endsWith("register.html")) return;
+    planSeleccionado = obtenerPlanDesdeUrl();
+    renderPlanSeleccionado();
     document.getElementById("register-form")?.addEventListener("submit", onSubmitRegister);
     enlazarValidadores();
     validarFormularioRegistro();

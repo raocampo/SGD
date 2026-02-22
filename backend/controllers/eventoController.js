@@ -1,6 +1,8 @@
 // controllers/eventoController.js
 const pool = require("../config/database");
 const { obtenerEquiposPermitidosTecnico } = require("../services/roleScope");
+const { isOrganizador, organizadorPuedeAccederCampeonato } = require("../services/organizadorScope");
+const { obtenerPlanPorCampeonatoId } = require("../services/planLimits");
 let eventoEsquemaAsegurado = false;
 let eventoColumnaActualizacion = null;
 
@@ -20,6 +22,10 @@ function parseDecimalNonNegative(value, fallback = 0) {
   const num = Number.parseFloat(String(value).replace(",", "."));
   if (!Number.isFinite(num) || num < 0) return fallback;
   return Number(num.toFixed(2));
+}
+
+function esAdministrador(user) {
+  return String(user?.rol || "").toLowerCase() === "administrador";
 }
 
 async function resolverColumnaActualizacionEvento() {
@@ -150,6 +156,32 @@ const eventoController = {
 
       if (!campeonato_id || !nombre || !fecha_inicio || !fecha_fin) {
         return res.status(400).json({ error: "Faltan campos obligatorios." });
+      }
+
+      if (isOrganizador(req.user)) {
+        const puede = await organizadorPuedeAccederCampeonato(req.user, campeonato_id);
+        if (!puede) {
+          return res.status(403).json({ error: "No autorizado para crear categorías en este campeonato." });
+        }
+      }
+
+      if (!esAdministrador(req.user)) {
+        const plan = await obtenerPlanPorCampeonatoId(campeonato_id);
+        if (
+          plan?.max_categorias_por_campeonato !== null &&
+          plan?.max_categorias_por_campeonato !== undefined
+        ) {
+          const countR = await pool.query(
+            `SELECT COUNT(*)::int AS total FROM eventos WHERE campeonato_id = $1`,
+            [campeonato_id]
+          );
+          const totalActual = Number(countR.rows[0]?.total || 0);
+          if (totalActual >= plan.max_categorias_por_campeonato) {
+            return res.status(400).json({
+              error: `Tu plan ${plan.nombre} permite máximo ${plan.max_categorias_por_campeonato} categorías por campeonato`,
+            });
+          }
+        }
       }
 
       // defaults (según lo que ya definiste)
@@ -425,6 +457,63 @@ const eventoController = {
         return res
           .status(400)
           .json({ message: "evento_id y equipo_id son obligatorios" });
+      }
+
+      const eventoR = await pool.query(
+        `SELECT id, campeonato_id FROM eventos WHERE id = $1 LIMIT 1`,
+        [evento_id]
+      );
+      if (!eventoR.rows.length) {
+        return res.status(404).json({ message: "Evento no encontrado" });
+      }
+      const evento = eventoR.rows[0];
+
+      if (isOrganizador(req.user)) {
+        const puede = await organizadorPuedeAccederCampeonato(req.user, evento.campeonato_id);
+        if (!puede) {
+          return res.status(403).json({ message: "No autorizado para asignar equipos en este evento" });
+        }
+      }
+
+      const equipoR = await pool.query(
+        `SELECT id, campeonato_id FROM equipos WHERE id = $1 LIMIT 1`,
+        [equipo_id]
+      );
+      if (!equipoR.rows.length) {
+        return res.status(404).json({ message: "Equipo no encontrado" });
+      }
+      const equipo = equipoR.rows[0];
+      if (Number(equipo.campeonato_id) !== Number(evento.campeonato_id)) {
+        return res.status(400).json({
+          message: "El equipo no pertenece al campeonato de esta categoría",
+        });
+      }
+
+      const yaExisteR = await pool.query(
+        `SELECT 1 FROM evento_equipos WHERE evento_id = $1 AND equipo_id = $2 LIMIT 1`,
+        [evento_id, equipo_id]
+      );
+      if (yaExisteR.rows.length) {
+        return res.json({ ok: true, message: "Equipo ya estaba asignado al evento" });
+      }
+
+      if (!esAdministrador(req.user)) {
+        const plan = await obtenerPlanPorCampeonatoId(evento.campeonato_id);
+        if (
+          plan?.max_equipos_por_categoria !== null &&
+          plan?.max_equipos_por_categoria !== undefined
+        ) {
+          const countR = await pool.query(
+            `SELECT COUNT(*)::int AS total FROM evento_equipos WHERE evento_id = $1`,
+            [evento_id]
+          );
+          const totalActual = Number(countR.rows[0]?.total || 0);
+          if (totalActual >= plan.max_equipos_por_categoria) {
+            return res.status(400).json({
+              message: `Tu plan ${plan.nombre} permite máximo ${plan.max_equipos_por_categoria} equipos por categoría`,
+            });
+          }
+        }
       }
 
       await pool.query(

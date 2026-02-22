@@ -1,17 +1,21 @@
-# Plan Mobile Web - LT&C (Loja Torneos & Competencias)
+# Plan Mobile App - LT&C (Loja Torneos & Competencias)
 
 Ultima actualizacion: 2026-02-21
 
 ## 1. Objetivo
-Adaptar LT&C para uso operativo real en telefonos moviles sin perder funcionalidades criticas del sistema web (admin, organizador, dirigente/tecnico y portal publico).
+Construir una app movil de LT&C publicable en tiendas oficiales:
+- Android (Google Play Store),
+- iOS (Apple App Store),
+sin perder funcionalidades criticas del sistema (admin, organizador, dirigente/tecnico y portal publico).
 
 ## 2. Enfoque
-Implementar una estrategia `Responsive Web + Mobile First` por fases.
+Implementar una estrategia `App Mobile + Publicacion en Stores` por fases.
 
 Alcance tecnico propuesto:
-- Fase 1-3: responsive completo en frontend actual (HTML/CSS/JS vanilla).
-- Fase 4: optimizacion de performance y experiencia tactil.
-- Fase 5 (opcional): evolucion a PWA (icono instalable, cache de vistas clave, modo offline parcial).
+- Fase 1: definicion de arquitectura mobile (Flutter / React Native / Ionic+Capacitor).
+- Fase 2-4: desarrollo funcional por modulos criticos.
+- Fase 5: pruebas de calidad mobile y hardening.
+- Fase 6: publicacion en Google Play y App Store.
 
 ## 3. Prioridades de negocio (orden de implementacion)
 1. Login/registro y navegacion principal.
@@ -35,43 +39,33 @@ Alcance tecnico propuesto:
   - consultar resultados/tablas,
   - contacto y registro.
 
-## 5. Plan por fases
+## 5. Plan por fases (App Stores)
 
-### Fase 0 - Diagnostico UI (1-2 dias)
+### Fase 0 - Discovery tecnico y producto (1-2 dias)
 - Inventario de pantallas.
-- Deteccion de componentes no responsive:
-  - tablas anchas,
-  - formularios de multiples columnas,
-  - modales con overflow,
-  - botones pequenos y controles muy juntos.
-- Definicion de breakpoints oficiales:
-  - `<=480`, `<=768`, `<=1024`, `>1024`.
+- Definir stack mobile definitivo:
+  - opcion A: Flutter,
+  - opcion B: React Native,
+  - opcion C: Ionic + Capacitor.
+- Definir modelo de login, sesion y almacenamiento local para mobile.
 
 Entregable:
-- Checklist por pagina con severidad (alta/media/baja).
+- Decision tecnica mobile y backlog por sprint.
 
-### Fase 1 - Base responsive global (2-3 dias)
-- Normalizar layout base:
-  - sidebar/overlay,
-  - header sticky,
-  - contenedores fluidos.
-- Estandarizar tipografia y espaciados mobile.
-- Definir altura minima tactil de botones/inputs (`44px`).
-- Corregir navegacion horizontal no deseada.
+### Fase 1 - Base de app y navegacion (2-3 dias)
+- Crear proyecto mobile base.
+- Configurar navegacion principal por rol.
+- Configurar entorno de API y sesiones.
 
 Entregable:
-- Sistema navegable en movil sin desbordes globales.
+- App ejecutando login y navegacion basica en Android/iOS.
 
 ### Fase 2 - Modulos de gestion (3-5 dias)
 - `admin`, `campeonatos`, `eventos`, `equipos`, `jugadores`, `usuarios`.
-- Convertir tablas a:
-  - vista tabla scrollable controlada, o
-  - vista cards en movil.
-- Formularios en 1 columna para `<=768`.
-- Acciones principales fijadas arriba (guardar, nuevo, filtrar).
+- Formularios y listados optimizados para touch.
 
 Entregable:
-- Flujo completo de alta/edicion en movil.
+- Flujo completo de alta/edicion en app mobile.
 
 ### Fase 3 - Operacion de torneo (4-6 dias)
 - `sorteo`, `grupos`, `partidos`, `planilla`, `tablas`.
@@ -94,16 +88,24 @@ Entregable:
 Entregable:
 - Gestion financiera basica operable desde movil.
 
-### Fase 5 - Calidad, performance y PWA opcional (2-4 dias)
+### Fase 5 - Calidad y performance mobile (2-4 dias)
 - Lighthouse mobile (performance, accesibilidad, best practices).
 - Optimizacion de imagenes y carga diferida.
-- PWA opcional:
-  - `manifest`,
-  - iconos,
-  - cache de recursos estaticos clave.
+- QA funcional Android/iOS.
+- Validacion de notificaciones, permisos y almacenamiento local.
 
 Entregable:
-- Version mobile estable para produccion.
+- Build candidata a release.
+
+### Fase 6 - Publicacion en tiendas (2-4 dias)
+- Preparar branding, screenshots, politica de privacidad y fichas de store.
+- Generar builds firmadas:
+  - Android AAB para Play Store,
+  - iOS IPA para App Store Connect.
+- Resolver checklist de compliance de tiendas.
+
+Entregable:
+- App LT&C publicada en Play Store y App Store.
 
 ## 6. Criterios de aceptacion
 - No scroll horizontal en pantallas de 360px de ancho.
@@ -111,6 +113,7 @@ Entregable:
 - Formularios clave completables sin zoom manual.
 - Tiempo de carga inicial aceptable en red movil (objetivo: <3s en pagina principal optimizada).
 - Sin errores JS bloqueantes en consola durante flujo principal.
+- APK/IPA validada y aceptada por pipelines de publicacion en stores.
 
 ## 7. Riesgos y mitigacion
 - Riesgo: exceso de tablas con muchas columnas.
@@ -129,4 +132,4 @@ Entregable:
 
 ## 9. Estado del plan
 - Documento creado: Si.
-- Implementacion iniciada: No (pendiente iniciar en siguiente sesion de desarrollo mobile).
+- Implementacion iniciada: No (pendiente iniciar en siguiente sesion de desarrollo de app mobile publicable).

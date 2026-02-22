@@ -166,11 +166,11 @@ class Campeonato {
       requiere_foto_cedula === true || requiere_foto_cedula === "true",
       requiere_foto_carnet === true || requiere_foto_carnet === "true",
       genera_carnets === true || genera_carnets === "true",
+      creador_usuario_id ? Number.parseInt(creador_usuario_id, 10) : null,
       this.parseDecimalNoNegativo(costo_arbitraje, 0),
       this.parseDecimalNoNegativo(costo_tarjeta_amarilla, 0),
       this.parseDecimalNoNegativo(costo_tarjeta_roja, 0),
       this.parseDecimalNoNegativo(costo_carnet, 0),
-      creador_usuario_id ? Number.parseInt(creador_usuario_id, 10) : null,
     ];
 
     const result = await pool.query(query, values);

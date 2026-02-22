@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-02-21
+Ultima actualizacion: 2026-02-22
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,22 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-02-22
+- Planes por usuario/organizador consolidados en gestion de usuarios:
+  - `usuarios.html/js` ahora permite al administrador crear/editar organizadores con `plan` (`demo/free/base/competencia/premium`) y `estado del plan` (`activo/suspendido`),
+  - listado de usuarios muestra columnas de plan y estado de plan,
+  - para organizadores con plan pagado se muestra enlace de landing publica.
+- Landing publica por organizador implementada:
+  - backend: nuevo endpoint `GET /api/auth/organizadores/:id/landing`,
+  - disponibilidad restringida a planes pagados (`base`, `competencia`, `premium`) y plan activo,
+  - frontend: `index.html` soporta modo landing con query `?organizador=ID` y personaliza textos/contacto/torneos segun el organizador.
+- Portal de organizador mejorado:
+  - `portal-admin.html` incorpora bloque "Landing publica de organizador",
+  - permite abrir/copiar enlace de landing cuando el plan es pagado,
+  - muestra aviso de upgrade cuando el organizador esta en plan `demo/free`.
+- Correccion tecnica importante en backend:
+  - `backend/models/Campeonato.js` corregido en el orden de parametros SQL al crear campeonatos (`creador_usuario_id` quedaba desfasado por costos), evitando inconsistencias en ownership y filtros por organizador/plan.
 
 ### 2026-02-21
 - Landing page LT&C ajustada con linea visual final:
@@ -405,9 +421,26 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Pendientes Prioritarios
 - Ejecutar pruebas end-to-end con datos reales (validar que todo el flujo quede estable).
 - Consolidar autenticacion y roles (RBAC) minimo.
+- Completar alta/edicion de usuario organizador con campos de perfil:
+  - nombre de la organizacion,
+  - logo de la organizacion.
+- Habilitar en el portal del organizador la gestion de usuarios internos:
+  - crear usuarios con rol dirigente,
+  - crear usuarios con rol tecnico.
+- En formulario de registro desde cards de planes pagados, agregar:
+  - nombre de la organizacion (obligatorio),
+  - logo (opcional),
+  - lema (opcional).
+- Implementar flujo de cobro/pasarela para planes pagados:
+  - seleccionar plan,
+  - registrar organizador con datos de organizacion,
+  - continuar a formulario/pantalla de cobro y confirmacion de pago.
 - Revisar y ordenar archivos legacy/antiguos para reducir deuda tecnica.
 - Continuar modulo financiero: sanciones/suspensiones por reglas deportivas, bloqueos por morosidad y reportes ejecutivos.
 - Ajustar detalles de UX del nuevo formulario de planilla segun retroalimentacion de operacion en campo.
+- Reorientar plan mobile a aplicacion instalable para tiendas:
+  - app Android (Play Store),
+  - app iOS (App Store).
 
 ## Checklist de Pruebas Siguiente Sesion
 1. Crear/seleccionar campeonato y evento.

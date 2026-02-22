@@ -53,6 +53,20 @@
   font-size: 0.78rem;
 }
 
+.auth-plan-current {
+  margin: -0.2rem 0 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 0.24rem 0.6rem;
+  border-radius: 999px;
+  background: #e8f1ff;
+  border: 1px solid #bfd1e8;
+  color: #2f5e96;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .auth-form {
   margin-top: 0.5rem;
 }

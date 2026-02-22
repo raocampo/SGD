@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { obtenerPlan } = require("../services/planLimits");
 
 class Jugador {
     static _columnasDocumentosAseguradas = false;
@@ -11,6 +12,42 @@ class Jugador {
             ADD COLUMN IF NOT EXISTS foto_carnet_url TEXT
         `);
         this._columnasDocumentosAseguradas = true;
+    }
+
+    static calcularMaximoJugadoresPermitido(maxJugadoresCampeonato, planCodigo) {
+        const plan = obtenerPlan(planCodigo);
+        const limitePlan = plan?.max_jugadores_por_equipo;
+        const limites = [];
+
+        if (maxJugadoresCampeonato !== null && maxJugadoresCampeonato !== undefined) {
+            const maxCamp = Number(maxJugadoresCampeonato);
+            if (Number.isFinite(maxCamp) && maxCamp > 0) limites.push(maxCamp);
+        }
+        if (limitePlan !== null && limitePlan !== undefined) {
+            const maxPlan = Number(limitePlan);
+            if (Number.isFinite(maxPlan) && maxPlan > 0) limites.push(maxPlan);
+        }
+
+        if (!limites.length) return { maximo: null, plan };
+        return { maximo: Math.min(...limites), plan };
+    }
+
+    static async obtenerEquipoConLimites(equipo_id) {
+        const equipoQuery = `
+            SELECT
+              e.id,
+              e.campeonato_id,
+              c.min_jugador,
+              c.max_jugador,
+              COALESCE(u.plan_codigo, 'premium') AS plan_codigo
+            FROM equipos e
+            JOIN campeonatos c ON e.campeonato_id = c.id
+            LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
+            WHERE e.id = $1
+            LIMIT 1
+        `;
+        const equipoResult = await pool.query(equipoQuery, [equipo_id]);
+        return equipoResult.rows[0] || null;
     }
 
     /**
@@ -55,29 +92,27 @@ class Jugador {
         await this.asegurarColumnasDocumentos();
 
         // Verificar límites de jugadores en el equipo
-        const equipoQuery = `
-            SELECT e.*, c.min_jugador, c.max_jugador 
-            FROM equipos e 
-            JOIN campeonatos c ON e.campeonato_id = c.id 
-            WHERE e.id = $1
-        `;
-        const equipoResult = await pool.query(equipoQuery, [equipo_id]);
-        
-        if (equipoResult.rows.length === 0) {
+        const equipo = await this.obtenerEquipoConLimites(equipo_id);
+
+        if (!equipo) {
             throw new Error('Equipo no encontrado');
         }
 
-        const equipo = equipoResult.rows[0];
-        const minJugadores = equipo.min_jugador;
-        const maxJugadores = equipo.max_jugador;
+        const { maximo: maxJugadoresPermitido, plan } = this.calcularMaximoJugadoresPermitido(
+            equipo.max_jugador,
+            equipo.plan_codigo
+        );
 
         // Contar jugadores actuales en el equipo
         const countQuery = 'SELECT COUNT(*) FROM jugadores WHERE equipo_id = $1';
         const countResult = await pool.query(countQuery, [equipo_id]);
         const jugadoresActuales = parseInt(countResult.rows[0].count);
 
-        if (maxJugadores != null && jugadoresActuales >= maxJugadores) {
-            throw new Error(`Límite de ${maxJugadores} jugadores alcanzado en este equipo`);
+        if (maxJugadoresPermitido != null && jugadoresActuales >= maxJugadoresPermitido) {
+            if (plan?.max_jugadores_por_equipo != null && maxJugadoresPermitido === Number(plan.max_jugadores_por_equipo)) {
+                throw new Error(`Límite del plan ${plan.nombre}: máximo ${maxJugadoresPermitido} jugadores por equipo`);
+            }
+            throw new Error(`Límite de ${maxJugadoresPermitido} jugadores alcanzado en este equipo`);
         }
 
         // Verificar si la cédula ya existe en otro equipo del mismo campeonato
@@ -183,6 +218,28 @@ class Jugador {
             const cedula = datos.cedidentidad ?? jugadorActual.rows[0]?.cedidentidad;
             if (cedula) {
                 await this.verificarJugadorUnicoPorCampeonato(cedula, datos.equipo_id, parseInt(id, 10));
+            }
+
+            const equipoLimites = await this.obtenerEquipoConLimites(datos.equipo_id);
+            if (!equipoLimites) {
+                throw new Error("Equipo no encontrado");
+            }
+            const { maximo: maxJugadoresPermitido, plan } = this.calcularMaximoJugadoresPermitido(
+                equipoLimites.max_jugador,
+                equipoLimites.plan_codigo
+            );
+            if (maxJugadoresPermitido != null) {
+                const countResult = await pool.query(
+                    `SELECT COUNT(*)::int AS total FROM jugadores WHERE equipo_id = $1 AND id <> $2`,
+                    [datos.equipo_id, id]
+                );
+                const jugadoresActuales = Number(countResult.rows[0]?.total || 0);
+                if (jugadoresActuales >= maxJugadoresPermitido) {
+                    if (plan?.max_jugadores_por_equipo != null && maxJugadoresPermitido === Number(plan.max_jugadores_por_equipo)) {
+                        throw new Error(`Límite del plan ${plan.nombre}: máximo ${maxJugadoresPermitido} jugadores por equipo`);
+                    }
+                    throw new Error(`Límite de ${maxJugadoresPermitido} jugadores alcanzado en este equipo`);
+                }
             }
         }
 

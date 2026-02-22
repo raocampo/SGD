@@ -1,5 +1,6 @@
 ///models/Equipo.js
 const pool = require("../config/database");
+const { obtenerPlan } = require("../services/planLimits");
 
 class Equipo {
   static _esquemaAsegurado = false;
@@ -87,7 +88,13 @@ class Equipo {
     await this.asegurarEsquema();
 
     // Verificar límite de equipos en el campeonato
-    const limiteQuery = "SELECT max_equipos FROM campeonatos WHERE id = $1";
+    const limiteQuery = `
+      SELECT c.max_equipos, COALESCE(u.plan_codigo, 'premium') AS plan_codigo
+      FROM campeonatos c
+      LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
+      WHERE c.id = $1
+      LIMIT 1
+    `;
     const limiteResult = await pool.query(limiteQuery, [campeonato_id]);
 
     if (limiteResult.rows.length === 0) {
@@ -95,21 +102,34 @@ class Equipo {
     }
 
     const maxEquiposRaw = limiteResult.rows[0].max_equipos;
+    const plan = obtenerPlan(limiteResult.rows[0].plan_codigo);
+    const maxEquiposPlan = plan?.max_equipos_por_campeonato;
 
+    const limites = [];
     if (maxEquiposRaw !== null && maxEquiposRaw !== undefined) {
-      const maxEquipos = Number(maxEquiposRaw);
+      const maxEquiposCampeonato = Number(maxEquiposRaw);
+      if (!Number.isNaN(maxEquiposCampeonato)) {
+        limites.push(maxEquiposCampeonato);
+      }
+    }
+    if (maxEquiposPlan !== null && maxEquiposPlan !== undefined) {
+      limites.push(Number(maxEquiposPlan));
+    }
 
-      if (!Number.isNaN(maxEquipos)) {
-        // Contar equipos actuales
-        const countQuery =
-          "SELECT COUNT(*) FROM equipos WHERE campeonato_id = $1";
+    if (limites.length) {
+      const maxEquiposPermitido = Math.min(...limites.filter((n) => Number.isFinite(n) && n > 0));
+      if (Number.isFinite(maxEquiposPermitido) && maxEquiposPermitido > 0) {
+        const countQuery = "SELECT COUNT(*) FROM equipos WHERE campeonato_id = $1";
         const countResult = await pool.query(countQuery, [campeonato_id]);
-        const equiposActuales = parseInt(countResult.rows[0].count);
+        const equiposActuales = parseInt(countResult.rows[0].count, 10);
 
-        if (equiposActuales >= maxEquipos) {
-          throw new Error(
-            `Límite de ${maxEquipos} equipos alcanzado en este campeonato`
-          );
+        if (equiposActuales >= maxEquiposPermitido) {
+          if (maxEquiposPlan !== null && maxEquiposPlan !== undefined && maxEquiposPermitido === Number(maxEquiposPlan)) {
+            throw new Error(
+              `Límite del plan ${plan?.nombre || "actual"}: máximo ${maxEquiposPermitido} equipos por campeonato`
+            );
+          }
+          throw new Error(`Límite de ${maxEquiposPermitido} equipos alcanzado en este campeonato`);
         }
       }
     }

@@ -9,9 +9,11 @@ function leerContextoPortalDesdeUrl() {
   const params = new URLSearchParams(window.location.search);
   const campeonato = Number.parseInt(params.get("campeonato") || "", 10);
   const evento = Number.parseInt(params.get("evento") || "", 10);
+  const organizador = Number.parseInt(params.get("organizador") || "", 10);
   return {
     campeonatoId: Number.isFinite(campeonato) && campeonato > 0 ? campeonato : null,
     eventoId: Number.isFinite(evento) && evento > 0 ? evento : null,
+    organizadorId: Number.isFinite(organizador) && organizador > 0 ? organizador : null,
   };
 }
 
@@ -115,14 +117,35 @@ function renderCardsProximos() {
     .join("");
 }
 
-async function portalCargarCampeonatos() {
+function estadoEsVisibleEnPortal(estado) {
+  return ["en_curso", "inscripcion", "planificacion", "borrador"].includes(String(estado || ""));
+}
+
+function renderErrorPortal(mensaje) {
   const cont = document.getElementById("portal-lista-campeonatos");
+  if (!cont) return;
+  cont.innerHTML = `<p class="empty-msg">${mensaje}</p>`;
+}
+
+async function portalCargarCampeonatos(listaForzada = null, options = {}) {
+  const cont = document.getElementById("portal-lista-campeonatos");
+  const mostrarProximos = options?.mostrarProximos !== false;
   try {
-    const data = await fetch(`${API}/campeonatos`).then((r) => r.json());
-    const lista = data.campeonatos || data || [];
-    const activos = lista.filter((c) =>
-      ["en_curso", "inscripcion", "planificacion", "borrador"].includes(c.estado || "")
-    );
+    let lista = Array.isArray(listaForzada) ? listaForzada : null;
+    if (!lista) {
+      const data = await fetch(`${API}/campeonatos`).then((r) => r.json());
+      lista = data.campeonatos || data || [];
+    }
+    const activos = (lista || []).filter((c) => estadoEsVisibleEnPortal(c.estado));
+
+    if (!mostrarProximos) {
+      if (!activos.length) {
+        cont.innerHTML = '<p class="empty-msg">No hay torneos públicos para este organizador.</p>';
+        return;
+      }
+      cont.innerHTML = activos.map((t) => renderCardTorneoPrincipal(t)).join("");
+      return;
+    }
 
     if (!activos.length) {
       cont.innerHTML = `
@@ -148,6 +171,96 @@ async function portalCargarCampeonatos() {
     console.error(err);
     cont.innerHTML = '<p class="empty-msg">Error cargando torneos.</p>';
   }
+}
+
+function aplicarModoLandingOrganizador(payload) {
+  const organizador = payload?.organizador || {};
+  const campeonatos = Array.isArray(payload?.campeonatos) ? payload.campeonatos : [];
+  const torneosVisibles = campeonatos.filter((c) => estadoEsVisibleEnPortal(c.estado));
+  const totalCategorias = campeonatos.reduce(
+    (acc, c) => acc + (Number.parseInt(c.total_categorias, 10) || 0),
+    0
+  );
+  const totalEquipos = campeonatos.reduce(
+    (acc, c) => acc + (Number.parseInt(c.total_equipos, 10) || 0),
+    0
+  );
+
+  const heroTitle = document.getElementById("ltc-hero-title");
+  const heroDescription = document.getElementById("ltc-hero-description");
+  const heroChip = document.getElementById("ltc-hero-chip");
+  const heroCta = document.getElementById("ltc-hero-cta");
+  const torneosTitle = document.getElementById("ltc-torneos-title");
+  const torneosSubtitle = document.getElementById("ltc-torneos-subtitle");
+  const newsTitle = document.getElementById("ltc-news-title");
+  const newsDescription = document.getElementById("ltc-news-description");
+  const newsAuthor = document.getElementById("ltc-news-author");
+  const contactEmail = document.getElementById("ltc-contact-email");
+  const banner = document.getElementById("ltc-organizador-banner");
+  const preciosSection = document.getElementById("precios");
+  const navPrecios = document.getElementById("ltc-nav-link-precios");
+
+  if (heroTitle) heroTitle.textContent = `Torneos de ${organizador.nombre || "Organizador"}`;
+  if (heroDescription) {
+    heroDescription.textContent =
+      "Landing pública del organizador con campeonatos activos, categorías, fixture y tablas actualizadas.";
+  }
+  if (heroChip) heroChip.textContent = "LANDING OFICIAL";
+  if (heroCta) {
+    heroCta.textContent = "Ver torneos";
+    heroCta.href = "#torneos";
+  }
+  if (torneosTitle) torneosTitle.textContent = `CAMPEONATOS DE ${String(organizador.nombre || "ORGANIZADOR").toUpperCase()}`;
+  if (torneosSubtitle) {
+    torneosSubtitle.textContent =
+      "Competencias visibles para equipos, jugadores y audiencia del campeonato.";
+  }
+
+  if (newsTitle) newsTitle.textContent = "Información del organizador";
+  if (newsDescription) {
+    newsDescription.textContent = `Actualmente tiene ${torneosVisibles.length} torneo(s) visible(s), ${totalCategorias} categoría(s) y ${totalEquipos} equipo(s) registrados.`;
+  }
+  if (newsAuthor) newsAuthor.textContent = organizador.nombre || "Organizador";
+
+  if (contactEmail) {
+    const mail = String(organizador.email || "").trim();
+    if (mail) {
+      contactEmail.textContent = mail;
+      contactEmail.href = `mailto:${mail}`;
+    }
+  }
+
+  if (banner) {
+    const plan = String(organizador.plan_nombre || organizador.plan_codigo || "").trim();
+    banner.innerHTML = `
+      <strong>${organizador.nombre || "Organizador"}</strong> •
+      Plan: <strong>${plan || "N/D"}</strong> •
+      Torneos visibles: <strong>${torneosVisibles.length}</strong>
+    `;
+    banner.style.display = "block";
+  }
+
+  if (preciosSection) preciosSection.style.display = "none";
+  if (navPrecios) navPrecios.style.display = "none";
+
+  document
+    .querySelectorAll(
+      "#ltc-nav-register, #ltc-nav-login, #ltc-head-register, #ltc-head-login"
+    )
+    .forEach((el) => {
+      if (el) el.style.display = "none";
+    });
+}
+
+async function cargarLandingOrganizador(organizadorId) {
+  const resp = await fetch(`${API}/auth/organizadores/${organizadorId}/landing`);
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(data?.error || "No se pudo cargar la landing del organizador");
+  }
+  aplicarModoLandingOrganizador(data);
+  await portalCargarCampeonatos(data.campeonatos || [], { mostrarProximos: false });
+  return data;
 }
 
 async function portalVerCampeonato(campeonatoId, options = {}) {
@@ -252,10 +365,29 @@ window.portalVerCampeonato = portalVerCampeonato;
 window.portalVolver = portalVolver;
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const contexto = leerContextoPortalDesdeUrl();
+
+  if (contexto.organizadorId) {
+    try {
+      const landing = await cargarLandingOrganizador(contexto.organizadorId);
+      if (contexto.campeonatoId) {
+        const lista = Array.isArray(landing?.campeonatos) ? landing.campeonatos : [];
+        const permitido = lista.some((c) => Number(c.id) === Number(contexto.campeonatoId));
+        if (permitido) {
+          portalVerCampeonato(contexto.campeonatoId, { eventoId: contexto.eventoId });
+        }
+      }
+      return;
+    } catch (error) {
+      console.error(error);
+      renderErrorPortal(error.message || "No se pudo cargar la landing del organizador.");
+      return;
+    }
+  }
+
   await portalCargarCampeonatos();
-  const { campeonatoId, eventoId } = leerContextoPortalDesdeUrl();
-  if (campeonatoId) {
-    portalVerCampeonato(campeonatoId, { eventoId });
+  if (contexto.campeonatoId) {
+    portalVerCampeonato(contexto.campeonatoId, { eventoId: contexto.eventoId });
   }
 });
 
