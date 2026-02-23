@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-02-22
+Ultima actualizacion: 2026-02-23
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -13,7 +13,65 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 
 ## Avances Recientes
 
+### 2026-02-23
+- Correccion integral de exportaciones en `Grupos` y `Eliminatorias`:
+  - se resolvio bloqueo de `Exportar imagen / PDF / Compartir` cuando existen logos faltantes (imagenes con `404`),
+  - se ajusto espera de imagenes para no quedar colgado en estados de carga incompletos.
+- Modulo `Grupos` reorganizado con pestanas:
+  - nueva pestana `Plantilla de Grupos`,
+  - nueva pestana `Clasificacion / Playoff` embebida en la misma pantalla,
+  - acceso a playoff en pantalla completa desde la misma pestana.
+- Navegacion del sidebar refinada:
+  - se removio el item directo `Eliminatorias` del menu lateral para concentrar flujo en `Grupos -> Clasificacion/Playoff`.
+- Plantilla de eliminatorias mejorada para publicacion:
+  - nuevo armado de llaves con conectores reales (SVG) entre rondas,
+  - correcciones de recorte horizontal para exportar el diagrama completo,
+  - fondo tipo arte (linea visual similar a grupos/fixture).
+- Eliminatorias ahora incluyen bloque de auspiciantes en la zona exportable.
+- Diagnostico y ajuste backend para auspiciantes:
+  - se detecto entorno con tabla `campeonato_auspiciantes` vacia (aunque habia logos en disco),
+  - se implemento fallback en `GET /api/auspiciantes/campeonato/:id` para leer desde `backend/uploads/auspiciantes` cuando no hay registros en BD.
+- Pendiente tecnico identificado para siguiente iteracion:
+  - normalizar definitivamente auspiciantes por campeonato en BD (evitar depender del fallback por filesystem).
+
 ### 2026-02-22
+- Categorias/eventos ahora soportan configuracion de metodo de competencia:
+  - `metodo_competencia`: `grupos`, `liga`, `eliminatoria`, `mixto`.
+  - `eliminatoria_equipos`: objetivo de llave (`4/8/16/32`) o automatico.
+  - cambios aplicados en backend (`eventoController`) y frontend (`eventos.html/js`) incluyendo visualizacion en cards y tabla.
+- Generacion de partidos conectada al metodo de competencia:
+  - `POST /api/partidos/evento/:evento_id/generar-fixture` ahora resuelve `modo=auto` segun categoria.
+  - si la categoria es `eliminatoria`, genera llave en `partidos_eliminatoria` en lugar de fixture de grupos.
+- Eliminatorias reforzadas (backend + frontend de partidos):
+  - siembra automatica de equipos inscritos al evento.
+  - soporte de `byes` y propagacion automatica de clasificados.
+  - actualizacion de resultados propagando ganador al siguiente cruce.
+  - vista de cruces eliminatorios en `partidos.html` (cards/tabla) y accion para registrar resultado por cruce.
+- Modulo de pases (fase 1 backend) implementado:
+  - nueva tabla `pases_jugadores` (runtime + migracion `014_pases_jugadores.sql`).
+  - nuevos endpoints:
+    - `GET /api/pases`
+    - `GET /api/pases/:id`
+    - `POST /api/pases`
+    - `PUT /api/pases/:id/estado`
+  - al confirmar pase (`pagado/aprobado`) se puede aplicar transferencia de jugador al equipo destino.
+- API frontend extendida con `PasesAPI` para integrar UI de pases en la siguiente iteracion.
+- UI de pases implementada para pruebas operativas:
+  - nueva pagina `frontend/pases.html` + `frontend/js/pases.js`,
+  - registro de pase, filtros, estado y acciones de aprobacion/pago/anulacion,
+  - actualizacion de estado con opcion de aplicar transferencia.
+- UI dedicada de eliminatorias implementada:
+  - nueva pagina `frontend/eliminatorias.html` + `frontend/js/eliminatorias.js`,
+  - vista de bracket por rondas y carga por categoria,
+  - generacion/regeneracion de llave (admin/organizador) y registro de resultados.
+  - nuevo flujo de playoff desde grupos:
+    - selector de `clasificados por grupo`,
+    - metodo `cruces entre grupos` (A vs C, B vs D, etc.),
+    - metodo `tabla unica` (ranking global y cruces 1 vs ultimo).
+- Navegacion mejorada:
+  - sidebar dinamico (`core.js`) ahora inyecta accesos a `Pases` y `Eliminatorias`.
+  - desde `partidos.html` se agrego acceso directo a la vista de llave eliminatoria.
+
 - Planes por usuario/organizador consolidados en gestion de usuarios:
   - `usuarios.html/js` ahora permite al administrador crear/editar organizadores con `plan` (`demo/free/base/competencia/premium`) y `estado del plan` (`activo/suspendido`),
   - listado de usuarios muestra columnas de plan y estado de plan,

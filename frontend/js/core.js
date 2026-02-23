@@ -14,6 +14,8 @@
     "jugadores.html",
     "tablas.html",
     "finanzas.html",
+    "pases.html",
+    "eliminatorias.html",
     "index.html",
     "portal.html",
     "login.html",
@@ -236,6 +238,7 @@
 
     const linkEventos = sidebarNav.querySelector('a[href="eventos.html"]');
     if (linkEventos) linkEventos.innerHTML = '<i class="fas fa-calendar-alt"></i> Categorías';
+    sidebarNav.querySelectorAll('a[href="eliminatorias.html"]').forEach((link) => link.remove());
 
     const ensureNavLink = (href, html, isActive) => {
       let link = sidebarNav.querySelector(`a[href="${href}"]`);
@@ -257,6 +260,11 @@
       "finanzas.html",
       '<i class="fas fa-wallet"></i> Finanzas',
       window.location.pathname.endsWith("finanzas.html")
+    );
+    ensureNavLink(
+      "pases.html",
+      '<i class="fas fa-people-arrows"></i> Pases',
+      window.location.pathname.endsWith("pases.html")
     );
     ensureNavLink(
       "usuarios.html",

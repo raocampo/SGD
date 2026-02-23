@@ -8,6 +8,42 @@ function safeUnlinkLogo(urlPath) {
   fs.unlink(filePath, () => {});
 }
 
+function extraerNombreDesdeArchivo(filename = "", idx = 0) {
+  const base = String(filename || "")
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/^\d+-\d+-?/, "")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  if (!base) return `Auspiciante ${idx + 1}`;
+  return base
+    .split(/\s+/)
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ""))
+    .join(" ");
+}
+
+function obtenerFallbackAuspiciantesDesdeArchivos(campeonatoId) {
+  const carpeta = path.join(__dirname, "..", "uploads", "auspiciantes");
+  if (!fs.existsSync(carpeta)) return [];
+
+  const validExt = new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]);
+  const archivos = fs
+    .readdirSync(carpeta, { withFileTypes: true })
+    .filter((ent) => ent.isFile())
+    .map((ent) => ent.name)
+    .filter((name) => validExt.has(path.extname(name).toLowerCase()))
+    .sort((a, b) => a.localeCompare(b));
+
+  return archivos.map((name, idx) => ({
+    id: `fs-${idx + 1}`,
+    campeonato_id: Number.parseInt(campeonatoId, 10) || null,
+    nombre: extraerNombreDesdeArchivo(name, idx),
+    logo_url: `/uploads/auspiciantes/${name}`,
+    orden: idx + 1,
+    activo: true,
+    origen: "filesystem",
+  }));
+}
+
 const auspicianteController = {
   async crear(req, res) {
     try {
@@ -42,10 +78,17 @@ const auspicianteController = {
         req.query.activo === "true" ||
         req.query.activo === "si";
 
-      const auspiciantes = await Auspiciante.listarPorCampeonato(
+      let auspiciantes = await Auspiciante.listarPorCampeonato(
         campeonato_id,
         soloActivos
       );
+
+      // Fallback: si no hay registros en BD pero sí existen logos cargados en /uploads/auspiciantes
+      // devolvemos esa lista para mantener la plantilla operativa.
+      if (!Array.isArray(auspiciantes) || !auspiciantes.length) {
+        auspiciantes = obtenerFallbackAuspiciantesDesdeArchivos(campeonato_id);
+      }
+
       return res.json({ auspiciantes });
     } catch (error) {
       console.error("Error listar auspiciantes:", error);

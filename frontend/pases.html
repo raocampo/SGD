@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LT&C - Pases de Jugadores</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    rel="stylesheet"
+  />
+</head>
+
+<body class="app-layout page-pases">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ LT&C</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+      <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+      <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+      <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+      <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+      <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+      <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="finanzas.html"><i class="fas fa-wallet"></i> Finanzas</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1><i class="fas fa-people-arrows"></i> Gestión de Pases</h1>
+    </header>
+
+    <main class="main">
+      <div class="container">
+        <section class="config-card">
+          <h3>Filtros de Pases</h3>
+          <div class="form-grid pases-form-grid">
+            <div class="form-group">
+              <label for="pas-filtro-campeonato">Campeonato</label>
+              <select id="pas-filtro-campeonato">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="pas-filtro-evento">Categoría</label>
+              <select id="pas-filtro-evento">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="pas-filtro-equipo-origen">Equipo origen</label>
+              <select id="pas-filtro-equipo-origen">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="pas-filtro-equipo-destino">Equipo destino</label>
+              <select id="pas-filtro-equipo-destino">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="pas-filtro-estado">Estado</label>
+              <select id="pas-filtro-estado">
+                <option value="">Todos</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="pagado">Pagado</option>
+                <option value="aprobado">Aprobado</option>
+                <option value="anulado">Anulado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="pas-filtro-busqueda">Buscar</label>
+              <input
+                id="pas-filtro-busqueda"
+                type="text"
+                placeholder="Jugador, cédula o equipo..."
+              />
+            </div>
+          </div>
+
+          <div class="action-bar">
+            <button type="button" class="btn btn-secondary" id="btn-pas-recargar">
+              <i class="fas fa-rotate"></i> Recargar
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-pas-buscar">
+              <i class="fas fa-search"></i> Buscar
+            </button>
+          </div>
+        </section>
+
+        <section class="config-card" id="pas-card-registro">
+          <h3>Registrar Pase</h3>
+          <form id="pas-form-crear">
+            <div class="form-grid pases-form-grid">
+              <div class="form-group">
+                <label for="pas-campeonato">Campeonato</label>
+                <select id="pas-campeonato" required>
+                  <option value="">Selecciona campeonato</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="pas-evento">Categoría (opcional)</label>
+                <select id="pas-evento">
+                  <option value="">Sin categoría</option>
+                </select>
+              </div>
+              <div class="form-group form-group-full">
+                <label for="pas-jugador">Jugador</label>
+                <select id="pas-jugador" required>
+                  <option value="">Selecciona jugador</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="pas-equipo-destino">Equipo destino</label>
+                <select id="pas-equipo-destino" required>
+                  <option value="">Selecciona equipo</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="pas-monto">Monto del pase</label>
+                <input id="pas-monto" type="number" min="0.01" step="0.01" required />
+              </div>
+              <div class="form-group">
+                <label for="pas-fecha">Fecha del pase</label>
+                <input id="pas-fecha" type="date" />
+              </div>
+              <div class="form-group form-group-full">
+                <label for="pas-observacion">Observación</label>
+                <textarea id="pas-observacion" rows="2" placeholder="Detalle del acuerdo de pase..."></textarea>
+              </div>
+            </div>
+
+            <div class="action-bar">
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-plus"></i> Registrar pase
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="pases-kpi-grid" id="pases-kpis">
+          <div class="card">
+            <h3>Total Pases</h3>
+            <p id="pas-kpi-total" class="pases-kpi-value">0</p>
+          </div>
+          <div class="card">
+            <h3>Pendientes</h3>
+            <p id="pas-kpi-pendiente" class="pases-kpi-value">0</p>
+          </div>
+          <div class="card">
+            <h3>Aprobados</h3>
+            <p id="pas-kpi-aprobado" class="pases-kpi-value">0</p>
+          </div>
+          <div class="card">
+            <h3>Monto Total</h3>
+            <p id="pas-kpi-monto" class="pases-kpi-value">$0,00</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>Listado de Pases</h3>
+          <div id="pas-listado" class="tabla-scroll">
+            <div class="empty-state">
+              <i class="fas fa-people-arrows"></i>
+              <p>Cargando pases...</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/pases.js"></script>
+</body>
+</html>

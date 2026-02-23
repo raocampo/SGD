@@ -74,6 +74,28 @@
             </div>
 
             <div class="form-group">
+              <label>Método de competencia:</label>
+              <select id="evt-metodo-competencia">
+                <option value="grupos">Fase de grupos</option>
+                <option value="liga">Liga (todos contra todos)</option>
+                <option value="eliminatoria">Eliminatoria directa</option>
+                <option value="mixto">Mixto (grupos + eliminatoria)</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="evt-wrap-eliminatoria-equipos" style="display:none;">
+              <label>Tamaño de eliminatoria:</label>
+              <select id="evt-eliminatoria-equipos">
+                <option value="">Automático según equipos inscritos</option>
+                <option value="4">4 equipos (Semifinal)</option>
+                <option value="8">8 equipos (Cuartos)</option>
+                <option value="16">16 equipos (Octavos)</option>
+                <option value="32">32 equipos (Dieciseisavos)</option>
+              </select>
+              <small class="form-hint">Solo aplica para método eliminatoria o mixto.</small>
+            </div>
+
+            <div class="form-group">
               <label>Fecha inicio:</label>
               <input id="evt-fecha-inicio" type="date" readonly />
             </div>

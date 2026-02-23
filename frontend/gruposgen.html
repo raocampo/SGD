@@ -10,7 +10,7 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 </head>
 
-<body class="app-layout">
+<body class="app-layout page-gruposgen">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">⚽ LT&C</div>
     <nav class="sidebar-nav">
@@ -39,60 +39,119 @@
       <div class="container">
         <h2><i class="fas fa-layer-group text-center"></i> Grupos por Campeonato</h2>
 
-        <div class="actions">
-          <button class="btn-back" onclick="volverInicio()">⬅ Volver</button>
-          <button class="btn btn-secondary" onclick="exportarGruposPNG()">🖼️ Exportar imagen</button>
-          <button class="btn-print" onclick="window.print()">🖨 Imprimir</button>
-          <button class="btn-pdf" onclick="exportarPDF()">📄 Exportar PDF</button>
-          <button class="btn-share" onclick="compartirRedes()">🔗 Compartir</button>
-        </div>
-
-        <div class="action-bar">
-          <div class="form-group" style="max-width: 420px;">
-            <label for="select-campeonato-grupos">Selecciona campeonato:</label>
-            <select id="select-campeonato-grupos">
-              <option value="">— Selecciona un campeonato —</option>
-            </select>
-          </div>
-
-          <button class="btn btn-primary" id="btn-recargar-grupos">
-            <i class="fas fa-sync"></i> Recargar
+        <div class="grupos-main-tabs" role="tablist" aria-label="Gestión de grupos">
+          <button
+            type="button"
+            id="tab-grupos"
+            class="grupos-main-tab active"
+            data-tab-target="panel-grupos"
+            role="tab"
+            aria-selected="true"
+          >
+            Plantilla de Grupos
+          </button>
+          <button
+            type="button"
+            id="tab-playoff"
+            class="grupos-main-tab"
+            data-tab-target="panel-playoff"
+            role="tab"
+            aria-selected="false"
+          >
+            Clasificación / Playoff
           </button>
         </div>
 
-        <!-- ✅ ZONA EXPORTABLE TIPO “POSTER” -->
-        <div id="zona-grupos-export" class="poster">
-          
-          <div class="poster-titulo">
-            <div class="poster-org">
-              <img id="poster-org-logo" class="poster-org-logo" crossorigin="anonymous" referrerpolicy="no-referrer"
-                alt="Logo Organizador">
-            </div>
-            <div class="poster-header">
+        <div id="panel-grupos" class="grupos-tab-panel active" role="tabpanel" aria-labelledby="tab-grupos">
+          <div class="actions">
+            <button type="button" id="btn-grupos-volver" class="btn-back" onclick="volverInicio()">⬅ Volver</button>
+            <button type="button" id="btn-grupos-export-img" class="btn btn-secondary" onclick="exportarGruposPNG()">🖼️ Exportar imagen</button>
+            <button type="button" id="btn-grupos-print" class="btn-print" onclick="window.print()">🖨 Imprimir</button>
+            <button type="button" id="btn-grupos-export-pdf" class="btn-pdf" onclick="exportarPDF()">📄 Exportar PDF</button>
+            <button type="button" id="btn-grupos-share" class="btn-share" onclick="compartirRedes()">🔗 Compartir</button>
+          </div>
 
-              <div class="poster-titles">
-                <div id="poster-organizador" class="poster-subtitle">ORGANIZA: —</div>
-                <div id="poster-titulo" class="poster-title">NOMBRE DEL TORNEO</div>
-                <div id="poster-detalle" class="poster-detail">—</div>
+          <div class="action-bar">
+            <div class="form-group" style="max-width: 420px;">
+              <label for="select-campeonato-grupos">Selecciona campeonato:</label>
+              <select id="select-campeonato-grupos">
+                <option value="">— Selecciona un campeonato —</option>
+              </select>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-recargar-grupos" id="btn-recargar-grupos">
+              <i class="fas fa-sync"></i> Recargar
+            </button>
+          </div>
+
+          <!-- ✅ ZONA EXPORTABLE TIPO “POSTER” -->
+          <div id="zona-grupos-export" class="poster">
+
+            <div class="poster-titulo">
+              <div class="poster-org">
+                <img id="poster-org-logo" class="poster-org-logo" crossorigin="anonymous" referrerpolicy="no-referrer"
+                  alt="Logo Organizador">
+              </div>
+              <div class="poster-header">
+
+                <div class="poster-titles">
+                  <div id="poster-organizador" class="poster-subtitle">ORGANIZA: —</div>
+                  <div id="poster-titulo" class="poster-title">NOMBRE DEL TORNEO</div>
+                  <div id="poster-detalle" class="poster-detail">—</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div id="poster-grupos" class="poster-grids">
-            <!-- aquí se renderizan los grupos en columnas -->
-            <div class="empty-state" style="opacity:.9">
-              <i class="fas fa-layer-group"></i>
-              <p>Selecciona un campeonato para ver los grupos</p>
+            <div id="poster-grupos" class="poster-grids">
+              <!-- aquí se renderizan los grupos en columnas -->
+              <div class="empty-state" style="opacity:.9">
+                <i class="fas fa-layer-group"></i>
+                <p>Selecciona un campeonato para ver los grupos</p>
+              </div>
             </div>
-          </div>
 
-          <div id="poster-sponsors" class="poster-sponsors" style="display:none;">
-            <div class="sponsors-title">Auspician</div>
-            <div id="sponsors-grid" class="sponsors-grid"></div>
-          </div>
+            <div id="poster-sponsors" class="poster-sponsors" style="display:none;">
+              <div class="sponsors-title">Auspician</div>
+              <div id="sponsors-grid" class="sponsors-grid"></div>
+            </div>
 
+          </div>
         </div>
 
+        <div id="panel-playoff" class="grupos-tab-panel" role="tabpanel" aria-labelledby="tab-playoff" hidden>
+          <div class="playoff-tab-card">
+            <h3><i class="fas fa-sitemap"></i> Configuración de clasificación y playoff</h3>
+            <p class="playoff-tab-hint">
+              Selecciona la categoría y cárgala aquí como pestaña. También puedes abrirla en pantalla completa.
+            </p>
+            <div class="playoff-tab-controls">
+              <div class="form-group">
+                <label for="playoff-evento-select">Categoría (evento)</label>
+                <select id="playoff-evento-select">
+                  <option value="">Selecciona una categoría</option>
+                </select>
+              </div>
+              <div class="playoff-tab-actions">
+                <button type="button" class="btn btn-primary" id="btn-playoff-cargar-tab">
+                  <i class="fas fa-arrows-rotate"></i> Cargar playoff
+                </button>
+                <button type="button" class="btn btn-outline" id="btn-playoff-abrir-full">
+                  <i class="fas fa-up-right-from-square"></i> Abrir pantalla completa
+                </button>
+              </div>
+            </div>
+            <div id="playoff-tab-help" class="form-hint"></div>
+          </div>
+
+          <div class="playoff-embed-wrap">
+            <iframe
+              id="playoff-embed-frame"
+              class="playoff-embed-frame"
+              title="Clasificación y playoff"
+              loading="lazy"
+            ></iframe>
+          </div>
+        </div>
       </div>
     </section>
   </main>

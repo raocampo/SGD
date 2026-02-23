@@ -24,6 +24,30 @@ function parseDecimalNonNegative(value, fallback = 0) {
   return Number(num.toFixed(2));
 }
 
+function normalizarMetodoCompetencia(value, fallback = "grupos") {
+  const raw = String(value || fallback).trim().toLowerCase();
+  const map = {
+    grupos: "grupos",
+    liga: "liga",
+    todos: "liga",
+    todos_contra_todos: "liga",
+    eliminatoria: "eliminatoria",
+    eliminacion: "eliminatoria",
+    eliminacion_directa: "eliminatoria",
+    eliminatoria_directa: "eliminatoria",
+    mixto: "mixto",
+    grupos_y_eliminatoria: "mixto",
+  };
+  return map[raw] || null;
+}
+
+function normalizarEliminatoriaEquipos(value, fallback = null) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const n = Number.parseInt(value, 10);
+  if (![4, 8, 16, 32].includes(n)) return null;
+  return n;
+}
+
 function esAdministrador(user) {
   return String(user?.rol || "").toLowerCase() === "administrador";
 }
@@ -99,11 +123,30 @@ async function asegurarEsquemaEventos() {
     ALTER TABLE eventos
     ADD COLUMN IF NOT EXISTS numero_campeonato INTEGER
   `);
+  await pool.query(`
+    ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS metodo_competencia VARCHAR(30) DEFAULT 'grupos'
+  `);
+  await pool.query(`
+    ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS eliminatoria_equipos INTEGER
+  `);
 
   await pool.query(`
     UPDATE eventos
     SET costo_inscripcion = 0
     WHERE costo_inscripcion IS NULL
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET metodo_competencia = 'grupos'
+    WHERE metodo_competencia IS NULL OR TRIM(metodo_competencia) = ''
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET eliminatoria_equipos = NULL
+    WHERE eliminatoria_equipos IS NOT NULL
+      AND eliminatoria_equipos NOT IN (4, 8, 16, 32)
   `);
   await pool.query(`
     WITH ranked AS (
@@ -152,6 +195,8 @@ const eventoController = {
         modalidad,
         horarios,
         costo_inscripcion,
+        metodo_competencia,
+        eliminatoria_equipos,
       } = req.body;
 
       if (!campeonato_id || !nombre || !fecha_inicio || !fecha_fin) {
@@ -195,6 +240,19 @@ const eventoController = {
       const sunStart = parseTimeHHMM(horarios?.weekend?.sun_start, "08:00:00");
       const sunEnd = parseTimeHHMM(horarios?.weekend?.sun_end, "17:00:00");
       const costoInscripcion = parseDecimalNonNegative(costo_inscripcion, 0);
+      const metodoCompetencia = normalizarMetodoCompetencia(metodo_competencia, "grupos");
+      if (!metodoCompetencia) {
+        return res.status(400).json({
+          error:
+            "metodo_competencia invalido. Usa: grupos, liga, eliminatoria o mixto.",
+        });
+      }
+      const eliminatoriaEquipos = normalizarEliminatoriaEquipos(eliminatoria_equipos, null);
+      if (eliminatoria_equipos !== undefined && eliminatoria_equipos !== null && eliminatoriaEquipos === null) {
+        return res.status(400).json({
+          error: "eliminatoria_equipos invalido. Valores permitidos: 4, 8, 16, 32.",
+        });
+      }
 
       const query = `
         WITH next_num AS (
@@ -205,6 +263,7 @@ const eventoController = {
         INSERT INTO eventos (
           campeonato_id, nombre, organizador, fecha_inicio, fecha_fin, estado,
           modalidad,
+          metodo_competencia, eliminatoria_equipos,
           costo_inscripcion,
           horario_weekday_inicio, horario_weekday_fin,
           horario_sab_inicio, horario_sab_fin,
@@ -212,7 +271,7 @@ const eventoController = {
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -224,6 +283,8 @@ const eventoController = {
         fecha_inicio,
         fecha_fin,
         mod,
+        metodoCompetencia,
+        eliminatoriaEquipos,
         costoInscripcion,
         wkStart,
         wkEnd,
@@ -288,7 +349,10 @@ const eventoController = {
     try {
       await asegurarEsquemaEventos();
 
-      const { id } = req.params;
+      const id = Number.parseInt(req.params.id, 10);
+      if (!Number.isFinite(id) || id <= 0) {
+        return res.status(400).json({ error: "id de evento inválido." });
+      }
       const q = `
         SELECT e.*,
                c.nombre AS campeonato_nombre
@@ -319,6 +383,31 @@ const eventoController = {
 
       for (const [k, v] of Object.entries(req.body)) {
         if (k === "id") continue;
+        if (k === "metodo_competencia") {
+          const metodo = normalizarMetodoCompetencia(v, null);
+          if (!metodo) {
+            return res.status(400).json({
+              error:
+                "metodo_competencia invalido. Usa: grupos, liga, eliminatoria o mixto.",
+            });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(metodo);
+          i++;
+          continue;
+        }
+        if (k === "eliminatoria_equipos") {
+          const n = normalizarEliminatoriaEquipos(v, null);
+          if (v !== null && v !== "" && n === null) {
+            return res.status(400).json({
+              error: "eliminatoria_equipos invalido. Valores permitidos: 4, 8, 16, 32.",
+            });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(v === null || v === "" ? null : n);
+          i++;
+          continue;
+        }
         if (k === "costo_inscripcion") {
           const costoParseado = parseDecimalNonNegative(v, null);
           if (costoParseado === null) {

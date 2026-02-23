@@ -8,6 +8,12 @@ let contextoGrupos = {
   auspiciantes: [],
 };
 
+let gruposUiState = {
+  eventosPlayoff: [],
+  playoffIframeSrc: "",
+  tabActiva: "panel-grupos",
+};
+
 function getQueryParam(name) {
   const params = new URLSearchParams(window.location.search);
   return params.get(name);
@@ -18,6 +24,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const select = document.getElementById("select-campeonato-grupos");
   const btnRecargar = document.getElementById("btn-recargar-grupos");
+  const btnExportImg = document.getElementById("btn-grupos-export-img");
+  const btnExportPdf = document.getElementById("btn-grupos-export-pdf");
+  const btnShare = document.getElementById("btn-grupos-share");
+  const btnPrint = document.getElementById("btn-grupos-print");
+  const btnVolver = document.getElementById("btn-grupos-volver");
+  const btnPlayoffCargarTab = document.getElementById("btn-playoff-cargar-tab");
+  const btnPlayoffAbrirFull = document.getElementById("btn-playoff-abrir-full");
+  const selectPlayoffEvento = document.getElementById("playoff-evento-select");
+
+  configurarTabsGrupos();
 
   await cargarCampeonatosEnSelect(select);
 
@@ -36,6 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
     await cargarYMostrarGrupos({ campeonatoId: campeonatoParam, eventoId: null });
   }
+  await refrescarSelectEventoPlayoff(getCampeonatoIdActual(), getEventoIdActual());
 
   select.addEventListener("change", async () => {
     const id = select.value;
@@ -50,6 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     await cargarYMostrarGrupos({ campeonatoId, eventoId: null });
+    await refrescarSelectEventoPlayoff(campeonatoId, null);
   });
 
   btnRecargar.addEventListener("click", async () => {
@@ -62,8 +80,134 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     await cargarYMostrarGrupos({ campeonatoId, eventoId });
+    await refrescarSelectEventoPlayoff(campeonatoId, eventoId);
+  });
+
+  btnExportImg?.addEventListener("click", exportarGruposPNG);
+  btnExportPdf?.addEventListener("click", exportarPDF);
+  btnShare?.addEventListener("click", compartirRedes);
+  btnPrint?.addEventListener("click", () => window.print());
+  btnVolver?.addEventListener("click", volverInicio);
+  btnPlayoffCargarTab?.addEventListener("click", cargarPlayoffEnPestana);
+  btnPlayoffAbrirFull?.addEventListener("click", irAClasificacionPlayoff);
+  selectPlayoffEvento?.addEventListener("change", () => {
+    limpiarIframePlayoff();
   });
 });
+
+function configurarTabsGrupos() {
+  const tabs = Array.from(document.querySelectorAll(".grupos-main-tab"));
+  if (!tabs.length) return;
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", async () => {
+      const panelId = tab.dataset.tabTarget || "";
+      activarTabGrupos(panelId);
+      if (panelId === "panel-playoff") {
+        await cargarPlayoffEnPestana();
+      }
+    });
+  });
+}
+
+function activarTabGrupos(panelId) {
+  if (!panelId) return;
+  const tabs = Array.from(document.querySelectorAll(".grupos-main-tab"));
+  const panels = Array.from(document.querySelectorAll(".grupos-tab-panel"));
+  tabs.forEach((tab) => {
+    const active = tab.dataset.tabTarget === panelId;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  panels.forEach((panel) => {
+    const active = panel.id === panelId;
+    panel.classList.toggle("active", active);
+    panel.hidden = !active;
+  });
+  gruposUiState.tabActiva = panelId;
+}
+
+async function refrescarSelectEventoPlayoff(campeonatoIdRaw, eventoPreferidoRaw = null) {
+  const select = document.getElementById("playoff-evento-select");
+  const help = document.getElementById("playoff-tab-help");
+  if (!select) return;
+
+  const campeonatoId = Number.parseInt(campeonatoIdRaw || "", 10);
+  const eventoPreferido = Number.parseInt(eventoPreferidoRaw || "", 10);
+  select.innerHTML = '<option value="">Selecciona una categoría</option>';
+  gruposUiState.eventosPlayoff = [];
+  limpiarIframePlayoff();
+
+  if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
+    if (help) help.textContent = "Selecciona un campeonato para habilitar playoff.";
+    return;
+  }
+
+  try {
+    const data = await ApiClient.get(`/eventos/campeonato/${campeonatoId}`);
+    const eventos = Array.isArray(data?.eventos) ? data.eventos : [];
+    gruposUiState.eventosPlayoff = eventos;
+    if (!eventos.length) {
+      if (help) help.textContent = "Este campeonato todavía no tiene categorías.";
+      return;
+    }
+
+    eventos.forEach((evento) => {
+      const option = document.createElement("option");
+      option.value = String(evento.id);
+      option.textContent = evento.nombre || `Categoría #${evento.id}`;
+      select.appendChild(option);
+    });
+
+    const eventoSeleccionado = Number.isFinite(eventoPreferido) && eventoPreferido > 0
+      ? eventoPreferido
+      : Number.parseInt(select.value || "", 10) || Number.parseInt(eventos[0]?.id || "", 10);
+    if (Number.isFinite(eventoSeleccionado) && eventoSeleccionado > 0) {
+      select.value = String(eventoSeleccionado);
+    }
+
+    if (help) help.textContent = "La configuración se abre directamente en esta pestaña.";
+  } catch (error) {
+    console.error("No se pudieron cargar categorías para playoff:", error);
+    if (help) help.textContent = "No se pudieron cargar categorías para playoff.";
+  }
+}
+
+function getEventoPlayoffSeleccionado() {
+  const select = document.getElementById("playoff-evento-select");
+  const value = Number.parseInt(select?.value || "", 10);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function construirUrlPlayoff({ embed }) {
+  const eventoId = getEventoPlayoffSeleccionado() || Number.parseInt(getEventoIdActual() || "", 10);
+  if (!Number.isFinite(eventoId) || eventoId <= 0) return null;
+  const params = new URLSearchParams();
+  params.set("evento", String(eventoId));
+  if (embed) params.set("embed", "1");
+  return `eliminatorias.html?${params.toString()}`;
+}
+
+function limpiarIframePlayoff() {
+  const iframe = document.getElementById("playoff-embed-frame");
+  if (!iframe) return;
+  iframe.removeAttribute("src");
+  gruposUiState.playoffIframeSrc = "";
+}
+
+async function cargarPlayoffEnPestana() {
+  const iframe = document.getElementById("playoff-embed-frame");
+  if (!iframe) return;
+
+  const url = construirUrlPlayoff({ embed: true });
+  if (!url) {
+    mostrarNotificacion("Selecciona una categoría para abrir playoff.", "warning");
+    return;
+  }
+
+  if (gruposUiState.playoffIframeSrc === url) return;
+  gruposUiState.playoffIframeSrc = url;
+  iframe.src = url;
+}
 
 async function aplicarContextoEventoDesdeURL(
   eventoId,
@@ -177,10 +321,12 @@ function normalizarLogoUrl(logoUrl) {
   if (!logoUrl) return null;
   // Si ya viene como http(s) lo devolvemos
   if (/^https?:\/\//i.test(logoUrl)) return logoUrl;
-  // Si viene como /uploads/...
-  if (logoUrl.startsWith("/")) return `${BACKEND_BASE}${logoUrl}`;
-  // Si viene sin slash
-  return `${BACKEND_BASE}/${logoUrl}`;
+  const limpio = String(logoUrl).trim();
+  if (!limpio) return null;
+  if (limpio.startsWith("/uploads/")) return `${BACKEND_BASE}${limpio}`;
+  if (limpio.startsWith("uploads/")) return `${BACKEND_BASE}/${limpio}`;
+  if (limpio.startsWith("/")) return `${BACKEND_BASE}${limpio}`;
+  return `${BACKEND_BASE}/uploads/${limpio}`;
 }
 
 function formatearFecha(fechaISO) {
@@ -307,6 +453,9 @@ async function cargarYMostrarGrupos(ctx) {
 
 async function imgToDataURL(url) {
   const res = await fetch(url, { mode: "cors", cache: "no-cache" });
+  if (!res.ok) {
+    throw new Error(`No se pudo cargar imagen (${res.status})`);
+  }
   const blob = await res.blob();
 
   return await new Promise((resolve) => {
@@ -353,35 +502,50 @@ async function esperarImagenes(zona) {
     imgs.map(
       (img) =>
         new Promise((resolve) => {
-          if (img.complete && img.naturalHeight > 0) return resolve();
-          img.addEventListener("load", resolve, { once: true });
-          img.addEventListener("error", resolve, { once: true }); // no bloquea si falla una
+          let done = false;
+          const finalizar = () => {
+            if (done) return;
+            done = true;
+            resolve();
+          };
+          if (img.complete) return finalizar();
+          img.addEventListener("load", finalizar, { once: true });
+          img.addEventListener("error", finalizar, { once: true }); // no bloquea si falla una
+          setTimeout(finalizar, 5000); // evita bloqueo si la imagen quedó en estado intermedio
         })
     )
   );
 }
 
 async function exportarGruposPNG() {
-  const zona = getZonaExport();
-  if (!zona) return;
+  try {
+    const zona = getZonaExport();
+    if (!zona) return;
+    if (!window.html2canvas) {
+      mostrarNotificacion("No se cargó html2canvas", "error");
+      return;
+    }
 
-  await esperarImagenes(zona);
-  await inlineImagesAsBase64(zona);
+    await esperarImagenes(zona);
+    await inlineImagesAsBase64(zona);
 
-  const canvas = await html2canvas(zona, {
-    scale: 2,
-    backgroundColor: "#ffffff",
-    useCors: true,
-  });
-  const dataUrl = canvas.toDataURL("image/png");
+    const canvas = await html2canvas(zona, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCors: true,
+    });
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("No se pudo generar blob de imagen");
 
-  const a = document.createElement("a");
-  a.href = dataUrl;
-  const baseName = getEventoIdActual()
-    ? `grupos_evento_${getEventoIdActual()}`
-    : `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}`;
-  a.download = `${baseName}.png`;
-  a.click();
+    const baseName = getEventoIdActual()
+      ? `grupos_evento_${getEventoIdActual()}`
+      : `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}`;
+    descargarBlob(blob, `${baseName}.png`);
+    mostrarNotificacion("Imagen exportada", "success");
+  } catch (error) {
+    console.error("Error exportando imagen de grupos:", error);
+    mostrarNotificacion("No se pudo exportar imagen", "error");
+  }
 }
 
 async function cargarAuspiciantesGrupos(campeonatoId) {
@@ -425,98 +589,132 @@ async function cargarAuspiciantesGrupos(campeonatoId) {
 }
 
 async function exportarPDF() {
-  const zona = getZonaExport();
-  if (!zona) return;
+  try {
+    const zona = getZonaExport();
+    if (!zona) return;
+    if (!window.html2canvas || !window.jspdf?.jsPDF) {
+      mostrarNotificacion("No se cargó librería PDF", "error");
+      return;
+    }
 
-  await esperarImagenes(zona);
-  await inlineImagesAsBase64(zona);
+    await esperarImagenes(zona);
+    await inlineImagesAsBase64(zona);
 
-  const canvas = await html2canvas(zona, {
-    scale: 2,
-    backgroundColor: "#ffffff",
-    useCors: true,
-  });
-  const imgData = canvas.toDataURL("image/png");
+    const canvas = await html2canvas(zona, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCors: true,
+    });
+    const imgData = canvas.toDataURL("image/png");
 
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF("p", "mm", "a4");
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("p", "mm", "a4");
 
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
 
-  const imgProps = pdf.getImageProperties(imgData);
-  const imgWidth = pageWidth;
-  const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+    const imgProps = pdf.getImageProperties(imgData);
+    const imgWidth = pageWidth;
+    const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
 
-  let y = 10;
-  if (imgHeight <= pageHeight - 20) {
-    pdf.addImage(imgData, "PNG", 0, y, imgWidth, imgHeight);
-  } else {
-    const scale = (pageHeight - 20) / imgHeight;
-    const newW = imgWidth * scale;
-    const newH = imgHeight * scale;
-    pdf.addImage(imgData, "PNG", (pageWidth - newW) / 2, y, newW, newH);
+    let y = 10;
+    if (imgHeight <= pageHeight - 20) {
+      pdf.addImage(imgData, "PNG", 0, y, imgWidth, imgHeight);
+    } else {
+      const scale = (pageHeight - 20) / imgHeight;
+      const newW = imgWidth * scale;
+      const newH = imgHeight * scale;
+      pdf.addImage(imgData, "PNG", (pageWidth - newW) / 2, y, newW, newH);
+    }
+
+    const baseName = getEventoIdActual()
+      ? `grupos_evento_${getEventoIdActual()}`
+      : `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}`;
+    pdf.save(`${baseName}.pdf`);
+    mostrarNotificacion("PDF exportado", "success");
+  } catch (error) {
+    console.error("Error exportando PDF de grupos:", error);
+    mostrarNotificacion("No se pudo exportar PDF", "error");
   }
-
-  const baseName = getEventoIdActual()
-    ? `grupos_evento_${getEventoIdActual()}`
-    : `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}`;
-  pdf.save(`${baseName}.pdf`);
 }
 
 async function compartirRedes() {
-  const zona = getZonaExport();
-  if (!zona) return;
+  try {
+    const zona = getZonaExport();
+    if (!zona) return;
+    if (!window.html2canvas) {
+      mostrarNotificacion("No se cargó html2canvas", "error");
+      return;
+    }
 
-  await esperarImagenes(zona);
-  await inlineImagesAsBase64(zona);
+    await esperarImagenes(zona);
+    await inlineImagesAsBase64(zona);
 
-  const canvas = await html2canvas(zona, {
-    scale: 2,
-    backgroundColor: "#ffffff",
-    useCors: true,
-  });
-  const blob = await new Promise((resolve) =>
-    canvas.toBlob(resolve, "image/png")
-  );
+    const canvas = await html2canvas(zona, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCors: true,
+    });
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) {
+      mostrarNotificacion("No se pudo preparar la imagen para compartir", "error");
+      return;
+    }
 
-  const file = new File(
-    [blob],
-    getEventoIdActual()
+    const filename = getEventoIdActual()
       ? `grupos_evento_${getEventoIdActual()}.png`
-      : `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}.png`,
-    {
-      type: "image/png",
-    }
-  );
+      : `grupos_campeonato_${getCampeonatoIdActual() || "sin_id"}.png`;
+    const file = new File([blob], filename, { type: "image/png" });
 
-  const shareData = {
-    title: "Grupos del Campeonato",
-    text: "Te comparto los grupos del campeonato.",
-    files: [file],
-  };
-
-  if (
-    navigator.share &&
-    navigator.canShare &&
-    navigator.canShare({ files: [file] })
-  ) {
-    try {
-      await navigator.share(shareData);
-    } catch (e) {
-      console.warn("Share cancelado o falló:", e);
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
+      try {
+        await navigator.share({
+          title: "Grupos del Campeonato",
+          text: "Te comparto los grupos del campeonato.",
+          files: [file],
+        });
+        return;
+      } catch (e) {
+        console.warn("Share cancelado o falló:", e);
+      }
     }
+
+    mostrarNotificacion(
+      "Tu navegador no permite compartir directo. Se descargará la imagen.",
+      "warning"
+    );
+    descargarBlob(blob, filename);
+  } catch (error) {
+    console.error("Error compartiendo grupos:", error);
+    mostrarNotificacion("No se pudo compartir la imagen", "error");
+  }
+}
+
+function descargarBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 0);
+}
+
+function irAClasificacionPlayoff() {
+  const eventoId = getEventoPlayoffSeleccionado() || Number.parseInt(getEventoIdActual() || "", 10);
+  if (!Number.isFinite(eventoId) || eventoId <= 0) {
+    mostrarNotificacion("Selecciona una categoría para abrir playoff.", "warning");
     return;
   }
-
-  alert(
-    "Tu navegador no permite compartir directo. Se descargará la imagen para que la subas a redes."
-  );
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = file.name;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  window.location.href = `eliminatorias.html?evento=${encodeURIComponent(eventoId)}`;
 }
 
 function getCampeonatoIdActual() {
@@ -535,4 +733,9 @@ function getEventoIdActual() {
   const params = new URLSearchParams(window.location.search);
   return params.get("evento");
 }
+
+window.exportarGruposPNG = exportarGruposPNG;
+window.exportarPDF = exportarPDF;
+window.compartirRedes = compartirRedes;
+window.volverInicio = volverInicio;
 

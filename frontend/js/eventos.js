@@ -40,6 +40,27 @@ function formatearFechaSolo(valor) {
   return texto.slice(0, 10);
 }
 
+function formatearMetodoCompetencia(valor) {
+  const key = String(valor || "grupos").toLowerCase();
+  if (key === "liga") return "Liga";
+  if (key === "eliminatoria") return "Eliminatoria";
+  if (key === "mixto") return "Mixto";
+  return "Grupos";
+}
+
+function normalizarMetodoCompetencia(valor) {
+  const key = String(valor || "").toLowerCase();
+  if (["grupos", "liga", "eliminatoria", "mixto"].includes(key)) return key;
+  return null;
+}
+
+function actualizarVisibilidadConfigEliminatoria() {
+  const metodo = document.getElementById("evt-metodo-competencia")?.value || "grupos";
+  const wrap = document.getElementById("evt-wrap-eliminatoria-equipos");
+  if (!wrap) return;
+  wrap.style.display = ["eliminatoria", "mixto"].includes(metodo) ? "" : "none";
+}
+
 function obtenerNumeroEventoVisible(evento, fallback = null) {
   const n = Number.parseInt(evento?.numero_campeonato, 10);
   if (Number.isFinite(n) && n > 0) return n;
@@ -84,6 +105,12 @@ function cambiarVistaEventos(vista = "cards") {
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("eventos.html")) return;
   actualizarBotonesVistaEventos();
+  actualizarVisibilidadConfigEliminatoria();
+
+  const selectMetodo = document.getElementById("evt-metodo-competencia");
+  if (selectMetodo) {
+    selectMetodo.addEventListener("change", actualizarVisibilidadConfigEliminatoria);
+  }
 
   await cargarCampeonatosSelect();
 
@@ -185,6 +212,8 @@ function renderEventoCard(e) {
       </div>
       <div class="campeonato-info">
         <p><strong>Modalidad:</strong> ${escapeHtml(e.modalidad || "-")}</p>
+        <p><strong>Método:</strong> ${escapeHtml(formatearMetodoCompetencia(e.metodo_competencia))}</p>
+        <p><strong>Llave elim.:</strong> ${escapeHtml(e.eliminatoria_equipos || "Automática")}</p>
         <p><strong>Costo inscripción:</strong> ${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</p>
         <p><strong>Fechas:</strong> ${escapeHtml(formatearFechaSolo(e.fecha_inicio))} - ${escapeHtml(formatearFechaSolo(e.fecha_fin))}</p>
       </div>
@@ -212,6 +241,8 @@ function renderTablaEventos(eventos) {
           <td>${numero}</td>
           <td>${escapeHtml(e.nombre || "—")}</td>
           <td>${escapeHtml(e.modalidad || "-")}</td>
+          <td>${escapeHtml(formatearMetodoCompetencia(e.metodo_competencia))}</td>
+          <td>${escapeHtml(e.eliminatoria_equipos || "Auto")}</td>
           <td>${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</td>
           <td>${escapeHtml(formatearFechaSolo(e.fecha_inicio))}</td>
           <td>${escapeHtml(formatearFechaSolo(e.fecha_fin))}</td>
@@ -239,6 +270,8 @@ function renderTablaEventos(eventos) {
             <th>#</th>
             <th>Categoría</th>
             <th>Modalidad</th>
+            <th>Método</th>
+            <th>Llave elim.</th>
             <th>Costo inscripción</th>
             <th>Fecha inicio</th>
             <th>Fecha fin</th>
@@ -265,12 +298,20 @@ async function crearEvento() {
 
   const nombre = document.getElementById("evt-nombre").value.trim();
   const modalidad = document.getElementById("evt-modalidad").value;
+  const metodoCompetencia = document.getElementById("evt-metodo-competencia")?.value || "grupos";
+  const eliminatoriaEquiposRaw = document.getElementById("evt-eliminatoria-equipos")?.value || "";
   const fecha_inicio = document.getElementById("evt-fecha-inicio").value;
   const fecha_fin = document.getElementById("evt-fecha-fin").value;
   const costo_inscripcion = normalizarCostoInscripcion(
     document.getElementById("evt-costo-inscripcion").value,
     0
   );
+  const metodo_competencia = normalizarMetodoCompetencia(metodoCompetencia);
+  if (!metodo_competencia) {
+    mostrarNotificacion("Método de competencia inválido.", "warning");
+    return;
+  }
+  const eliminatoria_equipos = eliminatoriaEquiposRaw ? Number(eliminatoriaEquiposRaw) : null;
 
   if (!nombre || !fecha_inicio || !fecha_fin) {
     mostrarNotificacion("Completa nombre + fechas", "warning");
@@ -282,6 +323,8 @@ async function crearEvento() {
       campeonato_id: campeonatoSeleccionado,
       nombre,
       modalidad,
+      metodo_competencia,
+      eliminatoria_equipos,
       fecha_inicio,
       fecha_fin,
       costo_inscripcion,
@@ -289,6 +332,11 @@ async function crearEvento() {
     mostrarNotificacion("Categoría creada", "success");
     document.getElementById("evt-nombre").value = "";
     document.getElementById("evt-costo-inscripcion").value = "";
+    const selectMetodo = document.getElementById("evt-metodo-competencia");
+    const selectElim = document.getElementById("evt-eliminatoria-equipos");
+    if (selectMetodo) selectMetodo.value = "grupos";
+    if (selectElim) selectElim.value = "";
+    actualizarVisibilidadConfigEliminatoria();
     await cargarEventos();
   } catch (err) {
     console.error(err);
@@ -322,6 +370,34 @@ async function editarEvento(id) {
     "Costo de inscripción (ej: 35.00):",
     String(costoActual ?? 0)
   );
+  const metodoActual = normalizarMetodoCompetencia(evento?.metodo_competencia) || "grupos";
+  const nuevoMetodoRaw = prompt(
+    "Método (grupos, liga, eliminatoria, mixto):",
+    metodoActual
+  );
+  if (nuevoMetodoRaw === null) return;
+  const nuevoMetodo = normalizarMetodoCompetencia(nuevoMetodoRaw);
+  if (!nuevoMetodo) {
+    mostrarNotificacion("Método inválido. Usa: grupos, liga, eliminatoria o mixto.", "warning");
+    return;
+  }
+
+  let nuevaLlave = evento?.eliminatoria_equipos ? String(evento.eliminatoria_equipos) : "";
+  if (nuevoMetodo === "eliminatoria" || nuevoMetodo === "mixto") {
+    const llavePrompt = prompt(
+      "Tamaño de llave eliminatoria (vacío=auto, 4, 8, 16, 32):",
+      nuevaLlave
+    );
+    if (llavePrompt === null) return;
+    nuevaLlave = String(llavePrompt || "").trim();
+    if (nuevaLlave && !["4", "8", "16", "32"].includes(nuevaLlave)) {
+      mostrarNotificacion("Llave inválida. Usa 4, 8, 16, 32 o vacío.", "warning");
+      return;
+    }
+  } else {
+    nuevaLlave = "";
+  }
+
   const costo_inscripcion = normalizarCostoInscripcion(nuevoCosto, null);
   if (nuevoCosto !== null && costo_inscripcion === null) {
     mostrarNotificacion("Costo inválido. Usa solo números.", "warning");
@@ -329,7 +405,8 @@ async function editarEvento(id) {
   }
 
   try {
-    const payload = { nombre: nuevoNombre };
+    const payload = { nombre: nuevoNombre, metodo_competencia: nuevoMetodo };
+    payload.eliminatoria_equipos = nuevaLlave ? Number(nuevaLlave) : null;
     if (costo_inscripcion !== null) payload.costo_inscripcion = costo_inscripcion;
     await EventosAPI.actualizar(id, payload);
     mostrarNotificacion("Categoría actualizada", "success");

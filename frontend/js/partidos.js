@@ -8,7 +8,9 @@ let jornadaSeleccionada = null;
 let fechaSeleccionada = null;
 let vistaFixture = "todos";
 let partidosActuales = [];
+let eliminatoriasActuales = [];
 let eventosCache = [];
+let metodoCompetenciaActivo = "grupos";
 let vistaPartidos = localStorage.getItem("sgd_vista_partidos") || "cards";
 vistaPartidos = vistaPartidos === "table" ? "table" : "cards";
 
@@ -51,7 +53,66 @@ function cambiarVistaPartidos(vista = "cards") {
   vistaPartidos = vista === "table" ? "table" : "cards";
   localStorage.setItem("sgd_vista_partidos", vistaPartidos);
   actualizarBotonesVistaPartidos();
-  aplicarRenderPartidos();
+  if (metodoCompetenciaActivo === "eliminatoria") {
+    aplicarRenderEliminatorias();
+  } else {
+    aplicarRenderPartidos();
+  }
+}
+
+function normalizarMetodoCompetencia(value) {
+  const raw = String(value || "grupos").toLowerCase();
+  if (["grupos", "liga", "eliminatoria", "mixto"].includes(raw)) return raw;
+  return "grupos";
+}
+
+function obtenerEventoSeleccionadoObj() {
+  return eventosCache.find((e) => Number(e.id) === Number(eventoSeleccionado)) || null;
+}
+
+function actualizarUIPorMetodoCompetencia() {
+  const titulo = document.querySelector(".config-card h4");
+  const opciones = document.querySelector(".fixture-generation-options");
+  const btn = document.querySelector(".fixture-generation-actions .btn");
+  const selectGrupo = document.getElementById("select-grupo");
+  const selectJornada = document.getElementById("select-jornada");
+  const inputFecha = document.getElementById("input-fecha");
+
+  if (metodoCompetenciaActivo === "eliminatoria") {
+    grupoSeleccionado = null;
+    jornadaSeleccionada = null;
+    fechaSeleccionada = null;
+    if (titulo) titulo.textContent = "Generación de Eliminatoria";
+    if (opciones) opciones.style.display = "none";
+    if (btn) btn.innerHTML = '<i class="fas fa-sitemap"></i> Generar Eliminatoria (categoría)';
+    if (selectGrupo) {
+      selectGrupo.value = "";
+      selectGrupo.disabled = true;
+    }
+    if (selectJornada) {
+      selectJornada.value = "";
+      selectJornada.disabled = true;
+    }
+    if (inputFecha) {
+      inputFecha.value = "";
+      inputFecha.disabled = true;
+    }
+    return;
+  }
+
+  if (metodoCompetenciaActivo === "mixto") {
+    if (titulo) titulo.textContent = "Generación de Fixture (Fase de Grupos)";
+  } else if (metodoCompetenciaActivo === "liga") {
+    if (titulo) titulo.textContent = "Generación de Fixture (Liga)";
+  } else {
+    if (titulo) titulo.textContent = "Generación de Fixture";
+  }
+
+  if (opciones) opciones.style.display = "";
+  if (btn) btn.innerHTML = '<i class="fas fa-calendar-plus"></i> Generar Fixture (categoría)';
+  if (selectGrupo) selectGrupo.disabled = false;
+  if (selectJornada) selectJornada.disabled = false;
+  if (inputFecha) inputFecha.disabled = false;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -62,7 +123,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (selectJornada) {
     selectJornada.addEventListener("change", () => {
       jornadaSeleccionada = selectJornada.value || null;
-      aplicarRenderPartidos();
+      if (metodoCompetenciaActivo === "eliminatoria") aplicarRenderEliminatorias();
+      else aplicarRenderPartidos();
       actualizarCabeceraFixture();
     });
   }
@@ -71,12 +133,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (inputFecha) {
     inputFecha.addEventListener("change", () => {
       fechaSeleccionada = inputFecha.value || null;
-      aplicarRenderPartidos();
+      if (metodoCompetenciaActivo === "eliminatoria") aplicarRenderEliminatorias();
+      else aplicarRenderPartidos();
       actualizarCabeceraFixture();
     });
   }
 
   await cargarEventos();
+  await aplicarEventoInicialDesdeURL();
+  actualizarUIPorMetodoCompetencia();
   actualizarCabeceraFixture();
   actualizarTabsVistaFixture();
   actualizarPestanasPartidos("tab-filtrar");
@@ -97,9 +162,13 @@ async function cargarEventos() {
 
     select.onchange = async () => {
       eventoSeleccionado = select.value ? Number(select.value) : null;
+      const evento = obtenerEventoSeleccionadoObj();
+      metodoCompetenciaActivo = normalizarMetodoCompetencia(evento?.metodo_competencia);
+      actualizarUIPorMetodoCompetencia();
       grupoSeleccionado = null;
       jornadaSeleccionada = null;
       fechaSeleccionada = null;
+      eliminatoriasActuales = [];
       const inputFecha = document.getElementById("input-fecha");
       if (inputFecha) inputFecha.value = "";
       limpiarJornadas();
@@ -211,6 +280,17 @@ async function cargarPartidos() {
   }
 
   try {
+    if (metodoCompetenciaActivo === "eliminatoria") {
+      const data = await ApiClient.get(`/eliminatorias/evento/${eventoSeleccionado}`);
+      const cruces = Array.isArray(data?.partidos) ? data.partidos : [];
+      eliminatoriasActuales = cruces;
+      partidosActuales = [];
+      limpiarJornadas();
+      aplicarRenderEliminatorias();
+      renderFixtureTemplate([]);
+      return;
+    }
+
     const url = grupoSeleccionado
       ? `/partidos/grupo/${grupoSeleccionado}`
       : `/partidos/evento/${eventoSeleccionado}`;
@@ -230,6 +310,115 @@ async function cargarPartidos() {
     console.error(error);
     limpiarPartidosUI();
   }
+}
+
+async function aplicarEventoInicialDesdeURL() {
+  const queryEvento = new URLSearchParams(window.location.search).get("evento");
+  const id = Number.parseInt(queryEvento || "", 10);
+  if (!Number.isFinite(id)) return;
+
+  const select = document.getElementById("select-evento");
+  if (!select) return;
+  if (![...select.options].some((x) => Number(x.value) === id)) return;
+
+  select.value = String(id);
+  await select.onchange?.();
+}
+
+function aplicarRenderEliminatorias() {
+  const cont = document.getElementById("lista-partidos");
+  if (!cont) return;
+
+  if (!eliminatoriasActuales.length) {
+    cont.classList.remove("list-mode-table");
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-sitemap"></i>
+        <p>No hay cruces eliminatorios generados para esta categoría.</p>
+      </div>`;
+    return;
+  }
+
+  if (vistaPartidos === "table") {
+    cont.classList.add("list-mode-table");
+    cont.innerHTML = renderTablaEliminatoria(eliminatoriasActuales);
+    return;
+  }
+
+  cont.classList.remove("list-mode-table");
+  cont.innerHTML = eliminatoriasActuales.map((item) => renderCruceEliminatoriaCard(item)).join("");
+}
+
+function renderCruceEliminatoriaCard(item) {
+  const local = item.equipo_local_nombre || "Por definir";
+  const visita = item.equipo_visitante_nombre || "Por definir";
+  const rl = Number.isFinite(Number(item.resultado_local)) ? item.resultado_local : "-";
+  const rv = Number.isFinite(Number(item.resultado_visitante)) ? item.resultado_visitante : "-";
+  const ganador = item.ganador_nombre || "Pendiente";
+
+  return `
+    <div class="campeonato-card">
+      <div class="campeonato-header">
+        <h3>${escapeHtml(String(item.ronda || "Ronda").toUpperCase())} - Partido ${escapeHtml(item.partido_numero || "-")}</h3>
+      </div>
+      <div class="campeonato-info">
+        <p><strong>Cruce:</strong> ${escapeHtml(local)} vs ${escapeHtml(visita)}</p>
+        <p><strong>Marcador:</strong> ${escapeHtml(rl)} - ${escapeHtml(rv)}</p>
+        <p><strong>Ganador:</strong> ${escapeHtml(ganador)}</p>
+      </div>
+      <div class="campeonato-actions">
+        <button class="btn btn-warning" onclick="editarResultadoEliminatoria(${item.id})">
+          <i class="fas fa-edit"></i> Registrar resultado
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderTablaEliminatoria(cruces) {
+  const filas = cruces
+    .map((item) => {
+      const local = escapeHtml(item.equipo_local_nombre || "Por definir");
+      const visita = escapeHtml(item.equipo_visitante_nombre || "Por definir");
+      const rl = Number.isFinite(Number(item.resultado_local)) ? item.resultado_local : "-";
+      const rv = Number.isFinite(Number(item.resultado_visitante)) ? item.resultado_visitante : "-";
+      const ganador = escapeHtml(item.ganador_nombre || "Pendiente");
+      return `
+        <tr>
+          <td>${escapeHtml(String(item.ronda || "-").toUpperCase())}</td>
+          <td>${escapeHtml(item.partido_numero || "-")}</td>
+          <td>${local}</td>
+          <td>${visita}</td>
+          <td>${escapeHtml(rl)} - ${escapeHtml(rv)}</td>
+          <td>${ganador}</td>
+          <td class="list-table-actions">
+            <button class="btn btn-warning" onclick="editarResultadoEliminatoria(${item.id})">
+              <i class="fas fa-edit"></i> Registrar resultado
+            </button>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="list-table-wrap">
+      <table class="list-table">
+        <thead>
+          <tr>
+            <th>Ronda</th>
+            <th>Partido</th>
+            <th>Local</th>
+            <th>Visitante</th>
+            <th>Marcador</th>
+            <th>Ganador</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 function poblarJornadasDesdePartidos(partidos) {
@@ -712,11 +901,16 @@ async function generarFixtureEvento() {
   const idaYVuelta = document.getElementById("chk-ida-vuelta")?.checked === true;
   const programacionManual =
     document.getElementById("chk-programacion-manual")?.checked === true;
+  const evento = obtenerEventoSeleccionadoObj();
+  const esEliminatoria = metodoCompetenciaActivo === "eliminatoria";
+  const cantidadEquiposObjetivo = Number.parseInt(evento?.eliminatoria_equipos, 10) || null;
+
+  const mensaje = esEliminatoria
+    ? "Se generará la llave eliminatoria de la categoría seleccionada. Si ya existe, se reemplazará. ¿Continuar?"
+    : "Se generara el fixture para todos los grupos del evento seleccionado. Si ya existen partidos del evento, se reemplazaran. Continuar?";
 
   if (
-    !confirm(
-      "Se generara el fixture para todos los grupos del evento seleccionado. Si ya existen partidos del evento, se reemplazaran. Continuar?"
-    )
+    !confirm(mensaje)
   ) {
     return;
   }
@@ -726,14 +920,64 @@ async function generarFixtureEvento() {
       ida_y_vuelta: idaYVuelta,
       reemplazar: true,
       programacion_manual: programacionManual,
-      modo: "grupos",
+      modo: "auto",
+      cantidad_equipos: cantidadEquiposObjetivo,
     });
 
-    mostrarNotificacion("Fixture generado correctamente", "success");
+    mostrarNotificacion(
+      esEliminatoria ? "Llave eliminatoria generada correctamente" : "Fixture generado correctamente",
+      "success"
+    );
     await cargarPartidos();
   } catch (error) {
     console.error(error);
     mostrarNotificacion(error.message || "Error al generar el fixture.", "error");
+  }
+}
+
+async function editarResultadoEliminatoria(id) {
+  const cruce = eliminatoriasActuales.find((x) => Number(x.id) === Number(id));
+  if (!cruce) {
+    mostrarNotificacion("Cruce no encontrado.", "warning");
+    return;
+  }
+
+  const rlActual = Number.isFinite(Number(cruce.resultado_local)) ? Number(cruce.resultado_local) : 0;
+  const rvActual = Number.isFinite(Number(cruce.resultado_visitante)) ? Number(cruce.resultado_visitante) : 0;
+
+  const rlStr = prompt("Goles equipo local:", String(rlActual));
+  if (rlStr === null) return;
+  const rvStr = prompt("Goles equipo visitante:", String(rvActual));
+  if (rvStr === null) return;
+
+  const rl = Number.parseInt(rlStr, 10);
+  const rv = Number.parseInt(rvStr, 10);
+  if (!Number.isFinite(rl) || !Number.isFinite(rv) || rl < 0 || rv < 0) {
+    mostrarNotificacion("Marcador inválido.", "warning");
+    return;
+  }
+  if (rl === rv) {
+    mostrarNotificacion("En eliminatoria no se permite empate. Registra ganador final.", "warning");
+    return;
+  }
+
+  const ganadorId = rl > rv ? cruce.equipo_local_id : cruce.equipo_visitante_id;
+  if (!ganadorId) {
+    mostrarNotificacion("No se puede determinar ganador sin equipos asignados.", "warning");
+    return;
+  }
+
+  try {
+    await ApiClient.put(`/eliminatorias/${id}/resultado`, {
+      resultado_local: rl,
+      resultado_visitante: rv,
+      ganador_id: ganadorId,
+    });
+    mostrarNotificacion("Resultado de eliminatoria actualizado.", "success");
+    await cargarPartidos();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo registrar resultado.", "error");
   }
 }
 
@@ -790,6 +1034,14 @@ function abrirPlantillaFixturePantallaCompleta() {
   if (fechaSeleccionada) params.set("fecha", String(fechaSeleccionada));
 
   window.location.href = `fixtureplantilla.html?${params.toString()}`;
+}
+
+function abrirVistaEliminatoria() {
+  if (!eventoSeleccionado) {
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return;
+  }
+  window.location.href = `eliminatorias.html?evento=${encodeURIComponent(eventoSeleccionado)}`;
 }
 
 function limpiarPartidosUI() {
@@ -883,6 +1135,8 @@ window.editarPartido = editarPartido;
 window.eliminarPartido = eliminarPartido;
 window.abrirPlanillaPartido = abrirPlanillaPartido;
 window.cambiarVistaPartidos = cambiarVistaPartidos;
+window.editarResultadoEliminatoria = editarResultadoEliminatoria;
+window.abrirVistaEliminatoria = abrirVistaEliminatoria;
 
 
 

@@ -1,5 +1,6 @@
 // backend/controllers/eliminatoriaController.js
 const Eliminatoria = require("../models/Eliminatoria");
+const pool = require("../config/database");
 
 const eliminatoriaController = {
   obtenerPorEvento: async (req, res) => {
@@ -26,15 +27,48 @@ const eliminatoriaController = {
   generarBracket: async (req, res) => {
     try {
       const evento_id = parseInt(req.params.evento_id, 10);
-      const { cantidad_equipos = 8 } = req.body || {};
+      const payloadCantidad = Number.parseInt(req.body?.cantidad_equipos, 10);
       if (!Number.isFinite(evento_id)) {
         return res.status(400).json({ error: "evento_id inválido" });
       }
-      const partidos = await Eliminatoria.generarBracket(evento_id, parseInt(cantidad_equipos, 10) || 8);
+
+      const eventoR = await pool.query(
+        `SELECT id, nombre, metodo_competencia, eliminatoria_equipos FROM eventos WHERE id = $1 LIMIT 1`,
+        [evento_id]
+      );
+      const evento = eventoR.rows[0];
+      if (!evento) {
+        return res.status(404).json({ error: "Evento no encontrado" });
+      }
+
+      const cantidadEquipos = Number.isFinite(payloadCantidad)
+        ? payloadCantidad
+        : Number.parseInt(evento.eliminatoria_equipos, 10) || null;
+
+      const origen = String(req.body?.origen || "evento").toLowerCase();
+      let partidos = [];
+      let meta = null;
+
+      if (origen === "grupos") {
+        const generado = await Eliminatoria.generarBracketDesdeGrupos(evento_id, {
+          ...req.body,
+          cantidad_equipos: cantidadEquipos,
+        });
+        partidos = Array.isArray(generado?.partidos) ? generado.partidos : [];
+        meta = generado?.meta || null;
+      } else {
+        partidos = await Eliminatoria.generarBracket(evento_id, cantidadEquipos);
+      }
+
       res.json({
         mensaje: "Bracket generado",
         evento_id,
+        evento_nombre: evento.nombre,
+        metodo_competencia: evento.metodo_competencia || "eliminatoria",
+        origen_generacion: origen === "grupos" ? "grupos" : "evento",
+        cantidad_equipos_objetivo: cantidadEquipos,
         total: partidos.length,
+        meta,
         partidos,
       });
     } catch (error) {

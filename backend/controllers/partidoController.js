@@ -1,5 +1,7 @@
 // controllers/partidoController.js
 const Partido = require("../models/Partido");
+const Eliminatoria = require("../models/Eliminatoria");
+const pool = require("../config/database");
 
 // ===============================
 // 🎯 FIXTURE POR EVENTO (CATEGORÍA)
@@ -18,10 +20,44 @@ exports.generarFixtureEvento = async (req, res) => {
       reemplazar = true,
       programacion_manual = false,
       modo = "auto",
+      cantidad_equipos = null,
       // opcional: si algún día quieres sobreescribir fechas del evento
       fecha_inicio = null,
       fecha_fin = null,
     } = req.body || {};
+
+    const eventoR = await pool.query(
+      `SELECT id, metodo_competencia, eliminatoria_equipos FROM eventos WHERE id = $1 LIMIT 1`,
+      [evento_id]
+    );
+    const evento = eventoR.rows[0];
+    if (!evento) {
+      return res.status(404).json({ error: "Evento no encontrado" });
+    }
+
+    const metodoCompetencia = String(evento.metodo_competencia || "grupos").toLowerCase();
+    let modoEfectivo = String(modo || "auto").toLowerCase();
+
+    if (modoEfectivo === "auto") {
+      if (metodoCompetencia === "eliminatoria") modoEfectivo = "eliminatoria";
+      else if (metodoCompetencia === "liga") modoEfectivo = "todos";
+      else modoEfectivo = "grupos";
+    }
+
+    if (modoEfectivo === "eliminatoria") {
+      const cantidadObjetivo =
+        Number.parseInt(cantidad_equipos, 10) ||
+        Number.parseInt(evento.eliminatoria_equipos, 10) ||
+        null;
+
+      const bracket = await Eliminatoria.generarBracket(evento_id, cantidadObjetivo);
+      return res.json({
+        ok: true,
+        tipo_generacion: "eliminatoria",
+        total: bracket.length,
+        partidos: bracket,
+      });
+    }
 
     const partidos = await Partido.generarFixtureEvento({
       evento_id,
@@ -32,11 +68,12 @@ exports.generarFixtureEvento = async (req, res) => {
       programacion_manual: programacion_manual === true,
       fecha_inicio,
       fecha_fin,
-      modo,
+      modo: modoEfectivo,
     });
 
     return res.json({
       ok: true,
+      tipo_generacion: "fixture",
       total: partidos.length,
       partidos,
     });

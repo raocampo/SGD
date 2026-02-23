@@ -207,5 +207,25 @@
       return window.ApiClient.delete(`/auspiciantes/${id}`);
     },
   };
+
+  window.PasesAPI = window.PasesAPI || {
+    listar(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/pases${suffix}`);
+    },
+    obtener(id) {
+      return window.ApiClient.get(`/pases/${id}`);
+    },
+    crear(payload) {
+      return window.ApiClient.post("/pases", payload);
+    },
+    actualizarEstado(id, payload) {
+      return window.ApiClient.put(`/pases/${id}/estado`, payload);
+    },
+  };
 })();
 

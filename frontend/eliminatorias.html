@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LT&C - Llaves Eliminatorias</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    rel="stylesheet"
+  />
+</head>
+<body class="app-layout page-eliminatorias">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ LT&C</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+      <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+      <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+      <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+      <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+      <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+      <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1><i class="fas fa-sitemap"></i> Llaves Eliminatorias</h1>
+    </header>
+
+    <main class="main">
+      <div class="container">
+        <section class="config-card">
+          <h3>Configuración de Llave</h3>
+          <div class="form-grid eliminatoria-form-grid">
+            <div class="form-group form-group-full">
+              <label for="eli-evento">Categoría (evento)</label>
+              <select id="eli-evento">
+                <option value="">Selecciona categoría</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="eli-origen">Origen playoff</label>
+              <select id="eli-origen">
+                <option value="evento">Directo por equipos inscritos</option>
+                <option value="grupos">Desde fase de grupos</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="eli-metodo">Método configurado</label>
+              <input id="eli-metodo" type="text" readonly value="-" />
+            </div>
+            <div class="form-group">
+              <label for="eli-llave">Tamaño llave</label>
+              <input id="eli-llave" type="text" readonly value="Automática" />
+            </div>
+            <div class="form-group" id="eli-wrap-clasificados" style="display:none;">
+              <label for="eli-clasificados">Clasifican por grupo</label>
+              <select id="eli-clasificados">
+                <option value="1">1 por grupo</option>
+                <option value="2" selected>2 por grupo</option>
+                <option value="3">3 por grupo</option>
+                <option value="4">4 por grupo</option>
+                <option value="5">5 por grupo</option>
+                <option value="6">6 por grupo</option>
+              </select>
+            </div>
+            <div class="form-group" id="eli-wrap-metodo-grupos" style="display:none;">
+              <label for="eli-metodo-grupos">Método playoff desde grupos</label>
+              <select id="eli-metodo-grupos">
+                <option value="cruces_grupos">Cruces entre grupos</option>
+                <option value="tabla_unica">Tabla única (1 vs último)</option>
+              </select>
+            </div>
+            <div class="form-group form-group-full" id="eli-wrap-cruces" style="display:none;">
+              <label>Cruces de grupos</label>
+              <div id="eli-cruces-grupos" class="eli-cruces-grid"></div>
+              <small class="form-hint">
+                Ejemplo: A vs C y B vs D. Cada cruce genera los enfrentamientos por posición (1° vs último, etc.).
+              </small>
+            </div>
+          </div>
+          <div class="action-bar">
+            <button type="button" class="btn btn-primary" id="btn-eli-cargar">
+              <i class="fas fa-search"></i> Cargar llave
+            </button>
+            <button type="button" class="btn btn-success" id="btn-eli-generar">
+              <i class="fas fa-magic"></i> Generar / Regenerar llave
+            </button>
+            <button type="button" class="btn btn-outline" id="btn-eli-exportar">
+              <i class="fas fa-up-right-from-square"></i> Abrir en partidos
+            </button>
+          </div>
+          <p class="form-hint" id="eli-aviso-metodo"></p>
+        </section>
+
+        <section class="card">
+          <h3>Bracket</h3>
+          <div id="eli-bracket" class="eliminatoria-bracket">
+            <div class="empty-state">
+              <i class="fas fa-sitemap"></i>
+              <p>Selecciona una categoría para visualizar la llave eliminatoria.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>Plantilla para Publicar</h3>
+          <div class="action-bar">
+            <button type="button" class="btn btn-secondary" id="btn-eli-export-png" onclick="exportarEliminatoriaPNG()">
+              <i class="fas fa-image"></i> Exportar imagen
+            </button>
+            <button type="button" class="btn btn-danger" id="btn-eli-export-pdf" onclick="exportarEliminatoriaPDF()">
+              <i class="fas fa-file-pdf"></i> Exportar PDF
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-eli-share" onclick="compartirEliminatoria()">
+              <i class="fas fa-share-nodes"></i> Compartir
+            </button>
+          </div>
+
+          <div id="eli-zona-export" class="eli-export-poster">
+            <div class="eli-export-header">
+              <img
+                id="eli-export-logo"
+                class="eli-export-logo"
+                alt="Logo organizador"
+                crossorigin="anonymous"
+                referrerpolicy="no-referrer"
+              />
+              <div class="eli-export-head-text">
+                <div id="eli-export-organizador" class="eli-export-organizador">ORGANIZA: -</div>
+                <div id="eli-export-titulo" class="eli-export-titulo">LLAVE ELIMINATORIA</div>
+                <div id="eli-export-subtitulo" class="eli-export-subtitulo">Categoría: -</div>
+              </div>
+            </div>
+
+            <div id="eli-export-rounds" class="eli-export-rounds">
+              <div class="empty-state">
+                <i class="fas fa-image"></i>
+                <p>Genera o carga una llave para preparar la gráfica.</p>
+              </div>
+            </div>
+
+            <div id="eli-export-sponsors" class="eli-export-sponsors" style="display:none;">
+              <div class="eli-export-sponsors-title">Auspician</div>
+              <div id="eli-export-sponsors-grid" class="eli-export-sponsors-grid"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/eliminatorias.js"></script>
+</body>
+</html>
