@@ -721,6 +721,36 @@ class Finanza {
 
     return incluirSaldados ? filas : filas.filter((f) => f.saldo > 0);
   }
+
+  static async marcarMovimientoPagado(movimiento_id, data = {}, client = pool) {
+    await this.asegurarEsquema(client);
+
+    const id = this.parseEntero(movimiento_id, "movimiento_id");
+    const estado = "pagado";
+    const metodoPago = (data.metodo_pago || "movil").toString().trim() || "movil";
+    const referencia = (data.referencia || "").toString().trim() || null;
+    const fechaMovimiento = this.parseFecha(data.fecha_movimiento, "fecha_movimiento") || null;
+
+    const r = await client.query(
+      `
+        UPDATE finanzas_movimientos
+        SET estado = $1,
+            metodo_pago = $2,
+            referencia = COALESCE($3, referencia),
+            fecha_movimiento = COALESCE($4::date, fecha_movimiento),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $5
+        RETURNING *
+      `,
+      [estado, metodoPago, referencia, fechaMovimiento, id]
+    );
+
+    if (!r.rows.length) {
+      throw new Error("Movimiento no encontrado");
+    }
+
+    return r.rows[0];
+  }
 }
 
 module.exports = Finanza;

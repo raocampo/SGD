@@ -49,6 +49,24 @@ function formatearFechaPortal(fecha) {
   });
 }
 
+function limpiarResumenPortal(texto = "", max = 180) {
+  const clean = String(texto || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (clean.length <= max) return clean;
+  return `${clean.slice(0, max - 1).trim()}...`;
+}
+
+function escPortal(texto) {
+  return String(texto ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function renderCardTorneoPrincipal(torneo) {
   const nombre = limpiarCodigoTorneo(torneo?.nombre) || "Torneo LT&C";
   const estado = (torneo?.estado || "planificacion").replace("planificacion", "borrador");
@@ -133,7 +151,9 @@ async function portalCargarCampeonatos(listaForzada = null, options = {}) {
   try {
     let lista = Array.isArray(listaForzada) ? listaForzada : null;
     if (!lista) {
-      const data = await fetch(`${API}/campeonatos`).then((r) => r.json());
+      const data = window.PortalPublicAPI
+        ? await window.PortalPublicAPI.listarCampeonatos()
+        : await fetch(`${API}/public/campeonatos`).then((r) => r.json());
       lista = data.campeonatos || data || [];
     }
     const activos = (lista || []).filter((c) => estadoEsVisibleEnPortal(c.estado));
@@ -263,6 +283,261 @@ async function cargarLandingOrganizador(organizadorId) {
   return data;
 }
 
+async function cargarNoticiasPublicasPortal() {
+  const newsTitle = document.getElementById("ltc-news-title");
+  const newsDescription = document.getElementById("ltc-news-description");
+  const newsAuthor = document.getElementById("ltc-news-author");
+  const newsLink = document.getElementById("ltc-news-link");
+
+  try {
+    const resp = await fetch(`${API}/public/noticias`);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "No se pudo cargar noticias");
+    const noticia = Array.isArray(data?.noticias) && data.noticias.length ? data.noticias[0] : null;
+    if (!noticia) {
+      if (newsLink) {
+        newsLink.textContent = "Ver blog";
+        newsLink.href = "blog.html";
+      }
+      return;
+    }
+
+    if (newsTitle) newsTitle.textContent = noticia.titulo || "Últimas noticias";
+    if (newsDescription) {
+      newsDescription.textContent = limpiarResumenPortal(noticia.resumen || noticia.contenido || "", 220);
+    }
+    if (newsAuthor) {
+      const fecha = formatearFechaPortal(noticia.publicada_at || noticia.created_at);
+      const autor = noticia.autor_nombre || "LT&C";
+      newsAuthor.textContent = `${autor} • ${fecha}`;
+    }
+    if (newsLink) {
+      newsLink.textContent = "Leer noticia";
+      newsLink.href = noticia.slug ? `noticia.html?slug=${encodeURIComponent(noticia.slug)}` : "blog.html";
+    }
+  } catch (error) {
+    console.error(error);
+    if (newsLink) {
+      newsLink.textContent = "Ver blog";
+      newsLink.href = "blog.html";
+    }
+  }
+}
+
+function aplicarContenidoPortal(contenido) {
+  if (!contenido) return;
+
+  const heroTitle = document.getElementById("ltc-hero-title");
+  const heroDescription = document.getElementById("ltc-hero-description");
+  const heroChip = document.getElementById("ltc-hero-chip");
+  const heroCta = document.getElementById("ltc-hero-cta");
+  const aboutTitle = document.getElementById("ltc-about-title");
+  const aboutText1 = document.getElementById("ltc-about-text-1");
+  const aboutText2 = document.getElementById("ltc-about-text-2");
+  const aboutImage = document.getElementById("ltc-about-image");
+  const contactTitle = document.getElementById("ltc-contact-title");
+  const contactDescription = document.getElementById("ltc-contact-description");
+  const contactEmail = document.getElementById("ltc-contact-email");
+  const contactPhone = document.getElementById("ltc-contact-phone");
+  const socialFacebook = document.getElementById("ltc-social-facebook");
+  const socialInstagram = document.getElementById("ltc-social-instagram");
+  const socialWhatsapp = document.getElementById("ltc-social-whatsapp");
+  const featureCards = document.getElementById("ltc-feature-cards");
+
+  if (heroTitle) heroTitle.textContent = contenido.hero_title || heroTitle.textContent;
+  if (heroDescription) {
+    heroDescription.textContent = contenido.hero_description || heroDescription.textContent;
+  }
+  if (heroChip) heroChip.textContent = contenido.hero_chip || heroChip.textContent;
+  if (heroCta) heroCta.textContent = contenido.hero_cta_label || heroCta.textContent;
+
+  if (aboutTitle) aboutTitle.textContent = contenido.about_title || aboutTitle.textContent;
+  if (aboutText1) aboutText1.textContent = contenido.about_text_1 || aboutText1.textContent;
+  if (aboutText2) aboutText2.textContent = contenido.about_text_2 || aboutText2.textContent;
+  if (aboutImage && contenido.about_image_url) {
+    aboutImage.src = contenido.about_image_url;
+  }
+
+  if (contactTitle) contactTitle.textContent = contenido.contact_title || contactTitle.textContent;
+  if (contactDescription) {
+    contactDescription.textContent = contenido.contact_description || contactDescription.textContent;
+  }
+  if (contactEmail && contenido.contact_email) {
+    contactEmail.textContent = contenido.contact_email;
+    contactEmail.href = `mailto:${contenido.contact_email}`;
+  }
+  if (contactPhone && contenido.contact_phone) {
+    contactPhone.textContent = contenido.contact_phone;
+    contactPhone.href = contenido.whatsapp_url || "#";
+  }
+  if (socialFacebook && contenido.facebook_url) socialFacebook.href = contenido.facebook_url;
+  if (socialInstagram && contenido.instagram_url) socialInstagram.href = contenido.instagram_url;
+  if (socialWhatsapp && contenido.whatsapp_url) socialWhatsapp.href = contenido.whatsapp_url;
+
+  if (featureCards && Array.isArray(contenido.cards_json) && contenido.cards_json.length) {
+    featureCards.innerHTML = contenido.cards_json
+      .map(
+        (item) => `
+          <article class="ltc-feature-card">
+            <i class="fas ${escPortal(item.icono || "fa-star")}"></i>
+            <h3>${escPortal(item.titulo || "")}</h3>
+            <p>${escPortal(item.descripcion || "")}</p>
+          </article>
+        `
+      )
+      .join("");
+  }
+}
+
+async function cargarContenidoPortalPublico() {
+  try {
+    const resp = await fetch(`${API}/public/portal-contenido`);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "No se pudo cargar contenido del portal");
+    aplicarContenidoPortal(data?.contenido || null);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function cargarGaleriaPublica() {
+  const cont = document.getElementById("ltc-gallery-grid");
+  if (!cont) return;
+  try {
+    const resp = await fetch(`${API}/public/galeria`);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "No se pudo cargar la galería");
+    const items = Array.isArray(data?.items) ? data.items : [];
+    if (!items.length) {
+      cont.innerHTML = '<p class="empty-msg">No hay imágenes publicadas.</p>';
+      return;
+    }
+    cont.innerHTML = items
+      .map(
+        (item) => `
+          <article class="ltc-gallery-card">
+            <img src="${escPortal(item.imagen_url || "")}" alt="${escPortal(item.titulo || "")}" onerror="this.src='assets/ltc/bannerLTC.jpg'" />
+            <div class="ltc-gallery-card-copy">
+              <h3>${escPortal(item.titulo || "")}</h3>
+              <p>${escPortal(item.descripcion || "")}</p>
+            </div>
+          </article>
+        `
+      )
+      .join("");
+  } catch (error) {
+    console.error(error);
+    cont.innerHTML = '<p class="empty-msg">No se pudo cargar la galería.</p>';
+  }
+}
+
+function initFormularioContactoPublico() {
+  const form = document.getElementById("ltc-contact-form");
+  if (!form) return;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      nombre: String(document.getElementById("ltc-contact-name-input")?.value || "").trim(),
+      telefono: String(document.getElementById("ltc-contact-phone-input")?.value || "").trim(),
+      email: String(document.getElementById("ltc-contact-email-input")?.value || "").trim(),
+      mensaje: String(document.getElementById("ltc-contact-message-input")?.value || "").trim(),
+    };
+
+    if (!payload.nombre || !payload.email || !payload.mensaje) {
+      mostrarNotificacion("Nombre, email y mensaje son obligatorios", "warning");
+      return;
+    }
+
+    const btn = document.getElementById("ltc-contact-submit");
+    try {
+      if (btn) btn.disabled = true;
+      const resp = await fetch(`${API}/public/contacto`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.error || "No se pudo enviar el mensaje");
+      form.reset();
+      mostrarNotificacion("Mensaje enviado correctamente", "success");
+    } catch (error) {
+      console.error(error);
+      mostrarNotificacion(error.message || "No se pudo enviar el mensaje", "error");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+}
+
+function renderTablasPortal(tablas = []) {
+  if (!Array.isArray(tablas) || !tablas.length) {
+    return '<p class="empty-msg">No hay tablas de posicion disponibles.</p>';
+  }
+
+  return tablas
+    .map((grupoData) => {
+      const grupo = grupoData?.grupo || {};
+      const filas = Array.isArray(grupoData?.tabla) ? grupoData.tabla : [];
+      if (!filas.length) return "";
+      const titulo = grupo.nombre_grupo || grupo.letra_grupo || "Tabla";
+      const rowsHtml = filas
+        .map((row, index) => {
+          const est = row.estadisticas || {};
+          return `<tr>
+            <td>${row.posicion || index + 1}</td>
+            <td>${row.equipo?.nombre || "-"}</td>
+            <td>${est.partidos_jugados || 0}</td>
+            <td>${est.partidos_ganados || 0}</td>
+            <td>${est.partidos_empatados || 0}</td>
+            <td>${est.partidos_perdidos || 0}</td>
+            <td>${est.goles_favor || 0}</td>
+            <td>${est.goles_contra || 0}</td>
+            <td>${(est.goles_favor || 0) - (est.goles_contra || 0)}</td>
+            <td><strong>${row.puntos || 0}</strong></td>
+          </tr>`;
+        })
+        .join("");
+
+      return `
+        <p><strong>${titulo}</strong></p>
+        <table class="tabla-posicion">
+          <tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr>
+          ${rowsHtml}
+        </table>
+      `;
+    })
+    .join("");
+}
+
+function renderEliminatoriasPortal(rondas = []) {
+  const rondasValidas = Array.isArray(rondas) ? rondas.filter((item) => Array.isArray(item?.partidos) && item.partidos.length) : [];
+  if (!rondasValidas.length) {
+    return '<p class="empty-msg">No hay llave eliminatoria generada.</p>';
+  }
+
+  return rondasValidas
+    .map((ronda) => {
+      const partidosHtml = ronda.partidos
+        .map((partido) => {
+          const marcador =
+            Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante))
+              ? `${partido.resultado_local ?? 0} - ${partido.resultado_visitante ?? 0}`
+              : "vs";
+          return `
+            <div class="partido-publico">
+              <div class="equipo-nombre">${partido.equipo_local_nombre || "Por definir"}</div>
+              <div class="marcador">${marcador}</div>
+              <div class="equipo-nombre">${partido.equipo_visitante_nombre || "Por definir"}</div>
+            </div>
+          `;
+        })
+        .join("");
+
+      return `<h4>Llave ${escPortal(ronda.ronda || "Ronda")}</h4>${partidosHtml}`;
+    })
+    .join("");
+}
+
 async function portalVerCampeonato(campeonatoId, options = {}) {
   document.getElementById("portal-inicio").classList.remove("active");
   document.getElementById("portal-detalle").classList.add("active");
@@ -271,8 +546,12 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
 
   try {
     const [campRes, eventosRes] = await Promise.all([
-      fetch(`${API}/campeonatos/${campeonatoId}`).then((r) => r.json()),
-      fetch(`${API}/eventos/campeonato/${campeonatoId}`).then((r) => r.json()),
+      window.PortalPublicAPI
+        ? window.PortalPublicAPI.obtenerCampeonato(campeonatoId)
+        : fetch(`${API}/public/campeonatos/${campeonatoId}`).then((r) => r.json()),
+      window.PortalPublicAPI
+        ? window.PortalPublicAPI.listarEventosPorCampeonato(campeonatoId)
+        : fetch(`${API}/public/campeonatos/${campeonatoId}/eventos`).then((r) => r.json()),
     ]);
     const camp = campRes.campeonato || campRes;
     const eventos = eventosRes.eventos || eventosRes || [];
@@ -290,12 +569,20 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
     `;
 
     for (const ev of eventosFiltrados) {
-      const partidosRes = await fetch(`${API}/partidos/evento/${ev.id}`).then((r) => r.json());
-      const partidos = partidosRes.partidos || partidosRes || [];
-      const gruposRes = await fetch(`${API}/grupos/evento/${ev.id}`)
-        .then((r) => r.json())
-        .catch(() => ({ grupos: [] }));
-      const grupos = gruposRes.grupos || gruposRes || [];
+      const [partidosRes, tablasRes, eliminatoriasRes] = await Promise.all([
+        window.PortalPublicAPI
+          ? window.PortalPublicAPI.obtenerPartidosPorEvento(ev.id)
+          : fetch(`${API}/public/eventos/${ev.id}/partidos`).then((r) => r.json()),
+        window.PortalPublicAPI
+          ? window.PortalPublicAPI.obtenerTablasPorEvento(ev.id)
+          : fetch(`${API}/public/eventos/${ev.id}/tablas`).then((r) => r.json()),
+        window.PortalPublicAPI
+          ? window.PortalPublicAPI.obtenerEliminatoriasPorEvento(ev.id)
+          : fetch(`${API}/public/eventos/${ev.id}/eliminatorias`).then((r) => r.json()),
+      ]);
+      const partidos = partidosRes.partidos || [];
+      const tablas = tablasRes.grupos || [];
+      const rondas = eliminatoriasRes.rondas || [];
 
       html += `<div class="portal-card"><h3>📅 ${limpiarCodigoTorneo(ev.nombre) || "Categoría"}</h3>`;
 
@@ -315,35 +602,12 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
         if (partidos.length > 20) html += `<p><small>... y ${partidos.length - 20} partidos más</small></p>`;
       }
 
-      if (grupos.length) {
-        html += "<h4>Tablas de posición</h4>";
-        for (const g of grupos) {
-          try {
-            const tablaRes = await fetch(`${API}/tablas/grupo/${g.id}`).then((r) => r.json());
-            const tabla = tablaRes.tabla || [];
-            if (tabla.length) {
-              html += `<p><strong>${g.nombre_grupo || g.letra_grupo || "Grupo"}</strong></p>`;
-              html +=
-                "<table class=\"tabla-posicion\"><tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr>";
-              tabla.forEach((row, i) => {
-                const est = row.estadisticas || {};
-                html += `<tr>
-                  <td>${row.posicion || i + 1}</td>
-                  <td>${row.equipo?.nombre || "-"}</td>
-                  <td>${est.partidos_jugados || 0}</td>
-                  <td>${est.partidos_ganados || 0}</td>
-                  <td>${est.partidos_empatados || 0}</td>
-                  <td>${est.partidos_perdidos || 0}</td>
-                  <td>${est.goles_favor || 0}</td>
-                  <td>${est.goles_contra || 0}</td>
-                  <td>${(est.goles_favor || 0) - (est.goles_contra || 0)}</td>
-                  <td><strong>${row.puntos || 0}</strong></td>
-                </tr>`;
-              });
-              html += "</table>";
-            }
-          } catch (_) {}
-        }
+      html += "<h4>Tablas de posición</h4>";
+      html += renderTablasPortal(tablas);
+
+      if (rondas.length) {
+        html += "<h4>Eliminatorias</h4>";
+        html += renderEliminatoriasPortal(rondas);
       }
 
       html += "</div>";
@@ -366,6 +630,9 @@ window.portalVolver = portalVolver;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const contexto = leerContextoPortalDesdeUrl();
+  await cargarContenidoPortalPublico();
+  await cargarGaleriaPublica();
+  initFormularioContactoPublico();
 
   if (contexto.organizadorId) {
     try {
@@ -385,6 +652,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  await cargarNoticiasPublicasPortal();
   await portalCargarCampeonatos();
   if (contexto.campeonatoId) {
     portalVerCampeonato(contexto.campeonatoId, { eventoId: contexto.eventoId });

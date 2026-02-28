@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LT&C - CMS Portal Publico</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ LT&C</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn active" href="portal-cms.html"><i class="fas fa-newspaper"></i> Portal CMS</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>CMS del Portal Publico</h1>
+    </header>
+
+    <main class="main">
+      <div class="container">
+        <div class="welcome-card">
+          <h2>Fase 1 completada para el CMS</h2>
+          <p style="margin-top:8px; color:#475569;">
+            Este panel queda reservado para administracion institucional del portal web de LT&C.
+            No forma parte del flujo deportivo de organizadores, tecnicos o dirigentes.
+          </p>
+        </div>
+
+        <div class="stats-grid">
+          <a class="stat-card" href="noticias.html">
+            <i class="fas fa-newspaper"></i>
+            <h3>Noticias / Blog</h3>
+            <p style="margin-top:8px; color:#64748b;">CRUD editorial del portal y publicacion al blog.</p>
+          </a>
+          <a class="stat-card" href="galeria-admin.html">
+            <i class="fas fa-images"></i>
+            <h3>Galeria</h3>
+            <p style="margin-top:8px; color:#64748b;">Carga y orden de imagenes institucionales del portal.</p>
+          </a>
+          <a class="stat-card" href="contenido-portal.html">
+            <i class="fas fa-id-card"></i>
+            <h3>Nosotros y Cards</h3>
+            <p style="margin-top:8px; color:#64748b;">Bloques del home, textos institucionales y banners.</p>
+          </a>
+          <a class="stat-card" href="contacto-admin.html">
+            <i class="fas fa-envelope-open-text"></i>
+            <h3>Contacto</h3>
+            <p style="margin-top:8px; color:#64748b;">Mensajes recibidos desde el formulario publico.</p>
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <script src="js/core.js"></script>
+</body>
+
+</html>

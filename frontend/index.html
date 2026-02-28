@@ -31,6 +31,7 @@
         <a href="#home">Inicio</a>
         <a href="#torneos">Torneos</a>
         <a href="#precios" id="ltc-nav-link-precios">Precios</a>
+        <a href="#galeria">Galería</a>
         <a href="#auspiciantes">Auspiciantes</a>
         <a href="#nosotros">Nosotros</a>
         <a href="#contacto">Contacto</a>
@@ -94,6 +95,28 @@
       </div>
     </section>
 
+    <section class="ltc-feature-section">
+      <div class="container">
+        <div id="ltc-feature-cards" class="ltc-feature-grid">
+          <article class="ltc-feature-card">
+            <i class="fas fa-layer-group"></i>
+            <h3>Gestión clara</h3>
+            <p>Organiza torneos, equipos y cronogramas con una operación centralizada.</p>
+          </article>
+          <article class="ltc-feature-card">
+            <i class="fas fa-clipboard-list"></i>
+            <h3>Control deportivo</h3>
+            <p>Administra planillas, estadísticas, reportes y seguimiento competitivo.</p>
+          </article>
+          <article class="ltc-feature-card">
+            <i class="fas fa-globe"></i>
+            <h3>Portal institucional</h3>
+            <p>Publica novedades, galería y contacto oficial de LT&C desde el CMS.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <section class="ltc-news-section">
       <div class="container ltc-news-grid">
         <div class="ltc-news-ball">
@@ -108,6 +131,9 @@
             control de planillas, carnets y módulos financieros para cada equipo.
           </p>
           <span id="ltc-news-author">Loja Torneos & Competencias</span>
+          <div class="ltc-news-actions">
+            <a id="ltc-news-link" class="ltc-btn ltc-btn-enter" href="blog.html">Ver blog</a>
+          </div>
         </article>
       </div>
     </section>
@@ -115,18 +141,18 @@
     <section class="ltc-about-section" id="nosotros">
       <div class="container ltc-about-grid">
         <article class="ltc-about-copy">
-          <h3>Loja Torneos & Competencias</h3>
-          <p>
+          <h3 id="ltc-about-title">Loja Torneos & Competencias</h3>
+          <p id="ltc-about-text-1">
             LT&C impulsa campeonatos de futbol con una gestion ordenada de equipos,
             jugadores, calendarios, reportes y control administrativo.
           </p>
-          <p>
+          <p id="ltc-about-text-2">
             Nuestro objetivo es brindar una experiencia clara tanto para organizadores
             como para dirigentes y aficionados.
           </p>
         </article>
         <div class="ltc-about-banner">
-          <img src="assets/ltc/bannerLTC.jpg" alt="Banner LT&C" />
+          <img id="ltc-about-image" src="assets/ltc/bannerLTC.jpg" alt="Banner LT&C" />
         </div>
       </div>
     </section>
@@ -212,10 +238,22 @@
       </div>
     </section>
 
+    <section class="ltc-gallery-section" id="galeria">
+      <div class="container">
+        <div class="ltc-section-title">
+          <h2>GALERÍA</h2>
+          <p>Momentos, comunidad y actividad institucional de LT&C.</p>
+        </div>
+        <div id="ltc-gallery-grid" class="ltc-gallery-grid">
+          <p class="empty-msg">Cargando galería...</p>
+        </div>
+      </div>
+    </section>
+
     <section class="ltc-contact-section" id="contacto">
       <div class="container">
-        <h2>Escríbenos</h2>
-        <p>
+        <h2 id="ltc-contact-title">Escríbenos</h2>
+        <p id="ltc-contact-description">
           Si quieres organizar tu campeonato con LT&C, contáctanos y te ayudamos a
           implementar todo el flujo deportivo.
         </p>
@@ -225,28 +263,31 @@
             <h4>Email</h4>
             <a id="ltc-contact-email" href="mailto:lojatorneosycompetencia@gmail.com">lojatorneosycompetencia@gmail.com</a>
 
+            <h4>Teléfono</h4>
+            <a id="ltc-contact-phone" href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer">593982413081</a>
+
             <h4>Sociales</h4>
             <div class="ltc-contact-social-icons">
-              <a href="https://www.facebook.com/LojaTorneosCompetencia" target="_blank" rel="noopener noreferrer" aria-label="Facebook LT&C">
+              <a id="ltc-social-facebook" href="https://www.facebook.com/LojaTorneosCompetencia" target="_blank" rel="noopener noreferrer" aria-label="Facebook LT&C">
                 <i class="fab fa-facebook-f"></i>
               </a>
-              <a href="https://www.instagram.com/lojatorneoycompetencia" target="_blank" rel="noopener noreferrer" aria-label="Instagram LT&C">
+              <a id="ltc-social-instagram" href="https://www.instagram.com/lojatorneoycompetencia" target="_blank" rel="noopener noreferrer" aria-label="Instagram LT&C">
                 <i class="fab fa-instagram"></i>
               </a>
-              <a href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp LT&C">
+              <a id="ltc-social-whatsapp" href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp LT&C">
                 <i class="fab fa-whatsapp"></i>
               </a>
             </div>
           </aside>
 
-          <form class="ltc-contact-form" onsubmit="return false;">
+          <form id="ltc-contact-form" class="ltc-contact-form">
             <div class="ltc-contact-row">
-              <input type="text" placeholder="Nombre" />
-              <input type="tel" placeholder="Teléfono" />
+              <input id="ltc-contact-name-input" type="text" placeholder="Nombre" />
+              <input id="ltc-contact-phone-input" type="tel" placeholder="Teléfono" />
             </div>
-            <input type="email" placeholder="Email" />
-            <textarea rows="5" placeholder="Tu mensaje..."></textarea>
-            <button type="button">Send</button>
+            <input id="ltc-contact-email-input" type="email" placeholder="Email" />
+            <textarea id="ltc-contact-message-input" rows="5" placeholder="Tu mensaje..."></textarea>
+            <button id="ltc-contact-submit" type="submit">Enviar</button>
           </form>
         </div>
       </div>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LT&C - Galería</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ LT&C</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="portal-cms.html"><i class="fas fa-newspaper"></i> Portal CMS</a>
+      <a class="nav-btn" href="noticias.html"><i class="fas fa-rss"></i> Noticias</a>
+      <a class="nav-btn active" href="galeria-admin.html"><i class="fas fa-images"></i> Galería</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>Galería institucional</h1>
+    </header>
+    <main class="main">
+      <div class="container">
+        <div class="config-card">
+          <h3 id="galeria-form-title">Nuevo item</h3>
+          <form id="galeria-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="gal-titulo">Título</label>
+                <input id="gal-titulo" required maxlength="180" />
+              </div>
+              <div class="form-group">
+                <label for="gal-imagen">Imagen URL</label>
+                <input id="gal-imagen" required placeholder="https://..." />
+              </div>
+              <div class="form-group">
+                <label for="gal-orden">Orden</label>
+                <input id="gal-orden" type="number" value="0" />
+              </div>
+              <div class="form-group">
+                <label for="gal-activo">Estado</label>
+                <select id="gal-activo">
+                  <option value="true" selected>Activo</option>
+                  <option value="false">Inactivo</option>
+                </select>
+              </div>
+              <div class="form-group form-group-full">
+                <label for="gal-descripcion">Descripción</label>
+                <textarea id="gal-descripcion" rows="4"></textarea>
+              </div>
+            </div>
+            <div class="actions">
+              <button type="submit" id="btn-galeria-guardar" class="btn btn-success"><i class="fas fa-save"></i> Guardar item</button>
+              <button type="button" id="btn-galeria-cancelar" class="btn btn-warning" style="display:none;"><i class="fas fa-xmark"></i> Cancelar edición</button>
+              <button type="button" id="btn-galeria-recargar" class="btn btn-secondary"><i class="fas fa-rotate"></i> Recargar</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Listado de galería</h3>
+          <div id="galeria-listado-wrap" class="tabla-scroll"><p>Cargando galería...</p></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/galeria-admin.js"></script>
+</body>
+</html>

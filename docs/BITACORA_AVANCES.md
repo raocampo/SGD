@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-02-27
+Ultima actualizacion: 2026-02-28
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,62 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-02-28
+- Inicio formal del plan de separacion entre panel deportivo y CMS del portal publico:
+  - nuevo documento maestro `docs/PLAN_CMS_PORTAL_PUBLICO.md`,
+  - definicion de dos dominios de operacion:
+    - gestion deportiva,
+    - portal web publico / CMS.
+- Fase 1 iniciada:
+  - nuevo rol `operador` definido como rol exclusivo para CMS publico,
+  - nueva migracion `database/migrations/016_rol_operador_cms.sql`,
+  - backend actualizado para aceptar `operador` en autenticacion/permisos,
+  - noticias restringidas a `administrador` y `operador`,
+  - organizador removido del alcance editorial del portal institucional.
+- Frontend base de CMS habilitado:
+  - nueva vista `frontend/portal-cms.html`,
+  - redireccion de `operador` hacia panel propio,
+  - control de acceso por pagina para evitar ingreso de `operador` al panel deportivo,
+  - `usuarios.html` actualizado para alta/edicion del rol `operador` por parte del administrador.
+- Ajuste semantico de navegacion:
+  - `portal-admin.html` pasa a identificarse como `Portal Deportivo` para diferenciarlo del CMS.
+- Fase 2 iniciada para noticias/blog:
+  - nueva pagina administrativa `frontend/noticias.html` con formulario y listado CRUD,
+  - nuevo script `frontend/js/noticias.js`,
+  - API frontend extendida con `NoticiasAPI`,
+  - nuevas vistas publicas `frontend/blog.html` y `frontend/noticia.html`,
+  - la landing principal consume la ultima noticia publicada desde `/api/public/noticias`,
+  - nueva migracion formal `database/migrations/017_noticias_cms.sql` para versionar la tabla `noticias`.
+- Fases 3, 4 y 5 iniciadas en base funcional:
+  - nueva migracion `database/migrations/018_galeria_cms.sql` para galeria institucional,
+  - nueva migracion `database/migrations/019_portal_contenido_cms.sql` para contenido editable del portal,
+  - nueva migracion `database/migrations/020_contacto_portal.sql` para mensajes del formulario de contacto,
+  - nuevos modulos backend:
+    - `GaleriaItem`,
+    - `PortalContenido`,
+    - `ContactoMensaje`,
+  - nuevas rutas administrativas:
+    - `/api/galeria`,
+    - `/api/portal-contenido`,
+    - `/api/contacto`,
+  - nuevas rutas publicas:
+    - `/api/public/galeria`,
+    - `/api/public/portal-contenido`,
+    - `/api/public/contacto`,
+  - nuevas vistas CMS:
+    - `frontend/galeria-admin.html`,
+    - `frontend/contenido-portal.html`,
+    - `frontend/contacto-admin.html`,
+  - la landing publica ahora consume contenido institucional editable para:
+    - hero,
+    - cards destacadas,
+    - seccion nosotros,
+    - galeria,
+    - datos/redes/contacto,
+  - el formulario `Escribenos` ya persiste mensajes en base de datos.
+- Soporte para presentacion del sistema:
+  - nuevo documento `docs/GUIA_PRESENTACION_SISTEMA_LT_C.md` con guion de demo por bloques, roles y flujo sugerido.
 
 ### 2026-02-27
 - Cierre de lote de ajustes funcionales y de consistencia para organizadores/operacion diaria:

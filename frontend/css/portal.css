@@ -572,6 +572,40 @@ body.ltc-landing {
   padding: 2rem 0;
 }
 
+.ltc-feature-section {
+  padding: 0 0 1.4rem;
+}
+
+.ltc-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.ltc-feature-card {
+  background: #fff;
+  border: 1px solid rgba(47, 60, 79, 0.08);
+  border-radius: 18px;
+  padding: 1.35rem;
+  box-shadow: 0 14px 32px rgba(31, 52, 81, 0.08);
+}
+
+.ltc-feature-card i {
+  color: #2f5e96;
+  font-size: 1.5rem;
+}
+
+.ltc-feature-card h3 {
+  margin: 0.8rem 0 0.35rem;
+  color: #233142;
+}
+
+.ltc-feature-card p {
+  margin: 0;
+  color: #5a6d83;
+  font-size: 0.94rem;
+}
+
 .ltc-news-grid {
   display: grid;
   grid-template-columns: minmax(210px, 0.82fr) 1.18fr;
@@ -616,8 +650,55 @@ body.ltc-landing {
   font-size: 0.82rem;
 }
 
+.ltc-news-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .ltc-about-section {
   padding: 0.4rem 0 2rem;
+}
+
+.ltc-gallery-section {
+  padding: 0 0 2rem;
+}
+
+.ltc-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.ltc-gallery-card {
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(47, 60, 79, 0.08);
+  box-shadow: 0 14px 32px rgba(31, 52, 81, 0.08);
+}
+
+.ltc-gallery-card img {
+  width: 100%;
+  height: 230px;
+  object-fit: cover;
+  display: block;
+}
+
+.ltc-gallery-card-copy {
+  padding: 1rem 1rem 1.2rem;
+}
+
+.ltc-gallery-card-copy h3 {
+  margin: 0 0 0.4rem;
+  color: #233142;
+}
+
+.ltc-gallery-card-copy p {
+  margin: 0;
+  color: #5a6d83;
+  font-size: 0.92rem;
 }
 
 .ltc-about-grid {
@@ -997,6 +1078,11 @@ body.ltc-landing {
   transform: translateY(-1px);
 }
 
+.ltc-contact-form button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .ltc-footer {
   background: #000;
   color: #f3f8ff;
@@ -1122,7 +1208,9 @@ body.ltc-landing {
 @media (max-width: 980px) {
   .ltc-hero-wrap,
   .ltc-contact-grid,
-  .ltc-about-grid {
+  .ltc-about-grid,
+  .ltc-feature-grid,
+  .ltc-gallery-grid {
     grid-template-columns: 1fr;
   }
 

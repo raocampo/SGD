@@ -65,7 +65,7 @@
     async function portalCargarCampeonatos() {
       const cont = document.getElementById("portal-lista-campeonatos");
       try {
-        const data = await fetch(`${API}/campeonatos`).then(r => r.json());
+        const data = await fetch(`${API}/public/campeonatos`).then(r => r.json());
         const lista = data.campeonatos || data || [];
         const activos = lista.filter(c => ["en_curso", "inscripcion", "planificacion", "borrador"].includes(c.estado || ""));
 
@@ -104,8 +104,8 @@
 
       try {
         const [campRes, eventosRes] = await Promise.all([
-          fetch(`${API}/campeonatos/${campeonatoId}`).then(r => r.json()),
-          fetch(`${API}/eventos/campeonato/${campeonatoId}`).then(r => r.json())
+          fetch(`${API}/public/campeonatos/${campeonatoId}`).then(r => r.json()),
+          fetch(`${API}/public/campeonatos/${campeonatoId}/eventos`).then(r => r.json())
         ]);
         const camp = campRes.campeonato || campRes;
         const eventos = eventosRes.eventos || eventosRes || [];
@@ -118,10 +118,10 @@
         `;
 
         for (const ev of eventos) {
-          const partidosRes = await fetch(`${API}/partidos/evento/${ev.id}`).then(r => r.json());
+          const partidosRes = await fetch(`${API}/public/eventos/${ev.id}/partidos`).then(r => r.json());
           const partidos = partidosRes.partidos || partidosRes || [];
-          const gruposRes = await fetch(`${API}/grupos/evento/${ev.id}`).then(r => r.json()).catch(() => ({ grupos: [] }));
-          const grupos = gruposRes.grupos || gruposRes || [];
+          const tablasRes = await fetch(`${API}/public/eventos/${ev.id}/tablas`).then(r => r.json()).catch(() => ({ grupos: [] }));
+          const grupos = tablasRes.grupos || [];
 
           html += `<div class="portal-card"><h3>📅 ${ev.nombre || "Categoría"}</h3>`;
 
@@ -144,10 +144,9 @@
             html += `<h4>Tablas de posición</h4>`;
             for (const g of grupos) {
               try {
-                const tablaRes = await fetch(`${API}/tablas/grupo/${g.id}`).then(r => r.json());
-                const tabla = tablaRes.tabla || [];
+                const tabla = g.tabla || [];
                 if (tabla.length) {
-                  html += `<p><strong>${g.nombre_grupo || g.letra_grupo || "Grupo"}</strong></p>`;
+                  html += `<p><strong>${g.grupo?.nombre_grupo || g.grupo?.letra_grupo || "Grupo"}</strong></p>`;
                   html += `<table class="tabla-posicion"><tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr>`;
                   tabla.forEach((row, i) => {
                     const est = row.estadisticas || {};

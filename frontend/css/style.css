@@ -287,6 +287,8 @@ body.app-layout {
   padding: 1.4rem;
   border-radius: 10px;
   text-align: center;
+  text-decoration: none;
+  display: block;
 }
 
 .stat-card i {

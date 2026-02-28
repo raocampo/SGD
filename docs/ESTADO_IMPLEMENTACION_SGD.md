@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-02-27
+Ultima actualizacion: 2026-02-28
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -15,8 +15,8 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
 | 3.7 Resultados/Tablas/Clasificados | Medio-Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play). Planillaje ya alimenta resultado + estadisticas. Pendiente automatizacion robusta de clasificados para todos los formatos. |
 | 3.8 Eliminatorias | Alto | Configuracion por categoria (`metodo_competencia`) y generacion automatica de llave integrada en `partidos`; soporte de siembra/byes/progresion de ganador; UI dedicada de llaves en `eliminatorias.html`; playoff desde grupos con `clasificados por grupo`, `cruces de grupos` o `tabla unica`; plantilla de publicacion reforzada (conectores de llave, export completo y fondo grafico). Pendiente reglas avanzadas de desempate y refinamiento visual final. |
-| 4 Portal publico | Alto | Portal operativo con vistas de campeonato/grupos/tablas; pendiente contenido editorial/noticias. |
-| 5 Roles y permisos (RBAC) | Pendiente | Aun sin autenticacion y perfiles de acceso. |
+| 4 Portal publico | Alto | Portal operativo con vistas de campeonato/grupos/tablas; iniciada separacion formal entre landing de organizador y CMS institucional del portal; noticias/blog, galeria, contenido institucional y contacto ya tienen base CRUD/CMS y consumo publico integrado en landing; pendiente cierre funcional y pulido editorial. |
+| 5 Roles y permisos (RBAC) | En progreso | Autenticacion operativa; fase 1 de separacion de dominios iniciada con rol `operador` para CMS publico; noticias, galeria, contenido y contacto institucional fuera del alcance de organizadores. |
 | 6 Extras profesionales | Parcial | Exportaciones (PNG/PDF/XLSX) en modulos clave; pendiente notificaciones, auditoria completa y reportes ejecutivos. |
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla. Pendiente reglas avanzadas de sancion/bloqueo y reporteria ejecutiva. |
 | 8 Adaptacion mobile web | En progreso | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; fase 1 base responsive iniciada en `style.css`/`core.js` (layout, topbar, acciones y sidebar) con cierre parcial en `tablas`, `finanzas`, `partidos` y `planilla`; pendiente cierre de `grupos/eliminatorias/pases` y validacion final en viewports objetivo. |
@@ -53,6 +53,24 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Sincronizacion de planilla a finanzas (arbitraje, multas y abonos por equipo).
 - Resumen de estado de cuenta por concepto (inscripcion/arbitraje/multas) y total.
 
+5. RBAC y separacion de dominios:
+- Roles deportivos operativos: `administrador`, `organizador`, `tecnico`, `dirigente`.
+- Nuevo rol objetivo para CMS publico: `operador`.
+- Fase 1 iniciada para separar:
+  - `portal deportivo`,
+  - `portal web publico / CMS`.
+- Noticias quedan definidas como contenido institucional del portal, no como modulo del organizador.
+
+6. CMS del portal publico:
+- Noticias/blog con CRUD base, vistas publicas y detalle por `slug`.
+- Galeria institucional con base de administracion y render publico en landing.
+- Contenido institucional editable:
+  - hero principal,
+  - seccion Nosotros,
+  - cards del home,
+  - datos y redes de contacto.
+- Formulario de contacto persistente con seguimiento basico por estado.
+
 ## Pendientes Prioritarios Recomendados
 
 1. Cierre de planillaje oficial (prioridad alta):
@@ -68,13 +86,24 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Reportes ejecutivos de ingresos/pendientes con consolidado por campeonato y equipo.
 
 4. Seguridad y roles:
-- Login, sesion/JWT y perfiles (admin/organizador/arbitro/publico).
+- Consolidar separacion final entre roles deportivos y CMS institucional.
+- Completar panel propio del `operador` con modulos editoriales.
+- Completar pruebas reales por rol para `administrador` y `operador` en:
+  - noticias,
+  - galeria,
+  - contenido portal,
+  - contacto.
 - Completar alta/edicion de usuario organizador con datos de perfil:
   - nombre de la organizacion,
   - logo de la organizacion.
 - Extender portal de organizador para gestion de usuarios internos:
   - alta de dirigentes,
   - alta de tecnicos.
+- Mantener fuera del organizador los modulos:
+  - noticias,
+  - galeria,
+  - nosotros,
+  - contacto institucional.
 - Completar onboarding comercial de planes pagados:
   - desde card de plan -> registro con datos de organizacion (`nombre organizacion` obligatorio, `logo` opcional, `lema` opcional),
   - paso a formulario/pagina de cobro,
@@ -106,3 +135,4 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Historial de cambios implementados: `docs/CAMBIOS_IMPLEMENTADOS.md`
 - Propuesta funcional original: `docs/propuestaDesarrolloSGD.md`
 - Plan mobile web: `docs/PLAN_MOBILE_LT_C.md`
+- Plan CMS del portal publico: `docs/PLAN_CMS_PORTAL_PUBLICO.md`

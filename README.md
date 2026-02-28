@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-02-27): funcional en flujo principal con pendientes de cierre en RBAC, eliminatorias completas, roadmap mobile y reglas financieras avanzadas.
+Estado del proyecto (2026-02-28): funcional en flujo principal; iniciada la separacion entre panel deportivo y CMS publico con nuevo rol `operador`, junto con roadmap mobile y pendientes editoriales/financieros.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,14 +30,40 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-02-27)
+## Novedades Recientes (2026-02-28)
+- Inicio del plan de separacion entre gestion deportiva y CMS del portal publico:
+  - nuevo documento `docs/PLAN_CMS_PORTAL_PUBLICO.md`,
+  - nuevo rol `operador` para administracion institucional del portal,
+  - nueva migracion `database/migrations/016_rol_operador_cms.sql`.
+- Noticias institucionales cerradas para `administrador` + `operador`:
+  - el organizador queda fuera del alcance editorial del portal publico.
+- Frontend preparado para el nuevo dominio CMS:
+  - nueva vista `portal-cms.html`,
+  - redireccion por rol para `operador`,
+  - `portal-admin.html` renombrado semanticamente como `Portal Deportivo`.
+- Fase 2 de noticias/blog iniciada:
+  - nueva migracion `database/migrations/017_noticias_cms.sql`,
+  - nueva administracion `frontend/noticias.html`,
+  - nuevas vistas publicas `frontend/blog.html` y `frontend/noticia.html`,
+  - la landing principal ahora consume la ultima noticia publicada desde `/api/public/noticias`.
+- Fases 3, 4 y 5 del CMS iniciadas:
+  - nueva migracion `database/migrations/018_galeria_cms.sql`,
+  - nueva migracion `database/migrations/019_portal_contenido_cms.sql`,
+  - nueva migracion `database/migrations/020_contacto_portal.sql`,
+  - nuevas vistas CMS:
+    - `frontend/galeria-admin.html`,
+    - `frontend/contenido-portal.html`,
+    - `frontend/contacto-admin.html`,
+  - la landing publica ya consume galeria, contenido institucional editable y formulario de contacto persistente.
+
+## Novedades Anteriores (2026-02-27)
 - Configuracion flexible de jugadores por campeonato:
   - nuevo campo `requiere_cedula_jugador`,
   - la cedula del jugador puede ser obligatoria u opcional segun la configuracion del organizador.
 - Nueva migracion disponible:
   - `database/migrations/015_campeonato_cedula_opcional.sql`.
 - Ajustes integrados recientes en frontend/backend para campeonatos, jugadores, usuarios, equipos, grupos, partidos, planilla y tablas.
-
+ 
 ## Novedades Anteriores (2026-02-22)
 - Planes por organizador operativos en usuarios:
   - administrador puede crear/editar organizadores con `plan` y `estado del plan`.
@@ -92,6 +118,7 @@ docs/
   ESTADO_IMPLEMENTACION_SGD.md
   CAMBIOS_IMPLEMENTADOS.md
   PLAN_MOBILE_LT_C.md
+  PLAN_CMS_PORTAL_PUBLICO.md
   propuestaDesarrolloSGD.md
 
 frontend/
@@ -146,6 +173,11 @@ psql -U postgres -d gestionDeportiva -f database/migrations/012_usuarios_solo_le
 psql -U postgres -d gestionDeportiva -f database/migrations/013_planes_usuarios.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/014_pases_jugadores.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/015_campeonato_cedula_opcional.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/016_rol_operador_cms.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/017_noticias_cms.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/018_galeria_cms.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/019_portal_contenido_cms.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/020_contacto_portal.sql
 ```
 
 ### 5.3 Ejecutar
@@ -182,6 +214,14 @@ APIs principales:
 - `/api/eliminatorias`
 - `/api/finanzas`
 - `/api/auth/organizadores/:id/landing`
+- `/api/noticias`
+- `/api/galeria`
+- `/api/portal-contenido`
+- `/api/contacto`
+- `/api/public/noticias`
+- `/api/public/galeria`
+- `/api/public/portal-contenido`
+- `/api/public/contacto`
 
 ## 8. Modulos Implementados
 Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
@@ -194,6 +234,7 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 - Planillaje oficial: alto (en pulido UX final)
 - Tablas/estadisticas: medio-alto
 - Portal publico: alto
+- CMS portal publico: en progreso
 - Finanzas: medio-alto
 - RBAC/seguridad: pendiente
 

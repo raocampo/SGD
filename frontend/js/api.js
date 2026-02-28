@@ -126,6 +126,119 @@
     },
   };
 
+  window.NoticiasAPI = window.NoticiasAPI || {
+    listar() {
+      return window.ApiClient.get("/noticias");
+    },
+    obtener(id) {
+      return window.ApiClient.get(`/noticias/${id}`);
+    },
+    crear(payload) {
+      return window.ApiClient.post("/noticias", payload);
+    },
+    actualizar(id, payload) {
+      return window.ApiClient.put(`/noticias/${id}`, payload);
+    },
+    eliminar(id) {
+      return window.ApiClient.delete(`/noticias/${id}`);
+    },
+    publicar(id) {
+      return window.ApiClient.post(`/noticias/${id}/publicar`, {});
+    },
+    despublicar(id) {
+      return window.ApiClient.post(`/noticias/${id}/despublicar`, {});
+    },
+    listarPublicas() {
+      return window.ApiClient.get("/public/noticias");
+    },
+    obtenerPublica(slug) {
+      return window.ApiClient.get(`/public/noticias/${encodeURIComponent(slug)}`);
+    },
+  };
+
+  window.GaleriaAPI = window.GaleriaAPI || {
+    listar() {
+      return window.ApiClient.get("/galeria");
+    },
+    obtener(id) {
+      return window.ApiClient.get(`/galeria/${id}`);
+    },
+    crear(payload) {
+      return window.ApiClient.post("/galeria", payload);
+    },
+    actualizar(id, payload) {
+      return window.ApiClient.put(`/galeria/${id}`, payload);
+    },
+    eliminar(id) {
+      return window.ApiClient.delete(`/galeria/${id}`);
+    },
+    listarPublica() {
+      return window.ApiClient.get("/public/galeria");
+    },
+  };
+
+  window.PortalContenidoAPI = window.PortalContenidoAPI || {
+    obtener() {
+      return window.ApiClient.get("/portal-contenido");
+    },
+    actualizar(payload) {
+      return window.ApiClient.put("/portal-contenido", payload);
+    },
+    obtenerPublico() {
+      return window.ApiClient.get("/public/portal-contenido");
+    },
+  };
+
+  window.ContactoAPI = window.ContactoAPI || {
+    enviar(payload) {
+      return window.ApiClient.post("/public/contacto", payload);
+    },
+    listar(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/contacto${suffix}`);
+    },
+    obtener(id) {
+      return window.ApiClient.get(`/contacto/${id}`);
+    },
+    actualizarEstado(id, estado) {
+      return window.ApiClient.put(`/contacto/${id}`, { estado });
+    },
+  };
+
+  window.PortalPublicAPI = window.PortalPublicAPI || {
+    listarCampeonatos() {
+      return window.ApiClient.get("/public/campeonatos");
+    },
+    obtenerCampeonato(campeonatoId) {
+      return window.ApiClient.get(`/public/campeonatos/${campeonatoId}`);
+    },
+    listarEventosPorCampeonato(campeonatoId) {
+      return window.ApiClient.get(`/public/campeonatos/${campeonatoId}/eventos`);
+    },
+    obtenerPartidosPorEvento(eventoId) {
+      return window.ApiClient.get(`/public/eventos/${eventoId}/partidos`);
+    },
+    obtenerTablasPorEvento(eventoId) {
+      return window.ApiClient.get(`/public/eventos/${eventoId}/tablas`);
+    },
+    obtenerEliminatoriasPorEvento(eventoId) {
+      return window.ApiClient.get(`/public/eventos/${eventoId}/eliminatorias`);
+    },
+    obtenerGoleadoresPorEvento(eventoId) {
+      return window.ApiClient.get(`/public/eventos/${eventoId}/goleadores`);
+    },
+    obtenerTarjetasPorEvento(eventoId) {
+      return window.ApiClient.get(`/public/eventos/${eventoId}/tarjetas`);
+    },
+    obtenerFairPlayPorEvento(eventoId) {
+      return window.ApiClient.get(`/public/eventos/${eventoId}/fair-play`);
+    },
+  };
+
   window.CampeonatosAPI = window.CampeonatosAPI || {
     obtenerTodos() {
       return window.ApiClient.get("/campeonatos");

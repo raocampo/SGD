@@ -1,12 +1,17 @@
-const jwt = require("jsonwebtoken");
 const pool = require("../config/database");
 const UsuarioAuth = require("../models/UsuarioAuth");
-const { getJwtSecret } = require("../middleware/authMiddleware");
 const {
   isOrganizador,
   obtenerEquipoIdsOrganizador,
 } = require("../services/organizadorScope");
 const { enviarEmailRecuperacionPassword } = require("../services/emailService");
+const {
+  buildSessionPayload,
+  cerrarSession,
+  crearSession,
+  permisosPorRol,
+  refrescarSession,
+} = require("../services/sessionService");
 const {
   normalizarPlanCodigo,
   esPlanPublico,
@@ -14,18 +19,6 @@ const {
   obtenerPlan,
 } = require("../services/planLimits");
 const ROLES_REGISTRO_PUBLICO = new Set(["organizador", "dirigente", "tecnico"]);
-
-function signToken(user) {
-  return jwt.sign(
-    {
-      id: user.id,
-      email: user.email,
-      rol: user.rol,
-    },
-    getJwtSecret(),
-    { expiresIn: "12h" }
-  );
-}
 
 function esAdministrador(user) {
   return String(user?.rol || "").toLowerCase() === "administrador";
@@ -90,13 +83,13 @@ const authController = {
       });
       const user = await UsuarioAuth.obtenerPorId(creado.id);
       const limpio = UsuarioAuth.limpiarUsuario(user || creado);
-      const token = signToken(limpio);
-
-      return res.status(201).json({
-        ok: true,
-        token,
-        usuario: limpio,
+      const session = await crearSession(limpio, {
+        client_type: req.body?.client_type || "web",
+        user_agent: req.headers["user-agent"] || null,
+        ip_address: req.ip,
       });
+
+      return res.status(201).json(session);
     } catch (error) {
       console.error("Error bootstrapRegister:", error);
       const msg = String(error?.message || "");
@@ -151,12 +144,14 @@ const authController = {
 
       const user = await UsuarioAuth.obtenerPorId(creado.id);
       const limpio = UsuarioAuth.limpiarUsuario(user || creado);
-      const token = signToken(limpio);
+      const session = await crearSession(limpio, {
+        client_type: req.body?.client_type || "web",
+        user_agent: req.headers["user-agent"] || null,
+        ip_address: req.ip,
+      });
 
       return res.status(201).json({
-        ok: true,
-        token,
-        usuario: limpio,
+        ...session,
         mensaje: `Cuenta creada en plan ${plan?.nombre || planCodigo}`,
       });
     } catch (error) {
@@ -184,12 +179,12 @@ const authController = {
       const user = await UsuarioAuth.validarCredenciales(email, password);
       if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
 
-      const token = signToken(user);
-      return res.json({
-        ok: true,
-        token,
-        usuario: user,
+      const session = await crearSession(user, {
+        client_type: req.body?.client_type || "web",
+        user_agent: req.headers["user-agent"] || null,
+        ip_address: req.ip,
       });
+      return res.json(session);
     } catch (error) {
       console.error("Error login:", error);
       return res.status(500).json({ error: "No se pudo iniciar sesión" });
@@ -197,10 +192,45 @@ const authController = {
   },
 
   async me(req, res) {
-    return res.json({
-      ok: true,
-      usuario: req.user,
-    });
+    return res.json(
+      buildSessionPayload(req.user, {
+        accessToken: null,
+        refreshToken: null,
+        refreshTokenExpiresAt: null,
+      })
+    );
+  },
+
+  async refresh(req, res) {
+    try {
+      const refreshToken = String(req.body?.refreshToken || req.body?.refresh_token || "").trim();
+      if (!refreshToken) {
+        return res.status(400).json({ error: "refreshToken es obligatorio" });
+      }
+
+      const session = await refrescarSession(refreshToken, {
+        client_type: req.body?.client_type || "web",
+        user_agent: req.headers["user-agent"] || null,
+        ip_address: req.ip,
+      });
+      return res.json(session);
+    } catch (error) {
+      console.error("Error refresh:", error);
+      const msg = String(error?.message || "");
+      const status = msg.includes("refreshToken") ? 401 : 500;
+      return res.status(status).json({ error: msg || "No se pudo refrescar la sesión" });
+    }
+  },
+
+  async logout(req, res) {
+    try {
+      const refreshToken = String(req.body?.refreshToken || req.body?.refresh_token || "").trim();
+      await cerrarSession(refreshToken);
+      return res.json({ ok: true, mensaje: "Sesión cerrada" });
+    } catch (error) {
+      console.error("Error logout:", error);
+      return res.status(500).json({ error: "No se pudo cerrar la sesión" });
+    }
   },
 
   async listarUsuarios(req, res) {

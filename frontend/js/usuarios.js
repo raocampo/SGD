@@ -77,13 +77,14 @@
     rolSelect.disabled = false;
     rolSelect.innerHTML = `
       <option value="administrador">Administrador</option>
+      <option value="operador">Operador portal</option>
       <option value="organizador">Organizador</option>
       <option value="tecnico">Técnico</option>
       <option value="dirigente">Dirigente</option>
     `;
     if (descripcion) {
       descripcion.textContent =
-        "Como administrador puedes visualizar, crear, editar y eliminar usuarios.";
+        "Como administrador puedes visualizar, crear, editar y eliminar usuarios, incluido el operador del portal.";
     }
     const planGroup = document.getElementById("usr-plan-group");
     const planEstadoGroup = document.getElementById("usr-plan-estado-group");
@@ -128,6 +129,7 @@
     const planSelect = document.getElementById("usr-plan");
     const planEstado = document.getElementById("usr-plan-estado");
     const rolSel = document.getElementById("usr-rol");
+    const equipoSel = document.getElementById("usr-equipo");
     const planGroup = document.getElementById("usr-plan-group");
     const planEstadoGroup = document.getElementById("usr-plan-estado-group");
     const organizacionGroup = document.getElementById("usr-organizacion-group");
@@ -135,6 +137,7 @@
     const esAdmin = esAdminActual();
     const rol = String(rolSel?.value || "").toLowerCase();
     const habilitar = esAdmin && rol === "organizador";
+    const usaEquipo = esRolConEquipo(rol);
 
     if (planGroup) {
       planGroup.style.opacity = habilitar ? "1" : "0.6";
@@ -160,6 +163,10 @@
       organizacionInput.disabled = !habilitar;
       organizacionInput.required = habilitar;
       if (!habilitar && !usuarioEditandoId) organizacionInput.value = "";
+    }
+    if (equipoSel) {
+      equipoSel.disabled = !usaEquipo;
+      if (!usaEquipo) equipoSel.value = "";
     }
   }
 

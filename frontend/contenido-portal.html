@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LT&C - Contenido del Portal</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ LT&C</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="portal-cms.html"><i class="fas fa-newspaper"></i> Portal CMS</a>
+      <a class="nav-btn active" href="contenido-portal.html"><i class="fas fa-id-card"></i> Contenido</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>Contenido institucional del portal</h1>
+    </header>
+    <main class="main">
+      <div class="container">
+        <div class="config-card">
+          <h3>Hero principal</h3>
+          <form id="contenido-portal-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="pc-hero-title">Título hero</label>
+                <input id="pc-hero-title" required />
+              </div>
+              <div class="form-group">
+                <label for="pc-hero-chip">Texto chip</label>
+                <input id="pc-hero-chip" />
+              </div>
+              <div class="form-group">
+                <label for="pc-hero-cta">Texto botón</label>
+                <input id="pc-hero-cta" />
+              </div>
+              <div class="form-group form-group-full">
+                <label for="pc-hero-description">Descripción hero</label>
+                <textarea id="pc-hero-description" rows="4" required></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="pc-about-title">Título nosotros</label>
+                <input id="pc-about-title" required />
+              </div>
+              <div class="form-group">
+                <label for="pc-about-image">Imagen nosotros URL</label>
+                <input id="pc-about-image" />
+              </div>
+              <div class="form-group form-group-full">
+                <label for="pc-about-text-1">Texto nosotros 1</label>
+                <textarea id="pc-about-text-1" rows="4"></textarea>
+              </div>
+              <div class="form-group form-group-full">
+                <label for="pc-about-text-2">Texto nosotros 2</label>
+                <textarea id="pc-about-text-2" rows="4"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="pc-contact-title">Título contacto</label>
+                <input id="pc-contact-title" required />
+              </div>
+              <div class="form-group">
+                <label for="pc-contact-email">Email contacto</label>
+                <input id="pc-contact-email" type="email" required />
+              </div>
+              <div class="form-group">
+                <label for="pc-contact-phone">Teléfono</label>
+                <input id="pc-contact-phone" />
+              </div>
+              <div class="form-group">
+                <label for="pc-facebook-url">Facebook URL</label>
+                <input id="pc-facebook-url" />
+              </div>
+              <div class="form-group">
+                <label for="pc-instagram-url">Instagram URL</label>
+                <input id="pc-instagram-url" />
+              </div>
+              <div class="form-group">
+                <label for="pc-whatsapp-url">WhatsApp URL</label>
+                <input id="pc-whatsapp-url" />
+              </div>
+              <div class="form-group form-group-full">
+                <label for="pc-contact-description">Descripción contacto</label>
+                <textarea id="pc-contact-description" rows="4"></textarea>
+              </div>
+
+              <div class="form-group form-group-full">
+                <label>Cards destacadas</label>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="pc-card-1-title">Card 1 título</label>
+                    <input id="pc-card-1-title" />
+                  </div>
+                  <div class="form-group">
+                    <label for="pc-card-1-icon">Card 1 icono Font Awesome</label>
+                    <input id="pc-card-1-icon" placeholder="fa-layer-group" />
+                  </div>
+                  <div class="form-group form-group-full">
+                    <label for="pc-card-1-desc">Card 1 descripción</label>
+                    <textarea id="pc-card-1-desc" rows="3"></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="pc-card-2-title">Card 2 título</label>
+                    <input id="pc-card-2-title" />
+                  </div>
+                  <div class="form-group">
+                    <label for="pc-card-2-icon">Card 2 icono Font Awesome</label>
+                    <input id="pc-card-2-icon" placeholder="fa-clipboard-list" />
+                  </div>
+                  <div class="form-group form-group-full">
+                    <label for="pc-card-2-desc">Card 2 descripción</label>
+                    <textarea id="pc-card-2-desc" rows="3"></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="pc-card-3-title">Card 3 título</label>
+                    <input id="pc-card-3-title" />
+                  </div>
+                  <div class="form-group">
+                    <label for="pc-card-3-icon">Card 3 icono Font Awesome</label>
+                    <input id="pc-card-3-icon" placeholder="fa-globe" />
+                  </div>
+                  <div class="form-group form-group-full">
+                    <label for="pc-card-3-desc">Card 3 descripción</label>
+                    <textarea id="pc-card-3-desc" rows="3"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Guardar contenido</button>
+              <button type="button" id="btn-contenido-recargar" class="btn btn-secondary"><i class="fas fa-rotate"></i> Recargar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/contenido-portal.js"></script>
+</body>
+</html>

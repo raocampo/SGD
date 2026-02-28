@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LT&C - Mensajes de Contacto</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ LT&C</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="portal-cms.html"><i class="fas fa-newspaper"></i> Portal CMS</a>
+      <a class="nav-btn active" href="contacto-admin.html"><i class="fas fa-envelope-open-text"></i> Contacto</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>Mensajes de contacto</h1>
+    </header>
+    <main class="main">
+      <div class="container">
+        <div class="config-card">
+          <h3>Filtros</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="contacto-filtro-estado">Estado</label>
+              <select id="contacto-filtro-estado">
+                <option value="">Todos</option>
+                <option value="nuevo">Nuevo</option>
+                <option value="leido">Leído</option>
+                <option value="respondido">Respondido</option>
+                <option value="archivado">Archivado</option>
+              </select>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" id="btn-contacto-filtrar" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrar</button>
+            <button type="button" id="btn-contacto-recargar" class="btn btn-secondary"><i class="fas fa-rotate"></i> Recargar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Bandeja de mensajes</h3>
+          <div id="contacto-listado-wrap" class="tabla-scroll"><p>Cargando mensajes...</p></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/contacto-admin.js"></script>
+</body>
+</html>

@@ -7,11 +7,24 @@ require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const corsOrigins = String(process.env.CORS_ORIGINS || "*")
+  .split(",")
+  .map((item) => item.trim())
+  .filter(Boolean);
 
 // =====================
 // Middlewares base
 // =====================
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || corsOrigins.includes("*") || corsOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Origen no permitido por CORS"));
+    },
+  })
+);
 app.use(express.json()); // ✅ IMPORTANTE: para /api/sorteo y /api/grupos (JSON)
 app.use(express.urlencoded({ extended: true })); // ✅ por compatibilidad
 
@@ -50,6 +63,12 @@ const finanzaRoutes = require("./routes/finanzaRoutes");
 const auspicianteRoutes = require("./routes/auspicianteRoutes");
 const paseRoutes = require("./routes/paseRoutes");
 const authRoutes = require("./routes/authRoutes");
+const mobileRoutes = require("./routes/mobileRoutes");
+const noticiaRoutes = require("./routes/noticiaRoutes");
+const galeriaRoutes = require("./routes/galeriaRoutes");
+const portalContenidoRoutes = require("./routes/portalContenidoRoutes");
+const contactoRoutes = require("./routes/contactoRoutes");
+const publicRoutes = require("./routes/publicRoutes");
 
 app.use("/api/campeonatos", campeonatoRoutes);
 app.use("/api/equipos", equipoRoutes);
@@ -65,6 +84,12 @@ app.use("/api/finanzas", finanzaRoutes);
 app.use("/api/auspiciantes", auspicianteRoutes);
 app.use("/api/pases", paseRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/mobile/v1", mobileRoutes);
+app.use("/api/noticias", noticiaRoutes);
+app.use("/api/galeria", galeriaRoutes);
+app.use("/api/portal-contenido", portalContenidoRoutes);
+app.use("/api/contacto", contactoRoutes);
+app.use("/api/public", publicRoutes);
 
 // =====================
 // Frontend (opcional)
@@ -104,6 +129,21 @@ app.get("/", (req, res) => {
       "/api/auspiciantes",
       "/api/pases",
       "/api/auth/login",
+      "/api/mobile/v1/session",
+      "/api/noticias",
+      "/api/galeria",
+      "/api/portal-contenido",
+      "/api/contacto",
+      "/api/public/campeonatos",
+      "/api/public/campeonatos/:id",
+      "/api/public/campeonatos/:id/eventos",
+      "/api/public/eventos/:id/partidos",
+      "/api/public/eventos/:id/tablas",
+      "/api/public/eventos/:id/eliminatorias",
+      "/api/public/noticias",
+      "/api/public/galeria",
+      "/api/public/portal-contenido",
+      "/api/public/contacto",
       "/uploads",
     ],
   });

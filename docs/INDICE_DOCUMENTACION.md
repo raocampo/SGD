@@ -1,6 +1,6 @@
 # Indice de Documentacion LT&C
 
-Ultima actualizacion: 2026-02-21
+Ultima actualizacion: 2026-02-28
 
 ## Documentos clave
 - `docs/BITACORA_AVANCES.md`
@@ -13,6 +13,10 @@ Ultima actualizacion: 2026-02-21
   - Resumen historico de cambios estructurales ya incorporados.
 - `docs/PLAN_MOBILE_LT_C.md`
   - Plan maestro por fases para adaptar LT&C a uso mobile web.
+- `docs/PLAN_CMS_PORTAL_PUBLICO.md`
+  - Plan maestro por fases para separar el CMS del portal publico del panel de gestion deportiva.
+- `docs/GUIA_PRESENTACION_SISTEMA_LT_C.md`
+  - Guion operativo recomendado para presentar el sistema LT&C por modulos y roles.
 
 ## Documentos de referencia operativa
 - `docs/PlanillaJuego.pdf`

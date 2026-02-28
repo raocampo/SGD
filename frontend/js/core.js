@@ -7,7 +7,26 @@
   const AUTH_USER_KEY = "sgd_auth_user";
   const BRAND_FAVICON_SVG = "assets/ltc/favicon.svg";
   const BRAND_FAVICON_FALLBACK = "assets/ltc/Logo.jpeg";
-  const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html", "register.html"]);
+  const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html", "register.html", "blog.html", "noticia.html"]);
+  const CMS_PAGES = new Set([
+    "portal-cms.html",
+    "noticias.html",
+    "galeria-admin.html",
+    "contenido-portal.html",
+    "contacto-admin.html",
+  ]);
+  const OPERADOR_ALLOWED_PAGES = new Set([
+    "portal-cms.html",
+    "noticias.html",
+    "galeria-admin.html",
+    "contenido-portal.html",
+    "contacto-admin.html",
+    "index.html",
+    "blog.html",
+    "noticia.html",
+    "portal.html",
+    "login.html",
+  ]);
   const TECNICO_ALLOWED_PAGES = new Set([
     "portal-tecnico.html",
     "equipos.html",
@@ -54,9 +73,14 @@
     return rol === "tecnico" || rol === "dirigente";
   }
 
+  function esOperadorPortal(user) {
+    return String(user?.rol || "").toLowerCase() === "operador";
+  }
+
   function getDefaultPageByRole(user) {
     if (!user) return "login.html";
     const rol = String(user.rol || "").toLowerCase();
+    if (rol === "operador") return "portal-cms.html";
     if (rol === "administrador" || rol === "organizador") return "portal-admin.html";
     if (rol === "tecnico" || rol === "dirigente") return "portal-tecnico.html";
     return "login.html";
@@ -65,6 +89,11 @@
   function canAccessPage(user, page) {
     if (PUBLIC_PAGES.has(page)) return true;
     if (!user) return false;
+    if (CMS_PAGES.has(page)) {
+      const rol = String(user?.rol || "").toLowerCase();
+      return rol === "administrador" || rol === "operador";
+    }
+    if (esOperadorPortal(user)) return OPERADOR_ALLOWED_PAGES.has(page);
     if (esTecnicoOdirigente(user)) return TECNICO_ALLOWED_PAGES.has(page);
     return true;
   }
@@ -271,6 +300,26 @@
       '<i class="fas fa-user-shield"></i> Usuarios',
       window.location.pathname.endsWith("usuarios.html")
     );
+    ensureNavLink(
+      "noticias.html",
+      '<i class="fas fa-rss"></i> Noticias',
+      window.location.pathname.endsWith("noticias.html")
+    );
+    ensureNavLink(
+      "galeria-admin.html",
+      '<i class="fas fa-images"></i> Galería',
+      window.location.pathname.endsWith("galeria-admin.html")
+    );
+    ensureNavLink(
+      "contenido-portal.html",
+      '<i class="fas fa-id-card"></i> Contenido',
+      window.location.pathname.endsWith("contenido-portal.html")
+    );
+    ensureNavLink(
+      "contacto-admin.html",
+      '<i class="fas fa-envelope-open-text"></i> Contacto',
+      window.location.pathname.endsWith("contacto-admin.html")
+    );
 
     const tecnicoRestricted = [
       "campeonatos.html",
@@ -284,7 +333,38 @@
       "usuarios.html",
     ];
 
-    if (esTecnicoOdirigente(user)) {
+    if (esOperadorPortal(user)) {
+      [
+        "campeonatos.html",
+        "eventos.html",
+        "equipos.html",
+        "jugadores.html",
+        "sorteo.html",
+        "gruposgen.html",
+        "partidos.html",
+        "planilla.html",
+        "auspiciantes.html",
+        "finanzas.html",
+        "pases.html",
+        "tablas.html",
+        "usuarios.html",
+        "portal-admin.html",
+        "portal-tecnico.html",
+      ].forEach((href) => {
+        const link = sidebarNav.querySelector(`a[href="${href}"]`);
+        if (link) link.remove();
+      });
+      ensureNavLink(
+        "portal-cms.html",
+        '<i class="fas fa-newspaper"></i> Portal CMS',
+        window.location.pathname.endsWith("portal-cms.html")
+      );
+      ensureNavLink(
+        "noticias.html",
+        '<i class="fas fa-rss"></i> Noticias',
+        window.location.pathname.endsWith("noticias.html")
+      );
+    } else if (esTecnicoOdirigente(user)) {
       tecnicoRestricted.forEach((href) => {
         const link = sidebarNav.querySelector(`a[href="${href}"]`);
         if (link) link.remove();
@@ -299,11 +379,41 @@
       if (rol !== "administrador" && rol !== "organizador") {
         document.querySelectorAll('a[href="usuarios.html"]').forEach((lnk) => lnk.remove());
       }
+      if (rol !== "administrador") {
+        document.querySelectorAll('a[href="noticias.html"]').forEach((lnk) => lnk.remove());
+      }
+      if (rol !== "administrador") {
+        document.querySelectorAll('a[href="galeria-admin.html"]').forEach((lnk) => lnk.remove());
+        document.querySelectorAll('a[href="contenido-portal.html"]').forEach((lnk) => lnk.remove());
+        document.querySelectorAll('a[href="contacto-admin.html"]').forEach((lnk) => lnk.remove());
+      }
       ensureNavLink(
         "portal-admin.html",
-        '<i class="fas fa-user-cog"></i> Mi Portal',
+        '<i class="fas fa-user-cog"></i> Portal Deportivo',
         window.location.pathname.endsWith("portal-admin.html")
       );
+      if (rol === "administrador") {
+        ensureNavLink(
+          "portal-cms.html",
+          '<i class="fas fa-newspaper"></i> Portal CMS',
+          window.location.pathname.endsWith("portal-cms.html")
+        );
+        ensureNavLink(
+          "galeria-admin.html",
+          '<i class="fas fa-images"></i> Galería',
+          window.location.pathname.endsWith("galeria-admin.html")
+        );
+        ensureNavLink(
+          "contenido-portal.html",
+          '<i class="fas fa-id-card"></i> Contenido',
+          window.location.pathname.endsWith("contenido-portal.html")
+        );
+        ensureNavLink(
+          "contacto-admin.html",
+          '<i class="fas fa-envelope-open-text"></i> Contacto',
+          window.location.pathname.endsWith("contacto-admin.html")
+        );
+      }
     }
 
     let logout = sidebarNav.querySelector('a[data-action="logout"]');

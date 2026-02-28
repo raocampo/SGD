@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const pool = require("../config/database");
 const { normalizarPlanCodigo } = require("../services/planLimits");
 
-const ROLES = new Set(["administrador", "organizador", "tecnico", "dirigente"]);
+const ROLES = new Set(["administrador", "operador", "organizador", "tecnico", "dirigente"]);
 
 class UsuarioAuth {
   static _schemaReady = false;
@@ -45,7 +45,7 @@ class UsuarioAuth {
         nombre VARCHAR(140) NOT NULL,
         email VARCHAR(180) NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
-        rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'organizador', 'tecnico', 'dirigente')),
+        rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'operador', 'organizador', 'tecnico', 'dirigente')),
         activo BOOLEAN NOT NULL DEFAULT TRUE,
         solo_lectura BOOLEAN NOT NULL DEFAULT FALSE,
         plan_codigo VARCHAR(24) NOT NULL DEFAULT 'premium',
@@ -124,7 +124,7 @@ class UsuarioAuth {
 
         ALTER TABLE usuarios
         ADD CONSTRAINT usuarios_rol_check
-        CHECK (rol IN ('administrador', 'organizador', 'tecnico', 'dirigente'));
+        CHECK (rol IN ('administrador', 'operador', 'organizador', 'tecnico', 'dirigente'));
       EXCEPTION WHEN duplicate_object THEN
         NULL;
       END $$;
@@ -161,6 +161,25 @@ class UsuarioAuth {
     );
     await client.query(
       `CREATE INDEX IF NOT EXISTS idx_usuario_password_resets_expires ON usuario_password_resets(expires_at)`
+    );
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS usuario_refresh_tokens (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL UNIQUE,
+        client_type VARCHAR(30) NOT NULL DEFAULT 'unknown',
+        user_agent TEXT,
+        ip_address VARCHAR(64),
+        expires_at TIMESTAMP NOT NULL,
+        revoked_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_usuario_refresh_tokens_usuario ON usuario_refresh_tokens(usuario_id)`
+    );
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_usuario_refresh_tokens_expires ON usuario_refresh_tokens(expires_at)`
     );
 
     await this.asegurarAdminInicial(client);
@@ -280,7 +299,7 @@ class UsuarioAuth {
       throw new Error("password debe tener al menos 6 caracteres");
     }
     if (!ROLES.has(rol)) {
-      throw new Error("rol invalido. Use: administrador, organizador, tecnico o dirigente");
+      throw new Error("rol invalido. Use: administrador, operador, organizador, tecnico o dirigente");
     }
     if (rol === "organizador" && !organizacionNombre) {
       throw new Error("organizacion_nombre es obligatorio para organizador");
@@ -354,7 +373,7 @@ class UsuarioAuth {
     if (data.rol !== undefined) {
       const rol = String(data.rol || "").trim().toLowerCase();
       if (!ROLES.has(rol)) {
-        throw new Error("rol invalido. Use: administrador, organizador, tecnico o dirigente");
+        throw new Error("rol invalido. Use: administrador, operador, organizador, tecnico o dirigente");
       }
       if (rol === "organizador") {
         const orgDestino =
@@ -600,6 +619,148 @@ class UsuarioAuth {
     return r.rows
       .map((x) => Number.parseInt(x.equipo_id, 10))
       .filter((x) => Number.isFinite(x) && x > 0);
+  }
+
+  static async crearRefreshToken(usuarioId, opciones = {}, client = pool) {
+    await this.asegurarEsquema(client);
+
+    const uId = Number.parseInt(usuarioId, 10);
+    if (!Number.isFinite(uId) || uId <= 0) {
+      throw new Error("usuario_id invalido");
+    }
+
+    const ttlDaysRaw = Number.parseInt(opciones.ttl_days ?? 30, 10);
+    const ttlDays = Number.isFinite(ttlDaysRaw) ? Math.max(1, ttlDaysRaw) : 30;
+    const token = crypto.randomBytes(48).toString("hex");
+    const tokenHash = this.hashToken(token);
+    const clientType = String(opciones.client_type || "unknown").trim().slice(0, 30) || "unknown";
+    const userAgent = String(opciones.user_agent || "").trim() || null;
+    const ipAddress = String(opciones.ip_address || "").trim() || null;
+
+    const r = await client.query(
+      `
+        INSERT INTO usuario_refresh_tokens (
+          usuario_id,
+          token_hash,
+          client_type,
+          user_agent,
+          ip_address,
+          expires_at
+        )
+        VALUES (
+          $1, $2, $3, $4, $5,
+          CURRENT_TIMESTAMP + ($6 * INTERVAL '1 day')
+        )
+        RETURNING id, expires_at
+      `,
+      [uId, tokenHash, clientType, userAgent, ipAddress, ttlDays]
+    );
+
+    return {
+      id: Number.parseInt(r.rows[0]?.id, 10),
+      token,
+      expires_at: r.rows[0]?.expires_at || null,
+    };
+  }
+
+  static async obtenerRefreshToken(token, client = pool) {
+    await this.asegurarEsquema(client);
+
+    const tokenPlano = String(token || "").trim();
+    if (!tokenPlano) return null;
+
+    const tokenHash = this.hashToken(tokenPlano);
+    const r = await client.query(
+      `
+        SELECT *
+        FROM usuario_refresh_tokens
+        WHERE token_hash = $1
+        LIMIT 1
+      `,
+      [tokenHash]
+    );
+
+    return r.rows[0] || null;
+  }
+
+  static async revocarRefreshToken(token, client = pool) {
+    await this.asegurarEsquema(client);
+
+    const tokenPlano = String(token || "").trim();
+    if (!tokenPlano) return false;
+
+    const tokenHash = this.hashToken(tokenPlano);
+    const r = await client.query(
+      `
+        UPDATE usuario_refresh_tokens
+        SET revoked_at = CURRENT_TIMESTAMP
+        WHERE token_hash = $1
+          AND revoked_at IS NULL
+        RETURNING id
+      `,
+      [tokenHash]
+    );
+
+    return r.rows.length > 0;
+  }
+
+  static async rotarRefreshToken(token, opciones = {}, client = pool) {
+    await this.asegurarEsquema(client);
+
+    const tokenPlano = String(token || "").trim();
+    if (!tokenPlano) {
+      throw new Error("refreshToken es obligatorio");
+    }
+
+    const tokenHash = this.hashToken(tokenPlano);
+    await client.query("BEGIN");
+    try {
+      const actualR = await client.query(
+        `
+          SELECT *
+          FROM usuario_refresh_tokens
+          WHERE token_hash = $1
+          FOR UPDATE
+        `,
+        [tokenHash]
+      );
+      const actual = actualR.rows[0] || null;
+      if (!actual || actual.revoked_at || new Date(actual.expires_at) <= new Date()) {
+        throw new Error("refreshToken invalido o expirado");
+      }
+
+      await client.query(
+        `
+          UPDATE usuario_refresh_tokens
+          SET revoked_at = CURRENT_TIMESTAMP
+          WHERE id = $1
+        `,
+        [actual.id]
+      );
+
+      const nuevo = await this.crearRefreshToken(
+        actual.usuario_id,
+        {
+          ttl_days: opciones.ttl_days,
+          client_type: opciones.client_type || actual.client_type,
+          user_agent: opciones.user_agent || actual.user_agent,
+          ip_address: opciones.ip_address || actual.ip_address,
+        },
+        client
+      );
+
+      const usuario = await this.obtenerPorId(actual.usuario_id, client);
+      await client.query("COMMIT");
+
+      return {
+        refreshToken: nuevo.token,
+        refreshTokenExpiresAt: nuevo.expires_at,
+        usuario: this.limpiarUsuario(usuario),
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
   }
 }
 

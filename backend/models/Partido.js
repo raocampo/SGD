@@ -923,6 +923,11 @@ class Partido {
       ADD COLUMN IF NOT EXISTS delegado_partido TEXT,
       ADD COLUMN IF NOT EXISTS ciudad TEXT
     `);
+    await pool.query(`
+      ALTER TABLE partidos
+      ADD COLUMN IF NOT EXISTS faltas_local_total INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS faltas_visitante_total INTEGER DEFAULT 0
+    `);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS partido_planillas (
@@ -1100,6 +1105,10 @@ class Partido {
         pago_visitante: Number(planilla?.pago_visitante || 0),
         observaciones: planilla?.observaciones || "",
       },
+      faltas: {
+        local_total: Number(partido?.faltas_local_total ?? 0),
+        visitante_total: Number(partido?.faltas_visitante_total ?? 0),
+      },
       goleadores: goleadoresR.rows,
       tarjetas: tarjetasR.rows,
       plantel_local: localR.rows,
@@ -1139,6 +1148,10 @@ class Partido {
       Number.parseFloat(pagos.pago_arbitraje ?? (pagoArbitrajeLocal + pagoArbitrajeVisitante)) || 0;
     const pagoLocal = Number.parseFloat(pagos.pago_local ?? 0) || 0;
     const pagoVisitante = Number.parseFloat(pagos.pago_visitante ?? 0) || 0;
+    const faltasLocalTotal =
+      Number.parseInt(datos.faltas_local_total ?? datos.faltas?.local_total ?? 0, 10) || 0;
+    const faltasVisitanteTotal =
+      Number.parseInt(datos.faltas_visitante_total ?? datos.faltas?.visitante_total ?? 0, 10) || 0;
     const observaciones = (datos.observaciones || "").toString().trim();
 
     const client = await pool.connect();
@@ -1163,11 +1176,23 @@ class Partido {
               estado = $3,
               arbitro = COALESCE($4, arbitro),
               delegado_partido = COALESCE($5, delegado_partido),
-              ciudad = COALESCE($6, ciudad)
+              ciudad = COALESCE($6, ciudad),
+              faltas_local_total = $7,
+              faltas_visitante_total = $8
               ${setTs}
-          WHERE id = $7
+          WHERE id = $9
         `,
-        [resultadoLocal, resultadoVisitante, estado, arbitro, delegadoPartido, ciudad, partido_id]
+        [
+          resultadoLocal,
+          resultadoVisitante,
+          estado,
+          arbitro,
+          delegadoPartido,
+          ciudad,
+          faltasLocalTotal,
+          faltasVisitanteTotal,
+          partido_id,
+        ]
       );
 
       await client.query(

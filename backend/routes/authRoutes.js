@@ -8,6 +8,8 @@ router.get("/bootstrap/status", authController.bootstrapStatus);
 router.post("/bootstrap/register", authController.bootstrapRegister);
 router.post("/register-public", authController.registerPublic);
 router.post("/login", authController.login);
+router.post("/refresh", authController.refresh);
+router.post("/logout", authController.logout);
 router.post("/password/forgot", authController.solicitarRecuperacionPassword);
 router.post("/password/reset", authController.resetearPassword);
 router.get("/organizadores/:id/landing", authController.landingOrganizadorPublica);
