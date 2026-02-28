@@ -21,6 +21,7 @@ class UsuarioAuth {
     return {
       id: Number(row.id),
       nombre: row.nombre,
+      organizacion_nombre: row.organizacion_nombre || "",
       email: row.email,
       rol: row.rol,
       activo: row.activo === true,
@@ -56,6 +57,10 @@ class UsuarioAuth {
     await client.query(`
       ALTER TABLE usuarios
       ADD COLUMN IF NOT EXISTS solo_lectura BOOLEAN NOT NULL DEFAULT FALSE
+    `);
+    await client.query(`
+      ALTER TABLE usuarios
+      ADD COLUMN IF NOT EXISTS organizacion_nombre VARCHAR(180)
     `);
     await client.query(`
       ALTER TABLE usuarios
@@ -261,6 +266,7 @@ class UsuarioAuth {
       data.activo === undefined
         ? true
         : data.activo === true || String(data.activo).toLowerCase() === "true";
+    const organizacionNombre = String(data.organizacion_nombre || "").trim();
     const soloLectura =
       data.solo_lectura === true || String(data.solo_lectura || "").toLowerCase() === "true";
     const planCodigo = normalizarPlanCodigo(data.plan_codigo, "premium");
@@ -276,6 +282,9 @@ class UsuarioAuth {
     if (!ROLES.has(rol)) {
       throw new Error("rol invalido. Use: administrador, organizador, tecnico o dirigente");
     }
+    if (rol === "organizador" && !organizacionNombre) {
+      throw new Error("organizacion_nombre es obligatorio para organizador");
+    }
 
     const exists = await client.query("SELECT 1 FROM usuarios WHERE email = $1 LIMIT 1", [email]);
     if (exists.rows.length) throw new Error("Ya existe un usuario con ese email");
@@ -283,11 +292,21 @@ class UsuarioAuth {
     const hash = await bcrypt.hash(password, 10);
     const r = await client.query(
       `
-        INSERT INTO usuarios (nombre, email, password_hash, rol, activo, solo_lectura, plan_codigo, plan_estado)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO usuarios (nombre, organizacion_nombre, email, password_hash, rol, activo, solo_lectura, plan_codigo, plan_estado)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `,
-      [nombre, email, hash, rol, activo, soloLectura, planCodigo, planEstado]
+      [
+        nombre,
+        rol === "organizador" ? organizacionNombre : null,
+        email,
+        hash,
+        rol,
+        activo,
+        soloLectura,
+        planCodigo,
+        planEstado,
+      ]
     );
     return this.limpiarUsuario(r.rows[0]);
   }
@@ -337,8 +356,27 @@ class UsuarioAuth {
       if (!ROLES.has(rol)) {
         throw new Error("rol invalido. Use: administrador, organizador, tecnico o dirigente");
       }
+      if (rol === "organizador") {
+        const orgDestino =
+          data.organizacion_nombre !== undefined
+            ? String(data.organizacion_nombre || "").trim()
+            : String(actual.organizacion_nombre || "").trim();
+        if (!orgDestino) {
+          throw new Error("organizacion_nombre es obligatorio para organizador");
+        }
+      }
       campos.push(`rol = $${idx++}`);
       valores.push(rol);
+    }
+
+    if (data.organizacion_nombre !== undefined) {
+      const org = String(data.organizacion_nombre || "").trim();
+      const rolDestino = String(data.rol || actual.rol || "").trim().toLowerCase();
+      if (rolDestino === "organizador" && !org) {
+        throw new Error("organizacion_nombre es obligatorio para organizador");
+      }
+      campos.push(`organizacion_nombre = $${idx++}`);
+      valores.push(org || null);
     }
 
     if (data.activo !== undefined) {

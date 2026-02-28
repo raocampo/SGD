@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-02-23
+Ultima actualizacion: 2026-02-27
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -10,7 +10,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.1 Gestion de Torneos/Campeonatos | Parcial-Alto | CRUD y estados operativos, organizador/logo/colores; pendiente reglamento PDF/bases y sedes multiples. |
 | 3.2 Categorias por torneo | Alto | Eventos/categorias por campeonato funcionales con asignacion de equipos. |
 | 3.3 Gestion de Equipos | Alto | Registro completo con logo/contacto/colores, asignacion por evento, flujo hacia sorteo y vista Tarjetas/Tabla. |
-| 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por campeonato; documentos opcionales/requeridos segun campeonato; importacion masiva y reportes. Backend base de modulo de pases implementado; pendiente UI de pases e historial visual por jugador. |
+| 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por campeonato; documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Backend base de modulo de pases implementado; pendiente UI de pases e historial visual por jugador. |
 | 3.5 Creacion de Grupos | Alto | Modo aleatorio, cabezas de serie y manual con ruleta funcionando. |
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
 | 3.7 Resultados/Tablas/Clasificados | Medio-Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play). Planillaje ya alimenta resultado + estadisticas. Pendiente automatizacion robusta de clasificados para todos los formatos. |
@@ -19,7 +19,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 5 Roles y permisos (RBAC) | Pendiente | Aun sin autenticacion y perfiles de acceso. |
 | 6 Extras profesionales | Parcial | Exportaciones (PNG/PDF/XLSX) en modulos clave; pendiente notificaciones, auditoria completa y reportes ejecutivos. |
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla. Pendiente reglas avanzadas de sancion/bloqueo y reporteria ejecutiva. |
-| 8 Adaptacion mobile web | Pendiente-Iniciado | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; pendiente ejecucion por fases (responsive global, modulos criticos, operacion de campo, finanzas). |
+| 8 Adaptacion mobile web | En progreso | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; fase 1 base responsive iniciada en `style.css`/`core.js` (layout, topbar, acciones y sidebar) con cierre parcial en `tablas`, `finanzas`, `partidos` y `planilla`; pendiente cierre de `grupos/eliminatorias/pases` y validacion final en viewports objetivo. |
 
 ## Estado Detallado del Alcance Actual
 
@@ -33,6 +33,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 2. Jugadores y documentos:
 - Gestion por equipo y tambien desde modulo global de jugadores.
+- Configuracion por campeonato para requerir o no la cedula de identidad del jugador.
 - Configuracion por campeonato para requerir foto de cedula/carnet.
 - Importacion masiva por archivo con normalizacion de encabezados.
 - Flujo de importacion de documentos por lote (`ZIP + mapeo por cedula`).

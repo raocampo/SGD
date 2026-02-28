@@ -9,13 +9,31 @@ let sorteoFinalizado = false;
 let ruletaRotation = 0;
 let ruletaSpinning = false;
 let ruletaFrame = null;
+let autoCreandoGruposManualDirecto = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("sorteo.html")) return;
 
+  const selectSistema = document.getElementById("sistema-sorteo");
+  if (selectSistema) {
+    selectSistema.addEventListener("change", async () => {
+      actualizarModoSorteoUI();
+      renderManualDirectoControls();
+      await asegurarGruposEnManualDirecto();
+    });
+  }
+
   await cargarCampeonatos();
   await aplicarContextoDesdeURL();
+  actualizarModoSorteoUI();
+  renderManualDirectoControls();
 });
+
+function obtenerSistemaSorteoActual() {
+  const sistema = document.getElementById("sistema-sorteo")?.value || "automatico";
+  // Compatibilidad por si quedó guardado el valor antiguo.
+  return sistema === "manual" ? "manual-ruleta" : sistema;
+}
 
 async function aplicarContextoDesdeURL() {
   const params = new URLSearchParams(window.location.search);
@@ -98,7 +116,91 @@ function limpiarSorteoUI() {
   ruletaSpinning = false;
   if (ruletaFrame) cancelAnimationFrame(ruletaFrame);
   dibujarRuleta();
+  renderManualDirectoControls();
+  actualizarModoSorteoUI();
   actualizarVistaSorteo();
+}
+
+function actualizarModoSorteoUI() {
+  const sistema = obtenerSistemaSorteoActual();
+  const ruletaControls = document.querySelector(".ruleta-controls");
+  const manualControls = document.getElementById("manual-directo-controls");
+  const btnGirar = document.getElementById("btn-girar");
+  const btnAsignar = document.getElementById("btn-asignar");
+
+  const esManualRuleta = sistema === "manual-ruleta";
+  const esManualDirecto = sistema === "manual-directo";
+
+  if (ruletaControls) {
+    ruletaControls.style.display = esManualRuleta ? "grid" : "none";
+  }
+  if (manualControls) {
+    manualControls.style.display = esManualDirecto ? "grid" : "none";
+  }
+
+  if (btnGirar) {
+    btnGirar.disabled = !esManualRuleta || ruletaSpinning || !gruposEvento.length || !equiposPendientes.length;
+  }
+  if (btnAsignar) {
+    btnAsignar.disabled = !esManualRuleta || ruletaSpinning || !equipoSeleccionado;
+  }
+}
+
+function renderManualDirectoControls() {
+  const selectEquipo = document.getElementById("manual-equipo");
+  const selectGrupo = document.getElementById("manual-grupo");
+  const btnAsignarManual = document.getElementById("btn-asignar-manual");
+  if (!selectEquipo || !selectGrupo || !btnAsignarManual) return;
+
+  const equipoActual = selectEquipo.value;
+  const grupoActual = selectGrupo.value;
+
+  selectEquipo.innerHTML = '<option value="">-- Selecciona equipo --</option>';
+  equiposPendientes.forEach((equipo) => {
+    selectEquipo.innerHTML += `<option value="${equipo.id}">${equipo.nombre}</option>`;
+  });
+  if (equipoActual && equiposPendientes.some((e) => String(e.id) === String(equipoActual))) {
+    selectEquipo.value = equipoActual;
+  }
+
+  const gruposOrdenados = [...gruposEvento].sort((a, b) =>
+    String(a.letra_grupo || "").localeCompare(String(b.letra_grupo || ""))
+  );
+  selectGrupo.innerHTML = '<option value="">-- Selecciona grupo --</option>';
+  gruposOrdenados.forEach((grupo) => {
+    const nombre = grupo.nombre_grupo || `Grupo ${grupo.letra_grupo || ""}`;
+    selectGrupo.innerHTML += `<option value="${grupo.id}">${nombre} (${(grupo.equipos || []).length})</option>`;
+  });
+  if (grupoActual && gruposEvento.some((g) => String(g.id) === String(grupoActual))) {
+    selectGrupo.value = grupoActual;
+  }
+
+  const actualizarEstadoBoton = () => {
+    btnAsignarManual.disabled = !selectEquipo.value || !selectGrupo.value;
+  };
+  selectEquipo.onchange = actualizarEstadoBoton;
+  selectGrupo.onchange = actualizarEstadoBoton;
+  actualizarEstadoBoton();
+}
+
+async function asegurarGruposEnManualDirecto() {
+  if (obtenerSistemaSorteoActual() !== "manual-directo") return;
+  if (!eventoSeleccionado) return;
+  if (gruposEvento.length > 0) return;
+  if (autoCreandoGruposManualDirecto) return;
+
+  try {
+    autoCreandoGruposManualDirecto = true;
+    await crearGruposSiNoExisten();
+    await recargarEstadoSorteo({ omitirAutoCrearManual: true });
+    renderManualDirectoControls();
+    actualizarModoSorteoUI();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudieron crear grupos para el modo manual directo", "error");
+  } finally {
+    autoCreandoGruposManualDirecto = false;
+  }
 }
 
 function actualizarVistaSorteo() {
@@ -302,7 +404,7 @@ async function limpiarGruposEventoActual() {
   }
 }
 
-async function recargarEstadoSorteo() {
+async function recargarEstadoSorteo(opciones = {}) {
   limpiarSorteoUI();
   if (!eventoSeleccionado) return;
 
@@ -323,10 +425,55 @@ async function recargarEstadoSorteo() {
     equiposEvento.length > 0 &&
     equiposPendientes.length === 0;
 
+  if (
+    !opciones.omitirAutoCrearManual &&
+    !autoCreandoGruposManualDirecto &&
+    obtenerSistemaSorteoActual() === "manual-directo" &&
+    gruposEvento.length === 0
+  ) {
+    await asegurarGruposEnManualDirecto();
+    return;
+  }
+
   renderGrupos();
   renderPendientes();
   dibujarRuleta();
+  renderManualDirectoControls();
+  actualizarModoSorteoUI();
   actualizarVistaSorteo();
+}
+
+function obtenerGrupoConMenorCarga() {
+  if (!gruposEvento.length) return null;
+  const gruposOrdenados = [...gruposEvento].sort((a, b) => {
+    const diff = (a.equipos?.length || 0) - (b.equipos?.length || 0);
+    if (diff !== 0) return diff;
+    return String(a.letra_grupo || "").localeCompare(String(b.letra_grupo || ""));
+  });
+  return gruposOrdenados[0];
+}
+
+async function autoAsignarUltimoPendienteRuleta() {
+  if (obtenerSistemaSorteoActual() !== "manual-ruleta") return false;
+  if (equiposPendientes.length !== 1 || !gruposEvento.length) return false;
+
+  const ultimoEquipo = equiposPendientes[0];
+  const grupoDestino = obtenerGrupoConMenorCarga();
+  if (!grupoDestino) return false;
+
+  const orden = (grupoDestino.equipos?.length || 0) + 1;
+  await ApiClient.post(`/grupos/${grupoDestino.id}/equipos`, {
+    equipo_id: ultimoEquipo.id,
+    orden_sorteo: orden,
+  });
+  mostrarNotificacion(
+    `${ultimoEquipo.nombre} fue asignado automáticamente a ${
+      grupoDestino.nombre_grupo || `Grupo ${grupoDestino.letra_grupo}`
+    }`,
+    "success"
+  );
+  await recargarEstadoSorteo();
+  return true;
 }
 
 async function sorteoAutomatico(conCabezas = false) {
@@ -393,7 +540,7 @@ async function iniciarSorteo() {
     return;
   }
 
-  const sistema = document.getElementById("sistema-sorteo")?.value || "automatico";
+  const sistema = obtenerSistemaSorteoActual();
   try {
     sorteoFinalizado = false;
     actualizarVistaSorteo();
@@ -414,10 +561,14 @@ async function iniciarSorteo() {
     } else if (sistema === "cabezas-serie") {
       await sorteoAutomatico(true);
       mostrarNotificacion("Sorteo con cabezas de serie completado", "success");
+    } else if (sistema === "manual-ruleta") {
+      await crearGruposSiNoExisten();
+      await recargarEstadoSorteo();
+      mostrarNotificacion("Modo manual con ruleta listo. Gira la ruleta para asignar.", "info");
     } else {
       await crearGruposSiNoExisten();
       await recargarEstadoSorteo();
-      mostrarNotificacion("Modo manual listo. Usa la ruleta para asignar.", "info");
+      mostrarNotificacion("Modo manual directo listo. Selecciona equipo y grupo para asignar.", "info");
     }
   } catch (error) {
     console.error(error);
@@ -449,6 +600,10 @@ async function reiniciarSorteo() {
 }
 
 function girarRuleta() {
+  if (obtenerSistemaSorteoActual() !== "manual-ruleta") {
+    mostrarNotificacion("Este botón aplica solo para el modo Manual con Ruleta", "info");
+    return;
+  }
   if (ruletaSpinning) return;
   if (!equiposPendientes.length) {
     mostrarNotificacion("No hay equipos pendientes", "info");
@@ -503,6 +658,10 @@ function girarRuleta() {
 }
 
 async function asignarEquipoSeleccionado() {
+  if (obtenerSistemaSorteoActual() !== "manual-ruleta") {
+    mostrarNotificacion("Usa la asignación manual directa para este modo", "info");
+    return;
+  }
   if (!equipoSeleccionado) {
     mostrarNotificacion("Primero gira la ruleta", "warning");
     return;
@@ -513,10 +672,11 @@ async function asignarEquipoSeleccionado() {
   }
 
   try {
-    const gruposOrdenados = [...gruposEvento].sort(
-      (a, b) => (a.equipos?.length || 0) - (b.equipos?.length || 0)
-    );
-    const grupoDestino = gruposOrdenados[0];
+    const grupoDestino = obtenerGrupoConMenorCarga();
+    if (!grupoDestino) {
+      mostrarNotificacion("No hay grupos disponibles", "warning");
+      return;
+    }
     const orden = (grupoDestino.equipos?.length || 0) + 1;
 
     await ApiClient.post(`/grupos/${grupoDestino.id}/equipos`, {
@@ -532,9 +692,52 @@ async function asignarEquipoSeleccionado() {
     equipoSeleccionado = null;
     document.getElementById("btn-asignar").disabled = true;
     await recargarEstadoSorteo();
+    await autoAsignarUltimoPendienteRuleta();
   } catch (error) {
     console.error(error);
     mostrarNotificacion(error.message || "No se pudo asignar equipo", "error");
+  }
+}
+
+async function asignarEquipoManualDirecto() {
+  if (obtenerSistemaSorteoActual() !== "manual-directo") {
+    mostrarNotificacion("Activa el modo Manual directo para usar esta acción", "info");
+    return;
+  }
+
+  const selectEquipo = document.getElementById("manual-equipo");
+  const selectGrupo = document.getElementById("manual-grupo");
+  const equipoId = parseInt(selectEquipo?.value || "0", 10);
+  const grupoId = parseInt(selectGrupo?.value || "0", 10);
+
+  if (!equipoId || !grupoId) {
+    mostrarNotificacion("Selecciona equipo y grupo", "warning");
+    return;
+  }
+
+  const grupoDestino = gruposEvento.find((g) => g.id === grupoId);
+  if (!grupoDestino) {
+    mostrarNotificacion("Grupo destino no válido", "warning");
+    return;
+  }
+
+  try {
+    const orden = (grupoDestino.equipos?.length || 0) + 1;
+    await ApiClient.post(`/grupos/${grupoId}/equipos`, {
+      equipo_id: equipoId,
+      orden_sorteo: orden,
+    });
+
+    const equipoNombre =
+      equiposPendientes.find((e) => e.id === equipoId)?.nombre || "Equipo";
+    const grupoNombre = grupoDestino.nombre_grupo || `Grupo ${grupoDestino.letra_grupo}`;
+
+    mostrarNotificacion(`${equipoNombre} asignado a ${grupoNombre}`, "success");
+    equipoSeleccionado = null;
+    await recargarEstadoSorteo();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo asignar manualmente", "error");
   }
 }
 
@@ -553,6 +756,7 @@ function verGruposSorteo() {
 window.iniciarSorteo = iniciarSorteo;
 window.girarRuleta = girarRuleta;
 window.asignarEquipoSeleccionado = asignarEquipoSeleccionado;
+window.asignarEquipoManualDirecto = asignarEquipoManualDirecto;
 window.verGruposSorteo = verGruposSorteo;
 window.reiniciarSorteo = reiniciarSorteo;
 

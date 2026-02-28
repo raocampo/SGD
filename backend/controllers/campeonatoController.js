@@ -16,8 +16,9 @@ function organizadorCoincideConTexto(user, campeonato) {
   const campo = String(campeonato?.organizador || "").trim().toLowerCase();
   if (!campo) return false;
   const nombre = String(user?.nombre || "").trim().toLowerCase();
+  const organizacion = String(user?.organizacion_nombre || "").trim().toLowerCase();
   const email = String(user?.email || "").trim().toLowerCase();
-  return campo === nombre || campo === email;
+  return campo === nombre || campo === organizacion || campo === email;
 }
 
 async function puedeAccederCampeonato(req, campeonato) {
@@ -55,6 +56,7 @@ const campeonatoController = {
         color_primario,
         color_secundario,
         color_acento,
+        requiere_cedula_jugador = true,
         requiere_foto_cedula = false,
         requiere_foto_carnet = false,
         genera_carnets = false,
@@ -85,6 +87,7 @@ const campeonatoController = {
 
       if (!esAdmin && plan?.max_campeonatos !== null && plan?.max_campeonatos !== undefined) {
         const nombreUser = String(req.user?.nombre || "").trim().toLowerCase();
+        const organizacionUser = String(req.user?.organizacion_nombre || "").trim().toLowerCase();
         const emailUser = String(req.user?.email || "").trim().toLowerCase();
         const countR = await pool.query(
           `
@@ -96,7 +99,7 @@ const campeonatoController = {
                  AND LOWER(COALESCE(TRIM(organizador), '')) = ANY($2::text[])
                )
           `,
-          [userId, [nombreUser, emailUser].filter(Boolean)]
+          [userId, [nombreUser, organizacionUser, emailUser].filter(Boolean)]
         );
         const totalActual = Number(countR.rows[0]?.total || 0);
         if (totalActual >= plan.max_campeonatos) {
@@ -151,10 +154,16 @@ const campeonatoController = {
       const logo_url = req.file
         ? `/uploads/campeonatos/${req.file.filename}`
         : null;
+      const organizadorFinal =
+        organizador ||
+        req.user?.organizacion_nombre ||
+        req.user?.nombre ||
+        req.user?.email ||
+        null;
 
       const nuevoCampeonato = await Campeonato.crear(
         nombre,
-        organizador || req.user?.nombre || req.user?.email || null,
+        organizadorFinal,
         fecha_inicio,
         fecha_fin,
         tipo_futbol,
@@ -166,6 +175,7 @@ const campeonatoController = {
         color_secundario,
         color_acento,
         logo_url,
+        requiere_cedula_jugador,
         requiere_foto_cedula,
         requiere_foto_carnet,
         genera_carnets,
@@ -302,6 +312,11 @@ const campeonatoController = {
         datos.requiere_foto_cedula =
           datos.requiere_foto_cedula === true ||
           String(datos.requiere_foto_cedula).toLowerCase() === "true";
+      }
+      if (datos.requiere_cedula_jugador !== undefined) {
+        datos.requiere_cedula_jugador =
+          datos.requiere_cedula_jugador === true ||
+          String(datos.requiere_cedula_jugador).toLowerCase() === "true";
       }
       if (datos.requiere_foto_carnet !== undefined) {
         datos.requiere_foto_carnet =

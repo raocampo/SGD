@@ -1,6 +1,6 @@
 # Plan Mobile App - LT&C (Loja Torneos & Competencias)
 
-Ultima actualizacion: 2026-02-21
+Ultima actualizacion: 2026-02-24
 
 ## 1. Objetivo
 Construir una app movil de LT&C publicable en tiendas oficiales:
@@ -132,4 +132,19 @@ Entregable:
 
 ## 9. Estado del plan
 - Documento creado: Si.
-- Implementacion iniciada: No (pendiente iniciar en siguiente sesion de desarrollo de app mobile publicable).
+- Implementacion iniciada: Si (fase 1 base responsive web iniciada en esta sesion).
+
+## 10. Avance ejecutado (2026-02-24)
+- Fase 1 iniciada sobre frontend web actual (base compartida):
+  - ajuste global de `container` con paddings fluidos,
+  - hardening de layout `app-layout` para evitar desbordes horizontales,
+  - mejora de `top-bar` (titulo y badge de usuario) para pantallas pequenas,
+  - normalizacion de barras de acciones (`actions`, `action-bar`, `partidos-actions`, etc.) para uso tactil,
+  - ajuste responsive de `main` y `main.container` para modulos administrativos,
+  - sidebar responsivo consolidado para `<=1200px`,
+  - ajuste de breakpoint en `core.js` para no forzar navegacion movil en paginas publicas sin sidebar,
+  - cierre parcial responsive en modulos `tablas` y `finanzas` (filtros tactiles, grillas de formulario simplificadas y tablas mas compactas),
+  - cierre parcial responsive en `partidos` y `planilla` (acciones tactiles, tabs apilables y captura de planilla optimizada para pantalla pequena).
+- Proximo bloque recomendado:
+  - validacion funcional visual en `390x844` y `768x1024`,
+  - cierre responsive de `grupos`, `eliminatorias` y `pases` para mantener consistencia completa de operacion mobile.

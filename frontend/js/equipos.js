@@ -9,6 +9,32 @@ let equiposCache = [];
 let equipoEditandoId = null;
 let vistaEquipos = localStorage.getItem("sgd_vista_equipos") || "cards";
 vistaEquipos = vistaEquipos === "table" ? "table" : "cards";
+const CAMPOS_IMPORTACION_EQUIPOS = [
+  "nombre",
+  "director_tecnico",
+  "asistente_tecnico",
+  "medico",
+  "telefono",
+  "email",
+  "color_primario",
+  "color_secundario",
+  "color_terciario",
+  "cabeza_serie",
+  "logo_url",
+];
+const ALIAS_CAMPOS_IMPORTACION_EQUIPOS = {
+  nombre: ["nombre", "equipo", "nombre_equipo"],
+  director_tecnico: ["director_tecnico", "director", "dt", "tecnico", "tecnico_o_dueno"],
+  asistente_tecnico: ["asistente_tecnico", "asistente", "at"],
+  medico: ["medico", "doctor"],
+  telefono: ["telefono", "celular", "movil", "whatsapp"],
+  email: ["email", "correo", "correo_electronico"],
+  color_primario: ["color_primario", "primario", "color1"],
+  color_secundario: ["color_secundario", "secundario", "color2"],
+  color_terciario: ["color_terciario", "terciario", "color3"],
+  cabeza_serie: ["cabeza_serie", "cabeza", "seed", "es_cabeza_serie"],
+  logo_url: ["logo_url", "logo", "url_logo"],
+};
 
 function usuarioEsTecnico() {
   return !!window.Auth?.isTecnico?.();
@@ -23,6 +49,15 @@ function escapeHtml(valor) {
     .replace(/'/g, "&#39;");
 }
 
+function obtenerEventoSeleccionadoDesdeUI() {
+  const selectEvento = document.getElementById("select-evento");
+  if (!selectEvento) return null;
+  const value = String(selectEvento.value || "").trim();
+  if (!value) return null;
+  const n = Number.parseInt(value, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function obtenerNumeroEquipoVisible(equipo, fallback = null) {
   if (Number.isFinite(Number(eventoIdSeleccionado)) && Number(eventoIdSeleccionado) > 0) {
     if (Number.isFinite(Number(fallback)) && Number(fallback) > 0) return Number(fallback);
@@ -33,6 +68,304 @@ function obtenerNumeroEquipoVisible(equipo, fallback = null) {
   if (Number.isFinite(n) && n > 0) return n;
   if (Number.isFinite(Number(fallback)) && Number(fallback) > 0) return Number(fallback);
   return null;
+}
+
+function normalizarClaveImportacionEquipo(valor) {
+  return String(valor || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function valorTextoImportacionEquipo(valor) {
+  if (valor === null || valor === undefined) return "";
+  return String(valor).trim();
+}
+
+function normalizarTelefonoImportacionEquipo(valor) {
+  const txt = valorTextoImportacionEquipo(valor);
+  if (!txt) return "";
+  const soloDigitos = txt.replace(/\D/g, "");
+  if (!soloDigitos) return txt;
+  if (soloDigitos.length === 9) return `0${soloDigitos}`;
+  return soloDigitos;
+}
+
+function valorBooleanoImportacionEquipo(valor) {
+  const key = normalizarClaveImportacionEquipo(valor);
+  return ["1", "true", "si", "s", "x", "yes"].includes(key);
+}
+
+function valorColorImportacionEquipo(valor) {
+  const txt = valorTextoImportacionEquipo(valor);
+  if (!txt) return "";
+  if (/^#[0-9a-f]{6}$/i.test(txt)) return txt.toUpperCase();
+  return "";
+}
+
+function obtenerValorAliasImportacionEquipo(mapa, aliases = []) {
+  for (const alias of aliases) {
+    if (!Object.prototype.hasOwnProperty.call(mapa, alias)) continue;
+    const val = mapa[alias];
+    if (val !== null && val !== undefined && String(val).trim() !== "") return val;
+  }
+  return null;
+}
+
+function normalizarFilaImportacionEquipo(fila) {
+  const mapa = {};
+  Object.entries(fila || {}).forEach(([key, val]) => {
+    const nk = normalizarClaveImportacionEquipo(key);
+    if (!nk) return;
+    mapa[nk] = val;
+  });
+
+  const nombre = valorTextoImportacionEquipo(
+    obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.nombre)
+  );
+  const director_tecnico = valorTextoImportacionEquipo(
+    obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.director_tecnico)
+  );
+  const asistente_tecnico = valorTextoImportacionEquipo(
+    obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.asistente_tecnico)
+  );
+  const medico = valorTextoImportacionEquipo(
+    obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.medico)
+  );
+  const telefono = valorTextoImportacionEquipo(
+    normalizarTelefonoImportacionEquipo(
+      obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.telefono)
+    )
+  );
+  const email = valorTextoImportacionEquipo(
+    obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.email)
+  );
+  const color_primario = valorColorImportacionEquipo(
+    obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.color_primario)
+  );
+  const color_secundario = valorColorImportacionEquipo(
+    obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.color_secundario)
+  );
+  const color_terciario = valorColorImportacionEquipo(
+    obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.color_terciario)
+  );
+  const cabeza_serie = valorBooleanoImportacionEquipo(
+    obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.cabeza_serie)
+  );
+  const logo_url = valorTextoImportacionEquipo(
+    obtenerValorAliasImportacionEquipo(mapa, ALIAS_CAMPOS_IMPORTACION_EQUIPOS.logo_url)
+  );
+
+  if (
+    !nombre &&
+    !director_tecnico &&
+    !asistente_tecnico &&
+    !medico &&
+    !telefono &&
+    !email &&
+    !color_primario &&
+    !color_secundario &&
+    !color_terciario &&
+    !logo_url
+  ) {
+    return null;
+  }
+
+  return {
+    nombre,
+    director_tecnico,
+    asistente_tecnico,
+    medico,
+    telefono,
+    email,
+    color_primario,
+    color_secundario,
+    color_terciario,
+    cabeza_serie,
+    logo_url,
+  };
+}
+
+function leerArchivoComoArrayBufferEquipos(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo seleccionado"));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function procesarArchivoImportacionEquipos(file) {
+  if (!window.XLSX) throw new Error("No se cargó la librería XLSX para importar");
+
+  const arrayBuffer = await leerArchivoComoArrayBufferEquipos(file);
+  const wb = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+  const sheetName = wb.SheetNames[0];
+  const sheet = wb.Sheets[sheetName];
+  if (!sheet) throw new Error("El archivo no contiene hojas válidas");
+
+  const filasRaw = window.XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+  if (!filasRaw.length) throw new Error("El archivo no tiene filas para importar");
+
+  const equipos = [];
+  const erroresLocales = [];
+
+  filasRaw.forEach((fila, idx) => {
+    const nroFila = idx + 2;
+    const normalizada = normalizarFilaImportacionEquipo(fila);
+    if (!normalizada) return;
+    if (!normalizada.nombre || !normalizada.director_tecnico) {
+      erroresLocales.push(`Fila ${nroFila}: nombre y director_tecnico son obligatorios`);
+      return;
+    }
+    equipos.push(normalizada);
+  });
+
+  if (!equipos.length) {
+    const msg = erroresLocales.length
+      ? `No hay filas válidas para importar.\n${erroresLocales.slice(0, 8).join("\n")}`
+      : "No hay filas válidas para importar.";
+    throw new Error(msg);
+  }
+
+  return { equipos, erroresLocales, totalLeidas: filasRaw.length };
+}
+
+function inicializarImportadorEquipos() {
+  const input = document.getElementById("import-equipos-file");
+  if (!input || input.dataset.inicializado === "1") return;
+  input.dataset.inicializado = "1";
+
+  input.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    input.value = "";
+    if (!file) return;
+
+    const campId = Number.parseInt(document.getElementById("select-campeonato")?.value || "", 10);
+    const eventoSeleccionado = obtenerEventoSeleccionadoDesdeUI();
+    if (!Number.isFinite(campId) || campId <= 0) {
+      mostrarNotificacion("Selecciona un campeonato antes de importar equipos", "warning");
+      return;
+    }
+
+    try {
+      mostrarNotificacion("Procesando archivo de equipos...", "info");
+      const { equipos, erroresLocales, totalLeidas } = await procesarArchivoImportacionEquipos(file);
+      const resultado = await window.ApiClient.post("/equipos/importar-masivo", {
+        campeonato_id: campId,
+        evento_id: eventoSeleccionado || null,
+        equipos,
+      });
+
+      await cargarEventosSelect(eventoSeleccionado);
+      await cargarEquipos();
+
+      const totalErroresBackend = Number(resultado?.total_errores || 0);
+      const totalCreado = Number(resultado?.total_creados || 0);
+      const resumen = [
+        "Importación de equipos completada.",
+        `Filas leídas: ${totalLeidas}`,
+        `Filas enviadas: ${equipos.length}`,
+        `Equipos creados: ${totalCreado}`,
+        `Errores backend: ${totalErroresBackend}`,
+      ];
+      if (erroresLocales.length) resumen.push(`Filas omitidas localmente: ${erroresLocales.length}`);
+      if (Array.isArray(resultado?.errores) && resultado.errores.length) {
+        const preview = resultado.errores
+          .slice(0, 5)
+          .map((x) => `Fila ${x.fila}: ${x.error}`)
+          .join("\n");
+        resumen.push(`Primeros errores:\n${preview}`);
+      }
+
+      alert(resumen.join("\n"));
+      mostrarNotificacion(
+        `Importación finalizada. Creados: ${totalCreado}, errores: ${totalErroresBackend}`,
+        totalErroresBackend ? "warning" : "success"
+      );
+    } catch (error) {
+      console.error("Error importando equipos:", error);
+      mostrarNotificacion(error.message || "No se pudo importar el archivo", "error");
+    }
+  });
+}
+
+function abrirImportadorEquipos() {
+  if (usuarioEsTecnico()) {
+    mostrarNotificacion("No autorizado para importar equipos", "warning");
+    return;
+  }
+  const campId = Number.parseInt(document.getElementById("select-campeonato")?.value || "", 10);
+  if (!Number.isFinite(campId) || campId <= 0) {
+    mostrarNotificacion("Selecciona un campeonato antes de importar equipos", "warning");
+    return;
+  }
+  const input = document.getElementById("import-equipos-file");
+  if (!input) {
+    mostrarNotificacion("No se encontró el control para importar archivo", "error");
+    return;
+  }
+  input.click();
+}
+
+function descargarPlantillaEquipos() {
+  if (!window.XLSX) {
+    mostrarNotificacion("No se cargó la librería XLSX para descargar plantilla", "error");
+    return;
+  }
+
+  const filasPlantilla = [
+    CAMPOS_IMPORTACION_EQUIPOS,
+    [
+      "80 FC",
+      "Gonzalo González",
+      "Luis Iñaguazo",
+      "Carlos Medina",
+      "0999999999",
+      "",
+      "#F50505",
+      "#1E40AF",
+      "#16A34A",
+      "No",
+      "https://tu-dominio.com/logos/80fc.png",
+    ],
+  ];
+
+  const wsDatos = window.XLSX.utils.aoa_to_sheet(filasPlantilla);
+  wsDatos["!cols"] = [
+    { wch: 28 },
+    { wch: 28 },
+    { wch: 24 },
+    { wch: 24 },
+    { wch: 18 },
+    { wch: 26 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 14 },
+    { wch: 42 },
+  ];
+
+  const instrucciones = [
+    ["INSTRUCCIONES PARA IMPORTAR EQUIPOS"],
+    ["1) No cambies los nombres de columnas de la hoja Datos."],
+    ["2) Campos obligatorios: nombre y director_tecnico."],
+    ["3) El campo email es opcional."],
+    ["4) Colores deben ir en formato hexadecimal: #RRGGBB (opcional)."],
+    ["5) cabeza_serie acepta Si/No, True/False, 1/0."],
+    ["6) logo_url es opcional y debe ser una URL pública si se usa."],
+    ["7) Antes de importar, selecciona campeonato y (opcionalmente) categoría."],
+  ];
+  const wsInstrucciones = window.XLSX.utils.aoa_to_sheet(instrucciones);
+  wsInstrucciones["!cols"] = [{ wch: 95 }];
+
+  const wb = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb, wsDatos, "Datos");
+  window.XLSX.utils.book_append_sheet(wb, wsInstrucciones, "Instrucciones");
+  window.XLSX.writeFile(wb, "plantilla_equipos.xlsx");
 }
 
 function actualizarBotonesVistaEquipos() {
@@ -53,6 +386,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("equipos.html")) return;
   aplicarPermisosEquiposUI();
   actualizarBotonesVistaEquipos();
+  inicializarImportadorEquipos();
 
   // Parámetros URL (si viene desde Categorías)
   const params = new URLSearchParams(window.location.search);
@@ -64,7 +398,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (campeonatoId) {
     document.getElementById("select-campeonato").value = String(campeonatoId);
-    await cargarEventosSelect();
+    await cargarEventosSelect(eventoIdSeleccionado);
   }
   if (eventoIdSeleccionado) {
     document.getElementById("select-evento").value = String(eventoIdSeleccionado);
@@ -129,10 +463,13 @@ async function cargarCampeonatosSelect() {
 // ======================
 // Cargar Categorías en el select
 // ======================
-async function cargarEventosSelect() {
+async function cargarEventosSelect(eventoPreservado = null) {
   const select = document.getElementById("select-evento");
   if (!select || !campeonatoId) return;
   select.innerHTML = '<option value="">— Selecciona una categoría (opcional) —</option>';
+  const destinoEvento = Number.isFinite(Number(eventoPreservado))
+    ? Number(eventoPreservado)
+    : Number(eventoIdSeleccionado || 0);
 
   try {
     const data = await (window.EventosAPI?.obtenerPorCampeonato?.(campeonatoId) || window.ApiClient?.get?.(`/eventos/campeonato/${campeonatoId}`));
@@ -140,6 +477,14 @@ async function cargarEventosSelect() {
     lista.forEach((e) => {
       select.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
     });
+
+    if (destinoEvento > 0 && lista.some((e) => Number(e.id) === destinoEvento)) {
+      select.value = String(destinoEvento);
+      eventoIdSeleccionado = destinoEvento;
+    } else {
+      eventoIdSeleccionado = obtenerEventoSeleccionadoDesdeUI();
+    }
+
     select.onchange = () => {
       eventoIdSeleccionado = select.value ? parseInt(select.value, 10) : null;
       cargarEquipos();
@@ -191,7 +536,25 @@ async function cargarInfoContexto() {
 async function cargarEquipos() {
   const cont = document.getElementById("lista-equipos");
   const selectCamp = document.getElementById("select-campeonato");
-  campeonatoId = selectCamp?.value ? parseInt(selectCamp.value, 10) : null;
+  const campDesdeUI = selectCamp?.value ? parseInt(selectCamp.value, 10) : null;
+  if (!campDesdeUI && Number.isFinite(Number(campeonatoId)) && Number(campeonatoId) > 0 && selectCamp) {
+    if ([...selectCamp.options].some((opt) => Number(opt.value) === Number(campeonatoId))) {
+      selectCamp.value = String(campeonatoId);
+    }
+  }
+  campeonatoId = selectCamp?.value
+    ? parseInt(selectCamp.value, 10)
+    : (Number.isFinite(Number(campeonatoId)) && Number(campeonatoId) > 0 ? Number(campeonatoId) : null);
+
+  const eventoDesdeUI = obtenerEventoSeleccionadoDesdeUI();
+  if (!eventoDesdeUI && Number.isFinite(Number(eventoIdSeleccionado)) && Number(eventoIdSeleccionado) > 0) {
+    const selectEvento = document.getElementById("select-evento");
+    if (selectEvento && [...selectEvento.options].some((opt) => Number(opt.value) === Number(eventoIdSeleccionado))) {
+      selectEvento.value = String(eventoIdSeleccionado);
+    }
+  }
+  eventoIdSeleccionado = obtenerEventoSeleccionadoDesdeUI()
+    || (Number.isFinite(Number(eventoIdSeleccionado)) && Number(eventoIdSeleccionado) > 0 ? Number(eventoIdSeleccionado) : null);
 
   if (!campeonatoId) {
     mostrarNotificacion("Selecciona un campeonato", "warning");
@@ -243,10 +606,13 @@ function renderListadoEquipos() {
 
   if (!equiposCache.length) {
     cont.classList.remove("list-mode-table");
+    const mensaje = eventoIdSeleccionado
+      ? "No hay equipos activos en esta categoría."
+      : "No hay equipos registrados en este campeonato.";
     cont.innerHTML = `
       <div class="empty-state">
         <i class="fas fa-users-slash"></i>
-        <p>No hay equipos registrados en este campeonato.</p>
+        <p>${mensaje}</p>
         <p><small>Haz clic en "Nuevo Equipo" para crear uno.</small></p>
       </div>
     `;
@@ -270,6 +636,13 @@ function renderEquipoCard(equipo, index = 0) {
   const accionesAdmin = usuarioEsTecnico()
     ? ""
     : `
+        ${
+          eventoIdSeleccionado
+            ? `<button class="btn btn-secondary" onclick="moverEquipoCategoria(${equipo.id})">
+                <i class="fas fa-right-left"></i> Cambiar categoría
+              </button>`
+            : ""
+        }
         <button class="btn btn-warning" onclick="editarEquipo(${equipo.id})">
           <i class="fas fa-edit"></i> Editar
         </button>
@@ -314,6 +687,13 @@ function renderTablaEquipos(equipos) {
       const accionesAdmin = usuarioEsTecnico()
         ? ""
         : `
+            ${
+              eventoIdSeleccionado
+                ? `<button class="btn btn-secondary" onclick="moverEquipoCategoria(${equipo.id})">
+                    <i class="fas fa-right-left"></i> Cambiar categoría
+                  </button>`
+                : ""
+            }
             <button class="btn btn-warning" onclick="editarEquipo(${equipo.id})">
               <i class="fas fa-edit"></i> Editar
             </button>
@@ -436,10 +816,17 @@ async function guardarEquipo() {
     mostrarNotificacion("No autorizado para registrar o editar equipos", "warning");
     return;
   }
+  const selectCampeonato = document.getElementById("select-campeonato");
+  const campeonatoPrevio = selectCampeonato?.value
+    ? parseInt(selectCampeonato.value, 10)
+    : (Number.isFinite(Number(campeonatoId)) ? Number(campeonatoId) : null);
   const tabActivo = document.querySelector(".modal-tab.active")?.dataset?.tab;
   const usarExistente = tabActivo === "existente";
   const selectEvento = document.getElementById("select-evento");
   eventoIdSeleccionado = selectEvento?.value ? parseInt(selectEvento.value, 10) : null;
+  const eventoPrevio = Number.isFinite(Number(eventoIdSeleccionado))
+    ? Number(eventoIdSeleccionado)
+    : null;
   const estaEditando = Number.isFinite(Number(equipoEditandoId)) && Number(equipoEditandoId) > 0;
 
   if (usarExistente && !estaEditando) {
@@ -467,6 +854,7 @@ async function guardarEquipo() {
   const dt = document.getElementById("equipo-dt").value.trim();
   const email = document.getElementById("equipo-email").value.trim();
   const telefono = document.getElementById("equipo-telefono").value.trim();
+  const nombreLower = nombre.toLowerCase();
 
   if (!nombre) {
     mostrarNotificacion("El nombre del equipo es obligatorio", "warning");
@@ -476,13 +864,21 @@ async function guardarEquipo() {
     mostrarNotificacion("El técnico o dueño es obligatorio", "warning");
     return;
   }
-  if (!email) {
-    mostrarNotificacion("El correo electrónico es obligatorio", "warning");
-    return;
-  }
   if (!telefono) {
     mostrarNotificacion("El número de celular es obligatorio", "warning");
     return;
+  }
+  if (eventoIdSeleccionado) {
+    const repetidoEnCategoria = equiposCache.some((e) => {
+      const mismoNombre = String(e?.nombre || "").trim().toLowerCase() === nombreLower;
+      if (!mismoNombre) return false;
+      if (estaEditando && Number(e?.id) === Number(equipoEditandoId)) return false;
+      return true;
+    });
+    if (repetidoEnCategoria) {
+      mostrarNotificacion("Ya existe un equipo con ese nombre en la categoría seleccionada", "warning");
+      return;
+    }
   }
 
   const fd = new FormData();
@@ -499,8 +895,11 @@ async function guardarEquipo() {
   fd.append("color_terciario", c3);
   fd.append("color_equipo", c1 || c2 || c3 || "");
   fd.append("telefono", telefono);
-  fd.append("email", email);
+  fd.append("email", email || "");
   fd.append("cabeza_serie", document.getElementById("equipo-cabeza-serie").checked);
+  if (eventoIdSeleccionado) {
+    fd.append("evento_id", String(eventoIdSeleccionado));
+  }
 
   const logoInput = document.getElementById("equipo-logo");
   if (logoInput?.files?.[0]) {
@@ -517,17 +916,28 @@ async function guardarEquipo() {
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || (estaEditando ? "Error actualizando equipo" : "Error creando equipo"));
 
-    let mensaje = estaEditando ? "Equipo actualizado correctamente" : "Equipo creado correctamente";
-    if (!estaEditando && eventoIdSeleccionado && data.equipo) {
-      try {
-        await window.ApiClient.post(`/eventos/${eventoIdSeleccionado}/equipos`, { equipo_id: data.equipo.id });
-        mensaje = "Equipo creado y asignado a la categoría";
-      } catch (_) {}
-    }
+    const mensaje = estaEditando
+      ? "Equipo actualizado correctamente"
+      : (eventoIdSeleccionado ? "Equipo creado y asignado a la categoría" : "Equipo creado correctamente");
     equipoEditandoId = null;
     mostrarNotificacion(mensaje, "success");
     cerrarModal("modal-equipo");
-    cargarEquipos();
+
+    if (Number.isFinite(Number(campeonatoPrevio)) && campeonatoPrevio > 0) {
+      campeonatoId = campeonatoPrevio;
+      const selectCampActual = document.getElementById("select-campeonato");
+      if (selectCampActual && String(selectCampActual.value || "") !== String(campeonatoPrevio)) {
+        selectCampActual.value = String(campeonatoPrevio);
+      }
+    }
+    if (eventoPrevio) {
+      eventoIdSeleccionado = eventoPrevio;
+      const selectEventoActual = document.getElementById("select-evento");
+      if (selectEventoActual && String(selectEventoActual.value || "") !== String(eventoPrevio)) {
+        selectEventoActual.value = String(eventoPrevio);
+      }
+    }
+    await cargarEquipos();
   } catch (err) {
     mostrarNotificacion(err.message || (estaEditando ? "Error actualizando equipo" : "Error creando equipo"), "error");
   }
@@ -604,6 +1014,52 @@ async function eliminarEquipo(id) {
   }
 }
 
+async function moverEquipoCategoria(equipoId) {
+  if (usuarioEsTecnico()) {
+    mostrarNotificacion("No autorizado para cambiar categoría", "warning");
+    return;
+  }
+  if (!campeonatoId || !eventoIdSeleccionado) {
+    mostrarNotificacion("Selecciona una categoría origen para mover el equipo", "warning");
+    return;
+  }
+
+  try {
+    const resp = await (window.EventosAPI?.obtenerPorCampeonato?.(campeonatoId) || window.ApiClient?.get?.(`/eventos/campeonato/${campeonatoId}`));
+    const eventos = Array.isArray(resp) ? resp : (resp.eventos || resp.data || []);
+    const opciones = eventos.filter((e) => Number(e.id) !== Number(eventoIdSeleccionado));
+    if (!opciones.length) {
+      mostrarNotificacion("No existen otras categorías disponibles para mover el equipo", "warning");
+      return;
+    }
+
+    const promptListado = opciones.map((e) => `${e.id}: ${e.nombre}`).join("\n");
+    const valor = window.prompt(
+      `Ingresa el ID de la categoría destino:\n${promptListado}`,
+      String(opciones[0].id)
+    );
+    if (valor === null) return;
+
+    const destinoId = Number.parseInt(String(valor).trim(), 10);
+    if (!Number.isFinite(destinoId) || destinoId <= 0) {
+      mostrarNotificacion("Categoría destino inválida", "warning");
+      return;
+    }
+    if (!opciones.some((e) => Number(e.id) === destinoId)) {
+      mostrarNotificacion("La categoría destino no pertenece al campeonato seleccionado", "warning");
+      return;
+    }
+
+    await window.ApiClient.delete(`/eventos/${eventoIdSeleccionado}/equipos/${equipoId}`);
+    await window.ApiClient.post(`/eventos/${destinoId}/equipos`, { equipo_id: Number(equipoId) });
+    mostrarNotificacion("Equipo movido de categoría correctamente", "success");
+    await cargarEquipos();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo mover el equipo de categoría", "error");
+  }
+}
+
 function irAJugadores(equipoId) {
   if (!campeonatoId) {
     mostrarNotificacion("Selecciona un campeonato primero", "warning");
@@ -651,9 +1107,12 @@ window.cerrarModalEquipo = cerrarModalEquipo;
 window.guardarEquipo = guardarEquipo;
 window.editarEquipo = editarEquipo;
 window.eliminarEquipo = eliminarEquipo;
+window.moverEquipoCategoria = moverEquipoCategoria;
 window.irASorteo = irASorteo;
 window.irAJugadores = irAJugadores;
 window.cambiarVistaEquipos = cambiarVistaEquipos;
+window.abrirImportadorEquipos = abrirImportadorEquipos;
+window.descargarPlantillaEquipos = descargarPlantillaEquipos;
 
 
 

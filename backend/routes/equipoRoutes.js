@@ -21,6 +21,13 @@ router.post(
   equipoController.crearEquipo
 );
 
+router.post(
+  "/importar-masivo",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  equipoController.importarEquiposMasivo
+);
+
 
 
 // READ

@@ -47,12 +47,17 @@
               <select id="select-campeonato"></select>
             </div>
 
-            <button class="btn btn-primary" onclick="cargarEventos()">
-              <i class="fas fa-search"></i> Cargar Categorías
-            </button>
+            <div class="actions">
+              <button class="btn btn-primary" onclick="cargarEventos()">
+                <i class="fas fa-search"></i> Cargar Categorías
+              </button>
+              <button class="btn btn-success" onclick="toggleFormularioCategoria()">
+                <i class="fas fa-plus"></i> Nueva Categoría
+              </button>
+            </div>
           </div>
 
-          <div class="config-card">
+          <div class="config-card" id="bloque-crear-evento" style="display:none;">
             <h3>Crear Categoría</h3>
 
             <div class="form-group">
@@ -117,9 +122,14 @@
               />
             </div>
 
-            <button class="btn btn-success" onclick="crearEvento()">
-              <i class="fas fa-plus"></i> Crear Categoría
-            </button>
+            <div class="actions">
+              <button class="btn btn-success" onclick="crearEvento()">
+                <i class="fas fa-plus"></i> Crear Categoría
+              </button>
+              <button class="btn btn-outline" onclick="toggleFormularioCategoria(false)">
+                <i class="fas fa-xmark"></i> Cerrar
+              </button>
+            </div>
           </div>
 
           <div class="action-bar">

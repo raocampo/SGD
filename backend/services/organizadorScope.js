@@ -14,6 +14,7 @@ async function obtenerCampeonatoIdsOrganizador(user, client = pool) {
   if (!Number.isFinite(userId) || userId <= 0) return [];
 
   const nombre = normalizar(user?.nombre);
+  const organizacion = normalizar(user?.organizacion_nombre);
   const email = normalizar(user?.email);
 
   const r = await client.query(
@@ -27,7 +28,7 @@ async function obtenerCampeonatoIdsOrganizador(user, client = pool) {
          )
       ORDER BY id
     `,
-    [userId, [nombre, email].filter(Boolean)]
+    [userId, [nombre, organizacion, email].filter(Boolean)]
   );
 
   const ids = r.rows

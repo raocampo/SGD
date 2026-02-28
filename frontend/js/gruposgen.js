@@ -13,6 +13,7 @@ let gruposUiState = {
   playoffIframeSrc: "",
   tabActiva: "panel-grupos",
 };
+let gruposEventosCache = [];
 
 function getQueryParam(name) {
   const params = new URLSearchParams(window.location.search);
@@ -23,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("gruposgen.html")) return;
 
   const select = document.getElementById("select-campeonato-grupos");
+  const selectEventoGrupos = document.getElementById("select-evento-grupos");
   const btnRecargar = document.getElementById("btn-recargar-grupos");
   const btnExportImg = document.getElementById("btn-grupos-export-img");
   const btnExportPdf = document.getElementById("btn-grupos-export-pdf");
@@ -42,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (Number.isFinite(eventoParam) && eventoParam > 0) {
     await aplicarContextoEventoDesdeURL(eventoParam, select, campeonatoParam);
+    await cargarEventosEnSelectGrupos(getCampeonatoIdActual(), eventoParam);
   } else if (Number.isFinite(campeonatoParam) && campeonatoParam > 0) {
     select.value = String(campeonatoParam);
     contextoGrupos = {
@@ -50,7 +53,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       eventoNombre: "",
       auspiciantes: [],
     };
+    await cargarEventosEnSelectGrupos(campeonatoParam, null);
     await cargarYMostrarGrupos({ campeonatoId: campeonatoParam, eventoId: null });
+  } else {
+    await cargarEventosEnSelectGrupos(null, null);
   }
   await refrescarSelectEventoPlayoff(getCampeonatoIdActual(), getEventoIdActual());
 
@@ -66,20 +72,49 @@ document.addEventListener("DOMContentLoaded", async () => {
       auspiciantes: [],
     };
 
+    await cargarEventosEnSelectGrupos(campeonatoId, null);
     await cargarYMostrarGrupos({ campeonatoId, eventoId: null });
     await refrescarSelectEventoPlayoff(campeonatoId, null);
   });
 
+  selectEventoGrupos?.addEventListener("change", async () => {
+    const campeonatoId = Number.parseInt(select.value || "", 10);
+    if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
+      mostrarNotificacion("Selecciona un campeonato primero", "warning");
+      return;
+    }
+
+    const eventoId = Number.parseInt(selectEventoGrupos.value || "", 10);
+    const evento = gruposEventosCache.find((e) => Number(e.id) === Number(eventoId)) || null;
+    const eventoNombre = evento?.nombre || "";
+
+    contextoGrupos = {
+      campeonatoId,
+      eventoId: Number.isFinite(eventoId) && eventoId > 0 ? eventoId : null,
+      eventoNombre,
+      auspiciantes: [],
+    };
+
+    await cargarYMostrarGrupos({
+      campeonatoId,
+      eventoId: contextoGrupos.eventoId,
+      eventoNombre: contextoGrupos.eventoNombre,
+    });
+    await refrescarSelectEventoPlayoff(campeonatoId, contextoGrupos.eventoId);
+  });
+
   btnRecargar.addEventListener("click", async () => {
     const campeonatoId = Number.parseInt(select.value || "", 10);
-    const eventoId = getEventoIdActual();
+    const eventoIdRaw = Number.parseInt(selectEventoGrupos?.value || "", 10);
+    const eventoId = Number.isFinite(eventoIdRaw) && eventoIdRaw > 0 ? eventoIdRaw : null;
+    const evento = gruposEventosCache.find((e) => Number(e.id) === Number(eventoId)) || null;
 
     if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
       mostrarNotificacion("Selecciona un campeonato", "warning");
       return;
     }
 
-    await cargarYMostrarGrupos({ campeonatoId, eventoId });
+    await cargarYMostrarGrupos({ campeonatoId, eventoId, eventoNombre: evento?.nombre || "" });
     await refrescarSelectEventoPlayoff(campeonatoId, eventoId);
   });
 
@@ -257,6 +292,45 @@ async function cargarCampeonatosEnSelect(select) {
   } catch (e) {
     console.error(e);
     mostrarNotificacion("Error cargando campeonatos", "error");
+  }
+}
+
+async function cargarEventosEnSelectGrupos(campeonatoIdRaw, eventoPreferidoRaw = null) {
+  const selectEvento = document.getElementById("select-evento-grupos");
+  if (!selectEvento) return;
+
+  const campeonatoId = Number.parseInt(campeonatoIdRaw || "", 10);
+  const eventoPreferido = Number.parseInt(eventoPreferidoRaw || "", 10);
+  gruposEventosCache = [];
+  selectEvento.innerHTML = '<option value="">— Todas las categorías —</option>';
+
+  if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
+    selectEvento.disabled = true;
+    return;
+  }
+
+  try {
+    const data = await ApiClient.get(`/eventos/campeonato/${campeonatoId}`);
+    const eventos = Array.isArray(data?.eventos) ? data.eventos : [];
+    gruposEventosCache = eventos;
+
+    eventos.forEach((evento) => {
+      const option = document.createElement("option");
+      option.value = String(evento.id);
+      option.textContent = evento.nombre || `Categoría #${evento.id}`;
+      selectEvento.appendChild(option);
+    });
+
+    if (Number.isFinite(eventoPreferido) && eventoPreferido > 0) {
+      const existe = eventos.some((e) => Number(e.id) === Number(eventoPreferido));
+      selectEvento.value = existe ? String(eventoPreferido) : "";
+    } else {
+      selectEvento.value = "";
+    }
+    selectEvento.disabled = false;
+  } catch (error) {
+    console.error("No se pudieron cargar categorías para grupos:", error);
+    selectEvento.disabled = true;
   }
 }
 
@@ -485,7 +559,12 @@ async function inlineImagesAsBase64(zona) {
 }
 
 function volverInicio() {
-  window.location.href = "index.html";
+  const campeonatoId = getCampeonatoIdActual();
+  const eventoId = getEventoIdActual();
+  const params = new URLSearchParams();
+  if (campeonatoId) params.set("campeonato", String(campeonatoId));
+  if (eventoId) params.set("evento", String(eventoId));
+  window.location.href = params.toString() ? `sorteo.html?${params.toString()}` : "sorteo.html";
 }
 
 function getZonaExport() {
@@ -728,6 +807,9 @@ function getCampeonatoIdActual() {
 }
 
 function getEventoIdActual() {
+  const selectEvento = document.getElementById("select-evento-grupos");
+  if (selectEvento && selectEvento.value) return selectEvento.value;
+
   if (contextoGrupos.eventoId) return String(contextoGrupos.eventoId);
 
   const params = new URLSearchParams(window.location.search);

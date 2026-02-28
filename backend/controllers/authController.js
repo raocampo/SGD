@@ -117,6 +117,7 @@ const authController = {
       const email = String(req.body?.email || "").trim();
       const password = String(req.body?.password || "");
       const rolSolicitado = String(req.body?.rol || "").trim().toLowerCase();
+      const organizacionNombre = String(req.body?.organizacion_nombre || "").trim();
       const planCodigoRaw = String(req.body?.plan_codigo || "demo").trim().toLowerCase();
 
       if (!nombre || !email || !password || !rolSolicitado) {
@@ -124,6 +125,11 @@ const authController = {
       }
       if (!ROLES_REGISTRO_PUBLICO.has(rolSolicitado)) {
         return res.status(400).json({ error: "rol invalido. Use: organizador, dirigente o tecnico" });
+      }
+      if (rolSolicitado === "organizador" && !organizacionNombre) {
+        return res.status(400).json({
+          error: "organizacion_nombre es obligatorio para organizador",
+        });
       }
       if (!esPlanPublico(planCodigoRaw)) {
         return res.status(400).json({ error: "plan invalido. Use: demo, free, base, competencia o premium" });
@@ -140,6 +146,7 @@ const authController = {
         solo_lectura: false,
         plan_codigo: planCodigo,
         plan_estado: "activo",
+        organizacion_nombre: rolSolicitado === "organizador" ? organizacionNombre : null,
       });
 
       const user = await UsuarioAuth.obtenerPorId(creado.id);
@@ -247,6 +254,7 @@ const authController = {
 
       const aliasOrganizador = [
         String(organizador.nombre || "").trim().toLowerCase(),
+        String(organizador.organizacion_nombre || "").trim().toLowerCase(),
         String(organizador.email || "").trim().toLowerCase(),
       ].filter(Boolean);
 
@@ -313,6 +321,13 @@ const authController = {
       } else if (esAdmin) {
         const rolDestino = String(body?.rol || "").trim().toLowerCase();
         if (rolDestino === "organizador") {
+          const organizacionNombre = String(body?.organizacion_nombre || "").trim();
+          if (!organizacionNombre) {
+            return res
+              .status(400)
+              .json({ error: "organizacion_nombre es obligatorio para organizador" });
+          }
+          body.organizacion_nombre = organizacionNombre;
           body.plan_codigo = normalizarPlanCodigo(body?.plan_codigo, "free");
           body.plan_estado =
             String(body?.plan_estado || "activo").trim().toLowerCase() === "suspendido"

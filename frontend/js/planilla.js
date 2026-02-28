@@ -2,6 +2,7 @@
 
 let partidoId = null;
 let eventoId = null;
+let campeonatoIdContexto = null;
 let dataPlanilla = null;
 let equiposPartido = {
   local: { id: null, nombre: "Local" },
@@ -1157,38 +1158,59 @@ async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
 }
 
 async function cargarEventosSelectorPlanilla() {
+  const selectCampeonato = document.getElementById("select-campeonato-planilla");
   const selectEvento = document.getElementById("select-evento-planilla");
   const selectJornada = document.getElementById("select-jornada-planilla");
   const selectPartido = document.getElementById("select-partido-planilla");
   if (!selectEvento || !selectJornada || !selectPartido) return;
 
   selectEvento.innerHTML = '<option value="">- Selecciona una categoría -</option>';
+  selectEvento.disabled = true;
+  if (selectPartido) {
+    selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
+  }
 
   try {
-    const resp = await ApiClient.get("/eventos");
+    if (selectCampeonato?.value) {
+      const campSel = Number.parseInt(selectCampeonato.value, 10);
+      if (Number.isFinite(campSel) && campSel > 0) {
+        campeonatoIdContexto = campSel;
+      }
+    }
+
+    const campId = Number.parseInt(campeonatoIdContexto, 10);
+    if (!Number.isFinite(campId) || campId <= 0) {
+      eventosPlanillaCache = [];
+      return;
+    }
+
+    const endpoint = `/eventos/campeonato/${campId}`;
+    const resp = await ApiClient.get(endpoint);
     eventosPlanillaCache = Array.isArray(resp) ? resp : (resp.eventos || []);
+    selectEvento.disabled = false;
 
     eventosPlanillaCache.forEach((e) => {
-      selectEvento.innerHTML += `<option value="${e.id}">${escapeHtml(e.nombre)} (${escapeHtml(e.categoria || "Sin categoria")})</option>`;
+      const nombre = String(e?.nombre || `Categoría ${e?.id || ""}`).trim();
+      selectEvento.innerHTML += `<option value="${e.id}">${escapeHtml(nombre)}</option>`;
     });
 
-    selectEvento.addEventListener("change", async () => {
+    selectEvento.onchange = async () => {
       eventoId = selectEvento.value ? Number(selectEvento.value) : null;
       jornadaSelectorActual = "";
       partidoId = NaN;
       await cargarPartidosSelectorPorEvento(eventoId);
       actualizarVisibilidadContenidoPlanilla(false);
-    });
+    };
 
-    selectJornada.addEventListener("change", () => {
+    selectJornada.onchange = () => {
       jornadaSelectorActual = selectJornada.value || "";
       poblarPartidosSelectorPlanilla();
-    });
+    };
 
-    selectPartido.addEventListener("change", () => {
+    selectPartido.onchange = () => {
       const idSel = Number(selectPartido.value);
       partidoId = Number.isFinite(idSel) ? idSel : NaN;
-    });
+    };
 
     if (Number.isFinite(Number(eventoId))) {
       selectEvento.value = String(eventoId);
@@ -1197,6 +1219,111 @@ async function cargarEventosSelectorPlanilla() {
   } catch (error) {
     console.error("Error cargando Categorías para planillaje directo:", error);
     mostrarNotificacion("Error cargando Categorías", "error");
+  }
+}
+
+async function cargarCampeonatosSelectorPlanilla() {
+  const selectCampeonato = document.getElementById("select-campeonato-planilla");
+  if (!selectCampeonato) {
+    await cargarEventosSelectorPlanilla();
+    return;
+  }
+
+  selectCampeonato.innerHTML = '<option value="">- Selecciona un campeonato -</option>';
+  try {
+    const respCamp = await ApiClient.get("/campeonatos");
+    const lista = Array.isArray(respCamp) ? respCamp : (respCamp?.campeonatos || []);
+
+    lista.forEach((camp) => {
+      selectCampeonato.innerHTML += `<option value="${camp.id}">${escapeHtml(camp.nombre || `Campeonato ${camp.id}`)}</option>`;
+    });
+
+    if (Number.isFinite(Number(campeonatoIdContexto)) && campeonatoIdContexto > 0) {
+      const existe = lista.some((c) => Number(c.id) === Number(campeonatoIdContexto));
+      if (existe) {
+        selectCampeonato.value = String(campeonatoIdContexto);
+      }
+    }
+
+    if (!selectCampeonato.value && lista.length) {
+      const ultimo = [...lista].sort((a, b) => Number(b.id) - Number(a.id))[0];
+      const campDefault = Number.parseInt(ultimo?.id, 10);
+      if (Number.isFinite(campDefault) && campDefault > 0) {
+        campeonatoIdContexto = campDefault;
+        localStorage.setItem("sgd_planilla_camp", String(campDefault));
+        selectCampeonato.value = String(campDefault);
+      }
+    }
+
+    selectCampeonato.onchange = async () => {
+      const campId = Number.parseInt(selectCampeonato.value || "", 10);
+      campeonatoIdContexto = Number.isFinite(campId) && campId > 0 ? campId : null;
+      if (Number.isFinite(Number(campeonatoIdContexto))) {
+        localStorage.setItem("sgd_planilla_camp", String(campeonatoIdContexto));
+      }
+
+      eventoId = null;
+      partidoId = NaN;
+      jornadaSelectorActual = "";
+      actualizarVisibilidadContenidoPlanilla(false);
+      await cargarEventosSelectorPlanilla();
+    };
+  } catch (error) {
+    console.error("Error cargando campeonatos en planilla:", error);
+    mostrarNotificacion("Error cargando campeonatos", "error");
+  }
+
+  await cargarEventosSelectorPlanilla();
+}
+
+async function resolverCampeonatoContextoPlanilla() {
+  const campFromUrl = aEntero(qp("campeonato"), NaN);
+  if (Number.isFinite(campFromUrl) && campFromUrl > 0) {
+    campeonatoIdContexto = campFromUrl;
+    localStorage.setItem("sgd_planilla_camp", String(campFromUrl));
+    return;
+  }
+
+  const campCachePlanilla = aEntero(localStorage.getItem("sgd_planilla_camp"), NaN);
+  if (Number.isFinite(campCachePlanilla) && campCachePlanilla > 0) {
+    campeonatoIdContexto = campCachePlanilla;
+  }
+
+  const campCachePartidos = aEntero(localStorage.getItem("sgd_partidos_camp"), NaN);
+  if (!Number.isFinite(Number(campeonatoIdContexto)) && Number.isFinite(campCachePartidos) && campCachePartidos > 0) {
+    campeonatoIdContexto = campCachePartidos;
+  }
+
+  const eventoFromUrl = aEntero(qp("evento"), NaN);
+  if (Number.isFinite(eventoFromUrl) && eventoFromUrl > 0) {
+    try {
+      const respEvento = await ApiClient.get(`/eventos/${eventoFromUrl}`);
+      const evento = respEvento?.evento || respEvento || {};
+      const campEvt = Number.parseInt(evento?.campeonato_id, 10);
+      if (Number.isFinite(campEvt) && campEvt > 0) {
+        campeonatoIdContexto = campEvt;
+        localStorage.setItem("sgd_planilla_camp", String(campEvt));
+      }
+    } catch (error) {
+      console.warn("No se pudo resolver campeonato de la categoría para planilla:", error);
+    }
+  }
+
+  if (!Number.isFinite(Number(campeonatoIdContexto))) {
+    try {
+      const respCamp = await ApiClient.get("/campeonatos");
+      const lista = Array.isArray(respCamp) ? respCamp : (respCamp?.campeonatos || []);
+      if (lista.length) {
+        const ultimo = [...lista].sort((a, b) => Number(b.id) - Number(a.id))[0];
+        const campDefault = Number.parseInt(ultimo?.id, 10);
+        if (Number.isFinite(campDefault) && campDefault > 0) {
+          campeonatoIdContexto = campDefault;
+          localStorage.setItem("sgd_planilla_camp", String(campDefault));
+        }
+      }
+    } catch (error) {
+      console.warn("No se pudo obtener campeonato por defecto para planilla:", error);
+    }
   }
 }
 
@@ -2603,11 +2730,14 @@ async function exportarPlanillaXLSX() {
 }
 
 function volverAPartidos() {
-  if (eventoId) {
-    window.location.href = `partidos.html?evento=${eventoId}`;
-    return;
+  const params = new URLSearchParams();
+  if (Number.isFinite(Number(campeonatoIdContexto)) && Number(campeonatoIdContexto) > 0) {
+    params.set("campeonato", String(campeonatoIdContexto));
   }
-  window.location.href = "partidos.html";
+  if (eventoId) {
+    params.set("evento", String(eventoId));
+  }
+  window.location.href = params.toString() ? `partidos.html?${params.toString()}` : "partidos.html";
 }
 
 function recargarPlanilla() {
@@ -2624,6 +2754,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   partidoId = aEntero(qp("partido"), NaN);
   eventoId = aEntero(qp("evento"), NaN);
   if (!Number.isFinite(Number(eventoId))) eventoId = null;
+  await resolverCampeonatoContextoPlanilla();
 
   const formPlanilla = document.getElementById("form-planilla");
   formPlanilla?.addEventListener("submit", guardarPlanilla);
@@ -2635,7 +2766,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     actualizarHeaderMetaEditable();
   });
 
-  await cargarEventosSelectorPlanilla();
+  await cargarCampeonatosSelectorPlanilla();
 
   if (Number.isFinite(Number(partidoId)) && Number(partidoId) > 0) {
     await cargarPlanilla();

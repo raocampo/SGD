@@ -28,11 +28,15 @@ body {
   line-height: 1.6;
 }
 
+body.app-layout {
+  overflow-x: hidden;
+}
+
 /* Contenedor genérico */
 .container {
   max-width: 120rem;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0 clamp(0.75rem, 2.4vw, 2rem);
 }
 
 /* ============================
@@ -113,6 +117,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 .sidebar.collapsed ~ .main-wrapper {
   margin-left: 0;
@@ -125,6 +130,8 @@ body {
   align-items: center;
   gap: 1rem;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  min-width: 0;
+  flex-wrap: wrap;
 }
 .top-bar .nav-toggle {
   display: flex;
@@ -146,6 +153,9 @@ body {
 .top-bar h1 {
   font-size: 1.4rem;
   margin: 0;
+  line-height: 1.2;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* Fallback para páginas sin app-layout (portal, etc) */
@@ -194,7 +204,15 @@ body {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 2rem 0 2.5rem;
+  padding: 2rem clamp(0.75rem, 2.4vw, 2rem) 2.5rem;
+  min-width: 0;
+}
+
+.app-layout > .main-wrapper > main.container {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 2rem clamp(0.75rem, 2.4vw, 2rem) 2.5rem;
 }
 
 .section {
@@ -210,6 +228,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  min-width: 0;
 }
 
 .section h2 {
@@ -361,8 +380,24 @@ body {
   margin: 0.5rem 0 1rem;
 }
 
+.partidos-actions,
+.partidos-busqueda-actions,
+.tablas-filtros-actions,
+.reportes-actions,
+.fixture-accordion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
 .actions .btn,
-.action-bar .btn {
+.action-bar .btn,
+.partidos-actions .btn,
+.partidos-busqueda-actions .btn,
+.tablas-filtros-actions .btn,
+.reportes-actions .btn,
+.fixture-accordion-actions .btn {
   min-height: 42px;
 }
 
@@ -787,6 +822,32 @@ body {
   max-width: 420px;
 }
 
+.manual-directo-controls {
+  margin: 1.2rem auto 0;
+  width: 100%;
+  max-width: 480px;
+  display: grid;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.manual-directo-controls .form-group {
+  margin-bottom: 0;
+}
+
+.manual-directo-controls label {
+  color: #ffffff;
+}
+
+.manual-directo-controls select {
+  background: #ffffff;
+}
+
+.manual-directo-controls .btn {
+  width: 100%;
+  justify-content: center;
+}
+
 .page-sorteo .ruleta-controls .btn {
   width: 100%;
   justify-content: center;
@@ -998,6 +1059,13 @@ body {
   display: block;
 }
 
+.top-user-badge {
+  max-width: min(58vw, 560px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .item-index {
   display: inline-block;
   min-width: 0.5rem;
@@ -1132,6 +1200,44 @@ body {
   font-size: 0.82rem;
 }
 
+.usuarios-table-wrap {
+  width: 100%;
+}
+
+.usuarios-list-table {
+  min-width: 1250px;
+}
+
+.usuarios-list-table th:nth-child(1),
+.usuarios-list-table td:nth-child(1) {
+  width: 60px;
+}
+
+.usuarios-list-table th:nth-child(2),
+.usuarios-list-table td:nth-child(2) {
+  min-width: 170px;
+}
+
+.usuarios-list-table th:nth-child(3),
+.usuarios-list-table td:nth-child(3) {
+  min-width: 220px;
+}
+
+.usuarios-list-table th:nth-child(4),
+.usuarios-list-table td:nth-child(4) {
+  min-width: 130px;
+}
+
+.usuarios-list-table th:nth-child(5),
+.usuarios-list-table td:nth-child(5) {
+  min-width: 220px;
+}
+
+.usuarios-list-table th:nth-child(11),
+.usuarios-list-table td:nth-child(11) {
+  min-width: 180px;
+}
+
 @media (min-width: 1200px) {
   #lista-equipos {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1167,6 +1273,29 @@ body {
 /* ============================
    RESPONSIVE
 ============================ */
+@media (max-width: 1024px) {
+  .main {
+    padding: 1.5rem 0 2rem;
+  }
+
+  .app-layout > .main-wrapper > main.container {
+    padding: 1.5rem 0 2rem;
+  }
+
+  .top-bar {
+    padding: 0.65rem 1rem;
+  }
+
+  .top-bar h1 {
+    font-size: 1.15rem;
+  }
+
+  .top-user-badge {
+    max-width: 100%;
+    font-size: 0.72rem;
+  }
+}
+
 @media (max-width: 900px) {
   .header .container {
     flex-direction: column;
@@ -1187,6 +1316,23 @@ body {
 @media (max-width: 768px) {
   .main {
     padding: 1.25rem 0 1.75rem;
+  }
+
+  .app-layout > .main-wrapper > main.container {
+    padding: 1.25rem 0 1.75rem;
+  }
+
+  .top-bar {
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .top-bar h1 {
+    font-size: 1rem;
+  }
+
+  .container {
+    padding: 0 0.85rem;
   }
 
   .stats-grid {
@@ -1232,7 +1378,12 @@ body {
   }
 
   .actions .btn,
-  .action-bar .btn {
+  .action-bar .btn,
+  .partidos-actions .btn,
+  .partidos-busqueda-actions .btn,
+  .tablas-filtros-actions .btn,
+  .reportes-actions .btn,
+  .fixture-accordion-actions .btn {
     width: 100%;
     justify-content: center;
   }
@@ -1254,11 +1405,11 @@ body {
 }
 
 /* Sidebar: en móvil siempre oculto por defecto, overlay al abrir */
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
   .sidebar {
     transform: translateX(-100%);
-    width: 280px;
-    max-width: 85vw;
+    width: 300px;
+    max-width: 86vw;
   }
   .sidebar.nav-open {
     transform: translateX(0);
@@ -1685,7 +1836,15 @@ body.modal-open {
 }
 
 .fixture-generation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
   margin-top: 0.25rem;
+}
+
+.fixture-generation-actions .btn {
+  flex: 1 1 240px;
+  justify-content: center;
 }
 
 .fixture-accordion-actions {
@@ -1693,6 +1852,11 @@ body.modal-open {
   gap: 0.7rem;
   flex-wrap: wrap;
   padding: 0.2rem 0 1rem;
+}
+
+.fixture-accordion-actions .btn {
+  flex: 1 1 210px;
+  justify-content: center;
 }
 
 .page-fixture .header .container {
@@ -1781,6 +1945,20 @@ body.modal-open {
   .page-partidos #fixture-grupos.cols-4 {
     grid-template-columns: 1fr;
   }
+
+  .partidos-main-tab {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+
+  .fixture-generation-actions .btn,
+  .fixture-accordion-actions .btn {
+    flex: 1 1 100%;
+  }
+
+  .page-partidos .fixture-poster {
+    padding: 0.65rem;
+  }
 }
 
 /* ============================
@@ -1796,6 +1974,11 @@ body.modal-open {
   flex-wrap: wrap;
   gap: 0.7rem;
   margin-bottom: 1rem;
+}
+
+.planilla-top-actions .btn {
+  flex: 1 1 190px;
+  justify-content: center;
 }
 
 .planilla-head-sheet {
@@ -2272,6 +2455,7 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  flex-wrap: wrap;
 }
 
 .planilla-preview-mode-switch {
@@ -2834,6 +3018,12 @@ body.modal-open {
     align-items: flex-start;
   }
 
+  .planilla-top-actions .btn,
+  .planilla-preview-toolbar-actions .btn {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
   .planilla-oficial-sheet {
     margin: 0.55rem;
     padding: 0.55rem;
@@ -2860,6 +3050,37 @@ body.modal-open {
 
   .planilla-oficial-faltas {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-planilla .planilla-container {
+    max-width: 100%;
+  }
+
+  .planilla-captura-table {
+    min-width: 360px;
+    font-size: 0.78rem;
+  }
+
+  .planilla-captura-table th,
+  .planilla-captura-table td {
+    padding: 0.3rem 0.32rem;
+  }
+
+  .planilla-captura-table input {
+    width: 2rem;
+    min-width: 2rem;
+    font-size: 0.76rem;
+  }
+
+  .planilla-footer-row {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .planilla-footer-row input {
+    width: 100%;
   }
 }
 
@@ -3005,6 +3226,11 @@ body.modal-open {
   margin-top: 0.15rem;
 }
 
+.page-tablas .tablas-filtros-actions .btn {
+  flex: 1 1 180px;
+  justify-content: center;
+}
+
 .page-tablas .tablas-panel-content {
   display: grid;
   gap: 1rem;
@@ -3035,7 +3261,7 @@ body.modal-open {
 .page-tablas .tabla-estadistica {
   width: 100%;
   border-collapse: collapse;
-  min-width: 640px;
+  min-width: 600px;
 }
 
 .page-tablas .tabla-estadistica th,
@@ -3063,7 +3289,7 @@ body.modal-open {
 }
 
 .page-tablas .tablas-grupo-card .tabla-scroll {
-  overflow-x: visible;
+  overflow-x: auto;
 }
 
 .page-tablas .tabla-estadistica-posiciones {
@@ -3451,6 +3677,10 @@ body.print-solo .carnet-card {
   .page-tablas .tabla-estadistica {
     min-width: 560px;
   }
+
+  .page-tablas .tablas-filtros-actions .btn {
+    flex: 1 1 100%;
+  }
 }
 
 @media (max-width: 768px) {
@@ -3467,6 +3697,18 @@ body.print-solo .carnet-card {
 @media (max-width: 1180px) {
   .page-tablas .tablas-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-tablas .tabla-estadistica {
+    min-width: 460px;
+  }
+
+  .page-tablas .tabla-estadistica th,
+  .page-tablas .tabla-estadistica td {
+    font-size: 0.78rem;
+    padding: 0.32rem 0.34rem;
   }
 }
 
@@ -3523,6 +3765,11 @@ body.page-finanzas {
   align-items: center;
   gap: 0.45rem;
   margin-left: auto;
+}
+
+.page-finanzas .partidos-actions .btn {
+  flex: 1 1 180px;
+  justify-content: center;
 }
 
 .page-auspiciantes .aus-logo-thumb {
@@ -3706,17 +3953,17 @@ body.page-finanzas {
   }
 
   .page-finanzas .finanzas-form-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 0.75rem;
   }
 
   .page-finanzas .finanzas-form-grid .form-group {
-    max-width: 16.4rem;
-    justify-self: center;
+    max-width: 100%;
+    justify-self: stretch;
   }
 
   .page-finanzas .finanzas-form-grid .form-group.form-group-full {
-    max-width: 34rem;
+    max-width: 100%;
   }
 
   .page-finanzas .finanzas-grid-resumen {
@@ -3738,16 +3985,16 @@ body.page-finanzas {
   }
 
   .page-finanzas .finanzas-form-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .page-finanzas .finanzas-form-grid .form-group {
-    max-width: 14.6rem;
+    max-width: 100%;
     width: 100%;
   }
 
   .page-finanzas .finanzas-form-grid .form-group.form-group-full {
-    max-width: 31rem;
+    max-width: 100%;
   }
 }
 
@@ -3771,7 +4018,7 @@ body.page-finanzas {
   }
 
   .page-finanzas .tabla-estadistica {
-    min-width: 540px;
+    min-width: 500px;
   }
 
   .page-finanzas .tabla-estadistica th,
@@ -3782,6 +4029,12 @@ body.page-finanzas {
 
   .page-finanzas .tabla-estadistica td.fin-col-descripcion {
     min-width: 140px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-finanzas .partidos-actions .btn {
+    flex: 1 1 100%;
   }
 }
 

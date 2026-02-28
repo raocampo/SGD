@@ -72,7 +72,8 @@
                 <select id="sistema-sorteo" class="form-select">
                   <option value="automatico">🔄 Automático (Aleatorio)</option>
                   <option value="cabezas-serie">👑 Con Cabezas de Serie</option>
-                  <option value="manual">🎡 Manual con Ruleta</option>
+                  <option value="manual-ruleta">🎡 Manual con Ruleta</option>
+                  <option value="manual-directo">🧩 Manual directo (Equipo → Grupo)</option>
                 </select>
               </div>
               <button class="btn btn-success" onclick="iniciarSorteo()">
@@ -118,6 +119,24 @@
                   disabled
                 >
                   <i class="fas fa-arrow-right"></i> Asignar a Grupo
+                </button>
+              </div>
+
+              <div id="manual-directo-controls" class="manual-directo-controls" style="display:none;">
+                <div class="form-group">
+                  <label for="manual-equipo">Equipo pendiente:</label>
+                  <select id="manual-equipo">
+                    <option value="">-- Selecciona equipo --</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="manual-grupo">Grupo destino:</label>
+                  <select id="manual-grupo">
+                    <option value="">-- Selecciona grupo --</option>
+                  </select>
+                </div>
+                <button id="btn-asignar-manual" class="btn btn-primary" onclick="asignarEquipoManualDirecto()">
+                  <i class="fas fa-hand-pointer"></i> Asignar Manualmente
                 </button>
               </div>
             </div>

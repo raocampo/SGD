@@ -12,6 +12,7 @@ let minJugadoresPorEquipo = null;
 let maxJugadoresPorEquipo = null;
 
 let reglasDocumentos = {
+  requiere_cedula_jugador: false,
   requiere_foto_cedula: false,
   requiere_foto_carnet: false,
 };
@@ -21,6 +22,7 @@ let campeonatoMeta = {
   nombre: "",
   organizador: "",
   logo_url: "",
+  requiere_cedula_jugador: false,
   genera_carnets: false,
 };
 
@@ -200,15 +202,17 @@ function actualizarResumenReglasDocumentos() {
   const el = document.getElementById("resumen-docs-jugador");
   if (!el) return;
 
+  const reqIdentidad = esCedulaObligatoriaEnCampeonato();
   const reqCedula = reglasDocumentos.requiere_foto_cedula;
   const reqCarnet = reglasDocumentos.requiere_foto_carnet;
 
-  if (!reqCedula && !reqCarnet) {
-    el.innerHTML = "<strong>Documentos jugador:</strong> cédula y carnet opcionales.";
+  if (!reqIdentidad && !reqCedula && !reqCarnet) {
+    el.innerHTML = "<strong>Documentos jugador:</strong> cédula y fotos opcionales.";
     return;
   }
 
   const partes = [];
+  partes.push(reqIdentidad ? "cédula obligatoria" : "cédula opcional");
   partes.push(reqCedula ? "foto de cédula requerida" : "foto de cédula opcional");
   partes.push(reqCarnet ? "foto carnet requerida" : "foto carnet opcional");
   el.innerHTML = `<strong>Documentos jugador:</strong> ${partes.join(" • ")}`;
@@ -228,22 +232,35 @@ function actualizarResumenCarnets() {
   el.style.color = "#6b7280";
 }
 
+function esCedulaObligatoriaEnCampeonato() {
+  return reglasDocumentos.requiere_cedula_jugador === true;
+}
+
 function actualizarEstadoRequisitosEnModal(jugador = null) {
+  const reqIdentidad = esCedulaObligatoriaEnCampeonato();
   const reqCedula = reglasDocumentos.requiere_foto_cedula;
   const reqCarnet = reglasDocumentos.requiere_foto_carnet;
 
+  const inputIdentidad = document.getElementById("jugador-ced");
   const inputCedula = document.getElementById("jugador-foto-cedula");
   const inputCarnet = document.getElementById("jugador-foto-carnet");
+  const hintIdentidad = document.getElementById("hint-cedidentidad");
   const hintCedula = document.getElementById("hint-foto-cedula");
   const hintCarnet = document.getElementById("hint-foto-carnet");
   const prevCedula = document.getElementById("preview-foto-cedula-actual");
   const prevCarnet = document.getElementById("preview-foto-carnet-actual");
 
-  if (!inputCedula || !inputCarnet || !hintCedula || !hintCarnet) return;
+  if (!inputIdentidad || !inputCedula || !inputCarnet || !hintCedula || !hintCarnet) return;
 
+  inputIdentidad.required = reqIdentidad;
   inputCedula.required = reqCedula && !jugador?.foto_cedula_url;
   inputCarnet.required = reqCarnet && !jugador?.foto_carnet_url;
 
+  if (hintIdentidad) {
+    hintIdentidad.textContent = reqIdentidad
+      ? "Requerida para este campeonato."
+      : "Opcional para este campeonato.";
+  }
   hintCedula.textContent = reqCedula
     ? "Requerido para este campeonato."
     : "Opcional para este campeonato.";
@@ -529,6 +546,11 @@ async function cargarConfigCampeonato() {
       nombre: camp.nombre || "",
       organizador: camp.organizador || "",
       logo_url: camp.logo_url || "",
+      requiere_cedula_jugador:
+        camp.requiere_cedula_jugador === true ||
+        camp.requiere_cedula_jugador === "true" ||
+        camp.requiere_cedula_jugador === 1 ||
+        camp.requiere_cedula_jugador === "1",
       genera_carnets: camp.genera_carnets === true || camp.genera_carnets === "true",
     };
 
@@ -536,6 +558,11 @@ async function cargarConfigCampeonato() {
     maxJugadoresPorEquipo = camp.max_jugador || null;
 
     reglasDocumentos = {
+      requiere_cedula_jugador:
+        camp.requiere_cedula_jugador === true ||
+        camp.requiere_cedula_jugador === "true" ||
+        camp.requiere_cedula_jugador === 1 ||
+        camp.requiere_cedula_jugador === "1",
       requiere_foto_cedula: camp.requiere_foto_cedula === true || camp.requiere_foto_cedula === "true",
       requiere_foto_carnet: camp.requiere_foto_carnet === true || camp.requiere_foto_carnet === "true",
     };
@@ -1411,8 +1438,11 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   const fotoCedulaFile = document.getElementById("jugador-foto-cedula").files?.[0] || null;
   const fotoCarnetFile = document.getElementById("jugador-foto-carnet").files?.[0] || null;
 
-  if (!nombre || !apellido || !cedidentidad) {
-    mostrarNotificacion("Nombre, apellido y cédula son obligatorios", "error");
+  if (!nombre || !apellido) {
+    mostrarNotificacion(
+      "Nombre y apellido son obligatorios",
+      "error"
+    );
     return;
   }
 
@@ -1438,7 +1468,9 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   fd.append("equipo_id", String(equipoJugador));
   fd.append("nombre", nombre);
   fd.append("apellido", apellido);
-  fd.append("cedidentidad", cedidentidad);
+  if (cedidentidad) {
+    fd.append("cedidentidad", cedidentidad);
+  }
   if (fechaNacimiento) fd.append("fecha_nacimiento", fechaNacimiento);
   if (posicion) fd.append("posicion", posicion);
   if (numeroRaw) fd.append("numero_camiseta", String(Number.parseInt(numeroRaw, 10)));
@@ -1712,8 +1744,19 @@ async function procesarArchivoImportacionJugadores(file) {
     const normalizada = normalizarFilaImportacionJugador(fila);
     if (!normalizada) return;
 
-    if (!normalizada.nombre || !normalizada.apellido || !normalizada.cedidentidad) {
-      erroresLocales.push(`Fila ${nroFila}: nombre, apellido y cedidentidad son obligatorios`);
+    const cedulaObligatoria = esCedulaObligatoriaEnCampeonato();
+    if (
+      !normalizada.nombre ||
+      !normalizada.apellido ||
+      (cedulaObligatoria && !normalizada.cedidentidad)
+    ) {
+      erroresLocales.push(
+        `Fila ${nroFila}: ${
+          cedulaObligatoria
+            ? "nombre, apellido y cedidentidad son obligatorios"
+            : "nombre y apellido son obligatorios"
+        }`
+      );
       return;
     }
 
@@ -1980,7 +2023,11 @@ function descargarPlantillaJugadores() {
   const instrucciones = [
     ["INSTRUCCIONES PARA IMPORTAR JUGADORES"],
     ["1) No cambies los nombres de las columnas de la hoja Datos."],
-    ["2) Campos obligatorios: nombre, apellido, cedidentidad."],
+    [
+      `2) Campos obligatorios: nombre, apellido${
+        esCedulaObligatoriaEnCampeonato() ? ", cedidentidad" : ""
+      }.`,
+    ],
     ["3) fecha_nacimiento en formato YYYY-MM-DD o DD/MM/YYYY."],
     ["4) es_capitan: Si/No (tambien acepta True/False, 1/0)."],
     ["5) numero_camiseta solo numeros enteros."],

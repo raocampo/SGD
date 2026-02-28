@@ -56,6 +56,21 @@
     return String(check?.value || "").trim().toLowerCase();
   }
 
+  function actualizarVisibilidadOrganizacion() {
+    const rol = obtenerRolSeleccionado();
+    const group = document.getElementById("register-organizacion-group");
+    const input = document.getElementById("register-organizacion");
+    if (!group || !input) return;
+
+    const mostrar = rol === "organizador";
+    group.style.display = mostrar ? "block" : "none";
+    input.required = mostrar;
+    if (!mostrar) {
+      input.value = "";
+      mostrarMensaje("register-organizacion-msg", "");
+    }
+  }
+
   function validarFormularioRegistro() {
     const email = String(document.getElementById("register-email")?.value || "").trim();
     const nombres = String(document.getElementById("register-nombres")?.value || "").trim();
@@ -64,6 +79,7 @@
     const confirm = String(document.getElementById("register-password-confirm")?.value || "");
     const terms = document.getElementById("register-terms")?.checked === true;
     const rol = obtenerRolSeleccionado();
+    const organizacion = String(document.getElementById("register-organizacion")?.value || "").trim();
 
     let ok = true;
 
@@ -93,6 +109,17 @@
     if (!terms) ok = false;
     if (!rol) ok = false;
 
+    if (rol === "organizador") {
+      const orgOk = organizacion.length >= 3;
+      if (!orgOk) ok = false;
+      mostrarMensaje(
+        "register-organizacion-msg",
+        orgOk ? "" : "Ingresa el nombre de la organización (mínimo 3 caracteres)."
+      );
+    } else {
+      mostrarMensaje("register-organizacion-msg", "");
+    }
+
     const submit = document.getElementById("register-submit");
     if (submit) submit.disabled = !ok;
 
@@ -104,6 +131,7 @@
         rol,
         password,
         plan_codigo: planSeleccionado,
+        organizacion_nombre: rol === "organizador" ? organizacion : null,
       },
     };
   }
@@ -142,6 +170,7 @@
       "register-apellidos",
       "register-password",
       "register-password-confirm",
+      "register-organizacion",
       "register-terms",
     ];
     ids.forEach((id) => {
@@ -152,7 +181,10 @@
     });
 
     document.querySelectorAll('input[name="register-rol"]').forEach((r) => {
-      r.addEventListener("change", validarFormularioRegistro);
+      r.addEventListener("change", () => {
+        actualizarVisibilidadOrganizacion();
+        validarFormularioRegistro();
+      });
     });
   }
 
@@ -162,6 +194,7 @@
     renderPlanSeleccionado();
     document.getElementById("register-form")?.addEventListener("submit", onSubmitRegister);
     enlazarValidadores();
+    actualizarVisibilidadOrganizacion();
     validarFormularioRegistro();
   });
 })();

@@ -35,9 +35,9 @@ function formatearFechaSolo(valor) {
 }
 
 function obtenerNumeroCampeonatoVisible(camp, fallback = null) {
+  if (Number.isFinite(Number(fallback)) && Number(fallback) > 0) return Number(fallback);
   const n = Number.parseInt(camp?.numero_organizador, 10);
   if (Number.isFinite(n) && n > 0) return n;
-  if (Number.isFinite(Number(fallback)) && Number(fallback) > 0) return Number(fallback);
   return null;
 }
 
@@ -91,18 +91,18 @@ function cambiarVistaCampeonatos(vista = "cards") {
   renderListadoCampeonatos();
 }
 
-function renderCampeonatoCard(camp) {
+function renderCampeonatoCard(camp, index = null) {
   const meta = obtenerMetadatosCampeonato(camp);
   const logoUrl = normalizarLogoCampeonato(camp.logo_url);
   const logoHtml = logoUrl ? `<img class="camp-logo" src="${logoUrl}" alt="Logo" />` : "";
-  const numero = obtenerNumeroCampeonatoVisible(camp);
+  const numero = obtenerNumeroCampeonatoVisible(camp, Number(index) + 1);
 
   return `
     <div class="campeonato-card">
       <div class="campeonato-header">
         ${logoHtml}
         <div>
-          <h3>${numero ? `#${numero} - ` : ""}${escapeHtml(camp.nombre)}</h3>
+          <h3>${numero ? `${numero} - ` : ""}${escapeHtml(camp.nombre)}</h3>
           <p class="camp-organizador">
             <strong>Organiza:</strong> ${escapeHtml(camp.organizador || "No registrado")}
           </p>
@@ -221,7 +221,9 @@ function renderListadoCampeonatos() {
   }
 
   cont.classList.remove("list-mode-table");
-  cont.innerHTML = campeonatosCache.map((camp) => renderCampeonatoCard(camp)).join("");
+  cont.innerHTML = campeonatosCache
+    .map((camp, index) => renderCampeonatoCard(camp, index))
+    .join("");
 }
 
 function normalizarLogoCampeonato(logoUrl) {
@@ -284,12 +286,14 @@ function mostrarModalCrearCampeonato() {
   const colorPrimario = document.getElementById("campeonato-color-primario");
   const colorSecundario = document.getElementById("campeonato-color-secundario");
   const colorAcento = document.getElementById("campeonato-color-acento");
+  const reqCedulaJugador = document.getElementById("campeonato-req-cedula-jugador");
   const reqCedula = document.getElementById("campeonato-req-foto-cedula");
   const reqCarnet = document.getElementById("campeonato-req-foto-carnet");
   const generaCarnets = document.getElementById("campeonato-genera-carnets");
   if (colorPrimario) colorPrimario.value = "#FACC15";
   if (colorSecundario) colorSecundario.value = "#111827";
   if (colorAcento) colorAcento.value = "#22C55E";
+  if (reqCedulaJugador) reqCedulaJugador.checked = true;
   if (reqCedula) reqCedula.checked = false;
   if (reqCarnet) reqCarnet.checked = false;
   if (generaCarnets) generaCarnets.checked = false;
@@ -361,6 +365,8 @@ async function editarCampeonato(id) {
 
     const estadoVal = camp.estado === "planificacion" ? "borrador" : (camp.estado || "borrador");
     document.getElementById("campeonato-estado").value = estadoVal;
+    document.getElementById("campeonato-req-cedula-jugador").checked =
+      camp.requiere_cedula_jugador !== false && camp.requiere_cedula_jugador !== "false";
     document.getElementById("campeonato-req-foto-cedula").checked =
       camp.requiere_foto_cedula === true || camp.requiere_foto_cedula === "true";
     document.getElementById("campeonato-req-foto-carnet").checked =
@@ -417,6 +423,7 @@ document
       document.getElementById("campeonato-color-secundario").value;
     const colorAcento =
       document.getElementById("campeonato-color-acento").value;
+    const requiereCedulaJugador = document.getElementById("campeonato-req-cedula-jugador").checked;
     const requiereFotoCedula = document.getElementById("campeonato-req-foto-cedula").checked;
     const requiereFotoCarnet = document.getElementById("campeonato-req-foto-carnet").checked;
     const generaCarnets = document.getElementById("campeonato-genera-carnets").checked;
@@ -470,6 +477,7 @@ document
     fd.append("color_primario", colorPrimario);
     fd.append("color_secundario", colorSecundario);
     fd.append("color_acento", colorAcento);
+    fd.append("requiere_cedula_jugador", String(requiereCedulaJugador));
     fd.append("requiere_foto_cedula", String(requiereFotoCedula));
     fd.append("requiere_foto_carnet", String(requiereFotoCarnet));
     fd.append("genera_carnets", String(generaCarnets));

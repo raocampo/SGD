@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-02-23
+Ultima actualizacion: 2026-02-27
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,43 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-02-27
+- Cierre de lote de ajustes funcionales y de consistencia para organizadores/operacion diaria:
+  - refinamientos en autenticacion/usuarios/alcances de organizador,
+  - ajustes en campeonatos, categorias, equipos, grupos, partidos, planilla, tablas y registro publico,
+  - continuidad del trabajo responsive/mobile en vistas administrativas.
+- Configuracion flexible de inscripcion de jugadores por campeonato:
+  - nuevo flag `requiere_cedula_jugador` para permitir torneos donde la cedula no sea obligatoria,
+  - nuevo check en `campeonatos.html` para activar/desactivar la solicitud de cedula,
+  - validacion integrada en backend y frontend para creacion, edicion e importacion de jugadores.
+- Nueva migracion agregada:
+  - `database/migrations/015_campeonato_cedula_opcional.sql`.
+- Documentacion sincronizada para continuidad de trabajo:
+  - actualizacion de bitacora,
+  - actualizacion de estado de implementacion,
+  - actualizacion de README con migracion 015 y estado reciente.
+
+### 2026-02-24
+- Inicio de ejecucion del plan mobile (`Fase 1`) en frontend administrativo:
+  - refuerzo de layout global para evitar desbordes horizontales en `app-layout`,
+  - `container` con padding fluido por viewport para mejorar lectura en movil/tablet,
+  - ajuste de `top-bar` y titulo para pantallas pequenas,
+  - normalizacion de barras de acciones (incluye `actions`, `action-bar`, `partidos-actions`, `reportes-actions`, etc.) para mejor uso tactil,
+  - ajuste responsive dedicado para paginas con `main.container` (caso `equipos.html`).
+- Navegacion responsive estabilizada:
+  - sidebar responsive unificado para `<=1200px` en CSS,
+  - ajuste de breakpoint en `frontend/js/core.js`:
+    - paginas con sidebar: comportamiento movil hasta `1200px`,
+    - paginas publicas sin sidebar: comportamiento movil hasta `768px`.
+- Cierre parcial de responsive por modulo:
+  - `tablas`: filtros con botones tactiles full-width en movil, ajuste de anchos minimos y correccion de `overflow-x` en cards de grupo,
+  - `finanzas`: formularios en una sola columna para `<=900px`, botones de acciones de registro adaptados a movil, tablas compactadas para anchos pequenos,
+  - `partidos`: acciones de generacion/exportacion ajustadas a grilla tactil y tabs apilables en movil,
+  - `planilla`: barra superior de acciones responsive, tabla de captura compactada en moviles pequenos y footer de pagos adaptado a una sola columna.
+- Documentacion de continuidad sincronizada:
+  - `docs/PLAN_MOBILE_LT_C.md` actualizado con estado `implementacion iniciada`,
+  - `docs/ESTADO_IMPLEMENTACION_SGD.md` actualizado a `adaptacion mobile web: en progreso`.
 
 ### 2026-02-23
 - Correccion integral de exportaciones en `Grupos` y `Eliminatorias`:

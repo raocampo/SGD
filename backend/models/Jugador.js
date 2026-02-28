@@ -4,6 +4,11 @@ const { obtenerPlan } = require("../services/planLimits");
 class Jugador {
     static _columnasDocumentosAseguradas = false;
 
+    static normalizarCedidentidad(valor) {
+        const texto = String(valor ?? "").trim();
+        return texto ? texto : null;
+    }
+
     static async asegurarColumnasDocumentos() {
         if (this._columnasDocumentosAseguradas) return;
         await pool.query(`
@@ -90,6 +95,7 @@ class Jugador {
     // CREATE - Crear nuevo jugador
     static async crear(equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan = false, foto_cedula_url = null, foto_carnet_url = null) {
         await this.asegurarColumnasDocumentos();
+        const cedulaNormalizada = this.normalizarCedidentidad(cedidentidad);
 
         // Verificar límites de jugadores en el equipo
         const equipo = await this.obtenerEquipoConLimites(equipo_id);
@@ -116,13 +122,15 @@ class Jugador {
         }
 
         // Verificar si la cédula ya existe en otro equipo del mismo campeonato
-        await this.verificarJugadorUnicoPorCampeonato(cedidentidad, equipo_id);
+        await this.verificarJugadorUnicoPorCampeonato(cedulaNormalizada, equipo_id);
 
         // Verificar cédula duplicada en el mismo equipo (fallback)
-        const cedQuery = 'SELECT id FROM jugadores WHERE cedidentidad = $1 AND equipo_id = $2';
-        const cedResult = await pool.query(cedQuery, [cedidentidad, equipo_id]);
-        if (cedResult.rows.length > 0) {
-            throw new Error('La cédula de identidad ya está registrada en este equipo');
+        if (cedulaNormalizada) {
+            const cedQuery = 'SELECT id FROM jugadores WHERE cedidentidad = $1 AND equipo_id = $2';
+            const cedResult = await pool.query(cedQuery, [cedulaNormalizada, equipo_id]);
+            if (cedResult.rows.length > 0) {
+                throw new Error('La cédula de identidad ya está registrada en este equipo');
+            }
         }
 
         // Verificar si el número de camiseta ya está en uso en el equipo
@@ -150,7 +158,7 @@ class Jugador {
             equipo_id,
             nombre,
             apellido,
-            cedidentidad,
+            cedulaNormalizada,
             fecha_nacimiento,
             posicion,
             numero_camiseta,
@@ -209,6 +217,9 @@ class Jugador {
     // UPDATE - Actualizar jugador
     static async actualizar(id, datos) {
         await this.asegurarColumnasDocumentos();
+        if (Object.prototype.hasOwnProperty.call(datos, "cedidentidad")) {
+            datos.cedidentidad = this.normalizarCedidentidad(datos.cedidentidad);
+        }
         // Si cambia equipo_id o cedidentidad, validar jugador único por campeonato
         if (datos.equipo_id) {
             const jugadorActual = await pool.query(

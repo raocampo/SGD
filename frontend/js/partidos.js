@@ -3,6 +3,7 @@
 const BACKEND_BASE = "http://localhost:5000";
 
 let eventoSeleccionado = null;
+let campeonatoSeleccionado = null;
 let grupoSeleccionado = null;
 let jornadaSeleccionada = null;
 let fechaSeleccionada = null;
@@ -139,7 +140,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  await cargarEventos();
+  await cargarCampeonatos();
   await aplicarEventoInicialDesdeURL();
   actualizarUIPorMetodoCompetencia();
   actualizarCabeceraFixture();
@@ -147,17 +148,114 @@ document.addEventListener("DOMContentLoaded", async () => {
   actualizarPestanasPartidos("tab-filtrar");
 });
 
-async function cargarEventos() {
+function limpiarFiltrosPartidosPorCambioContexto() {
+  eventoSeleccionado = null;
+  grupoSeleccionado = null;
+  jornadaSeleccionada = null;
+  fechaSeleccionada = null;
+  eliminatoriasActuales = [];
+  metodoCompetenciaActivo = "grupos";
+  limpiarJornadas();
+  const inputFecha = document.getElementById("input-fecha");
+  if (inputFecha) inputFecha.value = "";
+}
+
+function limpiarSelectEventos() {
+  const select = document.getElementById("select-evento");
+  if (!select) return;
+  select.innerHTML = '<option value="">- Selecciona una categoría -</option>';
+  select.disabled = true;
+}
+
+async function cargarCampeonatos() {
+  const selectCamp = document.getElementById("select-campeonato");
+  if (!selectCamp) {
+    await cargarEventos();
+    return;
+  }
+
+  selectCamp.innerHTML = '<option value="">- Selecciona un campeonato -</option>';
   try {
-    const resp = await ApiClient.get("/eventos");
+    const data = await ApiClient.get("/campeonatos");
+    const lista = data?.campeonatos || data || [];
+
+    lista.forEach((c) => {
+      selectCamp.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const campURL = Number.parseInt(params.get("campeonato") || "", 10);
+    const campCache = Number.parseInt(localStorage.getItem("sgd_partidos_camp") || "", 10);
+    const idsDisponibles = new Set(lista.map((c) => Number(c.id)));
+
+    let inicial = null;
+    if (Number.isFinite(campURL) && idsDisponibles.has(campURL)) inicial = campURL;
+    else if (Number.isFinite(campCache) && idsDisponibles.has(campCache)) inicial = campCache;
+    else if (lista.length) {
+      const ultimo = [...lista].sort((a, b) => Number(b.id) - Number(a.id))[0];
+      inicial = Number(ultimo?.id) || null;
+    }
+
+    if (inicial) {
+      selectCamp.value = String(inicial);
+      campeonatoSeleccionado = inicial;
+      localStorage.setItem("sgd_partidos_camp", String(inicial));
+      await cargarEventos(campeonatoSeleccionado);
+    } else {
+      limpiarSelectEventos();
+    }
+
+    selectCamp.onchange = async () => {
+      campeonatoSeleccionado = selectCamp.value ? Number(selectCamp.value) : null;
+      if (campeonatoSeleccionado) {
+        localStorage.setItem("sgd_partidos_camp", String(campeonatoSeleccionado));
+      } else {
+        localStorage.removeItem("sgd_partidos_camp");
+      }
+
+      limpiarFiltrosPartidosPorCambioContexto();
+      await cargarGruposPorEvento(null);
+      await cargarContextoFixture(null);
+      limpiarPartidosUI();
+      actualizarCabeceraFixture();
+      actualizarUIPorMetodoCompetencia();
+
+      if (!campeonatoSeleccionado) {
+        limpiarSelectEventos();
+        return;
+      }
+
+      await cargarEventos(campeonatoSeleccionado);
+    };
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion("Error cargando campeonatos", "error");
+    limpiarSelectEventos();
+  }
+}
+
+async function cargarEventos(campeonatoId = campeonatoSeleccionado) {
+  try {
+    const select = document.getElementById("select-evento");
+    if (!select) return;
+
+    select.innerHTML = '<option value="">- Selecciona una categoría -</option>';
+
+    if (!campeonatoId) {
+      eventosCache = [];
+      select.disabled = true;
+      return;
+    }
+
+    const resp = await ApiClient.get(`/eventos/campeonato/${campeonatoId}`);
     const lista = resp.eventos || resp || [];
     eventosCache = lista;
 
-    const select = document.getElementById("select-evento");
-    select.innerHTML = '<option value="">- Selecciona una categoría -</option>';
+    select.disabled = false;
 
     lista.forEach((e) => {
-      select.innerHTML += `<option value="${e.id}">${e.nombre} (${e.categoria || "Sin categoria"})</option>`;
+      const nombre = String(e?.nombre || `Categoría ${e?.id || ""}`).trim();
+      select.innerHTML += `<option value="${e.id}">${escapeHtml(nombre)}</option>`;
     });
 
     select.onchange = async () => {
@@ -194,9 +292,10 @@ async function cargarGruposPorEvento(eventoId) {
     const grupos = resp.grupos || resp || [];
 
     grupos.forEach((g) => {
-      const nombre = g.nombre_grupo || g.nombre || "Grupo";
-      const letra = g.letra_grupo || g.letra || "";
-      select.innerHTML += `<option value="${g.id}">${nombre} ${letra}</option>`;
+      const nombreRaw = String(g?.nombre_grupo || g?.nombre || "").trim();
+      const letra = String(g?.letra_grupo || g?.letra || "").trim();
+      const nombre = nombreRaw || (letra ? `Grupo ${letra}` : "Grupo");
+      select.innerHTML += `<option value="${g.id}">${escapeHtml(nombre)}</option>`;
     });
 
     select.onchange = () => {
@@ -313,6 +412,18 @@ async function cargarPartidos() {
 }
 
 async function aplicarEventoInicialDesdeURL() {
+  const queryCamp = new URLSearchParams(window.location.search).get("campeonato");
+  const campId = Number.parseInt(queryCamp || "", 10);
+  if (Number.isFinite(campId)) {
+    const selectCamp = document.getElementById("select-campeonato");
+    if (selectCamp && [...selectCamp.options].some((x) => Number(x.value) === campId)) {
+      selectCamp.value = String(campId);
+      campeonatoSeleccionado = campId;
+      localStorage.setItem("sgd_partidos_camp", String(campId));
+      await cargarEventos(campeonatoSeleccionado);
+    }
+  }
+
   const queryEvento = new URLSearchParams(window.location.search).get("evento");
   const id = Number.parseInt(queryEvento || "", 10);
   if (!Number.isFinite(id)) return;

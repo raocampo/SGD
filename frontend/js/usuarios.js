@@ -67,8 +67,10 @@
       }
       const planGroup = document.getElementById("usr-plan-group");
       const planEstadoGroup = document.getElementById("usr-plan-estado-group");
+      const orgGroup = document.getElementById("usr-organizacion-group");
       if (planGroup) planGroup.style.display = "none";
       if (planEstadoGroup) planEstadoGroup.style.display = "none";
+      if (orgGroup) orgGroup.style.display = "none";
       return;
     }
 
@@ -85,8 +87,10 @@
     }
     const planGroup = document.getElementById("usr-plan-group");
     const planEstadoGroup = document.getElementById("usr-plan-estado-group");
+    const orgGroup = document.getElementById("usr-organizacion-group");
     if (planGroup) planGroup.style.display = "";
     if (planEstadoGroup) planEstadoGroup.style.display = "";
+    if (orgGroup) orgGroup.style.display = "";
   }
 
   function actualizarTituloFormulario() {
@@ -99,6 +103,8 @@
     if (!organizador && usuarioEditandoId) {
       if (title) title.textContent = "Editar usuario";
       if (btnGuardar) btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar cambios';
+      if (btnGuardar) btnGuardar.style.display = "inline-flex";
+      if (btnGuardar) btnGuardar.disabled = false;
       if (btnCancelar) btnCancelar.style.display = "";
       if (passInput) passInput.required = false;
       return;
@@ -111,6 +117,8 @@
       btnGuardar.innerHTML = organizador
         ? '<i class="fas fa-plus"></i> Crear dirigente'
         : '<i class="fas fa-plus"></i> Crear usuario';
+      btnGuardar.style.display = "inline-flex";
+      btnGuardar.disabled = false;
     }
     if (btnCancelar) btnCancelar.style.display = "none";
     if (passInput) passInput.required = true;
@@ -122,6 +130,8 @@
     const rolSel = document.getElementById("usr-rol");
     const planGroup = document.getElementById("usr-plan-group");
     const planEstadoGroup = document.getElementById("usr-plan-estado-group");
+    const organizacionGroup = document.getElementById("usr-organizacion-group");
+    const organizacionInput = document.getElementById("usr-organizacion");
     const esAdmin = esAdminActual();
     const rol = String(rolSel?.value || "").toLowerCase();
     const habilitar = esAdmin && rol === "organizador";
@@ -142,6 +152,14 @@
     if (planEstado) {
       planEstado.disabled = !habilitar;
       if (!habilitar && !usuarioEditandoId) planEstado.value = "activo";
+    }
+    if (organizacionGroup) {
+      organizacionGroup.style.opacity = habilitar ? "1" : "0.6";
+    }
+    if (organizacionInput) {
+      organizacionInput.disabled = !habilitar;
+      organizacionInput.required = habilitar;
+      if (!habilitar && !usuarioEditandoId) organizacionInput.value = "";
     }
   }
 
@@ -189,6 +207,7 @@
             <td>${esc(u.nombre || "-")}</td>
             <td>${esc(u.email || "-")}</td>
             <td>${esc((u.rol || "-").toUpperCase())}</td>
+            <td>${esc(u.organizacion_nombre || "-")}</td>
             <td>${esc(formatearPlan(u.plan_codigo))}</td>
             <td>${esc(String(u.plan_estado || "activo"))}</td>
             <td>${equipoIds}</td>
@@ -212,23 +231,26 @@
       .join("");
 
     cont.innerHTML = `
-      <table class="table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>Correo</th>
-            <th>Rol</th>
-            <th>Plan</th>
-            <th>Estado plan</th>
-            <th>Equipos</th>
-            <th>Estado</th>
-            <th>Landing</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
+      <div class="list-table-wrap usuarios-table-wrap">
+        <table class="list-table usuarios-list-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Rol</th>
+              <th>Organización</th>
+              <th>Plan</th>
+              <th>Estado plan</th>
+              <th>Equipos</th>
+              <th>Estado</th>
+              <th>Landing</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
     `;
   }
 
@@ -254,8 +276,10 @@
     document.getElementById("usr-activo").value = "true";
     const planSel = document.getElementById("usr-plan");
     const planEstadoSel = document.getElementById("usr-plan-estado");
+    const orgInput = document.getElementById("usr-organizacion");
     if (planSel) planSel.value = "free";
     if (planEstadoSel) planEstadoSel.value = "activo";
+    if (orgInput) orgInput.value = "";
 
     const selRol = document.getElementById("usr-rol");
     if (selRol) {
@@ -275,8 +299,10 @@
     document.getElementById("usr-activo").value = String(u.activo === true);
     const planSel = document.getElementById("usr-plan");
     const planEstadoSel = document.getElementById("usr-plan-estado");
+    const orgInput = document.getElementById("usr-organizacion");
     if (planSel) planSel.value = String(u.plan_codigo || "free").toLowerCase();
     if (planEstadoSel) planEstadoSel.value = String(u.plan_estado || "activo").toLowerCase();
+    if (orgInput) orgInput.value = u.organizacion_nombre || "";
 
     const equipo = Array.isArray(u.equipo_ids) && u.equipo_ids.length ? Number(u.equipo_ids[0]) : "";
     document.getElementById("usr-equipo").value = equipo ? String(equipo) : "";
@@ -318,6 +344,7 @@
     const planEstado = String(document.getElementById("usr-plan-estado")?.value || "activo")
       .trim()
       .toLowerCase();
+    const organizacionNombre = String(document.getElementById("usr-organizacion")?.value || "").trim();
 
     if (!nombre || !email) {
       mostrarNotificacion("Nombre y correo son obligatorios", "warning");
@@ -335,6 +362,10 @@
       mostrarNotificacion("Debes seleccionar un equipo para el dirigente", "warning");
       return;
     }
+    if (esAdminActual() && rol === "organizador" && organizacionNombre.length < 3) {
+      mostrarNotificacion("La organización del organizador es obligatoria (mínimo 3 caracteres)", "warning");
+      return;
+    }
 
     try {
       if (!usuarioEditandoId) {
@@ -342,6 +373,7 @@
         if (esAdminActual() && rol === "organizador") {
           payload.plan_codigo = planCodigo;
           payload.plan_estado = planEstado;
+          payload.organizacion_nombre = organizacionNombre;
         }
         if (esRolConEquipo(rol) && equipo) payload.equipo_id = Number.parseInt(equipo, 10);
         await AuthAPI.crearUsuario(payload);
@@ -352,6 +384,9 @@
         if (esAdminActual() && rol === "organizador") {
           payload.plan_codigo = planCodigo;
           payload.plan_estado = planEstado;
+          payload.organizacion_nombre = organizacionNombre;
+        } else if (esAdminActual()) {
+          payload.organizacion_nombre = null;
         }
         if (password) payload.password = password;
         await AuthAPI.actualizarUsuario(usuarioEditandoId, payload);
@@ -378,7 +413,10 @@
       return;
     }
     cargarFormularioDesdeUsuario(user);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const form = document.getElementById("usuarios-form");
+    form?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("usr-nombre")?.focus();
+    mostrarNotificacion("Modo edición activo. Usa el botón 'Guardar cambios'.", "info");
   }
 
   async function eliminarUsuario(id) {

@@ -1,5 +1,6 @@
 let tablasEventoSeleccionado = null;
 let tablasEventosCache = [];
+let tablasCampeonatoSeleccionado = null;
 
 const TABLAS_TAB_IDS = ["tab-posiciones", "tab-goleadores", "tab-tarjetas", "tab-fair-play"];
 
@@ -9,7 +10,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   inicializarTabs();
   inicializarAcciones();
 
+  const campeonatoDesdeURL = new URLSearchParams(window.location.search).get("campeonato");
   const eventoDesdeURL = new URLSearchParams(window.location.search).get("evento");
+  await resolverCampeonatoContextoTablas(
+    campeonatoDesdeURL ? Number(campeonatoDesdeURL) : null,
+    eventoDesdeURL ? Number(eventoDesdeURL) : null
+  );
   await cargarEventos(eventoDesdeURL ? Number(eventoDesdeURL) : null);
 
   if (eventoDesdeURL) {
@@ -19,6 +25,55 @@ document.addEventListener("DOMContentLoaded", async () => {
     limpiarPaneles();
   }
 });
+
+async function resolverCampeonatoContextoTablas(campeonatoParam = null, eventoParam = null) {
+  if (Number.isFinite(Number(campeonatoParam)) && Number(campeonatoParam) > 0) {
+    tablasCampeonatoSeleccionado = Number(campeonatoParam);
+    localStorage.setItem("sgd_tablas_camp", String(tablasCampeonatoSeleccionado));
+    return;
+  }
+
+  const cacheTablas = Number.parseInt(localStorage.getItem("sgd_tablas_camp") || "", 10);
+  if (Number.isFinite(cacheTablas) && cacheTablas > 0) {
+    tablasCampeonatoSeleccionado = cacheTablas;
+  }
+
+  const cachePartidos = Number.parseInt(localStorage.getItem("sgd_partidos_camp") || "", 10);
+  if (!Number.isFinite(Number(tablasCampeonatoSeleccionado)) && Number.isFinite(cachePartidos) && cachePartidos > 0) {
+    tablasCampeonatoSeleccionado = cachePartidos;
+  }
+
+  if (Number.isFinite(Number(eventoParam)) && Number(eventoParam) > 0) {
+    try {
+      const respEvento = await ApiClient.get(`/eventos/${Number(eventoParam)}`);
+      const evento = respEvento?.evento || respEvento || {};
+      const campEvt = Number.parseInt(evento?.campeonato_id, 10);
+      if (Number.isFinite(campEvt) && campEvt > 0) {
+        tablasCampeonatoSeleccionado = campEvt;
+        localStorage.setItem("sgd_tablas_camp", String(campEvt));
+      }
+    } catch (error) {
+      console.warn("No se pudo resolver campeonato para tablas desde la categoría:", error);
+    }
+  }
+
+  if (!Number.isFinite(Number(tablasCampeonatoSeleccionado))) {
+    try {
+      const respCamp = await ApiClient.get("/campeonatos");
+      const lista = Array.isArray(respCamp) ? respCamp : (respCamp?.campeonatos || []);
+      if (lista.length) {
+        const ultimo = [...lista].sort((a, b) => Number(b.id) - Number(a.id))[0];
+        const campDefault = Number.parseInt(ultimo?.id, 10);
+        if (Number.isFinite(campDefault) && campDefault > 0) {
+          tablasCampeonatoSeleccionado = campDefault;
+          localStorage.setItem("sgd_tablas_camp", String(campDefault));
+        }
+      }
+    } catch (error) {
+      console.warn("No se pudo obtener campeonato por defecto para tablas:", error);
+    }
+  }
+}
 
 function inicializarTabs() {
   document.querySelectorAll("#tablas-main-tabs .partidos-main-tab").forEach((btn) => {
@@ -45,6 +100,12 @@ function inicializarAcciones() {
   if (selectEvento) {
     selectEvento.addEventListener("change", () => {
       tablasEventoSeleccionado = selectEvento.value ? Number(selectEvento.value) : null;
+      const eventoSel = tablasEventosCache.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
+      const campEvt = Number.parseInt(eventoSel?.campeonato_id, 10);
+      if (Number.isFinite(campEvt) && campEvt > 0) {
+        tablasCampeonatoSeleccionado = campEvt;
+        localStorage.setItem("sgd_tablas_camp", String(campEvt));
+      }
     });
   }
 }
@@ -66,7 +127,10 @@ async function cargarEventos(eventoPreseleccionado = null) {
   if (!select) return;
 
   try {
-    const resp = await ApiClient.get("/eventos");
+    const endpoint = Number.isFinite(Number(tablasCampeonatoSeleccionado)) && Number(tablasCampeonatoSeleccionado) > 0
+      ? `/eventos/campeonato/${Number(tablasCampeonatoSeleccionado)}`
+      : "/eventos";
+    const resp = await ApiClient.get(endpoint);
     const eventos = resp.eventos || resp || [];
     tablasEventosCache = eventos;
 

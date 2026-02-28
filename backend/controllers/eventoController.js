@@ -586,6 +586,24 @@ const eventoController = {
         return res.json({ ok: true, message: "Equipo ya estaba asignado al evento" });
       }
 
+      const nombreDuplicadoR = await pool.query(
+        `
+          SELECT e2.id, e2.nombre
+          FROM evento_equipos ee
+          JOIN equipos e2 ON e2.id = ee.equipo_id
+          WHERE ee.evento_id = $1
+            AND LOWER(TRIM(e2.nombre)) = LOWER(TRIM($2))
+            AND e2.id <> $3
+          LIMIT 1
+        `,
+        [evento_id, equipo.nombre, equipo_id]
+      );
+      if (nombreDuplicadoR.rows.length) {
+        return res.status(400).json({
+          message: "Ya existe un equipo con ese nombre en la categoría seleccionada",
+        });
+      }
+
       if (!esAdministrador(req.user)) {
         const plan = await obtenerPlanPorCampeonatoId(evento.campeonato_id);
         if (

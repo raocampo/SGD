@@ -61,6 +61,14 @@ function actualizarVisibilidadConfigEliminatoria() {
   wrap.style.display = ["eliminatoria", "mixto"].includes(metodo) ? "" : "none";
 }
 
+function toggleFormularioCategoria(forzarEstado) {
+  const bloque = document.getElementById("bloque-crear-evento");
+  if (!bloque) return;
+  const visibleActual = bloque.style.display !== "none";
+  const mostrar = typeof forzarEstado === "boolean" ? forzarEstado : !visibleActual;
+  bloque.style.display = mostrar ? "" : "none";
+}
+
 function obtenerNumeroEventoVisible(evento, fallback = null) {
   const n = Number.parseInt(evento?.numero_campeonato, 10);
   if (Number.isFinite(n) && n > 0) return n;
@@ -106,6 +114,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("eventos.html")) return;
   actualizarBotonesVistaEventos();
   actualizarVisibilidadConfigEliminatoria();
+  toggleFormularioCategoria(false);
 
   const selectMetodo = document.getElementById("evt-metodo-competencia");
   if (selectMetodo) {
@@ -121,6 +130,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     campeonatoSeleccionado = parseInt(cId, 10);
     const sel = document.getElementById("select-campeonato");
     sel.value = String(campeonatoSeleccionado);
+    aplicarFechasDesdeCampeonato();
+    await cargarEventos();
+    return;
+  }
+
+  if (campeonatoSeleccionado) {
     aplicarFechasDesdeCampeonato();
     await cargarEventos();
   }
@@ -139,11 +154,23 @@ async function cargarCampeonatosSelect() {
       select.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
     });
 
+    if (!campeonatoSeleccionado && lista.length) {
+      const ultimo = [...lista]
+        .sort((a, b) => Number(b.id || 0) - Number(a.id || 0))[0];
+      if (ultimo?.id) {
+        campeonatoSeleccionado = Number.parseInt(ultimo.id, 10);
+        select.value = String(campeonatoSeleccionado);
+      }
+    }
+
     select.onchange = async () => {
       campeonatoSeleccionado = select.value ? parseInt(select.value, 10) : null;
       aplicarFechasDesdeCampeonato();
       eventosCache = [];
       document.getElementById("lista-eventos").innerHTML = "";
+      if (campeonatoSeleccionado) {
+        await cargarEventos();
+      }
     };
   } catch (err) {
     console.error(err);
@@ -151,7 +178,7 @@ async function cargarCampeonatosSelect() {
   }
 }
 
-// botón "Cargar categorías"
+// botón "Cargar categorías" (también usado al cambiar campeonato)
 async function cargarEventos() {
   const cont = document.getElementById("lista-eventos");
   cont.innerHTML = "<p>Cargando categorías...</p>";
@@ -208,7 +235,7 @@ function renderEventoCard(e) {
   return `
     <div class="campeonato-card">
       <div class="campeonato-header">
-        <h3>${numero ? `#${numero} - ` : ""}${escapeHtml(e.nombre || "Categoría")}</h3>
+        <h3>${numero ? `${numero} - ` : ""}${escapeHtml(e.nombre || "Categoría")}</h3>
       </div>
       <div class="campeonato-info">
         <p><strong>Modalidad:</strong> ${escapeHtml(e.modalidad || "-")}</p>
@@ -337,6 +364,7 @@ async function crearEvento() {
     if (selectMetodo) selectMetodo.value = "grupos";
     if (selectElim) selectElim.value = "";
     actualizarVisibilidadConfigEliminatoria();
+    toggleFormularioCategoria(false);
     await cargarEventos();
   } catch (err) {
     console.error(err);
@@ -418,6 +446,7 @@ async function editarEvento(id) {
 }
 
 window.cambiarVistaEventos = cambiarVistaEventos;
+window.toggleFormularioCategoria = toggleFormularioCategoria;
 
 
 

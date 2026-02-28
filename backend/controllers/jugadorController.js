@@ -11,6 +11,7 @@ async function asegurarColumnasDocsCampeonato() {
     if (columnasDocsCampeonatoAseguradas) return;
     await pool.query(`
         ALTER TABLE campeonatos
+        ADD COLUMN IF NOT EXISTS requiere_cedula_jugador BOOLEAN DEFAULT TRUE,
         ADD COLUMN IF NOT EXISTS requiere_foto_cedula BOOLEAN DEFAULT FALSE,
         ADD COLUMN IF NOT EXISTS requiere_foto_carnet BOOLEAN DEFAULT FALSE
     `);
@@ -21,6 +22,7 @@ async function obtenerReglasDocumentosPorEquipo(equipo_id) {
     await asegurarColumnasDocsCampeonato();
     const q = `
         SELECT
+            COALESCE(c.requiere_cedula_jugador, true) AS requiere_cedula_jugador,
             COALESCE(c.requiere_foto_cedula, false) AS requiere_foto_cedula,
             COALESCE(c.requiere_foto_carnet, false) AS requiere_foto_carnet
         FROM equipos e
@@ -29,7 +31,11 @@ async function obtenerReglasDocumentosPorEquipo(equipo_id) {
         LIMIT 1
     `;
     const r = await pool.query(q, [equipo_id]);
-    return r.rows[0] || { requiere_foto_cedula: false, requiere_foto_carnet: false };
+    return r.rows[0] || {
+        requiere_cedula_jugador: true,
+        requiere_foto_cedula: false,
+        requiere_foto_carnet: false,
+    };
 }
 
 async function validarAccesoTecnicoEquipo(req, res, equipoId, mensaje = "No autorizado para operar sobre este equipo") {
@@ -53,9 +59,9 @@ const jugadorController = {
                 : null;
 
             // Validaciones básicas
-            if (!equipo_id || !nombre || !apellido || !cedidentidad) {
+            if (!equipo_id || !nombre || !apellido) {
                 return res.status(400).json({
-                    error: 'equipo_id, nombre, apellido y Cedula de Identidad son obligatorios'
+                    error: 'equipo_id, nombre y apellido son obligatorios'
                 });
             }
             if (!(await validarAccesoTecnicoEquipo(req, res, equipo_id))) {
@@ -63,6 +69,11 @@ const jugadorController = {
             }
 
             const reglasDocs = await obtenerReglasDocumentosPorEquipo(Number(equipo_id));
+            if (reglasDocs.requiere_cedula_jugador && !String(cedidentidad || "").trim()) {
+                return res.status(400).json({
+                    error: "Este campeonato exige cédula de identidad para inscribir jugadores"
+                });
+            }
             if (reglasDocs.requiere_foto_cedula && !fotoCedula) {
                 return res.status(400).json({
                     error: "Este campeonato exige foto de cédula para inscribir jugadores"
@@ -157,10 +168,17 @@ const jugadorController = {
                 const capRaw = String(row.es_capitan ?? row.capitan ?? "").trim().toLowerCase();
                 const es_capitan = capRaw === "si" || capRaw === "sí" || capRaw === "true" || capRaw === "1";
 
-                if (!nombre || !apellido || !cedidentidad) {
+                if (!nombre || !apellido) {
                     errores.push({
                         fila: i + 1,
-                        error: "nombre, apellido y cedidentidad son obligatorios"
+                        error: "nombre y apellido son obligatorios"
+                    });
+                    continue;
+                }
+                if (reglasDocs.requiere_cedula_jugador && !cedidentidad) {
+                    errores.push({
+                        fila: i + 1,
+                        error: "Este campeonato exige cedidentidad"
                     });
                     continue;
                 }
@@ -341,7 +359,13 @@ const jugadorController = {
             const reglasDocs = await obtenerReglasDocumentosPorEquipo(equipoEvaluar);
             const fotoCedulaFinal = datos.foto_cedula_url || jugadorActual.foto_cedula_url || null;
             const fotoCarnetFinal = datos.foto_carnet_url || jugadorActual.foto_carnet_url || null;
+            const cedulaFinal = datos.cedidentidad ?? jugadorActual.cedidentidad ?? null;
 
+            if (reglasDocs.requiere_cedula_jugador && !String(cedulaFinal || "").trim()) {
+                return res.status(400).json({
+                    error: "Este campeonato exige cédula de identidad para el jugador"
+                });
+            }
             if (reglasDocs.requiere_foto_cedula && !fotoCedulaFinal) {
                 return res.status(400).json({
                     error: "Este campeonato exige foto de cédula para el jugador"

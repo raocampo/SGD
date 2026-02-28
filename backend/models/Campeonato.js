@@ -10,6 +10,7 @@ class Campeonato {
     if (this._columnasDocumentosAseguradas) return;
     await pool.query(`
       ALTER TABLE campeonatos
+      ADD COLUMN IF NOT EXISTS requiere_cedula_jugador BOOLEAN DEFAULT TRUE,
       ADD COLUMN IF NOT EXISTS requiere_foto_cedula BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS requiere_foto_carnet BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS genera_carnets BOOLEAN DEFAULT FALSE,
@@ -23,6 +24,7 @@ class Campeonato {
     await pool.query(`
       UPDATE campeonatos
       SET
+        requiere_cedula_jugador = COALESCE(requiere_cedula_jugador, TRUE),
         costo_arbitraje = COALESCE(costo_arbitraje, 0),
         costo_tarjeta_amarilla = COALESCE(costo_tarjeta_amarilla, 0),
         costo_tarjeta_roja = COALESCE(costo_tarjeta_roja, 0),
@@ -98,6 +100,7 @@ class Campeonato {
     color_secundario,
     color_acento,
     logo_url,
+    requiere_cedula_jugador = true,
     requiere_foto_cedula = false,
     requiere_foto_carnet = false,
     genera_carnets = false,
@@ -131,6 +134,7 @@ class Campeonato {
         color_secundario,
         color_acento,
         logo_url,
+        requiere_cedula_jugador,
         requiere_foto_cedula,
         requiere_foto_carnet,
         genera_carnets,
@@ -143,7 +147,7 @@ class Campeonato {
         numero_organizador
       )
       SELECT
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'borrador',
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,'borrador',
         next_num.next_num
       FROM next_num
       RETURNING *
@@ -163,6 +167,7 @@ class Campeonato {
       color_secundario || null,
       color_acento || null,
       logo_url || null,
+      !(requiere_cedula_jugador === false || requiere_cedula_jugador === "false"),
       requiere_foto_cedula === true || requiere_foto_cedula === "true",
       requiere_foto_carnet === true || requiere_foto_carnet === "true",
       genera_carnets === true || genera_carnets === "true",
@@ -217,7 +222,7 @@ class Campeonato {
       "nombre", "organizador", "fecha_inicio", "fecha_fin", "tipo_futbol",
       "sistema_puntuacion", "max_equipos", "min_jugador", "max_jugador",
       "color_primario", "color_secundario", "color_acento", "logo_url", "estado",
-      "reglas_desempate", "requiere_foto_cedula", "requiere_foto_carnet", "genera_carnets",
+      "reglas_desempate", "requiere_cedula_jugador", "requiere_foto_cedula", "requiere_foto_carnet", "genera_carnets",
       "costo_arbitraje", "costo_tarjeta_amarilla", "costo_tarjeta_roja", "costo_carnet"
     ]);
 

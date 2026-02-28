@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-02-22): funcional en flujo principal con pendientes de cierre en RBAC, eliminatorias completas, roadmap mobile y reglas financieras avanzadas.
+Estado del proyecto (2026-02-27): funcional en flujo principal con pendientes de cierre en RBAC, eliminatorias completas, roadmap mobile y reglas financieras avanzadas.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,15 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-02-22)
+## Novedades Recientes (2026-02-27)
+- Configuracion flexible de jugadores por campeonato:
+  - nuevo campo `requiere_cedula_jugador`,
+  - la cedula del jugador puede ser obligatoria u opcional segun la configuracion del organizador.
+- Nueva migracion disponible:
+  - `database/migrations/015_campeonato_cedula_opcional.sql`.
+- Ajustes integrados recientes en frontend/backend para campeonatos, jugadores, usuarios, equipos, grupos, partidos, planilla y tablas.
+
+## Novedades Anteriores (2026-02-22)
 - Planes por organizador operativos en usuarios:
   - administrador puede crear/editar organizadores con `plan` y `estado del plan`.
 - Landing pública por organizador habilitada para planes pagados:
@@ -136,6 +144,8 @@ psql -U postgres -d gestionDeportiva -f database/migrations/010_auth_roles.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/011_auth_password_reset.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/012_usuarios_solo_lectura.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/013_planes_usuarios.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/014_pases_jugadores.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/015_campeonato_cedula_opcional.sql
 ```
 
 ### 5.3 Ejecutar

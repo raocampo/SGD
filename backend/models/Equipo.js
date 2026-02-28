@@ -86,6 +86,12 @@ class Equipo {
     cabeza_serie
   ) {
     await this.asegurarEsquema();
+    const campId = this.parseCampeonatoId(campeonato_id);
+    const nombreLimpio = String(nombre || "").trim();
+    const emailLimpio = String(email || "").trim() || null;
+
+    if (!campId) throw new Error("campeonato_id invalido");
+    if (!nombreLimpio) throw new Error("nombre es obligatorio");
 
     // Verificar límite de equipos en el campeonato
     const limiteQuery = `
@@ -95,7 +101,7 @@ class Equipo {
       WHERE c.id = $1
       LIMIT 1
     `;
-    const limiteResult = await pool.query(limiteQuery, [campeonato_id]);
+    const limiteResult = await pool.query(limiteQuery, [campId]);
 
     if (limiteResult.rows.length === 0) {
       throw new Error("Campeonato no encontrado");
@@ -120,7 +126,7 @@ class Equipo {
       const maxEquiposPermitido = Math.min(...limites.filter((n) => Number.isFinite(n) && n > 0));
       if (Number.isFinite(maxEquiposPermitido) && maxEquiposPermitido > 0) {
         const countQuery = "SELECT COUNT(*) FROM equipos WHERE campeonato_id = $1";
-        const countResult = await pool.query(countQuery, [campeonato_id]);
+        const countResult = await pool.query(countQuery, [campId]);
         const equiposActuales = parseInt(countResult.rows[0].count, 10);
 
         if (equiposActuales >= maxEquiposPermitido) {
@@ -149,8 +155,8 @@ class Equipo {
             RETURNING *
         `;
     const values = [
-      campeonato_id,
-      nombre,
+      campId,
+      nombreLimpio,
       director_tecnico,
       asistente_tecnico || null,
       medico || null,
@@ -159,7 +165,7 @@ class Equipo {
       color_secundario || null,
       color_terciario || null,
       telefono,
-      email,
+      emailLimpio,
       logo_url,
       cabeza_serie === true || cabeza_serie === "true",
     ];
@@ -168,7 +174,7 @@ class Equipo {
     const nuevoEquipo = result.rows[0] || null;
     if (!nuevoEquipo) return null;
 
-    await this.reordenarNumeracionCampeonato(campeonato_id);
+    await this.reordenarNumeracionCampeonato(campId);
     const equipoFinal = await this.obtenerPorId(nuevoEquipo.id);
     return equipoFinal || nuevoEquipo;
   }
@@ -266,6 +272,12 @@ class Equipo {
 
     datos = datos || {}; // ✅ evita undefined/null
     const equipoAntes = await this.obtenerPorId(id);
+    if (!equipoAntes) return null;
+    const nombreDestino = datos.nombre !== undefined ? String(datos.nombre || "").trim() : String(equipoAntes.nombre || "").trim();
+    if (!nombreDestino) {
+      throw new Error("nombre es obligatorio");
+    }
+    const campeonatoAntes = this.parseCampeonatoId(equipoAntes?.campeonato_id);
 
     const campos = [];
     const valores = [];
@@ -290,7 +302,19 @@ class Equipo {
 
     for (const [key, value] of Object.entries(datos)) {
       if (!allowed.has(key)) continue;
+      if (key === "email") {
+        campos.push(`${key} = $${contador}`);
+        valores.push(String(value || "").trim() || null);
+        contador++;
+        continue;
+      }
       if (value !== undefined && value !== null && value !== "") {
+        if (key === "nombre") {
+          campos.push(`${key} = $${contador}`);
+          valores.push(String(value).trim());
+          contador++;
+          continue;
+        }
         campos.push(`${key} = $${contador}`);
         valores.push(value);
         contador++;
@@ -312,7 +336,6 @@ class Equipo {
     const result = await pool.query(query, valores);
     const equipoActualizado = result.rows[0] || null;
 
-    const campeonatoAntes = this.parseCampeonatoId(equipoAntes?.campeonato_id);
     const campeonatoDespues = this.parseCampeonatoId(equipoActualizado?.campeonato_id);
 
     if (campeonatoAntes) await this.reordenarNumeracionCampeonato(campeonatoAntes);

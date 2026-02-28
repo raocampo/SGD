@@ -357,7 +357,7 @@
     const target = sidebar || nav;
     if (!target) return;
 
-    const SIDEBAR_MOBILE_BREAKPOINT = 1200;
+    const SIDEBAR_MOBILE_BREAKPOINT = sidebar ? 1200 : 768;
     function isMobile() {
       return window.innerWidth <= SIDEBAR_MOBILE_BREAKPOINT;
     }
