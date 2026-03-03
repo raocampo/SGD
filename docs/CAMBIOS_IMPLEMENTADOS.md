@@ -7,6 +7,24 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-03 - Planilla por grupo y reportes disciplinarios
+- Planilla operativa mejorada para carga directa:
+  - nuevo selector de `grupo` en `frontend/planilla.html`,
+  - flujo encadenado `categoria -> grupo -> jornada -> partido` en `frontend/js/planilla.js`,
+  - el selector de partidos ahora identifica el grupo dentro de cada opcion.
+- Disciplina visible fuera de planilla:
+  - `backend/models/Partido.js` centraliza suspension, amarillas acumuladas y partidos pendientes por `evento/equipo/jugador`,
+  - `backend/controllers/jugadorController.js` enriquece `/jugadores/equipo/:id?evento_id=...` con estado disciplinario,
+  - `frontend/js/jugadores.js` muestra `Habilitado`, `Acumula TA` o `Suspendido` en tarjetas y tabla.
+- Reporteria disciplinaria en `jugadores.html`:
+  - nuevo `Reporte de sanciones` por equipo,
+  - nuevo `Consolidado sanciones categoria` por categoria/equipo/jugador,
+  - ambos con impresion y exportacion PDF.
+- Pendiente abierto del bloque:
+  - extender esta informacion disciplinaria a otros reportes operativos y consolidado financiero.
+
+---
+
 ## 2026-02-23 - Grupos/Playoff, exportaciones y auspiciantes
 - Correccion de exportacion/compartir en `grupos` y `eliminatorias`:
   - solucion al bloqueo por imagenes rotas (`404`) durante `html2canvas`,

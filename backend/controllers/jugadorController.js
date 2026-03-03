@@ -1,4 +1,5 @@
 const Jugador = require('../models/Jugador');
+const Partido = require("../models/Partido");
 const pool = require("../config/database");
 const {
     tecnicoPuedeAccederEquipo,
@@ -246,14 +247,28 @@ const jugadorController = {
     obtenerJugadoresPorEquipo: async (req, res) => {
         try {
             const { equipo_id } = req.params;
+            const eventoId = Number.parseInt(req.query?.evento_id, 10);
             if (!(await validarAccesoTecnicoEquipo(req, res, equipo_id))) {
                 return;
             }
             
-            const jugadores = await Jugador.obtenerPorEquipo(equipo_id);
+            let jugadores = await Jugador.obtenerPorEquipo(equipo_id);
+
+            if (Number.isFinite(eventoId) && eventoId > 0 && jugadores.length) {
+                const estadoDisciplinario = await Partido.obtenerEstadoDisciplinarioEquipoEnEvento(
+                    eventoId,
+                    equipo_id,
+                    jugadores
+                );
+
+                jugadores = jugadores.map((jugador) => ({
+                    ...jugador,
+                    suspension: estadoDisciplinario.get(Number.parseInt(jugador.id, 10)) || null,
+                }));
+            }
             
             res.json({
-                mensaje: `👥 Jugadores del equipo ${equipo_id}`,
+                mensaje: `Jugadores del equipo ${equipo_id}`,
                 total: jugadores.length,
                 jugadores: jugadores
             });

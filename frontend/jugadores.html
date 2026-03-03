@@ -142,6 +142,8 @@
                 <label for="reporte-jugadores-tipo">Tipo de reporte:</label>
                 <select id="reporte-jugadores-tipo">
                   <option value="nomina">Nómina de jugadores</option>
+                  <option value="sanciones">Reporte de sanciones</option>
+                  <option value="sanciones_categoria">Consolidado sanciones categoría</option>
                   <option value="carnets">Carnets de jugadores</option>
                 </select>
               </div>
@@ -171,6 +173,34 @@
           </div>
           <div id="nomina-jugadores-export" class="jugadores-nomina-board">
             <p class="empty-state">Carga un equipo con jugadores para generar la nómina.</p>
+          </div>
+        </div>
+
+        <div id="bloque-sanciones-jugadores" class="config-card" style="display:none;">
+          <div class="fixture-accordion-actions">
+            <button class="btn btn-warning" type="button" onclick="imprimirReporteSancionesJugadores()">
+              <i class="fas fa-print"></i> Imprimir
+            </button>
+            <button class="btn btn-danger" type="button" onclick="exportarReporteSancionesJugadoresPDF()">
+              <i class="fas fa-file-pdf"></i> Exportar PDF
+            </button>
+          </div>
+          <div id="sanciones-jugadores-export" class="jugadores-nomina-board">
+            <p class="empty-state">Selecciona un equipo para generar el reporte disciplinario.</p>
+          </div>
+        </div>
+
+        <div id="bloque-sanciones-categoria-jugadores" class="config-card" style="display:none;">
+          <div class="fixture-accordion-actions">
+            <button class="btn btn-warning" type="button" onclick="imprimirReporteSancionesCategoriaJugadores()">
+              <i class="fas fa-print"></i> Imprimir
+            </button>
+            <button class="btn btn-danger" type="button" onclick="exportarReporteSancionesCategoriaJugadoresPDF()">
+              <i class="fas fa-file-pdf"></i> Exportar PDF
+            </button>
+          </div>
+          <div id="sanciones-categoria-jugadores-export" class="jugadores-nomina-board">
+            <p class="empty-state">Selecciona una categoría para generar el consolidado disciplinario.</p>
           </div>
         </div>
 

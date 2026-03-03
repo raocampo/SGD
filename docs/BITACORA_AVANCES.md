@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-02
+Ultima actualizacion: 2026-03-03
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,22 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-03
+- Planilla directa mejorada para operacion por grupo:
+  - nuevo selector `grupo` en `frontend/planilla.html`,
+  - filtrado encadenado `categoria -> grupo -> jornada -> partido` en `frontend/js/planilla.js`,
+  - el selector de partidos ahora muestra el grupo dentro de la etiqueta para identificar mas rapido cada encuentro.
+- Estado disciplinario visible fuera de planilla:
+  - `backend/models/Partido.js` centraliza el calculo de suspensiones y acumulacion de amarillas por `evento/equipo/jugador`,
+  - `backend/controllers/jugadorController.js` ahora puede enriquecer `/jugadores/equipo/:id?evento_id=...` con el estado disciplinario,
+  - `frontend/js/jugadores.js` muestra `habilitado`, `acumula TA` o `suspendido` en tarjetas y tabla,
+  - nuevo `Reporte de sanciones` en `jugadores.html` con impresion y exportacion PDF por equipo/categoria,
+  - nuevo `Consolidado sanciones categoria` en `jugadores.html` con resumen global y detalle por `equipo/jugador`, tambien imprimible y exportable a PDF sin exigir equipo seleccionado.
+- Alcance pendiente que sigue abierto en disciplina:
+  - ya existe reporte formal por `equipo/jugador`,
+  - ya existe consolidado global por `categoria/equipo/jugador`,
+  - falta seguir mostrando estas sanciones en otros reportes operativos ademas de `jugadores.html`.
 
 ### 2026-03-02
 - Planillaje reforzado para escenarios disciplinarios y de inasistencia:
@@ -621,9 +637,10 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Revisar y ordenar archivos legacy/antiguos para reducir deuda tecnica.
 - Continuar modulo financiero: sanciones/suspensiones por reglas deportivas, bloqueos por morosidad y reportes ejecutivos.
 - Ajustar detalles de UX del nuevo formulario de planilla segun retroalimentacion de operacion en campo.
-- Mostrar suspensiones tambien fuera de la planilla:
-  - `jugadores.html`,
-  - reporte/listado de sanciones por categoria/equipo/jugador.
+- Completar visibilidad de disciplina fuera de la planilla:
+  - ya visible en `jugadores.html`,
+  - ya disponible reporte/listado de sanciones por categoria/equipo/jugador,
+  - pendiente extender la disciplina a otros reportes operativos.
 - Reorientar plan mobile a aplicacion instalable para tiendas:
   - app Android (Play Store),
   - app iOS (App Store).

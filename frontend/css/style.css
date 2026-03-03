@@ -1515,6 +1515,8 @@ body.modal-open {
 .estado-en_curso { background: #dcfce7; color: #166534; }
 .estado-finalizado { background: #f1f5f9; color: #64748b; }
 .estado-archivado { background: #fef3c7; color: #92400e; }
+.estado-disciplina-alerta { background: #fef3c7; color: #92400e; }
+.estado-suspendido-alerta { background: #fee2e2; color: #991b1b; }
 
 .select-estado {
   padding: 0.4rem 0.8rem;
@@ -3441,6 +3443,51 @@ body.modal-open {
   text-align: left;
 }
 
+.sanciones-sheet .nomina-table td:nth-child(5),
+.sanciones-sheet .nomina-table th:nth-child(5) {
+  text-align: center;
+}
+
+.sanciones-sheet .nomina-table td:last-child,
+.sanciones-sheet .nomina-table th:last-child {
+  text-align: left;
+}
+
+.sanciones-resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.sanciones-resumen-card {
+  border: 1px solid #dbe4ef;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 0.85rem 1rem;
+}
+
+.sanciones-resumen-card strong {
+  display: block;
+  font-size: 1.45rem;
+  color: #0f172a;
+}
+
+.sanciones-resumen-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #475569;
+  font-size: 0.84rem;
+}
+
+.sancion-row-alert td {
+  background: #fff7ed;
+}
+
+.sancion-row-danger td {
+  background: #fef2f2;
+}
+
 .carnets-board {
   width: 100%;
 }
@@ -3681,6 +3728,10 @@ body.modal-open {
 @media (max-width: 700px) {
   .nomina-sheet {
     min-width: 740px;
+  }
+
+  .sanciones-resumen-grid {
+    grid-template-columns: 1fr;
   }
 
   .carnets-toolbar {

@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-03-02
+Ultima actualizacion: 2026-03-03
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -24,7 +24,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 ## Estado Detallado del Alcance Actual
 
 1. Planillaje oficial de partido:
-- Flujo directo por `evento -> jornada -> partido`.
+- Flujo directo por `evento -> grupo -> jornada -> partido` con filtro adicional por grupo para carga operativa rapida.
 - Captura oficial por jugador (`G`, `TA`, `TR`) para local/visitante.
 - Resultado calculado automaticamente por suma de goles capturados.
 - Registro de pagos y observaciones dentro del mismo formulario.
@@ -77,8 +77,10 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Pulido UX final del formulario para operacion en campo.
 - Ajustes finos de impresion A4 en ambos modelos.
 - Extender visibilidad de sanciones/suspendidos fuera de `planilla.html`:
-  - listado por jugador en `jugadores.html`,
-  - reporte de sanciones/suspensiones por categoria/equipo.
+  - listado por jugador en `jugadores.html` ya visible,
+  - reporte disciplinario por equipo ya disponible en `jugadores.html`,
+  - consolidado global de sanciones/suspensiones por categoria/equipo ya disponible en `jugadores.html`,
+  - pendiente extender esa informacion a reportes operativos adicionales.
 
 2. Pruebas E2E con datos reales (prioridad alta):
 - Flujo completo: campeonato -> evento -> equipos -> sorteo -> grupos -> fixture -> planilla -> tablas.
@@ -144,3 +146,4 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Propuesta funcional original: `docs/propuestaDesarrolloSGD.md`
 - Plan mobile web: `docs/PLAN_MOBILE_LT_C.md`
 - Plan CMS del portal publico: `docs/PLAN_CMS_PORTAL_PUBLICO.md`
+

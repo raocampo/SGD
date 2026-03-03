@@ -14,6 +14,7 @@ let documentosRequeridos = {
 };
 let eventosPlanillaCache = [];
 let partidosSelectorCache = [];
+let grupoSelectorActual = "";
 let jornadaSelectorActual = "";
 let modoVistaPreviaPlanilla = "oficial";
 const IDS_PAGOS_PLANILLA = [
@@ -291,6 +292,26 @@ function etiquetaGrupoPartido(p = {}) {
   if (p.nombre_grupo) return p.nombre_grupo;
   if (Number.isFinite(Number(p.grupo_id)) && Number(p.grupo_id) > 0) return `Grupo ${p.grupo_id}`;
   return "Sin grupo";
+}
+
+function obtenerClaveGrupoPartido(p = {}) {
+  const grupoId = Number.parseInt(p?.grupo_id, 10);
+  if (Number.isFinite(grupoId) && grupoId > 0) return `id:${grupoId}`;
+
+  const letraGrupo = String(p?.letra_grupo || "")
+    .trim()
+    .toUpperCase();
+  if (letraGrupo) return `letra:${letraGrupo}`;
+
+  const nombreGrupo = String(p?.nombre_grupo || "").trim();
+  if (nombreGrupo) return `nombre:${nombreGrupo.toLowerCase()}`;
+
+  return "sin_grupo";
+}
+
+function filtrarPartidosSelectorPorGrupo(partidos = []) {
+  if (!grupoSelectorActual) return [...partidos];
+  return partidos.filter((p) => obtenerClaveGrupoPartido(p) === grupoSelectorActual);
 }
 
 function formatearTipoFutbolTexto(tipo) {
@@ -1316,12 +1337,42 @@ function actualizarVisibilidadContenidoPlanilla(mostrar) {
   }
 }
 
+function poblarGruposSelectorPlanilla() {
+  const selectGrupo = document.getElementById("select-grupo-planilla");
+  if (!selectGrupo) return;
+
+  const grupos = Array.from(
+    partidosSelectorCache.reduce((map, partido) => {
+      const clave = obtenerClaveGrupoPartido(partido);
+      if (!map.has(clave)) {
+        map.set(clave, etiquetaGrupoPartido(partido));
+      }
+      return map;
+    }, new Map()).entries()
+  ).sort((a, b) => a[1].localeCompare(b[1], "es", { sensitivity: "base", numeric: true }));
+
+  selectGrupo.innerHTML = '<option value="">- Todos -</option>';
+  grupos.forEach(([clave, etiqueta]) => {
+    selectGrupo.innerHTML += `<option value="${escapeHtml(clave)}">${escapeHtml(etiqueta)}</option>`;
+  });
+
+  if (grupoSelectorActual && grupos.some(([clave]) => clave === grupoSelectorActual)) {
+    selectGrupo.value = grupoSelectorActual;
+  } else {
+    grupoSelectorActual = "";
+  }
+}
+
 function poblarJornadasSelectorPlanilla() {
   const selectJornada = document.getElementById("select-jornada-planilla");
   if (!selectJornada) return;
 
   const jornadas = Array.from(
-    new Set(partidosSelectorCache.map((p) => Number(p.jornada)).filter((j) => Number.isFinite(j)))
+    new Set(
+      filtrarPartidosSelectorPorGrupo(partidosSelectorCache)
+        .map((p) => Number(p.jornada))
+        .filter((j) => Number.isFinite(j))
+    )
   ).sort((a, b) => a - b);
 
   selectJornada.innerHTML = '<option value="">- Todas -</option>';
@@ -1340,7 +1391,7 @@ function poblarPartidosSelectorPlanilla() {
   const selectPartido = document.getElementById("select-partido-planilla");
   if (!selectPartido) return;
 
-  let partidos = [...partidosSelectorCache];
+  let partidos = filtrarPartidosSelectorPorGrupo(partidosSelectorCache);
   if (jornadaSelectorActual) {
     partidos = partidos.filter((p) => String(p.jornada || "") === String(jornadaSelectorActual));
   }
@@ -1356,7 +1407,8 @@ function poblarPartidosSelectorPlanilla() {
   partidos.forEach((p) => {
     const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
     const numeroPartido = obtenerNumeroPartidoVisible(p) || "-";
-    const label = `P${numeroPartido} • J${p.jornada || "-"} • ${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre} • ${formatearFecha(p.fecha_partido)} ${hora}`;
+    const grupo = etiquetaGrupoPartido(p);
+    const label = `P${numeroPartido} • ${grupo} • J${p.jornada || "-"} • ${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre} • ${formatearFecha(p.fecha_partido)} ${hora}`;
     selectPartido.innerHTML += `<option value="${p.id}">${escapeHtml(label)}</option>`;
   });
 
@@ -1377,11 +1429,17 @@ function obtenerUltimaJornadaDisponible(partidos = []) {
 
 async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
   const eventoNum = Number(eventoSeleccionado);
+  const selectGrupo = document.getElementById("select-grupo-planilla");
   const selectPartido = document.getElementById("select-partido-planilla");
   if (!Number.isFinite(eventoNum) || eventoNum <= 0) {
     partidosSelectorCache = [];
+    grupoSelectorActual = "";
     jornadaSelectorActual = "";
+    poblarGruposSelectorPlanilla();
     poblarJornadasSelectorPlanilla();
+    if (selectGrupo) {
+      selectGrupo.innerHTML = '<option value="">- Todos -</option>';
+    }
     if (selectPartido) {
       selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
     }
@@ -1396,6 +1454,7 @@ async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
     if (Number.isFinite(Number(partidoId))) {
       const partidoMatch = partidosSelectorCache.find((p) => Number(p.id) === Number(partidoId));
       if (partidoMatch && Number.isFinite(Number(partidoMatch.jornada))) {
+        grupoSelectorActual = obtenerClaveGrupoPartido(partidoMatch);
         jornadaSelectorActual = String(partidoMatch.jornada);
         jornadaFijadaPorPartido = true;
       }
@@ -1403,17 +1462,23 @@ async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
 
     if (!jornadaFijadaPorPartido && !jornadaSelectorActual) {
       // Sugerimos la ultima jornada por defecto, pero el usuario puede cambiarla libremente.
-      jornadaSelectorActual = obtenerUltimaJornadaDisponible(partidosSelectorCache);
+      jornadaSelectorActual = obtenerUltimaJornadaDisponible(filtrarPartidosSelectorPorGrupo(partidosSelectorCache));
     }
 
+    poblarGruposSelectorPlanilla();
     poblarJornadasSelectorPlanilla();
     poblarPartidosSelectorPlanilla();
   } catch (error) {
     console.error("Error cargando partidos para planillaje directo:", error);
     mostrarNotificacion("Error cargando partidos del evento", "error");
     partidosSelectorCache = [];
+    grupoSelectorActual = "";
     jornadaSelectorActual = "";
+    poblarGruposSelectorPlanilla();
     poblarJornadasSelectorPlanilla();
+    if (selectGrupo) {
+      selectGrupo.innerHTML = '<option value="">- Todos -</option>';
+    }
     if (selectPartido) {
       selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
     }
@@ -1423,11 +1488,12 @@ async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
 async function cargarEventosSelectorPlanilla() {
   const selectCampeonato = document.getElementById("select-campeonato-planilla");
   const selectEvento = document.getElementById("select-evento-planilla");
+  const selectGrupo = document.getElementById("select-grupo-planilla");
   const selectJornada = document.getElementById("select-jornada-planilla");
   const selectPartido = document.getElementById("select-partido-planilla");
-  if (!selectEvento || !selectJornada || !selectPartido) return;
-
+  if (!selectEvento || !selectGrupo || !selectJornada || !selectPartido) return;
   selectEvento.innerHTML = '<option value="">- Selecciona una categoría -</option>';
+  selectGrupo.innerHTML = '<option value="">- Todos -</option>';
   selectEvento.disabled = true;
   if (selectPartido) {
     selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
@@ -1459,10 +1525,28 @@ async function cargarEventosSelectorPlanilla() {
 
     selectEvento.onchange = async () => {
       eventoId = selectEvento.value ? Number(selectEvento.value) : null;
+      grupoSelectorActual = "";
       jornadaSelectorActual = "";
       partidoId = NaN;
       await cargarPartidosSelectorPorEvento(eventoId);
       actualizarVisibilidadContenidoPlanilla(false);
+    };
+
+    selectGrupo.onchange = () => {
+      grupoSelectorActual = selectGrupo.value || "";
+      const jornadasDisponibles = filtrarPartidosSelectorPorGrupo(partidosSelectorCache)
+        .map((p) => Number(p.jornada))
+        .filter((j) => Number.isFinite(j));
+
+      if (!jornadasDisponibles.includes(Number(jornadaSelectorActual))) {
+        jornadaSelectorActual = obtenerUltimaJornadaDisponible(
+          filtrarPartidosSelectorPorGrupo(partidosSelectorCache)
+        );
+      }
+
+      poblarGruposSelectorPlanilla();
+      poblarJornadasSelectorPlanilla();
+      poblarPartidosSelectorPlanilla();
     };
 
     selectJornada.onchange = () => {
@@ -1527,6 +1611,7 @@ async function cargarCampeonatosSelectorPlanilla() {
 
       eventoId = null;
       partidoId = NaN;
+      grupoSelectorActual = "";
       jornadaSelectorActual = "";
       actualizarVisibilidadContenidoPlanilla(false);
       await cargarEventosSelectorPlanilla();
@@ -1592,10 +1677,11 @@ async function resolverCampeonatoContextoPlanilla() {
 
 async function sincronizarSelectoresDesdePlanillaActual() {
   const selectEvento = document.getElementById("select-evento-planilla");
+  const selectGrupo = document.getElementById("select-grupo-planilla");
   const selectJornada = document.getElementById("select-jornada-planilla");
   const selectPartido = document.getElementById("select-partido-planilla");
   const p = dataPlanilla?.partido;
-  if (!selectEvento || !selectJornada || !selectPartido || !p) return;
+  if (!selectEvento || !selectGrupo || !selectJornada || !selectPartido || !p) return;
 
   const eventoActual = Number(p.evento_id || eventoId);
   if (Number.isFinite(eventoActual) && eventoActual > 0) {
@@ -1607,6 +1693,10 @@ async function sincronizarSelectoresDesdePlanillaActual() {
       await cargarPartidosSelectorPorEvento(eventoActual);
     }
   }
+
+  grupoSelectorActual = obtenerClaveGrupoPartido(p);
+  poblarGruposSelectorPlanilla();
+  selectGrupo.value = grupoSelectorActual;
 
   if (Number.isFinite(Number(p.jornada))) {
     jornadaSelectorActual = String(p.jornada);
@@ -3083,6 +3173,4 @@ window.imprimirPDFPlanilla = imprimirPDFPlanilla;
 window.toggleVistaPreviaPlanilla = toggleVistaPreviaPlanilla;
 window.volverAPartidos = volverAPartidos;
 window.recargarPlanilla = recargarPlanilla;
-
-
 

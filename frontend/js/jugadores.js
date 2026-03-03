@@ -78,6 +78,48 @@ function renderEstadoDocumento(url, etiqueta) {
     : `<span class="badge-estado estado-borrador">${etiqueta}: pendiente</span>`;
 }
 
+function obtenerEstadoDisciplinarioJugador(jugador = {}) {
+  const suspension = jugador?.suspension || null;
+  if (!suspension) {
+    return {
+      css: "estado-borrador",
+      texto: eventoId ? "Habilitado" : "Sin evaluar",
+      titulo: eventoId ? "Jugador habilitado para la categoría actual" : "Selecciona una categoría para evaluar sanciones",
+    };
+  }
+
+  if (suspension.suspendido) {
+    const pendientes = Number(suspension.partidos_pendientes || 0);
+    return {
+      css: "estado-suspendido-alerta",
+      texto: `Suspendido ${pendientes} partido${pendientes === 1 ? "" : "s"}`,
+      titulo: suspension.motivo || "Jugador suspendido",
+    };
+  }
+
+  const amarillas = Number(suspension.amarillas_acumuladas || 0);
+  if (amarillas > 0) {
+    return {
+      css: "estado-disciplina-alerta",
+      texto: `Acumula ${amarillas} TA`,
+      titulo: "Tarjetas amarillas acumuladas en la categoría actual",
+    };
+  }
+
+  return {
+    css: "estado-en_curso",
+    texto: "Habilitado",
+    titulo: "Jugador habilitado para la categoría actual",
+  };
+}
+
+function renderEstadoDisciplinarioJugador(jugador = {}) {
+  const estado = obtenerEstadoDisciplinarioJugador(jugador);
+  return `<span class="badge-estado ${estado.css}" title="${escapeHtml(estado.titulo)}">${escapeHtml(
+    estado.texto
+  )}</span>`;
+}
+
 function escapeHtml(valor) {
   return String(valor ?? "")
     .replace(/&/g, "&amp;")
@@ -105,9 +147,20 @@ function eventoRequeridoParaReportes() {
   return categoriasDisponibles.length > 0;
 }
 
-function contextoListoParaReportes() {
+function reporteJugadoresRequiereEquipo(tipo = obtenerTipoReporteJugadores()) {
+  return tipo !== "sanciones_categoria";
+}
+
+function contextoListoParaImportaciones() {
   if (!equipoId || !campeonatoId) return false;
   if (modoDirecto && eventoRequeridoParaReportes() && !eventoId) return false;
+  return true;
+}
+
+function contextoListoParaReportes(tipo = obtenerTipoReporteJugadores()) {
+  if (!campeonatoId) return false;
+  if (modoDirecto && eventoRequeridoParaReportes() && !eventoId) return false;
+  if (reporteJugadoresRequiereEquipo(tipo) && !equipoId) return false;
   return true;
 }
 
@@ -116,9 +169,11 @@ function actualizarEstadoPanelReportes() {
   const hint = document.getElementById("reportes-jugadores-hint");
   if (!bloque) return;
 
-  const habilitadoContexto = contextoListoParaReportes();
-  const habilitadoReportes = habilitadoContexto && tienePermisoReportesJugadores();
-  bloque.classList.toggle("reportes-jugadores-disabled", !habilitadoContexto);
+  const tipoReporte = obtenerTipoReporteJugadores();
+  const habilitadoImportaciones = contextoListoParaImportaciones();
+  const habilitadoContextoReporte = contextoListoParaReportes(tipoReporte);
+  const habilitadoReportes = habilitadoContextoReporte && tienePermisoReportesJugadores();
+  bloque.classList.toggle("reportes-jugadores-disabled", !habilitadoImportaciones && !habilitadoContextoReporte);
 
   [
     "btn-descargar-plantilla-jugadores",
@@ -126,7 +181,7 @@ function actualizarEstadoPanelReportes() {
     "btn-importar-docs-zip",
   ].forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.disabled = !habilitadoContexto;
+    if (el) el.disabled = !habilitadoImportaciones;
   });
 
   [
@@ -140,8 +195,10 @@ function actualizarEstadoPanelReportes() {
   });
 
   if (hint) {
-    if (!habilitadoContexto) {
-      hint.textContent = "Selecciona campeonato, categoría y equipo para habilitar las acciones.";
+    if (!habilitadoContextoReporte) {
+      hint.textContent = reporteJugadoresRequiereEquipo(tipoReporte)
+        ? "Selecciona campeonato, categoría y equipo para habilitar los reportes."
+        : "Selecciona campeonato y categoría para habilitar el consolidado disciplinario.";
     } else if (!tienePermisoReportesJugadores()) {
       hint.textContent = "Tu rol puede gestionar jugadores, pero no generar reportes.";
     } else {
@@ -191,10 +248,14 @@ function aplicarRestriccionesRolEnJugadores() {
   const btnReportes = document.getElementById("btn-tab-jugadores-reportes");
   const panelReportes = document.getElementById("tab-jugadores-reportes");
   const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
+  const bloqueSanciones = document.getElementById("bloque-sanciones-jugadores");
+  const bloqueSancionesCategoria = document.getElementById("bloque-sanciones-categoria-jugadores");
   const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
   if (btnReportes) btnReportes.style.display = "none";
   if (panelReportes) panelReportes.style.display = "none";
   if (bloqueNomina) bloqueNomina.style.display = "none";
+  if (bloqueSanciones) bloqueSanciones.style.display = "none";
+  if (bloqueSancionesCategoria) bloqueSancionesCategoria.style.display = "none";
   if (bloqueCarnets) bloqueCarnets.style.display = "none";
 }
 
@@ -307,6 +368,9 @@ async function inicializarModoDirecto() {
   if (btnVolver) btnVolver.style.display = "none";
 
   await cargarCampeonatosSelectDirecto();
+  if (campeonatoId) {
+    await cargarConfigCampeonato();
+  }
   limpiarVistaSinEquipo();
   actualizarEstadoPanelReportes();
 }
@@ -329,14 +393,17 @@ async function cargarCampeonatosSelectDirecto() {
       select.value = String(campeonatoId);
       await cargarEventosSelectDirecto(campeonatoId);
       await cargarEquiposSelectDirecto(campeonatoId, eventoId);
+      await cargarConfigCampeonato();
     }
 
     select.onchange = async () => {
       campeonatoId = select.value ? Number.parseInt(select.value, 10) : null;
       eventoId = null;
       equipoId = null;
+      campeonatoMeta = null;
       await cargarEventosSelectDirecto(campeonatoId);
       await cargarEquiposSelectDirecto(campeonatoId, null);
+      await cargarConfigCampeonato();
       limpiarVistaSinEquipo();
       actualizarEstadoPanelReportes();
     };
@@ -484,6 +551,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   aplicarRestriccionesRolEnJugadores();
   cambiarPestanaJugadores("tab-jugadores-gestion");
   actualizarEstadoPanelReportes();
+  document.getElementById("reporte-jugadores-tipo")?.addEventListener("change", () => {
+    actualizarEstadoPanelReportes();
+  });
   document
     .getElementById("carnet-foto-anverso")
     ?.addEventListener("change", () => {
@@ -535,7 +605,24 @@ async function cargarConfigCampeonato() {
   if (!campeonatoId && equipoActual?.campeonato_id) {
     campeonatoId = Number.parseInt(equipoActual.campeonato_id, 10);
   }
-  if (!campeonatoId) return;
+  if (!campeonatoId) {
+    campeonatoMeta = {
+      id: null,
+      nombre: "",
+      organizador: "",
+      logo_url: "",
+      requiere_cedula_jugador: false,
+      genera_carnets: false,
+    };
+    minJugadoresPorEquipo = null;
+    maxJugadoresPorEquipo = null;
+    reglasDocumentos = {
+      requiere_cedula_jugador: false,
+      requiere_foto_cedula: false,
+      requiere_foto_carnet: false,
+    };
+    return;
+  }
 
   try {
     const resp = await CampeonatosAPI.obtenerPorId(campeonatoId);
@@ -594,7 +681,9 @@ async function cargarJugadores() {
   cont.innerHTML = "<p>Cargando jugadores...</p>";
 
   try {
-    const data = await ApiClient.get(`/jugadores/equipo/${equipoId}`);
+    const queryEvento =
+      Number.isFinite(Number(eventoId)) && Number(eventoId) > 0 ? `?evento_id=${Number(eventoId)}` : "";
+    const data = await ApiClient.get(`/jugadores/equipo/${equipoId}${queryEvento}`);
 
     let jugadores = [];
     if (Array.isArray(data)) jugadores = data;
@@ -607,6 +696,7 @@ async function cargarJugadores() {
       renderListadoJugadores();
       actualizarResumenJugadores();
       renderPlantillaNominaJugadores();
+      renderReporteSancionesJugadores();
       renderPlantillaCarnets();
       return;
     }
@@ -615,12 +705,14 @@ async function cargarJugadores() {
 
     actualizarResumenJugadores();
     renderPlantillaNominaJugadores();
+    renderReporteSancionesJugadores();
     renderPlantillaCarnets();
   } catch (error) {
     console.error("Error cargando jugadores:", error);
     mostrarNotificacion("Error cargando jugadores", "error");
     cont.innerHTML = "<p>Error cargando jugadores.</p>";
     renderPlantillaNominaJugadores();
+    renderReporteSancionesJugadores();
     renderPlantillaCarnets();
   }
 }
@@ -639,6 +731,7 @@ function renderTarjetasJugadores(jugadores) {
           <p><strong>Cédula de Identidad:</strong> ${escapeHtml(jugador.cedidentidad || "-")}</p>
           <p><strong>Fecha nac.:</strong> ${escapeHtml(formatearFecha(jugador.fecha_nacimiento))}</p>
           <p><strong>Capitán:</strong> ${jugador.es_capitan ? "Sí" : "No"}</p>
+          <p><strong>Disciplina:</strong> ${renderEstadoDisciplinarioJugador(jugador)}</p>
           <p><strong>Documentos:</strong> ${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carnet")}</p>
 
           <div class="jugador-actions">
@@ -667,6 +760,7 @@ function renderTablaJugadores(jugadores) {
           <td>${escapeHtml(jugador.posicion || "-")}</td>
           <td>${escapeHtml(jugador.numero_camiseta || "-")}</td>
           <td>${jugador.es_capitan ? "Sí" : "No"}</td>
+          <td>${renderEstadoDisciplinarioJugador(jugador)}</td>
           <td>${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carnet")}</td>
           <td class="list-table-actions">
             <button class="btn btn-warning" onclick="editarJugador(${jugador.id})">
@@ -693,6 +787,7 @@ function renderTablaJugadores(jugadores) {
             <th>Posición</th>
             <th>N°</th>
             <th>Capitán</th>
+            <th>Disciplina</th>
             <th>Documentos</th>
             <th>Acciones</th>
           </tr>
@@ -849,6 +944,303 @@ function renderPlantillaNominaJugadores() {
   `;
 }
 
+function obtenerResumenDisciplinaJugadores(jugadores = []) {
+  return (Array.isArray(jugadores) ? jugadores : []).reduce(
+    (acc, jugador) => {
+      const suspension = jugador?.suspension || null;
+      if (suspension?.suspendido) acc.suspendidos += 1;
+      else if (Number(suspension?.amarillas_acumuladas || 0) > 0) acc.alertaAmarillas += 1;
+      else acc.habilitados += 1;
+      return acc;
+    },
+    {
+      total: (Array.isArray(jugadores) ? jugadores : []).length,
+      suspendidos: 0,
+      alertaAmarillas: 0,
+      habilitados: 0,
+    }
+  );
+}
+
+function renderReporteSancionesJugadores() {
+  const zona = document.getElementById("sanciones-jugadores-export");
+  if (!zona) return;
+
+  if (!equipoActual || !jugadoresActuales.length) {
+    zona.innerHTML = '<p class="empty-state">No hay jugadores para generar el reporte disciplinario.</p>';
+    return;
+  }
+
+  const logoCampeonato = normalizarArchivoUrl(campeonatoMeta.logo_url);
+  const resumen = obtenerResumenDisciplinaJugadores(jugadoresActuales);
+  const jugadoresOrdenados = [...jugadoresActuales].sort((a, b) => {
+    const aSusp = a?.suspension?.suspendido ? 1 : 0;
+    const bSusp = b?.suspension?.suspendido ? 1 : 0;
+    if (aSusp !== bSusp) return bSusp - aSusp;
+    const aTa = Number(a?.suspension?.amarillas_acumuladas || 0);
+    const bTa = Number(b?.suspension?.amarillas_acumuladas || 0);
+    if (aTa !== bTa) return bTa - aTa;
+    return String(`${a?.apellido || ""} ${a?.nombre || ""}`).localeCompare(
+      String(`${b?.apellido || ""} ${b?.nombre || ""}`),
+      "es",
+      { sensitivity: "base" }
+    );
+  });
+
+  const filas = jugadoresOrdenados
+    .map((jugador, idx) => {
+      const suspension = jugador?.suspension || {};
+      const amarillas = Number(suspension?.amarillas_acumuladas || 0);
+      const pendientes = Number(suspension?.partidos_pendientes || 0);
+      const motivo = suspension?.motivo || (amarillas > 0 ? "Seguimiento por acumulación de amarillas" : "Sin novedad");
+      const filaCss = suspension?.suspendido
+        ? "sancion-row-danger"
+        : amarillas > 0
+          ? "sancion-row-alert"
+          : "";
+
+      return `
+        <tr class="${filaCss}">
+          <td>${idx + 1}</td>
+          <td>${escapeHtml(`${jugador.nombre || ""} ${jugador.apellido || ""}`.trim())}</td>
+          <td>${escapeHtml(jugador.numero_camiseta || "—")}</td>
+          <td>${escapeHtml(jugador.posicion || "—")}</td>
+          <td>${renderEstadoDisciplinarioJugador(jugador)}</td>
+          <td>${amarillas}</td>
+          <td>${pendientes}</td>
+          <td title="${escapeHtml(motivo)}">${escapeHtml(motivo)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  zona.innerHTML = `
+    <div class="nomina-sheet sanciones-sheet">
+      <div class="nomina-head">
+        <div class="nomina-head-logo">
+          ${logoCampeonato ? `<img src="${logoCampeonato}" alt="Logo campeonato" />` : "<div class='logo-fallback'>LT&C</div>"}
+        </div>
+        <div class="nomina-head-main">
+          <h3>Reporte Disciplinario del Equipo</h3>
+          <p><strong>Campeonato:</strong> ${escapeHtml(campeonatoMeta.nombre || "—")}</p>
+          <p><strong>Organizador:</strong> ${escapeHtml(campeonatoMeta.organizador || "—")}</p>
+          <p><strong>Categoría:</strong> ${escapeHtml(obtenerNombreEventoActual())}</p>
+          <p><strong>Equipo:</strong> ${escapeHtml(equipoActual.nombre || "—")}</p>
+        </div>
+        <div class="nomina-head-meta">
+          <p><strong>Fecha:</strong> ${escapeHtml(new Date().toLocaleDateString("es-EC"))}</p>
+          <p><strong>Total jugadores:</strong> ${resumen.total}</p>
+        </div>
+      </div>
+
+      <div class="sanciones-resumen-grid">
+        <div class="sanciones-resumen-card">
+          <span class="sanciones-resumen-label">Suspendidos</span>
+          <strong>${resumen.suspendidos}</strong>
+        </div>
+        <div class="sanciones-resumen-card">
+          <span class="sanciones-resumen-label">Con amarillas acumuladas</span>
+          <strong>${resumen.alertaAmarillas}</strong>
+        </div>
+        <div class="sanciones-resumen-card">
+          <span class="sanciones-resumen-label">Habilitados</span>
+          <strong>${resumen.habilitados}</strong>
+        </div>
+      </div>
+
+      <div class="nomina-table-wrap">
+        <table class="nomina-table sanciones-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Jugador</th>
+              <th>N°</th>
+              <th>Posición</th>
+              <th>Estado</th>
+              <th>TA acum.</th>
+              <th>Partidos pendientes</th>
+              <th>Motivo / observación</th>
+            </tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function obtenerDatosSancionesCategoria() {
+  const eventoActual = Number.parseInt(eventoId, 10);
+  if (!Number.isFinite(eventoActual) || eventoActual <= 0) {
+    throw new Error("Selecciona una categoría para generar el consolidado disciplinario");
+  }
+
+  const respEquipos = await window.ApiClient.get(`/eventos/${eventoActual}/equipos`);
+  const equipos = Array.isArray(respEquipos) ? respEquipos : respEquipos?.equipos || [];
+  if (!equipos.length) return [];
+
+  const resultados = await Promise.allSettled(
+    equipos.map(async (equipo) => {
+      const data = await window.ApiClient.get(`/jugadores/equipo/${equipo.id}?evento_id=${eventoActual}`);
+      const jugadores = Array.isArray(data) ? data : data?.jugadores || data?.data || [];
+      return jugadores.map((jugador) => ({
+        ...jugador,
+        equipo_id: equipo.id,
+        equipo_nombre: equipo.nombre || `Equipo ${equipo.id}`,
+      }));
+    })
+  );
+
+  const registros = [];
+  const errores = [];
+  resultados.forEach((resultado, index) => {
+    if (resultado.status === "fulfilled") {
+      registros.push(...resultado.value);
+      return;
+    }
+    errores.push(equipos[index]?.nombre || `Equipo ${equipos[index]?.id || index + 1}`);
+  });
+
+  if (errores.length) {
+    console.warn("No se pudo cargar disciplina para algunos equipos:", errores);
+  }
+
+  return registros;
+}
+
+function obtenerResumenDisciplinaGlobal(registros = []) {
+  const resumenBase = obtenerResumenDisciplinaJugadores(registros);
+  const equipos = new Set(
+    (Array.isArray(registros) ? registros : [])
+      .map((item) => Number.parseInt(item?.equipo_id, 10))
+      .filter((id) => Number.isFinite(id) && id > 0)
+  );
+  return {
+    ...resumenBase,
+    equipos: equipos.size,
+  };
+}
+
+async function renderReporteSancionesCategoriaJugadores() {
+  const zona = document.getElementById("sanciones-categoria-jugadores-export");
+  if (!zona) return;
+
+  if (!campeonatoId || !eventoId) {
+    zona.innerHTML =
+      '<p class="empty-state">Selecciona campeonato y categoría para generar el consolidado disciplinario.</p>';
+    return;
+  }
+
+  zona.innerHTML = '<p class="empty-state">Cargando consolidado disciplinario de la categoría...</p>';
+
+  const registros = await obtenerDatosSancionesCategoria();
+  if (!registros.length) {
+    zona.innerHTML = '<p class="empty-state">No hay jugadores registrados en los equipos de esta categoría.</p>';
+    return;
+  }
+
+  const logoCampeonato = normalizarArchivoUrl(campeonatoMeta.logo_url);
+  const resumen = obtenerResumenDisciplinaGlobal(registros);
+  const filas = [...registros]
+    .sort((a, b) => {
+      const equipoCmp = String(a?.equipo_nombre || "").localeCompare(String(b?.equipo_nombre || ""), "es", {
+        sensitivity: "base",
+      });
+      if (equipoCmp !== 0) return equipoCmp;
+      const aSusp = a?.suspension?.suspendido ? 1 : 0;
+      const bSusp = b?.suspension?.suspendido ? 1 : 0;
+      if (aSusp !== bSusp) return bSusp - aSusp;
+      const aTa = Number(a?.suspension?.amarillas_acumuladas || 0);
+      const bTa = Number(b?.suspension?.amarillas_acumuladas || 0);
+      if (aTa !== bTa) return bTa - aTa;
+      return String(`${a?.apellido || ""} ${a?.nombre || ""}`).localeCompare(
+        String(`${b?.apellido || ""} ${b?.nombre || ""}`),
+        "es",
+        { sensitivity: "base" }
+      );
+    })
+    .map((jugador, idx) => {
+      const suspension = jugador?.suspension || {};
+      const amarillas = Number(suspension?.amarillas_acumuladas || 0);
+      const pendientes = Number(suspension?.partidos_pendientes || 0);
+      const motivo = suspension?.motivo || (amarillas > 0 ? "Seguimiento por acumulación de amarillas" : "Sin novedad");
+      const filaCss = suspension?.suspendido
+        ? "sancion-row-danger"
+        : amarillas > 0
+          ? "sancion-row-alert"
+          : "";
+
+      return `
+        <tr class="${filaCss}">
+          <td>${idx + 1}</td>
+          <td>${escapeHtml(jugador.equipo_nombre || "—")}</td>
+          <td>${escapeHtml(`${jugador.nombre || ""} ${jugador.apellido || ""}`.trim())}</td>
+          <td>${escapeHtml(jugador.numero_camiseta || "—")}</td>
+          <td>${escapeHtml(jugador.posicion || "—")}</td>
+          <td>${renderEstadoDisciplinarioJugador(jugador)}</td>
+          <td>${amarillas}</td>
+          <td>${pendientes}</td>
+          <td title="${escapeHtml(motivo)}">${escapeHtml(motivo)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  zona.innerHTML = `
+    <div class="nomina-sheet sanciones-sheet">
+      <div class="nomina-head">
+        <div class="nomina-head-logo">
+          ${logoCampeonato ? `<img src="${logoCampeonato}" alt="Logo campeonato" />` : "<div class='logo-fallback'>LT&C</div>"}
+        </div>
+        <div class="nomina-head-main">
+          <h3>Consolidado Disciplinario por Categoría</h3>
+          <p><strong>Campeonato:</strong> ${escapeHtml(campeonatoMeta.nombre || "—")}</p>
+          <p><strong>Organizador:</strong> ${escapeHtml(campeonatoMeta.organizador || "—")}</p>
+          <p><strong>Categoría:</strong> ${escapeHtml(obtenerNombreEventoActual())}</p>
+        </div>
+        <div class="nomina-head-meta">
+          <p><strong>Fecha:</strong> ${escapeHtml(new Date().toLocaleDateString("es-EC"))}</p>
+          <p><strong>Equipos:</strong> ${resumen.equipos}</p>
+        </div>
+      </div>
+
+      <div class="sanciones-resumen-grid">
+        <div class="sanciones-resumen-card">
+          <span class="sanciones-resumen-label">Suspendidos</span>
+          <strong>${resumen.suspendidos}</strong>
+        </div>
+        <div class="sanciones-resumen-card">
+          <span class="sanciones-resumen-label">Con amarillas acumuladas</span>
+          <strong>${resumen.alertaAmarillas}</strong>
+        </div>
+        <div class="sanciones-resumen-card">
+          <span class="sanciones-resumen-label">Jugadores evaluados</span>
+          <strong>${resumen.total}</strong>
+        </div>
+      </div>
+
+      <div class="nomina-table-wrap">
+        <table class="nomina-table sanciones-table sanciones-categoria-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Equipo</th>
+              <th>Jugador</th>
+              <th>N°</th>
+              <th>Posición</th>
+              <th>Estado</th>
+              <th>TA acum.</th>
+              <th>Partidos pendientes</th>
+              <th>Motivo / observación</th>
+            </tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 function renderPlantillaCarnets() {
   const zona = document.getElementById("carnets-jugadores-export");
   if (!zona) return;
@@ -925,8 +1317,50 @@ function mostrarPlantillaNominaJugadores() {
   cambiarPestanaJugadores("tab-jugadores-reportes");
   renderPlantillaNominaJugadores();
   const bloque = document.getElementById("bloque-nomina-jugadores");
+  const bloqueSanciones = document.getElementById("bloque-sanciones-jugadores");
+  const bloqueSancionesCategoria = document.getElementById("bloque-sanciones-categoria-jugadores");
   const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
   if (bloque) bloque.style.display = "block";
+  if (bloqueSanciones) bloqueSanciones.style.display = "none";
+  if (bloqueSancionesCategoria) bloqueSancionesCategoria.style.display = "none";
+  if (bloqueCarnets) bloqueCarnets.style.display = "none";
+  bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function mostrarReporteSancionesJugadores() {
+  if (!validarPermisoReportesJugadores()) return;
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para ver reportes", "warning");
+    return;
+  }
+  cambiarPestanaJugadores("tab-jugadores-reportes");
+  renderReporteSancionesJugadores();
+  const bloque = document.getElementById("bloque-sanciones-jugadores");
+  const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
+  const bloqueSancionesCategoria = document.getElementById("bloque-sanciones-categoria-jugadores");
+  const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
+  if (bloque) bloque.style.display = "block";
+  if (bloqueNomina) bloqueNomina.style.display = "none";
+  if (bloqueSancionesCategoria) bloqueSancionesCategoria.style.display = "none";
+  if (bloqueCarnets) bloqueCarnets.style.display = "none";
+  bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function mostrarReporteSancionesCategoriaJugadores() {
+  if (!validarPermisoReportesJugadores()) return;
+  if (!contextoListoParaReportes("sanciones_categoria")) {
+    mostrarNotificacion("Selecciona campeonato y categoría para ver el consolidado disciplinario", "warning");
+    return;
+  }
+  cambiarPestanaJugadores("tab-jugadores-reportes");
+  await renderReporteSancionesCategoriaJugadores();
+  const bloque = document.getElementById("bloque-sanciones-categoria-jugadores");
+  const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
+  const bloqueSanciones = document.getElementById("bloque-sanciones-jugadores");
+  const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
+  if (bloque) bloque.style.display = "block";
+  if (bloqueNomina) bloqueNomina.style.display = "none";
+  if (bloqueSanciones) bloqueSanciones.style.display = "none";
   if (bloqueCarnets) bloqueCarnets.style.display = "none";
   bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -945,8 +1379,12 @@ function mostrarPlantillaCarnets() {
   renderPlantillaCarnets();
   const bloque = document.getElementById("bloque-carnets-jugadores");
   const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
+  const bloqueSanciones = document.getElementById("bloque-sanciones-jugadores");
+  const bloqueSancionesCategoria = document.getElementById("bloque-sanciones-categoria-jugadores");
   if (bloque) bloque.style.display = "block";
   if (bloqueNomina) bloqueNomina.style.display = "none";
+  if (bloqueSanciones) bloqueSanciones.style.display = "none";
+  if (bloqueSancionesCategoria) bloqueSancionesCategoria.style.display = "none";
   bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1194,6 +1632,32 @@ function imprimirNominaJugadores() {
   imprimirNodoEnVentana(zona, "Nómina de Jugadores");
 }
 
+function imprimirReporteSancionesJugadores() {
+  if (!validarPermisoReportesJugadores()) return;
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para imprimir", "warning");
+    return;
+  }
+  if (!jugadoresActuales.length) {
+    mostrarNotificacion("No hay jugadores para imprimir el reporte disciplinario", "warning");
+    return;
+  }
+  renderReporteSancionesJugadores();
+  const zona = document.getElementById("sanciones-jugadores-export");
+  imprimirNodoEnVentana(zona, "Reporte Disciplinario");
+}
+
+async function imprimirReporteSancionesCategoriaJugadores() {
+  if (!validarPermisoReportesJugadores()) return;
+  if (!contextoListoParaReportes("sanciones_categoria")) {
+    mostrarNotificacion("Selecciona campeonato y categoría para imprimir el consolidado disciplinario", "warning");
+    return;
+  }
+  await renderReporteSancionesCategoriaJugadores();
+  const zona = document.getElementById("sanciones-categoria-jugadores-export");
+  imprimirNodoEnVentana(zona, "Consolidado Disciplinario");
+}
+
 async function exportarNominaJugadoresPDF() {
   if (!validarPermisoReportesJugadores()) return;
   if (!contextoListoParaReportes()) {
@@ -1216,6 +1680,52 @@ async function exportarNominaJugadoresPDF() {
   } catch (error) {
     console.error(error);
     mostrarNotificacion(error.message || "No se pudo exportar la nómina", "error");
+  }
+}
+
+async function exportarReporteSancionesJugadoresPDF() {
+  if (!validarPermisoReportesJugadores()) return;
+  if (!contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para exportar", "warning");
+    return;
+  }
+  if (!jugadoresActuales.length) {
+    mostrarNotificacion("No hay jugadores para exportar el reporte disciplinario", "warning");
+    return;
+  }
+  try {
+    renderReporteSancionesJugadores();
+    const zona = document.getElementById("sanciones-jugadores-export");
+    const slugEquipo = valorTextoImportacion(equipoActual?.nombre || "equipo")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    await exportarNodoPDF(zona, `reporte_sanciones_${slugEquipo || "equipo"}.pdf`);
+    mostrarNotificacion("Reporte disciplinario exportado en PDF", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo exportar el reporte disciplinario", "error");
+  }
+}
+
+async function exportarReporteSancionesCategoriaJugadoresPDF() {
+  if (!validarPermisoReportesJugadores()) return;
+  if (!contextoListoParaReportes("sanciones_categoria")) {
+    mostrarNotificacion("Selecciona campeonato y categoría para exportar el consolidado disciplinario", "warning");
+    return;
+  }
+  try {
+    await renderReporteSancionesCategoriaJugadores();
+    const zona = document.getElementById("sanciones-categoria-jugadores-export");
+    const slugCategoria = valorTextoImportacion(obtenerNombreEventoActual() || "categoria")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    await exportarNodoPDF(zona, `consolidado_sanciones_${slugCategoria || "categoria"}.pdf`);
+    mostrarNotificacion("Consolidado disciplinario exportado en PDF", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo exportar el consolidado disciplinario", "error");
   }
 }
 
@@ -1289,21 +1799,37 @@ function obtenerTipoReporteJugadores() {
   return select?.value || "nomina";
 }
 
-function verReporteJugadores() {
+async function verReporteJugadores() {
   if (!validarPermisoReportesJugadores()) return;
   const tipo = obtenerTipoReporteJugadores();
   if (tipo === "carnets") {
     mostrarPlantillaCarnets();
     return;
   }
+  if (tipo === "sanciones_categoria") {
+    await mostrarReporteSancionesCategoriaJugadores();
+    return;
+  }
+  if (tipo === "sanciones") {
+    mostrarReporteSancionesJugadores();
+    return;
+  }
   mostrarPlantillaNominaJugadores();
 }
 
-function imprimirReporteJugadores() {
+async function imprimirReporteJugadores() {
   if (!validarPermisoReportesJugadores()) return;
   const tipo = obtenerTipoReporteJugadores();
   if (tipo === "carnets") {
     imprimirCarnetsJugadores();
+    return;
+  }
+  if (tipo === "sanciones_categoria") {
+    await imprimirReporteSancionesCategoriaJugadores();
+    return;
+  }
+  if (tipo === "sanciones") {
+    imprimirReporteSancionesJugadores();
     return;
   }
   imprimirNominaJugadores();
@@ -1314,6 +1840,14 @@ async function exportarReporteJugadoresPDF() {
   const tipo = obtenerTipoReporteJugadores();
   if (tipo === "carnets") {
     await exportarCarnetsPDF();
+    return;
+  }
+  if (tipo === "sanciones_categoria") {
+    await exportarReporteSancionesCategoriaJugadoresPDF();
+    return;
+  }
+  if (tipo === "sanciones") {
+    await exportarReporteSancionesJugadoresPDF();
     return;
   }
   await exportarNominaJugadoresPDF();
@@ -1783,7 +2317,7 @@ function inicializarImportadorJugadores() {
     input.value = "";
     if (!file) return;
 
-    if (!contextoListoParaReportes()) {
+    if (!contextoListoParaImportaciones()) {
       mostrarNotificacion("Selecciona campeonato, categoría y equipo antes de importar jugadores", "warning");
       return;
     }
@@ -1831,7 +2365,7 @@ function inicializarImportadorJugadores() {
 }
 
 function abrirImportadorJugadores() {
-  if (!contextoListoParaReportes()) {
+  if (!contextoListoParaImportaciones()) {
     mostrarNotificacion("Selecciona campeonato, categoría y equipo para importar jugadores", "warning");
     return;
   }
@@ -1880,7 +2414,7 @@ function inicializarImportadorDocsZip() {
     input.value = "";
     if (!file) return;
 
-    if (!contextoListoParaReportes()) {
+    if (!contextoListoParaImportaciones()) {
       mostrarNotificacion("Selecciona campeonato, categoría y equipo para importar documentos", "warning");
       return;
     }
@@ -1970,7 +2504,7 @@ function inicializarImportadorDocsZip() {
 }
 
 function abrirImportadorDocsZip() {
-  if (!contextoListoParaReportes()) {
+  if (!contextoListoParaImportaciones()) {
     mostrarNotificacion("Selecciona campeonato, categoría y equipo para importar documentos", "warning");
     return;
   }
@@ -1983,7 +2517,7 @@ function abrirImportadorDocsZip() {
 }
 
 function descargarPlantillaJugadores() {
-  if (!contextoListoParaReportes()) {
+  if (!contextoListoParaImportaciones()) {
     mostrarNotificacion("Selecciona campeonato, categoría y equipo para descargar plantilla", "warning");
     return;
   }
@@ -2063,8 +2597,14 @@ window.verReporteJugadores = verReporteJugadores;
 window.imprimirReporteJugadores = imprimirReporteJugadores;
 window.exportarReporteJugadoresPDF = exportarReporteJugadoresPDF;
 window.mostrarPlantillaNominaJugadores = mostrarPlantillaNominaJugadores;
+window.mostrarReporteSancionesJugadores = mostrarReporteSancionesJugadores;
+window.mostrarReporteSancionesCategoriaJugadores = mostrarReporteSancionesCategoriaJugadores;
 window.imprimirNominaJugadores = imprimirNominaJugadores;
 window.exportarNominaJugadoresPDF = exportarNominaJugadoresPDF;
+window.imprimirReporteSancionesJugadores = imprimirReporteSancionesJugadores;
+window.exportarReporteSancionesJugadoresPDF = exportarReporteSancionesJugadoresPDF;
+window.imprimirReporteSancionesCategoriaJugadores = imprimirReporteSancionesCategoriaJugadores;
+window.exportarReporteSancionesCategoriaJugadoresPDF = exportarReporteSancionesCategoriaJugadoresPDF;
 window.mostrarPlantillaCarnets = mostrarPlantillaCarnets;
 window.imprimirCarnetsJugadores = imprimirCarnetsJugadores;
 window.exportarCarnetsPDF = exportarCarnetsPDF;

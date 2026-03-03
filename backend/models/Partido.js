@@ -132,6 +132,149 @@ function partidoCuentaParaSuspension(estado = "") {
   return value === "finalizado" || value === "no_presentaron_ambos";
 }
 
+function normalizarIdsJugadores(jugadores = []) {
+  return (Array.isArray(jugadores) ? jugadores : [])
+    .map((jugador) => Number.parseInt(jugador?.id, 10))
+    .filter((id) => Number.isFinite(id) && id > 0);
+}
+
+async function calcularEstadoDisciplinarioEquipo({
+  eventoIdRaw,
+  equipoIdRaw,
+  jugadores = [],
+  partidoIdRaw = null,
+  tipoFutbol = "",
+} = {}) {
+  const equipoId = Number.parseInt(equipoIdRaw, 10);
+  const eventoId = Number.parseInt(eventoIdRaw, 10);
+  const partidoId = Number.parseInt(partidoIdRaw, 10);
+  const idsJugadores = normalizarIdsJugadores(jugadores);
+
+  const resultado = new Map();
+  idsJugadores.forEach((id) => {
+    resultado.set(id, {
+      suspendido: false,
+      partidos_pendientes: 0,
+      amarillas_acumuladas: 0,
+      motivo: null,
+    });
+  });
+
+  if (!Number.isFinite(equipoId) || equipoId <= 0) return resultado;
+  if (!Number.isFinite(eventoId) || eventoId <= 0) return resultado;
+  if (!idsJugadores.length) return resultado;
+
+  const partidosEquipoQ = `
+    SELECT p.id,
+           p.jornada,
+           p.fecha_partido,
+           p.hora_partido,
+           p.estado,
+           COALESCE(c.tipo_futbol, '') AS tipo_futbol
+    FROM partidos p
+    LEFT JOIN campeonatos c ON c.id = p.campeonato_id
+    WHERE p.evento_id = $1
+      AND (p.equipo_local_id = $2 OR p.equipo_visitante_id = $2)
+    ORDER BY p.jornada NULLS LAST, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.id
+  `;
+  const partidosEquipoR = await pool.query(partidosEquipoQ, [eventoId, equipoId]);
+  const partidosEquipo = partidosEquipoR.rows || [];
+  if (!partidosEquipo.length) return resultado;
+
+  let limitePartidos = partidosEquipo.length;
+  if (Number.isFinite(partidoId) && partidoId > 0) {
+    const indexPartidoActual = partidosEquipo.findIndex((item) => Number(item.id) === partidoId);
+    if (indexPartidoActual < 0) return resultado;
+    limitePartidos = indexPartidoActual;
+  }
+
+  const tipoFutbolNormalizado =
+    String(tipoFutbol || "").trim() || String(partidosEquipo[0]?.tipo_futbol || "").trim();
+  const umbralAmarillas = obtenerUmbralAmarillasSuspension(tipoFutbolNormalizado);
+  const idsPartidos = partidosEquipo.map((item) => Number(item.id)).filter((id) => Number.isFinite(id));
+  if (!idsPartidos.length) return resultado;
+
+  const tarjetasQ = `
+    SELECT partido_id, jugador_id, equipo_id, tipo_tarjeta, observacion
+    FROM tarjetas
+    WHERE partido_id = ANY($1::int[])
+      AND equipo_id = $2
+      AND jugador_id = ANY($3::int[])
+  `;
+  const tarjetasR = await pool.query(tarjetasQ, [idsPartidos, equipoId, idsJugadores]);
+  const tarjetasPorJugadorPartido = new Map();
+  for (const item of tarjetasR.rows) {
+    const jugadorId = Number.parseInt(item.jugador_id, 10);
+    const matchId = Number.parseInt(item.partido_id, 10);
+    if (!Number.isFinite(jugadorId) || !Number.isFinite(matchId)) continue;
+    const key = `${jugadorId}:${matchId}`;
+    const bucket = tarjetasPorJugadorPartido.get(key) || [];
+    bucket.push(item);
+    tarjetasPorJugadorPartido.set(key, bucket);
+  }
+
+  for (const jugadorId of idsJugadores) {
+    let partidosPendientes = 0;
+    let amarillasAcumuladas = 0;
+    let motivo = null;
+
+    for (let i = 0; i < limitePartidos; i += 1) {
+      const match = partidosEquipo[i];
+      if (!partidoCuentaParaSuspension(match?.estado)) continue;
+
+      if (partidosPendientes > 0) {
+        partidosPendientes -= 1;
+        if (partidosPendientes <= 0) motivo = null;
+        continue;
+      }
+
+      const tarjetasJugador = tarjetasPorJugadorPartido.get(`${jugadorId}:${Number(match.id)}`) || [];
+      if (!tarjetasJugador.length) continue;
+
+      let amarillas = 0;
+      let rojasDirectas = 0;
+      let rojasDobleAmarilla = 0;
+
+      tarjetasJugador.forEach((item) => {
+        const tipo = String(item?.tipo_tarjeta || "").trim().toLowerCase();
+        if (tipo === "amarilla") amarillas += 1;
+        if (tipo === "roja") {
+          if (tarjetaEsRojaPorDobleAmarilla(item)) rojasDobleAmarilla += 1;
+          else rojasDirectas += 1;
+        }
+      });
+
+      if (umbralAmarillas > 0 && amarillas > 0) {
+        amarillasAcumuladas += amarillas;
+        while (amarillasAcumuladas >= umbralAmarillas) {
+          amarillasAcumuladas -= umbralAmarillas;
+          partidosPendientes += 1;
+          motivo = `Suspensión por acumulación de ${umbralAmarillas} amarillas`;
+        }
+      }
+
+      if (rojasDobleAmarilla > 0) {
+        partidosPendientes += rojasDobleAmarilla;
+        motivo = "Suspensión por doble amarilla";
+      }
+
+      if (rojasDirectas > 0) {
+        partidosPendientes += rojasDirectas * 2;
+        motivo = "Suspensión por roja directa";
+      }
+    }
+
+    resultado.set(jugadorId, {
+      suspendido: partidosPendientes > 0,
+      partidos_pendientes: Math.max(partidosPendientes, 0),
+      amarillas_acumuladas: amarillasAcumuladas,
+      motivo: partidosPendientes > 0 ? motivo : null,
+    });
+  }
+
+  return resultado;
+}
+
 // ===============================
 // Round Robin
 // ===============================
@@ -1253,123 +1396,22 @@ class Partido {
   }
 
   static async calcularSuspensionesEquipoParaPartido(partido = {}, jugadores = [], equipoIdRaw = null) {
-    const equipoId = Number.parseInt(equipoIdRaw ?? partido?.equipo_local_id, 10);
-    const eventoId = Number.parseInt(partido?.evento_id, 10);
-    const partidoId = Number.parseInt(partido?.id, 10);
-    const idsJugadores = (Array.isArray(jugadores) ? jugadores : [])
-      .map((jugador) => Number.parseInt(jugador?.id, 10))
-      .filter((id) => Number.isFinite(id) && id > 0);
-
-    const resultado = new Map();
-    idsJugadores.forEach((id) => {
-      resultado.set(id, {
-        suspendido: false,
-        partidos_pendientes: 0,
-        amarillas_acumuladas: 0,
-        motivo: null,
-      });
+    return calcularEstadoDisciplinarioEquipo({
+      eventoIdRaw: partido?.evento_id,
+      equipoIdRaw: equipoIdRaw ?? partido?.equipo_local_id,
+      jugadores,
+      partidoIdRaw: partido?.id,
+      tipoFutbol: partido?.tipo_futbol,
     });
+  }
 
-    if (!Number.isFinite(equipoId) || equipoId <= 0) return resultado;
-    if (!Number.isFinite(eventoId) || eventoId <= 0) return resultado;
-    if (!Number.isFinite(partidoId) || partidoId <= 0) return resultado;
-    if (!idsJugadores.length) return resultado;
-
-    const umbralAmarillas = obtenerUmbralAmarillasSuspension(partido?.tipo_futbol);
-
-    const partidosEquipoQ = `
-      SELECT id, jornada, fecha_partido, hora_partido, estado
-      FROM partidos
-      WHERE evento_id = $1
-        AND (equipo_local_id = $2 OR equipo_visitante_id = $2)
-      ORDER BY jornada NULLS LAST, fecha_partido NULLS LAST, hora_partido NULLS LAST, id
-    `;
-    const partidosEquipoR = await pool.query(partidosEquipoQ, [eventoId, equipoId]);
-    const partidosEquipo = partidosEquipoR.rows || [];
-    const indexPartidoActual = partidosEquipo.findIndex((item) => Number(item.id) === partidoId);
-
-    if (indexPartidoActual < 0) return resultado;
-
-    const idsPartidos = partidosEquipo.map((item) => Number(item.id)).filter((id) => Number.isFinite(id));
-    const tarjetasQ = `
-      SELECT partido_id, jugador_id, equipo_id, tipo_tarjeta, observacion
-      FROM tarjetas
-      WHERE partido_id = ANY($1::int[])
-        AND equipo_id = $2
-        AND jugador_id = ANY($3::int[])
-    `;
-    const tarjetasR = await pool.query(tarjetasQ, [idsPartidos, equipoId, idsJugadores]);
-    const tarjetasPorJugadorPartido = new Map();
-    for (const item of tarjetasR.rows) {
-      const jugadorId = Number.parseInt(item.jugador_id, 10);
-      const matchId = Number.parseInt(item.partido_id, 10);
-      if (!Number.isFinite(jugadorId) || !Number.isFinite(matchId)) continue;
-      const key = `${jugadorId}:${matchId}`;
-      const bucket = tarjetasPorJugadorPartido.get(key) || [];
-      bucket.push(item);
-      tarjetasPorJugadorPartido.set(key, bucket);
-    }
-
-    for (const jugadorId of idsJugadores) {
-      let partidosPendientes = 0;
-      let amarillasAcumuladas = 0;
-      let motivo = null;
-
-      for (let i = 0; i < indexPartidoActual; i += 1) {
-        const match = partidosEquipo[i];
-        if (!partidoCuentaParaSuspension(match?.estado)) continue;
-
-        if (partidosPendientes > 0) {
-          partidosPendientes -= 1;
-          if (partidosPendientes <= 0) motivo = null;
-          continue;
-        }
-
-        const tarjetasJugador = tarjetasPorJugadorPartido.get(`${jugadorId}:${Number(match.id)}`) || [];
-        if (!tarjetasJugador.length) continue;
-
-        let amarillas = 0;
-        let rojasDirectas = 0;
-        let rojasDobleAmarilla = 0;
-
-        tarjetasJugador.forEach((item) => {
-          const tipo = String(item?.tipo_tarjeta || "").trim().toLowerCase();
-          if (tipo === "amarilla") amarillas += 1;
-          if (tipo === "roja") {
-            if (tarjetaEsRojaPorDobleAmarilla(item)) rojasDobleAmarilla += 1;
-            else rojasDirectas += 1;
-          }
-        });
-
-        if (umbralAmarillas > 0 && amarillas > 0) {
-          amarillasAcumuladas += amarillas;
-          while (amarillasAcumuladas >= umbralAmarillas) {
-            amarillasAcumuladas -= umbralAmarillas;
-            partidosPendientes += 1;
-            motivo = `Suspensión por acumulación de ${umbralAmarillas} amarillas`;
-          }
-        }
-
-        if (rojasDobleAmarilla > 0) {
-          partidosPendientes += rojasDobleAmarilla;
-          motivo = "Suspensión por doble amarilla";
-        }
-
-        if (rojasDirectas > 0) {
-          partidosPendientes += rojasDirectas * 2;
-          motivo = "Suspensión por roja directa";
-        }
-      }
-
-      resultado.set(jugadorId, {
-        suspendido: partidosPendientes > 0,
-        partidos_pendientes: Math.max(partidosPendientes, 0),
-        amarillas_acumuladas: amarillasAcumuladas,
-        motivo: partidosPendientes > 0 ? motivo : null,
-      });
-    }
-
-    return resultado;
+  static async obtenerEstadoDisciplinarioEquipoEnEvento(eventoId, equipoId, jugadores = [], tipoFutbol = "") {
+    return calcularEstadoDisciplinarioEquipo({
+      eventoIdRaw: eventoId,
+      equipoIdRaw: equipoId,
+      jugadores,
+      tipoFutbol,
+    });
   }
 
   static async guardarPlanilla(partido_id, datos = {}) {
