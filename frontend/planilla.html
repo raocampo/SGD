@@ -89,7 +89,20 @@
                     <option value="en_juego">En juego</option>
                     <option value="finalizado" selected>Finalizado</option>
                     <option value="suspendido">Suspendido</option>
+                    <option value="no_presentaron_ambos">No se presentaron ambos</option>
                   </select>
+                </div>
+                <div class="form-group planilla-special-check">
+                  <label for="inasistencia-planilla">Inasistencia / walkover</label>
+                  <select id="inasistencia-planilla">
+                    <option value="ninguno" selected>Sin inasistencia</option>
+                    <option value="local">No se presenta equipo local</option>
+                    <option value="visitante">No se presenta equipo visitante</option>
+                    <option value="ambos">No se presentan ambos equipos</option>
+                  </select>
+                  <p id="inasistencia-planilla-hint" class="form-hint">
+                    Si hay inasistencia, el sistema bloqueará el registro por jugador, aplicará el resultado automático y generará la multa por arbitraje.
+                  </p>
                 </div>
               </div>
               <div class="planilla-inline-actions">

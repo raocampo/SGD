@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-02-28
+Ultima actualizacion: 2026-03-02
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -76,14 +76,22 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 1. Cierre de planillaje oficial (prioridad alta):
 - Pulido UX final del formulario para operacion en campo.
 - Ajustes finos de impresion A4 en ambos modelos.
+- Extender visibilidad de sanciones/suspendidos fuera de `planilla.html`:
+  - listado por jugador en `jugadores.html`,
+  - reporte de sanciones/suspensiones por categoria/equipo.
 
 2. Pruebas E2E con datos reales (prioridad alta):
 - Flujo completo: campeonato -> evento -> equipos -> sorteo -> grupos -> fixture -> planilla -> tablas.
 
 3. Modulo financiero completo (prioridad alta):
-- Reglas de cobro y suspension por acumulacion de tarjetas segun tipo de futbol.
-- Bloqueos por morosidad parametrizables por campeonato/categoria.
-- Reportes ejecutivos de ingresos/pendientes con consolidado por campeonato y equipo.
+- Reglas base ya incorporadas desde planilla para:
+  - walkover / no presentacion,
+  - doble amarilla convertida en roja,
+  - roja directa y acumulacion de amarillas en futbol 11 para suspensiones visibles en planilla.
+- Pendiente completar:
+  - consolidado financiero/disciplinario por sanciones en reportes,
+  - bloqueos por morosidad parametrizables por campeonato/categoria,
+  - reportes ejecutivos de ingresos/pendientes con consolidado por campeonato y equipo.
 
 4. Seguridad y roles:
 - Consolidar separacion final entre roles deportivos y CMS institucional.

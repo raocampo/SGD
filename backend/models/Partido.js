@@ -17,6 +17,120 @@ const fromMinutesSQL = (min) => {
 };
 
 const formatYMD = (d) => d.toISOString().split("T")[0];
+const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante", "ambos"]);
+const GOLES_WALKOVER = 3;
+
+function normalizarInasistenciaEquipoPlanilla(valor) {
+  const raw = String(valor || "ninguno").trim().toLowerCase();
+  return INASISTENCIAS_PLANILLA_VALIDAS.has(raw) ? raw : "ninguno";
+}
+
+function obtenerResultadoPorInasistenciaEquipo(tipo = "ninguno") {
+  switch (normalizarInasistenciaEquipoPlanilla(tipo)) {
+    case "local":
+      return { resultadoLocal: 0, resultadoVisitante: GOLES_WALKOVER, estado: "finalizado" };
+    case "visitante":
+      return { resultadoLocal: GOLES_WALKOVER, resultadoVisitante: 0, estado: "finalizado" };
+    case "ambos":
+      return { resultadoLocal: 0, resultadoVisitante: 0, estado: "no_presentaron_ambos" };
+    default:
+      return { resultadoLocal: null, resultadoVisitante: null, estado: null };
+  }
+}
+
+function normalizarConteoTarjetas(amarillas = 0, rojas = 0) {
+  const ta = Number.isFinite(Number.parseInt(amarillas, 10))
+    ? Math.max(Number.parseInt(amarillas, 10), 0)
+    : 0;
+  const tr = Number.isFinite(Number.parseInt(rojas, 10))
+    ? Math.max(Number.parseInt(rojas, 10), 0)
+    : 0;
+  const rojasPorDobleAmarilla = Math.floor(ta / 2);
+  return {
+    amarillas: ta % 2,
+    rojas: tr + rojasPorDobleAmarilla,
+    rojasPorDobleAmarilla,
+  };
+}
+
+function normalizarTarjetasPlanilla(tarjetas = []) {
+  const grupos = new Map();
+  const directas = [];
+
+  (Array.isArray(tarjetas) ? tarjetas : []).forEach((item) => {
+    const tipo = String(item?.tipo_tarjeta || "").trim().toLowerCase();
+    if (tipo !== "amarilla" && tipo !== "roja") return;
+
+    const jugadorId = Number.parseInt(item?.jugador_id, 10);
+    const equipoId = Number.parseInt(item?.equipo_id, 10);
+    if (!Number.isFinite(jugadorId) || jugadorId <= 0 || !Number.isFinite(equipoId) || equipoId <= 0) {
+      directas.push({
+        ...item,
+        tipo_tarjeta: tipo,
+      });
+      return;
+    }
+
+    const key = `${equipoId}:${jugadorId}`;
+    const bucket = grupos.get(key) || {
+      equipo_id: equipoId,
+      jugador_id: jugadorId,
+      amarillas: 0,
+      rojas: 0,
+      minuto: item?.minuto ?? null,
+      observacion: item?.observacion ?? null,
+    };
+    if (tipo === "amarilla") bucket.amarillas += 1;
+    if (tipo === "roja") bucket.rojas += 1;
+    grupos.set(key, bucket);
+  });
+
+  const normalizadas = [...directas];
+  grupos.forEach((bucket) => {
+    const conteo = normalizarConteoTarjetas(bucket.amarillas, bucket.rojas);
+    for (let i = 0; i < conteo.amarillas; i += 1) {
+      normalizadas.push({
+        equipo_id: bucket.equipo_id,
+        jugador_id: bucket.jugador_id,
+        tipo_tarjeta: "amarilla",
+        minuto: bucket.minuto,
+        observacion: bucket.observacion,
+      });
+    }
+    for (let i = 0; i < conteo.rojas; i += 1) {
+      normalizadas.push({
+        equipo_id: bucket.equipo_id,
+        jugador_id: bucket.jugador_id,
+        tipo_tarjeta: "roja",
+        minuto: bucket.minuto,
+        observacion:
+          i >= bucket.rojas && conteo.rojasPorDobleAmarilla > 0
+            ? "Expulsión por doble amarilla"
+            : bucket.observacion,
+      });
+    }
+  });
+
+  return normalizadas;
+}
+
+function obtenerUmbralAmarillasSuspension(tipoFutbol = "") {
+  const tipo = String(tipoFutbol || "").trim().toLowerCase();
+  if (tipo.includes("11")) return 4;
+  return 0;
+}
+
+function tarjetaEsRojaPorDobleAmarilla(item = {}) {
+  const tipo = String(item?.tipo_tarjeta || "").trim().toLowerCase();
+  if (tipo !== "roja") return false;
+  const observacion = String(item?.observacion || "").trim().toLowerCase();
+  return observacion.includes("doble amarilla");
+}
+
+function partidoCuentaParaSuspension(estado = "") {
+  const value = String(estado || "").trim().toLowerCase();
+  return value === "finalizado" || value === "no_presentaron_ambos";
+}
 
 // ===============================
 // Round Robin
@@ -933,6 +1047,8 @@ class Partido {
       CREATE TABLE IF NOT EXISTS partido_planillas (
         id SERIAL PRIMARY KEY,
         partido_id INTEGER UNIQUE REFERENCES partidos(id) ON DELETE CASCADE,
+        ambos_no_presentes BOOLEAN NOT NULL DEFAULT FALSE,
+        inasistencia_equipo VARCHAR(20) NOT NULL DEFAULT 'ninguno',
         pago_ta NUMERIC(10,2) DEFAULT 0,
         pago_tr NUMERIC(10,2) DEFAULT 0,
         pago_ta_local NUMERIC(10,2) DEFAULT 0,
@@ -952,6 +1068,8 @@ class Partido {
 
     await pool.query(`
       ALTER TABLE partido_planillas
+      ADD COLUMN IF NOT EXISTS ambos_no_presentes BOOLEAN NOT NULL DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS inasistencia_equipo VARCHAR(20) NOT NULL DEFAULT 'ninguno',
       ADD COLUMN IF NOT EXISTS pago_ta NUMERIC(10,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS pago_tr NUMERIC(10,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS pago_ta_local NUMERIC(10,2) DEFAULT 0,
@@ -1078,6 +1196,20 @@ class Partido {
       pool.query(plantelVisitanteQ, [partido.equipo_visitante_id]),
     ]);
 
+    const [suspensionesLocal, suspensionesVisitante] = await Promise.all([
+      this.calcularSuspensionesEquipoParaPartido(partido, localR.rows, partido.equipo_local_id),
+      this.calcularSuspensionesEquipoParaPartido(partido, visitaR.rows, partido.equipo_visitante_id),
+    ]);
+
+    const plantelLocal = localR.rows.map((jugador) => ({
+      ...jugador,
+      suspension: suspensionesLocal.get(Number(jugador.id)) || null,
+    }));
+    const plantelVisitante = visitaR.rows.map((jugador) => ({
+      ...jugador,
+      suspension: suspensionesVisitante.get(Number(jugador.id)) || null,
+    }));
+
     return {
       partido,
       documentos_requeridos: {
@@ -1085,6 +1217,10 @@ class Partido {
         foto_carnet: partido.requiere_foto_carnet === true,
       },
       planilla: {
+        ambos_no_presentes: planilla?.ambos_no_presentes === true,
+        inasistencia_equipo: normalizarInasistenciaEquipoPlanilla(
+          planilla?.inasistencia_equipo || (planilla?.ambos_no_presentes === true ? "ambos" : "ninguno")
+        ),
         pago_ta_local: Number(planilla?.pago_ta_local ?? planilla?.pago_ta ?? 0),
         pago_ta_visitante: Number(planilla?.pago_ta_visitante ?? planilla?.pago_ta ?? 0),
         pago_tr_local: Number(planilla?.pago_tr_local ?? planilla?.pago_tr ?? 0),
@@ -1111,17 +1247,149 @@ class Partido {
       },
       goleadores: goleadoresR.rows,
       tarjetas: tarjetasR.rows,
-      plantel_local: localR.rows,
-      plantel_visitante: visitaR.rows,
+      plantel_local: plantelLocal,
+      plantel_visitante: plantelVisitante,
     };
+  }
+
+  static async calcularSuspensionesEquipoParaPartido(partido = {}, jugadores = [], equipoIdRaw = null) {
+    const equipoId = Number.parseInt(equipoIdRaw ?? partido?.equipo_local_id, 10);
+    const eventoId = Number.parseInt(partido?.evento_id, 10);
+    const partidoId = Number.parseInt(partido?.id, 10);
+    const idsJugadores = (Array.isArray(jugadores) ? jugadores : [])
+      .map((jugador) => Number.parseInt(jugador?.id, 10))
+      .filter((id) => Number.isFinite(id) && id > 0);
+
+    const resultado = new Map();
+    idsJugadores.forEach((id) => {
+      resultado.set(id, {
+        suspendido: false,
+        partidos_pendientes: 0,
+        amarillas_acumuladas: 0,
+        motivo: null,
+      });
+    });
+
+    if (!Number.isFinite(equipoId) || equipoId <= 0) return resultado;
+    if (!Number.isFinite(eventoId) || eventoId <= 0) return resultado;
+    if (!Number.isFinite(partidoId) || partidoId <= 0) return resultado;
+    if (!idsJugadores.length) return resultado;
+
+    const umbralAmarillas = obtenerUmbralAmarillasSuspension(partido?.tipo_futbol);
+
+    const partidosEquipoQ = `
+      SELECT id, jornada, fecha_partido, hora_partido, estado
+      FROM partidos
+      WHERE evento_id = $1
+        AND (equipo_local_id = $2 OR equipo_visitante_id = $2)
+      ORDER BY jornada NULLS LAST, fecha_partido NULLS LAST, hora_partido NULLS LAST, id
+    `;
+    const partidosEquipoR = await pool.query(partidosEquipoQ, [eventoId, equipoId]);
+    const partidosEquipo = partidosEquipoR.rows || [];
+    const indexPartidoActual = partidosEquipo.findIndex((item) => Number(item.id) === partidoId);
+
+    if (indexPartidoActual < 0) return resultado;
+
+    const idsPartidos = partidosEquipo.map((item) => Number(item.id)).filter((id) => Number.isFinite(id));
+    const tarjetasQ = `
+      SELECT partido_id, jugador_id, equipo_id, tipo_tarjeta, observacion
+      FROM tarjetas
+      WHERE partido_id = ANY($1::int[])
+        AND equipo_id = $2
+        AND jugador_id = ANY($3::int[])
+    `;
+    const tarjetasR = await pool.query(tarjetasQ, [idsPartidos, equipoId, idsJugadores]);
+    const tarjetasPorJugadorPartido = new Map();
+    for (const item of tarjetasR.rows) {
+      const jugadorId = Number.parseInt(item.jugador_id, 10);
+      const matchId = Number.parseInt(item.partido_id, 10);
+      if (!Number.isFinite(jugadorId) || !Number.isFinite(matchId)) continue;
+      const key = `${jugadorId}:${matchId}`;
+      const bucket = tarjetasPorJugadorPartido.get(key) || [];
+      bucket.push(item);
+      tarjetasPorJugadorPartido.set(key, bucket);
+    }
+
+    for (const jugadorId of idsJugadores) {
+      let partidosPendientes = 0;
+      let amarillasAcumuladas = 0;
+      let motivo = null;
+
+      for (let i = 0; i < indexPartidoActual; i += 1) {
+        const match = partidosEquipo[i];
+        if (!partidoCuentaParaSuspension(match?.estado)) continue;
+
+        if (partidosPendientes > 0) {
+          partidosPendientes -= 1;
+          if (partidosPendientes <= 0) motivo = null;
+          continue;
+        }
+
+        const tarjetasJugador = tarjetasPorJugadorPartido.get(`${jugadorId}:${Number(match.id)}`) || [];
+        if (!tarjetasJugador.length) continue;
+
+        let amarillas = 0;
+        let rojasDirectas = 0;
+        let rojasDobleAmarilla = 0;
+
+        tarjetasJugador.forEach((item) => {
+          const tipo = String(item?.tipo_tarjeta || "").trim().toLowerCase();
+          if (tipo === "amarilla") amarillas += 1;
+          if (tipo === "roja") {
+            if (tarjetaEsRojaPorDobleAmarilla(item)) rojasDobleAmarilla += 1;
+            else rojasDirectas += 1;
+          }
+        });
+
+        if (umbralAmarillas > 0 && amarillas > 0) {
+          amarillasAcumuladas += amarillas;
+          while (amarillasAcumuladas >= umbralAmarillas) {
+            amarillasAcumuladas -= umbralAmarillas;
+            partidosPendientes += 1;
+            motivo = `Suspensión por acumulación de ${umbralAmarillas} amarillas`;
+          }
+        }
+
+        if (rojasDobleAmarilla > 0) {
+          partidosPendientes += rojasDobleAmarilla;
+          motivo = "Suspensión por doble amarilla";
+        }
+
+        if (rojasDirectas > 0) {
+          partidosPendientes += rojasDirectas * 2;
+          motivo = "Suspensión por roja directa";
+        }
+      }
+
+      resultado.set(jugadorId, {
+        suspendido: partidosPendientes > 0,
+        partidos_pendientes: Math.max(partidosPendientes, 0),
+        amarillas_acumuladas: amarillasAcumuladas,
+        motivo: partidosPendientes > 0 ? motivo : null,
+      });
+    }
+
+    return resultado;
   }
 
   static async guardarPlanilla(partido_id, datos = {}) {
     await this.asegurarEsquemaPlanilla();
 
-    const resultadoLocal = Number.parseInt(datos.resultado_local, 10) || 0;
-    const resultadoVisitante = Number.parseInt(datos.resultado_visitante, 10) || 0;
-    const estado = datos.estado || "finalizado";
+    const ambosNoPresentes =
+      datos.ambos_no_presentes === true ||
+      String(datos.ambos_no_presentes || "").trim().toLowerCase() === "true";
+    const inasistenciaEquipo = ambosNoPresentes
+      ? "ambos"
+      : normalizarInasistenciaEquipoPlanilla(datos.inasistencia_equipo);
+    const resultadoAutomatico = obtenerResultadoPorInasistenciaEquipo(inasistenciaEquipo);
+    const hayInasistencia = inasistenciaEquipo !== "ninguno";
+    const resultadoLocal = hayInasistencia
+      ? resultadoAutomatico.resultadoLocal ?? 0
+      : Number.parseInt(datos.resultado_local, 10) || 0;
+    const resultadoVisitante = hayInasistencia
+      ? resultadoAutomatico.resultadoVisitante ?? 0
+      : Number.parseInt(datos.resultado_visitante, 10) || 0;
+    const estado = hayInasistencia ? resultadoAutomatico.estado || "finalizado" : datos.estado || "finalizado";
     const arbitro = Object.prototype.hasOwnProperty.call(datos, "arbitro")
       ? (datos.arbitro ?? "").toString().trim()
       : null;
@@ -1131,27 +1399,46 @@ class Partido {
     const ciudad = Object.prototype.hasOwnProperty.call(datos, "ciudad")
       ? (datos.ciudad ?? "").toString().trim()
       : null;
-    const goles = Array.isArray(datos.goles) ? datos.goles : [];
-    const tarjetas = Array.isArray(datos.tarjetas) ? datos.tarjetas : [];
+    const goles = hayInasistencia ? [] : Array.isArray(datos.goles) ? datos.goles : [];
+    const tarjetas = hayInasistencia
+      ? []
+      : normalizarTarjetasPlanilla(Array.isArray(datos.tarjetas) ? datos.tarjetas : []);
     const pagos = datos.pagos || {};
-    const pagoTaLocal = Number.parseFloat(pagos.pago_ta_local ?? pagos.pago_ta ?? 0) || 0;
-    const pagoTaVisitante = Number.parseFloat(pagos.pago_ta_visitante ?? pagos.pago_ta ?? 0) || 0;
-    const pagoTrLocal = Number.parseFloat(pagos.pago_tr_local ?? pagos.pago_tr ?? 0) || 0;
-    const pagoTrVisitante = Number.parseFloat(pagos.pago_tr_visitante ?? pagos.pago_tr ?? 0) || 0;
-    const pagoArbitrajeLocal =
-      Number.parseFloat(pagos.pago_arbitraje_local ?? pagos.pago_arbitraje ?? 0) || 0;
-    const pagoArbitrajeVisitante =
-      Number.parseFloat(pagos.pago_arbitraje_visitante ?? pagos.pago_arbitraje ?? 0) || 0;
-    const pagoTa = Number.parseFloat(pagos.pago_ta ?? (pagoTaLocal + pagoTaVisitante)) || 0;
-    const pagoTr = Number.parseFloat(pagos.pago_tr ?? (pagoTrLocal + pagoTrVisitante)) || 0;
-    const pagoArbitraje =
-      Number.parseFloat(pagos.pago_arbitraje ?? (pagoArbitrajeLocal + pagoArbitrajeVisitante)) || 0;
-    const pagoLocal = Number.parseFloat(pagos.pago_local ?? 0) || 0;
-    const pagoVisitante = Number.parseFloat(pagos.pago_visitante ?? 0) || 0;
-    const faltasLocalTotal =
-      Number.parseInt(datos.faltas_local_total ?? datos.faltas?.local_total ?? 0, 10) || 0;
-    const faltasVisitanteTotal =
-      Number.parseInt(datos.faltas_visitante_total ?? datos.faltas?.visitante_total ?? 0, 10) || 0;
+    const pagoTaLocal = hayInasistencia
+      ? 0
+      : Number.parseFloat(pagos.pago_ta_local ?? pagos.pago_ta ?? 0) || 0;
+    const pagoTaVisitante = hayInasistencia
+      ? 0
+      : Number.parseFloat(pagos.pago_ta_visitante ?? pagos.pago_ta ?? 0) || 0;
+    const pagoTrLocal = hayInasistencia
+      ? 0
+      : Number.parseFloat(pagos.pago_tr_local ?? pagos.pago_tr ?? 0) || 0;
+    const pagoTrVisitante = hayInasistencia
+      ? 0
+      : Number.parseFloat(pagos.pago_tr_visitante ?? pagos.pago_tr ?? 0) || 0;
+    const pagoArbitrajeLocal = hayInasistencia
+      ? 0
+      : Number.parseFloat(pagos.pago_arbitraje_local ?? pagos.pago_arbitraje ?? 0) || 0;
+    const pagoArbitrajeVisitante = hayInasistencia
+      ? 0
+      : Number.parseFloat(pagos.pago_arbitraje_visitante ?? pagos.pago_arbitraje ?? 0) || 0;
+    const pagoTa = hayInasistencia
+      ? 0
+      : Number.parseFloat(pagos.pago_ta ?? (pagoTaLocal + pagoTaVisitante)) || 0;
+    const pagoTr = hayInasistencia
+      ? 0
+      : Number.parseFloat(pagos.pago_tr ?? (pagoTrLocal + pagoTrVisitante)) || 0;
+    const pagoArbitraje = hayInasistencia
+      ? 0
+      : Number.parseFloat(pagos.pago_arbitraje ?? (pagoArbitrajeLocal + pagoArbitrajeVisitante)) || 0;
+    const pagoLocal = hayInasistencia ? 0 : Number.parseFloat(pagos.pago_local ?? 0) || 0;
+    const pagoVisitante = hayInasistencia ? 0 : Number.parseFloat(pagos.pago_visitante ?? 0) || 0;
+    const faltasLocalTotal = hayInasistencia
+      ? 0
+      : Number.parseInt(datos.faltas_local_total ?? datos.faltas?.local_total ?? 0, 10) || 0;
+    const faltasVisitanteTotal = hayInasistencia
+      ? 0
+      : Number.parseInt(datos.faltas_visitante_total ?? datos.faltas?.visitante_total ?? 0, 10) || 0;
     const observaciones = (datos.observaciones || "").toString().trim();
 
     const client = await pool.connect();
@@ -1200,6 +1487,8 @@ class Partido {
           INSERT INTO partido_planillas
             (
               partido_id,
+              ambos_no_presentes,
+              inasistencia_equipo,
               pago_ta, pago_tr,
               pago_ta_local, pago_ta_visitante,
               pago_tr_local, pago_tr_visitante,
@@ -1208,9 +1497,11 @@ class Partido {
               observaciones, updated_at
             )
           VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
           ON CONFLICT (partido_id)
           DO UPDATE SET
+            ambos_no_presentes = EXCLUDED.ambos_no_presentes,
+            inasistencia_equipo = EXCLUDED.inasistencia_equipo,
             pago_ta = EXCLUDED.pago_ta,
             pago_tr = EXCLUDED.pago_tr,
             pago_ta_local = EXCLUDED.pago_ta_local,
@@ -1227,6 +1518,8 @@ class Partido {
         `,
         [
           partido_id,
+          ambosNoPresentes,
+          inasistenciaEquipo,
           pagoTa,
           pagoTr,
           pagoTaLocal,
@@ -1294,6 +1587,9 @@ class Partido {
         pagoTaVisitante,
         pagoTrLocal,
         pagoTrVisitante,
+      }, {
+        ambosNoPresentes,
+        inasistenciaEquipo,
       });
 
       await client.query("COMMIT");
@@ -1306,7 +1602,7 @@ class Partido {
     }
   }
 
-  static async sincronizarFinanzasPlanilla(client, partido, montos = {}) {
+  static async sincronizarFinanzasPlanilla(client, partido, montos = {}, opciones = {}) {
     await Finanza.asegurarEsquema(client);
 
     const partidoId = Number(partido?.id);
@@ -1352,6 +1648,11 @@ class Partido {
     const costoArbitraje = valorPositivo(costos.costo_arbitraje);
     const costoTarjetaAmarilla = valorPositivo(costos.costo_tarjeta_amarilla);
     const costoTarjetaRoja = valorPositivo(costos.costo_tarjeta_roja);
+    const ambosNoPresentes = opciones?.ambosNoPresentes === true;
+    const inasistenciaEquipo = ambosNoPresentes
+      ? "ambos"
+      : normalizarInasistenciaEquipoPlanilla(opciones?.inasistenciaEquipo);
+    const hayInasistencia = inasistenciaEquipo !== "ninguno";
 
     const tarjetasR = await client.query(
       `
@@ -1384,8 +1685,8 @@ class Partido {
       rojas: 0,
     };
 
-    const cargoArbitrajeLocal = valorPositivo(costoArbitraje);
-    const cargoArbitrajeVisitante = valorPositivo(costoArbitraje);
+    const cargoArbitrajeLocal = hayInasistencia ? 0 : valorPositivo(costoArbitraje);
+    const cargoArbitrajeVisitante = hayInasistencia ? 0 : valorPositivo(costoArbitraje);
     const cargoTaLocal = valorPositivo(tarjetasLocal.amarillas * costoTarjetaAmarilla);
     const cargoTaVisitante = valorPositivo(
       tarjetasVisitante.amarillas * costoTarjetaAmarilla
@@ -1393,24 +1694,46 @@ class Partido {
     const cargoTrLocal = valorPositivo(tarjetasLocal.rojas * costoTarjetaRoja);
     const cargoTrVisitante = valorPositivo(tarjetasVisitante.rojas * costoTarjetaRoja);
 
+    const multaInasistenciaLocal =
+      inasistenciaEquipo === "ambos" || inasistenciaEquipo === "local"
+        ? valorPositivo(costoArbitraje)
+        : 0;
+    const multaInasistenciaVisitante =
+      inasistenciaEquipo === "ambos" || inasistenciaEquipo === "visitante"
+        ? valorPositivo(costoArbitraje)
+        : 0;
+
+    const descripcionInasistenciaLocal =
+      inasistenciaEquipo === "ambos"
+        ? "Multa por no presentación de ambos equipos"
+        : "Multa por no presentación del equipo local";
+    const descripcionInasistenciaVisitante =
+      inasistenciaEquipo === "ambos"
+        ? "Multa por no presentación de ambos equipos"
+        : "Multa por no presentación del equipo visitante";
+
     const movimientos = [
       {
         tipo_movimiento: "cargo",
         estado: "pendiente",
         equipo_id: equipoLocalId,
-        monto: cargoArbitrajeLocal,
-        concepto: "arbitraje",
-        descripcion: "Cargo arbitraje por partido",
-        origen_clave: `${keyPrefix}cargo:arbitraje:local`,
+        monto: hayInasistencia ? multaInasistenciaLocal : cargoArbitrajeLocal,
+        concepto: hayInasistencia ? "multa" : "arbitraje",
+        descripcion: hayInasistencia
+          ? descripcionInasistenciaLocal
+          : "Cargo arbitraje por partido",
+        origen_clave: `${keyPrefix}cargo:${hayInasistencia ? `${inasistenciaEquipo}-inasistencia` : "arbitraje"}:local`,
       },
       {
         tipo_movimiento: "cargo",
         estado: "pendiente",
         equipo_id: equipoVisitanteId,
-        monto: cargoArbitrajeVisitante,
-        concepto: "arbitraje",
-        descripcion: "Cargo arbitraje por partido",
-        origen_clave: `${keyPrefix}cargo:arbitraje:visitante`,
+        monto: hayInasistencia ? multaInasistenciaVisitante : cargoArbitrajeVisitante,
+        concepto: hayInasistencia ? "multa" : "arbitraje",
+        descripcion: hayInasistencia
+          ? descripcionInasistenciaVisitante
+          : "Cargo arbitraje por partido",
+        origen_clave: `${keyPrefix}cargo:${hayInasistencia ? `${inasistenciaEquipo}-inasistencia` : "arbitraje"}:visitante`,
       },
       {
         tipo_movimiento: "cargo",

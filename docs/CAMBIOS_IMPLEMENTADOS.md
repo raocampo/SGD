@@ -167,3 +167,30 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
 - El portal consume las mismas APIs que el panel admin.
 - Las eliminatorias requieren que la tabla `eventos` exista y tenga relación con campeonatos.
 - Las tablas de posición usan grupos por campeonato; si se trabaja con eventos, asegurar que los grupos tengan `campeonato_id` o adaptar las consultas.
+
+---
+
+## 11. Planillaje: inasistencias, walkover y suspensiones visibles
+- **Ubicación:** `frontend/planilla.html`, `frontend/js/planilla.js`, `backend/models/Partido.js`, `database/migrations/021_planilla_ambos_no_presentes.sql`, `database/migrations/022_planilla_inasistencia_equipo.sql`
+- El formulario de planilla ahora soporta `inasistencia / walkover` con selector dedicado:
+  - sin inasistencia,
+  - no se presenta local,
+  - no se presenta visitante,
+  - no se presentan ambos.
+- Reglas automáticas aplicadas:
+  - local ausente -> `0-3`,
+  - visitante ausente -> `3-0`,
+  - ambos ausentes -> `0-0` y el partido no suma puntos/goles.
+- Sincronización financiera desde planilla:
+  - walkover individual -> multa de arbitraje solo al equipo ausente,
+  - ambos ausentes -> multa de arbitraje a ambos equipos,
+  - no se generan pagos manuales ni captura deportiva cuando hay inasistencia.
+- Regla disciplinaria integrada:
+  - `2 amarillas` del mismo jugador en el partido se convierten a `1 roja`,
+  - se cobra solo `roja`,
+  - el resumen deportivo y la tabla de tarjetas quedan normalizados.
+- Suspensiones visibles en la propia planilla:
+  - doble amarilla -> suspension `1` partido,
+  - roja directa -> suspension `2` partidos,
+  - futbol 11 -> suspension `1` partido al acumular `4` amarillas.
+- El backend calcula la suspension con el historial previo del jugador en el `evento/categoria` y entrega el estado ya resuelto para renderizarlo en rojo y bloquear su fila en captura.

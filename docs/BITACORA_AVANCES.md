@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-02-28
+Ultima actualizacion: 2026-03-02
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,38 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-02
+- Planillaje reforzado para escenarios disciplinarios y de inasistencia:
+  - nuevo flujo de `inasistencia / walkover` en `frontend/planilla.html` y `frontend/js/planilla.js`,
+  - soporte para:
+    - no se presenta equipo local,
+    - no se presenta equipo visitante,
+    - no se presentan ambos equipos.
+  - resultado automatico aplicado desde planilla:
+    - local ausente -> `0-3`,
+    - visitante ausente -> `3-0`,
+    - ambos ausentes -> `0-0` con estado `no_presentaron_ambos`.
+  - al existir inasistencia:
+    - se bloquea captura por jugador,
+    - se limpian pagos manuales,
+    - se generan multas por arbitraje en finanzas segun corresponda.
+- Persistencia backend para inasistencia de planilla:
+  - `backend/models/Partido.js` ahora guarda `ambos_no_presentes` e `inasistencia_equipo`,
+  - nuevas migraciones:
+    - `database/migrations/021_planilla_ambos_no_presentes.sql`,
+    - `database/migrations/022_planilla_inasistencia_equipo.sql`.
+- Regla disciplinaria aplicada en planilla:
+  - `2 tarjetas amarillas` del mismo jugador en un partido se convierten automaticamente en `1 tarjeta roja`,
+  - el resumen del partido, la exportacion y finanzas ya reflejan solo roja,
+  - no se cobra amarilla + roja en el mismo caso.
+- Suspensiones automaticas visibles en planillaje:
+  - un jugador suspendido llega marcado en rojo en la planilla y con sus campos bloqueados,
+  - reglas activas:
+    - doble amarilla en el partido -> suspension de `1` partido,
+    - roja directa -> suspension de `2` partidos,
+    - futbol 11 -> suspension de `1` partido al acumular `4` amarillas.
+  - el calculo se realiza con historial del jugador dentro del `evento/categoria`, previo al partido actual.
 
 ### 2026-02-28
 - Inicio formal del plan de separacion entre panel deportivo y CMS del portal publico:
@@ -589,6 +621,9 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Revisar y ordenar archivos legacy/antiguos para reducir deuda tecnica.
 - Continuar modulo financiero: sanciones/suspensiones por reglas deportivas, bloqueos por morosidad y reportes ejecutivos.
 - Ajustar detalles de UX del nuevo formulario de planilla segun retroalimentacion de operacion en campo.
+- Mostrar suspensiones tambien fuera de la planilla:
+  - `jugadores.html`,
+  - reporte/listado de sanciones por categoria/equipo/jugador.
 - Reorientar plan mobile a aplicacion instalable para tiendas:
   - app Android (Play Store),
   - app iOS (App Store).

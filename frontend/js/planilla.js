@@ -16,6 +16,18 @@ let eventosPlanillaCache = [];
 let partidosSelectorCache = [];
 let jornadaSelectorActual = "";
 let modoVistaPreviaPlanilla = "oficial";
+const IDS_PAGOS_PLANILLA = [
+  "pago-local",
+  "pago-visitante",
+  "pago-arbitraje-local",
+  "pago-arbitraje-visitante",
+  "pago-ta-local",
+  "pago-ta-visitante",
+  "pago-tr-local",
+  "pago-tr-visitante",
+];
+const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante", "ambos"]);
+const GOLES_WALKOVER = 3;
 
 function qp(nombre) {
   const params = new URLSearchParams(window.location.search);
@@ -77,6 +89,53 @@ function leerPagoInput(id) {
   return n === null ? 0 : n;
 }
 
+function normalizarInasistenciaPlanilla(valor) {
+  const raw = String(valor || "ninguno").trim().toLowerCase();
+  return INASISTENCIAS_PLANILLA_VALIDAS.has(raw) ? raw : "ninguno";
+}
+
+function obtenerInasistenciaPlanilla() {
+  const select = document.getElementById("inasistencia-planilla");
+  if (select instanceof HTMLSelectElement) {
+    return normalizarInasistenciaPlanilla(select.value);
+  }
+  return "ninguno";
+}
+
+function estaMarcadoAmbosNoPresentes() {
+  return obtenerInasistenciaPlanilla() === "ambos";
+}
+
+function hayInasistenciaPlanilla() {
+  return obtenerInasistenciaPlanilla() !== "ninguno";
+}
+
+function obtenerResultadoPorInasistencia(tipo = "ninguno") {
+  switch (normalizarInasistenciaPlanilla(tipo)) {
+    case "local":
+      return { local: 0, visitante: GOLES_WALKOVER, estado: "finalizado" };
+    case "visitante":
+      return { local: GOLES_WALKOVER, visitante: 0, estado: "finalizado" };
+    case "ambos":
+      return { local: 0, visitante: 0, estado: "no_presentaron_ambos" };
+    default:
+      return { local: null, visitante: null, estado: null };
+  }
+}
+
+function obtenerMensajeInasistencia(tipo = "ninguno") {
+  switch (normalizarInasistenciaPlanilla(tipo)) {
+    case "local":
+      return `Se registra walkover: gana ${equiposPartido.visitante.nombre || "Visitante"} ${GOLES_WALKOVER}-0. El equipo local recibe multa equivalente al arbitraje.`;
+    case "visitante":
+      return `Se registra walkover: gana ${equiposPartido.local.nombre || "Local"} ${GOLES_WALKOVER}-0. El equipo visitante recibe multa equivalente al arbitraje.`;
+    case "ambos":
+      return "Se registrará una multa equivalente al arbitraje para ambos equipos. El partido no sumará puntos ni goles.";
+    default:
+      return "Si hay inasistencia, el sistema bloqueará el registro por jugador, aplicará el resultado automático y generará la multa por arbitraje.";
+  }
+}
+
 function tienePagosRegistrados(pagos = {}) {
   return (
     aDecimal(pagos.pago_local, 0) > 0 ||
@@ -91,6 +150,7 @@ function tienePagosRegistrados(pagos = {}) {
 }
 
 function planillaSinDatosDeJuego(payload = {}) {
+  if (payload.ambos_no_presentes === true) return true;
   const goles = Array.isArray(payload.goles) ? payload.goles : [];
   const tarjetas = Array.isArray(payload.tarjetas) ? payload.tarjetas : [];
   return goles.length === 0 && tarjetas.length === 0 && !tienePagosRegistrados(payload.pagos || {});
@@ -109,6 +169,7 @@ function formatearConteoPlanilla(valor, mostrarEnBlanco = false) {
 }
 
 function hayDatosEnFormularioPlanilla() {
+  if (hayInasistenciaPlanilla()) return false;
   const tot = calcularTotalesCaptura();
   const hayCaptura =
     tot.local.goles > 0 ||
@@ -128,6 +189,78 @@ function hayDatosEnFormularioPlanilla() {
     pago_tr_visitante: leerPagoInput("pago-tr-visitante"),
   });
   return hayCaptura || hayPagos;
+}
+
+function limpiarCapturaPlanilla() {
+  document.querySelectorAll(".planilla-player-row input").forEach((input) => {
+    if (input instanceof HTMLInputElement) input.value = "";
+  });
+  recalcularTotalesCapturaEquipo("captura-local");
+  recalcularTotalesCapturaEquipo("captura-visitante");
+  actualizarResumenFooterDesdeCaptura();
+}
+
+function limpiarPagosPlanilla() {
+  IDS_PAGOS_PLANILLA.forEach((id) => {
+    const input = document.getElementById(id);
+    if (input instanceof HTMLInputElement) input.value = "";
+  });
+}
+
+function aplicarEstadoInasistenciaPlanilla(forzarLimpieza = false) {
+  const tipo = obtenerInasistenciaPlanilla();
+  const especial = tipo !== "ninguno";
+  const selectEstado = document.getElementById("estado-partido");
+  const hint = document.getElementById("inasistencia-planilla-hint");
+  const resultadoAutomatico = obtenerResultadoPorInasistencia(tipo);
+
+  if (selectEstado) {
+    if (especial) {
+      selectEstado.value = resultadoAutomatico.estado || "finalizado";
+      selectEstado.disabled = true;
+    } else {
+      if (selectEstado.value === "no_presentaron_ambos") {
+        selectEstado.value = "finalizado";
+      }
+      selectEstado.disabled = false;
+    }
+  }
+
+  document.querySelectorAll("#captura-local, #captura-visitante").forEach((cont) => {
+    cont.classList.toggle("planilla-bloqueado", especial);
+  });
+  document.querySelectorAll(".planilla-player-row input").forEach((input) => {
+    if (!(input instanceof HTMLInputElement)) return;
+    const filaSuspendida = input.closest(".planilla-player-row.is-suspended");
+    input.disabled = especial || !!filaSuspendida;
+  });
+
+  IDS_PAGOS_PLANILLA.forEach((id) => {
+    const input = document.getElementById(id);
+    if (input instanceof HTMLInputElement) input.disabled = especial;
+  });
+
+  if (especial) {
+    if (forzarLimpieza) {
+      limpiarCapturaPlanilla();
+      limpiarPagosPlanilla();
+    }
+    const inputLocal = document.getElementById("resultado-local");
+    const inputVisitante = document.getElementById("resultado-visitante");
+    if (inputLocal) inputLocal.value = String(resultadoAutomatico.local ?? 0);
+    if (inputVisitante) inputVisitante.value = String(resultadoAutomatico.visitante ?? 0);
+    actualizarHeaderResultado(resultadoAutomatico.local ?? 0, resultadoAutomatico.visitante ?? 0);
+    if (hint) {
+      hint.textContent = obtenerMensajeInasistencia(tipo);
+      hint.classList.add("is-warning");
+    }
+    return;
+  }
+
+  if (hint) {
+    hint.textContent = obtenerMensajeInasistencia("ninguno");
+    hint.classList.remove("is-warning");
+  }
 }
 
 function escapeHtml(valor) {
@@ -286,7 +419,96 @@ function sumarEnMapa(map, key, value = 1) {
   map.set(key, actual + value);
 }
 
+function normalizarConteoTarjetas(amarillas = 0, rojas = 0) {
+  const ta = valorNoNegativoEntero(amarillas, 0, 99);
+  const tr = valorNoNegativoEntero(rojas, 0, 99);
+  const rojasPorDobleAmarilla = Math.floor(ta / 2);
+  return {
+    amarillas: ta % 2,
+    rojas: tr + rojasPorDobleAmarilla,
+    rojasPorDobleAmarilla,
+  };
+}
+
+function normalizarTarjetasPayload(tarjetas = []) {
+  const grupos = new Map();
+  const tarjetasDirectas = [];
+
+  (Array.isArray(tarjetas) ? tarjetas : []).forEach((item) => {
+    const tipo = String(item?.tipo_tarjeta || "").trim().toLowerCase();
+    if (tipo !== "amarilla" && tipo !== "roja") return;
+
+    const jugadorId = Number.parseInt(item?.jugador_id, 10);
+    const equipoId = Number.parseInt(item?.equipo_id, 10);
+    if (!Number.isFinite(jugadorId) || jugadorId <= 0 || !Number.isFinite(equipoId) || equipoId <= 0) {
+      tarjetasDirectas.push({
+        ...item,
+        tipo_tarjeta: tipo,
+      });
+      return;
+    }
+
+    const key = `${equipoId}:${jugadorId}`;
+    const bucket = grupos.get(key) || {
+      equipo_id: equipoId,
+      jugador_id: jugadorId,
+      amarillas: 0,
+      rojas: 0,
+      minuto: item?.minuto ?? null,
+      observacion: item?.observacion ?? null,
+    };
+    if (tipo === "amarilla") bucket.amarillas += 1;
+    if (tipo === "roja") bucket.rojas += 1;
+    grupos.set(key, bucket);
+  });
+
+  const normalizadas = [...tarjetasDirectas];
+  grupos.forEach((bucket) => {
+    const conteo = normalizarConteoTarjetas(bucket.amarillas, bucket.rojas);
+    for (let i = 0; i < conteo.amarillas; i += 1) {
+      normalizadas.push({
+        equipo_id: bucket.equipo_id,
+        jugador_id: bucket.jugador_id,
+        tipo_tarjeta: "amarilla",
+        minuto: bucket.minuto,
+        observacion: bucket.observacion,
+      });
+    }
+    for (let i = 0; i < conteo.rojas; i += 1) {
+      normalizadas.push({
+        equipo_id: bucket.equipo_id,
+        jugador_id: bucket.jugador_id,
+        tipo_tarjeta: "roja",
+        minuto: bucket.minuto,
+        observacion:
+          i >= bucket.rojas && conteo.rojasPorDobleAmarilla > 0
+            ? "Expulsión por doble amarilla"
+            : bucket.observacion,
+      });
+    }
+  });
+
+  return normalizadas;
+}
+
+function normalizarTarjetasFilaCaptura(row) {
+  if (!(row instanceof HTMLElement)) return { amarillas: 0, rojas: 0 };
+  const inputTa = row.querySelector(".cap-ta");
+  const inputTr = row.querySelector(".cap-tr");
+  const conteo = normalizarConteoTarjetas(inputTa?.value, inputTr?.value);
+
+  if (inputTa instanceof HTMLInputElement) {
+    inputTa.value = conteo.amarillas > 0 ? String(conteo.amarillas) : "";
+  }
+  if (inputTr instanceof HTMLInputElement) {
+    inputTr.value = conteo.rojas > 0 ? String(conteo.rojas) : "";
+  }
+
+  return conteo;
+}
+
 function construirIndicesEventos(payload) {
+  const tarjetasNormalizadas = normalizarTarjetasPayload(payload.tarjetas || []);
   const golesPorJugador = new Map();
   const amarillasPorJugador = new Map();
   const rojasPorJugador = new Map();
@@ -309,7 +531,7 @@ function construirIndicesEventos(payload) {
     sumarEnMapa(golesPorJugador, jugadorId, goles);
   });
 
-  (payload.tarjetas || []).forEach((t) => {
+  tarjetasNormalizadas.forEach((t) => {
     const jugadorId = Number(t.jugador_id);
     const jugador = jugadoresPorId.get(jugadorId);
     const equipoId = Number(t.equipo_id) || Number(jugador?.equipo_id);
@@ -569,17 +791,16 @@ function calcularTotalesCaptura() {
   document.querySelectorAll(".planilla-player-row").forEach((row) => {
     const equipoId = Number(row.dataset.equipoId);
     const goles = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
-    const ta = valorNoNegativoEntero(row.querySelector(".cap-ta")?.value, 0, 99);
-    const tr = valorNoNegativoEntero(row.querySelector(".cap-tr")?.value, 0, 99);
+    const tarjetas = normalizarTarjetasFilaCaptura(row);
 
     if (equipoId === Number(equiposPartido.local.id)) {
       out.local.goles += goles;
-      out.local.ta += ta;
-      out.local.tr += tr;
+      out.local.ta += tarjetas.amarillas;
+      out.local.tr += tarjetas.rojas;
     } else if (equipoId === Number(equiposPartido.visitante.id)) {
       out.visitante.goles += goles;
-      out.visitante.ta += ta;
-      out.visitante.tr += tr;
+      out.visitante.ta += tarjetas.amarillas;
+      out.visitante.tr += tarjetas.rojas;
     }
   });
 
@@ -610,6 +831,8 @@ function renderPlantel(idContenedor, jugadores) {
 
   cont.innerHTML = jugadores
     .map((j) => {
+      const suspension = j?.suspension || null;
+      const suspendido = suspension?.suspendido === true;
       const docs = [];
       if (documentosRequeridos.foto_cedula) {
         docs.push(j.foto_cedula_url ? "Cédula OK" : "Cédula pendiente");
@@ -618,12 +841,15 @@ function renderPlantel(idContenedor, jugadores) {
         docs.push(j.foto_carnet_url ? "Carnet OK" : "Carnet pendiente");
       }
       const docsTxt = docs.length ? ` • ${docs.join(" • ")}` : "";
+      const suspensionTxt = suspendido
+        ? ` • Suspendido (${Number(suspension?.partidos_pendientes || 0)} partido${Number(suspension?.partidos_pendientes || 0) === 1 ? "" : "s"} pendiente${Number(suspension?.partidos_pendientes || 0) === 1 ? "" : "s"})`
+        : "";
 
       return `
-        <div class="planilla-plantel-item">
+        <div class="planilla-plantel-item ${suspendido ? "is-suspended" : ""}">
           <strong>#${j.numero_camiseta || "-"}</strong>
           <span>${nombreJugador(j)}</span>
-          <small>${j.posicion || "-"}${docsTxt}</small>
+          <small>${j.posicion || "-"}${docsTxt}${suspensionTxt}</small>
         </div>
       `;
     })
@@ -654,10 +880,12 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, statsInicia
 
   const filas = jugadores
     .map((j, idx) => {
+      const suspension = j?.suspension || null;
+      const suspendido = suspension?.suspendido === true;
       const jugadorId = Number(j.id);
-      const goles = statsIniciales.golesPorJugador.get(jugadorId) || "";
-      const amarillas = statsIniciales.amarillasPorJugador.get(jugadorId) || "";
-      const rojas = statsIniciales.rojasPorJugador.get(jugadorId) || "";
+      const goles = suspendido ? "" : statsIniciales.golesPorJugador.get(jugadorId) || "";
+      const amarillas = suspendido ? "" : statsIniciales.amarillasPorJugador.get(jugadorId) || "";
+      const rojas = suspendido ? "" : statsIniciales.rojasPorJugador.get(jugadorId) || "";
       const item = idx + 1;
       const numero = j.numero_camiseta || "-";
       const nombre = nombreJugador(j) || `Jugador ${idx + 1}`;
@@ -665,18 +893,27 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, statsInicia
       if (documentosRequeridos.foto_cedula) docs.push(j.foto_cedula_url ? "Cedula OK" : "Cedula pendiente");
       if (documentosRequeridos.foto_carnet) docs.push(j.foto_carnet_url ? "Carnet OK" : "Carnet pendiente");
       const docsHtml = docs.length ? `<small>${docs.join(" • ")}</small>` : "";
+      const suspensionHtml = suspendido
+        ? `<small class="planilla-player-suspension">${escapeHtml(
+            suspension?.motivo || "Suspendido"
+          )} • ${Number(suspension?.partidos_pendientes || 0)} partido${
+            Number(suspension?.partidos_pendientes || 0) === 1 ? "" : "s"
+          } pendiente${Number(suspension?.partidos_pendientes || 0) === 1 ? "" : "s"}</small>`
+        : "";
+      const disabledAttr = suspendido ? "disabled" : "";
 
       return `
-        <tr class="planilla-player-row" data-equipo-id="${equipoId}" data-jugador-id="${j.id}">
+        <tr class="planilla-player-row ${suspendido ? "is-suspended" : ""}" data-equipo-id="${equipoId}" data-jugador-id="${j.id}">
           <td>${item}</td>
           <td>${numero}</td>
           <td>
             <strong>${escapeHtml(nombre)}</strong>
             ${docsHtml}
+            ${suspensionHtml}
           </td>
-          <td><input class="cap-goles" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${goles}" /></td>
-          <td><input class="cap-ta" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${amarillas}" /></td>
-          <td><input class="cap-tr" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${rojas}" /></td>
+          <td><input class="cap-goles" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${goles}" ${disabledAttr} /></td>
+          <td><input class="cap-ta" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${amarillas}" ${disabledAttr} /></td>
+          <td><input class="cap-tr" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${rojas}" ${disabledAttr} /></td>
         </tr>
       `;
     })
@@ -704,8 +941,9 @@ function recalcularTotalesCapturaEquipo(idContenedor) {
 
   cont.querySelectorAll(".planilla-player-row").forEach((row) => {
     totalGoles += valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
-    totalTa += valorNoNegativoEntero(row.querySelector(".cap-ta")?.value, 0, 99);
-    totalTr += valorNoNegativoEntero(row.querySelector(".cap-tr")?.value, 0, 99);
+    const tarjetas = normalizarTarjetasFilaCaptura(row);
+    totalTa += tarjetas.amarillas;
+    totalTr += tarjetas.rojas;
   });
 
   const golesCell = cont.querySelector(".cap-total-goles");
@@ -718,6 +956,18 @@ function recalcularTotalesCapturaEquipo(idContenedor) {
 }
 
 function recalcularResultadoDesdeCaptura(preservarSiSinDatos = false) {
+  const inasistencia = obtenerInasistenciaPlanilla();
+  if (inasistencia !== "ninguno") {
+    const resultadoAutomatico = obtenerResultadoPorInasistencia(inasistencia);
+    const inputLocal = document.getElementById("resultado-local");
+    const inputVisitante = document.getElementById("resultado-visitante");
+    if (inputLocal) inputLocal.value = String(resultadoAutomatico.local ?? 0);
+    if (inputVisitante) inputVisitante.value = String(resultadoAutomatico.visitante ?? 0);
+    actualizarHeaderResultado(resultadoAutomatico.local ?? 0, resultadoAutomatico.visitante ?? 0);
+    actualizarResumenFooterDesdeCaptura();
+    return;
+  }
+
   const tot = calcularTotalesCaptura();
   const golesLocal = tot.local.goles;
   const golesVisitante = tot.visitante.goles;
@@ -776,6 +1026,7 @@ function renderCapturaOficialPorJugador() {
   actualizarResumenFooterDesdeCaptura();
   recalcularResultadoDesdeCaptura(true);
   conectarEventosCaptura();
+  aplicarEstadoInasistenciaPlanilla(false);
 }
 
 function cargarCamposBase() {
@@ -799,6 +1050,7 @@ function cargarCamposBase() {
   const inputArbitro = document.getElementById("arbitro-planilla");
   const inputDelegado = document.getElementById("delegado-planilla");
   const inputCiudad = document.getElementById("ciudad-planilla");
+  const inputInasistencia = document.getElementById("inasistencia-planilla");
 
   if (inputResultadoLocal) inputResultadoLocal.value = aEntero(p.resultado_local, 0);
   if (inputResultadoVisit) inputResultadoVisit.value = aEntero(p.resultado_visitante, 0);
@@ -844,12 +1096,23 @@ function cargarCamposBase() {
   if (inputArbitro) inputArbitro.value = p.arbitro || "";
   if (inputDelegado) inputDelegado.value = p.delegado_partido || "";
   if (inputCiudad) inputCiudad.value = p.ciudad || "";
+  if (inputInasistencia instanceof HTMLSelectElement) {
+    const inasistenciaInicial =
+      normalizarInasistenciaPlanilla(plan.inasistencia_equipo) !== "ninguno"
+        ? normalizarInasistenciaPlanilla(plan.inasistencia_equipo)
+        : plan.ambos_no_presentes === true ||
+            String(p.estado || "").trim().toLowerCase() === "no_presentaron_ambos"
+          ? "ambos"
+          : "ninguno";
+    inputInasistencia.value = inasistenciaInicial;
+  }
 
   actualizarHeaderMetaEditable();
   actualizarHeaderResultado(
     aEntero(document.getElementById("resultado-local")?.value, 0),
     aEntero(document.getElementById("resultado-visitante")?.value, 0)
   );
+  aplicarEstadoInasistenciaPlanilla(false);
 }
 
 function opcionesEquiposHtml(selectedEquipoId) {
@@ -1410,19 +1673,24 @@ async function cargarPlanilla() {
 }
 
 function recolectarPayloadPlanilla() {
+  const inasistenciaEquipo = obtenerInasistenciaPlanilla();
+  const ambosNoPresentes = inasistenciaEquipo === "ambos";
+  const hayInasistencia = inasistenciaEquipo !== "ninguno";
+  const resultadoAutomatico = obtenerResultadoPorInasistencia(inasistenciaEquipo);
   const goles = [];
   const tarjetas = [];
   const filasCaptura = Array.from(document.querySelectorAll(".planilla-player-row"));
 
-  if (filasCaptura.length) {
+  if (!hayInasistencia && filasCaptura.length) {
     filasCaptura.forEach((row) => {
       const equipoId = Number(row.dataset.equipoId);
       const jugadorId = Number(row.dataset.jugadorId);
       if (!Number.isFinite(equipoId) || !Number.isFinite(jugadorId)) return;
 
       const golesNum = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
-      const amarillasNum = valorNoNegativoEntero(row.querySelector(".cap-ta")?.value, 0, 99);
-      const rojasNum = valorNoNegativoEntero(row.querySelector(".cap-tr")?.value, 0, 99);
+      const tarjetasNormalizadas = normalizarTarjetasFilaCaptura(row);
+      const amarillasNum = tarjetasNormalizadas.amarillas;
+      const rojasNum = tarjetasNormalizadas.rojas;
 
       if (golesNum > 0) {
         goles.push({
@@ -1454,7 +1722,7 @@ function recolectarPayloadPlanilla() {
         });
       }
     });
-  } else {
+  } else if (!hayInasistencia) {
     // Respaldo del flujo anterior por filas manuales.
     document.querySelectorAll(".planilla-row-gol").forEach((row) => {
       const equipoId = aEntero(row.querySelector(".row-equipo")?.value, NaN);
@@ -1492,30 +1760,40 @@ function recolectarPayloadPlanilla() {
         observacion: observacion || null,
       });
     });
+    tarjetas.splice(0, tarjetas.length, ...normalizarTarjetasPayload(tarjetas));
   }
 
   return {
-    resultado_local: aEntero(document.getElementById("resultado-local")?.value, 0),
-    resultado_visitante: aEntero(document.getElementById("resultado-visitante")?.value, 0),
-    estado: String(document.getElementById("estado-partido")?.value || "finalizado"),
+    resultado_local: hayInasistencia
+      ? resultadoAutomatico.local ?? 0
+      : aEntero(document.getElementById("resultado-local")?.value, 0),
+    resultado_visitante: hayInasistencia
+      ? resultadoAutomatico.visitante ?? 0
+      : aEntero(document.getElementById("resultado-visitante")?.value, 0),
+    estado: hayInasistencia
+      ? resultadoAutomatico.estado || "finalizado"
+      : String(document.getElementById("estado-partido")?.value || "finalizado"),
+    ambos_no_presentes: ambosNoPresentes,
+    inasistencia_equipo: inasistenciaEquipo,
     arbitro: String(document.getElementById("arbitro-planilla")?.value || "").trim(),
     delegado_partido: String(document.getElementById("delegado-planilla")?.value || "").trim(),
     ciudad: String(document.getElementById("ciudad-planilla")?.value || "").trim(),
     observaciones: String(document.getElementById("observaciones-planilla")?.value || "").trim(),
     pagos: {
-      pago_ta_local: leerPagoInput("pago-ta-local"),
-      pago_ta_visitante: leerPagoInput("pago-ta-visitante"),
-      pago_tr_local: leerPagoInput("pago-tr-local"),
-      pago_tr_visitante: leerPagoInput("pago-tr-visitante"),
-      pago_arbitraje_local: leerPagoInput("pago-arbitraje-local"),
-      pago_arbitraje_visitante: leerPagoInput("pago-arbitraje-visitante"),
+      pago_ta_local: hayInasistencia ? 0 : leerPagoInput("pago-ta-local"),
+      pago_ta_visitante: hayInasistencia ? 0 : leerPagoInput("pago-ta-visitante"),
+      pago_tr_local: hayInasistencia ? 0 : leerPagoInput("pago-tr-local"),
+      pago_tr_visitante: hayInasistencia ? 0 : leerPagoInput("pago-tr-visitante"),
+      pago_arbitraje_local: hayInasistencia ? 0 : leerPagoInput("pago-arbitraje-local"),
+      pago_arbitraje_visitante: hayInasistencia ? 0 : leerPagoInput("pago-arbitraje-visitante"),
       // Compatibilidad con campos globales anteriores
-      pago_ta: leerPagoInput("pago-ta-local") + leerPagoInput("pago-ta-visitante"),
-      pago_tr: leerPagoInput("pago-tr-local") + leerPagoInput("pago-tr-visitante"),
-      pago_arbitraje:
-        leerPagoInput("pago-arbitraje-local") + leerPagoInput("pago-arbitraje-visitante"),
-      pago_local: leerPagoInput("pago-local"),
-      pago_visitante: leerPagoInput("pago-visitante"),
+      pago_ta: hayInasistencia ? 0 : leerPagoInput("pago-ta-local") + leerPagoInput("pago-ta-visitante"),
+      pago_tr: hayInasistencia ? 0 : leerPagoInput("pago-tr-local") + leerPagoInput("pago-tr-visitante"),
+      pago_arbitraje: hayInasistencia
+        ? 0
+        : leerPagoInput("pago-arbitraje-local") + leerPagoInput("pago-arbitraje-visitante"),
+      pago_local: hayInasistencia ? 0 : leerPagoInput("pago-local"),
+      pago_visitante: hayInasistencia ? 0 : leerPagoInput("pago-visitante"),
     },
     goles,
     tarjetas,
@@ -2764,6 +3042,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("ciudad-planilla")?.addEventListener("input", () => {
     actualizarHeaderMetaEditable();
+  });
+  document.getElementById("inasistencia-planilla")?.addEventListener("change", () => {
+    aplicarEstadoInasistenciaPlanilla(true);
+  });
+  document.getElementById("estado-partido")?.addEventListener("change", (event) => {
+    const select = event.target;
+    if (!(select instanceof HTMLSelectElement)) return;
+    const selectInasistencia = document.getElementById("inasistencia-planilla");
+    if (!(selectInasistencia instanceof HTMLSelectElement)) return;
+
+    if (select.value === "no_presentaron_ambos" && selectInasistencia.value !== "ambos") {
+      selectInasistencia.value = "ambos";
+      aplicarEstadoInasistenciaPlanilla(true);
+      return;
+    }
+
+    if (selectInasistencia.value === "ambos" && select.value !== "no_presentaron_ambos") {
+      selectInasistencia.value = "ninguno";
+      aplicarEstadoInasistenciaPlanilla(false);
+    }
   });
 
   await cargarCampeonatosSelectorPlanilla();
