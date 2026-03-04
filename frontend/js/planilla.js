@@ -77,6 +77,21 @@ function formatearMoneda(valor) {
   }).format(n);
 }
 
+function formatearAvisoMorosidadPlanilla(aviso = null) {
+  if (!aviso || typeof aviso !== "object") return "";
+  const equipos = Array.isArray(aviso.equipos)
+    ? aviso.equipos
+        .map((item) => {
+          const nombre = String(item?.nombre || "").trim() || "Equipo";
+          const saldo = aDecimal(item?.saldo, 0);
+          return `${nombre}: ${formatearMoneda(saldo)}`;
+        })
+        .filter(Boolean)
+    : [];
+  if (!equipos.length) return "";
+  return `Saldo pendiente hasta el momento: ${equipos.join(" | ")}`;
+}
+
 function aDecimalOpcional(valor) {
   if (valor === null || valor === undefined) return null;
   const s = String(valor).trim();
@@ -2933,8 +2948,12 @@ async function guardarPlanilla(e) {
   const payload = recolectarPayloadPlanilla();
 
   try {
-    await ApiClient.put(`/partidos/${partidoId}/planilla`, payload);
+    const resp = await ApiClient.put(`/partidos/${partidoId}/planilla`, payload);
     mostrarNotificacion("Planilla guardada correctamente", "success");
+    const aviso = formatearAvisoMorosidadPlanilla(resp?.aviso_morosidad);
+    if (aviso) {
+      mostrarNotificacion(aviso, "warning");
+    }
     await cargarPlanilla();
   } catch (error) {
     console.error("Error guardando planilla:", error);
@@ -3173,4 +3192,3 @@ window.imprimirPDFPlanilla = imprimirPDFPlanilla;
 window.toggleVistaPreviaPlanilla = toggleVistaPreviaPlanilla;
 window.volverAPartidos = volverAPartidos;
 window.recargarPlanilla = recargarPlanilla;
-

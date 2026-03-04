@@ -19,7 +19,9 @@ class Campeonato {
       ADD COLUMN IF NOT EXISTS costo_arbitraje NUMERIC(12,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS costo_tarjeta_amarilla NUMERIC(12,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS costo_tarjeta_roja NUMERIC(12,2) DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS costo_carnet NUMERIC(12,2) DEFAULT 0
+      ADD COLUMN IF NOT EXISTS costo_carnet NUMERIC(12,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS bloquear_morosos BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS bloqueo_morosidad_monto NUMERIC(12,2) DEFAULT 0
     `);
     await pool.query(`
       UPDATE campeonatos
@@ -28,7 +30,9 @@ class Campeonato {
         costo_arbitraje = COALESCE(costo_arbitraje, 0),
         costo_tarjeta_amarilla = COALESCE(costo_tarjeta_amarilla, 0),
         costo_tarjeta_roja = COALESCE(costo_tarjeta_roja, 0),
-        costo_carnet = COALESCE(costo_carnet, 0)
+        costo_carnet = COALESCE(costo_carnet, 0),
+        bloquear_morosos = COALESCE(bloquear_morosos, FALSE),
+        bloqueo_morosidad_monto = COALESCE(bloqueo_morosidad_monto, 0)
     `);
     await pool.query(`
       WITH ranked AS (
@@ -108,7 +112,9 @@ class Campeonato {
     costo_arbitraje = 0,
     costo_tarjeta_amarilla = 0,
     costo_tarjeta_roja = 0,
-    costo_carnet = 0
+    costo_carnet = 0,
+    bloquear_morosos = false,
+    bloqueo_morosidad_monto = 0
   ) {
     await this.asegurarColumnasDocumentos();
 
@@ -143,11 +149,13 @@ class Campeonato {
         costo_tarjeta_amarilla,
         costo_tarjeta_roja,
         costo_carnet,
+        bloquear_morosos,
+        bloqueo_morosidad_monto,
         estado,
         numero_organizador
       )
       SELECT
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,'borrador',
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,'borrador',
         next_num.next_num
       FROM next_num
       RETURNING *
@@ -176,6 +184,8 @@ class Campeonato {
       this.parseDecimalNoNegativo(costo_tarjeta_amarilla, 0),
       this.parseDecimalNoNegativo(costo_tarjeta_roja, 0),
       this.parseDecimalNoNegativo(costo_carnet, 0),
+      bloquear_morosos === true || bloquear_morosos === "true",
+      this.parseDecimalNoNegativo(bloqueo_morosidad_monto, 0),
     ];
 
     const result = await pool.query(query, values);
@@ -223,7 +233,8 @@ class Campeonato {
       "sistema_puntuacion", "max_equipos", "min_jugador", "max_jugador",
       "color_primario", "color_secundario", "color_acento", "logo_url", "estado",
       "reglas_desempate", "requiere_cedula_jugador", "requiere_foto_cedula", "requiere_foto_carnet", "genera_carnets",
-      "costo_arbitraje", "costo_tarjeta_amarilla", "costo_tarjeta_roja", "costo_carnet"
+      "costo_arbitraje", "costo_tarjeta_amarilla", "costo_tarjeta_roja", "costo_carnet",
+      "bloquear_morosos", "bloqueo_morosidad_monto"
     ]);
 
     for (const [key, value] of Object.entries(datos)) {
@@ -235,10 +246,17 @@ class Campeonato {
           key === "costo_arbitraje" ||
           key === "costo_tarjeta_amarilla" ||
           key === "costo_tarjeta_roja" ||
-          key === "costo_carnet"
+          key === "costo_carnet" ||
+          key === "bloqueo_morosidad_monto"
         ) {
           campos.push(`${key} = $${contador}`);
           valores.push(this.parseDecimalNoNegativo(value, 0));
+          contador++;
+          continue;
+        }
+        if (key === "bloquear_morosos") {
+          campos.push(`${key} = $${contador}`);
+          valores.push(value === true || String(value).toLowerCase() === "true");
           contador++;
           continue;
         }

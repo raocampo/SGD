@@ -47,7 +47,7 @@ router.post("/", requireAuth, requireRoles("administrador", "organizador"), part
 router.get(
   "/:id/planilla",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   partidoController.obtenerPlanillaPartido
 );
 router.put(

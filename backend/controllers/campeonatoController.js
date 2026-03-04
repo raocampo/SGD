@@ -64,6 +64,8 @@ const campeonatoController = {
         costo_tarjeta_amarilla = 0,
         costo_tarjeta_roja = 0,
         costo_carnet = 0,
+        bloquear_morosos = false,
+        bloqueo_morosidad_monto = 0,
       } = req.body;
       const userId = Number.parseInt(req.user?.id, 10);
       const plan = Number.isFinite(userId) && userId > 0
@@ -183,7 +185,9 @@ const campeonatoController = {
         costo_arbitraje,
         costo_tarjeta_amarilla,
         costo_tarjeta_roja,
-        costo_carnet
+        costo_carnet,
+        bloquear_morosos,
+        bloqueo_morosidad_monto
       );
 
       res.status(201).json({
@@ -333,6 +337,15 @@ const campeonatoController = {
             error: `Tu plan ${plan.nombre} no permite generar carnets`,
           });
         }
+      }
+      if (datos.bloquear_morosos !== undefined) {
+        datos.bloquear_morosos =
+          datos.bloquear_morosos === true ||
+          String(datos.bloquear_morosos).toLowerCase() === "true";
+      }
+      if (datos.bloqueo_morosidad_monto !== undefined) {
+        const monto = Number.parseFloat(String(datos.bloqueo_morosidad_monto).replace(",", "."));
+        datos.bloqueo_morosidad_monto = Number.isFinite(monto) && monto >= 0 ? monto : 0;
       }
 
       if (req.fileValidationError) {

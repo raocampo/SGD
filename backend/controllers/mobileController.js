@@ -73,6 +73,8 @@ function parseCreateCampeonatoBody(body = {}, user = null) {
     costo_tarjeta_amarilla: body.yellowCardFee ?? 0,
     costo_tarjeta_roja: body.redCardFee ?? 0,
     costo_carnet: body.playerCardFee ?? 0,
+    bloquear_morosos: body.blockDebtors === true,
+    bloqueo_morosidad_monto: body.debtBlockAmount ?? 0,
   };
 }
 

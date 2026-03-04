@@ -27,7 +27,7 @@
 
   function esRolConEquipo(rol) {
     const r = String(rol || "").toLowerCase();
-    return r === "tecnico" || r === "dirigente";
+    return r === "tecnico" || r === "dirigente" || r === "jugador";
   }
 
   function usuarioActualId() {
@@ -81,6 +81,7 @@
       <option value="organizador">Organizador</option>
       <option value="tecnico">Técnico</option>
       <option value="dirigente">Dirigente</option>
+      <option value="jugador">Jugador</option>
     `;
     if (descripcion) {
       descripcion.textContent =

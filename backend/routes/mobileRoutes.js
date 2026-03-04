@@ -91,7 +91,7 @@ router.post(
 router.get(
   "/partidos/:id/planilla",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   mobileController.getPlanillaPartido
 );
 router.put(

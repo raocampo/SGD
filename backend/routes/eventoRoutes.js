@@ -45,7 +45,7 @@ router.post(
 router.get(
   "/:evento_id/equipos",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   eventoController.listarEquiposDeEvento
 );
 router.delete(

@@ -7,6 +7,34 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-04 - Finanzas: consolidado disciplinario-contable
+- Se ajusto la politica de morosidad para planilla a modo informativo:
+  - el guardado de planilla no se bloquea por deuda,
+  - backend retorna `aviso_morosidad` con detalle por equipo.
+- Se agrego notificacion de deuda para roles de equipo (`tecnico/dirigente/jugador`) y banner fijo en `portal-tecnico.html`.
+- Se implemento el rol `jugador`:
+  - soporte en autenticacion/usuarios y restricciones de lectura por equipo,
+  - `jugador` queda en modo `solo_lectura`,
+  - migracion: `database/migrations/024_rol_jugador.sql`.
+- Se incorporo en `finanzas.html` el bloque `Consolidado de Sanciones (TA/TR)` con:
+  - tabla por equipo,
+  - resumen de saldos de TA, TR y otras multas,
+  - saldo total de sanciones.
+- En `frontend/js/finanzas.js` se agrego:
+  - consulta filtrada de movimientos de `concepto=multa` (incluyendo origen sistema),
+  - clasificacion automatica de movimientos por `TA`, `TR` y `otras`,
+  - recarga integrada con filtros generales del modulo financiero.
+- Se agrego impresion dedicada:
+  - boton `Imprimir sanciones`,
+  - salida con membrete de campeonato y pie de auspiciantes.
+- Se implemento politica de morosidad parametrizable:
+  - nueva migracion `023_bloqueo_morosidad_parametrizable.sql`,
+  - configuracion en campeonato (`bloquear_morosos`, `bloqueo_morosidad_monto`),
+  - override por categoria/evento (`bloquear_morosos`, `bloqueo_morosidad_monto`),
+  - evaluacion aplicada en `Partido.guardarPlanilla` para web y mobile con devolucion de aviso (sin bloqueo).
+
+---
+
 ## 2026-03-03 - Planilla por grupo y reportes disciplinarios
 - Planilla operativa mejorada para carga directa:
   - nuevo selector de `grupo` en `frontend/planilla.html`,

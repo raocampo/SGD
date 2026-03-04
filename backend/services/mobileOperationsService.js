@@ -181,6 +181,7 @@ function countCards(tarjetas = [], equipoId, tipo) {
 }
 
 function mapSquadPlayer(player) {
+  const suspension = player?.suspension || null;
   return {
     id: toId(player.id),
     teamId: toId(player.equipo_id),
@@ -188,6 +189,33 @@ function mapSquadPlayer(player) {
     nationalId: player.cedidentidad || null,
     shirtNumber: player.numero_camiseta == null ? null : toInteger(player.numero_camiseta, null),
     position: player.posicion || "",
+    suspension: suspension
+      ? {
+          suspended: suspension.suspendido === true,
+          pendingMatches: toInteger(suspension.partidos_pendientes, 0),
+          accumulatedYellows: toInteger(suspension.amarillas_acumuladas, 0),
+          reason: suspension.motivo || null,
+        }
+      : null,
+  };
+}
+
+function mapDebtNotice(notice) {
+  if (!notice || typeof notice !== "object") return null;
+  const teams = Array.isArray(notice.equipos)
+    ? notice.equipos
+        .map((item) => ({
+          teamId: toId(item.equipo_id),
+          teamName: item.nombre || "",
+          balance: toNumber(item.saldo, 0),
+        }))
+        .filter((item) => Number.isFinite(item.teamId))
+    : [];
+  if (!teams.length) return null;
+  return {
+    total: toNumber(notice.total, teams.reduce((acc, item) => acc + toNumber(item.balance, 0), 0)),
+    message: String(notice.mensaje || "").trim() || "Existe deuda pendiente en uno o ambos equipos.",
+    teams,
   };
 }
 
@@ -263,6 +291,7 @@ async function obtenerPlanillaPartido(user, partidoId) {
       observation: item.observacion || null,
     })),
     observations: data.planilla?.observaciones || "",
+    debtNotice: mapDebtNotice(data.aviso_morosidad),
   };
 }
 
@@ -319,7 +348,7 @@ async function guardarPlanillaPartido(user, partidoId, body = {}) {
         .filter((item) => Number.isFinite(item.jugador_id) && item.goles > 0)
     : [];
 
-  await Partido.guardarPlanilla(Number(partido.id), {
+  const guardado = await Partido.guardarPlanilla(Number(partido.id), {
     resultado_local: homeScore,
     resultado_visitante: awayScore,
     estado: "finalizado",
@@ -340,7 +369,11 @@ async function guardarPlanillaPartido(user, partidoId, body = {}) {
     observaciones: body.observations || "",
   });
 
-  return obtenerPlanillaPartido(user, partido.id);
+  const data = await obtenerPlanillaPartido(user, partido.id);
+  if (guardado?.aviso_morosidad) {
+    data.debtNotice = mapDebtNotice(guardado.aviso_morosidad);
+  }
+  return data;
 }
 
 async function listarPasesVisibles(user, filtros = {}) {

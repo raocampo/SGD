@@ -6,6 +6,10 @@ let finanzasState = {
   ultimoMovimientos: [],
   ultimoMorosidad: [],
   ultimoEstadoCuenta: null,
+  ultimoSanciones: {
+    filas: [],
+    resumen: null,
+  },
   esTecnico: false,
 };
 
@@ -31,6 +35,7 @@ async function inicializarFinanzas() {
   await Promise.all([
     buscarMovimientosFinanzas(),
     cargarMorosidadFinanzas(),
+    cargarSancionesFinancieras(),
     cargarEstadoCuentaActual(),
   ]);
 }
@@ -48,13 +53,21 @@ function aplicarPermisosFinanzasUI() {
 function bindEventosFinanzas() {
   document
     .getElementById("btn-fin-buscar")
-    ?.addEventListener("click", buscarMovimientosFinanzas);
+    ?.addEventListener("click", async () => {
+      await Promise.all([
+        buscarMovimientosFinanzas(),
+        cargarMorosidadFinanzas(),
+        cargarSancionesFinancieras(),
+        cargarEstadoCuentaActual(),
+      ]);
+    });
 
   document.getElementById("btn-fin-recargar")?.addEventListener("click", async () => {
     await cargarCatalogosFinanzas();
     await Promise.all([
       buscarMovimientosFinanzas(),
       cargarMorosidadFinanzas(),
+      cargarSancionesFinancieras(),
       cargarEstadoCuentaActual(),
     ]);
     mostrarNotificacion("Datos financieros recargados", "success");
@@ -66,6 +79,7 @@ function bindEventosFinanzas() {
       sincronizarSelectoresPorCampeonato();
       buscarMovimientosFinanzas();
       cargarMorosidadFinanzas();
+      cargarSancionesFinancieras();
       cargarEstadoCuentaActual();
     });
 
@@ -74,6 +88,7 @@ function bindEventosFinanzas() {
     ?.addEventListener("change", () => {
       buscarMovimientosFinanzas();
       cargarMorosidadFinanzas();
+      cargarSancionesFinancieras();
       cargarEstadoCuentaActual();
     });
 
@@ -101,11 +116,15 @@ function bindEventosFinanzas() {
   document
     .getElementById("btn-fin-imprimir-movimientos")
     ?.addEventListener("click", imprimirReporteMovimientos);
+  document
+    .getElementById("btn-fin-imprimir-sanciones")
+    ?.addEventListener("click", imprimirReporteSancionesFinancieras);
 }
 
 function inicializarTogglesReportes() {
   configurarToggleReporte("btn-toggle-morosidad", "fin-morosidad-contenido", true);
   configurarToggleReporte("btn-toggle-movimientos", "fin-movimientos-contenido", true);
+  configurarToggleReporte("btn-toggle-sanciones", "fin-sanciones-contenido", true);
 }
 
 function configurarToggleReporte(btnId, targetId, expandedInicial = true) {
@@ -325,6 +344,140 @@ async function cargarMorosidadFinanzas() {
   }
 }
 
+function clasificarMultaSancion(mov = {}) {
+  const origenClave = String(mov.origen_clave || "").toLowerCase();
+  const descripcion = String(mov.descripcion || "").toLowerCase();
+  const referencia = String(mov.referencia || "").toLowerCase();
+  const combinado = `${origenClave} ${descripcion} ${referencia}`;
+
+  if (
+    origenClave.includes(":ta:") ||
+    combinado.includes("amarilla") ||
+    combinado.includes("tarjeta amarilla") ||
+    combinado.includes("ta ")
+  ) {
+    return "ta";
+  }
+
+  if (
+    origenClave.includes(":tr:") ||
+    combinado.includes("roja") ||
+    combinado.includes("tarjeta roja") ||
+    combinado.includes("tr ")
+  ) {
+    return "tr";
+  }
+
+  return "otras";
+}
+
+function calcularConsolidadoSanciones(movimientos = []) {
+  const mapa = new Map();
+
+  (Array.isArray(movimientos) ? movimientos : []).forEach((mov) => {
+    if (String(mov.estado || "").toLowerCase() === "anulado") return;
+    if (String(mov.concepto || "").toLowerCase() !== "multa") return;
+
+    const equipoId = Number.parseInt(mov.equipo_id, 10);
+    const equipoNombre = String(mov.equipo_nombre || "Equipo").trim() || "Equipo";
+    const clave = Number.isFinite(equipoId) && equipoId > 0 ? `id:${equipoId}` : `nombre:${equipoNombre}`;
+
+    if (!mapa.has(clave)) {
+      mapa.set(clave, {
+        equipo_id: Number.isFinite(equipoId) ? equipoId : null,
+        equipo_nombre: equipoNombre,
+        ta: { cargo: 0, abono: 0, saldo: 0 },
+        tr: { cargo: 0, abono: 0, saldo: 0 },
+        otras: { cargo: 0, abono: 0, saldo: 0 },
+      });
+    }
+
+    const fila = mapa.get(clave);
+    const bucket = clasificarMultaSancion(mov);
+    const tipo = String(mov.tipo_movimiento || "").toLowerCase();
+    const monto = Number.parseFloat(mov.monto || 0);
+    if (!Number.isFinite(monto) || monto <= 0) return;
+
+    if (tipo === "abono") fila[bucket].abono += monto;
+    else fila[bucket].cargo += monto;
+  });
+
+  const filas = Array.from(mapa.values()).map((fila) => {
+    ["ta", "tr", "otras"].forEach((k) => {
+      fila[k].cargo = Number(fila[k].cargo.toFixed(2));
+      fila[k].abono = Number(fila[k].abono.toFixed(2));
+      fila[k].saldo = Number(Math.max(fila[k].cargo - fila[k].abono, 0).toFixed(2));
+    });
+
+    fila.total_saldo = Number((fila.ta.saldo + fila.tr.saldo + fila.otras.saldo).toFixed(2));
+    fila.total_cargos = Number((fila.ta.cargo + fila.tr.cargo + fila.otras.cargo).toFixed(2));
+    fila.total_abonos = Number((fila.ta.abono + fila.tr.abono + fila.otras.abono).toFixed(2));
+    return fila;
+  });
+
+  filas.sort((a, b) => {
+    if (b.total_saldo !== a.total_saldo) return b.total_saldo - a.total_saldo;
+    return String(a.equipo_nombre || "").localeCompare(String(b.equipo_nombre || ""), "es", {
+      sensitivity: "base",
+    });
+  });
+
+  const resumen = filas.reduce(
+    (acc, fila) => {
+      acc.equipos += 1;
+      acc.ta.cargo += fila.ta.cargo;
+      acc.ta.abono += fila.ta.abono;
+      acc.tr.cargo += fila.tr.cargo;
+      acc.tr.abono += fila.tr.abono;
+      acc.otras.cargo += fila.otras.cargo;
+      acc.otras.abono += fila.otras.abono;
+      return acc;
+    },
+    {
+      equipos: 0,
+      ta: { cargo: 0, abono: 0, saldo: 0 },
+      tr: { cargo: 0, abono: 0, saldo: 0 },
+      otras: { cargo: 0, abono: 0, saldo: 0 },
+      total_saldo: 0,
+    }
+  );
+
+  ["ta", "tr", "otras"].forEach((k) => {
+    resumen[k].cargo = Number(resumen[k].cargo.toFixed(2));
+    resumen[k].abono = Number(resumen[k].abono.toFixed(2));
+    resumen[k].saldo = Number(Math.max(resumen[k].cargo - resumen[k].abono, 0).toFixed(2));
+  });
+  resumen.total_saldo = Number((resumen.ta.saldo + resumen.tr.saldo + resumen.otras.saldo).toFixed(2));
+
+  return { filas, resumen };
+}
+
+async function cargarSancionesFinancieras() {
+  const params = {
+    campeonato_id: document.getElementById("fin-campeonato")?.value || "",
+    evento_id: document.getElementById("fin-evento")?.value || "",
+    equipo_id: document.getElementById("fin-equipo")?.value || "",
+    concepto: "multa",
+    incluir_sistema: "true",
+    limit: 2000,
+  };
+
+  const cont = document.getElementById("fin-sanciones-contenido");
+  if (cont) cont.innerHTML = renderCargando("Cargando consolidado de sanciones...");
+
+  try {
+    const resp = await FinanzasAPI.listarMovimientos(params);
+    const movimientos = resp.movimientos || [];
+    const consolidado = calcularConsolidadoSanciones(movimientos);
+    finanzasState.ultimoSanciones = consolidado;
+    renderTablaSancionesFinancieras(consolidado.filas, consolidado.resumen);
+  } catch (error) {
+    console.error(error);
+    finanzasState.ultimoSanciones = { filas: [], resumen: null };
+    if (cont) cont.innerHTML = renderVacio(error.message || "No se pudo cargar sanciones financieras");
+  }
+}
+
 function clasificarMovimientoCuenta(mov = {}) {
   const concepto = String(mov.concepto || "").toLowerCase();
   const descripcion = String(mov.descripcion || "").toLowerCase();
@@ -472,6 +625,7 @@ async function guardarMovimientoFinanzas(e) {
     await Promise.all([
       buscarMovimientosFinanzas(),
       cargarMorosidadFinanzas(),
+      cargarSancionesFinancieras(),
       cargarEstadoCuentaActual(),
     ]);
   } catch (error) {
@@ -857,6 +1011,87 @@ async function imprimirReporteMovimientos() {
   });
 }
 
+async function imprimirReporteSancionesFinancieras() {
+  const data = finanzasState.ultimoSanciones || {};
+  const filasData = Array.isArray(data.filas) ? data.filas : [];
+  const resumen = data.resumen || null;
+
+  if (!filasData.length || !resumen) {
+    mostrarNotificacion("No hay datos de sanciones para imprimir", "warning");
+    return;
+  }
+
+  const campeonatoId = Number.parseInt(
+    document.getElementById("fin-campeonato")?.value || "",
+    10
+  );
+  const campeonato = obtenerCampeonatoPorId(campeonatoId);
+  const auspiciantes = await cargarAuspiciantesActivosReporte(campeonatoId);
+
+  const filas = filasData
+    .map((x, idx) => {
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escaparHtml(x.equipo_nombre || "-")}</td>
+          <td class="num">${formatoMoneda(x.ta.cargo)}</td>
+          <td class="num">${formatoMoneda(x.ta.abono)}</td>
+          <td class="num ${x.ta.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.ta.saldo)}</td>
+          <td class="num">${formatoMoneda(x.tr.cargo)}</td>
+          <td class="num">${formatoMoneda(x.tr.abono)}</td>
+          <td class="num ${x.tr.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.tr.saldo)}</td>
+          <td class="num">${formatoMoneda(x.otras.saldo)}</td>
+          <td class="num ${x.total_saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.total_saldo)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const html = `
+    <div class="fin-report-wrap">
+      <div class="fin-report-header">
+        <h1>Consolidado de Sanciones Financieras</h1>
+        <div class="fin-report-sub">Equipos con registros: ${resumen.equipos}</div>
+      </div>
+      <div class="fin-report-grid">
+        <div><strong>TA cargos:</strong> ${formatoMoneda(resumen.ta.cargo)}</div>
+        <div><strong>TA abonos:</strong> ${formatoMoneda(resumen.ta.abono)}</div>
+        <div><strong>TA saldo:</strong> <span class="${resumen.ta.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.ta.saldo)}</span></div>
+        <div><strong>TR cargos:</strong> ${formatoMoneda(resumen.tr.cargo)}</div>
+        <div><strong>TR abonos:</strong> ${formatoMoneda(resumen.tr.abono)}</div>
+        <div><strong>TR saldo:</strong> <span class="${resumen.tr.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.tr.saldo)}</span></div>
+        <div><strong>Otras multas saldo:</strong> ${formatoMoneda(resumen.otras.saldo)}</div>
+        <div><strong>Saldo total sanciones:</strong> <span class="${resumen.total_saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.total_saldo)}</span></div>
+      </div>
+      <table class="fin-report-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Equipo</th>
+            <th class="num">TA Cargos</th>
+            <th class="num">TA Abonos</th>
+            <th class="num">TA Saldo</th>
+            <th class="num">TR Cargos</th>
+            <th class="num">TR Abonos</th>
+            <th class="num">TR Saldo</th>
+            <th class="num">Otras multas</th>
+            <th class="num">Saldo total</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+    ${renderPieAuspiciantes(auspiciantes)}
+  `;
+
+  await abrirVentanaReporteFinanzas({
+    membreteHtml: renderMembreteReporte(campeonato, "Consolidado de Sanciones"),
+    tituloVentana: "Consolidado de Sanciones",
+    cuerpoHtml: html,
+    autoPrint: true,
+  });
+}
+
 function abrirVentanaReporteFinanzas({
   membreteHtml = "",
   tituloVentana = "Reporte",
@@ -1157,6 +1392,61 @@ function renderTablaMovimientos(movimientos) {
           <th>Monto</th>
           <th>Estado</th>
           <th>Descripción</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderTablaSancionesFinancieras(filas = [], resumen = null) {
+  const cont = document.getElementById("fin-sanciones-contenido");
+  if (!cont) return;
+  if (!Array.isArray(filas) || !filas.length || !resumen) {
+    cont.innerHTML = renderVacio("No hay sanciones financieras registradas con los filtros actuales.");
+    return;
+  }
+
+  const rows = filas
+    .map((x, idx) => {
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escaparHtml(x.equipo_nombre || "-")}</td>
+          <td>${formatoMoneda(x.ta.cargo)}</td>
+          <td>${formatoMoneda(x.ta.abono)}</td>
+          <td class="${x.ta.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(x.ta.saldo)}</td>
+          <td>${formatoMoneda(x.tr.cargo)}</td>
+          <td>${formatoMoneda(x.tr.abono)}</td>
+          <td class="${x.tr.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(x.tr.saldo)}</td>
+          <td>${formatoMoneda(x.otras.saldo)}</td>
+          <td class="${x.total_saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(x.total_saldo)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  cont.innerHTML = `
+    <div class="fin-sanciones-resumen">
+      <div><strong>Equipos:</strong> ${resumen.equipos}</div>
+      <div><strong>TA saldo:</strong> <span class="${resumen.ta.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.ta.saldo)}</span></div>
+      <div><strong>TR saldo:</strong> <span class="${resumen.tr.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.tr.saldo)}</span></div>
+      <div><strong>Otras multas saldo:</strong> ${formatoMoneda(resumen.otras.saldo)}</div>
+      <div><strong>Saldo total sanciones:</strong> <span class="${resumen.total_saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.total_saldo)}</span></div>
+    </div>
+    <table class="tabla-estadistica tabla-estadistica-compacta">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Equipo</th>
+          <th>TA Cargos</th>
+          <th>TA Abonos</th>
+          <th>TA Saldo</th>
+          <th>TR Cargos</th>
+          <th>TR Abonos</th>
+          <th>TR Saldo</th>
+          <th>Otras multas</th>
+          <th>Saldo total</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>

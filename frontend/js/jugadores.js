@@ -38,7 +38,11 @@ function rolUsuarioActual() {
 
 function usuarioSoloGestionJugadores() {
   const rol = rolUsuarioActual();
-  return rol === "tecnico" || rol === "dirigente";
+  return rol === "tecnico" || rol === "dirigente" || rol === "jugador";
+}
+
+function usuarioSoloLecturaJugadores() {
+  return rolUsuarioActual() === "jugador" || window.Auth?.isReadOnly?.() === true;
 }
 
 function tienePermisoReportesJugadores() {
@@ -152,6 +156,7 @@ function reporteJugadoresRequiereEquipo(tipo = obtenerTipoReporteJugadores()) {
 }
 
 function contextoListoParaImportaciones() {
+  if (usuarioSoloLecturaJugadores()) return false;
   if (!equipoId || !campeonatoId) return false;
   if (modoDirecto && eventoRequeridoParaReportes() && !eventoId) return false;
   return true;
@@ -257,6 +262,12 @@ function aplicarRestriccionesRolEnJugadores() {
   if (bloqueSanciones) bloqueSanciones.style.display = "none";
   if (bloqueSancionesCategoria) bloqueSancionesCategoria.style.display = "none";
   if (bloqueCarnets) bloqueCarnets.style.display = "none";
+
+  if (usuarioSoloLecturaJugadores()) {
+    const btnNuevo = document.getElementById("btn-nuevo-jugador");
+    if (btnNuevo) btnNuevo.style.display = "none";
+    mostrarNotificacion("Rol jugador en modo solo lectura: puedes visualizar, no modificar.", "info");
+  }
 }
 
 function actualizarResumenReglasDocumentos() {
@@ -718,6 +729,7 @@ async function cargarJugadores() {
 }
 
 function renderTarjetasJugadores(jugadores) {
+  const soloLectura = usuarioSoloLecturaJugadores();
   return jugadores
     .map((jugador, index) => {
       return `
@@ -733,15 +745,18 @@ function renderTarjetasJugadores(jugadores) {
           <p><strong>Capitán:</strong> ${jugador.es_capitan ? "Sí" : "No"}</p>
           <p><strong>Disciplina:</strong> ${renderEstadoDisciplinarioJugador(jugador)}</p>
           <p><strong>Documentos:</strong> ${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carnet")}</p>
-
-          <div class="jugador-actions">
+          ${
+            soloLectura
+              ? ""
+              : `<div class="jugador-actions">
             <button class="btn btn-warning" onclick="editarJugador(${jugador.id})">
               <i class="fas fa-edit"></i> Editar
             </button>
             <button class="btn btn-danger" onclick="eliminarJugador(${jugador.id})">
               <i class="fas fa-trash"></i> Eliminar
             </button>
-          </div>
+          </div>`
+          }
         </div>
       `;
     })
@@ -749,6 +764,7 @@ function renderTarjetasJugadores(jugadores) {
 }
 
 function renderTablaJugadores(jugadores) {
+  const soloLectura = usuarioSoloLecturaJugadores();
   const filas = jugadores
     .map((jugador, index) => {
       return `
@@ -762,14 +778,18 @@ function renderTablaJugadores(jugadores) {
           <td>${jugador.es_capitan ? "Sí" : "No"}</td>
           <td>${renderEstadoDisciplinarioJugador(jugador)}</td>
           <td>${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carnet")}</td>
-          <td class="list-table-actions">
+          ${
+            soloLectura
+              ? ""
+              : `<td class="list-table-actions">
             <button class="btn btn-warning" onclick="editarJugador(${jugador.id})">
               <i class="fas fa-edit"></i> Editar
             </button>
             <button class="btn btn-danger" onclick="eliminarJugador(${jugador.id})">
               <i class="fas fa-trash"></i> Eliminar
             </button>
-          </td>
+          </td>`
+          }
         </tr>
       `;
     })
@@ -789,7 +809,7 @@ function renderTablaJugadores(jugadores) {
             <th>Capitán</th>
             <th>Disciplina</th>
             <th>Documentos</th>
-            <th>Acciones</th>
+            ${soloLectura ? "" : "<th>Acciones</th>"}
           </tr>
         </thead>
         <tbody>${filas}</tbody>
@@ -1879,6 +1899,10 @@ function actualizarResumenJugadores() {
 }
 
 function mostrarModalCrearJugador() {
+  if (usuarioSoloLecturaJugadores()) {
+    mostrarNotificacion("Tu perfil es solo lectura en jugadores", "warning");
+    return;
+  }
   if (!equipoId) {
     mostrarNotificacion("Selecciona un equipo primero", "warning");
     return;
@@ -1907,6 +1931,10 @@ function mostrarModalCrearJugador() {
 }
 
 async function editarJugador(id) {
+  if (usuarioSoloLecturaJugadores()) {
+    mostrarNotificacion("Tu perfil es solo lectura en jugadores", "warning");
+    return;
+  }
   try {
     const data = await ApiClient.get(`/jugadores/${id}`);
     const jugador = data.jugador || data;
@@ -1953,6 +1981,11 @@ async function guardarJugadorConFormData({ id, fd }) {
 
 document.getElementById("form-jugador").addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  if (usuarioSoloLecturaJugadores()) {
+    mostrarNotificacion("Tu perfil es solo lectura en jugadores", "warning");
+    return;
+  }
 
   if (!equipoId) {
     mostrarNotificacion("Selecciona un equipo primero", "warning");
@@ -2025,6 +2058,10 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
 });
 
 async function eliminarJugador(id) {
+  if (usuarioSoloLecturaJugadores()) {
+    mostrarNotificacion("Tu perfil es solo lectura en jugadores", "warning");
+    return;
+  }
   if (!confirm("¿Seguro que deseas eliminar este jugador?")) return;
 
   try {
@@ -2608,4 +2645,3 @@ window.exportarReporteSancionesCategoriaJugadoresPDF = exportarReporteSancionesC
 window.mostrarPlantillaCarnets = mostrarPlantillaCarnets;
 window.imprimirCarnetsJugadores = imprimirCarnetsJugadores;
 window.exportarCarnetsPDF = exportarCarnetsPDF;
-

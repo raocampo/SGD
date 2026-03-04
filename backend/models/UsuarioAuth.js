@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const pool = require("../config/database");
 const { normalizarPlanCodigo } = require("../services/planLimits");
 
-const ROLES = new Set(["administrador", "operador", "organizador", "tecnico", "dirigente"]);
+const ROLES = new Set(["administrador", "operador", "organizador", "tecnico", "dirigente", "jugador"]);
 
 class UsuarioAuth {
   static _schemaReady = false;
@@ -45,7 +45,7 @@ class UsuarioAuth {
         nombre VARCHAR(140) NOT NULL,
         email VARCHAR(180) NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
-        rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'operador', 'organizador', 'tecnico', 'dirigente')),
+        rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'operador', 'organizador', 'tecnico', 'dirigente', 'jugador')),
         activo BOOLEAN NOT NULL DEFAULT TRUE,
         solo_lectura BOOLEAN NOT NULL DEFAULT FALSE,
         plan_codigo VARCHAR(24) NOT NULL DEFAULT 'premium',
@@ -124,7 +124,7 @@ class UsuarioAuth {
 
         ALTER TABLE usuarios
         ADD CONSTRAINT usuarios_rol_check
-        CHECK (rol IN ('administrador', 'operador', 'organizador', 'tecnico', 'dirigente'));
+        CHECK (rol IN ('administrador', 'operador', 'organizador', 'tecnico', 'dirigente', 'jugador'));
       EXCEPTION WHEN duplicate_object THEN
         NULL;
       END $$;
@@ -286,8 +286,10 @@ class UsuarioAuth {
         ? true
         : data.activo === true || String(data.activo).toLowerCase() === "true";
     const organizacionNombre = String(data.organizacion_nombre || "").trim();
-    const soloLectura =
-      data.solo_lectura === true || String(data.solo_lectura || "").toLowerCase() === "true";
+    const rolEsJugador = rol === "jugador";
+    const soloLectura = rolEsJugador
+      ? true
+      : data.solo_lectura === true || String(data.solo_lectura || "").toLowerCase() === "true";
     const planCodigo = normalizarPlanCodigo(data.plan_codigo, "premium");
     const planEstado = String(data.plan_estado || "activo").trim().toLowerCase() === "suspendido"
       ? "suspendido"
@@ -299,7 +301,7 @@ class UsuarioAuth {
       throw new Error("password debe tener al menos 6 caracteres");
     }
     if (!ROLES.has(rol)) {
-      throw new Error("rol invalido. Use: administrador, operador, organizador, tecnico o dirigente");
+      throw new Error("rol invalido. Use: administrador, operador, organizador, tecnico, dirigente o jugador");
     }
     if (rol === "organizador" && !organizacionNombre) {
       throw new Error("organizacion_nombre es obligatorio para organizador");
@@ -373,7 +375,7 @@ class UsuarioAuth {
     if (data.rol !== undefined) {
       const rol = String(data.rol || "").trim().toLowerCase();
       if (!ROLES.has(rol)) {
-        throw new Error("rol invalido. Use: administrador, operador, organizador, tecnico o dirigente");
+        throw new Error("rol invalido. Use: administrador, operador, organizador, tecnico, dirigente o jugador");
       }
       if (rol === "organizador") {
         const orgDestino =
@@ -442,8 +444,15 @@ class UsuarioAuth {
     const actualizado = await this.obtenerPorId(uId, client);
     if (!actualizado) return null;
 
-    if (actualizado.rol !== "tecnico" && actualizado.rol !== "dirigente") {
+    if (actualizado.rol !== "tecnico" && actualizado.rol !== "dirigente" && actualizado.rol !== "jugador") {
       await client.query(`DELETE FROM usuario_equipos WHERE usuario_id = $1`, [uId]);
+    }
+
+    if (actualizado.rol === "jugador" && actualizado.solo_lectura !== true) {
+      await client.query(
+        `UPDATE usuarios SET solo_lectura = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+        [uId]
+      );
     }
 
     const refreshed = await this.obtenerPorId(uId, client);
@@ -469,8 +478,8 @@ class UsuarioAuth {
 
     const user = await this.obtenerPorId(uId, client);
     if (!user) throw new Error("Usuario no encontrado");
-    if (user.rol !== "tecnico" && user.rol !== "dirigente") {
-      throw new Error("Solo se pueden asignar equipos a usuarios con rol tecnico/dirigente");
+    if (user.rol !== "tecnico" && user.rol !== "dirigente" && user.rol !== "jugador") {
+      throw new Error("Solo se pueden asignar equipos a usuarios con rol tecnico/dirigente/jugador");
     }
 
     await client.query(

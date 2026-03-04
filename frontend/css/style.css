@@ -258,6 +258,28 @@ body.app-layout {
   text-align: center;
 }
 
+.deuda-equipo-banner {
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  border-radius: 0.8rem;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+  color: #78350f;
+}
+
+.deuda-equipo-banner-title {
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.25rem;
+}
+
+.deuda-equipo-banner p {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -3917,6 +3939,14 @@ body.page-finanzas {
   margin-bottom: 0.75rem;
 }
 
+.page-finanzas .fin-sanciones-resumen {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(160px, 1fr));
+  gap: 0.4rem 0.7rem;
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+}
+
 .page-finanzas .fin-saldo-deuda {
   color: #dc2626;
   font-weight: 700;
@@ -4074,6 +4104,10 @@ body.page-finanzas {
     grid-template-columns: 1fr;
   }
 
+  .page-finanzas .fin-sanciones-resumen {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+
   .page-finanzas .tabla-estadistica {
     min-width: 620px;
   }
@@ -4118,6 +4152,10 @@ body.page-finanzas {
 
 @media (max-width: 700px) {
   .page-finanzas .fin-resumen-cuenta {
+    grid-template-columns: 1fr;
+  }
+
+  .page-finanzas .fin-sanciones-resumen {
     grid-template-columns: 1fr;
   }
 

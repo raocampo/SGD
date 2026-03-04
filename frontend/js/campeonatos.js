@@ -61,6 +61,9 @@ function obtenerMetadatosCampeonato(camp) {
   const costoArbitraje = parseMontoNoNegativo(camp.costo_arbitraje, 0);
   const costoTA = parseMontoNoNegativo(camp.costo_tarjeta_amarilla, 0);
   const costoTR = parseMontoNoNegativo(camp.costo_tarjeta_roja, 0);
+  const bloquearMorosos =
+    camp.bloquear_morosos === true || String(camp.bloquear_morosos).toLowerCase() === "true";
+  const bloqueoMorosidadMonto = parseMontoNoNegativo(camp.bloqueo_morosidad_monto, 0);
 
   return {
     tipoFutbol,
@@ -74,6 +77,8 @@ function obtenerMetadatosCampeonato(camp) {
     costoArbitraje,
     costoTA,
     costoTR,
+    bloquearMorosos,
+    bloqueoMorosidadMonto,
   };
 }
 
@@ -116,6 +121,7 @@ function renderCampeonatoCard(camp, index = null) {
         <p><strong>Fechas:</strong> ${escapeHtml(meta.fechaInicio)} - ${escapeHtml(meta.fechaFin)}</p>
         <p><strong>Jugadores:</strong> ${escapeHtml(meta.jugadoresMinMax)}</p>
         <p><strong>Costos:</strong> Arb ${meta.costoArbitraje.toFixed(2)} | TA ${meta.costoTA.toFixed(2)} | TR ${meta.costoTR.toFixed(2)}</p>
+        <p><strong>Bloqueo morosidad:</strong> ${meta.bloquearMorosos ? `Activo (>${meta.bloqueoMorosidadMonto.toFixed(2)})` : "Inactivo"}</p>
         <p><strong>Carnets:</strong> ${meta.carnets}</p>
       </div>
 
@@ -165,6 +171,7 @@ function renderTablaCampeonatos(campeonatos) {
           </td>
           <td>${escapeHtml(meta.jugadoresMinMax)}</td>
           <td>Arb ${meta.costoArbitraje.toFixed(2)} / TA ${meta.costoTA.toFixed(2)} / TR ${meta.costoTR.toFixed(2)}</td>
+          <td>${meta.bloquearMorosos ? `Sí (>${meta.bloqueoMorosidadMonto.toFixed(2)})` : "No"}</td>
           <td>${meta.carnets}</td>
           <td class="list-table-actions">
             <button class="btn btn-primary" onclick="irAEventos(${camp.id})"><i class="fas fa-layer-group"></i> Eventos</button>
@@ -190,6 +197,7 @@ function renderTablaCampeonatos(campeonatos) {
             <th>Estado</th>
             <th>Jugadores</th>
             <th>Costos</th>
+            <th>Bloqueo morosos</th>
             <th>Carnets</th>
             <th>Acciones</th>
           </tr>
@@ -301,10 +309,14 @@ function mostrarModalCrearCampeonato() {
   const costoTA = document.getElementById("campeonato-costo-ta");
   const costoTR = document.getElementById("campeonato-costo-tr");
   const costoCarnet = document.getElementById("campeonato-costo-carnet");
+  const bloquearMorosos = document.getElementById("campeonato-bloquear-morosos");
+  const bloqueoMorosidadMonto = document.getElementById("campeonato-bloqueo-morosidad-monto");
   if (costoArbitraje) costoArbitraje.value = "0";
   if (costoTA) costoTA.value = "0";
   if (costoTR) costoTR.value = "0";
   if (costoCarnet) costoCarnet.value = "0";
+  if (bloquearMorosos) bloquearMorosos.checked = false;
+  if (bloqueoMorosidadMonto) bloqueoMorosidadMonto.value = "0";
 
   document.getElementById("campeonato-estado").value = "borrador";
   abrirModal("modal-campeonato");
@@ -389,6 +401,12 @@ async function editarCampeonato(id) {
       camp.costo_carnet,
       0
     );
+    document.getElementById("campeonato-bloquear-morosos").checked =
+      camp.bloquear_morosos === true || String(camp.bloquear_morosos).toLowerCase() === "true";
+    document.getElementById("campeonato-bloqueo-morosidad-monto").value = parseMontoNoNegativo(
+      camp.bloqueo_morosidad_monto,
+      0
+    );
 
     abrirModal("modal-campeonato");
   } catch (error) {
@@ -443,6 +461,11 @@ document
       document.getElementById("campeonato-costo-carnet").value,
       0
     );
+    const bloquearMorosos = document.getElementById("campeonato-bloquear-morosos").checked;
+    const bloqueoMorosidadMonto = parseMontoNoNegativo(
+      document.getElementById("campeonato-bloqueo-morosidad-monto").value,
+      0
+    );
 
     const fileInput = document.getElementById("campeonato-logo");
     const file = fileInput.files[0];
@@ -485,6 +508,8 @@ document
     fd.append("costo_tarjeta_amarilla", String(costoTarjetaAmarilla));
     fd.append("costo_tarjeta_roja", String(costoTarjetaRoja));
     fd.append("costo_carnet", String(costoCarnet));
+    fd.append("bloquear_morosos", String(bloquearMorosos));
+    fd.append("bloqueo_morosidad_monto", String(bloqueoMorosidadMonto));
     fd.append("estado", document.getElementById("campeonato-estado").value);
 
     if (file) {

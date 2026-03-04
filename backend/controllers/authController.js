@@ -18,7 +18,7 @@ const {
   esPlanPagado,
   obtenerPlan,
 } = require("../services/planLimits");
-const ROLES_REGISTRO_PUBLICO = new Set(["organizador", "dirigente", "tecnico"]);
+const ROLES_REGISTRO_PUBLICO = new Set(["organizador", "dirigente", "tecnico", "jugador"]);
 
 function esAdministrador(user) {
   return String(user?.rol || "").toLowerCase() === "administrador";
@@ -117,7 +117,7 @@ const authController = {
         return res.status(400).json({ error: "nombre, email, password y rol son obligatorios" });
       }
       if (!ROLES_REGISTRO_PUBLICO.has(rolSolicitado)) {
-        return res.status(400).json({ error: "rol invalido. Use: organizador, dirigente o tecnico" });
+        return res.status(400).json({ error: "rol invalido. Use: organizador, dirigente, tecnico o jugador" });
       }
       if (rolSolicitado === "organizador" && !organizacionNombre) {
         return res.status(400).json({
@@ -368,7 +368,11 @@ const authController = {
 
       const user = await UsuarioAuth.crear(body);
 
-      if ((user.rol === "tecnico" || user.rol === "dirigente") && Number.isFinite(equipoId) && equipoId > 0) {
+      if (
+        (user.rol === "tecnico" || user.rol === "dirigente" || user.rol === "jugador") &&
+        Number.isFinite(equipoId) &&
+        equipoId > 0
+      ) {
         await UsuarioAuth.asignarEquipo(user.id, equipoId);
       }
       const actualizado = await UsuarioAuth.obtenerPorId(user.id);

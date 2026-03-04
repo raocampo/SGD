@@ -48,6 +48,16 @@ function formatearMetodoCompetencia(valor) {
   return "Grupos";
 }
 
+function formatearBloqueoMorososEvento(evento = {}) {
+  const valor = evento?.bloquear_morosos;
+  if (valor === null || valor === undefined || valor === "") return "Hereda";
+  const activo = valor === true || String(valor).toLowerCase() === "true";
+  const monto = normalizarCostoInscripcion(evento?.bloqueo_morosidad_monto, null);
+  if (!activo) return "Desactivado";
+  if (monto === null) return "Activo";
+  return `Activo (> ${formatearCostoInscripcion(monto)})`;
+}
+
 function normalizarMetodoCompetencia(valor) {
   const key = String(valor || "").toLowerCase();
   if (["grupos", "liga", "eliminatoria", "mixto"].includes(key)) return key;
@@ -242,6 +252,7 @@ function renderEventoCard(e) {
         <p><strong>Método:</strong> ${escapeHtml(formatearMetodoCompetencia(e.metodo_competencia))}</p>
         <p><strong>Llave elim.:</strong> ${escapeHtml(e.eliminatoria_equipos || "Automática")}</p>
         <p><strong>Costo inscripción:</strong> ${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</p>
+        <p><strong>Bloqueo morosos:</strong> ${escapeHtml(formatearBloqueoMorososEvento(e))}</p>
         <p><strong>Fechas:</strong> ${escapeHtml(formatearFechaSolo(e.fecha_inicio))} - ${escapeHtml(formatearFechaSolo(e.fecha_fin))}</p>
       </div>
       <div class="campeonato-actions">
@@ -271,6 +282,7 @@ function renderTablaEventos(eventos) {
           <td>${escapeHtml(formatearMetodoCompetencia(e.metodo_competencia))}</td>
           <td>${escapeHtml(e.eliminatoria_equipos || "Auto")}</td>
           <td>${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</td>
+          <td>${escapeHtml(formatearBloqueoMorososEvento(e))}</td>
           <td>${escapeHtml(formatearFechaSolo(e.fecha_inicio))}</td>
           <td>${escapeHtml(formatearFechaSolo(e.fecha_fin))}</td>
           <td class="list-table-actions">
@@ -300,6 +312,7 @@ function renderTablaEventos(eventos) {
             <th>Método</th>
             <th>Llave elim.</th>
             <th>Costo inscripción</th>
+            <th>Bloqueo morosos</th>
             <th>Fecha inicio</th>
             <th>Fecha fin</th>
             <th>Acciones</th>
@@ -333,6 +346,13 @@ async function crearEvento() {
     document.getElementById("evt-costo-inscripcion").value,
     0
   );
+  const bloqueoMorososRaw = document.getElementById("evt-bloquear-morosos")?.value ?? "";
+  const bloqueoMorosos =
+    bloqueoMorososRaw === "" ? null : bloqueoMorososRaw === "true";
+  const bloqueoMorosidadMonto = normalizarCostoInscripcion(
+    document.getElementById("evt-bloqueo-morosidad-monto")?.value,
+    null
+  );
   const metodo_competencia = normalizarMetodoCompetencia(metodoCompetencia);
   if (!metodo_competencia) {
     mostrarNotificacion("Método de competencia inválido.", "warning");
@@ -355,6 +375,8 @@ async function crearEvento() {
       fecha_inicio,
       fecha_fin,
       costo_inscripcion,
+      bloquear_morosos: bloqueoMorosos,
+      bloqueo_morosidad_monto: bloqueoMorosidadMonto,
     });
     mostrarNotificacion("Categoría creada", "success");
     document.getElementById("evt-nombre").value = "";
@@ -363,6 +385,10 @@ async function crearEvento() {
     const selectElim = document.getElementById("evt-eliminatoria-equipos");
     if (selectMetodo) selectMetodo.value = "grupos";
     if (selectElim) selectElim.value = "";
+    const selectBloqMorosos = document.getElementById("evt-bloquear-morosos");
+    const inputBloqMonto = document.getElementById("evt-bloqueo-morosidad-monto");
+    if (selectBloqMorosos) selectBloqMorosos.value = "";
+    if (inputBloqMonto) inputBloqMonto.value = "";
     actualizarVisibilidadConfigEliminatoria();
     toggleFormularioCategoria(false);
     await cargarEventos();
@@ -432,10 +458,43 @@ async function editarEvento(id) {
     return;
   }
 
+  const bloqueoActual =
+    evento?.bloquear_morosos === null || evento?.bloquear_morosos === undefined || evento?.bloquear_morosos === ""
+      ? "heredar"
+      : (evento?.bloquear_morosos === true || String(evento?.bloquear_morosos).toLowerCase() === "true")
+        ? "activar"
+        : "desactivar";
+  const nuevoBloqueoRaw = prompt(
+    "Bloqueo morosos (heredar, activar, desactivar):",
+    bloqueoActual
+  );
+  if (nuevoBloqueoRaw === null) return;
+  const nuevoBloqueo = String(nuevoBloqueoRaw || "").trim().toLowerCase();
+  if (!["heredar", "activar", "desactivar"].includes(nuevoBloqueo)) {
+    mostrarNotificacion("Valor inválido para bloqueo. Usa: heredar, activar, desactivar.", "warning");
+    return;
+  }
+
+  const montoBloqueoActual = normalizarCostoInscripcion(evento?.bloqueo_morosidad_monto, null);
+  const nuevoMontoBloqueoRaw = prompt(
+    "Monto de bloqueo (vacío = heredar):",
+    montoBloqueoActual === null ? "" : String(montoBloqueoActual)
+  );
+  if (nuevoMontoBloqueoRaw === null) return;
+  const nuevoMontoBloqueo = normalizarCostoInscripcion(nuevoMontoBloqueoRaw, null);
+  if (String(nuevoMontoBloqueoRaw || "").trim() !== "" && nuevoMontoBloqueo === null) {
+    mostrarNotificacion("Monto de bloqueo inválido. Usa solo números >= 0.", "warning");
+    return;
+  }
+
   try {
     const payload = { nombre: nuevoNombre, metodo_competencia: nuevoMetodo };
     payload.eliminatoria_equipos = nuevaLlave ? Number(nuevaLlave) : null;
     if (costo_inscripcion !== null) payload.costo_inscripcion = costo_inscripcion;
+    payload.bloquear_morosos =
+      nuevoBloqueo === "heredar" ? null : nuevoBloqueo === "activar";
+    payload.bloqueo_morosidad_monto =
+      String(nuevoMontoBloqueoRaw || "").trim() === "" ? null : nuevoMontoBloqueo;
     await EventosAPI.actualizar(id, payload);
     mostrarNotificacion("Categoría actualizada", "success");
     await cargarEventos();

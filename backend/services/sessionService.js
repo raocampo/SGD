@@ -103,6 +103,17 @@ function permisosPorRol(user) {
     ];
   }
 
+  if (rol === "jugador") {
+    return [
+      "campeonatos:read",
+      "eventos:read",
+      "equipos:read",
+      "jugadores:read",
+      "partidos:read",
+      "finanzas:read",
+    ];
+  }
+
   return [];
 }
 

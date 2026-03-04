@@ -403,6 +403,7 @@ class Partido {
   static _columnaTimestampActualizacion = undefined;
   static _esquemaPlanillaAsegurado = false;
   static _esquemaSecuenciaAsegurado = false;
+  static _columnasBloqueoMorosidad = null;
 
   static async asegurarEsquemaSecuencia() {
     if (this._esquemaSecuenciaAsegurado) return;
@@ -1414,6 +1415,187 @@ class Partido {
     });
   }
 
+  static async detectarColumnasBloqueoMorosidad(client = pool) {
+    if (this._columnasBloqueoMorosidad) return this._columnasBloqueoMorosidad;
+
+    const r = await client.query(`
+      SELECT table_name, column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND (
+          (table_name = 'campeonatos' AND column_name IN ('bloquear_morosos', 'bloqueo_morosidad_monto'))
+          OR
+          (table_name = 'eventos' AND column_name IN ('bloquear_morosos', 'bloqueo_morosidad_monto'))
+        )
+    `);
+
+    const existe = new Set(r.rows.map((row) => `${row.table_name}.${row.column_name}`));
+    this._columnasBloqueoMorosidad = {
+      campBloquea: existe.has("campeonatos.bloquear_morosos"),
+      campMonto: existe.has("campeonatos.bloqueo_morosidad_monto"),
+      eventoBloquea: existe.has("eventos.bloquear_morosos"),
+      eventoMonto: existe.has("eventos.bloqueo_morosidad_monto"),
+    };
+    return this._columnasBloqueoMorosidad;
+  }
+
+  static async obtenerPoliticaBloqueoMorosidad(client, campeonatoId, eventoId = null) {
+    const cols = await this.detectarColumnasBloqueoMorosidad(client);
+    if (!cols.campBloquea || !cols.campMonto) {
+      return { activo: false, monto: 0, nivel: "ninguno" };
+    }
+
+    const campR = await client.query(
+      `
+        SELECT
+          COALESCE(bloquear_morosos, FALSE) AS bloquear_morosos,
+          COALESCE(bloqueo_morosidad_monto, 0)::numeric(12,2) AS bloqueo_morosidad_monto
+        FROM campeonatos
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [campeonatoId]
+    );
+    const camp = campR.rows[0] || {};
+    const activoCamp = camp.bloquear_morosos === true;
+    const montoCamp = Number.parseFloat(camp.bloqueo_morosidad_monto || 0);
+
+    if (
+      Number.isFinite(Number(eventoId)) &&
+      Number(eventoId) > 0 &&
+      cols.eventoBloquea &&
+      cols.eventoMonto
+    ) {
+      const eventoR = await client.query(
+        `
+          SELECT bloquear_morosos, bloqueo_morosidad_monto
+          FROM eventos
+          WHERE id = $1
+          LIMIT 1
+        `,
+        [eventoId]
+      );
+      const evento = eventoR.rows[0] || null;
+      if (evento && evento.bloquear_morosos !== null && evento.bloquear_morosos !== undefined) {
+        const activoEvento = evento.bloquear_morosos === true;
+        const montoEvento = Number.parseFloat(evento.bloqueo_morosidad_monto);
+        return {
+          activo: activoEvento,
+          monto:
+            Number.isFinite(montoEvento) && montoEvento >= 0
+              ? Number(montoEvento.toFixed(2))
+              : Number(Math.max(montoCamp || 0, 0).toFixed(2)),
+          nivel: "categoria",
+        };
+      }
+    }
+
+    return {
+      activo: activoCamp,
+      monto: Number.isFinite(montoCamp) && montoCamp >= 0 ? Number(montoCamp.toFixed(2)) : 0,
+      nivel: "campeonato",
+    };
+  }
+
+  static async obtenerSaldosMorosidadEquipos(client, campeonatoId, eventoId, equipoIds = []) {
+    const ids = (Array.isArray(equipoIds) ? equipoIds : [])
+      .map((id) => Number.parseInt(id, 10))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    if (!ids.length) return new Map();
+
+    const hayEvento = Number.isFinite(Number(eventoId)) && Number(eventoId) > 0;
+    const whereEvento = hayEvento ? "AND fm.evento_id = $3" : "";
+    const values = hayEvento ? [campeonatoId, ids, Number(eventoId)] : [campeonatoId, ids];
+
+    const q = `
+      SELECT
+        fm.equipo_id,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS total_cargos,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS total_abonos
+      FROM finanzas_movimientos fm
+      WHERE fm.campeonato_id = $1
+        AND fm.equipo_id = ANY($2::int[])
+        ${whereEvento}
+      GROUP BY fm.equipo_id
+    `;
+
+    const r = await client.query(q, values);
+    const mapa = new Map();
+    r.rows.forEach((row) => {
+      const equipoId = Number.parseInt(row.equipo_id, 10);
+      const cargos = Number.parseFloat(row.total_cargos || 0);
+      const abonos = Number.parseFloat(row.total_abonos || 0);
+      const saldo = Number(Math.max((cargos || 0) - (abonos || 0), 0).toFixed(2));
+      mapa.set(equipoId, saldo);
+    });
+    ids.forEach((id) => {
+      if (!mapa.has(id)) mapa.set(id, 0);
+    });
+    return mapa;
+  }
+
+  static async obtenerAvisoMorosidadPlanilla(client, partido) {
+    try {
+      const campeonatoId = Number.parseInt(partido?.campeonato_id, 10);
+      if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) return null;
+
+      const eventoId = Number.parseInt(partido?.evento_id, 10);
+      const equipoLocalId = Number.parseInt(partido?.equipo_local_id, 10);
+      const equipoVisitanteId = Number.parseInt(partido?.equipo_visitante_id, 10);
+      const idsEquipos = [equipoLocalId, equipoVisitanteId].filter(
+        (id) => Number.isFinite(id) && id > 0
+      );
+      if (!idsEquipos.length) return null;
+
+      await Finanza.asegurarEsquema(client);
+      await Finanza.sincronizarCargosInscripcion({ campeonato_id: campeonatoId }, client);
+
+      const saldos = await this.obtenerSaldosMorosidadEquipos(
+        client,
+        campeonatoId,
+        Number.isFinite(eventoId) && eventoId > 0 ? eventoId : null,
+        idsEquipos
+      );
+
+      const nombresR = await client.query(
+        `SELECT id, nombre FROM equipos WHERE id = ANY($1::int[])`,
+        [idsEquipos]
+      );
+      const nombres = new Map(
+        nombresR.rows.map((row) => [
+          Number.parseInt(row.id, 10),
+          String(row.nombre || `Equipo ${row.id}`),
+        ])
+      );
+
+      const equiposConSaldo = idsEquipos
+        .map((id) => ({
+          equipo_id: id,
+          nombre: nombres.get(id) || `Equipo ${id}`,
+          saldo: Number(saldos.get(id) || 0),
+        }))
+        .filter((item) => item.saldo > 0);
+
+      if (!equiposConSaldo.length) return null;
+
+      const total = Number(
+        equiposConSaldo.reduce((acc, item) => acc + Number(item.saldo || 0), 0).toFixed(2)
+      );
+      const detalle = equiposConSaldo
+        .map((item) => `${item.nombre} ($${Number(item.saldo).toFixed(2)})`)
+        .join(", ");
+
+      return {
+        total,
+        equipos: equiposConSaldo,
+        mensaje: `Aviso de deuda acumulada: ${detalle}.`,
+      };
+    } catch (error) {
+      console.warn("No se pudo calcular aviso de morosidad para planilla:", error?.message || error);
+      return null;
+    }
+  }
+
   static async guardarPlanilla(partido_id, datos = {}) {
     await this.asegurarEsquemaPlanilla();
 
@@ -1482,6 +1664,7 @@ class Partido {
       ? 0
       : Number.parseInt(datos.faltas_visitante_total ?? datos.faltas?.visitante_total ?? 0, 10) || 0;
     const observaciones = (datos.observaciones || "").toString().trim();
+    let avisoMorosidad = null;
 
     const client = await pool.connect();
     try {
@@ -1633,9 +1816,14 @@ class Partido {
         ambosNoPresentes,
         inasistenciaEquipo,
       });
+      avisoMorosidad = await this.obtenerAvisoMorosidadPlanilla(client, partido);
 
       await client.query("COMMIT");
-      return this.obtenerPlanilla(partido_id);
+      const planilla = await this.obtenerPlanilla(partido_id);
+      if (avisoMorosidad) {
+        planilla.aviso_morosidad = avisoMorosidad;
+      }
+      return planilla;
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

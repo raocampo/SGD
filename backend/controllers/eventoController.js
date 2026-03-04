@@ -24,6 +24,13 @@ function parseDecimalNonNegative(value, fallback = 0) {
   return Number(num.toFixed(2));
 }
 
+function parseDecimalNullable(value, fallback = null) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const num = Number.parseFloat(String(value).replace(",", "."));
+  if (!Number.isFinite(num) || num < 0) return fallback;
+  return Number(num.toFixed(2));
+}
+
 function normalizarMetodoCompetencia(value, fallback = "grupos") {
   const raw = String(value || fallback).trim().toLowerCase();
   const map = {
@@ -131,6 +138,14 @@ async function asegurarEsquemaEventos() {
     ALTER TABLE eventos
     ADD COLUMN IF NOT EXISTS eliminatoria_equipos INTEGER
   `);
+  await pool.query(`
+    ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS bloquear_morosos BOOLEAN
+  `);
+  await pool.query(`
+    ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS bloqueo_morosidad_monto NUMERIC(12,2)
+  `);
 
   await pool.query(`
     UPDATE eventos
@@ -147,6 +162,12 @@ async function asegurarEsquemaEventos() {
     SET eliminatoria_equipos = NULL
     WHERE eliminatoria_equipos IS NOT NULL
       AND eliminatoria_equipos NOT IN (4, 8, 16, 32)
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET bloqueo_morosidad_monto = NULL
+    WHERE bloqueo_morosidad_monto IS NOT NULL
+      AND bloqueo_morosidad_monto < 0
   `);
   await pool.query(`
     WITH ranked AS (
@@ -197,6 +218,8 @@ const eventoController = {
         costo_inscripcion,
         metodo_competencia,
         eliminatoria_equipos,
+        bloquear_morosos,
+        bloqueo_morosidad_monto,
       } = req.body;
 
       if (!campeonato_id || !nombre || !fecha_inicio || !fecha_fin) {
@@ -240,6 +263,11 @@ const eventoController = {
       const sunStart = parseTimeHHMM(horarios?.weekend?.sun_start, "08:00:00");
       const sunEnd = parseTimeHHMM(horarios?.weekend?.sun_end, "17:00:00");
       const costoInscripcion = parseDecimalNonNegative(costo_inscripcion, 0);
+      const bloquearMorososValor =
+        bloquear_morosos === undefined || bloquear_morosos === null || bloquear_morosos === ""
+          ? null
+          : bloquear_morosos === true || String(bloquear_morosos).toLowerCase() === "true";
+      const bloqueoMorosidadMonto = parseDecimalNullable(bloqueo_morosidad_monto, null);
       const metodoCompetencia = normalizarMetodoCompetencia(metodo_competencia, "grupos");
       if (!metodoCompetencia) {
         return res.status(400).json({
@@ -265,13 +293,14 @@ const eventoController = {
           modalidad,
           metodo_competencia, eliminatoria_equipos,
           costo_inscripcion,
+          bloquear_morosos, bloqueo_morosidad_monto,
           horario_weekday_inicio, horario_weekday_fin,
           horario_sab_inicio, horario_sab_fin,
           horario_dom_inicio, horario_dom_fin,
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -286,6 +315,8 @@ const eventoController = {
         metodoCompetencia,
         eliminatoriaEquipos,
         costoInscripcion,
+        bloquearMorososValor,
+        bloqueoMorosidadMonto,
         wkStart,
         wkEnd,
         satStart,
@@ -417,6 +448,28 @@ const eventoController = {
           }
           campos.push(`${k} = $${i}`);
           valores.push(costoParseado);
+          i++;
+          continue;
+        }
+        if (k === "bloquear_morosos") {
+          campos.push(`${k} = $${i}`);
+          valores.push(
+            v === null || v === ""
+              ? null
+              : v === true || String(v).toLowerCase() === "true"
+          );
+          i++;
+          continue;
+        }
+        if (k === "bloqueo_morosidad_monto") {
+          const montoParseado = parseDecimalNullable(v, null);
+          if (v !== null && v !== "" && montoParseado === null) {
+            return res
+              .status(400)
+              .json({ error: "bloqueo_morosidad_monto debe ser un número >= 0." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(montoParseado);
           i++;
           continue;
         }

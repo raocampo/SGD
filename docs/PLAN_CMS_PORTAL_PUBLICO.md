@@ -1,6 +1,6 @@
 # Plan CMS Portal Publico LT&C
 
-Ultima actualizacion: 2026-02-28
+Ultima actualizacion: 2026-03-04
 
 ## Objetivo
 Separar formalmente el portal web publico de LT&C del panel de gestion deportiva, de forma que:
@@ -56,7 +56,7 @@ Entregables:
 - redireccion y control de acceso frontend para `operador`,
 - alta/edicion de `operador` desde `usuarios.html` solo por `administrador`.
 
-Estado: en implementacion.
+Estado: base cerrada y operativa.
 
 ### Fase 2: Noticias / Blog
 Objetivo: habilitar gestion editorial real del portal publico.
@@ -68,7 +68,7 @@ Entregables:
 - slugs publicos,
 - integracion con landing publica.
 
-Estado: implementacion base iniciada.
+Estado: base operativa iniciada.
 
 ### Fase 3: Galeria
 Objetivo: administrar contenido visual institucional del portal.
@@ -79,7 +79,7 @@ Entregables:
 - orden y estado,
 - vista publica.
 
-Estado: implementacion base iniciada.
+Estado: base operativa iniciada.
 
 ### Fase 4: Contenido institucional
 Objetivo: administrar secciones estaticas del portal sin editar codigo.
@@ -91,7 +91,7 @@ Entregables:
 - precios / planes,
 - bloques destacados.
 
-Estado: implementacion base iniciada.
+Estado: base operativa iniciada.
 
 ### Fase 5: Contacto
 Objetivo: centralizar y administrar mensajes del formulario del portal.
@@ -102,7 +102,7 @@ Entregables:
 - datos de contacto configurables,
 - posible integracion futura con correo/WhatsApp.
 
-Estado: implementacion base iniciada.
+Estado: base operativa iniciada.
 
 ### Fase 6: Cierre operativo
 Objetivo: dejar el CMS listo para uso real.
@@ -159,3 +159,11 @@ Estado: pendiente.
   - formulario publico conectado a `/api/public/contacto`.
 - Fase 6:
   - pendiente endurecimiento de permisos, pruebas funcionales completas y cierre operativo.
+
+## Nota de coexistencia con app movil
+
+- El backend de este repositorio se mantiene como fuente principal de datos para web y app movil.
+- Los cambios de esta iteracion (morosidad en modo aviso y nuevo rol `jugador`) no rompen el consumo mobile:
+  - se conserva compatibilidad de endpoints existentes,
+  - se mantiene retorno de `aviso_morosidad` como mensaje informativo en planilla,
+  - no se introduce bloqueo transaccional por deudas en guardado de planilla.

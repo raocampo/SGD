@@ -2,7 +2,7 @@ const UsuarioAuth = require("../models/UsuarioAuth");
 
 function esTecnicoOdirigente(rol) {
   const valor = String(rol || "").toLowerCase();
-  return valor === "tecnico" || valor === "dirigente";
+  return valor === "tecnico" || valor === "dirigente" || valor === "jugador";
 }
 
 async function obtenerEquiposPermitidosTecnico(req) {

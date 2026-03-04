@@ -39,6 +39,16 @@
     "portal.html",
     "login.html",
   ]);
+  const JUGADOR_ALLOWED_PAGES = new Set([
+    "portal-tecnico.html",
+    "equipos.html",
+    "jugadores.html",
+    "tablas.html",
+    "finanzas.html",
+    "index.html",
+    "portal.html",
+    "login.html",
+  ]);
 
   function getCurrentPage() {
     const path = window.location.pathname || "";
@@ -70,11 +80,20 @@
 
   function esTecnicoOdirigente(user) {
     const rol = String(user?.rol || "").toLowerCase();
-    return rol === "tecnico" || rol === "dirigente";
+    return rol === "tecnico" || rol === "dirigente" || rol === "jugador";
+  }
+
+  function esUsuarioEquipoConAvisoDeuda(user) {
+    const rol = String(user?.rol || "").toLowerCase();
+    return rol === "tecnico" || rol === "dirigente" || rol === "jugador";
   }
 
   function esOperadorPortal(user) {
     return String(user?.rol || "").toLowerCase() === "operador";
+  }
+
+  function esJugador(user) {
+    return String(user?.rol || "").toLowerCase() === "jugador";
   }
 
   function getDefaultPageByRole(user) {
@@ -82,7 +101,7 @@
     const rol = String(user.rol || "").toLowerCase();
     if (rol === "operador") return "portal-cms.html";
     if (rol === "administrador" || rol === "organizador") return "portal-admin.html";
-    if (rol === "tecnico" || rol === "dirigente") return "portal-tecnico.html";
+    if (rol === "tecnico" || rol === "dirigente" || rol === "jugador") return "portal-tecnico.html";
     return "login.html";
   }
 
@@ -94,6 +113,7 @@
       return rol === "administrador" || rol === "operador";
     }
     if (esOperadorPortal(user)) return OPERADOR_ALLOWED_PAGES.has(page);
+    if (esJugador(user)) return JUGADOR_ALLOWED_PAGES.has(page);
     if (esTecnicoOdirigente(user)) return TECNICO_ALLOWED_PAGES.has(page);
     return true;
   }
@@ -374,6 +394,9 @@
         '<i class="fas fa-user-shield"></i> Mi Portal',
         window.location.pathname.endsWith("portal-tecnico.html")
       );
+      if (esJugador(user)) {
+        document.querySelectorAll('a[href="pases.html"]').forEach((lnk) => lnk.remove());
+      }
     } else {
       const rol = String(user?.rol || "").toLowerCase();
       if (rol !== "administrador" && rol !== "organizador") {
@@ -450,6 +473,86 @@
     const rol = String(user.rol || "").toUpperCase();
     const lectura = user?.solo_lectura === true ? " | SOLO LECTURA" : "";
     badge.textContent = `${user.nombre || user.email || "Usuario"} (${rol}${lectura})`;
+  }
+
+  function obtenerEquipoIdsUsuario(user) {
+    if (!Array.isArray(user?.equipo_ids)) return [];
+    return user.equipo_ids
+      .map((x) => Number.parseInt(x, 10))
+      .filter((x) => Number.isFinite(x) && x > 0);
+  }
+
+  function formatearMoneda(valor) {
+    const n = Number.parseFloat(valor);
+    const monto = Number.isFinite(n) ? n : 0;
+    return new Intl.NumberFormat("es-EC", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    }).format(monto);
+  }
+
+  async function obtenerResumenDeudaEquipo(equipoId, token) {
+    const resp = await fetch(`${window.API_BASE_URL}/finanzas/equipos/${equipoId}/estado-cuenta`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const saldo = Number.parseFloat(data?.resumen?.saldo || 0);
+    if (!Number.isFinite(saldo) || saldo <= 0) return null;
+    return {
+      equipo_id: Number.parseInt(data?.equipo?.id || equipoId, 10) || equipoId,
+      equipo_nombre: String(data?.equipo?.nombre || `Equipo ${equipoId}`),
+      saldo: Number(saldo.toFixed(2)),
+    };
+  }
+
+  async function mostrarAvisoDeudaEquiposUsuario(user) {
+    if (!esUsuarioEquipoConAvisoDeuda(user)) return;
+    const token = window.Auth?.getToken?.();
+    if (!token) return;
+
+    const equipoIds = obtenerEquipoIdsUsuario(user);
+    if (!equipoIds.length) return;
+
+    try {
+      const resultados = await Promise.all(
+        equipoIds.slice(0, 6).map((equipoId) => obtenerResumenDeudaEquipo(equipoId, token))
+      );
+      const deudas = resultados.filter((item) => item && item.saldo > 0);
+      if (!deudas.length) return;
+
+      const keyDetalle = deudas
+        .map((item) => `${item.equipo_id}:${item.saldo.toFixed(2)}`)
+        .sort()
+        .join("|");
+      const key = `sgd_deuda_notice_${user.id}_${keyDetalle}`;
+      if (sessionStorage.getItem(key)) return;
+
+      Object.keys(sessionStorage)
+        .filter((k) => k.startsWith(`sgd_deuda_notice_${user.id}_`))
+        .forEach((k) => sessionStorage.removeItem(k));
+      sessionStorage.setItem(key, "1");
+
+      const resumen = deudas
+        .slice(0, 3)
+        .map((item) => `${item.equipo_nombre}: ${formatearMoneda(item.saldo)}`)
+        .join(" | ");
+      const extra = deudas.length > 3 ? ` +${deudas.length - 3} equipo(s)` : "";
+      const mensaje = `Adeudado hasta el momento: ${resumen}${extra}`;
+      mostrarNotificacion(mensaje, "warning");
+
+      const banner = document.getElementById("aviso-deuda-equipo");
+      const detalle = document.getElementById("aviso-deuda-equipo-detalle");
+      if (banner && detalle) {
+        detalle.textContent = mensaje;
+        banner.style.display = "block";
+      }
+    } catch (error) {
+      console.warn("No se pudo obtener aviso de deuda del equipo:", error?.message || error);
+    }
   }
 
   function initMenuMovil() {
@@ -556,6 +659,7 @@
     aplicarSidebarPorRol(user);
     inyectarUsuarioTopbar(user);
     initMenuMovil();
+    mostrarAvisoDeudaEquiposUsuario(user);
   });
 
   window.getQueryParam = function (key) {

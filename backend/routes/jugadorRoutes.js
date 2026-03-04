@@ -13,7 +13,7 @@ function setJugadoresFolder(req, res, next) {
 router.get(
   '/',
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   jugadorController.obtenerTodosLosJugadores
 );              // READ todos
 router.post(
@@ -36,13 +36,13 @@ router.post(
 router.get(
   '/equipo/:equipo_id',
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   jugadorController.obtenerJugadoresPorEquipo
 ); // READ por equipo
 router.get(
   '/:id',
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   jugadorController.obtenerJugador
 );                     // READ uno
 router.put(

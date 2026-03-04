@@ -6,7 +6,7 @@ const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 router.get(
   "/movimientos",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   finanzaController.listarMovimientos
 );
 router.post(
@@ -18,13 +18,13 @@ router.post(
 router.get(
   "/equipo/:equipo_id/estado-cuenta",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   finanzaController.obtenerEstadoCuentaEquipo
 );
 router.get(
   "/morosidad",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   finanzaController.obtenerMorosidad
 );
 

@@ -207,6 +207,28 @@
 
         <div class="card">
           <div class="fin-card-headline">
+            <h3>Consolidado de Sanciones (TA/TR)</h3>
+            <div class="fin-card-actions">
+              <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-sanciones">
+                <i class="fas fa-print"></i> Imprimir sanciones
+              </button>
+              <button
+                type="button"
+                class="fin-toggle-btn"
+                id="btn-toggle-sanciones"
+                title="Mostrar/ocultar sanciones"
+                aria-label="Mostrar u ocultar sanciones"
+                aria-expanded="true"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          <div id="fin-sanciones-contenido" class="tabla-scroll"></div>
+        </div>
+
+        <div class="card">
+          <div class="fin-card-headline">
             <h3>Movimientos Financieros</h3>
             <div class="fin-card-actions">
               <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-movimientos">

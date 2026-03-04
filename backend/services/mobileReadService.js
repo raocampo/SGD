@@ -184,6 +184,9 @@ async function obtenerEquipoDetalle(user, equipoId) {
 
 async function listarJugadores(user, filters = {}) {
   const equipoId = filters.equipo_id ? Number.parseInt(filters.equipo_id, 10) : null;
+  const eventoId = filters.evento_id ? Number.parseInt(filters.evento_id, 10) : null;
+  const campeonatoId = filters.campeonato_id ? Number.parseInt(filters.campeonato_id, 10) : null;
+  const visibles = await obtenerEquipoIdsVisibles(user);
 
   if (equipoId) {
     await assertEquipoAccess(user, equipoId);
@@ -191,12 +194,76 @@ async function listarJugadores(user, filters = {}) {
     return jugadores.map(mapPlayer);
   }
 
+  if (eventoId) {
+    const evento = await assertEventoAccess(user, eventoId);
+    if (campeonatoId && Number(evento.campeonato_id) !== campeonatoId) {
+      throw new Error("El evento no pertenece al campeonato seleccionado");
+    }
+
+    const where = [`ee.evento_id = $1`];
+    const values = [evento.id];
+    let i = 2;
+
+    if (visibles !== null) {
+      if (!visibles.length) return [];
+      where.push(`e.id = ANY($${i++}::int[])`);
+      values.push(visibles);
+    }
+
+    const jugadoresR = await pool.query(
+      `
+        SELECT DISTINCT
+          j.*,
+          e.nombre AS nombre_equipo,
+          e.numero_campeonato AS equipo_numero_campeonato,
+          c.nombre AS nombre_campeonato
+        FROM jugadores j
+        JOIN equipos e ON e.id = j.equipo_id
+        JOIN campeonatos c ON c.id = e.campeonato_id
+        JOIN evento_equipos ee ON ee.equipo_id = e.id
+        WHERE ${where.join(" AND ")}
+        ORDER BY
+          equipo_numero_campeonato ASC NULLS LAST,
+          nombre_equipo ASC,
+          j.apellido ASC,
+          j.nombre ASC
+      `,
+      values
+    );
+    return jugadoresR.rows.map(mapPlayer);
+  }
+
+  if (campeonatoId) {
+    const campId = await assertCampeonatoAccess(user, campeonatoId);
+    const where = [`e.campeonato_id = $1`];
+    const values = [campId];
+    let i = 2;
+
+    if (visibles !== null) {
+      if (!visibles.length) return [];
+      where.push(`e.id = ANY($${i++}::int[])`);
+      values.push(visibles);
+    }
+
+    const jugadoresR = await pool.query(
+      `
+        SELECT j.*, e.nombre AS nombre_equipo, c.nombre AS nombre_campeonato
+        FROM jugadores j
+        JOIN equipos e ON e.id = j.equipo_id
+        JOIN campeonatos c ON c.id = e.campeonato_id
+        WHERE ${where.join(" AND ")}
+        ORDER BY e.numero_campeonato ASC NULLS LAST, e.nombre ASC, j.apellido ASC, j.nombre ASC
+      `,
+      values
+    );
+    return jugadoresR.rows.map(mapPlayer);
+  }
+
   let jugadores = [];
-  const equipoIds = await obtenerEquipoIdsVisibles(user);
-  if (equipoIds === null) {
+  if (visibles === null) {
     jugadores = await Jugador.obtenerTodos();
   } else {
-    const grupos = await Promise.all((equipoIds || []).map((id) => Jugador.obtenerPorEquipo(id)));
+    const grupos = await Promise.all((visibles || []).map((id) => Jugador.obtenerPorEquipo(id)));
     jugadores = grupos.flat();
   }
 

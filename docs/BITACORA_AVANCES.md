@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-03
+Ultima actualizacion: 2026-03-04
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,49 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-04
+- Planilla y morosidad:
+  - se retiro el bloqueo por deuda al guardar planillas,
+  - ahora la planilla siempre se puede registrar y el backend devuelve `aviso_morosidad` como mensaje informativo.
+- Avisos de deuda por rol de equipo:
+  - tecnico/dirigente/jugador reciben notificacion de deuda acumulada del equipo (toast global),
+  - en `portal-tecnico.html` se muestra ademas un banner fijo con el detalle de deuda.
+- Nuevo rol `jugador` incorporado:
+  - alta de rol en autenticacion y validaciones de usuarios,
+  - rol permitido en consultas de lectura de equipo/jugadores/finanzas/planilla,
+  - usuario `jugador` forzado a `solo_lectura=true`,
+  - migracion agregada: `database/migrations/024_rol_jugador.sql`.
+- Coexistencia web + app movil validada para este bloque:
+  - el backend principal mantiene contratos de lectura/escritura vigentes,
+  - `aviso_morosidad` se entrega como dato informativo sin bloqueo de planilla.
+- Modulo financiero extendido con reporte disciplinario-contable:
+  - nuevo bloque `Consolidado de Sanciones (TA/TR)` en `frontend/finanzas.html`,
+  - calculo agrupado por equipo en `frontend/js/finanzas.js` usando movimientos `concepto=multa`,
+  - clasificacion de sanciones entre:
+    - `TA` (tarjeta amarilla),
+    - `TR` (tarjeta roja),
+    - `otras multas`.
+  - resumen de saldos por bloque (`TA`, `TR`, `otras`) y saldo total de sanciones.
+- Reporteria del consolidado financiero de sanciones:
+  - impresion dedicada (`Imprimir sanciones`) con membrete y pie de auspiciantes,
+  - filtros integrados con campeonato/categoria/equipo y recarga conjunta con movimientos/morosidad/estado de cuenta.
+- Alcance pendiente que sigue abierto en finanzas:
+  - llevar este consolidado a salidas ejecutivas globales por campeonato,
+  - reforzar reglas de aviso/gestion de morosidad parametrizable.
+- Politica de morosidad parametrizable implementada (base):
+  - nueva migracion `database/migrations/023_bloqueo_morosidad_parametrizable.sql`,
+  - configuracion en campeonato:
+    - `bloquear_morosos`,
+    - `bloqueo_morosidad_monto`,
+  - override opcional por categoria/evento:
+    - `bloquear_morosos` (`null` hereda),
+    - `bloqueo_morosidad_monto` (`null` hereda),
+  - validacion aplicada en guardado de planilla (`backend/models/Partido.js`) en modo informativo:
+    - si existe deuda, no bloquea el guardado,
+    - retorna aviso de deuda para web y mobile (mismo flujo backend).
+- Alcance pendiente que sigue abierto para morosidad:
+  - definir si se mantiene solo como aviso o se activa bloqueo en otros flujos operativos fuera de planilla (segun reglas de negocio finales).
 
 ### 2026-03-03
 - Planilla directa mejorada para operacion por grupo:
