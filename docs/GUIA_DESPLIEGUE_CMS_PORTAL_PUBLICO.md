@@ -75,6 +75,36 @@ Notas:
 - crea o reutiliza usuarios QA por rol (`organizador`, `tecnico`, `dirigente`) con prefijo `qa.*@ltc.local`,
 - valida sesion/refresh y guardas de escritura en endpoints mobile.
 
+Matriz RBAC completa (recomendado para cierre de release):
+
+```bash
+npm run smoke:matrix
+```
+
+Notas:
+- usa usuarios activos existentes por rol en la BD (`administrador`, `operador`, `organizador`, `tecnico`, `dirigente`, `jugador`),
+- valida permisos esperados en endpoints CMS, deportivo, mobile y usuarios web.
+
+Auditoria de guard frontend por rol:
+
+```bash
+npm run smoke:frontend
+```
+
+Notas:
+- ejecuta pruebas sobre `frontend/js/core.js`,
+- valida `canAccessPage` y `getDefaultPageByRole` para asegurar redirecciones/permisos por rol.
+
+Smoke de cuentas provistas (equipo app mobile):
+
+```bash
+npm run smoke:provided
+```
+
+Notas:
+- usa variables `SMOKE_*_EMAIL` y `SMOKE_*_PASSWORD`,
+- recomendado cuando se validan credenciales reales compartidas entre equipos.
+
 ## 6. Endurecimiento aplicado
 - Validaciones de URLs CMS:
   - solo `http/https` o rutas relativas seguras en campos permitidos.

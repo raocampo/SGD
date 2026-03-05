@@ -114,7 +114,7 @@ Entregables:
 - respaldo/migraciones actualizadas,
 - checklist de QA para web publica.
 
-Estado: en progreso.
+Estado: cerrado tecnicamente (QA API + guard frontend); validacion visual/manual final queda opcional.
 
 ## Criterios tecnicos
 - Ninguna tabla nueva del CMS debe depender de auto-creacion silenciosa en runtime como estrategia principal.
@@ -170,7 +170,12 @@ Estado: en progreso.
     - se detecto y corrigio fuga de acceso de `operador` hacia `/api/campeonatos`,
     - evidencia consolidada en `docs/RESULTADO_QA_CMS_2026-03-05.md`.
   - panel `portal-cms.html` reforzado con KPIs operativos del CMS para uso diario de `administrador/operador`.
-  - pendiente corrida final visual UI por rol para cierre formal.
+  - cierre tecnico consolidado con smokes:
+    - `npm run smoke`,
+    - `npm run smoke:roles`,
+    - `npm run smoke:matrix`,
+    - `npm run smoke:frontend`,
+    - `npm run smoke:provided` (cuentas provistas por app mobile).
 
 ## Nota de coexistencia con app movil
 

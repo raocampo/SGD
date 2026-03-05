@@ -33,14 +33,22 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 - Saneamiento de verificacion tecnica automatizada:
   - nuevo script `backend/scripts/smokeIntegration.js`,
   - nuevo script `backend/scripts/smokeRoleAccess.js`,
+  - nuevo script del equipo app mobile `backend/scripts/smokeProvidedUsers.js`,
+  - nuevo script `backend/scripts/smokeRoleMatrixDb.js`,
+  - nuevo script `backend/scripts/smokeFrontendRoleGuards.js`,
   - nuevo comando `npm run smoke` en `backend/package.json`,
   - nuevo comando `npm run smoke:roles` en `backend/package.json`,
+  - nuevo comando `npm run smoke:provided` en `backend/package.json`,
+  - nuevo comando `npm run smoke:matrix` en `backend/package.json`,
+  - nuevo comando `npm run smoke:frontend` en `backend/package.json`,
   - valida rapidamente:
     - salud + DB,
     - portal publico,
     - bloqueo de endpoints privados sin token (CMS/deportivo),
     - bloqueo de endpoints mobile sin token.
   - `smoke:roles` valida RBAC mobile con usuarios QA (`organizador`, `tecnico`, `dirigente`) y permisos esperados de lectura/escritura.
+  - `smoke:matrix` valida RBAC completo (6 roles) contra endpoints CMS/deportivo/mobile/web.
+  - `smoke:frontend` audita la politica de acceso por pagina desde `frontend/js/core.js`.
 
 ---
 

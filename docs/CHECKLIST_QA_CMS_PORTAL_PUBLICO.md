@@ -72,10 +72,10 @@ Validar que el CMS institucional (noticias, galeria, contenido y contacto) quede
 - Ejecutado y validado:
   - seguridad pública CMS (endpoints y anti-spam),
   - matrix API por rol (`administrador`, `operador`, `organizador`, `tecnico`, `dirigente`, `jugador`),
+  - auditoria de guard frontend por rol (`canAccessPage` y `getDefaultPageByRole`) con `smoke:frontend`,
   - corrección de fuga de `operador` a `/api/campeonatos`,
-  - corrección de `500` en publicar/despublicar noticias.
-- Pendiente para cierre final:
-  - recorrido visual en navegador por rol (UI):
-    - `administrador`: CRUD completo CMS en pantallas,
-    - `operador`: CRUD CMS y bloqueo visual de panel deportivo,
-    - `organizador/tecnico/dirigente/jugador`: bloqueo visual de pantallas CMS.
+  - corrección de `500` en publicar/despublicar noticias,
+  - smoke de cuentas provistas por app mobile (`smoke:provided`) en `organizador/tecnico/dirigente`.
+- Estado:
+  - Fase 6 cerrada técnicamente.
+  - El recorrido visual/manual en navegador por rol queda como control operativo opcional previo a despliegue.

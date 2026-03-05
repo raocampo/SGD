@@ -61,6 +61,9 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Saneamiento de integracion backend (web + mobile + CMS):
   - se agrego script reutilizable `backend/scripts/smokeIntegration.js` y comando `npm run smoke` en `backend/package.json`,
   - se agrego script de verificacion RBAC mobile `backend/scripts/smokeRoleAccess.js` con comando `npm run smoke:roles`,
+  - integracion de script del equipo mobile `backend/scripts/smokeProvidedUsers.js` con comando `npm run smoke:provided`,
+  - nuevo smoke de matriz RBAC multi-rol desde usuarios activos de BD: `backend/scripts/smokeRoleMatrixDb.js` (`npm run smoke:matrix`),
+  - nueva auditoria automatizada de guard frontend por rol sobre `frontend/js/core.js`: `backend/scripts/smokeFrontendRoleGuards.js` (`npm run smoke:frontend`),
   - cobertura base del smoke:
     - salud/DB (`/salud`, `/testDb`),
     - portal publico (`/api/public/campeonatos`, `/api/public/noticias`),
@@ -68,6 +71,10 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
     - endpoints mobile sin token (`/api/mobile/v1/session`, `/api/mobile/v1/eventos/:id/sorteo`, `/api/mobile/v1/finanzas/movimientos`).
   - corrida local validada en esta sesion: `9/9` pruebas en `PASS`.
   - corrida RBAC mobile validada en esta sesion: `18/18` pruebas en `PASS` (`organizador`, `tecnico`, `dirigente`).
+  - corrida auditoria frontend por roles: `38/38 PASS`.
+  - corrida matriz RBAC completa por rol (DB): `48/48 PASS`.
+  - corrida smoke con cuentas provistas app mobile: `27/27 PASS` (`organizador`, `tecnico`, `dirigente`).
+  - con esta evidencia, Fase 6 CMS queda cerrada tecnicamente; se mantiene solo validacion visual/manual opcional en navegador como control final operativo.
 
 ### 2026-03-04
 - Planilla y morosidad:

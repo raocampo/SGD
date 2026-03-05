@@ -44,6 +44,41 @@ Pruebas automáticas y de seguridad sobre CMS/portal público en entorno local.
   - `finanzas-write-guard` (`POST /api/mobile/v1/finanzas/movimientos`) -> `400` organizador, `403` tecnico/dirigente
 - resultado: `18/18 PASS`
 
+3.2 Auditoría de guard frontend por rol (`npm run smoke:frontend`):
+- fecha ejecución: `2026-03-05`
+- fuente evaluada: `frontend/js/core.js` (`canAccessPage`, `getDefaultPageByRole`)
+- cobertura:
+  - acceso anónimo solo a páginas públicas,
+  - `administrador` acceso a deportivo + CMS,
+  - `operador` acceso exclusivo a CMS/portal público,
+  - `organizador` sin acceso a páginas CMS,
+  - `tecnico/dirigente` sin acceso a CMS ni módulos administrativos deportivos,
+  - `jugador` sin acceso a CMS ni `pases`.
+- resultado: `38/38 PASS`
+
+3.3 Matriz RBAC por rol usando usuarios activos de BD (`npm run smoke:matrix`):
+- fecha ejecución: `2026-03-05`
+- roles cubiertos: `administrador`, `operador`, `organizador`, `tecnico`, `dirigente`, `jugador`
+- endpoints cubiertos:
+  - CMS privados: `/api/noticias`, `/api/galeria`, `/api/portal-contenido`, `/api/contacto`
+  - Deportivo: `/api/campeonatos`
+  - Mobile: `/api/mobile/v1/session`, `/api/mobile/v1/usuarios`
+  - Web usuarios: `/api/auth/usuarios`
+- resultado: `48/48 PASS`
+
+3.4 Smoke con cuentas provistas por app mobile (`npm run smoke:provided`):
+- fecha ejecución: `2026-03-05`
+- cuentas validadas por login real:
+  - `organizador`,
+  - `tecnico`,
+  - `dirigente`.
+- cobertura por cuenta:
+  - `session` + `refresh`,
+  - lectura `mobile-usuarios`,
+  - guardas de escritura mobile (campeonatos/finanzas),
+  - denegación CMS para roles no permitidos.
+- resultado: `27/27 PASS`
+
 4. Contacto público (hardening):
 - Rate-limit por `IP + email`:
   - intento 1 -> `201`
