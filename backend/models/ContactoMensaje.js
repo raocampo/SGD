@@ -3,6 +3,12 @@ const pool = require("../config/database");
 class ContactoMensaje {
   static _schemaReady = false;
 
+  static limpiarTexto(value, maxLen = 0) {
+    const texto = String(value || "").trim();
+    if (!maxLen || texto.length <= maxLen) return texto;
+    return texto.slice(0, maxLen).trim();
+  }
+
   static async asegurarEsquema(client = pool) {
     if (this._schemaReady && client === pool) return;
 
@@ -27,14 +33,20 @@ class ContactoMensaje {
 
   static async crear(data = {}, client = pool) {
     await this.asegurarEsquema(client);
-    const nombre = String(data.nombre || "").trim();
-    const telefono = String(data.telefono || "").trim() || null;
-    const email = String(data.email || "").trim().toLowerCase();
-    const mensaje = String(data.mensaje || "").trim();
-    const origen = String(data.origen || "portal_publico").trim() || "portal_publico";
+    const nombre = this.limpiarTexto(data.nombre, 160);
+    const telefono = this.limpiarTexto(data.telefono, 40) || null;
+    const email = this.limpiarTexto(data.email, 180).toLowerCase();
+    const mensaje = this.limpiarTexto(data.mensaje, 4000);
+    const origen = this.limpiarTexto(data.origen || "portal_publico", 40) || "portal_publico";
 
     if (!nombre || !email || !mensaje) {
       throw new Error("nombre, email y mensaje son obligatorios");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("email invalido");
+    }
+    if (mensaje.length < 8) {
+      throw new Error("mensaje demasiado corto");
     }
 
     const r = await client.query(

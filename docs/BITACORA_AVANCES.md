@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-04
+Ultima actualizacion: 2026-03-05
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,52 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-05
+- CMS Portal Publico - Fase 6 (cierre operativo) avanzando:
+  - endurecimiento de validaciones en backend para modelos CMS:
+    - `Noticia`: limpieza de texto y validacion de `imagen_portada_url`,
+    - `GaleriaItem`: validacion de `imagen_url` y limites de texto,
+    - `PortalContenido`: validacion de email de contacto, URLs sociales y normalizacion de cards/iconos,
+    - `ContactoMensaje`: validacion de formato de email y longitud minima de mensaje.
+- Formulario publico de contacto reforzado contra abuso:
+  - rate-limit por `IP + email` (maximo 3 envios cada 10 minutos),
+  - campo honeypot `website` integrado para mitigar bots basicos,
+  - respuesta `429` para exceso de solicitudes.
+- Frontend landing actualizado para hardening de contacto:
+  - nuevo input oculto honeypot en `index.html`,
+  - envio del campo `website` desde `frontend/js/portal.js`.
+- Documentacion de cierre de fases CMS agregada:
+  - `docs/CHECKLIST_QA_CMS_PORTAL_PUBLICO.md`,
+  - `docs/GUIA_DESPLIEGUE_CMS_PORTAL_PUBLICO.md`.
+- QA automatizado ejecutado para CMS/portal publico:
+  - evidencia en `docs/RESULTADO_QA_CMS_2026-03-05.md`,
+  - validado:
+    - endpoints publicos (`/public/portal-contenido`, `/public/noticias`),
+    - proteccion de endpoints CMS privados sin token (`401`),
+    - rate-limit de contacto (`3x201 + 429`),
+    - honeypot `website` (aceptacion silenciosa),
+    - validacion de mensaje corto (`400`).
+- QA por rol ejecutado con usuarios de prueba:
+  - `administrador` y `operador` con acceso CMS correcto,
+  - `organizador/tecnico/dirigente/jugador` bloqueados en endpoints CMS (`403`).
+- Hallazgo corregido en esta iteracion:
+  - `operador` podia consultar `GET /api/campeonatos`,
+  - se ajusto `backend/routes/campeonatoRoutes.js` para exigir `requireAuth + requireRoles` en `GET /` y `GET /:id`,
+  - resultado post-fix: `operador` ahora recibe `403` en campeonatos.
+- Panel CMS reforzado para operacion diaria:
+  - `frontend/portal-cms.html` ahora muestra KPIs editoriales,
+  - nuevo script `frontend/js/portal-cms.js` con metricas en tiempo real:
+    - noticias publicadas,
+    - imagenes activas de galeria,
+    - mensajes nuevos de contacto,
+    - fecha de ultima actualizacion de contenido institucional.
+- Bug CMS corregido en noticias:
+  - `publicar/despublicar` devolvia `500` por conflicto de tipos SQL en `Noticia.cambiarEstado`,
+  - ajustado casteo explicito y validado en QA:
+    - crear noticia `201`,
+    - publicar `200`,
+    - despublicar `200`.
 
 ### 2026-03-04
 - Planilla y morosidad:

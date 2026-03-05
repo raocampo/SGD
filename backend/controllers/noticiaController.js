@@ -2,7 +2,7 @@ const Noticia = require("../models/Noticia");
 
 function statusFor(error) {
   const msg = String(error?.message || "");
-  if (msg.includes("obligatorios")) return 400;
+  if (msg.includes("obligatorios") || msg.includes("invalido") || msg.includes("invalida")) return 400;
   if (msg.includes("encontrada")) return 404;
   return 500;
 }

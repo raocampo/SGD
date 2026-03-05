@@ -9,6 +9,8 @@ const {
   toInteger,
 } = require("./mobileAccessService");
 
+let eventoEquiposOrdenSchemaReady = false;
+
 function canWriteCompetition(user) {
   return ["administrador", "organizador"].includes(String(user?.rol || "").toLowerCase());
 }
@@ -19,14 +21,37 @@ function requireWriteAccess(user) {
   }
 }
 
+function isGroupFormat(format) {
+  return ["grupos", "mixto"].includes(String(format || "").toLowerCase());
+}
+
+function isSeedingFormat(format) {
+  return ["liga", "eliminatoria"].includes(String(format || "").toLowerCase());
+}
+
+async function asegurarEventoEquiposOrdenSorteo() {
+  if (eventoEquiposOrdenSchemaReady) return;
+  await pool.query(`
+    ALTER TABLE evento_equipos
+    ADD COLUMN IF NOT EXISTS orden_sorteo INTEGER
+  `);
+  eventoEquiposOrdenSchemaReady = true;
+}
+
 async function listarEquiposEventoMapeados(eventoId) {
+  await asegurarEventoEquiposOrdenSorteo();
   const equiposR = await pool.query(
     `
-      SELECT e.*
+      SELECT
+        e.*,
+        ee.orden_sorteo AS evento_orden_sorteo
       FROM evento_equipos ee
       JOIN equipos e ON e.id = ee.equipo_id
       WHERE ee.evento_id = $1
-      ORDER BY e.numero_campeonato ASC NULLS LAST, e.nombre ASC
+      ORDER BY
+        COALESCE(ee.orden_sorteo, 2147483647),
+        e.numero_campeonato ASC NULLS LAST,
+        e.nombre ASC
     `,
     [eventoId]
   );
@@ -50,7 +75,11 @@ async function listarEquiposEventoMapeados(eventoId) {
     });
   }
 
-  return equipos.map((row) => mapTeam(row, playerCounts.get(Number(row.id)) || 0));
+  return equipos.map((row) => ({
+    ...mapTeam(row, playerCounts.get(Number(row.id)) || 0),
+    drawOrder:
+      row.evento_orden_sorteo == null ? null : toInteger(row.evento_orden_sorteo, 0),
+  }));
 }
 
 async function obtenerConteoCompetencia(eventoId) {
@@ -131,24 +160,55 @@ async function buildDrawState(evento) {
     listarEquiposEventoMapeados(evento.id),
   ]);
 
-  const assignedIds = new Set();
-  grupos.forEach((grupo) => {
-    (grupo.equipos || []).forEach((team) => {
-      assignedIds.add(String(team.id));
-    });
-  });
-
-  const availableTeams = equipos.filter((team) => !assignedIds.has(String(team.id)));
   const totalTeams = equipos.length;
-  const assignedTeams = totalTeams - availableTeams.length;
   const seededTeams = equipos.filter((team) => team.seeded).length;
   const format = String(evento.metodo_competencia || "").toLowerCase();
+  const requiresGroups = isGroupFormat(format);
+  const requiresSeeding = isSeedingFormat(format);
+  let availableTeams = [];
+  let assignedTeams = 0;
+  let seedSlots = [];
+
+  if (requiresGroups) {
+    const assignedIds = new Set();
+    grupos.forEach((grupo) => {
+      (grupo.equipos || []).forEach((team) => {
+        assignedIds.add(String(team.id));
+      });
+    });
+    availableTeams = equipos.filter((team) => !assignedIds.has(String(team.id)));
+    assignedTeams = totalTeams - availableTeams.length;
+  } else if (requiresSeeding) {
+    const slotMap = new Map();
+    const assignedTeamIds = new Set();
+    equipos.forEach((team) => {
+      const slot = Number.parseInt(team.drawOrder, 10);
+      if (Number.isFinite(slot) && slot > 0 && slot <= totalTeams && !slotMap.has(slot)) {
+        slotMap.set(slot, team);
+        assignedTeamIds.add(String(team.id));
+      }
+    });
+    availableTeams = equipos.filter((team) => !assignedTeamIds.has(String(team.id)));
+    assignedTeams = assignedTeamIds.size;
+    seedSlots = Array.from({ length: totalTeams }).map((_, index) => {
+      const slot = index + 1;
+      return {
+        slot,
+        team: slotMap.get(slot) || null,
+      };
+    });
+  } else {
+    availableTeams = [...equipos];
+    assignedTeams = 0;
+  }
 
   return {
     event: mapEvent(evento, totalTeams),
     drawMode: format === "eliminatoria" ? "DIRECT_BRACKET" : format === "liga" ? "OPTIONAL" : "GROUPS",
-    requiresGroups: format === "grupos" || format === "mixto",
+    requiresGroups,
+    requiresSeeding,
     groups: grupos.map(mapGroup),
+    seedSlots,
     availableTeams,
     stats: {
       totalTeams,
@@ -156,8 +216,126 @@ async function buildDrawState(evento) {
       unassignedTeams: availableTeams.length,
       seededTeams,
       groupsCount: grupos.length,
+      seededOrderAssigned: requiresSeeding ? assignedTeams : 0,
+      seededOrderPending: requiresSeeding ? availableTeams.length : 0,
     },
   };
+}
+
+async function limpiarSembradoEvento(eventoId) {
+  await asegurarEventoEquiposOrdenSorteo();
+  await pool.query(
+    `
+      UPDATE evento_equipos
+      SET orden_sorteo = NULL
+      WHERE evento_id = $1
+    `,
+    [eventoId]
+  );
+}
+
+async function generarSembradoAutomatico(user, evento, body = {}) {
+  const equipos = await listarEquiposEventoMapeados(evento.id);
+  if (equipos.length < 2) {
+    throw new Error("La categoría necesita al menos 2 equipos para realizar el sorteo");
+  }
+
+  const assigned = equipos.filter((team) => {
+    const slot = Number.parseInt(team.drawOrder, 10);
+    return Number.isFinite(slot) && slot > 0;
+  });
+  if (assigned.length > 0 && body.overwrite !== true) {
+    throw new Error("La categoría ya tiene siembra registrada. Usa overwrite para regenerar");
+  }
+
+  await assertNoCompetitionData(evento.id);
+  if (body.overwrite === true) {
+    await limpiarSembradoEvento(evento.id);
+  }
+
+  const useSeededTeams = body.useSeededTeams === true;
+  const seededTeams = useSeededTeams ? mezclarArray(equipos.filter((team) => team.seeded)) : [];
+  const regularTeams = mezclarArray(equipos.filter((team) => !useSeededTeams || !team.seeded));
+  const orderedTeams = [...seededTeams, ...regularTeams];
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (let index = 0; index < orderedTeams.length; index += 1) {
+      await client.query(
+        `
+          UPDATE evento_equipos
+          SET orden_sorteo = $1
+          WHERE evento_id = $2 AND equipo_id = $3
+        `,
+        [index + 1, evento.id, Number(orderedTeams[index].id)]
+      );
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function sembrarEquipoEnSlot(user, evento, body = {}) {
+  const teamId = Number.parseInt(body.teamId, 10);
+  const slot = Number.parseInt(body.slot, 10);
+  if (!Number.isFinite(teamId) || teamId <= 0) throw new Error("teamId invalido");
+
+  const equipos = await listarEquiposEventoMapeados(evento.id);
+  if (!equipos.length) throw new Error("No hay equipos inscritos en esta categoría");
+  if (!Number.isFinite(slot) || slot < 1 || slot > equipos.length) {
+    throw new Error(`slot invalido. Debe estar entre 1 y ${equipos.length}`);
+  }
+
+  const selectedTeam = equipos.find((team) => Number(team.id) === teamId);
+  if (!selectedTeam) throw new Error("El equipo no pertenece a esta categoría");
+  await assertNoCompetitionData(evento.id);
+
+  const slotTeam = equipos.find((team) => Number(team.drawOrder) === slot && Number(team.id) !== teamId);
+  if (slotTeam && body.overwrite !== true) {
+    throw new Error("Ese slot ya está ocupado. Usa overwrite para reemplazarlo");
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `
+        UPDATE evento_equipos
+        SET orden_sorteo = NULL
+        WHERE evento_id = $1 AND equipo_id = $2
+      `,
+      [evento.id, teamId]
+    );
+    if (slotTeam) {
+      await client.query(
+        `
+          UPDATE evento_equipos
+          SET orden_sorteo = NULL
+          WHERE evento_id = $1 AND equipo_id = $2
+        `,
+        [evento.id, Number(slotTeam.id)]
+      );
+    }
+    await client.query(
+      `
+        UPDATE evento_equipos
+        SET orden_sorteo = $1
+        WHERE evento_id = $2 AND equipo_id = $3
+      `,
+      [slot, evento.id, teamId]
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function prepararGruposParaSorteo(eventoId, groupsCount, overwrite) {
@@ -217,8 +395,12 @@ async function generarSorteoAutomatico(user, eventoId, body = {}) {
   requireWriteAccess(user);
   const evento = await assertEventoAccess(user, eventoId);
   const format = String(evento.metodo_competencia || "").toLowerCase();
-  if (!["grupos", "mixto"].includes(format)) {
-    throw new Error("El sorteo automático de grupos solo aplica a categorías por grupos o mixtas");
+  if (isSeedingFormat(format)) {
+    await generarSembradoAutomatico(user, evento, body);
+    return buildDrawState(evento);
+  }
+  if (!isGroupFormat(format)) {
+    throw new Error("Esta categoría no soporta sorteo automático en este flujo");
   }
 
   const grupos = await prepararGruposParaSorteo(evento.id, body.groupsCount, body.overwrite === true);
@@ -307,20 +489,165 @@ async function reiniciarSorteoEvento(user, eventoId) {
   requireWriteAccess(user);
   const evento = await assertEventoAccess(user, eventoId);
   const format = String(evento.metodo_competencia || "").toLowerCase();
-  if (!["grupos", "mixto"].includes(format)) {
-    throw new Error("Solo las categorías por grupos o mixtas tienen sorteo de grupos para reiniciar");
+
+  await assertNoCompetitionData(evento.id);
+  if (isGroupFormat(format)) {
+    await eliminarGruposEvento(evento.id);
+  } else if (isSeedingFormat(format)) {
+    await limpiarSembradoEvento(evento.id);
+  } else {
+    throw new Error("Esta categoría no soporta reinicio de sorteo en este flujo");
+  }
+  return buildDrawState(evento);
+}
+
+function elegirEquipoRuleta(availableTeams = [], useSeededTeams = false) {
+  if (!Array.isArray(availableTeams) || !availableTeams.length) return null;
+  if (useSeededTeams) {
+    const seeded = availableTeams.filter((team) => team.seeded);
+    if (seeded.length) {
+      return mezclarArray(seeded)[0] || null;
+    }
+  }
+  return mezclarArray(availableTeams)[0] || null;
+}
+
+async function extraerEquipoRuletaEvento(user, eventoId, body = {}) {
+  requireWriteAccess(user);
+  const evento = await assertEventoAccess(user, eventoId);
+  const format = String(evento.metodo_competencia || "").toLowerCase();
+  if (!isGroupFormat(format) && !isSeedingFormat(format)) {
+    throw new Error("La ruleta manual no aplica a este formato");
   }
 
   await assertNoCompetitionData(evento.id);
-  await eliminarGruposEvento(evento.id);
+  const drawState = await buildDrawState(evento);
+  if (!drawState.availableTeams.length) {
+    throw new Error("No hay equipos disponibles para ruleta");
+  }
+
+  const selectedTeam = elegirEquipoRuleta(drawState.availableTeams, body.useSeededTeams === true);
+  if (!selectedTeam) throw new Error("No se pudo extraer equipo en ruleta");
+
+  return {
+    selectedTeam,
+    availableBefore: drawState.availableTeams.length,
+    availableAfter: Math.max(0, drawState.availableTeams.length - 1),
+    drawState,
+  };
+}
+
+async function asignarRuletaEvento(user, eventoId, body = {}) {
+  requireWriteAccess(user);
+  const evento = await assertEventoAccess(user, eventoId);
+  const format = String(evento.metodo_competencia || "").toLowerCase();
+  if (!isGroupFormat(format) && !isSeedingFormat(format)) {
+    throw new Error("La ruleta manual no aplica a este formato");
+  }
+
+  await assertNoCompetitionData(evento.id);
+  const drawState = await buildDrawState(evento);
+  if (!drawState.availableTeams.length) {
+    throw new Error("No hay equipos disponibles para asignar por ruleta");
+  }
+
+  const requestedTeamId = Number.parseInt(body.teamId, 10);
+  const selectedTeam = Number.isFinite(requestedTeamId) && requestedTeamId > 0
+    ? drawState.availableTeams.find((team) => Number(team.id) === requestedTeamId) || null
+    : elegirEquipoRuleta(drawState.availableTeams, body.useSeededTeams === true);
+
+  if (!selectedTeam) {
+    throw new Error("El equipo no está disponible para asignación por ruleta");
+  }
+
+  let nextState = null;
+  let assignedGroupId = null;
+  let assignedSlot = null;
+
+  if (isGroupFormat(format)) {
+    const groupId = Number.parseInt(body.groupId, 10);
+    if (!Number.isFinite(groupId) || groupId <= 0) {
+      throw new Error("groupId invalido");
+    }
+    const grupo = await Grupo.obtenerPorId(groupId);
+    if (!grupo || Number(grupo.evento_id) !== Number(evento.id)) {
+      throw new Error("El grupo no pertenece a esta categoría");
+    }
+
+    nextState = await asignarEquipoAGrupo(user, groupId, {
+      teamId: selectedTeam.id,
+    });
+    assignedGroupId = toId(groupId);
+  } else {
+    const slot = Number.parseInt(body.slot, 10);
+    if (!Number.isFinite(slot) || slot <= 0) {
+      throw new Error("slot invalido");
+    }
+    await sembrarEquipoEnSlot(user, evento, {
+      teamId: selectedTeam.id,
+      slot,
+      overwrite: body.overwrite === true,
+    });
+    nextState = await buildDrawState(evento);
+    assignedSlot = slot;
+  }
+
+  return {
+    selectedTeam,
+    assignedGroupId,
+    assignedSlot,
+    drawState: nextState,
+  };
+}
+
+async function sembradoManualEvento(user, eventoId, body = {}) {
+  requireWriteAccess(user);
+  const evento = await assertEventoAccess(user, eventoId);
+  const format = String(evento.metodo_competencia || "").toLowerCase();
+  if (!isSeedingFormat(format)) {
+    throw new Error("La siembra manual aplica solo a categorías de liga o eliminatoria");
+  }
+
+  await sembrarEquipoEnSlot(user, evento, body);
+  return buildDrawState(evento);
+}
+
+async function quitarSembradoEvento(user, eventoId, body = {}) {
+  requireWriteAccess(user);
+  const evento = await assertEventoAccess(user, eventoId);
+  const format = String(evento.metodo_competencia || "").toLowerCase();
+  if (!isSeedingFormat(format)) {
+    throw new Error("La siembra manual aplica solo a categorías de liga o eliminatoria");
+  }
+  await assertNoCompetitionData(evento.id);
+
+  const teamId = Number.parseInt(body.teamId, 10);
+  if (!Number.isFinite(teamId) || teamId <= 0) {
+    throw new Error("teamId invalido");
+  }
+
+  await asegurarEventoEquiposOrdenSorteo();
+  await pool.query(
+    `
+      UPDATE evento_equipos
+      SET orden_sorteo = NULL
+      WHERE evento_id = $1 AND equipo_id = $2
+    `,
+    [evento.id, teamId]
+  );
+
   return buildDrawState(evento);
 }
 
 module.exports = {
+  asignarRuletaEvento,
   asignarEquipoAGrupo,
   crearGruposEvento,
+  extraerEquipoRuletaEvento,
   generarSorteoAutomatico,
+  quitarSembradoEvento,
   obtenerSorteoEvento,
   removerEquipoDeGrupo,
   reiniciarSorteoEvento,
+  sembradoManualEvento,
 };

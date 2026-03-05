@@ -3,6 +3,21 @@ const pool = require("../config/database");
 class GaleriaItem {
   static _schemaReady = false;
 
+  static limpiarTexto(value, maxLen = 0) {
+    const texto = String(value || "").trim();
+    if (!maxLen || texto.length <= maxLen) return texto;
+    return texto.slice(0, maxLen).trim();
+  }
+
+  static normalizarUrl(value) {
+    const raw = String(value || "").trim();
+    if (!raw) throw new Error("imagen_url es obligatoria");
+    if (raw.length > 2048) throw new Error("imagen_url demasiado larga");
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (raw.startsWith("/") || raw.startsWith("assets/") || raw.startsWith("uploads/")) return raw;
+    throw new Error("imagen_url invalida. Use URL http/https o ruta relativa valida");
+  }
+
   static async asegurarEsquema(client = pool) {
     if (this._schemaReady && client === pool) return;
 
@@ -47,9 +62,9 @@ class GaleriaItem {
 
   static async crear(data = {}, client = pool) {
     await this.asegurarEsquema(client);
-    const titulo = String(data.titulo || "").trim();
-    const descripcion = String(data.descripcion || "").trim() || null;
-    const imagenUrl = String(data.imagen_url || "").trim();
+    const titulo = this.limpiarTexto(data.titulo, 180);
+    const descripcion = this.limpiarTexto(data.descripcion, 1200) || null;
+    const imagenUrl = this.normalizarUrl(data.imagen_url);
     const orden = Number.parseInt(data.orden, 10);
     const activo = data.activo === undefined ? true : data.activo === true || String(data.activo).toLowerCase() === "true";
 
@@ -73,11 +88,11 @@ class GaleriaItem {
     const actual = await this.obtenerPorId(id, client);
     if (!actual) throw new Error("Item de galeria no encontrado");
 
-    const titulo = data.titulo !== undefined ? String(data.titulo || "").trim() : actual.titulo;
-    const imagenUrl = data.imagen_url !== undefined ? String(data.imagen_url || "").trim() : actual.imagen_url;
+    const titulo = data.titulo !== undefined ? this.limpiarTexto(data.titulo, 180) : actual.titulo;
+    const imagenUrl = data.imagen_url !== undefined ? this.normalizarUrl(data.imagen_url) : actual.imagen_url;
     if (!titulo || !imagenUrl) throw new Error("titulo e imagen_url son obligatorios");
 
-    const descripcion = data.descripcion !== undefined ? String(data.descripcion || "").trim() || null : actual.descripcion;
+    const descripcion = data.descripcion !== undefined ? this.limpiarTexto(data.descripcion, 1200) || null : actual.descripcion;
     const orden = data.orden !== undefined ? Number.parseInt(data.orden, 10) : actual.orden;
     const activo =
       data.activo !== undefined

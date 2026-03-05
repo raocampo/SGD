@@ -133,6 +133,8 @@ function mapTeam(row, playerCount = 0) {
     email: row.email || "",
     colors: [row.color_primario, row.color_secundario, row.color_terciario].filter(Boolean),
     seeded: row.cabeza_serie === true,
+    drawOrder:
+      row.evento_orden_sorteo == null ? null : toInteger(row.evento_orden_sorteo, 0),
     logoUrl: row.logo_url || null,
     createdAt: row.created_at || null,
     counts: {

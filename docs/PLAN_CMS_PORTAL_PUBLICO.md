@@ -1,6 +1,6 @@
 # Plan CMS Portal Publico LT&C
 
-Ultima actualizacion: 2026-03-04
+Ultima actualizacion: 2026-03-05
 
 ## Objetivo
 Separar formalmente el portal web publico de LT&C del panel de gestion deportiva, de forma que:
@@ -114,7 +114,7 @@ Entregables:
 - respaldo/migraciones actualizadas,
 - checklist de QA para web publica.
 
-Estado: pendiente.
+Estado: en progreso.
 
 ## Criterios tecnicos
 - Ninguna tabla nueva del CMS debe depender de auto-creacion silenciosa en runtime como estrategia principal.
@@ -158,7 +158,19 @@ Estado: pendiente.
   - nueva administracion `frontend/contacto-admin.html`,
   - formulario publico conectado a `/api/public/contacto`.
 - Fase 6:
-  - pendiente endurecimiento de permisos, pruebas funcionales completas y cierre operativo.
+  - endurecimiento base aplicado en este bloque:
+    - validacion estricta de URLs y formatos en modelos CMS,
+    - control anti-spam en formulario publico de contacto (rate-limit + honeypot).
+  - documentacion de cierre creada:
+    - `docs/CHECKLIST_QA_CMS_PORTAL_PUBLICO.md`,
+    - `docs/GUIA_DESPLIEGUE_CMS_PORTAL_PUBLICO.md`.
+  - QA automatizado de seguridad/publico ejecutado:
+    - evidencia `docs/RESULTADO_QA_CMS_2026-03-05.md`.
+  - QA manual API por rol ejecutado:
+    - se detecto y corrigio fuga de acceso de `operador` hacia `/api/campeonatos`,
+    - evidencia consolidada en `docs/RESULTADO_QA_CMS_2026-03-05.md`.
+  - panel `portal-cms.html` reforzado con KPIs operativos del CMS para uso diario de `administrador/operador`.
+  - pendiente corrida final visual UI por rol para cierre formal.
 
 ## Nota de coexistencia con app movil
 

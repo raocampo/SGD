@@ -1,15 +1,54 @@
 const ContactoMensaje = require("../models/ContactoMensaje");
 
+const CONTACTO_RATE_WINDOW_MS = 10 * 60 * 1000;
+const CONTACTO_RATE_MAX = 3;
+const contactoRateMap = new Map();
+
 function statusFor(error) {
   const msg = String(error?.message || "");
-  if (msg.includes("obligatorios") || msg.includes("invalido")) return 400;
+  if (msg.includes("obligatorios") || msg.includes("invalido") || msg.includes("corto")) return 400;
+  if (msg.includes("demasiadas solicitudes")) return 429;
   if (msg.includes("no encontrado")) return 404;
   return 500;
+}
+
+function getRequestIp(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  if (forwarded) return forwarded;
+  return String(req.ip || req.connection?.remoteAddress || "unknown").trim();
+}
+
+function rateKey(req) {
+  const ip = getRequestIp(req);
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  return `${ip}|${email || "sin-email"}`;
+}
+
+function validarRateContacto(req) {
+  const key = rateKey(req);
+  const now = Date.now();
+  const bucket = contactoRateMap.get(key) || [];
+  const recientes = bucket.filter((ts) => now - ts < CONTACTO_RATE_WINDOW_MS);
+  if (recientes.length >= CONTACTO_RATE_MAX) {
+    throw new Error("demasiadas solicitudes de contacto. Intenta nuevamente en unos minutos");
+  }
+  recientes.push(now);
+  contactoRateMap.set(key, recientes);
 }
 
 const contactoController = {
   async enviar(req, res) {
     try {
+      const honeypot = String(req.body?.website || "").trim();
+      if (honeypot) {
+        return res.status(201).json({
+          ok: true,
+          mensaje: "Mensaje enviado correctamente",
+        });
+      }
+
+      validarRateContacto(req);
+
       const mensaje = await ContactoMensaje.crear({
         ...(req.body || {}),
         origen: "portal_publico",

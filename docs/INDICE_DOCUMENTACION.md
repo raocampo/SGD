@@ -1,6 +1,6 @@
 # Indice de Documentacion LT&C
 
-Ultima actualizacion: 2026-03-04
+Ultima actualizacion: 2026-03-05
 
 ## Documentos clave
 - `docs/BITACORA_AVANCES.md`
@@ -17,6 +17,12 @@ Ultima actualizacion: 2026-03-04
   - Plan maestro por fases para separar el CMS del portal publico del panel de gestion deportiva, con estado real de fases y alcance institucional.
 - `docs/GUIA_PRESENTACION_SISTEMA_LT_C.md`
   - Guion operativo recomendado para presentar el sistema LT&C por modulos y roles.
+- `docs/CHECKLIST_QA_CMS_PORTAL_PUBLICO.md`
+  - Lista de pruebas funcionales y de seguridad para cierre operativo del CMS.
+- `docs/GUIA_DESPLIEGUE_CMS_PORTAL_PUBLICO.md`
+  - Pasos de despliegue, verificacion y rollback del CMS institucional.
+- `docs/RESULTADO_QA_CMS_2026-03-05.md`
+  - Evidencia de pruebas automáticas del CMS y estado de cierre de Fase 6.
 
 ## Documentos de referencia operativa
 - `docs/PlanillaJuego.pdf`

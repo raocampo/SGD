@@ -2,7 +2,7 @@ const PortalContenido = require("../models/PortalContenido");
 
 function statusFor(error) {
   const msg = String(error?.message || "");
-  if (msg.includes("obligatorio")) return 400;
+  if (msg.includes("obligatorio") || msg.includes("invalido") || msg.includes("invalida")) return 400;
   return 500;
 }
 

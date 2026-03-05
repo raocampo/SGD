@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const upload = require("../config/multerConfig");
 const campeonatoController = require('../controllers/campeonatoController');
-const { requireAuth, optionalAuth, requireRoles } = require("../middleware/authMiddleware");
+const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 
 // ===============================
 // CREAR CAMPEONATO (con logo)
@@ -21,10 +21,20 @@ router.post(
 );
 
 // ===============================
-// OBTENER CAMPEONATOS
+// OBTENER CAMPEONATOS (panel interno autenticado)
 // ===============================
-router.get('/', optionalAuth, campeonatoController.obtenerCampeonatos);        // READ ALL
-router.get('/:id', optionalAuth, campeonatoController.obtenerCampeonato);      // READ ONE
+router.get(
+  '/',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  campeonatoController.obtenerCampeonatos
+); // READ ALL
+router.get(
+  '/:id',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  campeonatoController.obtenerCampeonato
+); // READ ONE
 
 // ===============================
 // CAMBIAR ESTADO

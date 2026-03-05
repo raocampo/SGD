@@ -53,6 +53,11 @@ class Eliminatoria {
       CREATE INDEX IF NOT EXISTS idx_eliminatoria_ronda ON partidos_eliminatoria(evento_id, ronda)
     `);
 
+    await db.query(`
+      ALTER TABLE evento_equipos
+      ADD COLUMN IF NOT EXISTS orden_sorteo INTEGER
+    `);
+
     if (db === pool) this._schemaAsegurado = true;
   }
 
@@ -141,7 +146,7 @@ class Eliminatoria {
       FROM evento_equipos ee
       JOIN equipos e ON e.id = ee.equipo_id
       WHERE ee.evento_id = $1
-      ORDER BY e.id ASC
+      ORDER BY COALESCE(ee.orden_sorteo, 2147483647), e.id ASC
     `;
     const r = await db.query(q, [evento_id]);
     return r.rows.map((x) => Number(x.id)).filter((x) => Number.isFinite(x));

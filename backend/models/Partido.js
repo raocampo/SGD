@@ -403,6 +403,7 @@ class Partido {
   static _columnaTimestampActualizacion = undefined;
   static _esquemaPlanillaAsegurado = false;
   static _esquemaSecuenciaAsegurado = false;
+  static _esquemaEventoEquiposOrdenAsegurado = false;
   static _columnasBloqueoMorosidad = null;
 
   static async asegurarEsquemaSecuencia() {
@@ -436,6 +437,15 @@ class Partido {
     `);
 
     this._esquemaSecuenciaAsegurado = true;
+  }
+
+  static async asegurarEsquemaEventoEquiposOrden() {
+    if (this._esquemaEventoEquiposOrdenAsegurado) return;
+    await pool.query(`
+      ALTER TABLE evento_equipos
+      ADD COLUMN IF NOT EXISTS orden_sorteo INTEGER
+    `);
+    this._esquemaEventoEquiposOrdenAsegurado = true;
   }
 
   static async obtenerEventoPorId(evento_id) {
@@ -775,6 +785,7 @@ class Partido {
   // FIXTURE: EVENTO todos contra todos (sin grupos)
   // ===============================
   static async generarFixtureEventoTodosContraTodos({ evento, ida_y_vuelta, reemplazar, duracion_min, descanso_min, manual }) {
+    await this.asegurarEsquemaEventoEquiposOrden();
     const evento_id = evento.id;
     const campeonato_id = evento.campeonato_id;
 
@@ -788,7 +799,7 @@ class Partido {
       `SELECT ee.equipo_id
        FROM evento_equipos ee
        WHERE ee.evento_id = $1
-       ORDER BY ee.equipo_id`,
+       ORDER BY COALESCE(ee.orden_sorteo, 2147483647), ee.equipo_id`,
       [evento_id]
     );
     const equipos = eqRes.rows.map((r) => r.equipo_id);

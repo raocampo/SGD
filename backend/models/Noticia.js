@@ -3,6 +3,21 @@ const pool = require("../config/database");
 class Noticia {
   static _schemaReady = false;
 
+  static limpiarTexto(value, maxLen = 0) {
+    const texto = String(value || "").trim();
+    if (!maxLen || texto.length <= maxLen) return texto;
+    return texto.slice(0, maxLen).trim();
+  }
+
+  static normalizarUrl(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+    if (raw.length > 2048) throw new Error("imagen_portada_url demasiado larga");
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (raw.startsWith("/") || raw.startsWith("assets/") || raw.startsWith("uploads/")) return raw;
+    throw new Error("imagen_portada_url invalida. Use URL http/https o ruta relativa valida");
+  }
+
   static slugify(value) {
     return String(value || "")
       .normalize("NFD")
@@ -56,15 +71,15 @@ class Noticia {
   static async crear(data = {}, client = pool) {
     await this.asegurarEsquema(client);
 
-    const titulo = String(data.titulo || "").trim();
-    const contenido = String(data.contenido || "").trim();
+    const titulo = this.limpiarTexto(data.titulo, 180);
+    const contenido = this.limpiarTexto(data.contenido);
     if (!titulo || !contenido) {
       throw new Error("titulo y contenido son obligatorios");
     }
 
     const slug = await this.uniqueSlug(data.slug || titulo, null, client);
-    const resumen = String(data.resumen || "").trim() || null;
-    const imagenPortadaUrl = String(data.imagen_portada_url || "").trim() || null;
+    const resumen = this.limpiarTexto(data.resumen, 1000) || null;
+    const imagenPortadaUrl = this.normalizarUrl(data.imagen_portada_url);
     const estado = String(data.estado || "borrador").trim().toLowerCase() === "publicada" ? "publicada" : "borrador";
     const publicadaAt = estado === "publicada" ? "CURRENT_TIMESTAMP" : "NULL";
 
@@ -149,8 +164,10 @@ class Noticia {
     const actual = await this.obtenerPorId(id, client);
     if (!actual) throw new Error("Noticia no encontrada");
 
-    const titulo = data.titulo !== undefined ? String(data.titulo || "").trim() : actual.titulo;
-    const contenido = data.contenido !== undefined ? String(data.contenido || "").trim() : actual.contenido;
+    const titulo =
+      data.titulo !== undefined ? this.limpiarTexto(data.titulo, 180) : actual.titulo;
+    const contenido =
+      data.contenido !== undefined ? this.limpiarTexto(data.contenido) : actual.contenido;
     if (!titulo || !contenido) throw new Error("titulo y contenido son obligatorios");
 
     const slug =
@@ -173,11 +190,9 @@ class Noticia {
       [
         titulo,
         slug,
-        data.resumen !== undefined ? String(data.resumen || "").trim() || null : actual.resumen,
+        data.resumen !== undefined ? this.limpiarTexto(data.resumen, 1000) || null : actual.resumen,
         contenido,
-        data.imagen_portada_url !== undefined
-          ? String(data.imagen_portada_url || "").trim() || null
-          : actual.imagen_portada_url,
+        data.imagen_portada_url !== undefined ? this.normalizarUrl(data.imagen_portada_url) : actual.imagen_portada_url,
         Number.parseInt(id, 10),
       ]
     );
@@ -199,8 +214,8 @@ class Noticia {
     const r = await client.query(
       `
         UPDATE noticias
-        SET estado = $1,
-            publicada_at = CASE WHEN $1 = 'publicada' THEN COALESCE(publicada_at, CURRENT_TIMESTAMP) ELSE NULL END,
+        SET estado = $1::varchar,
+            publicada_at = CASE WHEN $1::varchar = 'publicada' THEN COALESCE(publicada_at, CURRENT_TIMESTAMP) ELSE NULL END,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
         RETURNING *

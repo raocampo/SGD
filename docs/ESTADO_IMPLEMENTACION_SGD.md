@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-03-04
+Ultima actualizacion: 2026-03-05
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -15,7 +15,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
 | 3.7 Resultados/Tablas/Clasificados | Medio-Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play). Planillaje ya alimenta resultado + estadisticas. Pendiente automatizacion robusta de clasificados para todos los formatos. |
 | 3.8 Eliminatorias | Alto | Configuracion por categoria (`metodo_competencia`) y generacion automatica de llave integrada en `partidos`; soporte de siembra/byes/progresion de ganador; UI dedicada de llaves en `eliminatorias.html`; playoff desde grupos con `clasificados por grupo`, `cruces de grupos` o `tabla unica`; plantilla de publicacion reforzada (conectores de llave, export completo y fondo grafico). Pendiente reglas avanzadas de desempate y refinamiento visual final. |
-| 4 Portal publico | Alto | Portal operativo con vistas de campeonato/grupos/tablas; iniciada separacion formal entre landing de organizador y CMS institucional del portal; noticias/blog, galeria, contenido institucional y contacto ya tienen base CRUD/CMS y consumo publico integrado en landing; pendiente cierre funcional y pulido editorial. |
+| 4 Portal publico | Alto | Portal operativo con vistas de campeonato/grupos/tablas; iniciada separacion formal entre landing de organizador y CMS institucional del portal; noticias/blog, galeria, contenido institucional y contacto ya tienen base CRUD/CMS y consumo publico integrado en landing; Fase 6 CMS en progreso con hardening de validaciones y anti-spam en contacto. |
 | 5 Roles y permisos (RBAC) | En progreso | Autenticacion operativa; fase 1 de separacion de dominios iniciada con rol `operador` para CMS publico; rol `jugador` agregado para consulta de equipo en modo solo lectura; noticias, galeria, contenido y contacto institucional fuera del alcance de organizadores. |
 | 6 Extras profesionales | Parcial | Exportaciones (PNG/PDF/XLSX) en modulos clave; pendiente notificaciones, auditoria completa y reportes ejecutivos. |
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR, resumen ejecutivo por campeonato e impresion dedicadas; politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). Pendiente cierre de reglas avanzadas y reporteria ejecutiva adicional. |

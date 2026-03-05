@@ -2,7 +2,7 @@ const GaleriaItem = require("../models/GaleriaItem");
 
 function statusFor(error) {
   const msg = String(error?.message || "");
-  if (msg.includes("obligatorios") || msg.includes("invalido")) return 400;
+  if (msg.includes("obligatorios") || msg.includes("invalido") || msg.includes("invalida")) return 400;
   if (msg.includes("no encontrado")) return 404;
   return 500;
 }

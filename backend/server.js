@@ -98,12 +98,6 @@ app.use("/api/public", publicRoutes);
 const frontendPath = path.join(__dirname, "..", "frontend");
 app.use(express.static(frontendPath));
 
-// ✅ Fallback SPA: cualquier ruta que NO sea /api ni /uploads, manda index.html
-app.use((req, res, next) => {
-  if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
-  return res.sendFile(path.join(frontendPath, "index.html"));
-});
-
 // =====================
 // Rutas utilitarias
 // =====================
@@ -193,6 +187,13 @@ app.get("/tablas", async (req, res) => {
       detalle: error.message,
     });
   }
+});
+
+// ✅ Fallback SPA: cualquier ruta que NO sea /api ni /uploads, manda index.html
+// Se declara al final para no interceptar rutas utilitarias como /salud y /testDb.
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
+  return res.sendFile(path.join(frontendPath, "index.html"));
 });
 
 // =====================

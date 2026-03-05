@@ -44,10 +44,34 @@ router.post(
   mobileController.postSorteoAutomatico
 );
 router.post(
+  "/eventos/:id/sorteo/ruleta/extraer",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  mobileController.postSorteoRuletaExtraer
+);
+router.post(
+  "/eventos/:id/sorteo/ruleta/asignar",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  mobileController.postSorteoRuletaAsignar
+);
+router.post(
   "/eventos/:id/sorteo/reiniciar",
   requireAuth,
   requireRoles("administrador", "organizador"),
   mobileController.postReiniciarSorteo
+);
+router.post(
+  "/eventos/:id/sorteo/siembra/manual",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  mobileController.postSembradoManualEvento
+);
+router.post(
+  "/eventos/:id/sorteo/siembra/quitar",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  mobileController.postQuitarSembradoEvento
 );
 router.post(
   "/eventos/:id/fixture",

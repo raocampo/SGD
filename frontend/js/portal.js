@@ -441,6 +441,7 @@ function initFormularioContactoPublico() {
       telefono: String(document.getElementById("ltc-contact-phone-input")?.value || "").trim(),
       email: String(document.getElementById("ltc-contact-email-input")?.value || "").trim(),
       mensaje: String(document.getElementById("ltc-contact-message-input")?.value || "").trim(),
+      website: String(document.getElementById("ltc-contact-website-input")?.value || "").trim(),
     };
 
     if (!payload.nombre || !payload.email || !payload.mensaje) {
@@ -538,6 +539,83 @@ function renderEliminatoriasPortal(rondas = []) {
     .join("");
 }
 
+function renderGoleadoresPortal(goleadores = []) {
+  const rows = Array.isArray(goleadores) ? goleadores.slice(0, 10) : [];
+  if (!rows.length) {
+    return '<p class="empty-msg">No hay datos de goleadores para esta categoría.</p>';
+  }
+
+  const rowsHtml = rows
+    .map((row, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escPortal(row.jugador_nombre || "-")}</td>
+        <td>${escPortal(row.equipo_nombre || "-")}</td>
+        <td><strong>${Number(row.goles || 0)}</strong></td>
+      </tr>
+    `)
+    .join("");
+
+  return `
+    <table class="tabla-posicion">
+      <tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Goles</th></tr>
+      ${rowsHtml}
+    </table>
+  `;
+}
+
+function renderTarjetasPortal(tarjetas = []) {
+  const rows = Array.isArray(tarjetas) ? tarjetas.slice(0, 10) : [];
+  if (!rows.length) {
+    return '<p class="empty-msg">No hay datos de tarjetas para esta categoría.</p>';
+  }
+
+  const rowsHtml = rows
+    .map((row, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escPortal(row.equipo_nombre || "-")}</td>
+        <td>${Number(row.amarillas || 0)}</td>
+        <td>${Number(row.rojas || 0)}</td>
+      </tr>
+    `)
+    .join("");
+
+  return `
+    <table class="tabla-posicion">
+      <tr><th>#</th><th>Equipo</th><th>TA</th><th>TR</th></tr>
+      ${rowsHtml}
+    </table>
+  `;
+}
+
+function renderFairPlayPortal(fairPlay = []) {
+  const rows = Array.isArray(fairPlay) ? fairPlay.slice(0, 10) : [];
+  if (!rows.length) {
+    return '<p class="empty-msg">No hay datos de fair play para esta categoría.</p>';
+  }
+
+  const rowsHtml = rows
+    .map((row) => `
+      <tr>
+        <td>${Number(row.posicion || 0)}</td>
+        <td>${escPortal(row.equipo_nombre || "-")}</td>
+        <td>${Number(row.amarillas || 0)}</td>
+        <td>${Number(row.rojas || 0)}</td>
+        <td>${Number(row.faltas || 0)}</td>
+        <td><strong>${Number(row.puntaje_fair_play || 0)}</strong></td>
+      </tr>
+    `)
+    .join("");
+
+  return `
+    <table class="tabla-posicion">
+      <tr><th>#</th><th>Equipo</th><th>TA</th><th>TR</th><th>Faltas</th><th>Puntaje</th></tr>
+      ${rowsHtml}
+    </table>
+  `;
+}
+
 async function portalVerCampeonato(campeonatoId, options = {}) {
   document.getElementById("portal-inicio").classList.remove("active");
   document.getElementById("portal-detalle").classList.add("active");
@@ -569,20 +647,44 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
     `;
 
     for (const ev of eventosFiltrados) {
-      const [partidosRes, tablasRes, eliminatoriasRes] = await Promise.all([
-        window.PortalPublicAPI
-          ? window.PortalPublicAPI.obtenerPartidosPorEvento(ev.id)
-          : fetch(`${API}/public/eventos/${ev.id}/partidos`).then((r) => r.json()),
-        window.PortalPublicAPI
-          ? window.PortalPublicAPI.obtenerTablasPorEvento(ev.id)
-          : fetch(`${API}/public/eventos/${ev.id}/tablas`).then((r) => r.json()),
-        window.PortalPublicAPI
-          ? window.PortalPublicAPI.obtenerEliminatoriasPorEvento(ev.id)
-          : fetch(`${API}/public/eventos/${ev.id}/eliminatorias`).then((r) => r.json()),
+      const [partidosRes, tablasRes, eliminatoriasRes, goleadoresRes, tarjetasRes, fairPlayRes] = await Promise.all([
+        (
+          window.PortalPublicAPI
+            ? window.PortalPublicAPI.obtenerPartidosPorEvento(ev.id)
+            : fetch(`${API}/public/eventos/${ev.id}/partidos`).then((r) => r.json())
+        ).catch(() => ({ partidos: [] })),
+        (
+          window.PortalPublicAPI
+            ? window.PortalPublicAPI.obtenerTablasPorEvento(ev.id)
+            : fetch(`${API}/public/eventos/${ev.id}/tablas`).then((r) => r.json())
+        ).catch(() => ({ grupos: [] })),
+        (
+          window.PortalPublicAPI
+            ? window.PortalPublicAPI.obtenerEliminatoriasPorEvento(ev.id)
+            : fetch(`${API}/public/eventos/${ev.id}/eliminatorias`).then((r) => r.json())
+        ).catch(() => ({ rondas: [] })),
+        (
+          window.PortalPublicAPI
+            ? window.PortalPublicAPI.obtenerGoleadoresPorEvento(ev.id)
+            : fetch(`${API}/public/eventos/${ev.id}/goleadores`).then((r) => r.json())
+        ).catch(() => ({ goleadores: [] })),
+        (
+          window.PortalPublicAPI
+            ? window.PortalPublicAPI.obtenerTarjetasPorEvento(ev.id)
+            : fetch(`${API}/public/eventos/${ev.id}/tarjetas`).then((r) => r.json())
+        ).catch(() => ({ tarjetas: [] })),
+        (
+          window.PortalPublicAPI
+            ? window.PortalPublicAPI.obtenerFairPlayPorEvento(ev.id)
+            : fetch(`${API}/public/eventos/${ev.id}/fair-play`).then((r) => r.json())
+        ).catch(() => ({ fair_play: [] })),
       ]);
       const partidos = partidosRes.partidos || [];
       const tablas = tablasRes.grupos || [];
       const rondas = eliminatoriasRes.rondas || [];
+      const goleadores = goleadoresRes.goleadores || [];
+      const tarjetas = tarjetasRes.tarjetas || [];
+      const fairPlay = fairPlayRes.fair_play || [];
 
       html += `<div class="portal-card"><h3>📅 ${limpiarCodigoTorneo(ev.nombre) || "Categoría"}</h3>`;
 
@@ -609,6 +711,13 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
         html += "<h4>Eliminatorias</h4>";
         html += renderEliminatoriasPortal(rondas);
       }
+
+      html += "<h4>Goleadores</h4>";
+      html += renderGoleadoresPortal(goleadores);
+      html += "<h4>Tarjetas</h4>";
+      html += renderTarjetasPortal(tarjetas);
+      html += "<h4>Fair play</h4>";
+      html += renderFairPlayPortal(fairPlay);
 
       html += "</div>";
     }

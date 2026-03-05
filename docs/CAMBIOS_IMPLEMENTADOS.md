@@ -7,6 +7,32 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-05 - CMS Fase 6 (endurecimiento + cierre operativo en progreso)
+- Endurecimiento backend del CMS:
+  - validacion de URLs en `Noticia`, `GaleriaItem` y `PortalContenido` (solo `http/https` o rutas relativas seguras donde aplica),
+  - validacion de email de contacto y normalizacion de cards/iconos en `PortalContenido`,
+  - validacion de email y longitud minima de mensaje en `ContactoMensaje`.
+- Endurecimiento del formulario publico de contacto:
+  - rate-limit por `IP + email` en `contactoController` (`3` envios cada `10` minutos),
+  - honeypot `website` para mitigar bots basicos,
+  - mapeo de error a `429` en exceso de solicitudes.
+- Correccion de seguridad por rol en dominio deportivo:
+  - `backend/routes/campeonatoRoutes.js` ahora exige `requireAuth + requireRoles` en `GET /campeonatos` y `GET /campeonatos/:id`,
+  - `operador` deja de tener acceso al modulo deportivo de campeonatos (`403`).
+- Correccion funcional en CMS noticias:
+  - fix de tipado SQL en `Noticia.cambiarEstado`,
+  - `publicar/despublicar` ahora responde `200` correctamente.
+- Mejora operativa de panel CMS:
+  - nuevo dashboard de KPI editorial en `frontend/portal-cms.html` + `frontend/js/portal-cms.js`.
+- Frontend portal ajustado:
+  - campo honeypot oculto en `frontend/index.html`,
+  - envio del campo `website` desde `frontend/js/portal.js`.
+- Documentacion de cierre CMS agregada:
+  - `docs/CHECKLIST_QA_CMS_PORTAL_PUBLICO.md`,
+  - `docs/GUIA_DESPLIEGUE_CMS_PORTAL_PUBLICO.md`.
+
+---
+
 ## 2026-03-04 - Finanzas: consolidado disciplinario-contable
 - Se ajusto la politica de morosidad para planilla a modo informativo:
   - el guardado de planilla no se bloquea por deuda,

@@ -24,12 +24,16 @@ const {
   registrarResultadoResumen,
 } = require("../services/mobileCompetitionService");
 const {
+  asignarRuletaEvento,
   asignarEquipoAGrupo,
   crearGruposEvento,
+  extraerEquipoRuletaEvento,
   generarSorteoAutomatico,
   obtenerSorteoEvento,
+  quitarSembradoEvento,
   removerEquipoDeGrupo,
   reiniciarSorteoEvento,
+  sembradoManualEvento,
 } = require("../services/mobileDrawService");
 const {
   actualizarResultadoEliminatoria,
@@ -370,6 +374,46 @@ const mobileController = {
     } catch (error) {
       console.error("Error mobile postSorteoAutomatico:", error);
       return res.status(statusFor(error)).json({ error: error.message || "No se pudo generar el sorteo" });
+    }
+  },
+
+  async postSorteoRuletaExtraer(req, res) {
+    try {
+      const data = await extraerEquipoRuletaEvento(req.user, req.params.id, req.body || {});
+      return res.json({ ok: true, ...data });
+    } catch (error) {
+      console.error("Error mobile postSorteoRuletaExtraer:", error);
+      return res.status(statusFor(error)).json({ error: error.message || "No se pudo extraer equipo de la ruleta" });
+    }
+  },
+
+  async postSorteoRuletaAsignar(req, res) {
+    try {
+      const data = await asignarRuletaEvento(req.user, req.params.id, req.body || {});
+      return res.json({ ok: true, ...data });
+    } catch (error) {
+      console.error("Error mobile postSorteoRuletaAsignar:", error);
+      return res.status(statusFor(error)).json({ error: error.message || "No se pudo asignar equipo por ruleta" });
+    }
+  },
+
+  async postSembradoManualEvento(req, res) {
+    try {
+      const data = await sembradoManualEvento(req.user, req.params.id, req.body || {});
+      return res.json({ ok: true, ...data });
+    } catch (error) {
+      console.error("Error mobile postSembradoManualEvento:", error);
+      return res.status(statusFor(error)).json({ error: error.message || "No se pudo guardar la siembra manual" });
+    }
+  },
+
+  async postQuitarSembradoEvento(req, res) {
+    try {
+      const data = await quitarSembradoEvento(req.user, req.params.id, req.body || {});
+      return res.json({ ok: true, ...data });
+    } catch (error) {
+      console.error("Error mobile postQuitarSembradoEvento:", error);
+      return res.status(statusFor(error)).json({ error: error.message || "No se pudo quitar la siembra" });
     }
   },
 

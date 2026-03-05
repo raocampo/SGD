@@ -21,6 +21,30 @@ const DEFAULT_CARDS = [
 class PortalContenido {
   static _schemaReady = false;
 
+  static limpiarTexto(value, maxLen = 0) {
+    const texto = String(value || "").trim();
+    if (!maxLen || texto.length <= maxLen) return texto;
+    return texto.slice(0, maxLen).trim();
+  }
+
+  static normalizarUrl(value, { allowRelative = true } = {}) {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+    if (raw.length > 2048) throw new Error("URL invalida o demasiado larga");
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (allowRelative && (raw.startsWith("/") || raw.startsWith("assets/") || raw.startsWith("uploads/"))) {
+      return raw;
+    }
+    throw new Error("URL invalida. Use http/https o ruta relativa valida");
+  }
+
+  static validarEmail(email) {
+    const val = String(email || "").trim().toLowerCase();
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+    if (!ok) throw new Error("contact_email invalido");
+    return val;
+  }
+
   static async asegurarEsquema(client = pool) {
     if (this._schemaReady && client === pool) return;
 
@@ -84,9 +108,11 @@ class PortalContenido {
     const clean = cards
       .slice(0, 3)
       .map((item, idx) => ({
-        titulo: String(item?.titulo || DEFAULT_CARDS[idx]?.titulo || "").trim(),
-        descripcion: String(item?.descripcion || DEFAULT_CARDS[idx]?.descripcion || "").trim(),
-        icono: String(item?.icono || DEFAULT_CARDS[idx]?.icono || "fa-star").trim(),
+        titulo: this.limpiarTexto(item?.titulo || DEFAULT_CARDS[idx]?.titulo || "", 120),
+        descripcion: this.limpiarTexto(item?.descripcion || DEFAULT_CARDS[idx]?.descripcion || "", 320),
+        icono: /^fa-[a-z0-9-]+$/i.test(String(item?.icono || "").trim())
+          ? String(item?.icono || "").trim()
+          : String(DEFAULT_CARDS[idx]?.icono || "fa-star"),
       }))
       .filter((item) => item.titulo && item.descripcion);
     return clean.length ? clean : DEFAULT_CARDS;
@@ -110,58 +136,58 @@ class PortalContenido {
 
     const payload = {
       hero_title:
-        data.hero_title !== undefined ? String(data.hero_title || "").trim() : actual.hero_title,
+        data.hero_title !== undefined ? this.limpiarTexto(data.hero_title, 180) : actual.hero_title,
       hero_description:
         data.hero_description !== undefined
-          ? String(data.hero_description || "").trim()
+          ? this.limpiarTexto(data.hero_description, 1200)
           : actual.hero_description,
       hero_chip:
-        data.hero_chip !== undefined ? String(data.hero_chip || "").trim() : actual.hero_chip,
+        data.hero_chip !== undefined ? this.limpiarTexto(data.hero_chip, 120) : actual.hero_chip,
       hero_cta_label:
         data.hero_cta_label !== undefined
-          ? String(data.hero_cta_label || "").trim()
+          ? this.limpiarTexto(data.hero_cta_label, 120)
           : actual.hero_cta_label,
       about_title:
-        data.about_title !== undefined ? String(data.about_title || "").trim() : actual.about_title,
+        data.about_title !== undefined ? this.limpiarTexto(data.about_title, 180) : actual.about_title,
       about_text_1:
         data.about_text_1 !== undefined
-          ? String(data.about_text_1 || "").trim()
+          ? this.limpiarTexto(data.about_text_1, 1400)
           : actual.about_text_1,
       about_text_2:
         data.about_text_2 !== undefined
-          ? String(data.about_text_2 || "").trim()
+          ? this.limpiarTexto(data.about_text_2, 1400)
           : actual.about_text_2,
       about_image_url:
         data.about_image_url !== undefined
-          ? String(data.about_image_url || "").trim() || null
+          ? this.normalizarUrl(data.about_image_url, { allowRelative: true })
           : actual.about_image_url,
       contact_title:
         data.contact_title !== undefined
-          ? String(data.contact_title || "").trim()
+          ? this.limpiarTexto(data.contact_title, 180)
           : actual.contact_title,
       contact_description:
         data.contact_description !== undefined
-          ? String(data.contact_description || "").trim()
+          ? this.limpiarTexto(data.contact_description, 1400)
           : actual.contact_description,
       contact_email:
         data.contact_email !== undefined
-          ? String(data.contact_email || "").trim()
+          ? this.validarEmail(data.contact_email)
           : actual.contact_email,
       contact_phone:
         data.contact_phone !== undefined
-          ? String(data.contact_phone || "").trim() || null
+          ? this.limpiarTexto(data.contact_phone, 40) || null
           : actual.contact_phone,
       facebook_url:
         data.facebook_url !== undefined
-          ? String(data.facebook_url || "").trim() || null
+          ? this.normalizarUrl(data.facebook_url, { allowRelative: false })
           : actual.facebook_url,
       instagram_url:
         data.instagram_url !== undefined
-          ? String(data.instagram_url || "").trim() || null
+          ? this.normalizarUrl(data.instagram_url, { allowRelative: false })
           : actual.instagram_url,
       whatsapp_url:
         data.whatsapp_url !== undefined
-          ? String(data.whatsapp_url || "").trim() || null
+          ? this.normalizarUrl(data.whatsapp_url, { allowRelative: false })
           : actual.whatsapp_url,
       cards_json:
         data.cards_json !== undefined ? this.normalizarCards(data.cards_json) : actual.cards_json,
