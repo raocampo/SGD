@@ -47,6 +47,34 @@ Ejecutar en orden:
 - Con `organizador`:
   - confirmar bloqueo de acceso CMS (frontend y API privada CMS).
 
+## 5.1 Smoke tecnico recomendado (web + mobile + CMS)
+Desde `backend/` ejecutar:
+
+```bash
+npm run smoke
+```
+
+El smoke valida en pocos segundos:
+- salud y conectividad a BD,
+- endpoints publicos del portal,
+- bloqueo de endpoints privados CMS/deportivo sin token (`401`),
+- bloqueo de endpoints mobile sin token (`401`).
+
+Variables opcionales:
+- `SMOKE_BASE_URL` (default `http://localhost:5000`)
+- `SMOKE_TIMEOUT_MS` (default `12000`)
+- `SMOKE_TOKEN` (si se desea probar checks autenticados opcionales)
+
+Validacion RBAC mobile (opcional):
+
+```bash
+npm run smoke:roles
+```
+
+Notas:
+- crea o reutiliza usuarios QA por rol (`organizador`, `tecnico`, `dirigente`) con prefijo `qa.*@ltc.local`,
+- valida sesion/refresh y guardas de escritura en endpoints mobile.
+
 ## 6. Endurecimiento aplicado
 - Validaciones de URLs CMS:
   - solo `http/https` o rutas relativas seguras en campos permitidos.

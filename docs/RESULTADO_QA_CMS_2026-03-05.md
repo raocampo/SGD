@@ -16,8 +16,35 @@ Pruebas automáticas y de seguridad sobre CMS/portal público en entorno local.
 
 2. Endpoints CMS privados sin token:
 - `GET /api/noticias` -> `401` OK (protegido)
+- `GET /api/campeonatos` -> `401` OK (protegido)
 
-3. Contacto público (hardening):
+3. Smoke técnico de integración (`npm run smoke`):
+- fecha ejecución: `2026-03-05`
+- cobertura:
+  - `GET /salud` -> `200`
+  - `GET /testDb` -> `200`
+  - `GET /api/public/campeonatos` -> `200`
+  - `GET /api/public/noticias` -> `200`
+  - `GET /api/noticias` sin token -> `401`
+  - `GET /api/campeonatos` sin token -> `401`
+  - `GET /api/mobile/v1/session` sin token -> `401`
+  - `GET /api/mobile/v1/eventos/1/sorteo` sin token -> `401`
+  - `POST /api/mobile/v1/finanzas/movimientos` sin token -> `401`
+- resultado: `9/9 PASS`
+
+3.1 Smoke RBAC mobile (`npm run smoke:roles`):
+- fecha ejecución: `2026-03-05`
+- roles evaluados: `organizador`, `tecnico`, `dirigente`
+- checks por rol:
+  - `session` (`GET /api/mobile/v1/session`) -> `200`
+  - `refresh` (`POST /api/auth/refresh`) -> `200`
+  - `usuarios-scope` (`GET /api/mobile/v1/usuarios`) -> `200` solo organizador, `403` tecnico/dirigente
+  - `campeonatos-write-guard` (`POST /api/mobile/v1/campeonatos`) -> `400` organizador (validacion de payload), `403` tecnico/dirigente
+  - `eventos-write-guard` (`POST /api/mobile/v1/eventos`) -> `400` organizador, `403` tecnico/dirigente
+  - `finanzas-write-guard` (`POST /api/mobile/v1/finanzas/movimientos`) -> `400` organizador, `403` tecnico/dirigente
+- resultado: `18/18 PASS`
+
+4. Contacto público (hardening):
 - Rate-limit por `IP + email`:
   - intento 1 -> `201`
   - intento 2 -> `201`

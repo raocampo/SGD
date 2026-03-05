@@ -30,6 +30,17 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 - Documentacion de cierre CMS agregada:
   - `docs/CHECKLIST_QA_CMS_PORTAL_PUBLICO.md`,
   - `docs/GUIA_DESPLIEGUE_CMS_PORTAL_PUBLICO.md`.
+- Saneamiento de verificacion tecnica automatizada:
+  - nuevo script `backend/scripts/smokeIntegration.js`,
+  - nuevo script `backend/scripts/smokeRoleAccess.js`,
+  - nuevo comando `npm run smoke` en `backend/package.json`,
+  - nuevo comando `npm run smoke:roles` en `backend/package.json`,
+  - valida rapidamente:
+    - salud + DB,
+    - portal publico,
+    - bloqueo de endpoints privados sin token (CMS/deportivo),
+    - bloqueo de endpoints mobile sin token.
+  - `smoke:roles` valida RBAC mobile con usuarios QA (`organizador`, `tecnico`, `dirigente`) y permisos esperados de lectura/escritura.
 
 ---
 

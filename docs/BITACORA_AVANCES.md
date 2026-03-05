@@ -58,6 +58,16 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
     - crear noticia `201`,
     - publicar `200`,
     - despublicar `200`.
+- Saneamiento de integracion backend (web + mobile + CMS):
+  - se agrego script reutilizable `backend/scripts/smokeIntegration.js` y comando `npm run smoke` en `backend/package.json`,
+  - se agrego script de verificacion RBAC mobile `backend/scripts/smokeRoleAccess.js` con comando `npm run smoke:roles`,
+  - cobertura base del smoke:
+    - salud/DB (`/salud`, `/testDb`),
+    - portal publico (`/api/public/campeonatos`, `/api/public/noticias`),
+    - endpoints privados sin token (`/api/noticias`, `/api/campeonatos`),
+    - endpoints mobile sin token (`/api/mobile/v1/session`, `/api/mobile/v1/eventos/:id/sorteo`, `/api/mobile/v1/finanzas/movimientos`).
+  - corrida local validada en esta sesion: `9/9` pruebas en `PASS`.
+  - corrida RBAC mobile validada en esta sesion: `18/18` pruebas en `PASS` (`organizador`, `tecnico`, `dirigente`).
 
 ### 2026-03-04
 - Planilla y morosidad:
