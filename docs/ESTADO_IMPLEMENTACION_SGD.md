@@ -10,7 +10,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.1 Gestion de Torneos/Campeonatos | Parcial-Alto | CRUD y estados operativos, organizador/logo/colores; pendiente reglamento PDF/bases y sedes multiples. |
 | 3.2 Categorias por torneo | Alto | Eventos/categorias por campeonato funcionales con asignacion de equipos. |
 | 3.3 Gestion de Equipos | Alto | Registro completo con logo/contacto/colores, asignacion por evento, flujo hacia sorteo y vista Tarjetas/Tabla. |
-| 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por campeonato; documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Backend base de modulo de pases implementado; pendiente UI de pases e historial visual por jugador. |
+| 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por campeonato; documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Modulo de pases con UI operativa y sincronizacion contable integrada (cargo/abono por pase); pendiente historial visual por jugador/equipo. |
 | 3.5 Creacion de Grupos | Alto | Modo aleatorio, cabezas de serie y manual con ruleta funcionando. |
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
 | 3.7 Resultados/Tablas/Clasificados | Medio-Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play). Planillaje ya alimenta resultado + estadisticas. Pendiente automatizacion robusta de clasificados para todos los formatos. |
@@ -126,7 +126,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 6. Modulo de pases (nuevo):
 - Pantalla de gestion (`pases.html`) implementada con filtros, registro y aprobacion/anulacion de pase.
-- Integrar salida contable en finanzas (ingreso/egreso por pase).
+- Salida contable en finanzas integrada (ingreso/egreso por pase) con movimientos idempotentes por `origen_clave`.
 - Agregar historial de pases por jugador y por equipo.
 
 7. Auditoria y trazabilidad:

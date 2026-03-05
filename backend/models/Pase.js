@@ -1,4 +1,5 @@
 const pool = require("../config/database");
+const Finanza = require("./Finanza");
 
 class Pase {
   static _schemaAsegurado = false;
@@ -197,6 +198,182 @@ class Pase {
     return r.rows[0] || null;
   }
 
+  static _origenClaveMovimiento(paseId, tipo) {
+    return `pase:${Number(paseId)}:${String(tipo || "").trim().toLowerCase()}`;
+  }
+
+  static _normalizarFechaMovimiento(value) {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value.toISOString().slice(0, 10);
+    }
+
+    const raw = String(value).trim();
+    if (!raw) return null;
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+    return null;
+  }
+
+  static async _obtenerContextoFinanciero(client, paseId) {
+    const r = await client.query(
+      `
+        SELECT
+          p.id,
+          p.campeonato_id,
+          p.evento_id,
+          p.jugador_id,
+          p.equipo_origen_id,
+          p.equipo_destino_id,
+          p.monto,
+          p.fecha_pase,
+          j.nombre AS jugador_nombre,
+          j.apellido AS jugador_apellido,
+          eo.nombre AS equipo_origen_nombre,
+          eo.campeonato_id AS equipo_origen_campeonato_id,
+          ed.nombre AS equipo_destino_nombre,
+          ed.campeonato_id AS equipo_destino_campeonato_id
+        FROM pases_jugadores p
+        LEFT JOIN jugadores j ON j.id = p.jugador_id
+        LEFT JOIN equipos eo ON eo.id = p.equipo_origen_id
+        LEFT JOIN equipos ed ON ed.id = p.equipo_destino_id
+        WHERE p.id = $1
+        LIMIT 1
+      `,
+      [paseId]
+    );
+    return r.rows[0] || null;
+  }
+
+  static async _upsertMovimientoFinancieroPase(client, payload = {}) {
+    const q = `
+      INSERT INTO finanzas_movimientos (
+        campeonato_id,
+        evento_id,
+        equipo_id,
+        tipo_movimiento,
+        concepto,
+        descripcion,
+        monto,
+        estado,
+        fecha_movimiento,
+        referencia,
+        origen,
+        origen_clave
+      )
+      VALUES (
+        $1,$2,$3,$4,'otro',$5,$6,$7,COALESCE($8::date, CURRENT_DATE),$9,'sistema',$10
+      )
+      ON CONFLICT (origen_clave)
+      DO UPDATE SET
+        campeonato_id = EXCLUDED.campeonato_id,
+        evento_id = EXCLUDED.evento_id,
+        equipo_id = EXCLUDED.equipo_id,
+        tipo_movimiento = EXCLUDED.tipo_movimiento,
+        concepto = EXCLUDED.concepto,
+        descripcion = EXCLUDED.descripcion,
+        monto = EXCLUDED.monto,
+        estado = EXCLUDED.estado,
+        fecha_movimiento = EXCLUDED.fecha_movimiento,
+        referencia = EXCLUDED.referencia,
+        origen = EXCLUDED.origen,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+
+    const values = [
+      payload.campeonato_id,
+      payload.evento_id || null,
+      payload.equipo_id,
+      payload.tipo_movimiento,
+      payload.descripcion || null,
+      payload.monto,
+      payload.estado || "pagado",
+      payload.fecha_movimiento || null,
+      payload.referencia || null,
+      payload.origen_clave,
+    ];
+
+    const r = await client.query(q, values);
+    return r.rows[0] || null;
+  }
+
+  static async _sincronizarFinanzasPorPase(client, paseId, estadoPase) {
+    await Finanza.asegurarEsquema(client);
+
+    const contexto = await this._obtenerContextoFinanciero(client, paseId);
+    if (!contexto) return;
+
+    const estado = String(estadoPase || "").trim().toLowerCase();
+    const monto = Number.parseFloat(contexto.monto || 0);
+    if (!Number.isFinite(monto) || monto <= 0) return;
+
+    const campeonatoId = Number.parseInt(
+      contexto.campeonato_id ||
+        contexto.equipo_origen_campeonato_id ||
+        contexto.equipo_destino_campeonato_id,
+      10
+    );
+
+    if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
+      throw new Error("No se pudo determinar campeonato del pase para registrar en finanzas");
+    }
+
+    if (estado === "anulado") {
+      await client.query(
+        `
+          UPDATE finanzas_movimientos
+          SET estado = 'anulado',
+              updated_at = CURRENT_TIMESTAMP
+          WHERE origen = 'sistema'
+            AND origen_clave LIKE $1
+        `,
+        [`pase:${Number(paseId)}:%`]
+      );
+      return;
+    }
+
+    if (!["pagado", "aprobado"].includes(estado)) return;
+
+    const jugadorNombre = [contexto.jugador_nombre, contexto.jugador_apellido]
+      .filter(Boolean)
+      .join(" ")
+      .trim() || `Jugador #${Number(contexto.jugador_id)}`;
+    const equipoOrigenNombre = contexto.equipo_origen_nombre || `Equipo #${Number(contexto.equipo_origen_id)}`;
+    const equipoDestinoNombre = contexto.equipo_destino_nombre || `Equipo #${Number(contexto.equipo_destino_id)}`;
+    const fechaMovimiento = this._normalizarFechaMovimiento(contexto.fecha_pase);
+
+    await this._upsertMovimientoFinancieroPase(client, {
+      campeonato_id: campeonatoId,
+      evento_id: contexto.evento_id ? Number.parseInt(contexto.evento_id, 10) : null,
+      equipo_id: Number.parseInt(contexto.equipo_destino_id, 10),
+      tipo_movimiento: "cargo",
+      descripcion: `Cargo por pase de ${jugadorNombre} (${equipoOrigenNombre} -> ${equipoDestinoNombre})`,
+      monto: Number(monto.toFixed(2)),
+      estado: "pagado",
+      fecha_movimiento: fechaMovimiento,
+      referencia: `PASE-${Number(paseId)}-CARGO`,
+      origen_clave: this._origenClaveMovimiento(paseId, "cargo_destino"),
+    });
+
+    await this._upsertMovimientoFinancieroPase(client, {
+      campeonato_id: campeonatoId,
+      evento_id: contexto.evento_id ? Number.parseInt(contexto.evento_id, 10) : null,
+      equipo_id: Number.parseInt(contexto.equipo_origen_id, 10),
+      tipo_movimiento: "abono",
+      descripcion: `Abono por pase de ${jugadorNombre} hacia ${equipoDestinoNombre}`,
+      monto: Number(monto.toFixed(2)),
+      estado: "pagado",
+      fecha_movimiento: fechaMovimiento,
+      referencia: `PASE-${Number(paseId)}-ABONO`,
+      origen_clave: this._origenClaveMovimiento(paseId, "abono_origen"),
+    });
+  }
+
   static async actualizarEstado(id, payload = {}) {
     await this.asegurarEsquema();
     const client = await pool.connect();
@@ -247,6 +424,11 @@ class Pase {
         `,
           [actualizado.equipo_destino_id, actualizado.jugador_id]
         );
+      }
+
+      const registrarFinanzas = payload.registrar_finanzas !== false;
+      if (registrarFinanzas) {
+        await this._sincronizarFinanzasPorPase(client, id, estado);
       }
 
       await client.query("COMMIT");

@@ -290,3 +290,20 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - roja directa -> suspension `2` partidos,
   - futbol 11 -> suspension `1` partido al acumular `4` amarillas.
 - El backend calcula la suspension con el historial previo del jugador en el `evento/categoria` y entrega el estado ya resuelto para renderizarlo en rojo y bloquear su fila en captura.
+
+---
+
+## 12. Pases: integración contable en finanzas
+- **Ubicación:** `backend/models/Pase.js`
+- Se incorporó sincronización financiera automática al actualizar estado del pase:
+  - al pasar a `pagado` o `aprobado`, se registran/actualizan:
+    - `cargo` al equipo destino,
+    - `abono` al equipo origen.
+  - al pasar a `anulado`, los movimientos del pase quedan en estado `anulado`.
+- Se aplica idempotencia con `origen='sistema'` y `origen_clave` único por pase/tipo:
+  - `pase:{id}:cargo_destino`
+  - `pase:{id}:abono_origen`
+- Los movimientos quedan con:
+  - `concepto='otro'`,
+  - referencia trazable (`PASE-{id}-CARGO` / `PASE-{id}-ABONO`),
+  - fecha normalizada a `YYYY-MM-DD` para evitar errores de parseo.

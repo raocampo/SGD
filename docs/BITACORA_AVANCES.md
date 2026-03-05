@@ -79,6 +79,14 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - nueva acta `docs/ACTA_ACEPTACION_CMS_FASE6_2026-03-05.md`,
   - nuevo comando consolidado de QA CMS en backend: `npm run qa:cms` (`smoke + smoke:frontend + smoke:matrix`).
   - corrida consolidada ejecutada en esta sesion: `95/95 PASS`.
+- Modulo de pases: integracion contable completada para el flujo deportivo-financiero:
+  - `backend/models/Pase.js` ahora sincroniza movimientos en `finanzas_movimientos` al aprobar/pagar/anular pases,
+  - se crean/actualizan dos movimientos por pase (`cargo` equipo destino y `abono` equipo origen),
+  - se usa `origen='sistema'` + `origen_clave='pase:{id}:{tipo}'` para idempotencia y trazabilidad.
+- Validacion tecnica del bloque de pases-finanzas:
+  - chequeo de sintaxis backend: `node --check backend/models/Pase.js` (`PASS`),
+  - corrida QA consolidada: `npm run qa:cms` (`95/95 PASS`),
+  - prueba controlada de pase temporal en BD: `2 movimientos` contables generados (`cargo/abono`) y limpieza posterior ejecutada.
 
 ### 2026-03-04
 - Planilla y morosidad:
