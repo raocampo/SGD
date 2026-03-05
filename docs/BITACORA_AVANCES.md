@@ -75,6 +75,10 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - corrida matriz RBAC completa por rol (DB): `48/48 PASS`.
   - corrida smoke con cuentas provistas app mobile: `27/27 PASS` (`organizador`, `tecnico`, `dirigente`).
   - con esta evidencia, Fase 6 CMS queda cerrada tecnicamente; se mantiene solo validacion visual/manual opcional en navegador como control final operativo.
+- Cierre operativo formalizado:
+  - nueva acta `docs/ACTA_ACEPTACION_CMS_FASE6_2026-03-05.md`,
+  - nuevo comando consolidado de QA CMS en backend: `npm run qa:cms` (`smoke + smoke:frontend + smoke:matrix`).
+  - corrida consolidada ejecutada en esta sesion: `95/95 PASS`.
 
 ### 2026-03-04
 - Planilla y morosidad:

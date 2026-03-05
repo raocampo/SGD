@@ -76,6 +76,7 @@ Validar que el CMS institucional (noticias, galeria, contenido y contacto) quede
   - corrección de fuga de `operador` a `/api/campeonatos`,
   - corrección de `500` en publicar/despublicar noticias,
   - smoke de cuentas provistas por app mobile (`smoke:provided`) en `organizador/tecnico/dirigente`.
+  - corrida consolidada `qa:cms` (`95/95 PASS`).
 - Estado:
   - Fase 6 cerrada técnicamente.
   - El recorrido visual/manual en navegador por rol queda como control operativo opcional previo a despliegue.

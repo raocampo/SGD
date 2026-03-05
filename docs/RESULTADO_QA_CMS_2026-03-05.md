@@ -79,6 +79,14 @@ Pruebas automáticas y de seguridad sobre CMS/portal público en entorno local.
   - denegación CMS para roles no permitidos.
 - resultado: `27/27 PASS`
 
+3.5 Corrida consolidada de QA CMS (`npm run qa:cms`):
+- fecha ejecución: `2026-03-05`
+- bloque ejecutado:
+  - `smoke` (`9/9 PASS`)
+  - `smoke:frontend` (`38/38 PASS`)
+  - `smoke:matrix` (`48/48 PASS`)
+- resultado consolidado: **`95/95 PASS`**
+
 4. Contacto público (hardening):
 - Rate-limit por `IP + email`:
   - intento 1 -> `201`
@@ -146,7 +154,7 @@ Pruebas automáticas y de seguridad sobre CMS/portal público en entorno local.
   - `despublicar` -> `200`
   - `operador` mantiene CRUD noticias (`create/publish/delete` en `201/200/200`).
 
-## Pendiente manual (QA por rol con credenciales reales)
+## Control operativo opcional previo a despliegue
 1. Validar en navegador (UI) con `administrador`:
 - CRUD completo en noticias/galería/contenido/contacto.
 2. Validar en navegador (UI) con `operador`:
@@ -156,4 +164,4 @@ Pruebas automáticas y de seguridad sobre CMS/portal público en entorno local.
 - denegación de pantallas CMS (redirección/control de navegación).
 
 ## Conclusión
-La Fase 6 CMS queda técnicamente reforzada y verificada en pruebas automáticas críticas. Falta únicamente la corrida funcional manual por rol para cierre operativo final.
+La Fase 6 CMS queda técnicamente reforzada y validada para cierre con evidencia automatizada por API, RBAC y guard frontend. La corrida visual/manual por rol queda como control operativo opcional previo a despliegue.

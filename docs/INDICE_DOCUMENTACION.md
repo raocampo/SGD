@@ -23,6 +23,8 @@ Ultima actualizacion: 2026-03-05
   - Pasos de despliegue, verificacion y rollback del CMS institucional.
 - `docs/RESULTADO_QA_CMS_2026-03-05.md`
   - Evidencia de pruebas automáticas del CMS y estado de cierre de Fase 6.
+- `docs/ACTA_ACEPTACION_CMS_FASE6_2026-03-05.md`
+  - Acta de aceptación técnica-operativa del cierre de Fase 6 CMS.
 
 ## Documentos de referencia operativa
 - `docs/PlanillaJuego.pdf`

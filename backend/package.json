@@ -11,7 +11,9 @@
     "smoke:roles": "node scripts/smokeRoleAccess.js",
     "smoke:provided": "node scripts/smokeProvidedUsers.js",
     "smoke:matrix": "node scripts/smokeRoleMatrixDb.js",
-    "smoke:frontend": "node scripts/smokeFrontendRoleGuards.js"
+    "smoke:frontend": "node scripts/smokeFrontendRoleGuards.js",
+    "qa:cms": "npm run smoke && npm run smoke:frontend && npm run smoke:matrix",
+    "e2e:mobile-flow": "node scripts/e2eMobileTournamentFlow.js"
   },
   "keywords": [],
   "author": "",

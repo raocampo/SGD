@@ -75,6 +75,17 @@ Notas:
 - crea o reutiliza usuarios QA por rol (`organizador`, `tecnico`, `dirigente`) con prefijo `qa.*@ltc.local`,
 - valida sesion/refresh y guardas de escritura en endpoints mobile.
 
+Corrida consolidada recomendada para release CMS:
+
+```bash
+npm run qa:cms
+```
+
+Incluye:
+- `smoke`,
+- `smoke:frontend`,
+- `smoke:matrix`.
+
 Matriz RBAC completa (recomendado para cierre de release):
 
 ```bash
