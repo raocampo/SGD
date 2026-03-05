@@ -1,6 +1,6 @@
 # Guia de Presentacion del Sistema LT&C
 
-Ultima actualizacion: 2026-02-28
+Ultima actualizacion: 2026-03-05
 
 ## Objetivo
 Disponer de un guion claro para presentar el funcionamiento del sistema LT&C sin improvisar el recorrido funcional.
@@ -169,3 +169,8 @@ Mensaje clave:
 - No usar usuarios sin permisos claros.
 - No improvisar cambios estructurales durante la demo.
 - Evitar rutas antiguas o pantallas legacy si no forman parte del flujo actual.
+
+## Material de apoyo recomendado
+- `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`
+- `docs/GUIA_VIDEO_TUTORIALES_LT_C.md`
+- `docs/INDICE_DOCUMENTACION.md`

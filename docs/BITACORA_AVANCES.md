@@ -87,6 +87,24 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - chequeo de sintaxis backend: `node --check backend/models/Pase.js` (`PASS`),
   - corrida QA consolidada: `npm run qa:cms` (`95/95 PASS`),
   - prueba controlada de pase temporal en BD: `2 movimientos` contables generados (`cargo/abono`) y limpieza posterior ejecutada.
+- Modulo de pases: historial por jugador y por equipo implementado:
+  - nuevos endpoints backend:
+    - `GET /api/pases/historial/jugadores`
+    - `GET /api/pases/historial/jugadores/:jugadorId`
+    - `GET /api/pases/historial/equipos`
+    - `GET /api/pases/historial/equipos/:equipoId`
+  - `frontend/pases.html` ahora incluye bloque visual de historial dedicado:
+    - selector de jugador y selector de equipo,
+    - resumen consolidado por entidad,
+    - tabla de detalle cronologico.
+  - `frontend/js/pases.js` sincroniza filtros globales (`campeonato/categoria/estado`) con historial para analisis operativo.
+- Validacion de coexistencia con equipo mobile:
+  - nuevo script de QA de dataset UI en backend: `npm run qa:ui-dataset`,
+  - corrida ejecutada en esta sesion sobre dataset real (`campeonato=6`, `evento=13`, `partido=195`, `equipo=91`) con resultado `PASS`.
+- Documentacion ampliada para entrega a cliente y capacitacion:
+  - nuevo manual operativo: `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`,
+  - nuevo guion de tutoriales: `docs/GUIA_VIDEO_TUTORIALES_LT_C.md`,
+  - actualizacion de referencias en `README.md`, `docs/INDICE_DOCUMENTACION.md` y `docs/GUIA_PRESENTACION_SISTEMA_LT_C.md`.
 
 ### 2026-03-04
 - Planilla y morosidad:

@@ -29,6 +29,80 @@ const paseController = {
     }
   },
 
+  async listarHistorialJugadores(req, res) {
+    try {
+      const historial = await Pase.listarHistorialJugadores(req.query || {});
+      return res.json({
+        ok: true,
+        total: historial.length,
+        historial,
+      });
+    } catch (error) {
+      console.error("Error listarHistorialJugadores:", error);
+      return res.status(500).json({ error: "Error listando historial por jugador" });
+    }
+  },
+
+  async obtenerHistorialJugador(req, res) {
+    try {
+      const jugadorId = Number.parseInt(req.params.jugadorId, 10);
+      if (!Number.isFinite(jugadorId) || jugadorId <= 0) {
+        return res.status(400).json({ error: "jugadorId inválido" });
+      }
+
+      const resultado = await Pase.obtenerHistorialJugador(jugadorId, req.query || {});
+      if (!resultado) return res.status(404).json({ error: "Jugador no encontrado" });
+
+      return res.json({
+        ok: true,
+        jugador: resultado.jugador,
+        resumen: resultado.resumen,
+        total: resultado.historial.length,
+        historial: resultado.historial,
+      });
+    } catch (error) {
+      console.error("Error obtenerHistorialJugador:", error);
+      return res.status(500).json({ error: error.message || "Error obteniendo historial del jugador" });
+    }
+  },
+
+  async listarHistorialEquipos(req, res) {
+    try {
+      const historial = await Pase.listarHistorialEquipos(req.query || {});
+      return res.json({
+        ok: true,
+        total: historial.length,
+        historial,
+      });
+    } catch (error) {
+      console.error("Error listarHistorialEquipos:", error);
+      return res.status(500).json({ error: "Error listando historial por equipo" });
+    }
+  },
+
+  async obtenerHistorialEquipo(req, res) {
+    try {
+      const equipoId = Number.parseInt(req.params.equipoId, 10);
+      if (!Number.isFinite(equipoId) || equipoId <= 0) {
+        return res.status(400).json({ error: "equipoId inválido" });
+      }
+
+      const resultado = await Pase.obtenerHistorialEquipo(equipoId, req.query || {});
+      if (!resultado) return res.status(404).json({ error: "Equipo no encontrado" });
+
+      return res.json({
+        ok: true,
+        equipo: resultado.equipo,
+        resumen: resultado.resumen,
+        total: resultado.historial.length,
+        historial: resultado.historial,
+      });
+    } catch (error) {
+      console.error("Error obtenerHistorialEquipo:", error);
+      return res.status(500).json({ error: error.message || "Error obteniendo historial del equipo" });
+    }
+  },
+
   async obtenerPase(req, res) {
     try {
       const id = Number.parseInt(req.params.id, 10);

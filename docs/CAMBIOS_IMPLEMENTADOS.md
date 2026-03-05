@@ -307,3 +307,49 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - `concepto='otro'`,
   - referencia trazable (`PASE-{id}-CARGO` / `PASE-{id}-ABONO`),
   - fecha normalizada a `YYYY-MM-DD` para evitar errores de parseo.
+
+---
+
+## 13. Pases: historial por jugador y por equipo
+- **Ubicación backend:** `backend/models/Pase.js`, `backend/controllers/paseController.js`, `backend/routes/paseRoutes.js`
+- **Ubicación frontend:** `frontend/pases.html`, `frontend/js/pases.js`, `frontend/js/api.js`, `frontend/css/style.css`
+- Nuevos endpoints de historial:
+  - `GET /api/pases/historial/jugadores`
+  - `GET /api/pases/historial/jugadores/:jugadorId`
+  - `GET /api/pases/historial/equipos`
+  - `GET /api/pases/historial/equipos/:equipoId`
+- Funcionalidad incorporada:
+  - resumen de pases por jugador (totales, pendientes, aprobados, anulados, monto total),
+  - detalle cronológico por jugador (origen, destino, estado, monto),
+  - resumen por equipo (entradas/salidas, montos, estado),
+  - detalle cronológico por equipo con tipo de movimiento (`entrada`/`salida`).
+- Integración de filtros:
+  - el historial respeta filtros activos de campeonato, categoría y estado definidos en el módulo de pases.
+
+---
+
+## 14. QA de dataset UI (coexistencia web + mobile)
+- **Ubicación:** `backend/scripts/qaUiDatasetCheck.js`, `backend/package.json`
+- Se agregó comando `npm run qa:ui-dataset` para validar de forma rápida:
+  - endpoints mobile del dataset objetivo (campeonato/evento/partido/equipo),
+  - endpoints públicos equivalentes del portal,
+  - carga de pantallas web críticas (`campeonatos`, `sorteo`, `partidos`, `planilla`, `finanzas`, `portal-admin`).
+- Objetivo:
+  - verificar integridad mínima del flujo UI sin romper contratos del backend principal mientras avanza el equipo mobile.
+
+---
+
+## 15. Documentacion para cliente y tutoriales
+- **Ubicación:** `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`, `docs/GUIA_VIDEO_TUTORIALES_LT_C.md`
+- Se incorporo documentacion orientada a adopcion del cliente:
+  - operacion diaria por rol,
+  - checklists de cierre semanal y cierre de campeonato,
+  - escalamiento de soporte y buenas practicas.
+- Se incorporo guion de produccion de tutoriales:
+  - serie recomendada de videos por modulo,
+  - estructura estandar por video,
+  - checklist previo a grabacion y entregables.
+- Se actualizaron referencias en:
+  - `README.md`,
+  - `docs/INDICE_DOCUMENTACION.md`,
+  - `docs/GUIA_PRESENTACION_SISTEMA_LT_C.md`.

@@ -4,6 +4,22 @@ const Finanza = require("./Finanza");
 class Pase {
   static _schemaAsegurado = false;
 
+  static _agregarFiltroNumero(where, vals, campo, valor) {
+    if (valor === undefined || valor === null || `${valor}`.trim() === "") return;
+    const numero = Number(valor);
+    if (!Number.isFinite(numero)) return;
+    vals.push(numero);
+    where.push(`${campo} = $${vals.length}`);
+  }
+
+  static _agregarFiltroFecha(where, vals, campo, valor, operador = "=") {
+    if (!valor) return;
+    const raw = String(valor).trim().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return;
+    vals.push(raw);
+    where.push(`${campo} ${operador} $${vals.length}::date`);
+  }
+
   static normalizarEstado(estado, fallback = "pendiente") {
     const raw = String(estado || fallback).trim().toLowerCase();
     if (["pendiente", "pagado", "aprobado", "anulado"].includes(raw)) return raw;
@@ -126,26 +142,22 @@ class Pase {
 
     const where = [];
     const vals = [];
-    let i = 1;
-
-    const setFiltro = (campo, valor) => {
-      if (valor === undefined || valor === null || valor === "") return;
-      where.push(`${campo} = $${i}`);
-      vals.push(valor);
-      i += 1;
-    };
-
-    setFiltro("p.campeonato_id", filtros.campeonato_id ? Number(filtros.campeonato_id) : null);
-    setFiltro("p.evento_id", filtros.evento_id ? Number(filtros.evento_id) : null);
-    setFiltro("p.id", filtros.id ? Number(filtros.id) : null);
-    setFiltro("p.jugador_id", filtros.jugador_id ? Number(filtros.jugador_id) : null);
-    setFiltro("p.equipo_origen_id", filtros.equipo_origen_id ? Number(filtros.equipo_origen_id) : null);
-    setFiltro("p.equipo_destino_id", filtros.equipo_destino_id ? Number(filtros.equipo_destino_id) : null);
+    this._agregarFiltroNumero(where, vals, "p.campeonato_id", filtros.campeonato_id);
+    this._agregarFiltroNumero(where, vals, "p.evento_id", filtros.evento_id);
+    this._agregarFiltroNumero(where, vals, "p.id", filtros.id);
+    this._agregarFiltroNumero(where, vals, "p.jugador_id", filtros.jugador_id);
+    this._agregarFiltroNumero(where, vals, "p.equipo_origen_id", filtros.equipo_origen_id);
+    this._agregarFiltroNumero(where, vals, "p.equipo_destino_id", filtros.equipo_destino_id);
 
     if (filtros.estado) {
       const estado = this.normalizarEstado(filtros.estado, null);
-      if (estado) setFiltro("p.estado", estado);
+      if (estado) {
+        vals.push(estado);
+        where.push(`p.estado = $${vals.length}`);
+      }
     }
+    this._agregarFiltroFecha(where, vals, "p.fecha_pase", filtros.fecha_desde, ">=");
+    this._agregarFiltroFecha(where, vals, "p.fecha_pase", filtros.fecha_hasta, "<=");
 
     const q = `
       SELECT
@@ -168,6 +180,290 @@ class Pase {
     `;
     const r = await pool.query(q, vals);
     return r.rows;
+  }
+
+  static async listarHistorialJugadores(filtros = {}) {
+    await this.asegurarEsquema();
+
+    const where = [];
+    const vals = [];
+
+    this._agregarFiltroNumero(where, vals, "p.campeonato_id", filtros.campeonato_id);
+    this._agregarFiltroNumero(where, vals, "p.evento_id", filtros.evento_id);
+    this._agregarFiltroNumero(where, vals, "p.jugador_id", filtros.jugador_id);
+    this._agregarFiltroFecha(where, vals, "p.fecha_pase", filtros.fecha_desde, ">=");
+    this._agregarFiltroFecha(where, vals, "p.fecha_pase", filtros.fecha_hasta, "<=");
+
+    const equipoId = Number.parseInt(filtros.equipo_id, 10);
+    if (Number.isFinite(equipoId) && equipoId > 0) {
+      vals.push(equipoId);
+      where.push(`(p.equipo_origen_id = $${vals.length} OR p.equipo_destino_id = $${vals.length})`);
+    }
+
+    if (filtros.estado) {
+      const estado = this.normalizarEstado(filtros.estado, null);
+      if (estado) {
+        vals.push(estado);
+        where.push(`p.estado = $${vals.length}`);
+      }
+    }
+
+    const q = `
+      SELECT
+        p.jugador_id,
+        j.nombre AS jugador_nombre,
+        j.apellido AS jugador_apellido,
+        j.cedidentidad AS jugador_cedula,
+        COUNT(*)::int AS total_pases,
+        COUNT(*) FILTER (WHERE p.estado = 'pendiente')::int AS pendientes,
+        COUNT(*) FILTER (WHERE p.estado IN ('pagado', 'aprobado'))::int AS aprobados,
+        COUNT(*) FILTER (WHERE p.estado = 'anulado')::int AS anulados,
+        COALESCE(SUM(p.monto), 0)::numeric(12,2) AS monto_total,
+        MAX(p.fecha_pase) AS ultimo_pase
+      FROM pases_jugadores p
+      JOIN jugadores j ON j.id = p.jugador_id
+      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+      GROUP BY p.jugador_id, j.nombre, j.apellido, j.cedidentidad
+      ORDER BY MAX(p.fecha_pase) DESC, p.jugador_id DESC
+    `;
+
+    const r = await pool.query(q, vals);
+    return r.rows;
+  }
+
+  static async obtenerHistorialJugador(jugadorId, filtros = {}) {
+    await this.asegurarEsquema();
+    const id = Number.parseInt(jugadorId, 10);
+    if (!Number.isFinite(id) || id <= 0) throw new Error("jugador_id inválido");
+
+    const jugadorR = await pool.query(
+      `
+      SELECT
+        j.id,
+        j.nombre,
+        j.apellido,
+        j.cedidentidad,
+        j.equipo_id,
+        e.nombre AS equipo_nombre,
+        e.campeonato_id
+      FROM jugadores j
+      LEFT JOIN equipos e ON e.id = j.equipo_id
+      WHERE j.id = $1
+      LIMIT 1
+    `,
+      [id]
+    );
+    const jugador = jugadorR.rows[0];
+    if (!jugador) return null;
+
+    const historial = await this.listar({
+      ...filtros,
+      jugador_id: id,
+    });
+
+    const resumen = historial.reduce(
+      (acc, item) => {
+        const estado = String(item.estado || "").toLowerCase();
+        const monto = Number.parseFloat(item.monto || 0);
+        acc.total_pases += 1;
+        acc.monto_total += Number.isFinite(monto) ? monto : 0;
+        if (estado === "pendiente") acc.pendientes += 1;
+        else if (estado === "anulado") acc.anulados += 1;
+        else if (["pagado", "aprobado"].includes(estado)) acc.aprobados += 1;
+        return acc;
+      },
+      {
+        total_pases: 0,
+        pendientes: 0,
+        aprobados: 0,
+        anulados: 0,
+        monto_total: 0,
+      }
+    );
+    resumen.monto_total = Number(resumen.monto_total.toFixed(2));
+
+    return {
+      jugador: {
+        id: jugador.id,
+        nombre: jugador.nombre,
+        apellido: jugador.apellido,
+        cedidentidad: jugador.cedidentidad,
+        equipo_id: jugador.equipo_id,
+        equipo_nombre: jugador.equipo_nombre,
+        campeonato_id: jugador.campeonato_id,
+      },
+      resumen,
+      historial,
+    };
+  }
+
+  static async listarHistorialEquipos(filtros = {}) {
+    await this.asegurarEsquema();
+
+    const where = [];
+    const vals = [];
+
+    this._agregarFiltroNumero(where, vals, "t.campeonato_id", filtros.campeonato_id);
+    this._agregarFiltroNumero(where, vals, "t.evento_id", filtros.evento_id);
+    this._agregarFiltroNumero(where, vals, "t.equipo_id", filtros.equipo_id);
+    this._agregarFiltroFecha(where, vals, "t.fecha_pase", filtros.fecha_desde, ">=");
+    this._agregarFiltroFecha(where, vals, "t.fecha_pase", filtros.fecha_hasta, "<=");
+
+    if (filtros.estado) {
+      const estado = this.normalizarEstado(filtros.estado, null);
+      if (estado) {
+        vals.push(estado);
+        where.push(`t.estado = $${vals.length}`);
+      }
+    }
+
+    const q = `
+      SELECT
+        t.equipo_id,
+        eq.nombre AS equipo_nombre,
+        c.nombre AS campeonato_nombre,
+        COUNT(*)::int AS total_movimientos,
+        COUNT(*) FILTER (WHERE t.rol_movimiento = 'origen')::int AS pases_salida,
+        COUNT(*) FILTER (WHERE t.rol_movimiento = 'destino')::int AS pases_entrada,
+        COALESCE(SUM(CASE WHEN t.rol_movimiento = 'origen' THEN t.monto ELSE 0 END), 0)::numeric(12,2) AS monto_salida,
+        COALESCE(SUM(CASE WHEN t.rol_movimiento = 'destino' THEN t.monto ELSE 0 END), 0)::numeric(12,2) AS monto_entrada,
+        COUNT(*) FILTER (WHERE t.estado = 'pendiente')::int AS pendientes,
+        COUNT(*) FILTER (WHERE t.estado IN ('pagado', 'aprobado'))::int AS aprobados,
+        COUNT(*) FILTER (WHERE t.estado = 'anulado')::int AS anulados,
+        MAX(t.fecha_pase) AS ultimo_pase
+      FROM (
+        SELECT
+          p.id,
+          p.campeonato_id,
+          p.evento_id,
+          p.fecha_pase,
+          p.estado,
+          p.monto,
+          p.equipo_origen_id AS equipo_id,
+          'origen'::text AS rol_movimiento
+        FROM pases_jugadores p
+        UNION ALL
+        SELECT
+          p.id,
+          p.campeonato_id,
+          p.evento_id,
+          p.fecha_pase,
+          p.estado,
+          p.monto,
+          p.equipo_destino_id AS equipo_id,
+          'destino'::text AS rol_movimiento
+        FROM pases_jugadores p
+      ) t
+      JOIN equipos eq ON eq.id = t.equipo_id
+      LEFT JOIN campeonatos c ON c.id = eq.campeonato_id
+      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+      GROUP BY t.equipo_id, eq.nombre, c.nombre
+      ORDER BY MAX(t.fecha_pase) DESC, t.equipo_id DESC
+    `;
+
+    const r = await pool.query(q, vals);
+    return r.rows;
+  }
+
+  static async obtenerHistorialEquipo(equipoId, filtros = {}) {
+    await this.asegurarEsquema();
+    const id = Number.parseInt(equipoId, 10);
+    if (!Number.isFinite(id) || id <= 0) throw new Error("equipo_id inválido");
+
+    const equipoR = await pool.query(
+      `
+      SELECT
+        e.id,
+        e.nombre,
+        e.campeonato_id,
+        c.nombre AS campeonato_nombre
+      FROM equipos e
+      LEFT JOIN campeonatos c ON c.id = e.campeonato_id
+      WHERE e.id = $1
+      LIMIT 1
+    `,
+      [id]
+    );
+    const equipo = equipoR.rows[0];
+    if (!equipo) return null;
+
+    const where = [`(p.equipo_origen_id = $1 OR p.equipo_destino_id = $1)`];
+    const vals = [id];
+
+    this._agregarFiltroNumero(where, vals, "p.campeonato_id", filtros.campeonato_id);
+    this._agregarFiltroNumero(where, vals, "p.evento_id", filtros.evento_id);
+    this._agregarFiltroFecha(where, vals, "p.fecha_pase", filtros.fecha_desde, ">=");
+    this._agregarFiltroFecha(where, vals, "p.fecha_pase", filtros.fecha_hasta, "<=");
+
+    if (filtros.estado) {
+      const estado = this.normalizarEstado(filtros.estado, null);
+      if (estado) {
+        vals.push(estado);
+        where.push(`p.estado = $${vals.length}`);
+      }
+    }
+
+    const q = `
+      SELECT
+        p.*,
+        c.nombre AS campeonato_nombre,
+        e.nombre AS evento_nombre,
+        j.nombre AS jugador_nombre,
+        j.apellido AS jugador_apellido,
+        j.cedidentidad AS jugador_cedula,
+        eo.nombre AS equipo_origen_nombre,
+        ed.nombre AS equipo_destino_nombre,
+        CASE
+          WHEN p.equipo_origen_id = $1 THEN 'salida'
+          ELSE 'entrada'
+        END AS tipo_historial
+      FROM pases_jugadores p
+      LEFT JOIN campeonatos c ON c.id = p.campeonato_id
+      LEFT JOIN eventos e ON e.id = p.evento_id
+      JOIN jugadores j ON j.id = p.jugador_id
+      JOIN equipos eo ON eo.id = p.equipo_origen_id
+      JOIN equipos ed ON ed.id = p.equipo_destino_id
+      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+      ORDER BY p.fecha_pase DESC, p.id DESC
+    `;
+    const r = await pool.query(q, vals);
+    const historial = r.rows;
+
+    const resumen = historial.reduce(
+      (acc, item) => {
+        const monto = Number.parseFloat(item.monto || 0);
+        const tipo = String(item.tipo_historial || "").toLowerCase();
+        const estado = String(item.estado || "").toLowerCase();
+        if (tipo === "salida") {
+          acc.pases_salida += 1;
+          acc.monto_salida += Number.isFinite(monto) ? monto : 0;
+        } else {
+          acc.pases_entrada += 1;
+          acc.monto_entrada += Number.isFinite(monto) ? monto : 0;
+        }
+        if (estado === "pendiente") acc.pendientes += 1;
+        else if (estado === "anulado") acc.anulados += 1;
+        else if (["pagado", "aprobado"].includes(estado)) acc.aprobados += 1;
+        return acc;
+      },
+      {
+        pases_entrada: 0,
+        pases_salida: 0,
+        monto_entrada: 0,
+        monto_salida: 0,
+        pendientes: 0,
+        aprobados: 0,
+        anulados: 0,
+      }
+    );
+    resumen.monto_entrada = Number(resumen.monto_entrada.toFixed(2));
+    resumen.monto_salida = Number(resumen.monto_salida.toFixed(2));
+
+    return {
+      equipo,
+      resumen,
+      historial,
+    };
   }
 
   static async obtenerPorId(id) {

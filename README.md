@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-02-28): funcional en flujo principal; iniciada la separacion entre panel deportivo y CMS publico con nuevo rol `operador`, junto con roadmap mobile y pendientes editoriales/financieros.
+Estado del proyecto (2026-03-05): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado y modulo de pases extendido con contabilidad e historial por jugador/equipo.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,17 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-02-28)
+## Novedades Recientes (2026-03-05)
+- Modulo de pases extendido:
+  - sincronizacion contable automatica a finanzas al aprobar/pagar/anular pases,
+  - historial dedicado por jugador y por equipo (backend + UI).
+- QA de coexistencia web/mobile reforzado:
+  - nuevo script `npm run qa:ui-dataset` para validar dataset operativo (mobile/public/web).
+- Documentacion para cliente y capacitacion:
+  - `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`,
+  - `docs/GUIA_VIDEO_TUTORIALES_LT_C.md`.
+
+## Novedades Anteriores (2026-02-28)
 - Inicio del plan de separacion entre gestion deportiva y CMS del portal publico:
   - nuevo documento `docs/PLAN_CMS_PORTAL_PUBLICO.md`,
   - nuevo rol `operador` para administracion institucional del portal,
@@ -196,6 +206,11 @@ Tambien puedes abrir frontend con servidor estatico (por ejemplo Live Server), s
 En `backend/package.json`:
 - `npm run dev`: inicia con nodemon.
 - `npm start`: inicia servidor en modo normal.
+- `npm run smoke`: smoke tecnico base.
+- `npm run smoke:frontend`: auditoria de guardas frontend por rol.
+- `npm run smoke:matrix`: matriz RBAC por usuarios activos de BD.
+- `npm run qa:cms`: corrida consolidada (`smoke + smoke:frontend + smoke:matrix`).
+- `npm run qa:ui-dataset`: validacion de dataset UI (web + mobile + portal publico).
 
 ## 7. Endpoints Utiles
 - Salud del servidor: `GET /salud`
@@ -244,6 +259,8 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 - Estado por modulo vs propuesta: `docs/ESTADO_IMPLEMENTACION_SGD.md`
 - Cambios implementados historicos: `docs/CAMBIOS_IMPLEMENTADOS.md`
 - Plan de adaptacion mobile web: `docs/PLAN_MOBILE_LT_C.md`
+- Guia operativa para cliente: `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`
+- Guia de video/tutoriales: `docs/GUIA_VIDEO_TUTORIALES_LT_C.md`
 - Propuesta base del proyecto: `docs/propuestaDesarrolloSGD.md`
 
 ## 10. Flujo de Trabajo Recomendado

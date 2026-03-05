@@ -11,6 +11,34 @@ router.get(
 );
 
 router.get(
+  "/historial/jugadores",
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  paseController.listarHistorialJugadores
+);
+
+router.get(
+  "/historial/jugadores/:jugadorId",
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  paseController.obtenerHistorialJugador
+);
+
+router.get(
+  "/historial/equipos",
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  paseController.listarHistorialEquipos
+);
+
+router.get(
+  "/historial/equipos/:equipoId",
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  paseController.obtenerHistorialEquipo
+);
+
+router.get(
   "/:id",
   requireAuth,
   requireRoles("administrador", "organizador", "tecnico", "dirigente"),

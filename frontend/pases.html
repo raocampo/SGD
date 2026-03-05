@@ -173,6 +173,37 @@
             </div>
           </div>
         </section>
+
+        <section class="config-card">
+          <h3>Historial de Pases por Jugador y Equipo</h3>
+          <div class="form-grid pases-form-grid">
+            <div class="form-group">
+              <label for="pas-hist-jugador">Jugador</label>
+              <select id="pas-hist-jugador">
+                <option value="">Selecciona jugador</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="pas-hist-equipo">Equipo</label>
+              <select id="pas-hist-equipo">
+                <option value="">Selecciona equipo</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="pases-hist-grid">
+          <article class="card">
+            <h3>Historial por Jugador</h3>
+            <div id="pas-hist-jugador-resumen" class="pases-hist-resumen"></div>
+            <div id="pas-hist-jugador-listado" class="tabla-scroll"></div>
+          </article>
+          <article class="card">
+            <h3>Historial por Equipo</h3>
+            <div id="pas-hist-equipo-resumen" class="pases-hist-resumen"></div>
+            <div id="pas-hist-equipo-listado" class="tabla-scroll"></div>
+          </article>
+        </section>
       </div>
     </main>
   </div>

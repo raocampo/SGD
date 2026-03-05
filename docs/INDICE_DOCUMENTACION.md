@@ -17,6 +17,10 @@ Ultima actualizacion: 2026-03-05
   - Plan maestro por fases para separar el CMS del portal publico del panel de gestion deportiva, con estado real de fases y alcance institucional.
 - `docs/GUIA_PRESENTACION_SISTEMA_LT_C.md`
   - Guion operativo recomendado para presentar el sistema LT&C por modulos y roles.
+- `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`
+  - Manual operativo para uso diario del cliente y cierre semanal/campeonato.
+- `docs/GUIA_VIDEO_TUTORIALES_LT_C.md`
+  - Guion maestro para grabacion de videos tutoriales y demo comercial/tecnica.
 - `docs/CHECKLIST_QA_CMS_PORTAL_PUBLICO.md`
   - Lista de pruebas funcionales y de seguridad para cierre operativo del CMS.
 - `docs/GUIA_DESPLIEGUE_CMS_PORTAL_PUBLICO.md`

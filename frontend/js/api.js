@@ -339,6 +339,38 @@
     actualizarEstado(id, payload) {
       return window.ApiClient.put(`/pases/${id}/estado`, payload);
     },
+    historialJugadores(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/pases/historial/jugadores${suffix}`);
+    },
+    historialJugador(jugadorId, params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/pases/historial/jugadores/${jugadorId}${suffix}`);
+    },
+    historialEquipos(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/pases/historial/equipos${suffix}`);
+    },
+    historialEquipo(equipoId, params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/pases/historial/equipos/${equipoId}${suffix}`);
+    },
   };
 })();
 
