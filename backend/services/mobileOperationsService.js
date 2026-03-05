@@ -1,12 +1,17 @@
 const pool = require("../config/database");
+const Equipo = require("../models/Equipo");
+const Jugador = require("../models/Jugador");
 const Partido = require("../models/Partido");
 const Pase = require("../models/Pase");
 const UsuarioAuth = require("../models/UsuarioAuth");
+const { obtenerPlanPorCampeonatoId } = require("./planLimits");
 const {
   assertCampeonatoAccess,
   assertEquipoAccess,
   assertEventoAccess,
+  esAdministrador,
   mapEvent,
+  mapPlayer,
   mapTeam,
   toId,
   toInteger,
@@ -26,6 +31,480 @@ function formatScheduledAt(row) {
 
 function canWrite(user) {
   return ["administrador", "organizador"].includes(String(user?.rol || "").toLowerCase());
+}
+
+function parsePositiveInt(value, field) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`${field} invalido`);
+  }
+  return parsed;
+}
+
+function parseOptionalPositiveInt(value, field) {
+  if (value === undefined || value === null || `${value}`.trim() === "") return null;
+  return parsePositiveInt(value, field);
+}
+
+function parseBoolean(value, fallback = false) {
+  if (typeof value === "boolean") return value;
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return fallback;
+  return ["1", "true", "si", "sí", "yes", "y", "x"].includes(raw);
+}
+
+function parseDecimalNonNegative(value, fallback = 0) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const num = Number.parseFloat(String(value).replace(",", "."));
+  if (!Number.isFinite(num) || num < 0) return fallback;
+  return Number(num.toFixed(2));
+}
+
+function parseDecimalNullable(value, fallback = null) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const num = Number.parseFloat(String(value).replace(",", "."));
+  if (!Number.isFinite(num) || num < 0) return fallback;
+  return Number(num.toFixed(2));
+}
+
+function parseDateOnly(value, field) {
+  const raw = String(value || "").trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    throw new Error(`${field} invalido`);
+  }
+  return raw;
+}
+
+function parseTimeHHMM(value, fallback) {
+  if (!value) return fallback;
+  const s = String(value).trim();
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) return s.length === 5 ? `${s}:00` : s;
+  return fallback;
+}
+
+function normalizarMetodoCompetenciaMovil(value, fallback = "grupos") {
+  const raw = String(value || fallback).trim().toLowerCase();
+  const map = {
+    grupos: "grupos",
+    group: "grupos",
+    groups: "grupos",
+    liga: "liga",
+    league: "liga",
+    todos: "liga",
+    todos_contra_todos: "liga",
+    eliminatoria: "eliminatoria",
+    eliminacion: "eliminatoria",
+    eliminacion_directa: "eliminatoria",
+    eliminatoria_directa: "eliminatoria",
+    knockout: "eliminatoria",
+    mixto: "mixto",
+    mixed: "mixto",
+    grupos_y_eliminatoria: "mixto",
+  };
+  return map[raw] || null;
+}
+
+function normalizarEliminatoriaEquipos(value, fallback = null) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const n = Number.parseInt(value, 10);
+  if (![4, 8, 16, 32].includes(n)) return null;
+  return n;
+}
+
+let mobileEventoSchemaAsegurado = false;
+async function asegurarEsquemaEventosMovil() {
+  if (mobileEventoSchemaAsegurado) return;
+
+  await pool.query(`
+    ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS campeonato_id INTEGER,
+    ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'activo',
+    ADD COLUMN IF NOT EXISTS modalidad VARCHAR(20) DEFAULT 'weekend',
+    ADD COLUMN IF NOT EXISTS costo_inscripcion NUMERIC(12,2) DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS metodo_competencia VARCHAR(30) DEFAULT 'grupos',
+    ADD COLUMN IF NOT EXISTS eliminatoria_equipos INTEGER,
+    ADD COLUMN IF NOT EXISTS bloquear_morosos BOOLEAN,
+    ADD COLUMN IF NOT EXISTS bloqueo_morosidad_monto NUMERIC(12,2),
+    ADD COLUMN IF NOT EXISTS horario_weekday_inicio TIME,
+    ADD COLUMN IF NOT EXISTS horario_weekday_fin TIME,
+    ADD COLUMN IF NOT EXISTS horario_sab_inicio TIME,
+    ADD COLUMN IF NOT EXISTS horario_sab_fin TIME,
+    ADD COLUMN IF NOT EXISTS horario_dom_inicio TIME,
+    ADD COLUMN IF NOT EXISTS horario_dom_fin TIME,
+    ADD COLUMN IF NOT EXISTS numero_campeonato INTEGER
+  `);
+
+  await pool.query(`
+    UPDATE eventos
+    SET costo_inscripcion = 0
+    WHERE costo_inscripcion IS NULL
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET metodo_competencia = 'grupos'
+    WHERE metodo_competencia IS NULL OR TRIM(metodo_competencia) = ''
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET numero_campeonato = ranked.rn
+    FROM (
+      SELECT
+        id,
+        ROW_NUMBER() OVER (
+          PARTITION BY campeonato_id
+          ORDER BY id
+        )::int AS rn
+      FROM eventos
+      WHERE campeonato_id IS NOT NULL
+    ) ranked
+    WHERE eventos.id = ranked.id
+      AND eventos.numero_campeonato IS NULL
+  `);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_eventos_numero_campeonato
+    ON eventos(campeonato_id, numero_campeonato)
+    WHERE numero_campeonato IS NOT NULL
+  `);
+
+  mobileEventoSchemaAsegurado = true;
+}
+
+async function crearEventoMovil(user, body = {}) {
+  if (!canWrite(user)) throw new Error("No autorizado para crear categorías");
+
+  await asegurarEsquemaEventosMovil();
+
+  const campeonatoId = parsePositiveInt(body.tournamentId ?? body.campeonato_id, "campeonato_id");
+  const campId = await assertCampeonatoAccess(user, campeonatoId);
+
+  const campR = await pool.query(`SELECT id FROM campeonatos WHERE id = $1 LIMIT 1`, [campId]);
+  if (!campR.rows.length) throw new Error("Campeonato no encontrado");
+
+  if (!esAdministrador(user)) {
+    const plan = await obtenerPlanPorCampeonatoId(campId);
+    if (
+      plan?.max_categorias_por_campeonato !== null &&
+      plan?.max_categorias_por_campeonato !== undefined
+    ) {
+      const countR = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM eventos WHERE campeonato_id = $1`,
+        [campId]
+      );
+      const totalActual = Number(countR.rows[0]?.total || 0);
+      if (totalActual >= Number(plan.max_categorias_por_campeonato)) {
+        throw new Error(
+          `Tu plan ${plan.nombre} permite máximo ${plan.max_categorias_por_campeonato} categorías por campeonato`
+        );
+      }
+    }
+  }
+
+  const nombre = String(body.name ?? body.nombre ?? "").trim();
+  if (!nombre) throw new Error("nombre obligatorio");
+
+  const fechaInicio = parseDateOnly(body.startDate ?? body.fecha_inicio, "fecha_inicio");
+  const fechaFin = parseDateOnly(body.endDate ?? body.fecha_fin, "fecha_fin");
+  const metodoCompetencia = normalizarMetodoCompetenciaMovil(
+    body.format ?? body.metodo_competencia ?? body.competitionMethod,
+    "grupos"
+  );
+  if (!metodoCompetencia) {
+    throw new Error("metodo_competencia invalido. Usa: grupos, liga, eliminatoria o mixto");
+  }
+
+  const eliminatoriaEquipos = normalizarEliminatoriaEquipos(
+    body.eliminationSize ?? body.eliminatoria_equipos,
+    null
+  );
+  if (
+    (body.eliminationSize !== undefined || body.eliminatoria_equipos !== undefined) &&
+    eliminatoriaEquipos === null
+  ) {
+    throw new Error("eliminatoria_equipos invalido. Valores permitidos: 4, 8, 16, 32");
+  }
+
+  const modalidad = String(body.modality ?? body.modalidad ?? "weekend").trim().toLowerCase() || "weekend";
+  const organizador =
+    String(body.organizer ?? body.organizador ?? "").trim() ||
+    user?.organizacion_nombre ||
+    user?.nombre ||
+    user?.email ||
+    null;
+
+  const horarios = body.horarios || {};
+  const wkStart = parseTimeHHMM(horarios?.weekday?.start, "19:00:00");
+  const wkEnd = parseTimeHHMM(horarios?.weekday?.end, "22:00:00");
+  const satStart = parseTimeHHMM(horarios?.weekend?.sat_start, "13:00:00");
+  const satEnd = parseTimeHHMM(horarios?.weekend?.sat_end, "18:00:00");
+  const sunStart = parseTimeHHMM(horarios?.weekend?.sun_start, "08:00:00");
+  const sunEnd = parseTimeHHMM(horarios?.weekend?.sun_end, "17:00:00");
+
+  const costoInscripcion = parseDecimalNonNegative(
+    body.registrationFee ?? body.costo_inscripcion,
+    0
+  );
+  const bloquearMorosos =
+    body.blockDebtors === undefined &&
+    body.bloquear_morosos === undefined &&
+    body.debtBlockAmount === undefined &&
+    body.bloqueo_morosidad_monto === undefined
+      ? null
+      : parseBoolean(body.blockDebtors ?? body.bloquear_morosos, false);
+  const bloqueoMorosidadMonto = parseDecimalNullable(
+    body.debtBlockAmount ?? body.bloqueo_morosidad_monto,
+    null
+  );
+
+  const insertR = await pool.query(
+    `
+      WITH next_num AS (
+        SELECT COALESCE(MAX(numero_campeonato), 0) + 1 AS next_num
+        FROM eventos
+        WHERE campeonato_id = $1
+      )
+      INSERT INTO eventos (
+        campeonato_id, nombre, organizador, fecha_inicio, fecha_fin, estado,
+        modalidad, metodo_competencia, eliminatoria_equipos, costo_inscripcion,
+        bloquear_morosos, bloqueo_morosidad_monto,
+        horario_weekday_inicio, horario_weekday_fin,
+        horario_sab_inicio, horario_sab_fin,
+        horario_dom_inicio, horario_dom_fin,
+        numero_campeonato
+      )
+      SELECT
+        $1, $2, $3, $4, $5, 'activo',
+        $6, $7, $8, $9,
+        $10, $11,
+        $12, $13,
+        $14, $15,
+        $16, $17,
+        next_num.next_num
+      FROM next_num
+      RETURNING *
+    `,
+    [
+      campId,
+      nombre,
+      organizador,
+      fechaInicio,
+      fechaFin,
+      modalidad,
+      metodoCompetencia,
+      eliminatoriaEquipos,
+      costoInscripcion,
+      bloquearMorosos,
+      bloqueoMorosidadMonto,
+      wkStart,
+      wkEnd,
+      satStart,
+      satEnd,
+      sunStart,
+      sunEnd,
+    ]
+  );
+
+  return mapEvent(insertR.rows[0], 0);
+}
+
+async function existeNombreEquipoEnEvento(eventoId, nombreEquipo, client = pool) {
+  const evento = Number.parseInt(eventoId, 10);
+  const nombre = String(nombreEquipo || "").trim().toLowerCase();
+  if (!Number.isFinite(evento) || evento <= 0 || !nombre) return false;
+
+  const r = await client.query(
+    `
+      SELECT 1
+      FROM evento_equipos ee
+      JOIN equipos e ON e.id = ee.equipo_id
+      WHERE ee.evento_id = $1
+        AND LOWER(TRIM(e.nombre)) = $2
+      LIMIT 1
+    `,
+    [evento, nombre]
+  );
+  return r.rows.length > 0;
+}
+
+async function obtenerReglasDocumentosPorEquipo(equipoId) {
+  const r = await pool.query(
+    `
+      SELECT
+        COALESCE(c.requiere_cedula_jugador, true) AS requiere_cedula_jugador,
+        COALESCE(c.requiere_foto_cedula, false) AS requiere_foto_cedula,
+        COALESCE(c.requiere_foto_carnet, false) AS requiere_foto_carnet
+      FROM equipos e
+      JOIN campeonatos c ON c.id = e.campeonato_id
+      WHERE e.id = $1
+      LIMIT 1
+    `,
+    [equipoId]
+  );
+
+  return (
+    r.rows[0] || {
+      requiere_cedula_jugador: true,
+      requiere_foto_cedula: false,
+      requiere_foto_carnet: false,
+    }
+  );
+}
+
+async function crearEquipoMovil(user, body = {}) {
+  if (!canWrite(user)) throw new Error("No autorizado para crear equipos");
+
+  const campeonatoId = parsePositiveInt(body.tournamentId ?? body.campeonato_id, "campeonato_id");
+  const eventoId = parsePositiveInt(body.eventId ?? body.evento_id, "evento_id");
+  const nombre = String(body.name ?? body.nombre ?? "").trim();
+  const directorTecnico = String(body.coachName ?? body.director_tecnico ?? "").trim();
+
+  if (!nombre || !directorTecnico) {
+    throw new Error("nombre y director_tecnico son obligatorios");
+  }
+
+  const campeonatoAccesoId = await assertCampeonatoAccess(user, campeonatoId);
+  const evento = await assertEventoAccess(user, eventoId);
+  if (Number(evento.campeonato_id) !== Number(campeonatoAccesoId)) {
+    throw new Error("La categoría seleccionada no pertenece al campeonato seleccionado");
+  }
+
+  const existeNombre = await existeNombreEquipoEnEvento(evento.id, nombre);
+  if (existeNombre) {
+    throw new Error("Ya existe un equipo con ese nombre en la categoría seleccionada");
+  }
+
+  const colors = Array.isArray(body.colors)
+    ? body.colors.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  const colorPrimario = String(body.primaryColor ?? body.color_primario ?? colors[0] ?? "").trim() || null;
+  const colorSecundario = String(body.secondaryColor ?? body.color_secundario ?? colors[1] ?? "").trim() || null;
+  const colorTerciario = String(body.accentColor ?? body.color_terciario ?? colors[2] ?? "").trim() || null;
+  const colorEquipo =
+    String(body.color_equipo ?? body.color ?? "").trim() || colorPrimario || colorSecundario || colorTerciario;
+
+  const equipo = await Equipo.crear(
+    campeonatoAccesoId,
+    nombre,
+    directorTecnico,
+    String(body.assistantCoach ?? body.asistente_tecnico ?? "").trim() || null,
+    String(body.medic ?? body.medico ?? "").trim() || null,
+    colorEquipo || null,
+    colorPrimario,
+    colorSecundario,
+    colorTerciario,
+    String(body.phone ?? body.telefono ?? "").trim() || null,
+    String(body.email ?? "").trim() || null,
+    null,
+    parseBoolean(body.seeded ?? body.cabeza_serie, false)
+  );
+
+  await pool.query(
+    `
+      INSERT INTO evento_equipos (evento_id, equipo_id)
+      VALUES ($1, $2)
+      ON CONFLICT (evento_id, equipo_id) DO NOTHING
+    `,
+    [evento.id, equipo.id]
+  );
+
+  const detalle = await Equipo.obtenerPorId(Number(equipo.id));
+  return mapTeam(detalle || equipo, 0);
+}
+
+async function crearJugadorMovil(user, body = {}) {
+  if (!canWrite(user)) throw new Error("No autorizado para crear jugadores");
+
+  const equipoId = parsePositiveInt(body.teamId ?? body.equipo_id, "equipo_id");
+  const nombre = String(body.firstName ?? body.nombre ?? "").trim();
+  const apellido = String(body.lastName ?? body.apellido ?? "").trim();
+  const cedidentidad = String(body.nationalId ?? body.cedidentidad ?? "").trim() || null;
+  const fechaNacimiento = String(body.birthDate ?? body.fecha_nacimiento ?? "").trim() || null;
+  const posicion = String(body.position ?? body.posicion ?? "").trim() || null;
+  const numeroRaw = body.shirtNumber ?? body.numero_camiseta;
+  const esCapitan = parseBoolean(body.isCaptain ?? body.es_capitan, false);
+
+  if (!nombre || !apellido) {
+    throw new Error("nombre y apellido son obligatorios");
+  }
+
+  let numeroCamiseta = null;
+  if (numeroRaw !== undefined && numeroRaw !== null && `${numeroRaw}`.trim() !== "") {
+    const parsed = Number.parseInt(numeroRaw, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      throw new Error("numero_camiseta invalido");
+    }
+    numeroCamiseta = parsed;
+  }
+
+  const equipo = await assertEquipoAccess(user, equipoId);
+  const campeonatoId = parseOptionalPositiveInt(body.tournamentId ?? body.campeonato_id, "campeonato_id");
+  if (campeonatoId && Number(equipo.campeonato_id) !== Number(campeonatoId)) {
+    throw new Error("El equipo no pertenece al campeonato seleccionado");
+  }
+
+  const eventoId = parseOptionalPositiveInt(body.eventId ?? body.evento_id, "evento_id");
+  if (eventoId) {
+    const evento = await assertEventoAccess(user, eventoId);
+    if (Number(evento.campeonato_id) !== Number(equipo.campeonato_id)) {
+      throw new Error("El equipo no pertenece al campeonato seleccionado");
+    }
+    const r = await pool.query(
+      `
+        SELECT 1
+        FROM evento_equipos
+        WHERE evento_id = $1
+          AND equipo_id = $2
+        LIMIT 1
+      `,
+      [evento.id, equipo.id]
+    );
+    if (!r.rows.length) {
+      throw new Error("El equipo no pertenece a la categoría seleccionada");
+    }
+  }
+
+  const reglasDocs = await obtenerReglasDocumentosPorEquipo(Number(equipo.id));
+  if (reglasDocs.requiere_cedula_jugador && !cedidentidad) {
+    throw new Error("Este campeonato exige cédula de identidad para inscribir jugadores");
+  }
+  if (reglasDocs.requiere_foto_cedula) {
+    throw new Error("Este campeonato exige foto de cédula para inscribir jugadores");
+  }
+  if (reglasDocs.requiere_foto_carnet) {
+    throw new Error("Este campeonato exige foto carnet para inscribir jugadores");
+  }
+
+  const jugador = await Jugador.crear(
+    equipo.id,
+    nombre,
+    apellido,
+    cedidentidad,
+    fechaNacimiento,
+    posicion,
+    numeroCamiseta,
+    esCapitan,
+    null,
+    null
+  );
+
+  const detalle = await Jugador.obtenerPorId(Number(jugador.id));
+  return mapPlayer(detalle || jugador);
+}
+
+async function eliminarJugadorMovil(user, jugadorId) {
+  if (!canWrite(user)) throw new Error("No autorizado para eliminar jugadores");
+
+  const id = parsePositiveInt(jugadorId, "jugador_id");
+  const jugador = await Jugador.obtenerPorId(id);
+  if (!jugador) throw new Error("Jugador no encontrado");
+
+  await assertEquipoAccess(user, jugador.equipo_id);
+  const eliminado = await Jugador.eliminar(id);
+  if (!eliminado) throw new Error("Jugador no encontrado");
+
+  return {
+    id: toId(eliminado.id),
+    teamId: toId(eliminado.equipo_id),
+  };
 }
 
 async function listarEventosVisibles(user) {
@@ -460,6 +939,10 @@ async function listarUsuariosVisibles(user) {
 }
 
 module.exports = {
+  crearEventoMovil,
+  crearEquipoMovil,
+  crearJugadorMovil,
+  eliminarJugadorMovil,
   actualizarEstadoPase,
   guardarPlanillaPartido,
   listarEquiposVisibles,

@@ -229,6 +229,28 @@
 
         <div class="card">
           <div class="fin-card-headline">
+            <h3>Resumen Ejecutivo por Campeonato</h3>
+            <div class="fin-card-actions">
+              <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-ejecutivo">
+                <i class="fas fa-print"></i> Imprimir ejecutivo
+              </button>
+              <button
+                type="button"
+                class="fin-toggle-btn"
+                id="btn-toggle-ejecutivo"
+                title="Mostrar/ocultar resumen ejecutivo"
+                aria-label="Mostrar u ocultar resumen ejecutivo"
+                aria-expanded="true"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          <div id="fin-ejecutivo-contenido" class="tabla-scroll"></div>
+        </div>
+
+        <div class="card">
+          <div class="fin-card-headline">
             <h3>Movimientos Financieros</h3>
             <div class="fin-card-actions">
               <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-movimientos">
@@ -260,6 +282,5 @@
 </body>
 
 </html>
-
 
 

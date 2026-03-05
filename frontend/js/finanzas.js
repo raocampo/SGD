@@ -10,6 +10,10 @@ let finanzasState = {
     filas: [],
     resumen: null,
   },
+  ultimoEjecutivo: {
+    filas: [],
+    resumen: null,
+  },
   esTecnico: false,
 };
 
@@ -36,6 +40,7 @@ async function inicializarFinanzas() {
     buscarMovimientosFinanzas(),
     cargarMorosidadFinanzas(),
     cargarSancionesFinancieras(),
+    cargarResumenEjecutivoFinanzas(),
     cargarEstadoCuentaActual(),
   ]);
 }
@@ -58,6 +63,7 @@ function bindEventosFinanzas() {
         buscarMovimientosFinanzas(),
         cargarMorosidadFinanzas(),
         cargarSancionesFinancieras(),
+        cargarResumenEjecutivoFinanzas(),
         cargarEstadoCuentaActual(),
       ]);
     });
@@ -68,6 +74,7 @@ function bindEventosFinanzas() {
       buscarMovimientosFinanzas(),
       cargarMorosidadFinanzas(),
       cargarSancionesFinancieras(),
+      cargarResumenEjecutivoFinanzas(),
       cargarEstadoCuentaActual(),
     ]);
     mostrarNotificacion("Datos financieros recargados", "success");
@@ -80,6 +87,7 @@ function bindEventosFinanzas() {
       buscarMovimientosFinanzas();
       cargarMorosidadFinanzas();
       cargarSancionesFinancieras();
+      cargarResumenEjecutivoFinanzas();
       cargarEstadoCuentaActual();
     });
 
@@ -89,6 +97,7 @@ function bindEventosFinanzas() {
       buscarMovimientosFinanzas();
       cargarMorosidadFinanzas();
       cargarSancionesFinancieras();
+      cargarResumenEjecutivoFinanzas();
       cargarEstadoCuentaActual();
     });
 
@@ -119,12 +128,16 @@ function bindEventosFinanzas() {
   document
     .getElementById("btn-fin-imprimir-sanciones")
     ?.addEventListener("click", imprimirReporteSancionesFinancieras);
+  document
+    .getElementById("btn-fin-imprimir-ejecutivo")
+    ?.addEventListener("click", imprimirReporteEjecutivoFinanzas);
 }
 
 function inicializarTogglesReportes() {
   configurarToggleReporte("btn-toggle-morosidad", "fin-morosidad-contenido", true);
   configurarToggleReporte("btn-toggle-movimientos", "fin-movimientos-contenido", true);
   configurarToggleReporte("btn-toggle-sanciones", "fin-sanciones-contenido", true);
+  configurarToggleReporte("btn-toggle-ejecutivo", "fin-ejecutivo-contenido", true);
 }
 
 function configurarToggleReporte(btnId, targetId, expandedInicial = true) {
@@ -478,6 +491,139 @@ async function cargarSancionesFinancieras() {
   }
 }
 
+function calcularResumenEjecutivoPorCampeonato(movimientos = []) {
+  const mapa = new Map();
+
+  (Array.isArray(movimientos) ? movimientos : []).forEach((mov) => {
+    if (String(mov.estado || "").toLowerCase() === "anulado") return;
+
+    const campId = Number.parseInt(mov.campeonato_id, 10);
+    const campNombre = String(mov.campeonato_nombre || "Campeonato").trim() || "Campeonato";
+    const clave = Number.isFinite(campId) && campId > 0 ? `id:${campId}` : `nombre:${campNombre}`;
+
+    if (!mapa.has(clave)) {
+      mapa.set(clave, {
+        campeonato_id: Number.isFinite(campId) ? campId : null,
+        campeonato_nombre: campNombre,
+        equipos_ids: new Set(),
+        total_cargos: 0,
+        total_abonos: 0,
+        inscripcion_cargos: 0,
+        arbitraje_cargos: 0,
+        multas_saldo: 0,
+      });
+    }
+
+    const fila = mapa.get(clave);
+    const equipoId = Number.parseInt(mov.equipo_id, 10);
+    const equipoNombre = String(mov.equipo_nombre || "").trim();
+    if (Number.isFinite(equipoId) && equipoId > 0) fila.equipos_ids.add(`id:${equipoId}`);
+    else if (equipoNombre) fila.equipos_ids.add(`nombre:${equipoNombre}`);
+
+    const monto = Number.parseFloat(mov.monto || 0);
+    if (!Number.isFinite(monto) || monto <= 0) return;
+
+    const tipo = String(mov.tipo_movimiento || "").toLowerCase();
+    const concepto = String(mov.concepto || "").toLowerCase();
+    const esCargo = tipo !== "abono";
+
+    if (esCargo) fila.total_cargos += monto;
+    else fila.total_abonos += monto;
+
+    if (concepto === "inscripcion" && esCargo) fila.inscripcion_cargos += monto;
+    if (concepto === "arbitraje" && esCargo) fila.arbitraje_cargos += monto;
+
+    if (concepto === "multa") {
+      if (esCargo) fila.multas_saldo += monto;
+      else fila.multas_saldo -= monto;
+    }
+  });
+
+  const filas = Array.from(mapa.values()).map((fila) => {
+    const equipos = fila.equipos_ids.size;
+    const totalCargos = Number(fila.total_cargos.toFixed(2));
+    const totalAbonos = Number(fila.total_abonos.toFixed(2));
+    const saldo = Number(Math.max(totalCargos - totalAbonos, 0).toFixed(2));
+    const multasSaldo = Number(Math.max(fila.multas_saldo, 0).toFixed(2));
+
+    return {
+      campeonato_id: fila.campeonato_id,
+      campeonato_nombre: fila.campeonato_nombre,
+      equipos,
+      total_cargos: totalCargos,
+      total_abonos: totalAbonos,
+      saldo,
+      inscripcion_cargos: Number(fila.inscripcion_cargos.toFixed(2)),
+      arbitraje_cargos: Number(fila.arbitraje_cargos.toFixed(2)),
+      multas_saldo: multasSaldo,
+    };
+  });
+
+  filas.sort((a, b) => {
+    if (b.saldo !== a.saldo) return b.saldo - a.saldo;
+    return String(a.campeonato_nombre || "").localeCompare(
+      String(b.campeonato_nombre || ""),
+      "es",
+      { sensitivity: "base" }
+    );
+  });
+
+  const resumen = filas.reduce(
+    (acc, fila) => {
+      acc.campeonatos += 1;
+      acc.equipos += fila.equipos;
+      acc.total_cargos += fila.total_cargos;
+      acc.total_abonos += fila.total_abonos;
+      acc.saldo += fila.saldo;
+      acc.multas_saldo += fila.multas_saldo;
+      return acc;
+    },
+    {
+      campeonatos: 0,
+      equipos: 0,
+      total_cargos: 0,
+      total_abonos: 0,
+      saldo: 0,
+      multas_saldo: 0,
+    }
+  );
+
+  Object.keys(resumen).forEach((k) => {
+    if (k === "campeonatos" || k === "equipos") return;
+    resumen[k] = Number(resumen[k].toFixed(2));
+  });
+
+  return { filas, resumen };
+}
+
+async function cargarResumenEjecutivoFinanzas() {
+  const params = {
+    campeonato_id: document.getElementById("fin-campeonato")?.value || "",
+    evento_id: document.getElementById("fin-evento")?.value || "",
+    tipo_movimiento: document.getElementById("fin-tipo")?.value || "",
+    estado: document.getElementById("fin-estado")?.value || "",
+    desde: document.getElementById("fin-desde")?.value || "",
+    hasta: document.getElementById("fin-hasta")?.value || "",
+    incluir_sistema: "true",
+    limit: 5000,
+  };
+
+  const cont = document.getElementById("fin-ejecutivo-contenido");
+  if (cont) cont.innerHTML = renderCargando("Cargando resumen ejecutivo...");
+
+  try {
+    const resp = await FinanzasAPI.listarMovimientos(params);
+    const movimientos = resp.movimientos || [];
+    const consolidado = calcularResumenEjecutivoPorCampeonato(movimientos);
+    finanzasState.ultimoEjecutivo = consolidado;
+    renderResumenEjecutivoFinanzas(consolidado.filas, consolidado.resumen);
+  } catch (error) {
+    console.error(error);
+    finanzasState.ultimoEjecutivo = { filas: [], resumen: null };
+    if (cont) cont.innerHTML = renderVacio(error.message || "No se pudo cargar el resumen ejecutivo.");
+  }
+}
+
 function clasificarMovimientoCuenta(mov = {}) {
   const concepto = String(mov.concepto || "").toLowerCase();
   const descripcion = String(mov.descripcion || "").toLowerCase();
@@ -626,6 +772,7 @@ async function guardarMovimientoFinanzas(e) {
       buscarMovimientosFinanzas(),
       cargarMorosidadFinanzas(),
       cargarSancionesFinancieras(),
+      cargarResumenEjecutivoFinanzas(),
       cargarEstadoCuentaActual(),
     ]);
   } catch (error) {
@@ -1092,6 +1239,82 @@ async function imprimirReporteSancionesFinancieras() {
   });
 }
 
+async function imprimirReporteEjecutivoFinanzas() {
+  const data = finanzasState.ultimoEjecutivo || {};
+  const filasData = Array.isArray(data.filas) ? data.filas : [];
+  const resumen = data.resumen || null;
+  if (!filasData.length || !resumen) {
+    mostrarNotificacion("No hay datos del resumen ejecutivo para imprimir", "warning");
+    return;
+  }
+
+  const campeonatoId = Number.parseInt(
+    document.getElementById("fin-campeonato")?.value || "",
+    10
+  );
+  const campeonato = obtenerCampeonatoPorId(campeonatoId);
+  const auspiciantes = await cargarAuspiciantesActivosReporte(campeonatoId);
+
+  const filas = filasData
+    .map((x, idx) => {
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escaparHtml(x.campeonato_nombre || "-")}</td>
+          <td class="num">${x.equipos}</td>
+          <td class="num">${formatoMoneda(x.total_cargos)}</td>
+          <td class="num">${formatoMoneda(x.total_abonos)}</td>
+          <td class="num ${x.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.saldo)}</td>
+          <td class="num">${formatoMoneda(x.inscripcion_cargos)}</td>
+          <td class="num">${formatoMoneda(x.arbitraje_cargos)}</td>
+          <td class="num">${formatoMoneda(x.multas_saldo)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const html = `
+    <div class="fin-report-wrap">
+      <div class="fin-report-header">
+        <h1>Resumen Ejecutivo Financiero</h1>
+        <div class="fin-report-sub">Corte: ${escaparHtml(formatearFechaHoraReporte(new Date().toISOString()))}</div>
+      </div>
+      <div class="fin-report-grid">
+        <div><strong>Campeonatos:</strong> ${resumen.campeonatos}</div>
+        <div><strong>Equipos con mov.:</strong> ${resumen.equipos}</div>
+        <div><strong>Total cargos:</strong> ${formatoMoneda(resumen.total_cargos)}</div>
+        <div><strong>Total abonos:</strong> ${formatoMoneda(resumen.total_abonos)}</div>
+        <div><strong>Saldo global:</strong> <span class="${resumen.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.saldo)}</span></div>
+        <div><strong>Saldo multas:</strong> <span class="${resumen.multas_saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.multas_saldo)}</span></div>
+      </div>
+      <table class="fin-report-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Campeonato</th>
+            <th class="num">Equipos</th>
+            <th class="num">Cargos</th>
+            <th class="num">Abonos</th>
+            <th class="num">Saldo</th>
+            <th class="num">Cargos inscripción</th>
+            <th class="num">Cargos arbitraje</th>
+            <th class="num">Saldo multas</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+    ${renderPieAuspiciantes(auspiciantes)}
+  `;
+
+  await abrirVentanaReporteFinanzas({
+    membreteHtml: renderMembreteReporte(campeonato, "Resumen Ejecutivo Financiero"),
+    tituloVentana: "Resumen Ejecutivo Financiero",
+    cuerpoHtml: html,
+    autoPrint: true,
+  });
+}
+
 function abrirVentanaReporteFinanzas({
   membreteHtml = "",
   tituloVentana = "Reporte",
@@ -1353,6 +1576,61 @@ function formatearFechaHoraReporte(valor) {
     minute: "2-digit",
   });
 }
+
+function renderResumenEjecutivoFinanzas(filas = [], resumen = null) {
+  const cont = document.getElementById("fin-ejecutivo-contenido");
+  if (!cont) return;
+  if (!Array.isArray(filas) || !filas.length || !resumen) {
+    cont.innerHTML = renderVacio("No hay datos ejecutivos para los filtros actuales.");
+    return;
+  }
+
+  const rows = filas
+    .map((x, idx) => {
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escaparHtml(x.campeonato_nombre || "-")}</td>
+          <td>${x.equipos}</td>
+          <td>${formatoMoneda(x.total_cargos)}</td>
+          <td>${formatoMoneda(x.total_abonos)}</td>
+          <td class="${x.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(x.saldo)}</td>
+          <td>${formatoMoneda(x.inscripcion_cargos)}</td>
+          <td>${formatoMoneda(x.arbitraje_cargos)}</td>
+          <td>${formatoMoneda(x.multas_saldo)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  cont.innerHTML = `
+    <div class="fin-sanciones-resumen">
+      <div><strong>Campeonatos:</strong> ${resumen.campeonatos}</div>
+      <div><strong>Equipos con movimiento:</strong> ${resumen.equipos}</div>
+      <div><strong>Total cargos:</strong> ${formatoMoneda(resumen.total_cargos)}</div>
+      <div><strong>Total abonos:</strong> ${formatoMoneda(resumen.total_abonos)}</div>
+      <div><strong>Saldo global:</strong> <span class="${resumen.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.saldo)}</span></div>
+      <div><strong>Saldo multas:</strong> <span class="${resumen.multas_saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.multas_saldo)}</span></div>
+    </div>
+    <table class="tabla-estadistica tabla-estadistica-compacta">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Campeonato</th>
+          <th>Equipos</th>
+          <th>Cargos</th>
+          <th>Abonos</th>
+          <th>Saldo</th>
+          <th>Cargos inscripción</th>
+          <th>Cargos arbitraje</th>
+          <th>Saldo multas</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
 function renderTablaMovimientos(movimientos) {
   const cont = document.getElementById("fin-movimientos-contenido");
   if (!cont) return;
@@ -1580,4 +1858,3 @@ function escaparHtml(valor) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-

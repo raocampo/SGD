@@ -200,7 +200,14 @@ async function listarJugadores(user, filters = {}) {
       throw new Error("El evento no pertenece al campeonato seleccionado");
     }
 
-    const where = [`ee.evento_id = $1`];
+    const where = [
+      `EXISTS (
+        SELECT 1
+        FROM evento_equipos ee
+        WHERE ee.evento_id = $1
+          AND ee.equipo_id = e.id
+      )`,
+    ];
     const values = [evento.id];
     let i = 2;
 
@@ -212,7 +219,7 @@ async function listarJugadores(user, filters = {}) {
 
     const jugadoresR = await pool.query(
       `
-        SELECT DISTINCT
+        SELECT
           j.*,
           e.nombre AS nombre_equipo,
           e.numero_campeonato AS equipo_numero_campeonato,
@@ -220,7 +227,6 @@ async function listarJugadores(user, filters = {}) {
         FROM jugadores j
         JOIN equipos e ON e.id = j.equipo_id
         JOIN campeonatos c ON c.id = e.campeonato_id
-        JOIN evento_equipos ee ON ee.equipo_id = e.id
         WHERE ${where.join(" AND ")}
         ORDER BY
           equipo_numero_campeonato ASC NULLS LAST,

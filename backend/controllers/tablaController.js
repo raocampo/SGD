@@ -823,6 +823,109 @@ async function obtenerEvaluacionesFairPlay(eventoId) {
   return { fuente: "sin_datos", evaluaciones: new Map() };
 }
 
+async function obtenerFairPlayEventoInterno(eventoId, query = {}) {
+  const eventoIdNumerico = aEntero(eventoId, NaN);
+  if (!Number.isFinite(eventoIdNumerico)) {
+    throw new Error("evento_id invalido");
+  }
+
+  const evento = await obtenerEventoConCampeonato(eventoIdNumerico);
+  const usaFaltas = modalidadUsaFaltasFairPlay(evento?.tipo_futbol);
+
+  const pesos = {
+    amarilla: aNumero(query.peso_amarilla, PESOS_FAIR_PLAY_DEFAULT.amarilla),
+    roja: aNumero(query.peso_roja, PESOS_FAIR_PLAY_DEFAULT.roja),
+    falta: usaFaltas ? aNumero(query.peso_falta, PESOS_FAIR_PLAY_DEFAULT.falta) : 0,
+    uniformidad: aNumero(query.peso_uniformidad, PESOS_FAIR_PLAY_DEFAULT.uniformidad),
+    comportamiento: aNumero(query.peso_comportamiento, PESOS_FAIR_PLAY_DEFAULT.comportamiento),
+    puntualidad: aNumero(query.peso_puntualidad, PESOS_FAIR_PLAY_DEFAULT.puntualidad),
+    base: aNumero(query.base, PESOS_FAIR_PLAY_DEFAULT.base),
+  };
+
+  const equipos = await obtenerEquiposEvento(eventoIdNumerico);
+  const tarjetasData = await obtenerTarjetasEventoInterno(eventoIdNumerico);
+  const faltasData = usaFaltas
+    ? await obtenerFaltasEventoInterno(eventoIdNumerico)
+    : { fuente: "no_aplica", faltas: [] };
+  const evaluaciones = await obtenerEvaluacionesFairPlay(eventoIdNumerico);
+
+  const mapaEquipos = new Map();
+  for (const e of equipos) {
+    mapaEquipos.set(Number(e.id), {
+      equipo_id: Number(e.id),
+      equipo_nombre: e.nombre,
+    });
+  }
+  for (const t of tarjetasData.tarjetas) {
+    if (!mapaEquipos.has(Number(t.equipo_id))) {
+      mapaEquipos.set(Number(t.equipo_id), {
+        equipo_id: Number(t.equipo_id),
+        equipo_nombre: t.equipo_nombre || `Equipo ${t.equipo_id}`,
+      });
+    }
+  }
+
+  const tarjetasMap = new Map(tarjetasData.tarjetas.map((t) => [Number(t.equipo_id), t]));
+  const faltasMap = new Map(faltasData.faltas.map((f) => [Number(f.equipo_id), f]));
+  const fairPlay = Array.from(mapaEquipos.values()).map((eq) => {
+    const t = tarjetasMap.get(eq.equipo_id) || { amarillas: 0, rojas: 0 };
+    const f = faltasMap.get(eq.equipo_id) || { faltas: 0 };
+    const ev = evaluaciones.evaluaciones.get(eq.equipo_id) || {
+      uniformidad: 0,
+      comportamiento: 0,
+      puntualidad: 0,
+    };
+
+    const faltas = usaFaltas ? aEntero(f.faltas, 0) : 0;
+    const penalizacion = t.amarillas * pesos.amarilla + t.rojas * pesos.roja + faltas * pesos.falta;
+    const bonificacion =
+      ev.uniformidad * pesos.uniformidad +
+      ev.comportamiento * pesos.comportamiento +
+      ev.puntualidad * pesos.puntualidad;
+    const puntaje = Math.max(0, redondear2(pesos.base + bonificacion - penalizacion));
+
+    return {
+      equipo_id: eq.equipo_id,
+      equipo_nombre: eq.equipo_nombre,
+      amarillas: aEntero(t.amarillas, 0),
+      rojas: aEntero(t.rojas, 0),
+      faltas,
+      uniformidad: redondear2(ev.uniformidad),
+      comportamiento: redondear2(ev.comportamiento),
+      puntualidad: redondear2(ev.puntualidad),
+      penalizacion: redondear2(penalizacion),
+      bonificacion: redondear2(bonificacion),
+      puntaje_fair_play: puntaje,
+    };
+  });
+
+  fairPlay.sort((a, b) => {
+    if (b.puntaje_fair_play !== a.puntaje_fair_play) return b.puntaje_fair_play - a.puntaje_fair_play;
+    if (a.rojas !== b.rojas) return a.rojas - b.rojas;
+    if (a.amarillas !== b.amarillas) return a.amarillas - b.amarillas;
+    if (a.faltas !== b.faltas) return a.faltas - b.faltas;
+    return String(a.equipo_nombre).localeCompare(String(b.equipo_nombre));
+  });
+
+  fairPlay.forEach((row, idx) => {
+    row.posicion = idx + 1;
+  });
+
+  return {
+    ok: true,
+    evento_id: eventoIdNumerico,
+    total: fairPlay.length,
+    pesos,
+    fuentes: {
+      tarjetas: tarjetasData.fuente,
+      faltas: faltasData.fuente,
+      evaluaciones: evaluaciones.fuente,
+    },
+    incluye_faltas: usaFaltas,
+    fair_play: fairPlay,
+  };
+}
+
 const tablaController = {
   async generarTablaGrupo(req, res) {
     try {
@@ -959,107 +1062,8 @@ const tablaController = {
       if (!Number.isFinite(eventoId)) {
         return res.status(400).json({ error: "evento_id invalido" });
       }
-
-      const evento = await obtenerEventoConCampeonato(eventoId);
-      const usaFaltas = modalidadUsaFaltasFairPlay(evento?.tipo_futbol);
-
-      const pesos = {
-        amarilla: aNumero(req.query.peso_amarilla, PESOS_FAIR_PLAY_DEFAULT.amarilla),
-        roja: aNumero(req.query.peso_roja, PESOS_FAIR_PLAY_DEFAULT.roja),
-        falta: usaFaltas
-          ? aNumero(req.query.peso_falta, PESOS_FAIR_PLAY_DEFAULT.falta)
-          : 0,
-        uniformidad: aNumero(req.query.peso_uniformidad, PESOS_FAIR_PLAY_DEFAULT.uniformidad),
-        comportamiento: aNumero(req.query.peso_comportamiento, PESOS_FAIR_PLAY_DEFAULT.comportamiento),
-        puntualidad: aNumero(req.query.peso_puntualidad, PESOS_FAIR_PLAY_DEFAULT.puntualidad),
-        base: aNumero(req.query.base, PESOS_FAIR_PLAY_DEFAULT.base),
-      };
-
-      const equipos = await obtenerEquiposEvento(eventoId);
-      const tarjetasData = await obtenerTarjetasEventoInterno(eventoId);
-      const faltasData = usaFaltas
-        ? await obtenerFaltasEventoInterno(eventoId)
-        : { fuente: "no_aplica", faltas: [] };
-      const evaluaciones = await obtenerEvaluacionesFairPlay(eventoId);
-
-      const mapaEquipos = new Map();
-      for (const e of equipos) {
-        mapaEquipos.set(Number(e.id), {
-          equipo_id: Number(e.id),
-          equipo_nombre: e.nombre,
-        });
-      }
-      for (const t of tarjetasData.tarjetas) {
-        if (!mapaEquipos.has(Number(t.equipo_id))) {
-          mapaEquipos.set(Number(t.equipo_id), {
-            equipo_id: Number(t.equipo_id),
-            equipo_nombre: t.equipo_nombre || `Equipo ${t.equipo_id}`,
-          });
-        }
-      }
-
-      const tarjetasMap = new Map(tarjetasData.tarjetas.map((t) => [Number(t.equipo_id), t]));
-      const faltasMap = new Map(faltasData.faltas.map((f) => [Number(f.equipo_id), f]));
-      const fairPlay = Array.from(mapaEquipos.values()).map((eq) => {
-        const t = tarjetasMap.get(eq.equipo_id) || { amarillas: 0, rojas: 0 };
-        const f = faltasMap.get(eq.equipo_id) || { faltas: 0 };
-        const ev = evaluaciones.evaluaciones.get(eq.equipo_id) || {
-          uniformidad: 0,
-          comportamiento: 0,
-          puntualidad: 0,
-        };
-
-        const faltas = usaFaltas ? aEntero(f.faltas, 0) : 0;
-        const penalizacion =
-          t.amarillas * pesos.amarilla +
-          t.rojas * pesos.roja +
-          faltas * pesos.falta;
-        const bonificacion =
-          ev.uniformidad * pesos.uniformidad +
-          ev.comportamiento * pesos.comportamiento +
-          ev.puntualidad * pesos.puntualidad;
-        const puntaje = Math.max(0, redondear2(pesos.base + bonificacion - penalizacion));
-
-        return {
-          equipo_id: eq.equipo_id,
-          equipo_nombre: eq.equipo_nombre,
-          amarillas: aEntero(t.amarillas, 0),
-          rojas: aEntero(t.rojas, 0),
-          faltas,
-          uniformidad: redondear2(ev.uniformidad),
-          comportamiento: redondear2(ev.comportamiento),
-          puntualidad: redondear2(ev.puntualidad),
-          penalizacion: redondear2(penalizacion),
-          bonificacion: redondear2(bonificacion),
-          puntaje_fair_play: puntaje,
-        };
-      });
-
-      fairPlay.sort((a, b) => {
-        if (b.puntaje_fair_play !== a.puntaje_fair_play) return b.puntaje_fair_play - a.puntaje_fair_play;
-        if (a.rojas !== b.rojas) return a.rojas - b.rojas;
-        if (a.amarillas !== b.amarillas) return a.amarillas - b.amarillas;
-        if (a.faltas !== b.faltas) return a.faltas - b.faltas;
-        return String(a.equipo_nombre).localeCompare(String(b.equipo_nombre));
-      });
-
-      fairPlay.forEach((row, idx) => {
-        row.posicion = idx + 1;
-      });
-
-      return res.json({
-        ok: true,
-        evento_id: eventoId,
-        total: fairPlay.length,
-        pesos,
-        fuentes: {
-          tarjetas: tarjetasData.fuente,
-          faltas: faltasData.fuente,
-          evaluaciones: evaluaciones.fuente,
-        },
-        incluye_faltas: usaFaltas,
-        fair_play: fairPlay,
-      });
+      const data = await obtenerFairPlayEventoInterno(eventoId, req.query || {});
+      return res.json(data);
     } catch (error) {
       console.error("Error obteniendo fair play:", error);
       return res.status(500).json({
@@ -1073,4 +1077,5 @@ const tablaController = {
 module.exports = tablaController;
 module.exports._internals = {
   generarTablasEventoInterna,
+  obtenerFairPlayEventoInterno,
 };

@@ -19,6 +19,7 @@ const {
   marcarMovimientoPagado,
   obtenerEstadoCuentaEquipo,
   obtenerCompetenciaEvento,
+  obtenerFairPlayEvento,
   obtenerFinanzasCampeonato,
   registrarResultadoResumen,
 } = require("../services/mobileCompetitionService");
@@ -36,7 +37,11 @@ const {
   obtenerEliminatoriasEvento,
 } = require("../services/mobileKnockoutService");
 const {
+  crearEventoMovil,
+  crearEquipoMovil,
+  crearJugadorMovil,
   actualizarEstadoPase,
+  eliminarJugadorMovil,
   guardarPlanillaPartido,
   listarEquiposVisibles,
   listarEventosVisibles,
@@ -80,9 +85,22 @@ function parseCreateCampeonatoBody(body = {}, user = null) {
 
 function statusFor(error, fallback = 500) {
   const msg = String(error?.message || "");
-  if (msg.includes("No autorizado")) return 403;
-  if (msg.includes("no encontrado") || msg.includes("No encontrado")) return 404;
-  if (msg.includes("invalido") || msg.includes("obligatorio")) return 400;
+  const normalized = msg.toLowerCase();
+  if (normalized.includes("no autorizado")) return 403;
+  if (normalized.includes("no encontrado")) return 404;
+  if (
+    normalized.includes("invalido") ||
+    normalized.includes("inválido") ||
+    normalized.includes("obligatorio") ||
+    normalized.includes("limite") ||
+    normalized.includes("límite") ||
+    normalized.includes("exige") ||
+    normalized.includes("ya existe") ||
+    normalized.includes("ya está") ||
+    normalized.includes("no pertenece")
+  ) {
+    return 400;
+  }
   return fallback;
 }
 
@@ -118,6 +136,16 @@ const mobileController = {
     } catch (error) {
       console.error("Error mobile listEventos:", error);
       return res.status(statusFor(error)).json({ error: error.message || "No se pudieron cargar eventos" });
+    }
+  },
+
+  async postEvento(req, res) {
+    try {
+      const evento = await crearEventoMovil(req.user, req.body || {});
+      return res.status(201).json({ ok: true, evento });
+    } catch (error) {
+      console.error("Error mobile postEvento:", error);
+      return res.status(statusFor(error)).json({ error: error.message || "No se pudo crear categoría" });
     }
   },
 
@@ -215,6 +243,16 @@ const mobileController = {
     }
   },
 
+  async postEquipo(req, res) {
+    try {
+      const equipo = await crearEquipoMovil(req.user, req.body || {});
+      return res.status(201).json({ ok: true, equipo });
+    } catch (error) {
+      console.error("Error mobile postEquipo:", error);
+      return res.status(statusFor(error)).json({ error: error.message || "No se pudo crear equipo" });
+    }
+  },
+
   async getEquipo(req, res) {
     try {
       const equipo = await obtenerEquipoDetalle(req.user, req.params.id);
@@ -232,6 +270,26 @@ const mobileController = {
     } catch (error) {
       console.error("Error mobile listJugadores:", error);
       return res.status(statusFor(error)).json({ error: error.message || "No se pudo cargar jugadores" });
+    }
+  },
+
+  async postJugador(req, res) {
+    try {
+      const jugador = await crearJugadorMovil(req.user, req.body || {});
+      return res.status(201).json({ ok: true, jugador });
+    } catch (error) {
+      console.error("Error mobile postJugador:", error);
+      return res.status(statusFor(error)).json({ error: error.message || "No se pudo crear jugador" });
+    }
+  },
+
+  async deleteJugador(req, res) {
+    try {
+      const data = await eliminarJugadorMovil(req.user, req.params.id);
+      return res.json({ ok: true, ...data });
+    } catch (error) {
+      console.error("Error mobile deleteJugador:", error);
+      return res.status(statusFor(error)).json({ error: error.message || "No se pudo eliminar jugador" });
     }
   },
 
@@ -262,6 +320,16 @@ const mobileController = {
     } catch (error) {
       console.error("Error mobile getCompetenciaEvento:", error);
       return res.status(statusFor(error)).json({ error: error.message || "No se pudo cargar competencia" });
+    }
+  },
+
+  async getFairPlayEvento(req, res) {
+    try {
+      const data = await obtenerFairPlayEvento(req.user, req.params.id, req.query || {});
+      return res.json(data);
+    } catch (error) {
+      console.error("Error mobile getFairPlayEvento:", error);
+      return res.status(statusFor(error)).json({ error: error.message || "No se pudo cargar fair play" });
     }
   },
 

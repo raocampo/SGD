@@ -39,8 +39,16 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Reporteria del consolidado financiero de sanciones:
   - impresion dedicada (`Imprimir sanciones`) con membrete y pie de auspiciantes,
   - filtros integrados con campeonato/categoria/equipo y recarga conjunta con movimientos/morosidad/estado de cuenta.
+- Salida ejecutiva global financiera implementada:
+  - nuevo bloque `Resumen Ejecutivo por Campeonato` en `frontend/finanzas.html`,
+  - consolidado por campeonato en `frontend/js/finanzas.js` con:
+    - total cargos/abonos/saldo,
+    - cargos de inscripcion,
+    - cargos de arbitraje,
+    - saldo de multas,
+    - cantidad de equipos con movimiento,
+  - impresion dedicada (`Imprimir ejecutivo`) con membrete y pie de auspiciantes.
 - Alcance pendiente que sigue abierto en finanzas:
-  - llevar este consolidado a salidas ejecutivas globales por campeonato,
   - reforzar reglas de aviso/gestion de morosidad parametrizable.
 - Politica de morosidad parametrizable implementada (base):
   - nueva migracion `database/migrations/023_bloqueo_morosidad_parametrizable.sql`,

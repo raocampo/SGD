@@ -27,6 +27,11 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 - Se agrego impresion dedicada:
   - boton `Imprimir sanciones`,
   - salida con membrete de campeonato y pie de auspiciantes.
+- Se agrego salida ejecutiva por campeonato en `finanzas.html`:
+  - nuevo bloque `Resumen Ejecutivo por Campeonato`,
+  - consolidado por campeonato de cargos/abonos/saldo,
+  - totales de inscripcion, arbitraje y saldo de multas,
+  - impresion dedicada (`Imprimir ejecutivo`).
 - Se implemento politica de morosidad parametrizable:
   - nueva migracion `023_bloqueo_morosidad_parametrizable.sql`,
   - configuracion en campeonato (`bloquear_morosos`, `bloqueo_morosidad_monto`),

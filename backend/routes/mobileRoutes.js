@@ -10,6 +10,12 @@ router.get("/dashboard", requireAuth, mobileController.dashboard);
 router.get("/campeonatos", requireAuth, mobileController.listCampeonatos);
 router.get("/eventos", requireAuth, mobileController.listEventos);
 router.post(
+  "/eventos",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  mobileController.postEvento
+);
+router.post(
   "/campeonatos",
   requireAuth,
   requireRoles("administrador", "organizador"),
@@ -22,6 +28,7 @@ router.get("/campeonatos/:id/finanzas", requireAuth, mobileController.getFinanza
 router.get("/eventos/:id", requireAuth, mobileController.getEvento);
 router.get("/eventos/:id/equipos", requireAuth, mobileController.listEquiposEvento);
 router.get("/eventos/:id/competencia", requireAuth, mobileController.getCompetenciaEvento);
+router.get("/eventos/:id/fair-play", requireAuth, mobileController.getFairPlayEvento);
 router.get("/eventos/:id/partidos", requireAuth, mobileController.listPartidosEvento);
 router.get("/eventos/:id/sorteo", requireAuth, mobileController.getSorteoEvento);
 router.post(
@@ -70,10 +77,28 @@ router.delete(
 );
 
 router.get("/equipos", requireAuth, mobileController.listEquipos);
+router.post(
+  "/equipos",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  mobileController.postEquipo
+);
 router.get("/equipos/:id", requireAuth, mobileController.getEquipo);
 router.get("/equipos/:id/jugadores", requireAuth, mobileController.listJugadoresEquipo);
 router.get("/equipos/:id/estado-cuenta", requireAuth, mobileController.getEstadoCuentaEquipo);
 router.get("/jugadores", requireAuth, mobileController.listJugadores);
+router.post(
+  "/jugadores",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  mobileController.postJugador
+);
+router.delete(
+  "/jugadores/:id",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  mobileController.deleteJugador
+);
 router.get("/pases", requireAuth, mobileController.listPases);
 router.get(
   "/usuarios",

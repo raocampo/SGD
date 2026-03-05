@@ -18,7 +18,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 4 Portal publico | Alto | Portal operativo con vistas de campeonato/grupos/tablas; iniciada separacion formal entre landing de organizador y CMS institucional del portal; noticias/blog, galeria, contenido institucional y contacto ya tienen base CRUD/CMS y consumo publico integrado en landing; pendiente cierre funcional y pulido editorial. |
 | 5 Roles y permisos (RBAC) | En progreso | Autenticacion operativa; fase 1 de separacion de dominios iniciada con rol `operador` para CMS publico; rol `jugador` agregado para consulta de equipo en modo solo lectura; noticias, galeria, contenido y contacto institucional fuera del alcance de organizadores. |
 | 6 Extras profesionales | Parcial | Exportaciones (PNG/PDF/XLSX) en modulos clave; pendiente notificaciones, auditoria completa y reportes ejecutivos. |
-| 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR y politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). Pendiente cierre de reglas avanzadas y reporteria ejecutiva. |
+| 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR, resumen ejecutivo por campeonato e impresion dedicadas; politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). Pendiente cierre de reglas avanzadas y reporteria ejecutiva adicional. |
 | 8 Adaptacion mobile web | En progreso | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; fase 1 base responsive iniciada en `style.css`/`core.js` (layout, topbar, acciones y sidebar) con cierre parcial en `tablas`, `finanzas`, `partidos` y `planilla`; pendiente cierre de `grupos/eliminatorias/pases` y validacion final en viewports objetivo. |
 
 ## Estado Detallado del Alcance Actual
@@ -92,7 +92,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - roja directa y acumulacion de amarillas en futbol 11 para suspensiones visibles en planilla.
 - Pendiente completar:
   - consolidado financiero/disciplinario por sanciones ya disponible en `finanzas.html` (bloque `Consolidado de Sanciones TA/TR` + impresion),
-  - pendiente extenderlo a salida ejecutiva global por campeonato,
+  - salida ejecutiva global por campeonato ya disponible en `finanzas.html` (bloque `Resumen Ejecutivo por Campeonato` + impresion),
   - politica por morosidad parametrizable ya aplicada en guardado de planilla (campeonato + override categoria) en modo aviso,
   - pendiente definir si se mantiene solo informativo o se aplica bloqueo en otros flujos operativos,
   - reportes ejecutivos de ingresos/pendientes con consolidado por campeonato y equipo.

@@ -135,6 +135,11 @@ async function obtenerCompetenciaEvento(user, eventoId) {
   };
 }
 
+async function obtenerFairPlayEvento(user, eventoId, query = {}) {
+  const evento = await assertEventoAccess(user, eventoId);
+  return tablaInternals.obtenerFairPlayEventoInterno(evento.id, query || {});
+}
+
 async function generarFixtureEvento(user, eventoId, body = {}) {
   const evento = await assertEventoAccess(user, eventoId);
   if (!canWriteCompetition(user)) {
@@ -408,6 +413,7 @@ module.exports = {
   marcarMovimientoPagado,
   obtenerEstadoCuentaEquipo,
   obtenerCompetenciaEvento,
+  obtenerFairPlayEvento,
   obtenerFinanzasCampeonato,
   registrarResultadoResumen,
 };
