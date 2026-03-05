@@ -5,6 +5,7 @@ const ESTADOS_TORNEO = ["borrador", "inscripcion", "en_curso", "finalizado", "ar
 
 class Campeonato {
   static _columnasDocumentosAseguradas = false;
+  static _secuenciaIdAsegurada = false;
 
   static async asegurarColumnasDocumentos() {
     if (this._columnasDocumentosAseguradas) return;
@@ -89,6 +90,18 @@ class Campeonato {
     return Number(n.toFixed(2));
   }
 
+  static async asegurarSecuenciaId() {
+    if (this._secuenciaIdAsegurada) return;
+    await pool.query(`
+      SELECT setval(
+        pg_get_serial_sequence('campeonatos', 'id'),
+        COALESCE((SELECT MAX(id) FROM campeonatos), 1),
+        true
+      )
+    `);
+    this._secuenciaIdAsegurada = true;
+  }
+
   // CREATE - Crear nuevo campeonato (con organizador, sistema, colores y logo)
   static async crear(
     nombre,
@@ -117,6 +130,7 @@ class Campeonato {
     bloqueo_morosidad_monto = 0
   ) {
     await this.asegurarColumnasDocumentos();
+    await this.asegurarSecuenciaId();
 
     const query = `
       WITH next_num AS (
