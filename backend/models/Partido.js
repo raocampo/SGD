@@ -49,6 +49,7 @@ function normalizarConteoTarjetas(amarillas = 0, rojas = 0) {
   return {
     amarillas: ta % 2,
     rojas: tr + rojasPorDobleAmarilla,
+    rojasDirectas: tr,
     rojasPorDobleAmarilla,
   };
 }
@@ -76,42 +77,88 @@ function normalizarTarjetasPlanilla(tarjetas = []) {
       equipo_id: equipoId,
       jugador_id: jugadorId,
       amarillas: 0,
-      rojas: 0,
+      rojasDirectas: 0,
+      rojasDobleAmarilla: 0,
       minuto: item?.minuto ?? null,
-      observacion: item?.observacion ?? null,
+      observacionAmarilla: item?.observacion ?? null,
+      observacionRojaDirecta: item?.observacion ?? null,
+      observacionRojaDoble: "Expulsión por doble amarilla",
     };
     if (tipo === "amarilla") bucket.amarillas += 1;
-    if (tipo === "roja") bucket.rojas += 1;
+    if (tipo === "amarilla" && item?.observacion) {
+      bucket.observacionAmarilla = item.observacion;
+    }
+    if (tipo === "roja") {
+      if (tarjetaEsRojaPorDobleAmarilla(item)) {
+        bucket.rojasDobleAmarilla += 1;
+        bucket.observacionRojaDoble = item.observacion || bucket.observacionRojaDoble;
+      } else {
+        bucket.rojasDirectas += 1;
+        if (item?.observacion) bucket.observacionRojaDirecta = item.observacion;
+      }
+    }
     grupos.set(key, bucket);
   });
 
   const normalizadas = [...directas];
   grupos.forEach((bucket) => {
-    const conteo = normalizarConteoTarjetas(bucket.amarillas, bucket.rojas);
+    const conteo = normalizarConteoTarjetas(bucket.amarillas, bucket.rojasDirectas);
+    const rojasDobleAmarilla = bucket.rojasDobleAmarilla + conteo.rojasPorDobleAmarilla;
     for (let i = 0; i < conteo.amarillas; i += 1) {
       normalizadas.push({
         equipo_id: bucket.equipo_id,
         jugador_id: bucket.jugador_id,
         tipo_tarjeta: "amarilla",
         minuto: bucket.minuto,
-        observacion: bucket.observacion,
+        observacion: bucket.observacionAmarilla,
       });
     }
-    for (let i = 0; i < conteo.rojas; i += 1) {
+    for (let i = 0; i < conteo.rojasDirectas; i += 1) {
       normalizadas.push({
         equipo_id: bucket.equipo_id,
         jugador_id: bucket.jugador_id,
         tipo_tarjeta: "roja",
         minuto: bucket.minuto,
-        observacion:
-          i >= bucket.rojas && conteo.rojasPorDobleAmarilla > 0
-            ? "Expulsión por doble amarilla"
-            : bucket.observacion,
+        observacion: bucket.observacionRojaDirecta,
+      });
+    }
+    for (let i = 0; i < rojasDobleAmarilla; i += 1) {
+      normalizadas.push({
+        equipo_id: bucket.equipo_id,
+        jugador_id: bucket.jugador_id,
+        tipo_tarjeta: "roja",
+        minuto: bucket.minuto,
+        observacion: bucket.observacionRojaDoble || "Expulsión por doble amarilla",
       });
     }
   });
 
   return normalizadas;
+}
+
+function resolverTarjetasDisciplinariasPartido({
+  amarillas = 0,
+  rojasDirectas = 0,
+  rojasDobleAmarilla = 0,
+} = {}) {
+  const ta = Number.isFinite(Number.parseInt(amarillas, 10))
+    ? Math.max(Number.parseInt(amarillas, 10), 0)
+    : 0;
+  const trDirectas = Number.isFinite(Number.parseInt(rojasDirectas, 10))
+    ? Math.max(Number.parseInt(rojasDirectas, 10), 0)
+    : 0;
+  const trDobles = Number.isFinite(Number.parseInt(rojasDobleAmarilla, 10))
+    ? Math.max(Number.parseInt(rojasDobleAmarilla, 10), 0)
+    : 0;
+
+  const amarillasDisponibles = Math.max(ta - trDobles * 2, 0);
+  const doblesInferidas = trDobles > 0 ? 0 : Math.floor(amarillasDisponibles / 2);
+
+  return {
+    amarillasAcumulables: Math.max(amarillasDisponibles - doblesInferidas * 2, 0),
+    suspensionesPorDobleAmarilla: trDobles + doblesInferidas,
+    suspensionesPorRojaDirecta: trDirectas,
+  };
 }
 
 function obtenerUmbralAmarillasSuspension(tipoFutbol = "") {
@@ -244,8 +291,14 @@ async function calcularEstadoDisciplinarioEquipo({
         }
       });
 
-      if (umbralAmarillas > 0 && amarillas > 0) {
-        amarillasAcumuladas += amarillas;
+      const resumenTarjetas = resolverTarjetasDisciplinariasPartido({
+        amarillas,
+        rojasDirectas,
+        rojasDobleAmarilla,
+      });
+
+      if (umbralAmarillas > 0 && resumenTarjetas.amarillasAcumulables > 0) {
+        amarillasAcumuladas += resumenTarjetas.amarillasAcumulables;
         while (amarillasAcumuladas >= umbralAmarillas) {
           amarillasAcumuladas -= umbralAmarillas;
           partidosPendientes += 1;
@@ -253,13 +306,13 @@ async function calcularEstadoDisciplinarioEquipo({
         }
       }
 
-      if (rojasDobleAmarilla > 0) {
-        partidosPendientes += rojasDobleAmarilla;
+      if (resumenTarjetas.suspensionesPorDobleAmarilla > 0) {
+        partidosPendientes += resumenTarjetas.suspensionesPorDobleAmarilla;
         motivo = "Suspensión por doble amarilla";
       }
 
-      if (rojasDirectas > 0) {
-        partidosPendientes += rojasDirectas * 2;
+      if (resumenTarjetas.suspensionesPorRojaDirecta > 0) {
+        partidosPendientes += resumenTarjetas.suspensionesPorRojaDirecta * 2;
         motivo = "Suspensión por roja directa";
       }
     }
@@ -1176,6 +1229,7 @@ class Partido {
 
     await pool.query(`
       ALTER TABLE campeonatos
+      ADD COLUMN IF NOT EXISTS requiere_cedula_jugador BOOLEAN DEFAULT TRUE,
       ADD COLUMN IF NOT EXISTS requiere_foto_cedula BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS requiere_foto_carnet BOOLEAN DEFAULT FALSE
     `);
@@ -1276,6 +1330,7 @@ class Partido {
              c.organizador AS campeonato_organizador,
              c.logo_url AS campeonato_logo_url,
              c.nombre AS campeonato_nombre,
+             COALESCE(c.requiere_cedula_jugador, true) AS requiere_cedula_jugador,
              COALESCE(c.requiere_foto_cedula, false) AS requiere_foto_cedula,
              COALESCE(c.requiere_foto_carnet, false) AS requiere_foto_carnet,
              evt.nombre AS evento_nombre,
@@ -1368,6 +1423,7 @@ class Partido {
     return {
       partido,
       documentos_requeridos: {
+        cedula: partido.requiere_cedula_jugador === true,
         foto_cedula: partido.requiere_foto_cedula === true,
         foto_carnet: partido.requiere_foto_carnet === true,
       },

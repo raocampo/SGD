@@ -2315,6 +2315,12 @@ body.modal-open {
   color: #0f172a;
 }
 
+.planilla-captura-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
 .planilla-captura-table-wrap {
   overflow-x: auto;
 }
@@ -2468,6 +2474,10 @@ body.modal-open {
 .planilla-footer-row input {
   padding: 0.35rem 0.42rem;
   font-size: 0.84rem;
+}
+
+#modal-planilla-jugador .modal-content {
+  max-width: 760px;
 }
 
 .planilla-rows {

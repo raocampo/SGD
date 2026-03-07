@@ -278,6 +278,93 @@
       </main>
     </div>
 
+    <div id="modal-planilla-jugador" class="modal" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-user-plus"></i> Inscribir jugador en <span id="planilla-jugador-equipo-nombre">Equipo</span></h3>
+          <button type="button" class="modal-close" onclick="cerrarModalInscripcionPlanilla()" aria-label="Cerrar">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="form-planilla-jugador">
+            <input type="hidden" id="planilla-jugador-equipo-id" />
+
+            <div class="form-row">
+              <div class="form-group half">
+                <label for="planilla-jugador-nombre">Nombre</label>
+                <input type="text" id="planilla-jugador-nombre" required />
+              </div>
+              <div class="form-group half">
+                <label for="planilla-jugador-apellido">Apellido</label>
+                <input type="text" id="planilla-jugador-apellido" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group half">
+                <label id="planilla-label-jugador-cedula" for="planilla-jugador-ced">Cédula</label>
+                <input type="text" id="planilla-jugador-ced" maxlength="20" />
+                <small id="planilla-hint-jugador-cedula" class="form-hint"></small>
+              </div>
+              <div class="form-group half">
+                <label for="planilla-jugador-numero">Número de camiseta</label>
+                <input type="text" id="planilla-jugador-numero" inputmode="numeric" maxlength="3" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group half">
+                <label for="planilla-jugador-fecha">Fecha de nacimiento</label>
+                <input type="date" id="planilla-jugador-fecha" />
+              </div>
+              <div class="form-group half">
+                <label for="planilla-jugador-posicion">Posición</label>
+                <select id="planilla-jugador-posicion">
+                  <option value="">- Selecciona -</option>
+                  <option value="Arquero">Arquero</option>
+                  <option value="Defensa">Defensa</option>
+                  <option value="Lateral">Lateral</option>
+                  <option value="Mediocampista">Mediocampista</option>
+                  <option value="Delantero">Delantero</option>
+                  <option value="Director técnico">Director técnico</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-label" for="planilla-jugador-capitan">
+                <input type="checkbox" id="planilla-jugador-capitan" />
+                <span>Designar como capitán</span>
+              </label>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group half">
+                <label id="planilla-label-jugador-foto-cedula" for="planilla-jugador-foto-cedula">Foto de cédula</label>
+                <input type="file" id="planilla-jugador-foto-cedula" accept="image/*,.pdf" />
+                <small id="planilla-hint-foto-cedula" class="form-hint"></small>
+              </div>
+              <div class="form-group half">
+                <label id="planilla-label-jugador-foto-carnet" for="planilla-jugador-foto-carnet">Foto carnet</label>
+                <input type="file" id="planilla-jugador-foto-carnet" accept="image/*,.pdf" />
+                <small id="planilla-hint-foto-carnet" class="form-hint"></small>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-save"></i> Guardar jugador
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="cerrarModalInscripcionPlanilla()">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <div class="nav-overlay" id="nav-overlay"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -288,6 +375,5 @@
     <script src="js/planilla.js"></script>
   </body>
 </html>
-
 
 

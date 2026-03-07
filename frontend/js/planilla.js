@@ -9,6 +9,7 @@ let equiposPartido = {
   visitante: { id: null, nombre: "Visitante" },
 };
 let documentosRequeridos = {
+  cedula: true,
   foto_cedula: false,
   foto_carnet: false,
 };
@@ -288,6 +289,12 @@ function escapeHtml(valor) {
     .replaceAll("'", "&#39;");
 }
 
+function puedeInscribirJugadoresEnPlanilla() {
+  const rol = String(window.Auth?.getUser?.()?.rol || "").trim().toLowerCase();
+  if (window.Auth?.isReadOnly?.()) return false;
+  return ["administrador", "organizador", "tecnico", "dirigente"].includes(rol);
+}
+
 function normalizarArchivoUrl(url) {
   if (!url) return "";
   const raw = String(url).trim();
@@ -455,6 +462,13 @@ function sumarEnMapa(map, key, value = 1) {
   map.set(key, actual + value);
 }
 
+function tarjetaEsRojaPorDobleAmarilla(item = {}) {
+  const tipo = String(item?.tipo_tarjeta || "").trim().toLowerCase();
+  if (tipo !== "roja") return false;
+  const observacion = String(item?.observacion || "").trim().toLowerCase();
+  return observacion.includes("doble amarilla");
+}
+
 function normalizarConteoTarjetas(amarillas = 0, rojas = 0) {
   const ta = valorNoNegativoEntero(amarillas, 0, 99);
   const tr = valorNoNegativoEntero(rojas, 0, 99);
@@ -462,6 +476,7 @@ function normalizarConteoTarjetas(amarillas = 0, rojas = 0) {
   return {
     amarillas: ta % 2,
     rojas: tr + rojasPorDobleAmarilla,
+    rojasDirectas: tr,
     rojasPorDobleAmarilla,
   };
 }
@@ -489,37 +504,58 @@ function normalizarTarjetasPayload(tarjetas = []) {
       equipo_id: equipoId,
       jugador_id: jugadorId,
       amarillas: 0,
-      rojas: 0,
+      rojasDirectas: 0,
+      rojasDobleAmarilla: 0,
       minuto: item?.minuto ?? null,
-      observacion: item?.observacion ?? null,
+      observacionAmarilla: item?.observacion ?? null,
+      observacionRojaDirecta: item?.observacion ?? null,
+      observacionRojaDoble: "Expulsión por doble amarilla",
     };
     if (tipo === "amarilla") bucket.amarillas += 1;
-    if (tipo === "roja") bucket.rojas += 1;
+    if (tipo === "amarilla" && item?.observacion) {
+      bucket.observacionAmarilla = item.observacion;
+    }
+    if (tipo === "roja") {
+      if (tarjetaEsRojaPorDobleAmarilla(item)) {
+        bucket.rojasDobleAmarilla += 1;
+        bucket.observacionRojaDoble = item.observacion || bucket.observacionRojaDoble;
+      } else {
+        bucket.rojasDirectas += 1;
+        if (item?.observacion) bucket.observacionRojaDirecta = item.observacion;
+      }
+    }
     grupos.set(key, bucket);
   });
 
   const normalizadas = [...tarjetasDirectas];
   grupos.forEach((bucket) => {
-    const conteo = normalizarConteoTarjetas(bucket.amarillas, bucket.rojas);
+    const conteo = normalizarConteoTarjetas(bucket.amarillas, bucket.rojasDirectas);
+    const rojasDobleAmarilla = bucket.rojasDobleAmarilla + conteo.rojasPorDobleAmarilla;
     for (let i = 0; i < conteo.amarillas; i += 1) {
       normalizadas.push({
         equipo_id: bucket.equipo_id,
         jugador_id: bucket.jugador_id,
         tipo_tarjeta: "amarilla",
         minuto: bucket.minuto,
-        observacion: bucket.observacion,
+        observacion: bucket.observacionAmarilla,
       });
     }
-    for (let i = 0; i < conteo.rojas; i += 1) {
+    for (let i = 0; i < conteo.rojasDirectas; i += 1) {
       normalizadas.push({
         equipo_id: bucket.equipo_id,
         jugador_id: bucket.jugador_id,
         tipo_tarjeta: "roja",
         minuto: bucket.minuto,
-        observacion:
-          i >= bucket.rojas && conteo.rojasPorDobleAmarilla > 0
-            ? "Expulsión por doble amarilla"
-            : bucket.observacion,
+        observacion: bucket.observacionRojaDirecta,
+      });
+    }
+    for (let i = 0; i < rojasDobleAmarilla; i += 1) {
+      normalizadas.push({
+        equipo_id: bucket.equipo_id,
+        jugador_id: bucket.jugador_id,
+        tipo_tarjeta: "roja",
+        minuto: bucket.minuto,
+        observacion: bucket.observacionRojaDoble || "Expulsión por doble amarilla",
       });
     }
   });
@@ -528,9 +564,30 @@ function normalizarTarjetasPayload(tarjetas = []) {
 }
 
 function normalizarTarjetasFilaCaptura(row) {
-  if (!(row instanceof HTMLElement)) return { amarillas: 0, rojas: 0 };
+  if (!(row instanceof HTMLElement)) {
+    return { amarillas: 0, rojas: 0, rojasDirectas: 0, rojasPorDobleAmarilla: 0 };
+  }
   const inputTa = row.querySelector(".cap-ta");
   const inputTr = row.querySelector(".cap-tr");
+  const presetActivo = row.dataset.tarjetasPreset === "1";
+
+  if (presetActivo) {
+    const amarillas = valorNoNegativoEntero(inputTa?.value, 0, 99);
+    const rojas = valorNoNegativoEntero(inputTr?.value, 0, 99);
+    const rojasPorDobleAmarilla = Math.min(
+      valorNoNegativoEntero(row.dataset.rojasDobles, 0, 99),
+      rojas
+    );
+    const conteoPreset = {
+      amarillas,
+      rojas,
+      rojasDirectas: Math.max(rojas - rojasPorDobleAmarilla, 0),
+      rojasPorDobleAmarilla,
+    };
+    row.dataset.rojasDobles = String(rojasPorDobleAmarilla);
+    return conteoPreset;
+  }
+
   const conteo = normalizarConteoTarjetas(inputTa?.value, inputTr?.value);
 
   if (inputTa instanceof HTMLInputElement) {
@@ -539,6 +596,7 @@ function normalizarTarjetasFilaCaptura(row) {
   if (inputTr instanceof HTMLInputElement) {
     inputTr.value = conteo.rojas > 0 ? String(conteo.rojas) : "";
   }
+  row.dataset.rojasDobles = String(conteo.rojasPorDobleAmarilla || 0);
 
   return conteo;
 }
@@ -548,6 +606,7 @@ function construirIndicesEventos(payload) {
   const golesPorJugador = new Map();
   const amarillasPorJugador = new Map();
   const rojasPorJugador = new Map();
+  const rojasDoblesPorJugador = new Map();
 
   let totalAmarillasLocal = 0;
   let totalRojasLocal = 0;
@@ -579,6 +638,9 @@ function construirIndicesEventos(payload) {
       if (equipoId === Number(equiposPartido.visitante.id)) totalAmarillasVisitante += 1;
     } else if (tipo === "roja") {
       if (Number.isFinite(jugadorId)) sumarEnMapa(rojasPorJugador, jugadorId, 1);
+      if (Number.isFinite(jugadorId) && tarjetaEsRojaPorDobleAmarilla(t)) {
+        sumarEnMapa(rojasDoblesPorJugador, jugadorId, 1);
+      }
       if (equipoId === Number(equiposPartido.local.id)) totalRojasLocal += 1;
       if (equipoId === Number(equiposPartido.visitante.id)) totalRojasVisitante += 1;
     }
@@ -588,6 +650,7 @@ function construirIndicesEventos(payload) {
     golesPorJugador,
     amarillasPorJugador,
     rojasPorJugador,
+    rojasDoblesPorJugador,
     totalAmarillasLocal,
     totalRojasLocal,
     totalAmarillasVisitante,
@@ -697,8 +760,13 @@ function renderEncabezado() {
   );
   const marcadorVacio = !hayDatosEnFormularioPlanilla() && resultadoLocal === 0 && resultadoVisit === 0;
 
-  const reqCed = documentosRequeridos.foto_cedula ? "Cédula: requerida" : "Cédula: opcional";
-  const reqCar = documentosRequeridos.foto_carnet ? "Carnet: requerido" : "Carnet: opcional";
+  const reqCed = documentosRequeridos.cedula ? "Cédula: requerida" : "Cédula: opcional";
+  const reqFotoCed = documentosRequeridos.foto_cedula
+    ? "Foto cédula: requerida"
+    : "Foto cédula: opcional";
+  const reqCar = documentosRequeridos.foto_carnet
+    ? "Foto carnet: requerida"
+    : "Foto carnet: opcional";
 
   cont.innerHTML = `
     <div class="planilla-head-sheet${logosDerecha.length ? "" : " no-right-logos"}">
@@ -742,7 +810,7 @@ function renderEncabezado() {
       <div><strong>Cancha:</strong> <span id="head-cancha">${escapeHtml(p.cancha || "Por definir")}</span></div>
       <div><strong>Ciudad:</strong> <span id="head-ciudad">${escapeHtml(p.ciudad || "Por definir")}</span></div>
     </div>
-    <p class="planilla-head-docs"><strong>Requisitos documentos:</strong> ${reqCed} • ${reqCar}</p>
+    <p class="planilla-head-docs"><strong>Requisitos documentos:</strong> ${reqCed} • ${reqFotoCed} • ${reqCar}</p>
   `;
 
   const ttlCapLocal = document.getElementById("captura-titulo-local");
@@ -816,6 +884,109 @@ function actualizarHeaderResultado(local, visitante) {
   const marcadorVacio = !hayDatosEnFormularioPlanilla() && aEntero(local, 0) === 0 && aEntero(visitante, 0) === 0;
   if (localEl) localEl.textContent = marcadorVacio ? "" : String(local);
   if (visitEl) visitEl.textContent = marcadorVacio ? "" : String(visitante);
+}
+
+function capturarEstadoFormularioPlanilla() {
+  return {
+    arbitro: document.getElementById("arbitro-planilla")?.value || "",
+    delegado: document.getElementById("delegado-planilla")?.value || "",
+    ciudad: document.getElementById("ciudad-planilla")?.value || "",
+    observaciones: document.getElementById("observaciones-planilla")?.value || "",
+    estado: document.getElementById("estado-partido")?.value || "finalizado",
+    inasistencia: document.getElementById("inasistencia-planilla")?.value || "ninguno",
+    pagos: IDS_PAGOS_PLANILLA.reduce((acc, id) => {
+      acc[id] = document.getElementById(id)?.value || "";
+      return acc;
+    }, {}),
+    filas: Array.from(document.querySelectorAll(".planilla-player-row")).map((row) => ({
+      key: `${row.dataset.equipoId || ""}:${row.dataset.jugadorId || ""}`,
+      goles: row.querySelector(".cap-goles")?.value || "",
+      amarillas: row.querySelector(".cap-ta")?.value || "",
+      rojas: row.querySelector(".cap-tr")?.value || "",
+      rojasDobles: row.dataset.rojasDobles || "0",
+      tarjetasPreset:
+        valorNoNegativoEntero(row.dataset.rojasDobles, 0, 99) > 0
+          ? "1"
+          : row.dataset.tarjetasPreset || "",
+    })),
+  };
+}
+
+function restaurarEstadoFormularioPlanilla(snapshot = null) {
+  if (!snapshot || typeof snapshot !== "object") return;
+
+  const mapRows = new Map(
+    Array.from(document.querySelectorAll(".planilla-player-row")).map((row) => [
+      `${row.dataset.equipoId || ""}:${row.dataset.jugadorId || ""}`,
+      row,
+    ])
+  );
+
+  const arbitro = document.getElementById("arbitro-planilla");
+  const delegado = document.getElementById("delegado-planilla");
+  const ciudad = document.getElementById("ciudad-planilla");
+  const observaciones = document.getElementById("observaciones-planilla");
+  const estado = document.getElementById("estado-partido");
+  const inasistencia = document.getElementById("inasistencia-planilla");
+
+  if (arbitro) arbitro.value = snapshot.arbitro || "";
+  if (delegado) delegado.value = snapshot.delegado || "";
+  if (ciudad) ciudad.value = snapshot.ciudad || "";
+  if (observaciones) observaciones.value = snapshot.observaciones || "";
+  if (estado) estado.value = snapshot.estado || "finalizado";
+  if (inasistencia) inasistencia.value = snapshot.inasistencia || "ninguno";
+
+  IDS_PAGOS_PLANILLA.forEach((id) => {
+    const input = document.getElementById(id);
+    if (input instanceof HTMLInputElement) {
+      input.value = snapshot.pagos?.[id] || "";
+    }
+  });
+
+  (Array.isArray(snapshot.filas) ? snapshot.filas : []).forEach((item) => {
+    const row = mapRows.get(item.key);
+    if (!(row instanceof HTMLElement)) return;
+    const inputGoles = row.querySelector(".cap-goles");
+    const inputTa = row.querySelector(".cap-ta");
+    const inputTr = row.querySelector(".cap-tr");
+    if (inputGoles instanceof HTMLInputElement) inputGoles.value = item.goles || "";
+    if (inputTa instanceof HTMLInputElement) inputTa.value = item.amarillas || "";
+    if (inputTr instanceof HTMLInputElement) inputTr.value = item.rojas || "";
+    row.dataset.rojasDobles = item.rojasDobles || "0";
+    row.dataset.tarjetasPreset = item.tarjetasPreset || "";
+  });
+
+  actualizarHeaderMetaEditable();
+  aplicarEstadoInasistenciaPlanilla(false);
+  recalcularTotalesCapturaEquipo("captura-local");
+  recalcularTotalesCapturaEquipo("captura-visitante");
+  recalcularResultadoDesdeCaptura(false);
+  actualizarVistaPreviaPlanilla(true);
+}
+
+async function refrescarPlanillaPreservandoFormulario() {
+  if (!Number.isFinite(Number(partidoId)) || Number(partidoId) <= 0) return;
+  const snapshot = capturarEstadoFormularioPlanilla();
+  const resp = await ApiClient.get(`/partidos/${partidoId}/planilla`);
+  dataPlanilla = resp;
+
+  const p = dataPlanilla.partido || {};
+  equiposPartido = {
+    local: { id: p.equipo_local_id, nombre: p.equipo_local_nombre || "Local" },
+    visitante: { id: p.equipo_visitante_id, nombre: p.equipo_visitante_nombre || "Visitante" },
+  };
+  documentosRequeridos = {
+    cedula: dataPlanilla.documentos_requeridos?.cedula !== false,
+    foto_cedula: dataPlanilla.documentos_requeridos?.foto_cedula === true,
+    foto_carnet: dataPlanilla.documentos_requeridos?.foto_carnet === true,
+  };
+
+  renderEncabezado();
+  cargarCamposBase();
+  renderCapturaOficialPorJugador();
+  actualizarVisibilidadContenidoPlanilla(true);
+  await sincronizarSelectoresDesdePlanillaActual();
+  restaurarEstadoFormularioPlanilla(snapshot);
 }
 
 function calcularTotalesCaptura() {
@@ -905,12 +1076,27 @@ function construirStatsInicialesPlanilla() {
   });
 }
 
-function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, statsIniciales) {
+function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombre, statsIniciales) {
   const cont = document.getElementById(idContenedor);
   if (!cont) return;
 
+  const acciones = puedeInscribirJugadoresEnPlanilla()
+    ? `
+      <div class="planilla-captura-actions">
+        <button
+          type="button"
+          class="btn btn-primary btn-xs btn-inscribir-planilla"
+          data-equipo-id="${equipoId}"
+          data-equipo-nombre="${escapeHtml(equipoNombre || "Equipo")}"
+        >
+          <i class="fas fa-user-plus"></i> Inscribir jugador
+        </button>
+      </div>
+    `
+    : "";
+
   if (!Array.isArray(jugadores) || !jugadores.length) {
-    cont.innerHTML = "<p class='form-hint'>No hay jugadores registrados en este equipo.</p>";
+    cont.innerHTML = `${acciones}<p class='form-hint'>No hay jugadores registrados en este equipo.</p>`;
     return;
   }
 
@@ -922,6 +1108,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, statsInicia
       const goles = suspendido ? "" : statsIniciales.golesPorJugador.get(jugadorId) || "";
       const amarillas = suspendido ? "" : statsIniciales.amarillasPorJugador.get(jugadorId) || "";
       const rojas = suspendido ? "" : statsIniciales.rojasPorJugador.get(jugadorId) || "";
+      const rojasDobles = suspendido ? 0 : statsIniciales.rojasDoblesPorJugador.get(jugadorId) || 0;
       const item = idx + 1;
       const numero = j.numero_camiseta || "-";
       const nombre = nombreJugador(j) || `Jugador ${idx + 1}`;
@@ -939,7 +1126,13 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, statsInicia
       const disabledAttr = suspendido ? "disabled" : "";
 
       return `
-        <tr class="planilla-player-row ${suspendido ? "is-suspended" : ""}" data-equipo-id="${equipoId}" data-jugador-id="${j.id}">
+        <tr
+          class="planilla-player-row ${suspendido ? "is-suspended" : ""}"
+          data-equipo-id="${equipoId}"
+          data-jugador-id="${j.id}"
+          data-rojas-dobles="${rojasDobles}"
+          data-tarjetas-preset="${rojasDobles > 0 ? "1" : ""}"
+        >
           <td>${item}</td>
           <td>${numero}</td>
           <td>
@@ -956,6 +1149,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, statsInicia
     .join("");
 
   cont.innerHTML = `
+    ${acciones}
     <div class="planilla-captura-table-wrap">
       <table class="planilla-captura-table">
         <thead>
@@ -1030,6 +1224,13 @@ function conectarEventosCaptura() {
     input.addEventListener("input", (e) => {
       const target = e.target;
       if (!(target instanceof HTMLInputElement)) return;
+      const row = target.closest(".planilla-player-row");
+      if (
+        row instanceof HTMLElement &&
+        (target.classList.contains("cap-ta") || target.classList.contains("cap-tr"))
+      ) {
+        row.dataset.tarjetasPreset = "";
+      }
       const limpio = String(target.value || "").replace(/\D+/g, "").slice(0, 2);
       const valor = valorNoNegativoEntero(limpio, 0, 99);
       target.value = valor ? String(valor) : "";
@@ -1041,6 +1242,14 @@ function conectarEventosCaptura() {
   });
 }
 
+function conectarAccionesCapturaPlanilla() {
+  document.querySelectorAll(".btn-inscribir-planilla").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      abrirModalInscripcionPlanilla(btn.dataset.equipoId, btn.dataset.equipoNombre || "Equipo");
+    });
+  });
+}
+
 function renderCapturaOficialPorJugador() {
   const statsIniciales = construirStatsInicialesPlanilla();
 
@@ -1048,12 +1257,14 @@ function renderCapturaOficialPorJugador() {
     "captura-local",
     dataPlanilla?.plantel_local || [],
     equiposPartido.local.id,
+    equiposPartido.local.nombre,
     statsIniciales
   );
   renderTablaCapturaEquipo(
     "captura-visitante",
     dataPlanilla?.plantel_visitante || [],
     equiposPartido.visitante.id,
+    equiposPartido.visitante.nombre,
     statsIniciales
   );
 
@@ -1062,7 +1273,150 @@ function renderCapturaOficialPorJugador() {
   actualizarResumenFooterDesdeCaptura();
   recalcularResultadoDesdeCaptura(true);
   conectarEventosCaptura();
+  conectarAccionesCapturaPlanilla();
   aplicarEstadoInasistenciaPlanilla(false);
+}
+
+function limpiarFormularioJugadorPlanilla() {
+  const form = document.getElementById("form-planilla-jugador");
+  form?.reset();
+  const hiddenEquipo = document.getElementById("planilla-jugador-equipo-id");
+  if (hiddenEquipo instanceof HTMLInputElement) hiddenEquipo.value = "";
+  const nombreEquipo = document.getElementById("planilla-jugador-equipo-nombre");
+  if (nombreEquipo) nombreEquipo.textContent = "Equipo";
+}
+
+function actualizarHintsDocumentosPlanillaJugador() {
+  const labelCedula = document.getElementById("planilla-label-jugador-cedula");
+  const hintCedula = document.getElementById("planilla-hint-jugador-cedula");
+  const inputCedula = document.getElementById("planilla-jugador-ced");
+  const labelFotoCedula = document.getElementById("planilla-label-jugador-foto-cedula");
+  const hintFotoCedula = document.getElementById("planilla-hint-foto-cedula");
+  const inputFotoCedula = document.getElementById("planilla-jugador-foto-cedula");
+  const labelFotoCarnet = document.getElementById("planilla-label-jugador-foto-carnet");
+  const hintFotoCarnet = document.getElementById("planilla-hint-foto-carnet");
+  const inputFotoCarnet = document.getElementById("planilla-jugador-foto-carnet");
+
+  if (labelCedula) {
+    labelCedula.textContent = documentosRequeridos.cedula ? "Cédula" : "Cédula (opcional)";
+  }
+  if (hintCedula) {
+    hintCedula.textContent = documentosRequeridos.cedula
+      ? "Este campeonato exige registrar la cédula del jugador."
+      : "Puedes dejar la cédula vacía si el campeonato no la exige.";
+  }
+  if (inputCedula instanceof HTMLInputElement) {
+    inputCedula.required = documentosRequeridos.cedula === true;
+  }
+
+  if (labelFotoCedula) {
+    labelFotoCedula.textContent = documentosRequeridos.foto_cedula
+      ? "Foto de cédula"
+      : "Foto de cédula (opcional)";
+  }
+  if (hintFotoCedula) {
+    hintFotoCedula.textContent = documentosRequeridos.foto_cedula
+      ? "Este campeonato exige foto de cédula."
+      : "Solo adjúntala si deseas dejar el documento cargado desde la planilla.";
+  }
+  if (inputFotoCedula instanceof HTMLInputElement) {
+    inputFotoCedula.required = documentosRequeridos.foto_cedula === true;
+  }
+
+  if (labelFotoCarnet) {
+    labelFotoCarnet.textContent = documentosRequeridos.foto_carnet
+      ? "Foto carnet"
+      : "Foto carnet (opcional)";
+  }
+  if (hintFotoCarnet) {
+    hintFotoCarnet.textContent = documentosRequeridos.foto_carnet
+      ? "Este campeonato exige foto carnet."
+      : "Puedes adjuntarla ahora o dejarla para después.";
+  }
+  if (inputFotoCarnet instanceof HTMLInputElement) {
+    inputFotoCarnet.required = documentosRequeridos.foto_carnet === true;
+  }
+}
+
+function abrirModalInscripcionPlanilla(equipoIdRaw, equipoNombre = "Equipo") {
+  if (!puedeInscribirJugadoresEnPlanilla()) {
+    mostrarNotificacion("Tu rol no puede inscribir jugadores desde la planilla", "warning");
+    return;
+  }
+  const equipoId = Number.parseInt(equipoIdRaw, 10);
+  if (!Number.isFinite(equipoId) || equipoId <= 0) {
+    mostrarNotificacion("No se pudo determinar el equipo para inscribir al jugador", "warning");
+    return;
+  }
+
+  limpiarFormularioJugadorPlanilla();
+  actualizarHintsDocumentosPlanillaJugador();
+
+  const modal = document.getElementById("modal-planilla-jugador");
+  const hiddenEquipo = document.getElementById("planilla-jugador-equipo-id");
+  const nombreEquipoEl = document.getElementById("planilla-jugador-equipo-nombre");
+  if (hiddenEquipo instanceof HTMLInputElement) hiddenEquipo.value = String(equipoId);
+  if (nombreEquipoEl) nombreEquipoEl.textContent = equipoNombre || "Equipo";
+  modal?.classList.add("open");
+  document.body.classList.add("modal-open");
+}
+
+function cerrarModalInscripcionPlanilla() {
+  const modal = document.getElementById("modal-planilla-jugador");
+  modal?.classList.remove("open");
+  document.body.classList.remove("modal-open");
+}
+
+async function guardarJugadorDesdePlanilla(event) {
+  event.preventDefault();
+
+  const equipoId = Number.parseInt(
+    document.getElementById("planilla-jugador-equipo-id")?.value || "",
+    10
+  );
+  if (!Number.isFinite(equipoId) || equipoId <= 0) {
+    mostrarNotificacion("Selecciona un equipo válido para registrar al jugador", "warning");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("equipo_id", String(equipoId));
+  formData.append("nombre", document.getElementById("planilla-jugador-nombre")?.value?.trim() || "");
+  formData.append("apellido", document.getElementById("planilla-jugador-apellido")?.value?.trim() || "");
+  formData.append("cedidentidad", document.getElementById("planilla-jugador-ced")?.value?.trim() || "");
+  formData.append(
+    "fecha_nacimiento",
+    document.getElementById("planilla-jugador-fecha")?.value?.trim() || ""
+  );
+  formData.append("posicion", document.getElementById("planilla-jugador-posicion")?.value?.trim() || "");
+  formData.append(
+    "numero_camiseta",
+    document.getElementById("planilla-jugador-numero")?.value?.trim() || ""
+  );
+  formData.append(
+    "es_capitan",
+    document.getElementById("planilla-jugador-capitan")?.checked ? "true" : "false"
+  );
+
+  const fotoCedula = document.getElementById("planilla-jugador-foto-cedula")?.files?.[0];
+  const fotoCarnet = document.getElementById("planilla-jugador-foto-carnet")?.files?.[0];
+  if (fotoCedula) formData.append("foto_cedula", fotoCedula);
+  if (fotoCarnet) formData.append("foto_carnet", fotoCarnet);
+
+  const submitBtn = document.querySelector("#form-planilla-jugador button[type='submit']");
+  if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = true;
+
+  try {
+    await ApiClient.requestForm("POST", "/jugadores", formData);
+    mostrarNotificacion("Jugador inscrito correctamente desde la planilla", "success");
+    await refrescarPlanillaPreservandoFormulario();
+    cerrarModalInscripcionPlanilla();
+  } catch (error) {
+    console.error("Error inscribiendo jugador desde la planilla:", error);
+    mostrarNotificacion(error.message || "No se pudo registrar el jugador", "error");
+  } finally {
+    if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = false;
+  }
 }
 
 function cargarCamposBase() {
@@ -1761,6 +2115,7 @@ async function cargarPlanilla() {
     };
 
     documentosRequeridos = {
+      cedula: dataPlanilla.documentos_requeridos?.cedula !== false,
       foto_cedula: dataPlanilla.documentos_requeridos?.foto_cedula === true,
       foto_carnet: dataPlanilla.documentos_requeridos?.foto_carnet === true,
     };
@@ -1795,7 +2150,8 @@ function recolectarPayloadPlanilla() {
       const golesNum = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
       const tarjetasNormalizadas = normalizarTarjetasFilaCaptura(row);
       const amarillasNum = tarjetasNormalizadas.amarillas;
-      const rojasNum = tarjetasNormalizadas.rojas;
+      const rojasDirectasNum = tarjetasNormalizadas.rojasDirectas;
+      const rojasDobleAmarillaNum = tarjetasNormalizadas.rojasPorDobleAmarilla;
 
       if (golesNum > 0) {
         goles.push({
@@ -1817,13 +2173,22 @@ function recolectarPayloadPlanilla() {
         });
       }
 
-      for (let i = 0; i < rojasNum; i += 1) {
+      for (let i = 0; i < rojasDirectasNum; i += 1) {
         tarjetas.push({
           equipo_id: equipoId,
           jugador_id: jugadorId,
           tipo_tarjeta: "roja",
           minuto: null,
           observacion: null,
+        });
+      }
+      for (let i = 0; i < rojasDobleAmarillaNum; i += 1) {
+        tarjetas.push({
+          equipo_id: equipoId,
+          jugador_id: jugadorId,
+          tipo_tarjeta: "roja",
+          minuto: null,
+          observacion: "Expulsión por doble amarilla",
         });
       }
     });
@@ -3144,9 +3509,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   await resolverCampeonatoContextoPlanilla();
 
   const formPlanilla = document.getElementById("form-planilla");
+  const formJugadorPlanilla = document.getElementById("form-planilla-jugador");
+  const modalJugadorPlanilla = document.getElementById("modal-planilla-jugador");
   formPlanilla?.addEventListener("submit", guardarPlanilla);
   formPlanilla?.addEventListener("input", () => actualizarVistaPreviaPlanilla(true));
   formPlanilla?.addEventListener("change", () => actualizarVistaPreviaPlanilla(true));
+  formJugadorPlanilla?.addEventListener("submit", guardarJugadorDesdePlanilla);
+  modalJugadorPlanilla?.addEventListener("click", (event) => {
+    if (event.target === modalJugadorPlanilla) {
+      cerrarModalInscripcionPlanilla();
+    }
+  });
   inicializarModoVistaPreviaPlanilla();
 
   document.getElementById("ciudad-planilla")?.addEventListener("input", () => {
@@ -3192,3 +3565,5 @@ window.imprimirPDFPlanilla = imprimirPDFPlanilla;
 window.toggleVistaPreviaPlanilla = toggleVistaPreviaPlanilla;
 window.volverAPartidos = volverAPartidos;
 window.recargarPlanilla = recargarPlanilla;
+window.abrirModalInscripcionPlanilla = abrirModalInscripcionPlanilla;
+window.cerrarModalInscripcionPlanilla = cerrarModalInscripcionPlanilla;
