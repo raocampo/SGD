@@ -14,6 +14,10 @@ let finanzasState = {
     filas: [],
     resumen: null,
   },
+  ultimoEjecutivoEquipos: {
+    filas: [],
+    resumen: null,
+  },
   esTecnico: false,
 };
 
@@ -41,6 +45,7 @@ async function inicializarFinanzas() {
     cargarMorosidadFinanzas(),
     cargarSancionesFinancieras(),
     cargarResumenEjecutivoFinanzas(),
+    cargarResumenEjecutivoEquiposFinanzas(),
     cargarEstadoCuentaActual(),
   ]);
 }
@@ -64,6 +69,7 @@ function bindEventosFinanzas() {
         cargarMorosidadFinanzas(),
         cargarSancionesFinancieras(),
         cargarResumenEjecutivoFinanzas(),
+        cargarResumenEjecutivoEquiposFinanzas(),
         cargarEstadoCuentaActual(),
       ]);
     });
@@ -75,6 +81,7 @@ function bindEventosFinanzas() {
       cargarMorosidadFinanzas(),
       cargarSancionesFinancieras(),
       cargarResumenEjecutivoFinanzas(),
+      cargarResumenEjecutivoEquiposFinanzas(),
       cargarEstadoCuentaActual(),
     ]);
     mostrarNotificacion("Datos financieros recargados", "success");
@@ -88,6 +95,7 @@ function bindEventosFinanzas() {
       cargarMorosidadFinanzas();
       cargarSancionesFinancieras();
       cargarResumenEjecutivoFinanzas();
+      cargarResumenEjecutivoEquiposFinanzas();
       cargarEstadoCuentaActual();
     });
 
@@ -98,6 +106,7 @@ function bindEventosFinanzas() {
       cargarMorosidadFinanzas();
       cargarSancionesFinancieras();
       cargarResumenEjecutivoFinanzas();
+      cargarResumenEjecutivoEquiposFinanzas();
       cargarEstadoCuentaActual();
     });
 
@@ -131,6 +140,9 @@ function bindEventosFinanzas() {
   document
     .getElementById("btn-fin-imprimir-ejecutivo")
     ?.addEventListener("click", imprimirReporteEjecutivoFinanzas);
+  document
+    .getElementById("btn-fin-imprimir-ejecutivo-equipos")
+    ?.addEventListener("click", imprimirReporteEjecutivoEquiposFinanzas);
 }
 
 function inicializarTogglesReportes() {
@@ -138,6 +150,7 @@ function inicializarTogglesReportes() {
   configurarToggleReporte("btn-toggle-movimientos", "fin-movimientos-contenido", true);
   configurarToggleReporte("btn-toggle-sanciones", "fin-sanciones-contenido", true);
   configurarToggleReporte("btn-toggle-ejecutivo", "fin-ejecutivo-contenido", true);
+  configurarToggleReporte("btn-toggle-ejecutivo-equipos", "fin-ejecutivo-equipos-contenido", true);
 }
 
 function configurarToggleReporte(btnId, targetId, expandedInicial = true) {
@@ -624,6 +637,165 @@ async function cargarResumenEjecutivoFinanzas() {
   }
 }
 
+function calcularResumenEjecutivoPorEquipo(movimientos = []) {
+  const mapa = new Map();
+
+  (Array.isArray(movimientos) ? movimientos : []).forEach((mov) => {
+    if (String(mov.estado || "").toLowerCase() === "anulado") return;
+
+    const equipoId = Number.parseInt(mov.equipo_id, 10);
+    const equipoNombre = String(mov.equipo_nombre || "Equipo").trim() || "Equipo";
+    const clave = Number.isFinite(equipoId) && equipoId > 0 ? `id:${equipoId}` : `nombre:${equipoNombre}`;
+
+    if (!mapa.has(clave)) {
+      mapa.set(clave, {
+        equipo_id: Number.isFinite(equipoId) ? equipoId : null,
+        equipo_nombre: equipoNombre,
+        campeonato_nombre: String(mov.campeonato_nombre || "Campeonato").trim() || "Campeonato",
+        categorias: new Set(),
+        total_cargos: 0,
+        total_abonos: 0,
+        inscripcion: { cargo: 0, abono: 0, saldo: 0 },
+        arbitraje: { cargo: 0, abono: 0, saldo: 0 },
+        multas: { cargo: 0, abono: 0, saldo: 0 },
+        cargos_abiertos: 0,
+        cargos_vencidos: 0,
+      });
+    }
+
+    const fila = mapa.get(clave);
+    const eventoNombre = String(mov.evento_nombre || "").trim();
+    if (eventoNombre && eventoNombre.toLowerCase() !== "sin categoría") {
+      fila.categorias.add(eventoNombre);
+    }
+
+    const monto = Number.parseFloat(mov.monto || 0);
+    if (!Number.isFinite(monto) || monto <= 0) return;
+
+    const tipo = String(mov.tipo_movimiento || "").toLowerCase();
+    const estado = String(mov.estado || "").toLowerCase();
+    const esCargo = tipo !== "abono";
+
+    if (esCargo) fila.total_cargos += monto;
+    else fila.total_abonos += monto;
+
+    const bucket = clasificarMovimientoCuenta(mov);
+    if (bucket && fila[bucket]) {
+      if (esCargo) fila[bucket].cargo += monto;
+      else fila[bucket].abono += monto;
+    } else if (String(mov.concepto || "").toLowerCase() === "multa") {
+      if (esCargo) fila.multas.cargo += monto;
+      else fila.multas.abono += monto;
+    }
+
+    if (esCargo && ["pendiente", "parcial", "vencido"].includes(estado)) {
+      fila.cargos_abiertos += monto;
+    }
+    if (esCargo && estado === "vencido") {
+      fila.cargos_vencidos += monto;
+    }
+  });
+
+  const filas = Array.from(mapa.values()).map((fila) => {
+    ["inscripcion", "arbitraje", "multas"].forEach((k) => {
+      fila[k].cargo = Number(fila[k].cargo.toFixed(2));
+      fila[k].abono = Number(fila[k].abono.toFixed(2));
+      fila[k].saldo = Number(Math.max(fila[k].cargo - fila[k].abono, 0).toFixed(2));
+    });
+
+    const categorias = Array.from(fila.categorias.values()).sort((a, b) =>
+      a.localeCompare(b, "es", { sensitivity: "base" })
+    );
+    const totalCargos = Number(fila.total_cargos.toFixed(2));
+    const totalAbonos = Number(fila.total_abonos.toFixed(2));
+
+    return {
+      equipo_id: fila.equipo_id,
+      equipo_nombre: fila.equipo_nombre,
+      campeonato_nombre: fila.campeonato_nombre,
+      categorias: categorias.length ? categorias.join(", ") : "Sin categoría",
+      total_cargos: totalCargos,
+      total_abonos: totalAbonos,
+      saldo: Number(Math.max(totalCargos - totalAbonos, 0).toFixed(2)),
+      cargos_abiertos: Number(fila.cargos_abiertos.toFixed(2)),
+      cargos_vencidos: Number(fila.cargos_vencidos.toFixed(2)),
+      inscripcion_saldo: fila.inscripcion.saldo,
+      arbitraje_saldo: fila.arbitraje.saldo,
+      multas_saldo: fila.multas.saldo,
+    };
+  });
+
+  filas.sort((a, b) => {
+    if (b.saldo !== a.saldo) return b.saldo - a.saldo;
+    if (b.cargos_vencidos !== a.cargos_vencidos) return b.cargos_vencidos - a.cargos_vencidos;
+    return String(a.equipo_nombre || "").localeCompare(String(b.equipo_nombre || ""), "es", {
+      sensitivity: "base",
+    });
+  });
+
+  const resumen = filas.reduce(
+    (acc, fila) => {
+      acc.equipos += 1;
+      acc.campeonatos.add(fila.campeonato_nombre || "Campeonato");
+      acc.total_cargos += fila.total_cargos;
+      acc.total_abonos += fila.total_abonos;
+      acc.saldo += fila.saldo;
+      acc.cargos_abiertos += fila.cargos_abiertos;
+      acc.cargos_vencidos += fila.cargos_vencidos;
+      acc.multas_saldo += fila.multas_saldo;
+      return acc;
+    },
+    {
+      equipos: 0,
+      campeonatos: new Set(),
+      total_cargos: 0,
+      total_abonos: 0,
+      saldo: 0,
+      cargos_abiertos: 0,
+      cargos_vencidos: 0,
+      multas_saldo: 0,
+    }
+  );
+
+  resumen.campeonatos = resumen.campeonatos.size;
+  ["total_cargos", "total_abonos", "saldo", "cargos_abiertos", "cargos_vencidos", "multas_saldo"].forEach(
+    (k) => {
+      resumen[k] = Number(resumen[k].toFixed(2));
+    }
+  );
+
+  return { filas, resumen };
+}
+
+async function cargarResumenEjecutivoEquiposFinanzas() {
+  const params = {
+    campeonato_id: document.getElementById("fin-campeonato")?.value || "",
+    evento_id: document.getElementById("fin-evento")?.value || "",
+    equipo_id: document.getElementById("fin-equipo")?.value || "",
+    tipo_movimiento: document.getElementById("fin-tipo")?.value || "",
+    estado: document.getElementById("fin-estado")?.value || "",
+    desde: document.getElementById("fin-desde")?.value || "",
+    hasta: document.getElementById("fin-hasta")?.value || "",
+    incluir_sistema: "true",
+    limit: 5000,
+  };
+
+  const cont = document.getElementById("fin-ejecutivo-equipos-contenido");
+  if (cont) cont.innerHTML = renderCargando("Cargando resumen por equipo...");
+
+  try {
+    const resp = await FinanzasAPI.listarMovimientos(params);
+    const movimientos = resp.movimientos || [];
+    const consolidado = calcularResumenEjecutivoPorEquipo(movimientos);
+    finanzasState.ultimoEjecutivoEquipos = consolidado;
+    renderResumenEjecutivoEquiposFinanzas(consolidado.filas, consolidado.resumen);
+  } catch (error) {
+    console.error(error);
+    finanzasState.ultimoEjecutivoEquipos = { filas: [], resumen: null };
+    if (cont) cont.innerHTML = renderVacio(error.message || "No se pudo cargar el resumen por equipo.");
+  }
+}
+
 function clasificarMovimientoCuenta(mov = {}) {
   const concepto = String(mov.concepto || "").toLowerCase();
   const descripcion = String(mov.descripcion || "").toLowerCase();
@@ -773,6 +945,7 @@ async function guardarMovimientoFinanzas(e) {
       cargarMorosidadFinanzas(),
       cargarSancionesFinancieras(),
       cargarResumenEjecutivoFinanzas(),
+      cargarResumenEjecutivoEquiposFinanzas(),
       cargarEstadoCuentaActual(),
     ]);
   } catch (error) {
@@ -1315,6 +1488,90 @@ async function imprimirReporteEjecutivoFinanzas() {
   });
 }
 
+async function imprimirReporteEjecutivoEquiposFinanzas() {
+  const data = finanzasState.ultimoEjecutivoEquipos || {};
+  const filasData = Array.isArray(data.filas) ? data.filas : [];
+  const resumen = data.resumen || null;
+  if (!filasData.length || !resumen) {
+    mostrarNotificacion("No hay datos del resumen por equipo para imprimir", "warning");
+    return;
+  }
+
+  const campeonatoId = Number.parseInt(
+    document.getElementById("fin-campeonato")?.value || "",
+    10
+  );
+  const campeonato = obtenerCampeonatoPorId(campeonatoId);
+  const auspiciantes = await cargarAuspiciantesActivosReporte(campeonatoId);
+
+  const filas = filasData
+    .map((x, idx) => {
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escaparHtml(x.equipo_nombre || "-")}</td>
+          <td>${escaparHtml(x.campeonato_nombre || "-")}</td>
+          <td>${escaparHtml(x.categorias || "Sin categoría")}</td>
+          <td class="num">${formatoMoneda(x.total_cargos)}</td>
+          <td class="num">${formatoMoneda(x.total_abonos)}</td>
+          <td class="num ${x.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.saldo)}</td>
+          <td class="num">${formatoMoneda(x.cargos_abiertos)}</td>
+          <td class="num ${x.cargos_vencidos > 0 ? "deuda" : "ok"}">${formatoMoneda(x.cargos_vencidos)}</td>
+          <td class="num">${formatoMoneda(x.inscripcion_saldo)}</td>
+          <td class="num">${formatoMoneda(x.arbitraje_saldo)}</td>
+          <td class="num">${formatoMoneda(x.multas_saldo)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const html = `
+    <div class="fin-report-wrap">
+      <div class="fin-report-header">
+        <h1>Resumen Ejecutivo por Equipo</h1>
+        <div class="fin-report-sub">Corte: ${escaparHtml(formatearFechaHoraReporte(new Date().toISOString()))}</div>
+      </div>
+      <div class="fin-report-grid">
+        <div><strong>Equipos:</strong> ${resumen.equipos}</div>
+        <div><strong>Campeonatos:</strong> ${resumen.campeonatos}</div>
+        <div><strong>Total cargos:</strong> ${formatoMoneda(resumen.total_cargos)}</div>
+        <div><strong>Total abonos:</strong> ${formatoMoneda(resumen.total_abonos)}</div>
+        <div><strong>Saldo actual:</strong> <span class="${resumen.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.saldo)}</span></div>
+        <div><strong>Cargos abiertos:</strong> ${formatoMoneda(resumen.cargos_abiertos)}</div>
+        <div><strong>Cargos vencidos:</strong> <span class="${resumen.cargos_vencidos > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.cargos_vencidos)}</span></div>
+        <div><strong>Saldo multas:</strong> <span class="${resumen.multas_saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.multas_saldo)}</span></div>
+      </div>
+      <table class="fin-report-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Equipo</th>
+            <th>Campeonato</th>
+            <th>Categoría</th>
+            <th class="num">Cargos</th>
+            <th class="num">Abonos</th>
+            <th class="num">Saldo</th>
+            <th class="num">Abiertos</th>
+            <th class="num">Vencidos</th>
+            <th class="num">Saldo inscripción</th>
+            <th class="num">Saldo arbitraje</th>
+            <th class="num">Saldo multas</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+    ${renderPieAuspiciantes(auspiciantes)}
+  `;
+
+  await abrirVentanaReporteFinanzas({
+    membreteHtml: renderMembreteReporte(campeonato, "Resumen Ejecutivo por Equipo"),
+    tituloVentana: "Resumen Ejecutivo por Equipo",
+    cuerpoHtml: html,
+    autoPrint: true,
+  });
+}
+
 function abrirVentanaReporteFinanzas({
   membreteHtml = "",
   tituloVentana = "Reporte",
@@ -1623,6 +1880,68 @@ function renderResumenEjecutivoFinanzas(filas = [], resumen = null) {
           <th>Saldo</th>
           <th>Cargos inscripción</th>
           <th>Cargos arbitraje</th>
+          <th>Saldo multas</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderResumenEjecutivoEquiposFinanzas(filas = [], resumen = null) {
+  const cont = document.getElementById("fin-ejecutivo-equipos-contenido");
+  if (!cont) return;
+  if (!Array.isArray(filas) || !filas.length || !resumen) {
+    cont.innerHTML = renderVacio("No hay datos ejecutivos por equipo para los filtros actuales.");
+    return;
+  }
+
+  const rows = filas
+    .map((x, idx) => {
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escaparHtml(x.equipo_nombre || "-")}</td>
+          <td>${escaparHtml(x.campeonato_nombre || "-")}</td>
+          <td>${escaparHtml(x.categorias || "Sin categoría")}</td>
+          <td>${formatoMoneda(x.total_cargos)}</td>
+          <td>${formatoMoneda(x.total_abonos)}</td>
+          <td class="${x.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(x.saldo)}</td>
+          <td>${formatoMoneda(x.cargos_abiertos)}</td>
+          <td class="${x.cargos_vencidos > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(x.cargos_vencidos)}</td>
+          <td>${formatoMoneda(x.inscripcion_saldo)}</td>
+          <td>${formatoMoneda(x.arbitraje_saldo)}</td>
+          <td>${formatoMoneda(x.multas_saldo)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  cont.innerHTML = `
+    <div class="fin-sanciones-resumen">
+      <div><strong>Equipos:</strong> ${resumen.equipos}</div>
+      <div><strong>Campeonatos:</strong> ${resumen.campeonatos}</div>
+      <div><strong>Total cargos:</strong> ${formatoMoneda(resumen.total_cargos)}</div>
+      <div><strong>Total abonos:</strong> ${formatoMoneda(resumen.total_abonos)}</div>
+      <div><strong>Saldo actual:</strong> <span class="${resumen.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.saldo)}</span></div>
+      <div><strong>Cargos abiertos:</strong> ${formatoMoneda(resumen.cargos_abiertos)}</div>
+      <div><strong>Cargos vencidos:</strong> <span class="${resumen.cargos_vencidos > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.cargos_vencidos)}</span></div>
+      <div><strong>Saldo multas:</strong> <span class="${resumen.multas_saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.multas_saldo)}</span></div>
+    </div>
+    <table class="tabla-estadistica tabla-estadistica-compacta">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Equipo</th>
+          <th>Campeonato</th>
+          <th>Categoría</th>
+          <th>Cargos</th>
+          <th>Abonos</th>
+          <th>Saldo</th>
+          <th>Abiertos</th>
+          <th>Vencidos</th>
+          <th>Saldo inscripción</th>
+          <th>Saldo arbitraje</th>
           <th>Saldo multas</th>
         </tr>
       </thead>

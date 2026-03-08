@@ -147,6 +147,39 @@ async function obtenerEquiposEvento(eventoId) {
   return r.rows;
 }
 
+async function obtenerEstadoEquiposEvento(eventoId) {
+  const q = `
+    SELECT
+      equipo_id,
+      COALESCE(no_presentaciones, 0)::int AS no_presentaciones,
+      COALESCE(eliminado_automatico, FALSE) AS eliminado_automatico
+    FROM evento_equipos
+    WHERE evento_id = $1
+  `;
+  const r = await pool.query(q, [eventoId]);
+  return new Map(
+    r.rows.map((row) => [
+      Number(row.equipo_id),
+      {
+        no_presentaciones: Number(row.no_presentaciones || 0),
+        eliminado_automatico: row.eliminado_automatico === true,
+      },
+    ])
+  );
+}
+
+function aplicarEstadoClasificacionTabla(tabla, clasificadosPorGrupo = null) {
+  const cupos = aEntero(clasificadosPorGrupo, 0);
+  tabla.forEach((item, idx) => {
+    const posicion = idx + 1;
+    const eliminadoAutomatico = item.eliminado_automatico === true;
+    const clasifica = cupos > 0 ? posicion <= cupos && !eliminadoAutomatico : !eliminadoAutomatico;
+    item.posicion = posicion;
+    item.clasifica = clasifica;
+    item.fuera_clasificacion = cupos > 0 ? posicion > cupos || eliminadoAutomatico : eliminadoAutomatico;
+  });
+}
+
 async function calcularPuntosEquipoEnGrupo(equipoId, grupoId, sistema) {
   try {
     const q = `
@@ -297,6 +330,10 @@ async function generarTablaGrupoInterna(grupoId) {
   const qGrupo = `
     SELECT g.id, g.nombre_grupo, g.letra_grupo, g.evento_id,
            e.nombre AS evento_nombre,
+           COALESCE(
+             e.clasificados_por_grupo,
+             CASE WHEN LOWER(COALESCE(e.metodo_competencia, 'grupos')) IN ('grupos', 'mixto') THEN 2 ELSE NULL END
+           ) AS clasificados_por_grupo,
            c.id AS campeonato_id,
            c.nombre AS campeonato_nombre,
            c.tipo_futbol,
@@ -314,6 +351,7 @@ async function generarTablaGrupoInterna(grupoId) {
   const sistema = grupo.sistema_puntuacion || "tradicional";
   const reglas = parsearReglas(grupo.reglas_desempate);
   const equipos = await obtenerEquiposGrupo(grupo.id);
+  const estadosEquipos = await obtenerEstadoEquiposEvento(grupo.evento_id);
   const tabla = [];
 
   for (const equipo of equipos) {
@@ -327,6 +365,10 @@ async function generarTablaGrupoInterna(grupoId) {
     const empates = Math.max(aEntero(est.empates, 0) - victoriasShootouts - derrotasShootouts, 0);
     const gf = aEntero(est.goles_favor, 0);
     const gc = aEntero(est.goles_contra, 0);
+    const estadoEquipo = estadosEquipos.get(Number(equipo.id)) || {
+      no_presentaciones: 0,
+      eliminado_automatico: false,
+    };
 
     tabla.push({
       posicion: 0,
@@ -351,10 +393,13 @@ async function generarTablaGrupoInterna(grupoId) {
       },
       puntos,
       diferencia_goles: gf - gc,
+      no_presentaciones: estadoEquipo.no_presentaciones,
+      eliminado_automatico: estadoEquipo.eliminado_automatico,
     });
   }
 
   ordenarTablaPorReglas(tabla, reglas);
+  aplicarEstadoClasificacionTabla(tabla, grupo.clasificados_por_grupo);
 
   return {
     grupo: {
@@ -363,6 +408,7 @@ async function generarTablaGrupoInterna(grupoId) {
       letra_grupo: grupo.letra_grupo,
       evento_id: grupo.evento_id,
       evento_nombre: grupo.evento_nombre,
+      clasificados_por_grupo: aEntero(grupo.clasificados_por_grupo, 0) || null,
       campeonato_id: grupo.campeonato_id,
       campeonato_nombre: grupo.campeonato_nombre,
     },
@@ -377,12 +423,17 @@ async function generarTablaEventoSinGrupos(evento) {
   const equipos = await obtenerEquiposEvento(evento.id);
   const sistema = evento.sistema_puntuacion || "tradicional";
   const reglas = parsearReglas(evento.reglas_desempate);
+  const estadosEquipos = await obtenerEstadoEquiposEvento(evento.id);
   const tabla = [];
 
   for (const equipo of equipos) {
     const est = await calcularResumenEvento(equipo.id, evento.id, sistema);
     const gf = aEntero(est.goles_favor, 0);
     const gc = aEntero(est.goles_contra, 0);
+    const estadoEquipo = estadosEquipos.get(Number(equipo.id)) || {
+      no_presentaciones: 0,
+      eliminado_automatico: false,
+    };
 
     tabla.push({
       posicion: 0,
@@ -407,10 +458,13 @@ async function generarTablaEventoSinGrupos(evento) {
       },
       puntos: est.puntos,
       diferencia_goles: gf - gc,
+      no_presentaciones: estadoEquipo.no_presentaciones,
+      eliminado_automatico: estadoEquipo.eliminado_automatico,
     });
   }
 
   ordenarTablaPorReglas(tabla, reglas);
+  aplicarEstadoClasificacionTabla(tabla, evento.clasificados_por_grupo);
 
   return {
     grupo: {
@@ -419,6 +473,7 @@ async function generarTablaEventoSinGrupos(evento) {
       letra_grupo: "-",
       evento_id: evento.id,
       evento_nombre: evento.nombre,
+      clasificados_por_grupo: aEntero(evento.clasificados_por_grupo, 0) || null,
       campeonato_id: evento.campeonato_id,
       campeonato_nombre: evento.campeonato_nombre,
     },
@@ -450,6 +505,7 @@ async function generarTablasEventoInterna(eventoId) {
     evento: {
       id: evento.id,
       nombre: evento.nombre,
+      clasificados_por_grupo: aEntero(evento.clasificados_por_grupo, 0) || null,
       campeonato_id: evento.campeonato_id,
       campeonato_nombre: evento.campeonato_nombre,
     },

@@ -110,6 +110,8 @@ function mapEvent(row, totalTeams = 0) {
     startDate: row.fecha_inicio || null,
     endDate: row.fecha_fin || null,
     format: mapFormat(row.metodo_competencia),
+    qualifiersPerGroup:
+      row.clasificados_por_grupo == null ? null : toInteger(row.clasificados_por_grupo, 0),
     registrationFee: toNumber(row.costo_inscripcion, 0),
     eliminationSize: row.eliminatoria_equipos == null ? null : toInteger(row.eliminatoria_equipos, 0),
     modality: row.modalidad || "weekend",
@@ -136,6 +138,8 @@ function mapTeam(row, playerCount = 0) {
     drawOrder:
       row.evento_orden_sorteo == null ? null : toInteger(row.evento_orden_sorteo, 0),
     logoUrl: row.logo_url || null,
+    noShows: row.no_presentaciones == null ? 0 : toInteger(row.no_presentaciones, 0),
+    autoEliminated: row.eliminado_automatico === true,
     createdAt: row.created_at || null,
     counts: {
       players: playerCount,

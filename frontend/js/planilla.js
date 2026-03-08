@@ -28,8 +28,21 @@ const IDS_PAGOS_PLANILLA = [
   "pago-tr-local",
   "pago-tr-visitante",
 ];
+const IDS_PAGOS_PLANILLA_LOCAL = [
+  "pago-local",
+  "pago-arbitraje-local",
+  "pago-ta-local",
+  "pago-tr-local",
+];
+const IDS_PAGOS_PLANILLA_VISITANTE = [
+  "pago-visitante",
+  "pago-arbitraje-visitante",
+  "pago-ta-visitante",
+  "pago-tr-visitante",
+];
 const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante", "ambos"]);
 const GOLES_WALKOVER = 3;
+const MAX_FALTAS_PLANILLA = 6;
 
 function qp(nombre) {
   const params = new URLSearchParams(window.location.search);
@@ -119,6 +132,79 @@ function obtenerInasistenciaPlanilla() {
   return "ninguno";
 }
 
+function obtenerLadosBloqueadosPlanilla(tipo = obtenerInasistenciaPlanilla()) {
+  const normalizado = normalizarInasistenciaPlanilla(tipo);
+  return {
+    local: normalizado === "local" || normalizado === "ambos",
+    visitante: normalizado === "visitante" || normalizado === "ambos",
+  };
+}
+
+function obtenerLadoEquipoPlanilla(equipoIdRaw) {
+  const equipoId = Number(equipoIdRaw);
+  if (equipoId === Number(equiposPartido.local.id)) return "local";
+  if (equipoId === Number(equiposPartido.visitante.id)) return "visitante";
+  return "";
+}
+
+function estaEquipoBloqueadoPlanilla(equipoIdRaw, tipo = obtenerInasistenciaPlanilla()) {
+  const lado = obtenerLadoEquipoPlanilla(equipoIdRaw);
+  if (!lado) return false;
+  const bloqueados = obtenerLadosBloqueadosPlanilla(tipo);
+  return bloqueados[lado] === true;
+}
+
+function normalizarConteoFaltasPlanilla(valor, fallback = 0) {
+  const n = aEntero(valor, fallback);
+  return Math.min(Math.max(n, 0), MAX_FALTAS_PLANILLA);
+}
+
+function normalizarEstadoFaltasPlanilla(faltas = {}) {
+  const local1 = normalizarConteoFaltasPlanilla(
+    faltas?.local_1er ?? faltas?.local_1 ?? faltas?.local_primer_tiempo ?? faltas?.faltas_local_1er
+  );
+  const local2 = normalizarConteoFaltasPlanilla(
+    faltas?.local_2do ?? faltas?.local_2 ?? faltas?.local_segundo_tiempo ?? faltas?.faltas_local_2do
+  );
+  const visitante1 = normalizarConteoFaltasPlanilla(
+    faltas?.visitante_1er ??
+      faltas?.visitante_1 ??
+      faltas?.visitante_primer_tiempo ??
+      faltas?.faltas_visitante_1er
+  );
+  const visitante2 = normalizarConteoFaltasPlanilla(
+    faltas?.visitante_2do ??
+      faltas?.visitante_2 ??
+      faltas?.visitante_segundo_tiempo ??
+      faltas?.faltas_visitante_2do
+  );
+
+  return {
+    local_1er: local1,
+    local_2do: local2,
+    visitante_1er: visitante1,
+    visitante_2do: visitante2,
+    local_total: local1 + local2,
+    visitante_total: visitante1 + visitante2,
+  };
+}
+
+function obtenerEstadoFaltasPlanilla() {
+  dataPlanilla = dataPlanilla || {};
+  dataPlanilla.faltas = normalizarEstadoFaltasPlanilla(dataPlanilla.faltas || {});
+  return dataPlanilla.faltas;
+}
+
+function actualizarEstadoFaltasPlanilla(lado, tiempo, valor) {
+  const faltas = obtenerEstadoFaltasPlanilla();
+  const clave = `${lado}_${tiempo === 1 ? "1er" : "2do"}`;
+  const siguienteValor = normalizarConteoFaltasPlanilla(valor, 0);
+  faltas[clave] = faltas[clave] === siguienteValor ? 0 : siguienteValor;
+  faltas.local_total = faltas.local_1er + faltas.local_2do;
+  faltas.visitante_total = faltas.visitante_1er + faltas.visitante_2do;
+  dataPlanilla.faltas = faltas;
+}
+
 function estaMarcadoAmbosNoPresentes() {
   return obtenerInasistenciaPlanilla() === "ambos";
 }
@@ -134,10 +220,15 @@ function obtenerResultadoPorInasistencia(tipo = "ninguno") {
     case "visitante":
       return { local: GOLES_WALKOVER, visitante: 0, estado: "finalizado" };
     case "ambos":
-      return { local: 0, visitante: 0, estado: "no_presentaron_ambos" };
+      return { local: null, visitante: null, estado: "no_presentaron_ambos" };
     default:
       return { local: null, visitante: null, estado: null };
   }
+}
+
+function formatearMarcadorPlanilla(valor) {
+  if (valor === null || valor === undefined || String(valor).trim() === "") return "";
+  return String(aEntero(valor, 0));
 }
 
 function obtenerMensajeInasistencia(tipo = "ninguno") {
@@ -167,7 +258,8 @@ function tienePagosRegistrados(pagos = {}) {
 }
 
 function planillaSinDatosDeJuego(payload = {}) {
-  if (payload.ambos_no_presentes === true) return true;
+  if (normalizarInasistenciaPlanilla(payload.inasistencia_equipo) !== "ninguno") return false;
+  if (payload.ambos_no_presentes === true) return false;
   const goles = Array.isArray(payload.goles) ? payload.goles : [];
   const tarjetas = Array.isArray(payload.tarjetas) ? payload.tarjetas : [];
   return goles.length === 0 && tarjetas.length === 0 && !tienePagosRegistrados(payload.pagos || {});
@@ -186,7 +278,7 @@ function formatearConteoPlanilla(valor, mostrarEnBlanco = false) {
 }
 
 function hayDatosEnFormularioPlanilla() {
-  if (hayInasistenciaPlanilla()) return false;
+  if (hayInasistenciaPlanilla()) return true;
   const tot = calcularTotalesCaptura();
   const hayCaptura =
     tot.local.goles > 0 ||
@@ -217,6 +309,15 @@ function limpiarCapturaPlanilla() {
   actualizarResumenFooterDesdeCaptura();
 }
 
+function limpiarCapturaPlanillaPorLado(lado) {
+  const contenedorId = lado === "local" ? "captura-local" : "captura-visitante";
+  document.querySelectorAll(`#${contenedorId} .planilla-player-row input`).forEach((input) => {
+    if (input instanceof HTMLInputElement) input.value = "";
+  });
+  recalcularTotalesCapturaEquipo(contenedorId);
+  actualizarResumenFooterDesdeCaptura();
+}
+
 function limpiarPagosPlanilla() {
   IDS_PAGOS_PLANILLA.forEach((id) => {
     const input = document.getElementById(id);
@@ -224,9 +325,18 @@ function limpiarPagosPlanilla() {
   });
 }
 
+function limpiarPagosPlanillaPorLado(lado) {
+  const ids = lado === "local" ? IDS_PAGOS_PLANILLA_LOCAL : IDS_PAGOS_PLANILLA_VISITANTE;
+  ids.forEach((id) => {
+    const input = document.getElementById(id);
+    if (input instanceof HTMLInputElement) input.value = "";
+  });
+}
+
 function aplicarEstadoInasistenciaPlanilla(forzarLimpieza = false) {
   const tipo = obtenerInasistenciaPlanilla();
-  const especial = tipo !== "ninguno";
+  const bloqueados = obtenerLadosBloqueadosPlanilla(tipo);
+  const especial = bloqueados.local || bloqueados.visitante;
   const selectEstado = document.getElementById("estado-partido");
   const hint = document.getElementById("inasistencia-planilla-hint");
   const resultadoAutomatico = obtenerResultadoPorInasistencia(tipo);
@@ -243,34 +353,55 @@ function aplicarEstadoInasistenciaPlanilla(forzarLimpieza = false) {
     }
   }
 
-  document.querySelectorAll("#captura-local, #captura-visitante").forEach((cont) => {
-    cont.classList.toggle("planilla-bloqueado", especial);
-  });
-  document.querySelectorAll(".planilla-player-row input").forEach((input) => {
-    if (!(input instanceof HTMLInputElement)) return;
-    const filaSuspendida = input.closest(".planilla-player-row.is-suspended");
-    input.disabled = especial || !!filaSuspendida;
+  [
+    { lado: "local", contenedorId: "captura-local" },
+    { lado: "visitante", contenedorId: "captura-visitante" },
+  ].forEach(({ lado, contenedorId }) => {
+    const cont = document.getElementById(contenedorId);
+    if (!(cont instanceof HTMLElement)) return;
+    const bloqueado = bloqueados[lado] === true;
+    cont.classList.toggle("planilla-bloqueado", bloqueado);
+    cont.querySelectorAll(".planilla-player-row input").forEach((input) => {
+      if (!(input instanceof HTMLInputElement)) return;
+      const filaSuspendida = input.closest(".planilla-player-row.is-suspended");
+      input.disabled = bloqueado || !!filaSuspendida;
+    });
+    cont.querySelectorAll(".btn-inscribir-planilla").forEach((btn) => {
+      if (btn instanceof HTMLButtonElement) btn.disabled = bloqueado;
+    });
   });
 
-  IDS_PAGOS_PLANILLA.forEach((id) => {
+  IDS_PAGOS_PLANILLA_LOCAL.forEach((id) => {
     const input = document.getElementById(id);
-    if (input instanceof HTMLInputElement) input.disabled = especial;
+    if (input instanceof HTMLInputElement) input.disabled = bloqueados.local === true;
+  });
+  IDS_PAGOS_PLANILLA_VISITANTE.forEach((id) => {
+    const input = document.getElementById(id);
+    if (input instanceof HTMLInputElement) input.disabled = bloqueados.visitante === true;
   });
 
   if (especial) {
     if (forzarLimpieza) {
-      limpiarCapturaPlanilla();
-      limpiarPagosPlanilla();
+      if (bloqueados.local) {
+        limpiarCapturaPlanillaPorLado("local");
+        limpiarPagosPlanillaPorLado("local");
+      }
+      if (bloqueados.visitante) {
+        limpiarCapturaPlanillaPorLado("visitante");
+        limpiarPagosPlanillaPorLado("visitante");
+      }
     }
     const inputLocal = document.getElementById("resultado-local");
     const inputVisitante = document.getElementById("resultado-visitante");
-    if (inputLocal) inputLocal.value = String(resultadoAutomatico.local ?? 0);
-    if (inputVisitante) inputVisitante.value = String(resultadoAutomatico.visitante ?? 0);
-    actualizarHeaderResultado(resultadoAutomatico.local ?? 0, resultadoAutomatico.visitante ?? 0);
+    if (inputLocal) inputLocal.value = resultadoAutomatico.local == null ? "" : String(resultadoAutomatico.local);
+    if (inputVisitante) inputVisitante.value = resultadoAutomatico.visitante == null ? "" : String(resultadoAutomatico.visitante);
+    actualizarHeaderResultado(resultadoAutomatico.local, resultadoAutomatico.visitante);
     if (hint) {
       hint.textContent = obtenerMensajeInasistencia(tipo);
       hint.classList.add("is-warning");
     }
+    renderFaltasVisual();
+    actualizarResumenFooterDesdeCaptura();
     return;
   }
 
@@ -278,6 +409,8 @@ function aplicarEstadoInasistenciaPlanilla(forzarLimpieza = false) {
     hint.textContent = obtenerMensajeInasistencia("ninguno");
     hint.classList.remove("is-warning");
   }
+  renderFaltasVisual();
+  actualizarResumenFooterDesdeCaptura();
 }
 
 function escapeHtml(valor) {
@@ -307,6 +440,48 @@ function normalizarArchivoUrl(url) {
   if (normal.startsWith(`${backendBase}/`)) return normal;
   if (normal.startsWith("/")) return `${backendBase}${normal}`;
   return `${backendBase}/${normal}`;
+}
+
+async function cargarAuspiciantesActivosPlanilla(campeonatoId) {
+  const id = Number(campeonatoId);
+  if (!Number.isFinite(id) || id <= 0 || !window.AuspiciantesAPI?.listarPorCampeonato) return [];
+  try {
+    const data = await window.AuspiciantesAPI.listarPorCampeonato(id, true);
+    return Array.isArray(data?.auspiciantes) ? data.auspiciantes : [];
+  } catch (error) {
+    console.warn("No se pudieron cargar auspiciantes para planilla:", error);
+    return [];
+  }
+}
+
+function obtenerAuspiciantesVisiblesPlanilla() {
+  return (Array.isArray(dataPlanilla?.auspiciantes) ? dataPlanilla.auspiciantes : [])
+    .map((item) => ({
+      nombre: String(item?.nombre || item?.titulo || "").trim(),
+      logo_url: normalizarArchivoUrl(item?.logo_url || item?.imagen_url || ""),
+    }))
+    .filter((item) => item.logo_url || item.nombre)
+    .slice(0, 4);
+}
+
+function renderLogoEquipoPlanilla(src, alt, clase = "planilla-head-team-logo") {
+  if (src) {
+    return `<img src="${src}" alt="${escapeHtml(alt)}" class="${clase}" />`;
+  }
+  return `<span class="${clase} logo-fallback" aria-hidden="true">LT&C</span>`;
+}
+
+function renderAuspiciantesHeaderPlanilla(claseBase = "planilla-head") {
+  const auspiciantes = obtenerAuspiciantesVisiblesPlanilla();
+  if (!auspiciantes.length) return "";
+
+  return auspiciantes
+    .map((item) =>
+      item.logo_url
+        ? `<img src="${item.logo_url}" alt="${escapeHtml(item.nombre || "Auspiciante")}" class="${claseBase}-sponsor-logo" />`
+        : `<span class="${claseBase}-sponsor-fallback">${escapeHtml(item.nombre || "Auspiciante")}</span>`
+    )
+    .join("");
 }
 
 function etiquetaGrupoPartido(p = {}) {
@@ -752,13 +927,21 @@ function renderEncabezado() {
   const logoCampeonato = normalizarArchivoUrl(p.campeonato_logo_url);
   const logoLocal = normalizarArchivoUrl(p.equipo_local_logo_url);
   const logoVisit = normalizarArchivoUrl(p.equipo_visitante_logo_url);
-  const logosDerecha = [logoLocal, logoVisit].filter(Boolean);
-  const resultadoLocal = aEntero(document.getElementById("resultado-local")?.value, aEntero(p.resultado_local, 0));
-  const resultadoVisit = aEntero(
-    document.getElementById("resultado-visitante")?.value,
-    aEntero(p.resultado_visitante, 0)
-  );
-  const marcadorVacio = !hayDatosEnFormularioPlanilla() && resultadoLocal === 0 && resultadoVisit === 0;
+  const logosDerecha = renderAuspiciantesHeaderPlanilla("planilla-head");
+  const rawResultadoLocal = document.getElementById("resultado-local")?.value;
+  const rawResultadoVisit = document.getElementById("resultado-visitante")?.value;
+  const resultadoLocal =
+    rawResultadoLocal !== undefined && String(rawResultadoLocal).trim() !== ""
+      ? aEntero(rawResultadoLocal, 0)
+      : p.resultado_local;
+  const resultadoVisit =
+    rawResultadoVisit !== undefined && String(rawResultadoVisit).trim() !== ""
+      ? aEntero(rawResultadoVisit, 0)
+      : p.resultado_visitante;
+  const marcadorVacio =
+    !hayDatosEnFormularioPlanilla() &&
+    formatearMarcadorPlanilla(resultadoLocal) === "" &&
+    formatearMarcadorPlanilla(resultadoVisit) === "";
 
   const reqCed = documentosRequeridos.cedula ? "Cédula: requerida" : "Cédula: opcional";
   const reqFotoCed = documentosRequeridos.foto_cedula
@@ -769,7 +952,7 @@ function renderEncabezado() {
     : "Foto carnet: opcional";
 
   cont.innerHTML = `
-    <div class="planilla-head-sheet${logosDerecha.length ? "" : " no-right-logos"}">
+    <div class="planilla-head-sheet${logosDerecha ? "" : " no-right-logos"}">
       <div class="planilla-head-logo-slot">
         ${
           logoCampeonato
@@ -782,23 +965,20 @@ function renderEncabezado() {
         <h3>PLANILLA DE JUEGO</h3>
         <p class="planilla-head-type">${escapeHtml(tipoTxt)}</p>
       </div>
-      <div class="planilla-head-logo-stack" ${logosDerecha.length ? "" : "aria-hidden='true'"}>
-        ${logosDerecha
-          .map(
-            (src, idx) =>
-              `<img src="${src}" alt="Logo ${idx === 0 ? "local" : "visitante"}" class="planilla-head-logo-mini" />`
-          )
-          .join("")}
+      <div class="planilla-head-logo-stack" ${logosDerecha ? "" : "aria-hidden='true'"}>
+        ${logosDerecha}
       </div>
     </div>
     <div class="planilla-head-score-strip">
-      <div class="planilla-head-score-team">
-        <span id="head-resultado-local" class="planilla-head-score-box">${marcadorVacio ? "" : resultadoLocal}</span>
+      <div class="planilla-head-score-team is-local">
+        ${renderLogoEquipoPlanilla(logoLocal, p.equipo_local_nombre || "Local")}
         <span class="planilla-head-score-name">${escapeHtml(p.equipo_local_nombre || "Local")}</span>
+        <span id="head-resultado-local" class="planilla-head-score-box">${marcadorVacio ? "" : formatearMarcadorPlanilla(resultadoLocal)}</span>
       </div>
       <div class="planilla-head-score-sep">:</div>
-      <div class="planilla-head-score-team">
-        <span id="head-resultado-visitante" class="planilla-head-score-box">${marcadorVacio ? "" : resultadoVisit}</span>
+      <div class="planilla-head-score-team is-visitante">
+        <span id="head-resultado-visitante" class="planilla-head-score-box">${marcadorVacio ? "" : formatearMarcadorPlanilla(resultadoVisit)}</span>
+        ${renderLogoEquipoPlanilla(logoVisit, p.equipo_visitante_nombre || "Visitante")}
         <span class="planilla-head-score-name">${escapeHtml(p.equipo_visitante_nombre || "Visitante")}</span>
       </div>
     </div>
@@ -833,6 +1013,49 @@ function renderEncabezado() {
   renderFaltasVisual();
 }
 
+function renderBotonesFaltasPlanilla(lado, tiempo, valorActual) {
+  const bloqueado = obtenerLadosBloqueadosPlanilla()[lado] === true;
+  return Array.from({ length: MAX_FALTAS_PLANILLA }, (_, idx) => idx + 1)
+    .map((valor) => {
+      const clases = [
+        "planilla-faltas-btn",
+        valor === MAX_FALTAS_PLANILLA ? "is-last" : "",
+        valor <= valorActual ? "is-active" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return `
+        <button
+          type="button"
+          class="${clases}"
+          data-lado="${lado}"
+          data-tiempo="${tiempo}"
+          data-valor="${valor}"
+          ${bloqueado ? "disabled" : ""}
+        >
+          ${valor}
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function conectarEventosFaltasPlanilla() {
+  document.querySelectorAll(".planilla-faltas-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const lado = String(btn.dataset.lado || "").trim();
+      const tiempo = Number.parseInt(btn.dataset.tiempo, 10);
+      const valor = Number.parseInt(btn.dataset.valor, 10);
+      if (!["local", "visitante"].includes(lado) || ![1, 2].includes(tiempo) || !Number.isFinite(valor)) {
+        return;
+      }
+      actualizarEstadoFaltasPlanilla(lado, tiempo, valor);
+      renderFaltasVisual();
+      actualizarVistaPreviaPlanilla(true);
+    });
+  });
+}
+
 function renderFaltasVisual() {
   const cont = document.getElementById("planilla-faltas-visual");
   if (!cont || !dataPlanilla?.partido) return;
@@ -844,9 +1067,7 @@ function renderFaltasVisual() {
     return;
   }
 
-  const itemNums = [1, 2, 3, 4, 5, 6]
-    .map((n) => `<span class="${n === 6 ? "is-last" : ""}">${n}</span>`)
-    .join("");
+  const faltas = obtenerEstadoFaltasPlanilla();
   const local = escapeHtml(dataPlanilla.partido.equipo_local_nombre || "Local");
   const visit = escapeHtml(dataPlanilla.partido.equipo_visitante_nombre || "Visitante");
 
@@ -855,18 +1076,19 @@ function renderFaltasVisual() {
     <div class="planilla-faltas-team">
       <p>${local}</p>
       <div class="planilla-faltas-cols">
-        <div><strong>FALTAS 1ER</strong><div class="planilla-faltas-numbers">${itemNums}</div></div>
-        <div><strong>FALTAS 2DO</strong><div class="planilla-faltas-numbers">${itemNums}</div></div>
+        <div><strong>FALTAS 1ER</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("local", 1, faltas.local_1er)}</div></div>
+        <div><strong>FALTAS 2DO</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("local", 2, faltas.local_2do)}</div></div>
       </div>
     </div>
     <div class="planilla-faltas-team">
       <p>${visit}</p>
       <div class="planilla-faltas-cols">
-        <div><strong>FALTAS 1ER</strong><div class="planilla-faltas-numbers">${itemNums}</div></div>
-        <div><strong>FALTAS 2DO</strong><div class="planilla-faltas-numbers">${itemNums}</div></div>
+        <div><strong>FALTAS 1ER</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("visitante", 1, faltas.visitante_1er)}</div></div>
+        <div><strong>FALTAS 2DO</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("visitante", 2, faltas.visitante_2do)}</div></div>
       </div>
     </div>
   `;
+  conectarEventosFaltasPlanilla();
 }
 
 function actualizarHeaderMetaEditable() {
@@ -881,9 +1103,14 @@ function actualizarHeaderMetaEditable() {
 function actualizarHeaderResultado(local, visitante) {
   const localEl = document.getElementById("head-resultado-local");
   const visitEl = document.getElementById("head-resultado-visitante");
-  const marcadorVacio = !hayDatosEnFormularioPlanilla() && aEntero(local, 0) === 0 && aEntero(visitante, 0) === 0;
-  if (localEl) localEl.textContent = marcadorVacio ? "" : String(local);
-  if (visitEl) visitEl.textContent = marcadorVacio ? "" : String(visitante);
+  const marcadorLocal = formatearMarcadorPlanilla(local);
+  const marcadorVisitante = formatearMarcadorPlanilla(visitante);
+  const marcadorVacio =
+    !hayDatosEnFormularioPlanilla() &&
+    marcadorLocal === "" &&
+    marcadorVisitante === "";
+  if (localEl) localEl.textContent = marcadorVacio ? "" : marcadorLocal;
+  if (visitEl) visitEl.textContent = marcadorVacio ? "" : marcadorVisitante;
 }
 
 function capturarEstadoFormularioPlanilla() {
@@ -898,6 +1125,7 @@ function capturarEstadoFormularioPlanilla() {
       acc[id] = document.getElementById(id)?.value || "";
       return acc;
     }, {}),
+    faltas: { ...obtenerEstadoFaltasPlanilla() },
     filas: Array.from(document.querySelectorAll(".planilla-player-row")).map((row) => ({
       key: `${row.dataset.equipoId || ""}:${row.dataset.jugadorId || ""}`,
       goles: row.querySelector(".cap-goles")?.value || "",
@@ -943,6 +1171,9 @@ function restaurarEstadoFormularioPlanilla(snapshot = null) {
     }
   });
 
+  dataPlanilla.faltas = normalizarEstadoFaltasPlanilla(snapshot.faltas || dataPlanilla?.faltas || {});
+  renderFaltasVisual();
+
   (Array.isArray(snapshot.filas) ? snapshot.filas : []).forEach((item) => {
     const row = mapRows.get(item.key);
     if (!(row instanceof HTMLElement)) return;
@@ -969,6 +1200,7 @@ async function refrescarPlanillaPreservandoFormulario() {
   const snapshot = capturarEstadoFormularioPlanilla();
   const resp = await ApiClient.get(`/partidos/${partidoId}/planilla`);
   dataPlanilla = resp;
+  dataPlanilla.auspiciantes = await cargarAuspiciantesActivosPlanilla(dataPlanilla?.partido?.campeonato_id);
 
   const p = dataPlanilla.partido || {};
   equiposPartido = {
@@ -997,6 +1229,7 @@ function calcularTotalesCaptura() {
 
   document.querySelectorAll(".planilla-player-row").forEach((row) => {
     const equipoId = Number(row.dataset.equipoId);
+    if (estaEquipoBloqueadoPlanilla(equipoId)) return;
     const goles = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
     const tarjetas = normalizarTarjetasFilaCaptura(row);
 
@@ -1191,9 +1424,11 @@ function recalcularResultadoDesdeCaptura(preservarSiSinDatos = false) {
     const resultadoAutomatico = obtenerResultadoPorInasistencia(inasistencia);
     const inputLocal = document.getElementById("resultado-local");
     const inputVisitante = document.getElementById("resultado-visitante");
-    if (inputLocal) inputLocal.value = String(resultadoAutomatico.local ?? 0);
-    if (inputVisitante) inputVisitante.value = String(resultadoAutomatico.visitante ?? 0);
-    actualizarHeaderResultado(resultadoAutomatico.local ?? 0, resultadoAutomatico.visitante ?? 0);
+    if (inputLocal) inputLocal.value = resultadoAutomatico.local == null ? "" : String(resultadoAutomatico.local);
+    if (inputVisitante) {
+      inputVisitante.value = resultadoAutomatico.visitante == null ? "" : String(resultadoAutomatico.visitante);
+    }
+    actualizarHeaderResultado(resultadoAutomatico.local, resultadoAutomatico.visitante);
     actualizarResumenFooterDesdeCaptura();
     return;
   }
@@ -1379,20 +1614,17 @@ async function guardarJugadorDesdePlanilla(event) {
     return;
   }
 
+  const fechaNacimiento = document.getElementById("planilla-jugador-fecha")?.value?.trim() || "";
+  const numeroCamiseta = document.getElementById("planilla-jugador-numero")?.value?.trim() || "";
+
   const formData = new FormData();
   formData.append("equipo_id", String(equipoId));
   formData.append("nombre", document.getElementById("planilla-jugador-nombre")?.value?.trim() || "");
   formData.append("apellido", document.getElementById("planilla-jugador-apellido")?.value?.trim() || "");
   formData.append("cedidentidad", document.getElementById("planilla-jugador-ced")?.value?.trim() || "");
-  formData.append(
-    "fecha_nacimiento",
-    document.getElementById("planilla-jugador-fecha")?.value?.trim() || ""
-  );
+  if (fechaNacimiento) formData.append("fecha_nacimiento", fechaNacimiento);
   formData.append("posicion", document.getElementById("planilla-jugador-posicion")?.value?.trim() || "");
-  formData.append(
-    "numero_camiseta",
-    document.getElementById("planilla-jugador-numero")?.value?.trim() || ""
-  );
+  if (numeroCamiseta) formData.append("numero_camiseta", numeroCamiseta);
   formData.append(
     "es_capitan",
     document.getElementById("planilla-jugador-capitan")?.checked ? "true" : "false"
@@ -1442,8 +1674,12 @@ function cargarCamposBase() {
   const inputCiudad = document.getElementById("ciudad-planilla");
   const inputInasistencia = document.getElementById("inasistencia-planilla");
 
-  if (inputResultadoLocal) inputResultadoLocal.value = aEntero(p.resultado_local, 0);
-  if (inputResultadoVisit) inputResultadoVisit.value = aEntero(p.resultado_visitante, 0);
+  if (inputResultadoLocal) {
+    inputResultadoLocal.value = p.resultado_local == null ? "" : String(aEntero(p.resultado_local, 0));
+  }
+  if (inputResultadoVisit) {
+    inputResultadoVisit.value = p.resultado_visitante == null ? "" : String(aEntero(p.resultado_visitante, 0));
+  }
   if (inputEstado) inputEstado.value = p.estado || "finalizado";
 
   const planillaSinDatos =
@@ -1497,10 +1733,12 @@ function cargarCamposBase() {
     inputInasistencia.value = inasistenciaInicial;
   }
 
+  dataPlanilla.faltas = normalizarEstadoFaltasPlanilla(dataPlanilla?.faltas || {});
+
   actualizarHeaderMetaEditable();
   actualizarHeaderResultado(
-    aEntero(document.getElementById("resultado-local")?.value, 0),
-    aEntero(document.getElementById("resultado-visitante")?.value, 0)
+    document.getElementById("resultado-local")?.value ?? "",
+    document.getElementById("resultado-visitante")?.value ?? ""
   );
   aplicarEstadoInasistenciaPlanilla(false);
 }
@@ -2107,6 +2345,7 @@ async function cargarPlanilla() {
   try {
     const resp = await ApiClient.get(`/partidos/${partidoId}/planilla`);
     dataPlanilla = resp;
+    dataPlanilla.auspiciantes = await cargarAuspiciantesActivosPlanilla(dataPlanilla?.partido?.campeonato_id);
 
     const p = dataPlanilla.partido || {};
     equiposPartido = {
@@ -2135,17 +2374,31 @@ async function cargarPlanilla() {
 function recolectarPayloadPlanilla() {
   const inasistenciaEquipo = obtenerInasistenciaPlanilla();
   const ambosNoPresentes = inasistenciaEquipo === "ambos";
-  const hayInasistencia = inasistenciaEquipo !== "ninguno";
+  const bloqueados = obtenerLadosBloqueadosPlanilla(inasistenciaEquipo);
+  const hayInasistencia = bloqueados.local || bloqueados.visitante;
   const resultadoAutomatico = obtenerResultadoPorInasistencia(inasistenciaEquipo);
   const goles = [];
   const tarjetas = [];
   const filasCaptura = Array.from(document.querySelectorAll(".planilla-player-row"));
+  const faltas = normalizarEstadoFaltasPlanilla(obtenerEstadoFaltasPlanilla());
+  if (bloqueados.local) {
+    faltas.local_1er = 0;
+    faltas.local_2do = 0;
+    faltas.local_total = 0;
+  }
+  if (bloqueados.visitante) {
+    faltas.visitante_1er = 0;
+    faltas.visitante_2do = 0;
+    faltas.visitante_total = 0;
+  }
 
-  if (!hayInasistencia && filasCaptura.length) {
+  if (filasCaptura.length) {
     filasCaptura.forEach((row) => {
       const equipoId = Number(row.dataset.equipoId);
       const jugadorId = Number(row.dataset.jugadorId);
-      if (!Number.isFinite(equipoId) || !Number.isFinite(jugadorId)) return;
+      if (!Number.isFinite(equipoId) || !Number.isFinite(jugadorId) || estaEquipoBloqueadoPlanilla(equipoId, inasistenciaEquipo)) {
+        return;
+      }
 
       const golesNum = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
       const tarjetasNormalizadas = normalizarTarjetasFilaCaptura(row);
@@ -2203,6 +2456,7 @@ function recolectarPayloadPlanilla() {
       const minuto = minutoRaw ? aEntero(minutoRaw, null) : null;
 
       if (!Number.isFinite(equipoId) || !Number.isFinite(jugadorId) || golesNum <= 0) return;
+      if (estaEquipoBloqueadoPlanilla(equipoId, inasistenciaEquipo)) return;
 
       goles.push({
         equipo_id: equipoId,
@@ -2221,6 +2475,7 @@ function recolectarPayloadPlanilla() {
       const observacion = String(row.querySelector(".row-observacion")?.value || "").trim();
 
       if (!Number.isFinite(equipoId) || !Number.isFinite(jugadorId) || !tipoTarjeta) return;
+      if (estaEquipoBloqueadoPlanilla(equipoId, inasistenciaEquipo)) return;
 
       tarjetas.push({
         equipo_id: equipoId,
@@ -2235,10 +2490,10 @@ function recolectarPayloadPlanilla() {
 
   return {
     resultado_local: hayInasistencia
-      ? resultadoAutomatico.local ?? 0
+      ? resultadoAutomatico.local
       : aEntero(document.getElementById("resultado-local")?.value, 0),
     resultado_visitante: hayInasistencia
-      ? resultadoAutomatico.visitante ?? 0
+      ? resultadoAutomatico.visitante
       : aEntero(document.getElementById("resultado-visitante")?.value, 0),
     estado: hayInasistencia
       ? resultadoAutomatico.estado || "finalizado"
@@ -2250,21 +2505,28 @@ function recolectarPayloadPlanilla() {
     ciudad: String(document.getElementById("ciudad-planilla")?.value || "").trim(),
     observaciones: String(document.getElementById("observaciones-planilla")?.value || "").trim(),
     pagos: {
-      pago_ta_local: hayInasistencia ? 0 : leerPagoInput("pago-ta-local"),
-      pago_ta_visitante: hayInasistencia ? 0 : leerPagoInput("pago-ta-visitante"),
-      pago_tr_local: hayInasistencia ? 0 : leerPagoInput("pago-tr-local"),
-      pago_tr_visitante: hayInasistencia ? 0 : leerPagoInput("pago-tr-visitante"),
-      pago_arbitraje_local: hayInasistencia ? 0 : leerPagoInput("pago-arbitraje-local"),
-      pago_arbitraje_visitante: hayInasistencia ? 0 : leerPagoInput("pago-arbitraje-visitante"),
+      pago_ta_local: bloqueados.local ? 0 : leerPagoInput("pago-ta-local"),
+      pago_ta_visitante: bloqueados.visitante ? 0 : leerPagoInput("pago-ta-visitante"),
+      pago_tr_local: bloqueados.local ? 0 : leerPagoInput("pago-tr-local"),
+      pago_tr_visitante: bloqueados.visitante ? 0 : leerPagoInput("pago-tr-visitante"),
+      pago_arbitraje_local: bloqueados.local ? 0 : leerPagoInput("pago-arbitraje-local"),
+      pago_arbitraje_visitante: bloqueados.visitante ? 0 : leerPagoInput("pago-arbitraje-visitante"),
       // Compatibilidad con campos globales anteriores
-      pago_ta: hayInasistencia ? 0 : leerPagoInput("pago-ta-local") + leerPagoInput("pago-ta-visitante"),
-      pago_tr: hayInasistencia ? 0 : leerPagoInput("pago-tr-local") + leerPagoInput("pago-tr-visitante"),
-      pago_arbitraje: hayInasistencia
-        ? 0
-        : leerPagoInput("pago-arbitraje-local") + leerPagoInput("pago-arbitraje-visitante"),
-      pago_local: hayInasistencia ? 0 : leerPagoInput("pago-local"),
-      pago_visitante: hayInasistencia ? 0 : leerPagoInput("pago-visitante"),
+      pago_ta:
+        (bloqueados.local ? 0 : leerPagoInput("pago-ta-local")) +
+        (bloqueados.visitante ? 0 : leerPagoInput("pago-ta-visitante")),
+      pago_tr:
+        (bloqueados.local ? 0 : leerPagoInput("pago-tr-local")) +
+        (bloqueados.visitante ? 0 : leerPagoInput("pago-tr-visitante")),
+      pago_arbitraje:
+        (bloqueados.local ? 0 : leerPagoInput("pago-arbitraje-local")) +
+        (bloqueados.visitante ? 0 : leerPagoInput("pago-arbitraje-visitante")),
+      pago_local: bloqueados.local ? 0 : leerPagoInput("pago-local"),
+      pago_visitante: bloqueados.visitante ? 0 : leerPagoInput("pago-visitante"),
     },
+    faltas,
+    faltas_local_total: faltas.local_total,
+    faltas_visitante_total: faltas.visitante_total,
     goles,
     tarjetas,
   };
@@ -2373,21 +2635,34 @@ function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
   return filas.join("");
 }
 
-function renderBloqueFaltasEquipo(label) {
-  const items = [1, 2, 3, 4, 5, 6]
-    .map((n) => `<span>${n}</span>`)
+function renderCuadrosFaltasPreview(valorActual = 0) {
+  return Array.from({ length: MAX_FALTAS_PLANILLA }, (_, idx) => idx + 1)
+    .map((n) => {
+      const clases = [
+        n === MAX_FALTAS_PLANILLA ? "is-last" : "",
+        n <= normalizarConteoFaltasPlanilla(valorActual, 0) ? "is-active" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return `<span class="${clases}">${n}</span>`;
+    })
     .join("");
+}
+
+function renderBloqueFaltasEquipo(label, faltasPrimerTiempo = 0, faltasSegundoTiempo = 0) {
+  const itemsPrimerTiempo = renderCuadrosFaltasPreview(faltasPrimerTiempo);
+  const itemsSegundoTiempo = renderCuadrosFaltasPreview(faltasSegundoTiempo);
 
   return `
     <div class="planilla-oficial-faltas-team">
       <p>${escapeHtml(label)}</p>
       <div class="planilla-oficial-faltas-col">
         <strong>FALTAS 1ER</strong>
-        <div class="planilla-oficial-faltas-grid">${items}</div>
+        <div class="planilla-oficial-faltas-grid">${itemsPrimerTiempo}</div>
       </div>
       <div class="planilla-oficial-faltas-col">
         <strong>FALTAS 2DO</strong>
-        <div class="planilla-oficial-faltas-grid">${items}</div>
+        <div class="planilla-oficial-faltas-grid">${itemsSegundoTiempo}</div>
       </div>
     </div>
   `;
@@ -2405,12 +2680,16 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
   const delegado = String(document.getElementById("delegado-planilla")?.value || p.delegado_partido || "");
   const ciudad = String(document.getElementById("ciudad-planilla")?.value || p.ciudad || "");
   const logoOrg = normalizarArchivoUrl(p.campeonato_logo_url);
+  const logoLocal = normalizarArchivoUrl(p.equipo_local_logo_url);
+  const logoVisitante = normalizarArchivoUrl(p.equipo_visitante_logo_url);
+  const logosAuspiciantes = renderAuspiciantesHeaderPlanilla("planilla-oficial-head");
+  const faltasPayload = normalizarEstadoFaltasPlanilla(payload.faltas || dataPlanilla?.faltas || {});
 
   const filasLocal = renderFilasVistaPreviaOficialEquipo(dataPlanilla.plantel_local || [], stats, maxFilas);
   const filasVisit = renderFilasVistaPreviaOficialEquipo(dataPlanilla.plantel_visitante || [], stats, maxFilas);
   const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
-  const marcadorLocal = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_local, 0));
-  const marcadorVisit = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_visitante, 0));
+  const marcadorLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
+  const marcadorVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
 
   cont.innerHTML = `
     <div class="planilla-oficial-sheet ${modelo}">
@@ -2421,8 +2700,17 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           <p class="planilla-oficial-type">${escapeHtml(tituloModelo)}</p>
         </div>
         ${
-          logoOrg
-            ? `<div class="planilla-oficial-head-logo-box"><img src="${logoOrg}" alt="Logo organizador" class="planilla-oficial-org-logo" /></div>`
+          logoOrg || logosAuspiciantes
+            ? `
+              <div class="planilla-oficial-head-logo-box ${logosAuspiciantes ? "is-sponsors" : ""}">
+                ${
+                  logoOrg
+                    ? `<img src="${logoOrg}" alt="Logo organizador" class="planilla-oficial-org-logo" />`
+                    : ""
+                }
+                ${logosAuspiciantes}
+              </div>
+            `
             : ""
         }
       </header>
@@ -2439,18 +2727,30 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
       </div>
 
       <div class="planilla-oficial-score">
-        <div class="team">${escapeHtml(p.equipo_local_nombre || equiposPartido.local.nombre)}</div>
+        <div class="team is-local">
+          ${renderLogoEquipoPlanilla(logoLocal, p.equipo_local_nombre || equiposPartido.local.nombre, "planilla-oficial-team-logo")}
+          <span>${escapeHtml(p.equipo_local_nombre || equiposPartido.local.nombre)}</span>
+        </div>
         <div class="result">${marcadorLocal}</div>
         <div class="sep">:</div>
         <div class="result">${marcadorVisit}</div>
-        <div class="team">${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</div>
+        <div class="team is-visitante">
+          ${renderLogoEquipoPlanilla(logoVisitante, p.equipo_visitante_nombre || equiposPartido.visitante.nombre, "planilla-oficial-team-logo")}
+          <span>${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</span>
+        </div>
       </div>
 
       ${
         modelo === "futbol_7_5_sala"
           ? `<div class="planilla-oficial-faltas">${renderBloqueFaltasEquipo(
-              p.equipo_local_nombre || equiposPartido.local.nombre
-            )}${renderBloqueFaltasEquipo(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</div>`
+              p.equipo_local_nombre || equiposPartido.local.nombre,
+              faltasPayload.local_1er,
+              faltasPayload.local_2do
+            )}${renderBloqueFaltasEquipo(
+              p.equipo_visitante_nombre || equiposPartido.visitante.nombre,
+              faltasPayload.visitante_1er,
+              faltasPayload.visitante_2do
+            )}</div>`
           : ""
       }
 
@@ -2552,8 +2852,8 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
   const eventosVistaPrevia = renderListaEventosVistaPrevia(payload);
 
   const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
-  const scoreLocal = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_local, 0));
-  const scoreVisit = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_visitante, 0));
+  const scoreLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
+  const scoreVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
 
   cont.innerHTML = `
     <div class="planilla-preview-sheet">
@@ -2983,8 +3283,8 @@ async function imprimirPDFPlanilla() {
     const bodyVisit = construirFilasPlantelPdf(dataPlanilla.plantel_visitante || [], stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
     const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
-    const marcadorLocal = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_local, 0));
-    const marcadorVisit = mostrarEnBlanco ? "" : String(aEntero(payload.resultado_visitante, 0));
+    const marcadorLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
+    const marcadorVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
 
     const docDefinition = {
       pageSize: "A4",
@@ -3363,12 +3663,12 @@ async function exportarPlanillaXLSX() {
     setCellValue(
       sheet,
       cfg.meta.resultadoLocal,
-      mostrarEnBlanco ? "" : aEntero(payload.resultado_local, 0)
+      mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local)
     );
     setCellValue(
       sheet,
       cfg.meta.resultadoVisitante,
-      mostrarEnBlanco ? "" : aEntero(payload.resultado_visitante, 0)
+      mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante)
     );
 
     llenarPlantelExcel(

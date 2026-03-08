@@ -55,6 +55,13 @@ function normalizarEliminatoriaEquipos(value, fallback = null) {
   return n;
 }
 
+function normalizarClasificadosPorGrupo(value, fallback = null) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
 function esAdministrador(user) {
   return String(user?.rol || "").toLowerCase() === "administrador";
 }
@@ -140,6 +147,10 @@ async function asegurarEsquemaEventos() {
   `);
   await pool.query(`
     ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS clasificados_por_grupo INTEGER
+  `);
+  await pool.query(`
+    ALTER TABLE eventos
     ADD COLUMN IF NOT EXISTS bloquear_morosos BOOLEAN
   `);
   await pool.query(`
@@ -165,9 +176,20 @@ async function asegurarEsquemaEventos() {
   `);
   await pool.query(`
     UPDATE eventos
+    SET clasificados_por_grupo = 2
+    WHERE (clasificados_por_grupo IS NULL OR clasificados_por_grupo <= 0)
+      AND LOWER(COALESCE(metodo_competencia, 'grupos')) IN ('grupos', 'mixto')
+  `);
+  await pool.query(`
+    UPDATE eventos
     SET bloqueo_morosidad_monto = NULL
     WHERE bloqueo_morosidad_monto IS NOT NULL
       AND bloqueo_morosidad_monto < 0
+  `);
+  await pool.query(`
+    ALTER TABLE evento_equipos
+    ADD COLUMN IF NOT EXISTS no_presentaciones INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS eliminado_automatico BOOLEAN NOT NULL DEFAULT FALSE
   `);
   await pool.query(`
     WITH ranked AS (
@@ -216,6 +238,7 @@ const eventoController = {
         modalidad,
         horarios,
         costo_inscripcion,
+        clasificados_por_grupo,
         metodo_competencia,
         eliminatoria_equipos,
         bloquear_morosos,
@@ -263,6 +286,7 @@ const eventoController = {
       const sunStart = parseTimeHHMM(horarios?.weekend?.sun_start, "08:00:00");
       const sunEnd = parseTimeHHMM(horarios?.weekend?.sun_end, "17:00:00");
       const costoInscripcion = parseDecimalNonNegative(costo_inscripcion, 0);
+      const clasificadosPorGrupo = normalizarClasificadosPorGrupo(clasificados_por_grupo, null);
       const bloquearMorososValor =
         bloquear_morosos === undefined || bloquear_morosos === null || bloquear_morosos === ""
           ? null
@@ -281,6 +305,18 @@ const eventoController = {
           error: "eliminatoria_equipos invalido. Valores permitidos: 4, 8, 16, 32.",
         });
       }
+      if (
+        clasificados_por_grupo !== undefined &&
+        clasificados_por_grupo !== null &&
+        clasificados_por_grupo !== "" &&
+        clasificadosPorGrupo === null
+      ) {
+        return res.status(400).json({
+          error: "clasificados_por_grupo invalido. Debe ser un entero mayor a 0.",
+        });
+      }
+      const clasificadosFinal =
+        ["grupos", "mixto"].includes(metodoCompetencia) ? clasificadosPorGrupo || 2 : null;
 
       const query = `
         WITH next_num AS (
@@ -292,7 +328,7 @@ const eventoController = {
           campeonato_id, nombre, organizador, fecha_inicio, fecha_fin, estado,
           modalidad,
           metodo_competencia, eliminatoria_equipos,
-          costo_inscripcion,
+          costo_inscripcion, clasificados_por_grupo,
           bloquear_morosos, bloqueo_morosidad_monto,
           horario_weekday_inicio, horario_weekday_fin,
           horario_sab_inicio, horario_sab_fin,
@@ -300,7 +336,7 @@ const eventoController = {
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -315,6 +351,7 @@ const eventoController = {
         metodoCompetencia,
         eliminatoriaEquipos,
         costoInscripcion,
+        clasificadosFinal,
         bloquearMorososValor,
         bloqueoMorosidadMonto,
         wkStart,
@@ -407,6 +444,15 @@ const eventoController = {
       await asegurarEsquemaEventos();
 
       const { id } = req.params;
+      const actualR = await pool.query(`SELECT * FROM eventos WHERE id = $1 LIMIT 1`, [id]);
+      if (!actualR.rows.length) {
+        return res.status(404).json({ error: "Evento no encontrado." });
+      }
+      const eventoActual = actualR.rows[0];
+      const metodoObjetivo =
+        req.body.metodo_competencia !== undefined
+          ? normalizarMetodoCompetencia(req.body.metodo_competencia, null)
+          : normalizarMetodoCompetencia(eventoActual.metodo_competencia, "grupos");
 
       const campos = [];
       const valores = [];
@@ -451,6 +497,20 @@ const eventoController = {
           i++;
           continue;
         }
+        if (k === "clasificados_por_grupo") {
+          const clasificados = normalizarClasificadosPorGrupo(v, null);
+          if (v !== null && v !== "" && clasificados === null) {
+            return res.status(400).json({
+              error: "clasificados_por_grupo debe ser un entero mayor a 0.",
+            });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(
+            ["grupos", "mixto"].includes(metodoObjetivo) ? clasificados || 2 : null
+          );
+          i++;
+          continue;
+        }
         if (k === "bloquear_morosos") {
           campos.push(`${k} = $${i}`);
           valores.push(
@@ -482,6 +542,19 @@ const eventoController = {
         return res
           .status(400)
           .json({ error: "No hay campos para actualizar." });
+      }
+
+      if (
+        req.body.metodo_competencia !== undefined &&
+        !Object.prototype.hasOwnProperty.call(req.body, "clasificados_por_grupo")
+      ) {
+        campos.push(`clasificados_por_grupo = $${i}`);
+        valores.push(
+          ["grupos", "mixto"].includes(metodoObjetivo)
+            ? normalizarClasificadosPorGrupo(eventoActual.clasificados_por_grupo, 2) || 2
+            : null
+        );
+        i++;
       }
 
       const colActualizacion = await resolverColumnaActualizacionEvento();
@@ -592,6 +665,7 @@ const eventoController = {
   // POST /eventos/:evento_id/equipos  body: { equipo_id: 123 }
   async asignarEquipoAEvento(req, res) {
     try {
+      await asegurarEsquemaEventos();
       const evento_id = parseInt(req.params.evento_id, 10);
       const equipo_id = parseInt(req.body.equipo_id, 10);
 
@@ -697,6 +771,7 @@ const eventoController = {
   // GET /eventos/:evento_id/equipos
   async listarEquiposDeEvento(req, res) {
     try {
+      await asegurarEsquemaEventos();
       const evento_id = parseInt(req.params.evento_id, 10);
       if (!Number.isFinite(evento_id)) {
         return res.status(400).json({ message: "evento_id inválido" });
@@ -704,11 +779,14 @@ const eventoController = {
 
       const result = await pool.query(
         `
-        SELECT e.*
+        SELECT
+          e.*,
+          COALESCE(ee.no_presentaciones, 0)::int AS no_presentaciones,
+          COALESCE(ee.eliminado_automatico, FALSE) AS eliminado_automatico
         FROM equipos e
         JOIN evento_equipos ee ON ee.equipo_id = e.id
         WHERE ee.evento_id = $1
-        ORDER BY e.nombre
+        ORDER BY ee.eliminado_automatico ASC, e.numero_campeonato ASC NULLS LAST, e.nombre
       `,
         [evento_id]
       );
@@ -730,6 +808,7 @@ const eventoController = {
   // DELETE /eventos/:evento_id/equipos/:equipo_id
   async quitarEquipoDeEvento(req, res) {
     try {
+      await asegurarEsquemaEventos();
       const evento_id = parseInt(req.params.evento_id, 10);
       const equipo_id = parseInt(req.params.equipo_id, 10);
 

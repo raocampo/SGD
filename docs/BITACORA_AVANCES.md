@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-05
+Ultima actualizacion: 2026-03-08
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,78 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-08
+- Clasificacion por grupo y tablas:
+  - `eventos/categorias` ahora permite configurar `clasificados_por_grupo`,
+  - `tablas` muestra el cupo por grupo en el resumen,
+  - los equipos fuera de clasificacion se pintan en rojo,
+  - si un equipo queda eliminado automaticamente por inasistencias, tambien se marca en rojo y se etiqueta como `Eliminado`.
+- No presentacion acumulada por categoria:
+  - nueva persistencia en `evento_equipos` para `no_presentaciones` y `eliminado_automatico`,
+  - al guardar una planilla, el backend recalcula no presentaciones por equipo dentro de la categoria,
+  - con `3` no presentaciones el equipo queda eliminado automaticamente en esa categoria.
+- Correccion de doble inasistencia:
+  - `ambos no se presentan` ahora guarda `resultado_local/resultado_visitante = NULL`,
+  - el estado del partido queda `no_presentaron_ambos`,
+  - no se contabiliza como partido jugado,
+  - se mantiene la multa por arbitraje/no presentacion para ambos equipos.
+- Migraciones aplicadas en la BD local:
+  - `database/migrations/026_ambos_no_presentes_sin_resultado.sql`,
+  - `database/migrations/027_clasificacion_y_no_presentacion_automatica.sql`.
+
+### 2026-03-07
+- Planillaje y disciplina:
+  - se corrigio el tratamiento de `doble amarilla` para no perder la trazabilidad disciplinaria al guardar/reabrir planillas,
+  - ahora la roja generada por `2 TA` queda marcada explicitamente como `Expulsion por doble amarilla`,
+  - la suspension conserva la regla correcta:
+    - `doble amarilla` -> `1 partido`,
+    - `roja directa` -> `2 partidos`.
+- Planilla operativa mejorada:
+  - nueva inscripcion rapida de jugadores desde `planilla.html`,
+  - alta por equipo sin salir del formulario del partido,
+  - recarga del plantel sin perder goles/tarjetas/pagos/observaciones ya capturados en pantalla.
+- Ajustes operativos de planilla:
+  - faltas de `1ER` y `2DO` tiempo ahora se capturan por clic y se guardan por equipo/tiempo para alimentar fair play,
+  - el encabezado de planilla mueve los logos de los equipos junto al marcador y reserva el bloque derecho para auspiciantes,
+  - la no presentacion parcial ya bloquea solo el lado ausente y mantiene habilitados los pagos/evidencia del equipo que si se presenta.
+- Reporteria operativa adicional de disciplina:
+  - `frontend/partidos.html` incorpora nueva pestaña `Reporte Sanciones`,
+  - consolidado operativo por categoria con foco en:
+    - jugadores suspendidos,
+    - jugadores con amarillas acumuladas,
+    - resumen por equipos con novedades,
+  - incluye impresion y exportacion PDF para uso previo a programacion/partidos.
+- Modulo financiero ampliado en reporteria ejecutiva:
+  - `frontend/finanzas.html` incorpora nuevo bloque `Resumen Ejecutivo por Equipo`,
+  - consolidado por equipo con:
+    - campeonato y categoria,
+    - cargos, abonos y saldo actual,
+    - cargos abiertos y vencidos,
+    - saldo por inscripcion, arbitraje y multas,
+  - incluye impresion dedicada para salida operativa/administrativa.
+- Alertas operativas extendidas a gestion de equipos:
+  - `frontend/equipos.html` suma bloque `Alertas Operativas`,
+  - cada tarjeta/tabla de equipo ahora muestra chips de:
+    - deuda pendiente,
+    - jugadores suspendidos,
+    - seguimiento por amarillas acumuladas,
+  - la vista se alimenta con:
+    - morosidad del equipo desde finanzas,
+    - estado disciplinario por categoria desde jugadores/partidos.
+- Alertas operativas extendidas a gestion de partidos:
+  - `frontend/partidos.html` suma bloque `Alertas Operativas de los Partidos Mostrados`,
+  - cada partido ahora muestra alertas separadas para local y visitante:
+    - deuda,
+    - suspendidos,
+    - seguimiento por amarillas,
+  - la tabla de partidos incorpora nueva columna `Alertas` con el mismo detalle operativo.
+- Validacion tecnica del bloque:
+  - `node --check backend/models/Partido.js` (`PASS`),
+  - `node --check frontend/js/planilla.js` (`PASS`),
+  - `node --check frontend/js/partidos.js` (`PASS`),
+  - `node --check frontend/js/finanzas.js` (`PASS`),
+  - `node --check frontend/js/equipos.js` (`PASS`).
 
 ### 2026-03-05
 - CMS Portal Publico - Fase 6 (cierre operativo) avanzando:
@@ -183,7 +255,7 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - resultado automatico aplicado desde planilla:
     - local ausente -> `0-3`,
     - visitante ausente -> `3-0`,
-    - ambos ausentes -> `0-0` con estado `no_presentaron_ambos`.
+    - ambos ausentes -> marcador vacio (`NULL/NULL`) con estado `no_presentaron_ambos`.
   - al existir inasistencia:
     - se bloquea captura por jugador,
     - se limpian pagos manuales,

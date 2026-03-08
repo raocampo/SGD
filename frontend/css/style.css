@@ -1131,6 +1131,48 @@ body.app-layout {
   margin-top: 2rem;
 }
 
+#equipos-alertas-operativas {
+  margin-top: 1rem;
+}
+
+.alertas-operativas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+.alerta-operativa-card {
+  border: 1px solid #dbe3f1;
+  border-radius: 0.85rem;
+  background: #f8fbff;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.alerta-operativa-card strong {
+  color: #0f172a;
+  font-size: 1.05rem;
+}
+
+.alerta-operativa-label {
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.alerta-operativa-card-deuda {
+  background: #fff7ed;
+  border-color: #fdba74;
+}
+
+.alerta-operativa-card-info {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
 #lista-campeonatos.list-mode-table,
 #lista-equipos.list-mode-table,
 #lista-jugadores.list-mode-table,
@@ -1180,6 +1222,14 @@ body.app-layout {
   min-width: 920px;
 }
 
+#lista-equipos .list-table {
+  min-width: 1080px;
+}
+
+#lista-partidos .list-table {
+  min-width: 1260px;
+}
+
 .list-table th,
 .list-table td {
   padding: 0.75rem 0.7rem;
@@ -1222,6 +1272,91 @@ body.app-layout {
 .list-table-actions .btn {
   padding: 0.4rem 0.6rem;
   font-size: 0.82rem;
+}
+
+.equipo-alertas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
+.equipo-alerta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  border: 1px solid transparent;
+}
+
+.equipo-alerta-ok {
+  background: #ecfdf5;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.equipo-alerta-deuda {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
+.equipo-alerta-disciplina {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.equipo-alerta-seguimiento {
+  background: #fffbeb;
+  color: #a16207;
+  border-color: #fcd34d;
+}
+
+.equipo-alerta-cargando {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+#partidos-alertas-operativas {
+  margin-bottom: 1rem;
+}
+
+.partido-alertas-bloque,
+.partido-alertas-tabla {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+}
+
+.partido-alerta-equipo {
+  border: 1px solid #dbe3f1;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  padding: 0.55rem 0.65rem;
+}
+
+.partido-alerta-nombre {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.35rem;
+}
+
+.partido-alertas-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.partido-alertas-tabla .partido-alerta-equipo {
+  min-width: 220px;
 }
 
 .usuarios-table-wrap {
@@ -2031,8 +2166,10 @@ body.modal-open {
 .planilla-head-logo-stack {
   border-right: 0;
   border-left: 1px solid #2f3b4d;
-  flex-direction: column;
-  gap: 0.35rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-content: center;
   align-self: stretch;
 }
 
@@ -2060,6 +2197,30 @@ body.modal-open {
   width: 56px;
   height: 36px;
   object-fit: contain;
+}
+
+.planilla-head-sponsor-logo,
+.planilla-oficial-head-sponsor-logo {
+  width: 56px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.planilla-head-sponsor-fallback,
+.planilla-oficial-head-sponsor-fallback {
+  min-width: 56px;
+  min-height: 26px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.12rem 0.25rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-align: center;
+  color: #0f172a;
+  background: #fff;
 }
 
 .planilla-head-sheet.no-right-logos {
@@ -2130,6 +2291,34 @@ body.modal-open {
   align-items: center;
   gap: 0.45rem;
   justify-content: center;
+}
+
+.planilla-head-score-team.is-local {
+  justify-content: flex-end;
+}
+
+.planilla-head-score-team.is-visitante {
+  justify-content: flex-start;
+}
+
+.planilla-head-team-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  flex: 0 0 auto;
+}
+
+.planilla-head-team-logo.logo-fallback,
+.planilla-oficial-team-logo.logo-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.54rem;
+  font-weight: 800;
+  color: #0f172a;
 }
 
 .planilla-head-score-box {
@@ -2234,15 +2423,42 @@ body.modal-open {
   gap: 0.16rem;
 }
 
-.planilla-faltas-numbers span {
+.planilla-faltas-btn {
   border: 1px solid #2f3b4d;
   border-radius: 3px;
   font-size: 0.68rem;
   text-align: center;
   padding: 0.08rem 0;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease,
+    transform 0.18s ease;
 }
 
-.planilla-faltas-numbers span.is-last {
+.planilla-faltas-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #2563eb;
+}
+
+.planilla-faltas-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.planilla-faltas-btn.is-active {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #60a5fa;
+  font-weight: 700;
+}
+
+.planilla-faltas-btn.is-last,
+.planilla-oficial-faltas-grid span.is-last {
+  border-color: #ef4444;
+}
+
+.planilla-faltas-btn.is-last.is-active,
+.planilla-oficial-faltas-grid span.is-last.is-active {
   background: #ef4444;
   color: #fff;
   font-weight: 700;
@@ -2777,6 +2993,14 @@ body.modal-open {
   justify-content: center;
 }
 
+.planilla-oficial-head-logo-box.is-sponsors {
+  width: auto;
+  min-width: 56px;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .planilla-oficial-org-logo {
   display: inline-block;
   width: 52px;
@@ -2827,6 +3051,28 @@ body.modal-open {
   line-height: 1.2;
   text-wrap: balance;
   font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+.planilla-oficial-score .team.is-local {
+  justify-content: flex-start;
+}
+
+.planilla-oficial-score .team.is-visitante {
+  justify-content: flex-end;
+}
+
+.planilla-oficial-team-logo {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  flex: 0 0 auto;
 }
 
 .planilla-oficial-score .result {
@@ -2891,6 +3137,14 @@ body.modal-open {
   justify-content: center;
   font-size: 0.63rem;
   color: #334155;
+  background: #fff;
+}
+
+.planilla-oficial-faltas-grid span.is-active {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #60a5fa;
+  font-weight: 700;
 }
 
 .planilla-oficial-teams {
@@ -3388,6 +3642,54 @@ body.modal-open {
 .page-tablas .tabla-estadistica-posiciones td {
   font-size: 0.82rem;
   padding: 0.38rem 0.32rem;
+}
+
+.page-tablas .tablas-clasificacion-help {
+  margin: 0 0 0.65rem;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.page-tablas .tabla-posicion-equipo {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.page-tablas .tabla-posicion-status {
+  display: flex;
+  gap: 0.32rem;
+  flex-wrap: wrap;
+}
+
+.page-tablas .tabla-posicion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.08rem 0.42rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.page-tablas .tabla-posicion-chip.is-neutral {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.page-tablas .tabla-posicion-chip.is-eliminado {
+  background: #7f1d1d;
+  color: #fff1f2;
+}
+
+.page-tablas .tabla-estadistica-posiciones tr.tabla-posicion-fuera td {
+  background: rgba(254, 226, 226, 0.9);
+  color: #7f1d1d;
+}
+
+.page-tablas .tabla-estadistica-posiciones tr.tabla-posicion-eliminado td {
+  background: #7f1d1d;
+  color: #fff7ed;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
 /* ============================

@@ -19,6 +19,7 @@ const fromMinutesSQL = (min) => {
 const formatYMD = (d) => d.toISOString().split("T")[0];
 const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante", "ambos"]);
 const GOLES_WALKOVER = 3;
+const MAX_FALTAS_PLANILLA = 6;
 
 function normalizarInasistenciaEquipoPlanilla(valor) {
   const raw = String(valor || "ninguno").trim().toLowerCase();
@@ -32,10 +33,46 @@ function obtenerResultadoPorInasistenciaEquipo(tipo = "ninguno") {
     case "visitante":
       return { resultadoLocal: GOLES_WALKOVER, resultadoVisitante: 0, estado: "finalizado" };
     case "ambos":
-      return { resultadoLocal: 0, resultadoVisitante: 0, estado: "no_presentaron_ambos" };
+      return { resultadoLocal: null, resultadoVisitante: null, estado: "no_presentaron_ambos" };
     default:
       return { resultadoLocal: null, resultadoVisitante: null, estado: null };
   }
+}
+
+function normalizarConteoFaltasPlanilla(valor = 0) {
+  const n = Number.parseInt(valor, 10);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(Math.max(n, 0), MAX_FALTAS_PLANILLA);
+}
+
+function normalizarFaltasPlanillaPayload(faltas = {}) {
+  const localPrimerTiempo = normalizarConteoFaltasPlanilla(
+    faltas?.local_1er ?? faltas?.local_1 ?? faltas?.local_primer_tiempo ?? faltas?.faltas_local_1er
+  );
+  const localSegundoTiempo = normalizarConteoFaltasPlanilla(
+    faltas?.local_2do ?? faltas?.local_2 ?? faltas?.local_segundo_tiempo ?? faltas?.faltas_local_2do
+  );
+  const visitantePrimerTiempo = normalizarConteoFaltasPlanilla(
+    faltas?.visitante_1er ??
+      faltas?.visitante_1 ??
+      faltas?.visitante_primer_tiempo ??
+      faltas?.faltas_visitante_1er
+  );
+  const visitanteSegundoTiempo = normalizarConteoFaltasPlanilla(
+    faltas?.visitante_2do ??
+      faltas?.visitante_2 ??
+      faltas?.visitante_segundo_tiempo ??
+      faltas?.faltas_visitante_2do
+  );
+
+  return {
+    local_1er: localPrimerTiempo,
+    local_2do: localSegundoTiempo,
+    visitante_1er: visitantePrimerTiempo,
+    visitante_2do: visitanteSegundoTiempo,
+    local_total: localPrimerTiempo + localSegundoTiempo,
+    visitante_total: visitantePrimerTiempo + visitanteSegundoTiempo,
+  };
 }
 
 function normalizarConteoTarjetas(amarillas = 0, rojas = 0) {
@@ -457,6 +494,7 @@ class Partido {
   static _esquemaPlanillaAsegurado = false;
   static _esquemaSecuenciaAsegurado = false;
   static _esquemaEventoEquiposOrdenAsegurado = false;
+  static _esquemaEventoEquiposEstadoAsegurado = false;
   static _columnasBloqueoMorosidad = null;
 
   static async asegurarEsquemaSecuencia() {
@@ -499,6 +537,16 @@ class Partido {
       ADD COLUMN IF NOT EXISTS orden_sorteo INTEGER
     `);
     this._esquemaEventoEquiposOrdenAsegurado = true;
+  }
+
+  static async asegurarEsquemaEstadoEventoEquipos(client = pool) {
+    if (this._esquemaEventoEquiposEstadoAsegurado) return;
+    await client.query(`
+      ALTER TABLE evento_equipos
+      ADD COLUMN IF NOT EXISTS no_presentaciones INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS eliminado_automatico BOOLEAN NOT NULL DEFAULT FALSE
+    `);
+    this._esquemaEventoEquiposEstadoAsegurado = true;
   }
 
   static async obtenerEventoPorId(evento_id) {
@@ -1198,10 +1246,10 @@ class Partido {
   static async obtenerEstadisticasEquipoPorEvento(equipo_id, evento_id) {
     const q = `
       SELECT 
-        COUNT(*) as partidos_jugados,
-        COUNT(CASE WHEN resultado_local IS NOT NULL OR resultado_visitante IS NOT NULL THEN 1 END) as partidos_completados,
-        SUM(CASE WHEN equipo_local_id = $1 THEN COALESCE(resultado_local,0) ELSE COALESCE(resultado_visitante,0) END) as goles_favor,
-        SUM(CASE WHEN equipo_local_id = $1 THEN COALESCE(resultado_visitante,0) ELSE COALESCE(resultado_local,0) END) as goles_contra
+        COUNT(CASE WHEN estado = 'finalizado' THEN 1 END) as partidos_jugados,
+        COUNT(CASE WHEN estado = 'finalizado' THEN 1 END) as partidos_completados,
+        SUM(CASE WHEN estado = 'finalizado' AND equipo_local_id = $1 THEN COALESCE(resultado_local,0) WHEN estado = 'finalizado' THEN COALESCE(resultado_visitante,0) ELSE 0 END) as goles_favor,
+        SUM(CASE WHEN estado = 'finalizado' AND equipo_local_id = $1 THEN COALESCE(resultado_visitante,0) WHEN estado = 'finalizado' THEN COALESCE(resultado_local,0) ELSE 0 END) as goles_contra
       FROM partidos
       WHERE evento_id = $2 AND (equipo_local_id = $1 OR equipo_visitante_id = $1)
     `;
@@ -1212,10 +1260,10 @@ class Partido {
   static async obtenerEstadisticasEquipo(equipo_id, campeonato_id) {
     const q = `
       SELECT
-        COUNT(*) as partidos_jugados,
+        COUNT(CASE WHEN estado = 'finalizado' THEN 1 END) as partidos_jugados,
         COUNT(CASE WHEN estado = 'finalizado' THEN 1 END) as partidos_completados,
-        COALESCE(SUM(CASE WHEN equipo_local_id = $1 THEN COALESCE(resultado_local,0) ELSE COALESCE(resultado_visitante,0) END),0)::int as goles_favor,
-        COALESCE(SUM(CASE WHEN equipo_local_id = $1 THEN COALESCE(resultado_visitante,0) ELSE COALESCE(resultado_local,0) END),0)::int as goles_contra
+        COALESCE(SUM(CASE WHEN estado = 'finalizado' AND equipo_local_id = $1 THEN COALESCE(resultado_local,0) WHEN estado = 'finalizado' THEN COALESCE(resultado_visitante,0) ELSE 0 END),0)::int as goles_favor,
+        COALESCE(SUM(CASE WHEN estado = 'finalizado' AND equipo_local_id = $1 THEN COALESCE(resultado_visitante,0) WHEN estado = 'finalizado' THEN COALESCE(resultado_local,0) ELSE 0 END),0)::int as goles_contra
       FROM partidos
       WHERE campeonato_id = $2
         AND (equipo_local_id = $1 OR equipo_visitante_id = $1)
@@ -1226,6 +1274,8 @@ class Partido {
 
   static async asegurarEsquemaPlanilla() {
     if (this._esquemaPlanillaAsegurado) return;
+
+    await this.asegurarEsquemaEstadoEventoEquipos();
 
     await pool.query(`
       ALTER TABLE campeonatos
@@ -1249,7 +1299,11 @@ class Partido {
     await pool.query(`
       ALTER TABLE partidos
       ADD COLUMN IF NOT EXISTS faltas_local_total INTEGER DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS faltas_visitante_total INTEGER DEFAULT 0
+      ADD COLUMN IF NOT EXISTS faltas_visitante_total INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS faltas_local_1er INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS faltas_local_2do INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS faltas_visitante_1er INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS faltas_visitante_2do INTEGER DEFAULT 0
     `);
 
     await pool.query(`
@@ -1453,6 +1507,10 @@ class Partido {
         observaciones: planilla?.observaciones || "",
       },
       faltas: {
+        local_1er: Number(partido?.faltas_local_1er ?? 0),
+        local_2do: Number(partido?.faltas_local_2do ?? 0),
+        visitante_1er: Number(partido?.faltas_visitante_1er ?? 0),
+        visitante_2do: Number(partido?.faltas_visitante_2do ?? 0),
         local_total: Number(partido?.faltas_local_total ?? 0),
         visitante_total: Number(partido?.faltas_visitante_total ?? 0),
       },
@@ -1675,10 +1733,10 @@ class Partido {
     const resultadoAutomatico = obtenerResultadoPorInasistenciaEquipo(inasistenciaEquipo);
     const hayInasistencia = inasistenciaEquipo !== "ninguno";
     const resultadoLocal = hayInasistencia
-      ? resultadoAutomatico.resultadoLocal ?? 0
+      ? resultadoAutomatico.resultadoLocal
       : Number.parseInt(datos.resultado_local, 10) || 0;
     const resultadoVisitante = hayInasistencia
-      ? resultadoAutomatico.resultadoVisitante ?? 0
+      ? resultadoAutomatico.resultadoVisitante
       : Number.parseInt(datos.resultado_visitante, 10) || 0;
     const estado = hayInasistencia ? resultadoAutomatico.estado || "finalizado" : datos.estado || "finalizado";
     const arbitro = Object.prototype.hasOwnProperty.call(datos, "arbitro")
@@ -1690,46 +1748,7 @@ class Partido {
     const ciudad = Object.prototype.hasOwnProperty.call(datos, "ciudad")
       ? (datos.ciudad ?? "").toString().trim()
       : null;
-    const goles = hayInasistencia ? [] : Array.isArray(datos.goles) ? datos.goles : [];
-    const tarjetas = hayInasistencia
-      ? []
-      : normalizarTarjetasPlanilla(Array.isArray(datos.tarjetas) ? datos.tarjetas : []);
     const pagos = datos.pagos || {};
-    const pagoTaLocal = hayInasistencia
-      ? 0
-      : Number.parseFloat(pagos.pago_ta_local ?? pagos.pago_ta ?? 0) || 0;
-    const pagoTaVisitante = hayInasistencia
-      ? 0
-      : Number.parseFloat(pagos.pago_ta_visitante ?? pagos.pago_ta ?? 0) || 0;
-    const pagoTrLocal = hayInasistencia
-      ? 0
-      : Number.parseFloat(pagos.pago_tr_local ?? pagos.pago_tr ?? 0) || 0;
-    const pagoTrVisitante = hayInasistencia
-      ? 0
-      : Number.parseFloat(pagos.pago_tr_visitante ?? pagos.pago_tr ?? 0) || 0;
-    const pagoArbitrajeLocal = hayInasistencia
-      ? 0
-      : Number.parseFloat(pagos.pago_arbitraje_local ?? pagos.pago_arbitraje ?? 0) || 0;
-    const pagoArbitrajeVisitante = hayInasistencia
-      ? 0
-      : Number.parseFloat(pagos.pago_arbitraje_visitante ?? pagos.pago_arbitraje ?? 0) || 0;
-    const pagoTa = hayInasistencia
-      ? 0
-      : Number.parseFloat(pagos.pago_ta ?? (pagoTaLocal + pagoTaVisitante)) || 0;
-    const pagoTr = hayInasistencia
-      ? 0
-      : Number.parseFloat(pagos.pago_tr ?? (pagoTrLocal + pagoTrVisitante)) || 0;
-    const pagoArbitraje = hayInasistencia
-      ? 0
-      : Number.parseFloat(pagos.pago_arbitraje ?? (pagoArbitrajeLocal + pagoArbitrajeVisitante)) || 0;
-    const pagoLocal = hayInasistencia ? 0 : Number.parseFloat(pagos.pago_local ?? 0) || 0;
-    const pagoVisitante = hayInasistencia ? 0 : Number.parseFloat(pagos.pago_visitante ?? 0) || 0;
-    const faltasLocalTotal = hayInasistencia
-      ? 0
-      : Number.parseInt(datos.faltas_local_total ?? datos.faltas?.local_total ?? 0, 10) || 0;
-    const faltasVisitanteTotal = hayInasistencia
-      ? 0
-      : Number.parseInt(datos.faltas_visitante_total ?? datos.faltas?.visitante_total ?? 0, 10) || 0;
     const observaciones = (datos.observaciones || "").toString().trim();
     let avisoMorosidad = null;
 
@@ -1744,6 +1763,67 @@ class Partido {
       const partido = partidoR.rows[0];
       if (!partido) throw new Error("Partido no encontrado");
 
+      const equipoLocalId = Number.parseInt(partido.equipo_local_id, 10);
+      const equipoVisitanteId = Number.parseInt(partido.equipo_visitante_id, 10);
+      const localBloqueado = inasistenciaEquipo === "local" || inasistenciaEquipo === "ambos";
+      const visitanteBloqueado = inasistenciaEquipo === "visitante" || inasistenciaEquipo === "ambos";
+      const equipoBloqueado = (equipoIdRaw) => {
+        const equipoId = Number.parseInt(equipoIdRaw, 10);
+        if (!Number.isFinite(equipoId)) return false;
+        if (localBloqueado && equipoId === equipoLocalId) return true;
+        if (visitanteBloqueado && equipoId === equipoVisitanteId) return true;
+        return false;
+      };
+
+      const golesBase = Array.isArray(datos.goles) ? datos.goles : [];
+      const tarjetasBase = normalizarTarjetasPlanilla(
+        Array.isArray(datos.tarjetas) ? datos.tarjetas : []
+      );
+      const goles = golesBase.filter((item) => !equipoBloqueado(item?.equipo_id));
+      const tarjetas = tarjetasBase.filter((item) => !equipoBloqueado(item?.equipo_id));
+
+      const pagoTaLocal = localBloqueado
+        ? 0
+        : Number.parseFloat(pagos.pago_ta_local ?? pagos.pago_ta ?? 0) || 0;
+      const pagoTaVisitante = visitanteBloqueado
+        ? 0
+        : Number.parseFloat(pagos.pago_ta_visitante ?? pagos.pago_ta ?? 0) || 0;
+      const pagoTrLocal = localBloqueado
+        ? 0
+        : Number.parseFloat(pagos.pago_tr_local ?? pagos.pago_tr ?? 0) || 0;
+      const pagoTrVisitante = visitanteBloqueado
+        ? 0
+        : Number.parseFloat(pagos.pago_tr_visitante ?? pagos.pago_tr ?? 0) || 0;
+      const pagoArbitrajeLocal = localBloqueado
+        ? 0
+        : Number.parseFloat(pagos.pago_arbitraje_local ?? pagos.pago_arbitraje ?? 0) || 0;
+      const pagoArbitrajeVisitante = visitanteBloqueado
+        ? 0
+        : Number.parseFloat(pagos.pago_arbitraje_visitante ?? pagos.pago_arbitraje ?? 0) || 0;
+      const pagoLocal = localBloqueado ? 0 : Number.parseFloat(pagos.pago_local ?? 0) || 0;
+      const pagoVisitante = visitanteBloqueado
+        ? 0
+        : Number.parseFloat(pagos.pago_visitante ?? 0) || 0;
+      const pagoTa = pagoTaLocal + pagoTaVisitante;
+      const pagoTr = pagoTrLocal + pagoTrVisitante;
+      const pagoArbitraje = pagoArbitrajeLocal + pagoArbitrajeVisitante;
+
+      const faltasNormalizadas = normalizarFaltasPlanillaPayload({
+        ...(typeof datos.faltas === "object" && datos.faltas ? datos.faltas : {}),
+        local_total: datos.faltas_local_total,
+        visitante_total: datos.faltas_visitante_total,
+      });
+      if (localBloqueado) {
+        faltasNormalizadas.local_1er = 0;
+        faltasNormalizadas.local_2do = 0;
+        faltasNormalizadas.local_total = 0;
+      }
+      if (visitanteBloqueado) {
+        faltasNormalizadas.visitante_1er = 0;
+        faltasNormalizadas.visitante_2do = 0;
+        faltasNormalizadas.visitante_total = 0;
+      }
+
       const columnaTs = await this.obtenerColumnaTimestampActualizacion();
       const setTs = columnaTs ? `, ${columnaTs} = CURRENT_TIMESTAMP` : "";
 
@@ -1757,9 +1837,13 @@ class Partido {
               delegado_partido = COALESCE($5, delegado_partido),
               ciudad = COALESCE($6, ciudad),
               faltas_local_total = $7,
-              faltas_visitante_total = $8
+              faltas_visitante_total = $8,
+              faltas_local_1er = $9,
+              faltas_local_2do = $10,
+              faltas_visitante_1er = $11,
+              faltas_visitante_2do = $12
               ${setTs}
-          WHERE id = $9
+          WHERE id = $13
         `,
         [
           resultadoLocal,
@@ -1768,8 +1852,12 @@ class Partido {
           arbitro,
           delegadoPartido,
           ciudad,
-          faltasLocalTotal,
-          faltasVisitanteTotal,
+          faltasNormalizadas.local_total,
+          faltasNormalizadas.visitante_total,
+          faltasNormalizadas.local_1er,
+          faltasNormalizadas.local_2do,
+          faltasNormalizadas.visitante_1er,
+          faltasNormalizadas.visitante_2do,
           partido_id,
         ]
       );
@@ -1883,6 +1971,7 @@ class Partido {
         ambosNoPresentes,
         inasistenciaEquipo,
       });
+      await this.sincronizarEstadoNoPresentacionesEvento(client, partido);
       avisoMorosidad = await this.obtenerAvisoMorosidadPlanilla(client, partido);
 
       await client.query("COMMIT");
@@ -1897,6 +1986,55 @@ class Partido {
     } finally {
       client.release();
     }
+  }
+
+  static async sincronizarEstadoNoPresentacionesEvento(client, partido) {
+    await this.asegurarEsquemaEstadoEventoEquipos(client);
+
+    const eventoId = Number(partido?.evento_id);
+    if (!Number.isFinite(eventoId) || eventoId <= 0) return;
+
+    await client.query(
+      `
+        WITH conteos AS (
+          SELECT
+            ee.evento_id,
+            ee.equipo_id,
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN COALESCE(pp.inasistencia_equipo, 'ninguno') = 'ambos'
+                    AND (p.equipo_local_id = ee.equipo_id OR p.equipo_visitante_id = ee.equipo_id)
+                    THEN 1
+                  WHEN COALESCE(pp.inasistencia_equipo, 'ninguno') = 'local'
+                    AND p.equipo_local_id = ee.equipo_id
+                    THEN 1
+                  WHEN COALESCE(pp.inasistencia_equipo, 'ninguno') = 'visitante'
+                    AND p.equipo_visitante_id = ee.equipo_id
+                    THEN 1
+                  ELSE 0
+                END
+              ),
+              0
+            )::int AS total_no_presentaciones
+          FROM evento_equipos ee
+          LEFT JOIN partidos p
+            ON p.evento_id = ee.evento_id
+           AND (p.equipo_local_id = ee.equipo_id OR p.equipo_visitante_id = ee.equipo_id)
+          LEFT JOIN partido_planillas pp ON pp.partido_id = p.id
+          WHERE ee.evento_id = $1
+          GROUP BY ee.evento_id, ee.equipo_id
+        )
+        UPDATE evento_equipos ee
+        SET
+          no_presentaciones = conteos.total_no_presentaciones,
+          eliminado_automatico = conteos.total_no_presentaciones >= 3
+        FROM conteos
+        WHERE ee.evento_id = conteos.evento_id
+          AND ee.equipo_id = conteos.equipo_id
+      `,
+      [eventoId]
+    );
   }
 
   static async sincronizarFinanzasPlanilla(client, partido, montos = {}, opciones = {}) {

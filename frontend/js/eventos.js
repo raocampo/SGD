@@ -48,6 +48,20 @@ function formatearMetodoCompetencia(valor) {
   return "Grupos";
 }
 
+function normalizarClasificadosPorGrupo(valor, fallback = null) {
+  if (valor === null || valor === undefined || valor === "") return fallback;
+  const n = Number.parseInt(valor, 10);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return n;
+}
+
+function formatearClasificadosPorGrupo(evento = {}) {
+  const metodo = normalizarMetodoCompetencia(evento?.metodo_competencia) || "grupos";
+  if (!["grupos", "mixto"].includes(metodo)) return "No aplica";
+  const n = normalizarClasificadosPorGrupo(evento?.clasificados_por_grupo, 2);
+  return `${n || 2}`;
+}
+
 function formatearBloqueoMorososEvento(evento = {}) {
   const valor = evento?.bloquear_morosos;
   if (valor === null || valor === undefined || valor === "") return "Hereda";
@@ -67,8 +81,12 @@ function normalizarMetodoCompetencia(valor) {
 function actualizarVisibilidadConfigEliminatoria() {
   const metodo = document.getElementById("evt-metodo-competencia")?.value || "grupos";
   const wrap = document.getElementById("evt-wrap-eliminatoria-equipos");
+  const wrapClasificados = document.getElementById("evt-wrap-clasificados-por-grupo");
   if (!wrap) return;
   wrap.style.display = ["eliminatoria", "mixto"].includes(metodo) ? "" : "none";
+  if (wrapClasificados) {
+    wrapClasificados.style.display = ["grupos", "mixto"].includes(metodo) ? "" : "none";
+  }
 }
 
 function toggleFormularioCategoria(forzarEstado) {
@@ -250,6 +268,7 @@ function renderEventoCard(e) {
       <div class="campeonato-info">
         <p><strong>Modalidad:</strong> ${escapeHtml(e.modalidad || "-")}</p>
         <p><strong>Método:</strong> ${escapeHtml(formatearMetodoCompetencia(e.metodo_competencia))}</p>
+        <p><strong>Clasifican/grupo:</strong> ${escapeHtml(formatearClasificadosPorGrupo(e))}</p>
         <p><strong>Llave elim.:</strong> ${escapeHtml(e.eliminatoria_equipos || "Automática")}</p>
         <p><strong>Costo inscripción:</strong> ${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</p>
         <p><strong>Bloqueo morosos:</strong> ${escapeHtml(formatearBloqueoMorososEvento(e))}</p>
@@ -280,6 +299,7 @@ function renderTablaEventos(eventos) {
           <td>${escapeHtml(e.nombre || "—")}</td>
           <td>${escapeHtml(e.modalidad || "-")}</td>
           <td>${escapeHtml(formatearMetodoCompetencia(e.metodo_competencia))}</td>
+          <td>${escapeHtml(formatearClasificadosPorGrupo(e))}</td>
           <td>${escapeHtml(e.eliminatoria_equipos || "Auto")}</td>
           <td>${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</td>
           <td>${escapeHtml(formatearBloqueoMorososEvento(e))}</td>
@@ -310,6 +330,7 @@ function renderTablaEventos(eventos) {
             <th>Categoría</th>
             <th>Modalidad</th>
             <th>Método</th>
+            <th>Clasif./grupo</th>
             <th>Llave elim.</th>
             <th>Costo inscripción</th>
             <th>Bloqueo morosos</th>
@@ -339,6 +360,7 @@ async function crearEvento() {
   const nombre = document.getElementById("evt-nombre").value.trim();
   const modalidad = document.getElementById("evt-modalidad").value;
   const metodoCompetencia = document.getElementById("evt-metodo-competencia")?.value || "grupos";
+  const clasificadosRaw = document.getElementById("evt-clasificados-por-grupo")?.value || "";
   const eliminatoriaEquiposRaw = document.getElementById("evt-eliminatoria-equipos")?.value || "";
   const fecha_inicio = document.getElementById("evt-fecha-inicio").value;
   const fecha_fin = document.getElementById("evt-fecha-fin").value;
@@ -358,6 +380,13 @@ async function crearEvento() {
     mostrarNotificacion("Método de competencia inválido.", "warning");
     return;
   }
+  const clasificados_por_grupo = ["grupos", "mixto"].includes(metodo_competencia)
+    ? normalizarClasificadosPorGrupo(clasificadosRaw, 2)
+    : null;
+  if (["grupos", "mixto"].includes(metodo_competencia) && !clasificados_por_grupo) {
+    mostrarNotificacion("Clasificados por grupo inválido.", "warning");
+    return;
+  }
   const eliminatoria_equipos = eliminatoriaEquiposRaw ? Number(eliminatoriaEquiposRaw) : null;
 
   if (!nombre || !fecha_inicio || !fecha_fin) {
@@ -371,6 +400,7 @@ async function crearEvento() {
       nombre,
       modalidad,
       metodo_competencia,
+      clasificados_por_grupo,
       eliminatoria_equipos,
       fecha_inicio,
       fecha_fin,
@@ -381,8 +411,10 @@ async function crearEvento() {
     mostrarNotificacion("Categoría creada", "success");
     document.getElementById("evt-nombre").value = "";
     document.getElementById("evt-costo-inscripcion").value = "";
+    const inputClasificados = document.getElementById("evt-clasificados-por-grupo");
     const selectMetodo = document.getElementById("evt-metodo-competencia");
     const selectElim = document.getElementById("evt-eliminatoria-equipos");
+    if (inputClasificados) inputClasificados.value = "2";
     if (selectMetodo) selectMetodo.value = "grupos";
     if (selectElim) selectElim.value = "";
     const selectBloqMorosos = document.getElementById("evt-bloquear-morosos");
@@ -437,6 +469,21 @@ async function editarEvento(id) {
   }
 
   let nuevaLlave = evento?.eliminatoria_equipos ? String(evento.eliminatoria_equipos) : "";
+  let clasificadosPrompt = evento?.clasificados_por_grupo ? String(evento.clasificados_por_grupo) : "2";
+  if (nuevoMetodo === "grupos" || nuevoMetodo === "mixto") {
+    const clasificadosRaw = prompt(
+      "Clasifican por grupo:",
+      clasificadosPrompt
+    );
+    if (clasificadosRaw === null) return;
+    clasificadosPrompt = String(clasificadosRaw || "").trim();
+    if (!normalizarClasificadosPorGrupo(clasificadosPrompt, null)) {
+      mostrarNotificacion("Clasificados por grupo inválido. Usa un entero mayor a 0.", "warning");
+      return;
+    }
+  } else {
+    clasificadosPrompt = "";
+  }
   if (nuevoMetodo === "eliminatoria" || nuevoMetodo === "mixto") {
     const llavePrompt = prompt(
       "Tamaño de llave eliminatoria (vacío=auto, 4, 8, 16, 32):",
@@ -489,6 +536,10 @@ async function editarEvento(id) {
 
   try {
     const payload = { nombre: nuevoNombre, metodo_competencia: nuevoMetodo };
+    payload.clasificados_por_grupo =
+      nuevoMetodo === "grupos" || nuevoMetodo === "mixto"
+        ? normalizarClasificadosPorGrupo(clasificadosPrompt, 2)
+        : null;
     payload.eliminatoria_equipos = nuevaLlave ? Number(nuevaLlave) : null;
     if (costo_inscripcion !== null) payload.costo_inscripcion = costo_inscripcion;
     payload.bloquear_morosos =
@@ -506,6 +557,5 @@ async function editarEvento(id) {
 
 window.cambiarVistaEventos = cambiarVistaEventos;
 window.toggleFormularioCategoria = toggleFormularioCategoria;
-
 
 

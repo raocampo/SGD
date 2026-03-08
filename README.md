@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-05): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado y modulo de pases extendido con contabilidad e historial por jugador/equipo.
+Estado del proyecto (2026-03-08): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo y eliminacion automatica por no presentaciones.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,17 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-03-05)
+## Novedades Recientes (2026-03-08)
+- Clasificacion por grupo y eliminacion automatica:
+  - nuevo parametro `clasificados_por_grupo` en categorias/eventos,
+  - tablas pintan en rojo a los equipos fuera del cupo,
+  - equipos con `3` no presentaciones quedan eliminados automaticamente en su categoria.
+- Correccion de doble ausencia:
+  - `ambos no se presentan` ya no guarda `0-0`,
+  - el marcador queda vacio (`NULL/NULL`) y no suma como partido jugado,
+  - la multa financiera por no presentacion se mantiene para ambos equipos.
+
+## Novedades Anteriores (2026-03-05)
 - Modulo de pases extendido:
   - sincronizacion contable automatica a finanzas al aprobar/pagar/anular pases,
   - historial dedicado por jugador y por equipo (backend + UI).
@@ -188,6 +198,13 @@ psql -U postgres -d gestionDeportiva -f database/migrations/017_noticias_cms.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/018_galeria_cms.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/019_portal_contenido_cms.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/020_contacto_portal.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/021_planilla_ambos_no_presentes.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/022_planilla_inasistencia_equipo.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/023_bloqueo_morosidad_parametrizable.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/024_rol_jugador.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/025_planilla_faltas_por_tiempo.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/026_ambos_no_presentes_sin_resultado.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/027_clasificacion_y_no_presentacion_automatica.sql
 ```
 
 ### 5.3 Ejecutar

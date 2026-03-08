@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-03-05
+Ultima actualizacion: 2026-03-08
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -8,12 +8,12 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | Modulo | Estado | Avance actual |
 |---|---|---|
 | 3.1 Gestion de Torneos/Campeonatos | Parcial-Alto | CRUD y estados operativos, organizador/logo/colores; pendiente reglamento PDF/bases y sedes multiples. |
-| 3.2 Categorias por torneo | Alto | Eventos/categorias por campeonato funcionales con asignacion de equipos. |
+| 3.2 Categorias por torneo | Alto | Eventos/categorias por campeonato funcionales con asignacion de equipos y parametro `clasificados_por_grupo`. |
 | 3.3 Gestion de Equipos | Alto | Registro completo con logo/contacto/colores, asignacion por evento, flujo hacia sorteo y vista Tarjetas/Tabla. |
 | 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por campeonato; documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Modulo de pases con UI operativa, sincronizacion contable integrada (cargo/abono por pase) e historial visual por jugador/equipo. |
 | 3.5 Creacion de Grupos | Alto | Modo aleatorio, cabezas de serie y manual con ruleta funcionando. |
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
-| 3.7 Resultados/Tablas/Clasificados | Medio-Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play). Planillaje ya alimenta resultado + estadisticas. Pendiente automatizacion robusta de clasificados para todos los formatos. |
+| 3.7 Resultados/Tablas/Clasificados | Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play). Planillaje ya alimenta resultado + estadisticas. Clasificacion por grupo parametrizable y equipos fuera de cupo/auto-eliminados ya visibles en rojo. Pendiente refinamiento de desempates avanzados. |
 | 3.8 Eliminatorias | Alto | Configuracion por categoria (`metodo_competencia`) y generacion automatica de llave integrada en `partidos`; soporte de siembra/byes/progresion de ganador; UI dedicada de llaves en `eliminatorias.html`; playoff desde grupos con `clasificados por grupo`, `cruces de grupos` o `tabla unica`; plantilla de publicacion reforzada (conectores de llave, export completo y fondo grafico). Pendiente reglas avanzadas de desempate y refinamiento visual final. |
 | 4 Portal publico | Alto | Portal operativo con vistas de campeonato/grupos/tablas; iniciada separacion formal entre landing de organizador y CMS institucional del portal; noticias/blog, galeria, contenido institucional y contacto ya tienen base CRUD/CMS y consumo publico integrado en landing; Fase 6 CMS cerrada tecnicamente con hardening de validaciones/anti-spam y smoke tecnico (`npm run smoke`). |
 | 5 Roles y permisos (RBAC) | En progreso | Autenticacion operativa; fase 1 de separacion de dominios iniciada con rol `operador` para CMS publico; rol `jugador` agregado para consulta de equipo en modo solo lectura; noticias, galeria, contenido y contacto institucional fuera del alcance de organizadores; smokes RBAC (`npm run smoke:roles`, `npm run smoke:matrix`, `npm run smoke:frontend`) operativos para validacion rapida por rol. |
@@ -26,8 +26,13 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 1. Planillaje oficial de partido:
 - Flujo directo por `evento -> grupo -> jornada -> partido` con filtro adicional por grupo para carga operativa rapida.
 - Captura oficial por jugador (`G`, `TA`, `TR`) para local/visitante.
+- Captura de faltas por `1ER` y `2DO` tiempo con persistencia por equipo para tablas de fair play.
 - Resultado calculado automaticamente por suma de goles capturados.
 - Registro de pagos y observaciones dentro del mismo formulario.
+- Inscripcion rapida de jugadores desde la misma planilla, por equipo y sin perder la captura en curso.
+- Doble amarilla preservada como evento disciplinario explicito al guardar/reabrir la planilla.
+- No presentacion parcial aplicada por lado: solo se bloquea el equipo ausente y el equipo presente mantiene pagos/captura habilitados.
+- Doble no presentacion corregida: marcador vacio (`NULL/NULL`), estado `no_presentaron_ambos`, sin sumar partido jugado y manteniendo la multa financiera.
 - Exportacion en XLSX (template oficial) y PDF.
 - Vista previa con dos modos: `Formato PDF` y `Resumen anterior`.
 
@@ -44,6 +49,18 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Generacion de fixture por evento y filtros de consulta.
 - Generacion eliminatoria por categoria segun metodo configurado.
 - Tablas/estadisticas por evento consumiendo resultados reales.
+- Parametro `clasificados_por_grupo` operativo en categoria/evento y reflejado visualmente en tablas.
+- Eliminacion automatica por `3` no presentaciones dentro de la categoria (`evento_equipos.no_presentaciones` / `eliminado_automatico`).
+- Nuevo reporte operativo de sanciones en `partidos.html` por categoria:
+  - suspendidos,
+  - acumulacion de amarillas,
+  - impresion y exportacion PDF.
+- Nueva capa de alertas rapidas en `equipos.html`:
+  - resumen operativo de deuda y disciplina,
+  - chips por equipo para deuda, suspendidos y seguimiento por TA.
+- Nueva capa de alertas rapidas en `partidos.html`:
+  - resumen operativo de los equipos de los partidos mostrados,
+  - alertas separadas para local y visitante en tarjetas/tabla.
 
 4. Financiero base:
 - Registro de movimientos (cargo/abono).
@@ -52,6 +69,11 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Sincronizacion automatica de cargos de inscripcion por categoria/equipo.
 - Sincronizacion de planilla a finanzas (arbitraje, multas y abonos por equipo).
 - Resumen de estado de cuenta por concepto (inscripcion/arbitraje/multas) y total.
+- Resumen ejecutivo por campeonato y nuevo consolidado ejecutivo por equipo:
+  - saldo actual,
+  - abiertos/vencidos,
+  - saldo por inscripcion/arbitraje/multas,
+  - impresion dedicada.
 
 5. RBAC y separacion de dominios:
 - Roles deportivos operativos: `administrador`, `organizador`, `tecnico`, `dirigente`.
@@ -80,7 +102,10 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - listado por jugador en `jugadores.html` ya visible,
   - reporte disciplinario por equipo ya disponible en `jugadores.html`,
   - consolidado global de sanciones/suspensiones por categoria/equipo ya disponible en `jugadores.html`,
-  - pendiente extender esa informacion a reportes operativos adicionales.
+  - reporte operativo adicional ya disponible en `partidos.html`,
+  - alertas rapidas en `equipos.html` ya disponibles,
+  - alertas rapidas en listado de `partidos.html` ya disponibles,
+  - pendiente seguir llevandolo a otros reportes/alertas donde haga falta.
 
 2. Pruebas E2E con datos reales (prioridad alta):
 - Flujo completo: campeonato -> evento -> equipos -> sorteo -> grupos -> fixture -> planilla -> tablas.
@@ -93,9 +118,10 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Pendiente completar:
   - consolidado financiero/disciplinario por sanciones ya disponible en `finanzas.html` (bloque `Consolidado de Sanciones TA/TR` + impresion),
   - salida ejecutiva global por campeonato ya disponible en `finanzas.html` (bloque `Resumen Ejecutivo por Campeonato` + impresion),
+  - salida ejecutiva por equipo ya disponible en `finanzas.html` (bloque `Resumen Ejecutivo por Equipo` + impresion),
   - politica por morosidad parametrizable ya aplicada en guardado de planilla (campeonato + override categoria) en modo aviso,
   - pendiente definir si se mantiene solo informativo o se aplica bloqueo en otros flujos operativos,
-  - reportes ejecutivos de ingresos/pendientes con consolidado por campeonato y equipo.
+  - pendiente extender a reportes ejecutivos historicos/comparativos por periodos si el cliente lo requiere.
 
 4. Seguridad y roles:
 - Consolidar separacion final entre roles deportivos y CMS institucional.

@@ -9,6 +9,18 @@ class Jugador {
         return texto ? texto : null;
     }
 
+    static normalizarFechaNacimiento(valor) {
+        const texto = String(valor ?? "").trim();
+        return texto ? texto : null;
+    }
+
+    static normalizarNumeroCamiseta(valor) {
+        const texto = String(valor ?? "").trim();
+        if (!texto) return null;
+        const numero = Number.parseInt(texto, 10);
+        return Number.isFinite(numero) && numero > 0 ? numero : null;
+    }
+
     static async asegurarColumnasDocumentos() {
         if (this._columnasDocumentosAseguradas) return;
         await pool.query(`
@@ -96,6 +108,8 @@ class Jugador {
     static async crear(equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan = false, foto_cedula_url = null, foto_carnet_url = null) {
         await this.asegurarColumnasDocumentos();
         const cedulaNormalizada = this.normalizarCedidentidad(cedidentidad);
+        const fechaNacimientoNormalizada = this.normalizarFechaNacimiento(fecha_nacimiento);
+        const numeroCamisetaNormalizado = this.normalizarNumeroCamiseta(numero_camiseta);
 
         // Verificar límites de jugadores en el equipo
         const equipo = await this.obtenerEquipoConLimites(equipo_id);
@@ -134,9 +148,9 @@ class Jugador {
         }
 
         // Verificar si el número de camiseta ya está en uso en el equipo
-        if (numero_camiseta) {
+        if (numeroCamisetaNormalizado) {
             const camisetaQuery = 'SELECT id FROM jugadores WHERE equipo_id = $1 AND numero_camiseta = $2';
-            const camisetaResult = await pool.query(camisetaQuery, [equipo_id, numero_camiseta]);
+            const camisetaResult = await pool.query(camisetaQuery, [equipo_id, numeroCamisetaNormalizado]);
             if (camisetaResult.rows.length > 0) {
                 throw new Error('El número de camiseta ya está en uso en este equipo');
             }
@@ -159,9 +173,9 @@ class Jugador {
             nombre,
             apellido,
             cedulaNormalizada,
-            fecha_nacimiento,
+            fechaNacimientoNormalizada,
             posicion,
-            numero_camiseta,
+            numeroCamisetaNormalizado,
             es_capitan,
             foto_cedula_url,
             foto_carnet_url,
@@ -219,6 +233,12 @@ class Jugador {
         await this.asegurarColumnasDocumentos();
         if (Object.prototype.hasOwnProperty.call(datos, "cedidentidad")) {
             datos.cedidentidad = this.normalizarCedidentidad(datos.cedidentidad);
+        }
+        if (Object.prototype.hasOwnProperty.call(datos, "fecha_nacimiento")) {
+            datos.fecha_nacimiento = this.normalizarFechaNacimiento(datos.fecha_nacimiento);
+        }
+        if (Object.prototype.hasOwnProperty.call(datos, "numero_camiseta")) {
+            datos.numero_camiseta = this.normalizarNumeroCamiseta(datos.numero_camiseta);
         }
         // Si cambia equipo_id o cedidentidad, validar jugador único por campeonato
         if (datos.equipo_id) {

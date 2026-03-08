@@ -7,6 +7,9 @@ let totalEquiposInscritos = 0;
 let totalEquiposCampeonato = 0;
 let equiposCache = [];
 let equipoEditandoId = null;
+let alertasOperativasEquipos = new Map();
+let cargandoAlertasOperativas = false;
+let tokenAlertasOperativas = 0;
 let vistaEquipos = localStorage.getItem("sgd_vista_equipos") || "cards";
 vistaEquipos = vistaEquipos === "table" ? "table" : "cards";
 const CAMPOS_IMPORTACION_EQUIPOS = [
@@ -47,6 +50,175 @@ function escapeHtml(valor) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function formatoMonedaEquipo(valor) {
+  const n = Number(valor || 0);
+  if (!Number.isFinite(n)) return "$0.00";
+  return new Intl.NumberFormat("es-EC", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+  }).format(n);
+}
+
+function obtenerAlertaOperativaEquipo(equipoId) {
+  const id = Number.parseInt(equipoId, 10);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  return alertasOperativasEquipos.get(id) || null;
+}
+
+function resumirDisciplinaEquipo(jugadores = []) {
+  return (Array.isArray(jugadores) ? jugadores : []).reduce(
+    (acc, jugador) => {
+      const suspension = jugador?.suspension || null;
+      if (suspension?.suspendido) acc.suspendidos += 1;
+      else if (Number(suspension?.amarillas_acumuladas || 0) > 0) acc.alerta_amarillas += 1;
+      return acc;
+    },
+    { suspendidos: 0, alerta_amarillas: 0 }
+  );
+}
+
+function construirChipsAlertaEquipo(alerta, { compacta = false } = {}) {
+  if (!alerta && cargandoAlertasOperativas) {
+    return `
+      <div class="equipo-alertas">
+        <span class="equipo-alerta-chip equipo-alerta-cargando">
+          <i class="fas fa-spinner fa-spin"></i> Actualizando
+        </span>
+      </div>
+    `;
+  }
+
+  const chips = [];
+  const saldo = Number(alerta?.saldo || 0);
+  const suspendidos = Number(alerta?.suspendidos || 0);
+  const amarillas = Number(alerta?.alerta_amarillas || 0);
+  const noPresentaciones = Number(alerta?.no_presentaciones || 0);
+  const eliminadoAutomatico = alerta?.eliminado_automatico === true;
+
+  if (eliminadoAutomatico) {
+    chips.push(`
+      <span class="equipo-alerta-chip equipo-alerta-deuda" title="Equipo eliminado automáticamente por 3 no presentaciones">
+        <i class="fas fa-user-slash"></i> ${compacta ? "Eliminado" : "Eliminado por no presentación"}
+      </span>
+    `);
+  }
+
+  if (noPresentaciones > 0) {
+    chips.push(`
+      <span class="equipo-alerta-chip equipo-alerta-seguimiento" title="No presentaciones registradas en la categoría">
+        <i class="fas fa-triangle-exclamation"></i> ${compacta ? `NP ${noPresentaciones}` : `${noPresentaciones} no presentación${noPresentaciones === 1 ? "" : "es"}`}
+      </span>
+    `);
+  }
+
+  if (saldo > 0) {
+    chips.push(`
+      <span class="equipo-alerta-chip equipo-alerta-deuda" title="Saldo pendiente del equipo">
+        <i class="fas fa-wallet"></i> ${compacta ? formatoMonedaEquipo(saldo) : `Deuda ${formatoMonedaEquipo(saldo)}`}
+      </span>
+    `);
+  }
+
+  if (suspendidos > 0) {
+    chips.push(`
+      <span class="equipo-alerta-chip equipo-alerta-disciplina" title="Jugadores suspendidos para esta categoría">
+        <i class="fas fa-ban"></i> ${suspendidos} suspendido${suspendidos === 1 ? "" : "s"}
+      </span>
+    `);
+  }
+
+  if (amarillas > 0) {
+    chips.push(`
+      <span class="equipo-alerta-chip equipo-alerta-seguimiento" title="Jugadores en seguimiento por amarillas acumuladas">
+        <i class="fas fa-square"></i> ${amarillas} seguimiento
+      </span>
+    `);
+  }
+
+  if (!chips.length) {
+    chips.push(`
+      <span class="equipo-alerta-chip equipo-alerta-ok">
+        <i class="fas fa-circle-check"></i> Sin alertas
+      </span>
+    `);
+  }
+
+  return `<div class="equipo-alertas">${chips.join("")}</div>`;
+}
+
+function renderResumenAlertasOperativas() {
+  const cont = document.getElementById("equipos-alertas-operativas");
+  if (!cont) return;
+
+  if (!campeonatoId || !equiposCache.length) {
+    cont.style.display = "none";
+    cont.innerHTML = "";
+    return;
+  }
+
+  if (cargandoAlertasOperativas) {
+    cont.style.display = "block";
+    cont.innerHTML = `
+      <h3>Alertas Operativas</h3>
+      <div class="empty-state">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Actualizando disciplina y morosidad de los equipos...</p>
+      </div>
+    `;
+    return;
+  }
+
+  let equiposConDeuda = 0;
+  let equiposConSuspendidos = 0;
+  let equiposEnSeguimiento = 0;
+  let saldoTotal = 0;
+
+  equiposCache.forEach((equipo) => {
+    const alerta = obtenerAlertaOperativaEquipo(equipo.id);
+    if (!alerta) return;
+    const saldo = Number(alerta.saldo || 0);
+    const suspendidos = Number(alerta.suspendidos || 0);
+    const amarillas = Number(alerta.alerta_amarillas || 0);
+    if (saldo > 0) {
+      equiposConDeuda += 1;
+      saldoTotal += saldo;
+    }
+    if (suspendidos > 0) equiposConSuspendidos += 1;
+    if (amarillas > 0) equiposEnSeguimiento += 1;
+  });
+
+  const detalleDisciplina = eventoIdSeleccionado
+    ? `<div class="alerta-operativa-card">
+         <span class="alerta-operativa-label">Equipos con suspendidos</span>
+         <strong>${equiposConSuspendidos}</strong>
+       </div>
+       <div class="alerta-operativa-card">
+         <span class="alerta-operativa-label">Equipos en seguimiento TA</span>
+         <strong>${equiposEnSeguimiento}</strong>
+       </div>`
+    : `<div class="alerta-operativa-card alerta-operativa-card-info">
+         <span class="alerta-operativa-label">Disciplina por categoría</span>
+         <strong>Selecciona una categoría para ver suspendidos y TA</strong>
+       </div>`;
+
+  cont.style.display = "block";
+  cont.innerHTML = `
+    <h3>Alertas Operativas</h3>
+    <div class="alertas-operativas-grid">
+      <div class="alerta-operativa-card ${equiposConDeuda > 0 ? "alerta-operativa-card-deuda" : ""}">
+        <span class="alerta-operativa-label">Equipos con deuda</span>
+        <strong>${equiposConDeuda}</strong>
+      </div>
+      <div class="alerta-operativa-card ${saldoTotal > 0 ? "alerta-operativa-card-deuda" : ""}">
+        <span class="alerta-operativa-label">Saldo pendiente total</span>
+        <strong>${formatoMonedaEquipo(saldoTotal)}</strong>
+      </div>
+      ${detalleDisciplina}
+    </div>
+  `;
 }
 
 function obtenerEventoSeleccionadoDesdeUI() {
@@ -447,9 +619,13 @@ async function cargarCampeonatosSelect() {
     select.onchange = async () => {
       campeonatoId = select.value ? parseInt(select.value, 10) : null;
       eventoIdSeleccionado = null;
+      alertasOperativasEquipos = new Map();
+      cargandoAlertasOperativas = false;
+      tokenAlertasOperativas += 1;
       document.getElementById("select-evento").innerHTML = '<option value="">— Selecciona una categoría —</option>';
       document.getElementById("lista-equipos").innerHTML = "";
       document.getElementById("info-contexto").style.display = "none";
+      renderResumenAlertasOperativas();
       if (campeonatoId) {
         await cargarEventosSelect();
       }
@@ -487,6 +663,7 @@ async function cargarEventosSelect(eventoPreservado = null) {
 
     select.onchange = () => {
       eventoIdSeleccionado = select.value ? parseInt(select.value, 10) : null;
+      alertasOperativasEquipos = new Map();
       cargarEquipos();
     };
   } catch (err) {
@@ -503,30 +680,115 @@ async function cargarInfoContexto() {
   try {
     const data = await (window.CampeonatosAPI?.obtenerPorId?.(campeonatoId) || window.ApiClient?.get?.(`/campeonatos/${campeonatoId}`));
     campeonatoActual = data.campeonato || data;
-    const selectEvento = document.getElementById("select-evento");
-    const eventoLabel =
-      eventoIdSeleccionado && selectEvento
-        ? selectEvento.options[selectEvento.selectedIndex]?.textContent || "No seleccionada"
-        : "No seleccionada";
-    const resumenEquipos = eventoIdSeleccionado
-      ? `
-        <p><strong>Equipos activos en categoría:</strong> ${totalEquiposInscritos}</p>
-        <p><strong>Equipos creados en campeonato:</strong> ${totalEquiposCampeonato}</p>
-      `
-      : `<p><strong>Equipos creados en campeonato:</strong> ${totalEquiposCampeonato}</p>`;
-
-    cont.style.display = "block";
-    cont.innerHTML = `
-      <h3>${campeonatoActual.nombre || "Campeonato"}</h3>
-      <p><strong>Categoría:</strong> ${eventoLabel}</p>
-      <p><strong>Fútbol:</strong> ${(campeonatoActual.tipo_futbol || "N/A").replace("_", " ")}</p>
-      <p><strong>Sistema:</strong> ${campeonatoActual.sistema_puntuacion || "N/A"}</p>
-      <p><strong>Jugadores por equipo:</strong> ${campeonatoActual.min_jugador || "?"} - ${campeonatoActual.max_jugador || "?"}</p>
-      ${resumenEquipos}
-      <p><strong>Estado:</strong> ${campeonatoActual.estado || "planificación"}</p>
-    `;
+    renderInfoContexto();
   } catch (err) {
     console.error(err);
+  }
+}
+
+function renderInfoContexto() {
+  const cont = document.getElementById("info-contexto");
+  if (!cont || !campeonatoActual) return;
+
+  const selectEvento = document.getElementById("select-evento");
+  const eventoLabel =
+    eventoIdSeleccionado && selectEvento
+      ? selectEvento.options[selectEvento.selectedIndex]?.textContent || "No seleccionada"
+      : "No seleccionada";
+  const resumenEquipos = eventoIdSeleccionado
+    ? `
+      <p><strong>Equipos activos en categoría:</strong> ${totalEquiposInscritos}</p>
+      <p><strong>Equipos creados en campeonato:</strong> ${totalEquiposCampeonato}</p>
+    `
+    : `<p><strong>Equipos creados en campeonato:</strong> ${totalEquiposCampeonato}</p>`;
+
+  cont.style.display = "block";
+  cont.innerHTML = `
+    <h3>${campeonatoActual.nombre || "Campeonato"}</h3>
+    <p><strong>Categoría:</strong> ${eventoLabel}</p>
+    <p><strong>Fútbol:</strong> ${(campeonatoActual.tipo_futbol || "N/A").replace("_", " ")}</p>
+    <p><strong>Sistema:</strong> ${campeonatoActual.sistema_puntuacion || "N/A"}</p>
+    <p><strong>Jugadores por equipo:</strong> ${campeonatoActual.min_jugador || "?"} - ${campeonatoActual.max_jugador || "?"}</p>
+    ${resumenEquipos}
+    <p><strong>Estado:</strong> ${campeonatoActual.estado || "planificación"}</p>
+  `;
+}
+
+async function cargarAlertasOperativasEquipos(equipos = []) {
+  const equiposLista = Array.isArray(equipos) ? equipos : [];
+  const tokenActual = ++tokenAlertasOperativas;
+  alertasOperativasEquipos = new Map();
+
+  if (!campeonatoId || !equiposLista.length) {
+    cargandoAlertasOperativas = false;
+    renderResumenAlertasOperativas();
+    renderListadoEquipos();
+    return;
+  }
+
+  cargandoAlertasOperativas = true;
+  renderResumenAlertasOperativas();
+  renderListadoEquipos();
+
+  try {
+    const paramsMorosidad = { campeonato_id: campeonatoId };
+    if (eventoIdSeleccionado) paramsMorosidad.evento_id = eventoIdSeleccionado;
+
+    const morosidadResp = await window.FinanzasAPI.morosidad(paramsMorosidad);
+    const morosidad = Array.isArray(morosidadResp?.equipos) ? morosidadResp.equipos : [];
+    const mapaMorosidad = new Map(
+      morosidad.map((item) => [Number(item.equipo_id), item])
+    );
+
+    if (tokenActual !== tokenAlertasOperativas) return;
+
+    equiposLista.forEach((equipo) => {
+      const item = mapaMorosidad.get(Number(equipo.id));
+      alertasOperativasEquipos.set(Number(equipo.id), {
+        saldo: Number(item?.saldo || 0),
+        saldo_vencido: Number(item?.saldo_vencido || 0),
+        suspendidos: 0,
+        alerta_amarillas: 0,
+      });
+    });
+
+    if (eventoIdSeleccionado) {
+      const resultados = await Promise.allSettled(
+        equiposLista.map(async (equipo) => {
+          const data = await window.ApiClient.get(`/jugadores/equipo/${equipo.id}?evento_id=${eventoIdSeleccionado}`);
+          const jugadores = Array.isArray(data) ? data : data?.jugadores || data?.data || [];
+          return {
+            equipoId: Number(equipo.id),
+            resumen: resumirDisciplinaEquipo(jugadores),
+          };
+        })
+      );
+
+      if (tokenActual !== tokenAlertasOperativas) return;
+
+      resultados.forEach((resultado) => {
+        if (resultado.status !== "fulfilled") return;
+        const equipoId = Number(resultado.value.equipoId);
+        const actual = alertasOperativasEquipos.get(equipoId) || {
+          saldo: 0,
+          saldo_vencido: 0,
+          suspendidos: 0,
+          alerta_amarillas: 0,
+        };
+        alertasOperativasEquipos.set(equipoId, {
+          ...actual,
+          suspendidos: Number(resultado.value.resumen?.suspendidos || 0),
+          alerta_amarillas: Number(resultado.value.resumen?.alerta_amarillas || 0),
+        });
+      });
+    }
+  } catch (error) {
+    console.error("No se pudieron cargar alertas operativas de equipos:", error);
+  } finally {
+    if (tokenActual !== tokenAlertasOperativas) return;
+    cargandoAlertasOperativas = false;
+    renderResumenAlertasOperativas();
+    renderListadoEquipos();
   }
 }
 
@@ -561,6 +823,9 @@ async function cargarEquipos() {
     totalEquiposCampeonato = 0;
     totalEquiposInscritos = 0;
     equiposCache = [];
+    alertasOperativasEquipos = new Map();
+    cargandoAlertasOperativas = false;
+    renderResumenAlertasOperativas();
     return;
   }
 
@@ -576,8 +841,7 @@ async function cargarEquipos() {
     if (eventoIdSeleccionado) {
       try {
         const dataEvento = await window.ApiClient.get(`/eventos/${eventoIdSeleccionado}/equipos`);
-        const idsEvento = new Set((dataEvento.equipos || []).map((e) => e.id));
-        equipos = equipos.filter((e) => idsEvento.has(e.id));
+        equipos = Array.isArray(dataEvento?.equipos) ? dataEvento.equipos : [];
       } catch (errorcategoría) {
         console.warn("No se pudo filtrar equipos por categoría:", errorcategoría);
         mostrarNotificacion("No se pudo cargar equipos activos de la categoría", "warning");
@@ -589,13 +853,19 @@ async function cargarEquipos() {
 
     await cargarInfoContexto();
     equiposCache = equipos;
+    alertasOperativasEquipos = new Map();
     renderListadoEquipos();
+    renderResumenAlertasOperativas();
+    await cargarAlertasOperativasEquipos(equipos);
   } catch (error) {
     console.error("Error cargando equipos:", error);
     mostrarNotificacion("Error cargando equipos", "error");
     totalEquiposCampeonato = 0;
     totalEquiposInscritos = 0;
     equiposCache = [];
+    alertasOperativasEquipos = new Map();
+    cargandoAlertasOperativas = false;
+    renderResumenAlertasOperativas();
     cont.innerHTML = "<p>Error cargando equipos.</p>";
   }
 }
@@ -633,6 +903,11 @@ function renderEquipoCard(equipo, index = 0) {
   const baseUrl = (window.API_BASE_URL || "").replace(/\/api\/?$/, "") || window.location.origin;
   const logoUrl = equipo.logo_url ? (equipo.logo_url.startsWith("http") ? equipo.logo_url : `${baseUrl}${equipo.logo_url}`) : "";
   const numero = obtenerNumeroEquipoVisible(equipo, index + 1);
+  const alerta = {
+    ...(obtenerAlertaOperativaEquipo(equipo.id) || {}),
+    no_presentaciones: Number(equipo.no_presentaciones || 0),
+    eliminado_automatico: equipo.eliminado_automatico === true,
+  };
   const accionesAdmin = usuarioEsTecnico()
     ? ""
     : `
@@ -662,6 +937,7 @@ function renderEquipoCard(equipo, index = 0) {
         <p><strong>Director:</strong> ${equipo.director_tecnico || "-"}</p>
         <p><strong>Teléfono:</strong> ${equipo.telefono || "-"}</p>
         <p><strong>Email:</strong> ${equipo.email || "-"}</p>
+        ${construirChipsAlertaEquipo(alerta)}
       </div>
       <div class="equipo-actions campeonato-actions">
         <button class="btn btn-primary" onclick="irAJugadores(${equipo.id})">
@@ -678,6 +954,11 @@ function renderTablaEquipos(equipos) {
   const filas = equipos
     .map((equipo, index) => {
       const numero = obtenerNumeroEquipoVisible(equipo, index + 1);
+      const alerta = {
+        ...(obtenerAlertaOperativaEquipo(equipo.id) || {}),
+        no_presentaciones: Number(equipo.no_presentaciones || 0),
+        eliminado_automatico: equipo.eliminado_automatico === true,
+      };
       const logoUrl = equipo.logo_url
         ? (equipo.logo_url.startsWith("http") ? equipo.logo_url : `${baseUrl}${equipo.logo_url}`)
         : "";
@@ -710,6 +991,7 @@ function renderTablaEquipos(equipos) {
           <td>${escapeHtml(equipo.director_tecnico || "-")}</td>
           <td>${escapeHtml(equipo.telefono || "-")}</td>
           <td>${escapeHtml(equipo.email || "-")}</td>
+          <td>${construirChipsAlertaEquipo(alerta, { compacta: true })}</td>
           <td class="list-table-actions">
             <button class="btn btn-primary" onclick="irAJugadores(${equipo.id})">
               <i class="fas fa-user-friends"></i> Jugadores
@@ -732,6 +1014,7 @@ function renderTablaEquipos(equipos) {
             <th>Director</th>
             <th>Teléfono</th>
             <th>Email</th>
+            <th>Alertas</th>
             <th>Acciones</th>
           </tr>
         </thead>

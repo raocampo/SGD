@@ -7,6 +7,70 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-07 - Disciplina operativa en planilla y partidos
+- Correccion de logica disciplinaria en planilla:
+  - la `doble amarilla` ya no se degrada a `roja directa` al guardar o reabrir una planilla,
+  - se preserva como `Expulsion por doble amarilla` para mantener suspension de `1` partido.
+- Refuerzo backend en `backend/models/Partido.js`:
+  - nuevo calculo disciplinario defensivo para distinguir:
+    - amarillas acumulables,
+    - suspensiones por doble amarilla,
+    - suspensiones por roja directa.
+  - `obtenerPlanilla()` ahora expone tambien si la cédula del jugador es obligatoria para ese campeonato.
+- Mejora operativa en `frontend/planilla.html` + `frontend/js/planilla.js`:
+  - modal de `Inscribir jugador` dentro de la planilla,
+  - alta por equipo sin salir del partido,
+  - preservacion de goles/tarjetas/pagos/observaciones al refrescar el plantel,
+  - reglas dinamicas de cédula/foto de cédula/foto carnet segun configuracion del campeonato.
+- Ajuste adicional en planillaje:
+  - faltas por tiempo (`1ER` / `2DO`) capturadas por clic y persistidas en `partidos` para fair play,
+  - encabezado reorganizado con logos de equipos junto al marcador y auspiciantes en el bloque derecho,
+  - no presentacion parcial aplicada por lado: se bloquea solo el equipo ausente y el equipo presente conserva pagos/captura operativa.
+- Nuevo reporte disciplinario operativo en `frontend/partidos.html` + `frontend/js/partidos.js`:
+  - pestaña `Reporte Sanciones`,
+  - consolidado por categoria enfocado solo en novedades:
+    - jugadores suspendidos,
+    - jugadores con amarillas acumuladas,
+    - resumen de equipos con casos activos,
+  - salida por impresion y exportacion PDF.
+- Nuevo bloque financiero ejecutivo en `frontend/finanzas.html` + `frontend/js/finanzas.js`:
+  - `Resumen Ejecutivo por Equipo`,
+  - consolidado por equipo con columnas de:
+    - campeonato,
+    - categoria,
+    - cargos,
+    - abonos,
+    - saldo actual,
+    - cargos abiertos,
+    - cargos vencidos,
+    - saldo inscripcion,
+    - saldo arbitraje,
+    - saldo multas,
+  - impresion dedicada con membrete y pie de auspiciantes.
+- Alertas operativas en `frontend/equipos.html` + `frontend/js/equipos.js`:
+  - nuevo bloque `Alertas Operativas` sobre el listado de equipos,
+  - consolidado rapido de:
+    - equipos con deuda,
+    - saldo pendiente total,
+    - equipos con suspendidos,
+    - equipos en seguimiento por amarillas,
+  - cada tarjeta y la vista tabla muestran chips operativos por equipo:
+    - `Deuda`,
+    - `Suspendidos`,
+    - `Seguimiento`,
+    - `Sin alertas`.
+- Alertas operativas en `frontend/partidos.html` + `frontend/js/partidos.js`:
+  - nuevo bloque `Alertas Operativas de los Partidos Mostrados`,
+  - resumen rapido de:
+    - equipos con deuda,
+    - saldo pendiente total,
+    - equipos con suspendidos,
+    - equipos en seguimiento por amarillas,
+  - cada partido muestra detalle operativo de local y visitante,
+  - la vista tabla suma columna `Alertas`.
+
+---
+
 ## 2026-03-05 - CMS Fase 6 (endurecimiento + cierre operativo en progreso)
 - Endurecimiento backend del CMS:
   - validacion de URLs en `Noticia`, `GaleriaItem` y `PortalContenido` (solo `http/https` o rutas relativas seguras donde aplica),
@@ -276,11 +340,11 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
 - Reglas automáticas aplicadas:
   - local ausente -> `0-3`,
   - visitante ausente -> `3-0`,
-  - ambos ausentes -> `0-0` y el partido no suma puntos/goles.
+  - ambos ausentes -> marcador vacio (`NULL/NULL`) y el partido no suma puntos/goles.
 - Sincronización financiera desde planilla:
   - walkover individual -> multa de arbitraje solo al equipo ausente,
   - ambos ausentes -> multa de arbitraje a ambos equipos,
-  - no se generan pagos manuales ni captura deportiva cuando hay inasistencia.
+  - no se genera captura deportiva del equipo ausente; en inasistencia parcial el equipo presente mantiene pagos/captura habilitados.
 - Regla disciplinaria integrada:
   - `2 amarillas` del mismo jugador en el partido se convierten a `1 roja`,
   - se cobra solo `roja`,
@@ -353,3 +417,23 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - `README.md`,
   - `docs/INDICE_DOCUMENTACION.md`,
   - `docs/GUIA_PRESENTACION_SISTEMA_LT_C.md`.
+
+---
+
+## 16. Clasificacion por grupo y eliminacion automatica por no presentaciones
+- **Ubicación:** `frontend/eventos.html`, `frontend/js/eventos.js`, `backend/controllers/eventoController.js`, `backend/controllers/tablaController.js`, `frontend/js/tablas.js`, `frontend/css/style.css`, `backend/models/Partido.js`, `database/migrations/026_ambos_no_presentes_sin_resultado.sql`, `database/migrations/027_clasificacion_y_no_presentacion_automatica.sql`
+- Categorias/eventos:
+  - nuevo campo `clasificados_por_grupo` para definir cuantos equipos siguen en carrera por grupo,
+  - visible y editable desde `eventos.html`.
+- Tablas:
+  - resumen de posiciones ahora muestra `clasifican por grupo`,
+  - equipos fuera del cupo se pintan en rojo,
+  - equipos eliminados automaticamente por inasistencias tambien quedan marcados en rojo y con etiqueta visual.
+- No presentaciones:
+  - se agregan `no_presentaciones` y `eliminado_automatico` en `evento_equipos`,
+  - el backend recalcula el acumulado al guardar planillas,
+  - al llegar a `3` no presentaciones el equipo queda eliminado automaticamente en esa categoria.
+- Doble ausencia:
+  - `ambos no se presentan` ya no guarda `0-0`,
+  - el marcador queda vacio (`NULL/NULL`) y el partido no suma como jugado,
+  - se mantiene la multa por no presentacion/arbitraje para ambos equipos.

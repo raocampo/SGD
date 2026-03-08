@@ -230,6 +230,7 @@ function renderPosiciones(data) {
 
   const nombreEvento = data?.evento?.nombre || "Evento";
   const nombreCampeonato = data?.evento?.campeonato_nombre || "Campeonato";
+  const clasificanPorGrupo = Number.parseInt(data?.evento?.clasificados_por_grupo, 10);
 
   const resumen = `
     <div class="card tablas-resumen-card">
@@ -237,6 +238,9 @@ function renderPosiciones(data) {
       <p><strong>Evento:</strong> ${escaparHtml(nombreEvento)}</p>
       <p><strong>Grupos:</strong> ${Number(data.total_grupos || grupos.length)}</p>
       <p><strong>Equipos:</strong> ${Number(data.total_equipos || 0)}</p>
+      <p><strong>Clasifican por grupo:</strong> ${
+        Number.isFinite(clasificanPorGrupo) && clasificanPorGrupo > 0 ? clasificanPorGrupo : "No definido"
+      }</p>
     </div>
   `;
 
@@ -246,11 +250,15 @@ function renderPosiciones(data) {
       const tituloGrupo = g?.grupo?.letra_grupo && g.grupo.letra_grupo !== "-"
         ? `Grupo ${g.grupo.letra_grupo}`
         : g?.grupo?.nombre_grupo || "Tabla general";
+      const cuposGrupo = Number.parseInt(
+        g?.grupo?.clasificados_por_grupo ?? data?.evento?.clasificados_por_grupo,
+        10
+      );
 
       return `
         <div class="card tablas-grupo-card">
           <h3>${escaparHtml(tituloGrupo)}</h3>
-          ${renderTablaPosiciones(tabla)}
+          ${renderTablaPosiciones(tabla, cuposGrupo)}
         </div>
       `;
     })
@@ -259,7 +267,27 @@ function renderPosiciones(data) {
   cont.innerHTML = `${resumen}<div class="tablas-grid">${gruposHtml}</div>`;
 }
 
-function renderTablaPosiciones(tabla) {
+function renderEstadoPosicion(row = {}) {
+  const noPresentaciones = Number(row.no_presentaciones || 0);
+  if (row.eliminado_automatico === true) {
+    return `
+      <div class="tabla-posicion-status">
+        <span class="tabla-posicion-chip is-eliminado">Eliminado</span>
+        <span class="tabla-posicion-chip is-neutral">NP ${noPresentaciones}</span>
+      </div>
+    `;
+  }
+  if (noPresentaciones > 0) {
+    return `
+      <div class="tabla-posicion-status">
+        <span class="tabla-posicion-chip is-neutral">NP ${noPresentaciones}</span>
+      </div>
+    `;
+  }
+  return "";
+}
+
+function renderTablaPosiciones(tabla, clasificanPorGrupo = 0) {
   if (!tabla.length) {
     return renderVacio("Sin partidos finalizados para calcular posiciones.");
   }
@@ -267,10 +295,24 @@ function renderTablaPosiciones(tabla) {
   const rows = tabla
     .map((row, idx) => {
       const est = row.estadisticas || {};
+      const posicion = Number(row.posicion || idx + 1);
+      const fuera = row.fuera_clasificacion === true;
+      const eliminado = row.eliminado_automatico === true;
+      const classes = [
+        fuera ? "tabla-posicion-fuera" : "",
+        eliminado ? "tabla-posicion-eliminado" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       return `
-        <tr>
-          <td>${Number(row.posicion || idx + 1)}</td>
-          <td>${escaparHtml(row?.equipo?.nombre || "-")}</td>
+        <tr class="${classes}">
+          <td>${posicion}</td>
+          <td>
+            <div class="tabla-posicion-equipo">
+              <span>${escaparHtml(row?.equipo?.nombre || "-")}</span>
+              ${renderEstadoPosicion(row)}
+            </div>
+          </td>
           <td>${Number(est.partidos_jugados || 0)}</td>
           <td>${Number(est.partidos_ganados || 0)}</td>
           <td>${Number(est.partidos_empatados || 0)}</td>
@@ -285,6 +327,13 @@ function renderTablaPosiciones(tabla) {
     .join("");
 
   return `
+    ${
+      Number.isFinite(Number(clasificanPorGrupo)) && Number(clasificanPorGrupo) > 0
+        ? `<p class="tablas-clasificacion-help">
+             Se pintan en rojo los equipos fuera de clasificación y los eliminados automáticamente.
+           </p>`
+        : ""
+    }
     <div class="tabla-scroll">
       <table class="tabla-estadistica tabla-estadistica-posiciones">
         <thead>

@@ -139,9 +139,15 @@ async function listarEquiposEvento(user, eventoId) {
         FROM partidos p
         WHERE p.evento_id = $1
       )
-      SELECT DISTINCT e.*
+      SELECT DISTINCT
+        e.*,
+        COALESCE(ee.no_presentaciones, 0)::int AS no_presentaciones,
+        COALESCE(ee.eliminado_automatico, FALSE) AS eliminado_automatico
       FROM base b
       JOIN equipos e ON e.id = b.equipo_id
+      LEFT JOIN evento_equipos ee
+        ON ee.evento_id = $1
+       AND ee.equipo_id = e.id
       ORDER BY e.numero_campeonato ASC NULLS LAST, e.nombre ASC
     `,
     [evento.id]

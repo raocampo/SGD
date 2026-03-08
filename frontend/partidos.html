@@ -58,6 +58,14 @@
             >
               Plantilla Fixture
             </button>
+            <button
+              type="button"
+              class="partidos-main-tab"
+              data-tab-target="tab-sanciones"
+              onclick="cambiarPestanaPartidos('tab-sanciones')"
+            >
+              Reporte Sanciones
+            </button>
           </div>
 
           <div id="tab-filtrar" class="partidos-tab-panel active">
@@ -148,6 +156,8 @@
               </div>
             </div>
 
+            <div id="partidos-alertas-operativas" class="card" style="display:none;"></div>
+
             <div id="lista-partidos" class="grid-container"></div>
           </div>
 
@@ -210,6 +220,33 @@
               <div id="fixture-sponsors" class="poster-sponsors" style="display:none;">
                 <div class="sponsors-title">Auspician</div>
                 <div id="fixture-sponsors-grid" class="sponsors-grid"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-sanciones" class="partidos-tab-panel">
+            <div class="config-card">
+              <div class="fixture-accordion-actions">
+                <button class="btn btn-outline" type="button" onclick="cambiarPestanaPartidos('tab-filtrar')">
+                  <i class="fas fa-arrow-left"></i> Volver a Partidos
+                </button>
+                <button class="btn btn-primary" type="button" onclick="renderReporteSancionesPartidos(true)">
+                  <i class="fas fa-rotate"></i> Actualizar
+                </button>
+                <button class="btn btn-warning" type="button" onclick="imprimirReporteSancionesPartidos()">
+                  <i class="fas fa-print"></i> Imprimir
+                </button>
+                <button class="btn btn-danger" type="button" onclick="exportarReporteSancionesPartidosPDF()">
+                  <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+              </div>
+
+              <div class="form-hint" style="margin-bottom:0.9rem;">
+                Consolidado operativo por categoría: muestra solo jugadores suspendidos o con amarillas acumuladas para control previo a programar y jugar partidos.
+              </div>
+
+              <div id="partidos-sanciones-export" class="jugadores-nomina-board">
+                <p class="empty-state">Selecciona campeonato y categoría para generar el reporte disciplinario operativo.</p>
               </div>
             </div>
           </div>
