@@ -1,8 +1,11 @@
 let tablasEventoSeleccionado = null;
 let tablasEventosCache = [];
+let tablasCampeonatosCache = [];
 let tablasCampeonatoSeleccionado = null;
 
 const TABLAS_TAB_IDS = ["tab-posiciones", "tab-goleadores", "tab-tarjetas", "tab-fair-play"];
+const TABLAS_STORAGE_CAMPEONATO = "sgd_tablas_camp";
+const TABLAS_STORAGE_EVENTO = "sgd_tablas_evento";
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("tablas.html")) return;
@@ -10,68 +13,100 @@ document.addEventListener("DOMContentLoaded", async () => {
   inicializarTabs();
   inicializarAcciones();
 
-  const campeonatoDesdeURL = new URLSearchParams(window.location.search).get("campeonato");
-  const eventoDesdeURL = new URLSearchParams(window.location.search).get("evento");
-  await resolverCampeonatoContextoTablas(
-    campeonatoDesdeURL ? Number(campeonatoDesdeURL) : null,
-    eventoDesdeURL ? Number(eventoDesdeURL) : null
-  );
-  await cargarEventos(eventoDesdeURL ? Number(eventoDesdeURL) : null);
+  const params = new URLSearchParams(window.location.search);
+  const campeonatoDesdeURL = parsePositiveInt(params.get("campeonato"));
+  const eventoDesdeURL = parsePositiveInt(params.get("evento"));
 
-  if (eventoDesdeURL) {
-    tablasEventoSeleccionado = Number(eventoDesdeURL);
+  await cargarCampeonatos(campeonatoDesdeURL, eventoDesdeURL);
+  await cargarEventos(eventoDesdeURL);
+
+  if (tablasEventoSeleccionado) {
     await buscarTablasEvento();
   } else {
     limpiarPaneles();
   }
 });
 
-async function resolverCampeonatoContextoTablas(campeonatoParam = null, eventoParam = null) {
-  if (Number.isFinite(Number(campeonatoParam)) && Number(campeonatoParam) > 0) {
-    tablasCampeonatoSeleccionado = Number(campeonatoParam);
-    localStorage.setItem("sgd_tablas_camp", String(tablasCampeonatoSeleccionado));
-    return;
-  }
+function parsePositiveInt(value) {
+  const parsed = Number.parseInt(String(value || "").trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
 
-  const cacheTablas = Number.parseInt(localStorage.getItem("sgd_tablas_camp") || "", 10);
-  if (Number.isFinite(cacheTablas) && cacheTablas > 0) {
-    tablasCampeonatoSeleccionado = cacheTablas;
-  }
+function storageKey(base) {
+  const userId = parsePositiveInt(window.Auth?.getUser?.()?.id);
+  return userId ? `${base}_${userId}` : base;
+}
 
-  const cachePartidos = Number.parseInt(localStorage.getItem("sgd_partidos_camp") || "", 10);
-  if (!Number.isFinite(Number(tablasCampeonatoSeleccionado)) && Number.isFinite(cachePartidos) && cachePartidos > 0) {
-    tablasCampeonatoSeleccionado = cachePartidos;
+function guardarContextoTablas() {
+  if (tablasCampeonatoSeleccionado) {
+    localStorage.setItem(storageKey(TABLAS_STORAGE_CAMPEONATO), String(tablasCampeonatoSeleccionado));
   }
+  if (tablasEventoSeleccionado) {
+    localStorage.setItem(storageKey(TABLAS_STORAGE_EVENTO), String(tablasEventoSeleccionado));
+  } else {
+    localStorage.removeItem(storageKey(TABLAS_STORAGE_EVENTO));
+  }
+}
 
-  if (Number.isFinite(Number(eventoParam)) && Number(eventoParam) > 0) {
-    try {
-      const respEvento = await ApiClient.get(`/eventos/${Number(eventoParam)}`);
-      const evento = respEvento?.evento || respEvento || {};
-      const campEvt = Number.parseInt(evento?.campeonato_id, 10);
-      if (Number.isFinite(campEvt) && campEvt > 0) {
-        tablasCampeonatoSeleccionado = campEvt;
-        localStorage.setItem("sgd_tablas_camp", String(campEvt));
-      }
-    } catch (error) {
-      console.warn("No se pudo resolver campeonato para tablas desde la categoría:", error);
+function limpiarContextoTablasEvento() {
+  tablasEventoSeleccionado = null;
+  localStorage.removeItem(storageKey(TABLAS_STORAGE_EVENTO));
+}
+
+async function resolverCampeonatoDesdeEvento(eventoId = null) {
+  if (!eventoId) return null;
+  try {
+    const respEvento = await EventosAPI.obtenerPorId(eventoId);
+    const evento = respEvento?.evento || respEvento || {};
+    return parsePositiveInt(evento?.campeonato_id);
+  } catch (error) {
+    return null;
+  }
+}
+
+async function cargarCampeonatos(campeonatoParam = null, eventoParam = null) {
+  const selectCampeonato = document.getElementById("select-campeonato-tablas");
+  if (!selectCampeonato) return;
+
+  try {
+    const resp = await CampeonatosAPI.obtenerTodos();
+    const lista = Array.isArray(resp) ? resp : (resp?.campeonatos || []);
+    tablasCampeonatosCache = lista;
+
+    selectCampeonato.innerHTML = '<option value="">- Selecciona un campeonato -</option>';
+    lista.forEach((camp) => {
+      selectCampeonato.innerHTML += `
+        <option value="${camp.id}">${escaparHtml(camp.nombre || `Campeonato ${camp.id}`)}</option>
+      `;
+    });
+
+    let candidato = parsePositiveInt(campeonatoParam);
+    if (!candidato) {
+      candidato = await resolverCampeonatoDesdeEvento(parsePositiveInt(eventoParam));
     }
-  }
-
-  if (!Number.isFinite(Number(tablasCampeonatoSeleccionado))) {
-    try {
-      const respCamp = await ApiClient.get("/campeonatos");
-      const lista = Array.isArray(respCamp) ? respCamp : (respCamp?.campeonatos || []);
-      if (lista.length) {
-        const ultimo = [...lista].sort((a, b) => Number(b.id) - Number(a.id))[0];
-        const campDefault = Number.parseInt(ultimo?.id, 10);
-        if (Number.isFinite(campDefault) && campDefault > 0) {
-          tablasCampeonatoSeleccionado = campDefault;
-          localStorage.setItem("sgd_tablas_camp", String(campDefault));
-        }
-      }
-    } catch (error) {
-      console.warn("No se pudo obtener campeonato por defecto para tablas:", error);
+    if (!candidato) {
+      candidato = parsePositiveInt(localStorage.getItem(storageKey(TABLAS_STORAGE_CAMPEONATO)));
     }
+
+    const idsDisponibles = new Set(lista.map((camp) => Number(camp.id)));
+    if (!idsDisponibles.has(Number(candidato))) {
+      candidato = parsePositiveInt([...lista].sort((a, b) => Number(b.id) - Number(a.id))[0]?.id);
+    }
+
+    tablasCampeonatoSeleccionado = candidato || null;
+    if (tablasCampeonatoSeleccionado) {
+      selectCampeonato.value = String(tablasCampeonatoSeleccionado);
+      guardarContextoTablas();
+    } else {
+      selectCampeonato.value = "";
+      limpiarContextoTablasEvento();
+      actualizarFormularioFormato(null);
+      limpiarPaneles("No hay campeonatos disponibles para tu usuario.");
+    }
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion("Error cargando campeonatos", "error");
+    actualizarFormularioFormato(null);
   }
 }
 
@@ -88,73 +123,202 @@ function inicializarAcciones() {
   const btnBuscar = document.getElementById("btn-buscar-tablas");
   const btnRecargar = document.getElementById("btn-recargar-eventos");
   const selectEvento = document.getElementById("select-evento-tablas");
+  const selectCampeonato = document.getElementById("select-campeonato-tablas");
+  const btnGuardarFormato = document.getElementById("btn-guardar-formato-tablas");
+  const selectMetodo = document.getElementById("tablas-metodo-competencia");
 
   if (btnBuscar) btnBuscar.addEventListener("click", buscarTablasEvento);
   if (btnRecargar) {
     btnRecargar.addEventListener("click", async () => {
+      await cargarCampeonatos(tablasCampeonatoSeleccionado, tablasEventoSeleccionado);
       await cargarEventos(tablasEventoSeleccionado);
-      mostrarNotificacion("Categorías recargadas", "success");
+      mostrarNotificacion("Filtros recargados", "success");
+    });
+  }
+
+  if (selectCampeonato) {
+    selectCampeonato.addEventListener("change", async () => {
+      tablasCampeonatoSeleccionado = parsePositiveInt(selectCampeonato.value);
+      limpiarContextoTablasEvento();
+      guardarContextoTablas();
+      await cargarEventos(null);
+      limpiarPaneles();
     });
   }
 
   if (selectEvento) {
     selectEvento.addEventListener("change", () => {
-      tablasEventoSeleccionado = selectEvento.value ? Number(selectEvento.value) : null;
+      tablasEventoSeleccionado = parsePositiveInt(selectEvento.value);
       const eventoSel = tablasEventosCache.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
-      const campEvt = Number.parseInt(eventoSel?.campeonato_id, 10);
-      if (Number.isFinite(campEvt) && campEvt > 0) {
+      const campEvt = parsePositiveInt(eventoSel?.campeonato_id);
+      if (campEvt) {
         tablasCampeonatoSeleccionado = campEvt;
-        localStorage.setItem("sgd_tablas_camp", String(campEvt));
       }
+      guardarContextoTablas();
+      actualizarFormularioFormato(eventoSel || null);
     });
+  }
+
+  if (selectMetodo) {
+    selectMetodo.addEventListener("change", actualizarVisibilidadFormatoClasificacion);
+  }
+
+  if (btnGuardarFormato) {
+    btnGuardarFormato.addEventListener("click", guardarFormatoClasificacion);
   }
 }
 
-function cambiarTablasTab(tabId) {
-  const objetivo = TABLAS_TAB_IDS.includes(tabId) ? tabId : "tab-posiciones";
+function puedeEditarFormato() {
+  return window.Auth?.isAdminLike?.() === true;
+}
 
-  document.querySelectorAll("#tablas-main-tabs .partidos-main-tab").forEach((btn) => {
-    btn.classList.toggle("active", btn.getAttribute("data-tablas-target") === objetivo);
-  });
+function actualizarVisibilidadFormatoClasificacion() {
+  const selectMetodo = document.getElementById("tablas-metodo-competencia");
+  const wrapClasificados = document.getElementById("tablas-wrap-clasificados");
+  if (!selectMetodo || !wrapClasificados) return;
+  const metodo = String(selectMetodo.value || "grupos").toLowerCase();
+  wrapClasificados.style.display = ["grupos", "mixto"].includes(metodo) ? "" : "none";
+}
 
-  document.querySelectorAll(".page-tablas .partidos-tab-panel").forEach((panel) => {
-    panel.classList.toggle("active", panel.id === objetivo);
-  });
+function actualizarFormularioFormato(evento = null) {
+  const selectMetodo = document.getElementById("tablas-metodo-competencia");
+  const inputClasificados = document.getElementById("tablas-clasificados-por-grupo");
+  const btnGuardar = document.getElementById("btn-guardar-formato-tablas");
+  const ayuda = document.getElementById("tablas-formato-ayuda");
+  if (!selectMetodo || !inputClasificados || !btnGuardar || !ayuda) return;
+
+  if (!evento) {
+    selectMetodo.value = "grupos";
+    inputClasificados.value = "2";
+    btnGuardar.disabled = true;
+    ayuda.textContent = "Selecciona una categoría para editar su formato de clasificación.";
+    actualizarVisibilidadFormatoClasificacion();
+    return;
+  }
+
+  const metodo = String(evento.metodo_competencia || "grupos").toLowerCase();
+  selectMetodo.value = ["grupos", "liga", "eliminatoria", "mixto"].includes(metodo) ? metodo : "grupos";
+  inputClasificados.value = parsePositiveInt(evento.clasificados_por_grupo) || 2;
+
+  if (!puedeEditarFormato()) {
+    btnGuardar.disabled = true;
+    ayuda.textContent = "Solo administrador u organizador pueden guardar el formato de clasificación.";
+  } else {
+    btnGuardar.disabled = false;
+    ayuda.textContent = `Configuración activa para: ${evento.nombre || `Categoría ${evento.id}`}.`;
+  }
+  actualizarVisibilidadFormatoClasificacion();
+}
+
+async function guardarFormatoClasificacion() {
+  if (!tablasEventoSeleccionado) {
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return;
+  }
+  if (!puedeEditarFormato()) {
+    mostrarNotificacion("No tienes permisos para guardar este formato.", "warning");
+    return;
+  }
+
+  const selectMetodo = document.getElementById("tablas-metodo-competencia");
+  const inputClasificados = document.getElementById("tablas-clasificados-por-grupo");
+  const metodo = String(selectMetodo?.value || "grupos").toLowerCase();
+  const payload = { metodo_competencia: metodo };
+
+  if (["grupos", "mixto"].includes(metodo)) {
+    const clasificados = parsePositiveInt(inputClasificados?.value);
+    if (!clasificados) {
+      mostrarNotificacion("Clasificados por grupo debe ser un entero mayor a 0.", "warning");
+      return;
+    }
+    payload.clasificados_por_grupo = clasificados;
+  } else {
+    payload.clasificados_por_grupo = null;
+  }
+
+  try {
+    const resp = await EventosAPI.actualizar(tablasEventoSeleccionado, payload);
+    const eventoActualizado = resp?.evento || {};
+    tablasEventosCache = tablasEventosCache.map((item) =>
+      Number(item.id) === Number(tablasEventoSeleccionado) ? { ...item, ...eventoActualizado } : item
+    );
+    const eventoSel = tablasEventosCache.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
+    actualizarFormularioFormato(eventoSel || eventoActualizado);
+    mostrarNotificacion("Formato de clasificación guardado", "success");
+    await buscarTablasEvento();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo guardar el formato de clasificación", "error");
+  }
 }
 
 async function cargarEventos(eventoPreseleccionado = null) {
   const select = document.getElementById("select-evento-tablas");
   if (!select) return;
 
+  select.innerHTML = '<option value="">- Selecciona una categoría -</option>';
+  tablasEventosCache = [];
+  limpiarContextoTablasEvento();
+
+  if (!tablasCampeonatoSeleccionado) {
+    actualizarFormularioFormato(null);
+    return;
+  }
+
   try {
-    const endpoint = Number.isFinite(Number(tablasCampeonatoSeleccionado)) && Number(tablasCampeonatoSeleccionado) > 0
-      ? `/eventos/campeonato/${Number(tablasCampeonatoSeleccionado)}`
-      : "/eventos";
-    const resp = await ApiClient.get(endpoint);
+    const resp = await EventosAPI.obtenerPorCampeonato(Number(tablasCampeonatoSeleccionado));
     const eventos = resp.eventos || resp || [];
     tablasEventosCache = eventos;
-
-    select.innerHTML = '<option value="">- Selecciona una categoría -</option>';
 
     eventos.forEach((e) => {
       const label = e.nombre || `Categoría ${e.id}`;
       select.innerHTML += `<option value="${e.id}">${escaparHtml(label)}</option>`;
     });
 
-    if (eventoPreseleccionado && eventos.some((e) => Number(e.id) === Number(eventoPreseleccionado))) {
-      select.value = String(eventoPreseleccionado);
-      tablasEventoSeleccionado = Number(eventoPreseleccionado);
+    const preseleccionado = parsePositiveInt(eventoPreseleccionado);
+    const cacheEvento = parsePositiveInt(localStorage.getItem(storageKey(TABLAS_STORAGE_EVENTO)));
+    const candidato = preseleccionado || cacheEvento;
+
+    if (candidato && eventos.some((e) => Number(e.id) === Number(candidato))) {
+      tablasEventoSeleccionado = candidato;
+      select.value = String(candidato);
+    } else if (eventos.length === 1) {
+      tablasEventoSeleccionado = Number(eventos[0].id);
+      select.value = String(eventos[0].id);
     }
+
+    guardarContextoTablas();
+    const eventoSel = eventos.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
+    actualizarFormularioFormato(eventoSel || null);
   } catch (error) {
     console.error(error);
     mostrarNotificacion("Error cargando categorías", "error");
+    actualizarFormularioFormato(null);
+  }
+}
+
+function sincronizarFormatoConPosiciones(posicionesPayload = {}) {
+  const eventoPos = posicionesPayload?.evento || {};
+  if (!tablasEventoSeleccionado) return;
+  tablasEventosCache = tablasEventosCache.map((item) => {
+    if (Number(item.id) !== Number(tablasEventoSeleccionado)) return item;
+    return {
+      ...item,
+      clasificados_por_grupo:
+        parsePositiveInt(eventoPos?.clasificados_por_grupo) || item.clasificados_por_grupo || null,
+    };
+  });
+  const eventoSel = tablasEventosCache.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
+  if (eventoSel) {
+    actualizarFormularioFormato(eventoSel);
   }
 }
 
 async function buscarTablasEvento() {
   const select = document.getElementById("select-evento-tablas");
   if (!tablasEventoSeleccionado && select?.value) {
-    tablasEventoSeleccionado = Number(select.value);
+    tablasEventoSeleccionado = parsePositiveInt(select.value);
+    guardarContextoTablas();
   }
 
   if (!tablasEventoSeleccionado) {
@@ -173,6 +337,7 @@ async function buscarTablasEvento() {
       ApiClient.get(`/tablas/evento/${tablasEventoSeleccionado}/fair-play`),
     ]);
 
+    sincronizarFormatoConPosiciones(posiciones);
     renderPosiciones(posiciones);
     renderGoleadores(goleadores);
     renderTarjetas(tarjetas);
@@ -184,6 +349,18 @@ async function buscarTablasEvento() {
     mostrarNotificacion(error.message || "Error cargando tablas", "error");
     limpiarPaneles("No se pudo cargar la información de la categoría.");
   }
+}
+
+function cambiarTablasTab(tabId) {
+  const objetivo = TABLAS_TAB_IDS.includes(tabId) ? tabId : "tab-posiciones";
+
+  document.querySelectorAll("#tablas-main-tabs .partidos-main-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.getAttribute("data-tablas-target") === objetivo);
+  });
+
+  document.querySelectorAll(".page-tablas .partidos-tab-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.id === objetivo);
+  });
 }
 
 function setCargandoPaneles() {

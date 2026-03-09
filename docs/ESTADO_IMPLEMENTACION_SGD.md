@@ -13,7 +13,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por campeonato; documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Modulo de pases con UI operativa, sincronizacion contable integrada (cargo/abono por pase) e historial visual por jugador/equipo. |
 | 3.5 Creacion de Grupos | Alto | Modo aleatorio, cabezas de serie y manual con ruleta funcionando. |
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
-| 3.7 Resultados/Tablas/Clasificados | Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play). Planillaje ya alimenta resultado + estadisticas. Clasificacion por grupo parametrizable y equipos fuera de cupo/auto-eliminados ya visibles en rojo. Pendiente refinamiento de desempates avanzados. |
+| 3.7 Resultados/Tablas/Clasificados | Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play) con selector de campeonato en UI y guardado explícito del formato de clasificación (`metodo_competencia` + `clasificados_por_grupo`). Planillaje ya alimenta resultado + estadisticas. Clasificacion por grupo parametrizable y equipos fuera de cupo/auto-eliminados ya visibles en rojo. Pendiente refinamiento de desempates avanzados. |
 | 3.8 Eliminatorias | Alto | Configuracion por categoria (`metodo_competencia`) y generacion automatica de llave integrada en `partidos`; soporte de siembra/byes/progresion de ganador; UI dedicada de llaves en `eliminatorias.html`; playoff desde grupos con `clasificados por grupo`, `cruces de grupos` o `tabla unica`; plantilla de publicacion reforzada (conectores de llave, export completo y fondo grafico). Pendiente reglas avanzadas de desempate y refinamiento visual final. |
 | 4 Portal publico | Alto | Portal operativo con vistas de campeonato/grupos/tablas; iniciada separacion formal entre landing de organizador y CMS institucional del portal; noticias/blog, galeria, contenido institucional y contacto ya tienen base CRUD/CMS y consumo publico integrado en landing; Fase 6 CMS cerrada tecnicamente con hardening de validaciones/anti-spam y smoke tecnico (`npm run smoke`). |
 | 5 Roles y permisos (RBAC) | En progreso | Autenticacion operativa; fase 1 de separacion de dominios iniciada con rol `operador` para CMS publico; rol `jugador` agregado para consulta de equipo en modo solo lectura; noticias, galeria, contenido y contacto institucional fuera del alcance de organizadores; smokes RBAC (`npm run smoke:roles`, `npm run smoke:matrix`, `npm run smoke:frontend`) operativos para validacion rapida por rol. |
@@ -109,6 +109,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 2. Pruebas E2E con datos reales (prioridad alta):
 - Flujo completo: campeonato -> evento -> equipos -> sorteo -> grupos -> fixture -> planilla -> tablas.
+- Script operativo disponible (solo lectura): `npm run e2e:ops-flow` para validar rapidamente el dataset real sin modificar datos.
 
 3. Modulo financiero completo (prioridad alta):
 - Reglas base ya incorporadas desde planilla para:

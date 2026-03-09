@@ -41,6 +41,12 @@
           <h3>Filtros</h3>
           <div class="form-grid">
             <div class="form-group">
+              <label for="select-campeonato-tablas">Campeonato</label>
+              <select id="select-campeonato-tablas">
+                <option value="">- Selecciona un campeonato -</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label for="select-evento-tablas">Categoría</label>
               <select id="select-evento-tablas">
                 <option value="">- Selecciona una categoría -</option>
@@ -55,6 +61,31 @@
             <button class="btn btn-primary" id="btn-buscar-tablas">
               <i class="fas fa-search"></i> Buscar
             </button>
+          </div>
+
+          <div class="tablas-formato-config" id="tablas-formato-config">
+            <h4>Formato de Clasificación</h4>
+            <p id="tablas-formato-ayuda">Selecciona una categoría para editar su formato de clasificación.</p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="tablas-metodo-competencia">Método de competencia</label>
+                <select id="tablas-metodo-competencia">
+                  <option value="grupos">Grupos</option>
+                  <option value="liga">Liga</option>
+                  <option value="eliminatoria">Eliminatoria</option>
+                  <option value="mixto">Mixto</option>
+                </select>
+              </div>
+              <div class="form-group" id="tablas-wrap-clasificados">
+                <label for="tablas-clasificados-por-grupo">Clasifican por grupo</label>
+                <input type="number" id="tablas-clasificados-por-grupo" min="1" step="1" value="2" />
+              </div>
+            </div>
+            <div class="tablas-filtros-actions">
+              <button class="btn btn-success" id="btn-guardar-formato-tablas">
+                <i class="fas fa-save"></i> Guardar formato
+              </button>
+            </div>
           </div>
         </div>
 

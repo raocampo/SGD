@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-08): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo y eliminacion automatica por no presentaciones.
+Estado del proyecto (2026-03-08): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo y eliminacion automatica por no presentaciones, y filtro de tablas aislado por campeonato/organizador.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -31,6 +31,12 @@ Flujo principal operativo:
 7. Consultar tablas y portal publico.
 
 ## Novedades Recientes (2026-03-08)
+- Tablas por campeonato/organizador:
+  - `tablas.html` ahora incluye selector de campeonato y ya no arrastra contexto entre usuarios,
+  - se agregó bloque `Formato de Clasificación` con botón `Guardar formato` para persistir `metodo_competencia` y `clasificados_por_grupo` por categoría.
+- Seguridad de endpoints deportivos:
+  - `GET /api/eventos*` y `GET /api/tablas*` internos ahora requieren autenticación y rol,
+  - el organizador solo ve categorías de sus campeonatos.
 - Clasificacion por grupo y eliminacion automatica:
   - nuevo parametro `clasificados_por_grupo` en categorias/eventos,
   - tablas pintan en rojo a los equipos fuera del cupo,
@@ -228,6 +234,7 @@ En `backend/package.json`:
 - `npm run smoke:matrix`: matriz RBAC por usuarios activos de BD.
 - `npm run qa:cms`: corrida consolidada (`smoke + smoke:frontend + smoke:matrix`).
 - `npm run qa:ui-dataset`: validacion de dataset UI (web + mobile + portal publico).
+- `npm run e2e:ops-flow`: verificacion operativa E2E en modo solo lectura sobre datos reales (campeonato/categoria/equipos/grupos/partidos/planilla/tablas/finanzas/portal).
 
 ## 7. Endpoints Utiles
 - Salud del servidor: `GET /salud`

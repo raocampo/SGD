@@ -10,9 +10,24 @@ router.post(
   requireRoles("administrador", "organizador"),
   eventoController.crearEvento
 );
-router.get("/", eventoController.listarEventos);
-router.get("/campeonato/:campeonato_id", eventoController.listarEventosPorCampeonato);
-router.get("/:id", eventoController.obtenerEvento);
+router.get(
+  "/",
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  eventoController.listarEventos
+);
+router.get(
+  "/campeonato/:campeonato_id",
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  eventoController.listarEventosPorCampeonato
+);
+router.get(
+  "/:id",
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  eventoController.obtenerEvento
+);
 router.put(
   "/:id",
   requireAuth,
@@ -33,7 +48,12 @@ router.post(
   requireRoles("administrador", "organizador"),
   eventoController.asignarCanchasAEvento
 );
-router.get("/:evento_id/canchas", eventoController.listarCanchasDeEvento);
+router.get(
+  "/:evento_id/canchas",
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  eventoController.listarCanchasDeEvento
+);
 
 // Equipos del evento (evento_equipos)
 router.post(

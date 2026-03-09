@@ -7,6 +7,36 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-08 - Tablas por campeonato (aislamiento por organizador) + guardado explícito de formato
+- Corrección de aislamiento de datos en categorías/tablas:
+  - `backend/routes/eventoRoutes.js` ahora protege con `requireAuth + requireRoles` los endpoints de lectura:
+    - `GET /api/eventos`
+    - `GET /api/eventos/campeonato/:campeonato_id`
+    - `GET /api/eventos/:id`
+    - `GET /api/eventos/:evento_id/canchas`
+  - `backend/controllers/eventoController.js` ahora filtra `listarEventos` por campeonatos permitidos del organizador y valida acceso por campeonato al listar/leer/editar/eliminar categoría.
+  - se reforzó alcance del organizador también en:
+    - asignación/listado de canchas del evento,
+    - listado y baja de equipos en categoría.
+- Endpoints de tablas internos ahora privados:
+  - `backend/routes/tablaRoutes.js` exige autenticación y roles para:
+    - `GET /api/tablas/grupo/:grupo_id`
+    - `GET /api/tablas/campeonato/:campeonato_id`
+    - `GET /api/tablas/evento/:evento_id/*`
+  - se mantiene separado el consumo público vía `/api/public/eventos/:id/...`.
+- UX/flujo de `frontend/tablas.html` + `frontend/js/tablas.js`:
+  - nuevo selector de `Campeonato` encima de `Categoría`,
+  - persistencia de contexto por usuario (`localStorage` con clave por `user_id`) para evitar cruce de selección entre cuentas distintas,
+  - nuevo bloque `Formato de Clasificación` con:
+    - `metodo_competencia`,
+    - `clasificados_por_grupo`,
+    - botón `Guardar formato` que ejecuta `PUT /api/eventos/:id`.
+  - al guardar formato, se refrescan tablas automáticamente.
+- Ajuste visual de soporte:
+  - estilos añadidos en `frontend/css/style.css` para bloque `tablas-formato-config`.
+
+---
+
 ## 2026-03-07 - Disciplina operativa en planilla y partidos
 - Correccion de logica disciplinaria en planilla:
   - la `doble amarilla` ya no se degrada a `roja directa` al guardar o reabrir una planilla,
@@ -437,3 +467,19 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - `ambos no se presentan` ya no guarda `0-0`,
   - el marcador queda vacio (`NULL/NULL`) y el partido no suma como jugado,
   - se mantiene la multa por no presentacion/arbitraje para ambos equipos.
+
+---
+
+## 17. E2E operativo con datos reales (solo lectura)
+- **Ubicación:** `backend/scripts/e2eOperationalFlowCheck.js`, `backend/package.json`
+- Nuevo comando:
+  - `npm run e2e:ops-flow`
+- Objetivo:
+  - validar flujo real sin escrituras ni creación de registros,
+  - detectar cortes en endpoints operativos antes de pruebas de campo.
+- Cobertura:
+  - `auth/login`,
+  - campeonatos/categorias/equipos/grupos/partidos/planilla,
+  - tablas de posiciones/goleadores/tarjetas/fair play,
+  - finanzas (`movimientos`, `estado-cuenta`, `morosidad`),
+  - portal publico (campeonato, eventos, partidos, tablas).

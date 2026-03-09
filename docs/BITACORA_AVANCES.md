@@ -14,6 +14,19 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-08
+- Tablas por categoría: aislamiento por usuario y campeonato corregido.
+  - `GET /api/eventos`, `GET /api/eventos/campeonato/:id` y `GET /api/eventos/:id` ahora requieren autenticación y respetan alcance de organizador por campeonato.
+  - `GET /api/tablas/*` ahora es privado (autenticado) para evitar cruces de datos internos; el portal público mantiene sus endpoints propios en `/api/public/*`.
+  - se reforzó control de acceso por organizador también en lectura/edición de canchas y equipos de categoría.
+- Pantalla `tablas.html` mejorada para operación multi-campeonato:
+  - nuevo selector de campeonato (`Campeonato -> Categoría`),
+  - selección de contexto persistida por usuario en `localStorage` para evitar arrastre de contexto entre cuentas (ejemplo: administrador vs organizador),
+  - nuevo bloque `Formato de Clasificación` con botón explícito `Guardar formato` para persistir `metodo_competencia` y `clasificados_por_grupo` de la categoría.
+- Resultado del ajuste:
+  - organizador ya no recibe categorías de campeonatos ajenos,
+  - las tablas se generan sobre el campeonato/categoría seleccionados,
+  - el formato de clasificación se guarda de forma explícita desde el módulo de tablas.
+
 - Clasificacion por grupo y tablas:
   - `eventos/categorias` ahora permite configurar `clasificados_por_grupo`,
   - `tablas` muestra el cupo por grupo en el resumen,
@@ -31,6 +44,10 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Migraciones aplicadas en la BD local:
   - `database/migrations/026_ambos_no_presentes_sin_resultado.sql`,
   - `database/migrations/027_clasificacion_y_no_presentacion_automatica.sql`.
+- Prueba E2E operativa agregada (solo lectura, datos reales):
+  - nuevo script `backend/scripts/e2eOperationalFlowCheck.js`,
+  - nuevo comando `npm run e2e:ops-flow`,
+  - valida punta a punta: autenticacion -> campeonato -> categoria -> equipos -> grupos -> partidos -> planilla -> tablas -> finanzas -> portal publico.
 
 ### 2026-03-07
 - Planillaje y disciplina:

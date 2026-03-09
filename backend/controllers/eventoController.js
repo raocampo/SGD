@@ -1,7 +1,11 @@
 // controllers/eventoController.js
 const pool = require("../config/database");
 const { obtenerEquiposPermitidosTecnico } = require("../services/roleScope");
-const { isOrganizador, organizadorPuedeAccederCampeonato } = require("../services/organizadorScope");
+const {
+  isOrganizador,
+  organizadorPuedeAccederCampeonato,
+  obtenerCampeonatoIdsOrganizador,
+} = require("../services/organizadorScope");
 const { obtenerPlanPorCampeonatoId } = require("../services/planLimits");
 let eventoEsquemaAsegurado = false;
 let eventoColumnaActualizacion = null;
@@ -64,6 +68,14 @@ function normalizarClasificadosPorGrupo(value, fallback = null) {
 
 function esAdministrador(user) {
   return String(user?.rol || "").toLowerCase() === "administrador";
+}
+
+async function validarAccesoCampeonatoOrganizador(req, res, campeonatoId, mensaje) {
+  if (!isOrganizador(req?.user)) return true;
+  const puede = await organizadorPuedeAccederCampeonato(req.user, campeonatoId);
+  if (puede) return true;
+  res.status(403).json({ error: mensaje || "No autorizado para este campeonato." });
+  return false;
 }
 
 async function resolverColumnaActualizacionEvento() {
@@ -374,15 +386,25 @@ const eventoController = {
   async listarEventos(req, res) {
     try {
       await asegurarEsquemaEventos();
-
-      const q = `
+      let q = `
         SELECT e.*,
                c.nombre AS campeonato_nombre
         FROM eventos e
         JOIN campeonatos c ON e.campeonato_id = c.id
-        ORDER BY e.campeonato_id DESC, e.numero_campeonato DESC, e.id DESC
       `;
-      const result = await pool.query(q);
+      const valores = [];
+
+      if (isOrganizador(req.user)) {
+        const campeonatoIds = await obtenerCampeonatoIdsOrganizador(req.user);
+        if (!campeonatoIds.length) {
+          return res.json({ eventos: [] });
+        }
+        q += ` WHERE e.campeonato_id = ANY($1::int[])`;
+        valores.push(campeonatoIds);
+      }
+
+      q += ` ORDER BY e.campeonato_id DESC, e.numero_campeonato DESC, e.id DESC`;
+      const result = await pool.query(q, valores);
       return res.json({ eventos: result.rows });
     } catch (error) {
       console.error("Error listarEventos:", error);
@@ -396,6 +418,17 @@ const eventoController = {
       await asegurarEsquemaEventos();
 
       const { campeonato_id } = req.params;
+      const campeonatoId = Number.parseInt(campeonato_id, 10);
+      if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
+        return res.status(400).json({ error: "campeonato_id inválido." });
+      }
+      const autorizado = await validarAccesoCampeonatoOrganizador(
+        req,
+        res,
+        campeonatoId,
+        "No autorizado para listar categorías de este campeonato."
+      );
+      if (!autorizado) return;
       const q = `
         SELECT e.*,
                c.nombre AS campeonato_nombre
@@ -404,7 +437,7 @@ const eventoController = {
         WHERE e.campeonato_id = $1
         ORDER BY e.numero_campeonato ASC, e.id ASC
       `;
-      const result = await pool.query(q, [campeonato_id]);
+      const result = await pool.query(q, [campeonatoId]);
       return res.json({ eventos: result.rows });
     } catch (error) {
       console.error("Error listarEventosPorCampeonato:", error);
@@ -431,6 +464,13 @@ const eventoController = {
       const result = await pool.query(q, [id]);
       if (!result.rows.length)
         return res.status(404).json({ error: "Evento no encontrado." });
+      const autorizado = await validarAccesoCampeonatoOrganizador(
+        req,
+        res,
+        result.rows[0]?.campeonato_id,
+        "No autorizado para consultar esta categoría."
+      );
+      if (!autorizado) return;
       return res.json({ evento: result.rows[0] });
     } catch (error) {
       console.error("Error obtenerEvento:", error);
@@ -449,6 +489,13 @@ const eventoController = {
         return res.status(404).json({ error: "Evento no encontrado." });
       }
       const eventoActual = actualR.rows[0];
+      const autorizado = await validarAccesoCampeonatoOrganizador(
+        req,
+        res,
+        eventoActual.campeonato_id,
+        "No autorizado para actualizar esta categoría."
+      );
+      if (!autorizado) return;
       const metodoObjetivo =
         req.body.metodo_competencia !== undefined
           ? normalizarMetodoCompetencia(req.body.metodo_competencia, null)
@@ -582,11 +629,30 @@ const eventoController = {
   // DELETE /eventos/:id
   async eliminarEvento(req, res) {
     try {
-      const { id } = req.params;
+      await asegurarEsquemaEventos();
+
+      const id = Number.parseInt(req.params.id, 10);
+      if (!Number.isFinite(id) || id <= 0) {
+        return res.status(400).json({ error: "id de evento inválido." });
+      }
+
+      const actualR = await pool.query(
+        `SELECT id, campeonato_id FROM eventos WHERE id = $1 LIMIT 1`,
+        [id]
+      );
+      if (!actualR.rows.length) {
+        return res.status(404).json({ error: "Evento no encontrado." });
+      }
+      const autorizado = await validarAccesoCampeonatoOrganizador(
+        req,
+        res,
+        actualR.rows[0]?.campeonato_id,
+        "No autorizado para eliminar esta categoría."
+      );
+      if (!autorizado) return;
+
       const q = `DELETE FROM eventos WHERE id = $1 RETURNING *`;
       const result = await pool.query(q, [id]);
-      if (!result.rows.length)
-        return res.status(404).json({ error: "Evento no encontrado." });
       return res.json({ evento: result.rows[0] });
     } catch (error) {
       console.error("Error eliminarEvento:", error);
@@ -602,14 +668,33 @@ const eventoController = {
   async asignarCanchasAEvento(req, res) {
     const client = await pool.connect();
     try {
-      const { evento_id } = req.params;
+      const evento_id = Number.parseInt(req.params.evento_id, 10);
       const { cancha_ids } = req.body;
+
+      if (!Number.isFinite(evento_id) || evento_id <= 0) {
+        return res.status(400).json({ error: "evento_id inválido." });
+      }
 
       if (!Array.isArray(cancha_ids)) {
         return res
           .status(400)
           .json({ error: "cancha_ids debe ser un arreglo." });
       }
+
+      const eventoR = await client.query(
+        `SELECT id, campeonato_id FROM eventos WHERE id = $1 LIMIT 1`,
+        [evento_id]
+      );
+      if (!eventoR.rows.length) {
+        return res.status(404).json({ error: "Evento no encontrado." });
+      }
+      const autorizado = await validarAccesoCampeonatoOrganizador(
+        req,
+        res,
+        eventoR.rows[0]?.campeonato_id,
+        "No autorizado para configurar canchas en esta categoría."
+      );
+      if (!autorizado) return;
 
       await client.query("BEGIN");
 
@@ -640,7 +725,26 @@ const eventoController = {
   // GET /eventos/:evento_id/canchas
   async listarCanchasDeEvento(req, res) {
     try {
-      const { evento_id } = req.params;
+      const evento_id = Number.parseInt(req.params.evento_id, 10);
+      if (!Number.isFinite(evento_id) || evento_id <= 0) {
+        return res.status(400).json({ error: "evento_id inválido." });
+      }
+
+      const eventoR = await pool.query(
+        `SELECT id, campeonato_id FROM eventos WHERE id = $1 LIMIT 1`,
+        [evento_id]
+      );
+      if (!eventoR.rows.length) {
+        return res.status(404).json({ error: "Evento no encontrado." });
+      }
+      const autorizado = await validarAccesoCampeonatoOrganizador(
+        req,
+        res,
+        eventoR.rows[0]?.campeonato_id,
+        "No autorizado para consultar canchas de esta categoría."
+      );
+      if (!autorizado) return;
+
       const q = `
         SELECT c.*
         FROM evento_canchas ec
@@ -777,6 +881,21 @@ const eventoController = {
         return res.status(400).json({ message: "evento_id inválido" });
       }
 
+      const eventoR = await pool.query(
+        `SELECT id, campeonato_id FROM eventos WHERE id = $1 LIMIT 1`,
+        [evento_id]
+      );
+      if (!eventoR.rows.length) {
+        return res.status(404).json({ message: "Evento no encontrado" });
+      }
+      const autorizado = await validarAccesoCampeonatoOrganizador(
+        req,
+        res,
+        eventoR.rows[0]?.campeonato_id,
+        "No autorizado para listar equipos de esta categoría."
+      );
+      if (!autorizado) return;
+
       const result = await pool.query(
         `
         SELECT
@@ -817,6 +936,21 @@ const eventoController = {
           .status(400)
           .json({ message: "evento_id y equipo_id inválidos" });
       }
+
+      const eventoR = await pool.query(
+        `SELECT id, campeonato_id FROM eventos WHERE id = $1 LIMIT 1`,
+        [evento_id]
+      );
+      if (!eventoR.rows.length) {
+        return res.status(404).json({ message: "Evento no encontrado" });
+      }
+      const autorizado = await validarAccesoCampeonatoOrganizador(
+        req,
+        res,
+        eventoR.rows[0]?.campeonato_id,
+        "No autorizado para quitar equipos de esta categoría."
+      );
+      if (!autorizado) return;
 
       await pool.query(
         `DELETE FROM evento_equipos WHERE evento_id = $1 AND equipo_id = $2`,
