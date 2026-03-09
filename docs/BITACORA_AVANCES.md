@@ -14,6 +14,22 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-08
+- Auditoria de edicion de planillas finalizadas:
+  - `backend/models/Partido.js` incorpora control de motivo obligatorio (minimo 8 caracteres) cuando se edita una planilla ya finalizada.
+  - se registra traza en `partido_planilla_ediciones` con:
+    - `partido_id`,
+    - `usuario_id`,
+    - `motivo`,
+    - `estado_anterior` (snapshot JSON),
+    - `estado_nuevo` (snapshot JSON).
+  - se agrega migracion `database/migrations/028_auditoria_edicion_planilla.sql`.
+- API de planilla y mobile ajustadas para auditoria:
+  - `backend/controllers/partidoController.js` ahora envia `usuario_id` a `Partido.guardarPlanilla` y respeta `statusCode` de errores de negocio.
+  - `backend/services/mobileOperationsService.js` y `backend/services/mobileCompetitionService.js` soportan `editReason/motivoEdicion/motivo_edicion` para reapertura/edicion controlada desde clientes mobile.
+- UX de planillaje:
+  - en `frontend/planilla.js` al guardar una planilla finalizada se solicita motivo de edicion antes de enviar.
+  - el selector de partidos resalta en amarillo estados cerrados (`finalizado` y `no_presentaron_ambos`) para evitar ediciones accidentales.
+
 - Tablas por categoría: aislamiento por usuario y campeonato corregido.
   - `GET /api/eventos`, `GET /api/eventos/campeonato/:id` y `GET /api/eventos/:id` ahora requieren autenticación y respetan alcance de organizador por campeonato.
   - `GET /api/tablas/*` ahora es privado (autenticado) para evitar cruces de datos internos; el portal público mantiene sus endpoints propios en `/api/public/*`.

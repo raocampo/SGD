@@ -311,7 +311,13 @@ exports.guardarPlanillaPartido = async (req, res) => {
       return res.status(400).json({ error: "id de partido invalido" });
     }
 
-    const planilla = await Partido.guardarPlanilla(id, req.body || {});
+    const planilla = await Partido.guardarPlanilla(
+      id,
+      req.body || {},
+      {
+        usuario_id: req.user?.id || null,
+      }
+    );
     return res.json({
       ok: true,
       mensaje: "Planilla guardada correctamente",
@@ -319,6 +325,9 @@ exports.guardarPlanillaPartido = async (req, res) => {
     });
   } catch (error) {
     console.error("Error guardando planilla de partido:", error);
-    return res.status(500).json({ error: error.message });
+    const status = Number.isFinite(Number(error?.statusCode))
+      ? Number(error.statusCode)
+      : 500;
+    return res.status(status).json({ error: error.message });
   }
 };

@@ -204,13 +204,23 @@ async function registrarResultadoResumen(user, partidoId, body = {}) {
     tarjetas.push({ equipo_id: partido.equipo_visitante_id, tipo_tarjeta: "roja" });
   }
 
-  await Partido.guardarPlanilla(id, {
+  const payloadPlanilla = {
     resultado_local: resultadoLocal,
     resultado_visitante: resultadoVisitante,
     estado: "finalizado",
     tarjetas,
     pagos: {},
-  });
+  };
+  const motivoEdicion = String(body.editReason || body.motivoEdicion || body.motivo_edicion || "").trim();
+  if (motivoEdicion) {
+    payloadPlanilla.motivo_edicion = motivoEdicion;
+  }
+
+  await Partido.guardarPlanilla(
+    id,
+    payloadPlanilla,
+    { usuario_id: user?.id || null }
+  );
 
   return {
     ok: true,

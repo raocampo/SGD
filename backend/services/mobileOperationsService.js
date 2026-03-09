@@ -827,7 +827,7 @@ async function guardarPlanillaPartido(user, partidoId, body = {}) {
         .filter((item) => Number.isFinite(item.jugador_id) && item.goles > 0)
     : [];
 
-  const guardado = await Partido.guardarPlanilla(Number(partido.id), {
+  const payloadPlanilla = {
     resultado_local: homeScore,
     resultado_visitante: awayScore,
     estado: "finalizado",
@@ -846,7 +846,17 @@ async function guardarPlanillaPartido(user, partidoId, body = {}) {
       pago_tr_visitante: toNumber(body.awayRedPayment, 0),
     },
     observaciones: body.observations || "",
-  });
+  };
+  const motivoEdicion = String(body.editReason || body.motivoEdicion || body.motivo_edicion || "").trim();
+  if (motivoEdicion) {
+    payloadPlanilla.motivo_edicion = motivoEdicion;
+  }
+
+  const guardado = await Partido.guardarPlanilla(
+    Number(partido.id),
+    payloadPlanilla,
+    { usuario_id: user?.id || null }
+  );
 
   const data = await obtenerPlanillaPartido(user, partido.id);
   if (guardado?.aviso_morosidad) {

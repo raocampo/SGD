@@ -31,6 +31,9 @@ Flujo principal operativo:
 7. Consultar tablas y portal publico.
 
 ## Novedades Recientes (2026-03-08)
+- Auditoria de planilla finalizada:
+  - al editar una planilla cerrada ahora se exige motivo de edicion,
+  - se guarda traza de auditoria (`antes/despues`) en `partido_planilla_ediciones`.
 - Tablas por campeonato/organizador:
   - `tablas.html` ahora incluye selector de campeonato y ya no arrastra contexto entre usuarios,
   - se agregó bloque `Formato de Clasificación` con botón `Guardar formato` para persistir `metodo_competencia` y `clasificados_por_grupo` por categoría.
@@ -211,6 +214,7 @@ psql -U postgres -d gestionDeportiva -f database/migrations/024_rol_jugador.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/025_planilla_faltas_por_tiempo.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/026_ambos_no_presentes_sin_resultado.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/027_clasificacion_y_no_presentacion_automatica.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/028_auditoria_edicion_planilla.sql
 ```
 
 ### 5.3 Ejecutar

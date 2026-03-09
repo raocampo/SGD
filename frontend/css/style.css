@@ -2354,6 +2354,19 @@ body.modal-open {
   grid-template-columns: repeat(4, minmax(160px, 1fr));
 }
 
+.page-planilla #select-partido-planilla.planilla-select-finalizado {
+  background: #fff3cd;
+  border-color: #f59e0b;
+  color: #7c5a00;
+  font-weight: 700;
+}
+
+.page-planilla #select-partido-planilla option[data-estado="finalizado"],
+.page-planilla #select-partido-planilla option[data-estado="no_presentaron_ambos"] {
+  background: #fff8d6;
+  color: #7c5a00;
+}
+
 .planilla-special-check {
   display: flex;
   flex-direction: column;

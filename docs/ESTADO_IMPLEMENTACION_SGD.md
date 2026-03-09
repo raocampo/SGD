@@ -33,6 +33,9 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Doble amarilla preservada como evento disciplinario explicito al guardar/reabrir la planilla.
 - No presentacion parcial aplicada por lado: solo se bloquea el equipo ausente y el equipo presente mantiene pagos/captura habilitados.
 - Doble no presentacion corregida: marcador vacio (`NULL/NULL`), estado `no_presentaron_ambos`, sin sumar partido jugado y manteniendo la multa financiera.
+- Edicion de planilla cerrada con auditoria:
+  - si la planilla ya esta finalizada, exige motivo de edicion,
+  - se registra auditoria con snapshot antes/despues en `partido_planilla_ediciones`.
 - Exportacion en XLSX (template oficial) y PDF.
 - Vista previa con dos modos: `Formato PDF` y `Resumen anterior`.
 

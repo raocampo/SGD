@@ -37,6 +37,28 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-08 - Auditoria de edicion de planillas finalizadas
+- Backend planilla con control de reapertura/edicion:
+  - `backend/models/Partido.js` actualiza `guardarPlanilla` para recibir `opciones.usuario_id`,
+  - cuando la planilla ya estaba finalizada y existe registro previo, se exige `motivo_edicion` (minimo 8 caracteres),
+  - se agrega persistencia de auditoria en nueva tabla `partido_planilla_ediciones`.
+- Nueva migracion:
+  - `database/migrations/028_auditoria_edicion_planilla.sql`.
+- Trazabilidad almacenada por edicion:
+  - snapshot antes y despues de:
+    - `partidos`,
+    - `partido_planillas`,
+    - `goleadores`,
+    - `tarjetas`.
+- Controlador y clientes mobile alineados:
+  - `backend/controllers/partidoController.js` ahora propaga `usuario_id` del token y devuelve `statusCode` de errores de negocio,
+  - `backend/services/mobileOperationsService.js` y `backend/services/mobileCompetitionService.js` soportan `editReason/motivoEdicion/motivo_edicion`.
+- Frontend planilla:
+  - `frontend/js/planilla.js` pide motivo de edicion al guardar planilla cerrada,
+  - el selector de partido resalta partidos cerrados (`finalizado` y `no_presentaron_ambos`) para reducir errores operativos.
+
+---
+
 ## 2026-03-07 - Disciplina operativa en planilla y partidos
 - Correccion de logica disciplinaria en planilla:
   - la `doble amarilla` ya no se degrada a `roja directa` al guardar o reabrir una planilla,

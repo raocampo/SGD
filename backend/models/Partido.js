@@ -176,25 +176,75 @@ function normalizarTarjetasPlanilla(tarjetas = []) {
 function resolverTarjetasDisciplinariasPartido({
   amarillas = 0,
   rojasDirectas = 0,
+  rojasDirectasMarcadas = 0,
+  rojasSinMarca = 0,
   rojasDobleAmarilla = 0,
 } = {}) {
   const ta = Number.isFinite(Number.parseInt(amarillas, 10))
     ? Math.max(Number.parseInt(amarillas, 10), 0)
     : 0;
-  const trDirectas = Number.isFinite(Number.parseInt(rojasDirectas, 10))
+  const trDirectasCompat = Number.isFinite(Number.parseInt(rojasDirectas, 10))
     ? Math.max(Number.parseInt(rojasDirectas, 10), 0)
+    : 0;
+  const trDirectasMarcadas = Number.isFinite(Number.parseInt(rojasDirectasMarcadas, 10))
+    ? Math.max(Number.parseInt(rojasDirectasMarcadas, 10), 0)
+    : 0;
+  const trSinMarca = Number.isFinite(Number.parseInt(rojasSinMarca, 10))
+    ? Math.max(Number.parseInt(rojasSinMarca, 10), 0)
     : 0;
   const trDobles = Number.isFinite(Number.parseInt(rojasDobleAmarilla, 10))
     ? Math.max(Number.parseInt(rojasDobleAmarilla, 10), 0)
     : 0;
 
-  const amarillasDisponibles = Math.max(ta - trDobles * 2, 0);
-  const doblesInferidas = trDobles > 0 ? 0 : Math.floor(amarillasDisponibles / 2);
+  let suspensionesPorRojaDirecta = trDirectasMarcadas;
+  let suspensionesPorDobleAmarilla = trDobles;
+  let amarillasDisponibles = Math.max(ta - trDobles * 2, 0);
+  let rojasAmbiguas = trSinMarca;
+
+  // Compatibilidad de firma antigua: si no se envia desglose, tratar rojasDirectas como ambiguas.
+  if (
+    rojasAmbiguas <= 0 &&
+    suspensionesPorRojaDirecta <= 0 &&
+    trDirectasCompat > 0
+  ) {
+    rojasAmbiguas = trDirectasCompat;
+  }
+
+  if (rojasAmbiguas > 0) {
+    const doblesDisponiblesPorAmarillas = Math.floor(amarillasDisponibles / 2);
+    const reasignadasPorAmarillas = Math.min(doblesDisponiblesPorAmarillas, rojasAmbiguas);
+    if (reasignadasPorAmarillas > 0) {
+      suspensionesPorDobleAmarilla += reasignadasPorAmarillas;
+      rojasAmbiguas -= reasignadasPorAmarillas;
+      amarillasDisponibles = Math.max(amarillasDisponibles - reasignadasPorAmarillas * 2, 0);
+    }
+    if (rojasAmbiguas > 0) {
+      // Históricos sin observacion: por defecto no aplicar castigo de roja directa (2 partidos).
+      suspensionesPorDobleAmarilla += rojasAmbiguas;
+      rojasAmbiguas = 0;
+    }
+  }
+
+  if (amarillasDisponibles >= 2) {
+    const doblesInferidas = Math.floor(amarillasDisponibles / 2);
+    if (doblesInferidas > 0) {
+      if (suspensionesPorRojaDirecta > 0) {
+        // Compatibilidad con historicos: roja autogenerada por doble amarilla sin observacion.
+        const reasignadas = Math.min(doblesInferidas, suspensionesPorRojaDirecta);
+        suspensionesPorRojaDirecta -= reasignadas;
+        suspensionesPorDobleAmarilla += reasignadas;
+        amarillasDisponibles = Math.max(amarillasDisponibles - reasignadas * 2, 0);
+      } else {
+        suspensionesPorDobleAmarilla += doblesInferidas;
+        amarillasDisponibles = Math.max(amarillasDisponibles - doblesInferidas * 2, 0);
+      }
+    }
+  }
 
   return {
-    amarillasAcumulables: Math.max(amarillasDisponibles - doblesInferidas * 2, 0),
-    suspensionesPorDobleAmarilla: trDobles + doblesInferidas,
-    suspensionesPorRojaDirecta: trDirectas,
+    amarillasAcumulables: amarillasDisponibles,
+    suspensionesPorDobleAmarilla,
+    suspensionesPorRojaDirecta,
   };
 }
 
@@ -209,6 +259,13 @@ function tarjetaEsRojaPorDobleAmarilla(item = {}) {
   if (tipo !== "roja") return false;
   const observacion = String(item?.observacion || "").trim().toLowerCase();
   return observacion.includes("doble amarilla");
+}
+
+function tarjetaEsRojaDirectaMarcada(item = {}) {
+  const tipo = String(item?.tipo_tarjeta || "").trim().toLowerCase();
+  if (tipo !== "roja") return false;
+  const observacion = String(item?.observacion || "").trim().toLowerCase();
+  return observacion.includes("roja directa");
 }
 
 function partidoCuentaParaSuspension(estado = "") {
@@ -316,7 +373,8 @@ async function calcularEstadoDisciplinarioEquipo({
       if (!tarjetasJugador.length) continue;
 
       let amarillas = 0;
-      let rojasDirectas = 0;
+      let rojasDirectasMarcadas = 0;
+      let rojasSinMarca = 0;
       let rojasDobleAmarilla = 0;
 
       tarjetasJugador.forEach((item) => {
@@ -324,13 +382,15 @@ async function calcularEstadoDisciplinarioEquipo({
         if (tipo === "amarilla") amarillas += 1;
         if (tipo === "roja") {
           if (tarjetaEsRojaPorDobleAmarilla(item)) rojasDobleAmarilla += 1;
-          else rojasDirectas += 1;
+          else if (tarjetaEsRojaDirectaMarcada(item)) rojasDirectasMarcadas += 1;
+          else rojasSinMarca += 1;
         }
       });
 
       const resumenTarjetas = resolverTarjetasDisciplinariasPartido({
         amarillas,
-        rojasDirectas,
+        rojasDirectasMarcadas,
+        rojasSinMarca,
         rojasDobleAmarilla,
       });
 
@@ -492,6 +552,7 @@ function nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin) {
 class Partido {
   static _columnaTimestampActualizacion = undefined;
   static _esquemaPlanillaAsegurado = false;
+  static _esquemaAuditoriaPlanillaAsegurado = false;
   static _esquemaSecuenciaAsegurado = false;
   static _esquemaEventoEquiposOrdenAsegurado = false;
   static _esquemaEventoEquiposEstadoAsegurado = false;
@@ -1374,6 +1435,132 @@ class Partido {
     this._esquemaPlanillaAsegurado = true;
   }
 
+  static async asegurarEsquemaAuditoriaPlanilla(client = pool) {
+    if (this._esquemaAuditoriaPlanillaAsegurado) return;
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS partido_planilla_ediciones (
+        id SERIAL PRIMARY KEY,
+        partido_id INTEGER NOT NULL REFERENCES partidos(id) ON DELETE CASCADE,
+        usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+        motivo TEXT NOT NULL,
+        estado_anterior JSONB NOT NULL,
+        estado_nuevo JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_partido_planilla_ediciones_partido
+      ON partido_planilla_ediciones(partido_id, created_at DESC)
+    `);
+
+    this._esquemaAuditoriaPlanillaAsegurado = true;
+  }
+
+  static async construirSnapshotAuditoriaPlanilla(client, partidoId) {
+    const partidoR = await client.query(
+      `
+        SELECT
+          id,
+          estado,
+          resultado_local,
+          resultado_visitante,
+          arbitro,
+          delegado_partido,
+          ciudad,
+          faltas_local_total,
+          faltas_visitante_total,
+          faltas_local_1er,
+          faltas_local_2do,
+          faltas_visitante_1er,
+          faltas_visitante_2do
+        FROM partidos
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [partidoId]
+    );
+    const planillaR = await client.query(
+      `
+        SELECT
+          ambos_no_presentes,
+          inasistencia_equipo,
+          pago_ta,
+          pago_tr,
+          pago_ta_local,
+          pago_ta_visitante,
+          pago_tr_local,
+          pago_tr_visitante,
+          pago_arbitraje_local,
+          pago_arbitraje_visitante,
+          pago_arbitraje,
+          pago_local,
+          pago_visitante,
+          observaciones
+        FROM partido_planillas
+        WHERE partido_id = $1
+        LIMIT 1
+      `,
+      [partidoId]
+    );
+    const goleadoresR = await client.query(
+      `
+        SELECT jugador_id, goles, tipo_gol, minuto
+        FROM goleadores
+        WHERE partido_id = $1
+        ORDER BY id
+      `,
+      [partidoId]
+    );
+    const tarjetasR = await client.query(
+      `
+        SELECT jugador_id, equipo_id, tipo_tarjeta, minuto, observacion
+        FROM tarjetas
+        WHERE partido_id = $1
+        ORDER BY id
+      `,
+      [partidoId]
+    );
+
+    return {
+      partido: partidoR.rows[0] || null,
+      planilla: planillaR.rows[0] || null,
+      goleadores: goleadoresR.rows || [],
+      tarjetas: tarjetasR.rows || [],
+    };
+  }
+
+  static async registrarEdicionPlanillaAuditoria(
+    client,
+    { partidoId, usuarioId = null, motivo = "", estadoAnterior = null, estadoNuevo = null } = {}
+  ) {
+    const partidoIdNum = Number.parseInt(partidoId, 10);
+    if (!Number.isFinite(partidoIdNum) || partidoIdNum <= 0) return;
+
+    const motivoLimpio = String(motivo || "").trim();
+    if (!motivoLimpio) return;
+
+    const usuarioIdNum = Number.parseInt(usuarioId, 10);
+    const usuarioIdSafe =
+      Number.isFinite(usuarioIdNum) && usuarioIdNum > 0 ? usuarioIdNum : null;
+
+    await client.query(
+      `
+        INSERT INTO partido_planilla_ediciones
+          (partido_id, usuario_id, motivo, estado_anterior, estado_nuevo)
+        VALUES
+          ($1, $2, $3, $4::jsonb, $5::jsonb)
+      `,
+      [
+        partidoIdNum,
+        usuarioIdSafe,
+        motivoLimpio,
+        JSON.stringify(estadoAnterior || {}),
+        JSON.stringify(estadoNuevo || {}),
+      ]
+    );
+  }
+
   static async obtenerPlanilla(partido_id) {
     await this.asegurarEsquemaPlanilla();
 
@@ -1721,7 +1908,7 @@ class Partido {
     }
   }
 
-  static async guardarPlanilla(partido_id, datos = {}) {
+  static async guardarPlanilla(partido_id, datos = {}, opciones = {}) {
     await this.asegurarEsquemaPlanilla();
 
     const ambosNoPresentes =
@@ -1750,6 +1937,12 @@ class Partido {
       : null;
     const pagos = datos.pagos || {};
     const observaciones = (datos.observaciones || "").toString().trim();
+    const motivoEdicion = String(datos?.motivo_edicion || "").trim();
+    const usuarioEdicionId =
+      Number.isFinite(Number.parseInt(opciones?.usuario_id ?? datos?.usuario_edicion_id, 10)) &&
+      Number.parseInt(opciones?.usuario_id ?? datos?.usuario_edicion_id, 10) > 0
+        ? Number.parseInt(opciones?.usuario_id ?? datos?.usuario_edicion_id, 10)
+        : null;
     let avisoMorosidad = null;
 
     const client = await pool.connect();
@@ -1762,6 +1955,29 @@ class Partido {
       );
       const partido = partidoR.rows[0];
       if (!partido) throw new Error("Partido no encontrado");
+
+      const planillaActualR = await client.query(
+        `SELECT * FROM partido_planillas WHERE partido_id = $1 LIMIT 1`,
+        [partido_id]
+      );
+      const planillaActual = planillaActualR.rows[0] || null;
+      const partidoEstabaFinalizado = partidoCuentaParaSuspension(partido?.estado);
+      const requiereMotivoEdicion = partidoEstabaFinalizado && !!planillaActual;
+
+      if (requiereMotivoEdicion && motivoEdicion.length < 8) {
+        const error = new Error(
+          "Esta planilla ya finalizada requiere motivo de edición (mínimo 8 caracteres)."
+        );
+        error.statusCode = 400;
+        error.code = "PLANILLA_EDIT_REASON_REQUIRED";
+        throw error;
+      }
+
+      let snapshotAuditoriaAntes = null;
+      if (requiereMotivoEdicion) {
+        await this.asegurarEsquemaAuditoriaPlanilla(client);
+        snapshotAuditoriaAntes = await this.construirSnapshotAuditoriaPlanilla(client, partido_id);
+      }
 
       const equipoLocalId = Number.parseInt(partido.equipo_local_id, 10);
       const equipoVisitanteId = Number.parseInt(partido.equipo_visitante_id, 10);
@@ -1973,6 +2189,17 @@ class Partido {
       });
       await this.sincronizarEstadoNoPresentacionesEvento(client, partido);
       avisoMorosidad = await this.obtenerAvisoMorosidadPlanilla(client, partido);
+
+      if (requiereMotivoEdicion) {
+        const snapshotAuditoriaDespues = await this.construirSnapshotAuditoriaPlanilla(client, partido_id);
+        await this.registrarEdicionPlanillaAuditoria(client, {
+          partidoId: partido_id,
+          usuarioId: usuarioEdicionId,
+          motivo: motivoEdicion,
+          estadoAnterior: snapshotAuditoriaAntes,
+          estadoNuevo: snapshotAuditoriaDespues,
+        });
+      }
 
       await client.query("COMMIT");
       const planilla = await this.obtenerPlanilla(partido_id);

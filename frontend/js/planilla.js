@@ -41,6 +41,7 @@ const IDS_PAGOS_PLANILLA_VISITANTE = [
   "pago-tr-visitante",
 ];
 const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante", "ambos"]);
+const ESTADOS_PLANILLA_CERRADOS = new Set(["finalizado", "no_presentaron_ambos"]);
 const GOLES_WALKOVER = 3;
 const MAX_FALTAS_PLANILLA = 6;
 
@@ -80,6 +81,11 @@ function obtenerNumeroPartidoVisible(partido) {
   const fallback = Number.parseInt(partido?.id, 10);
   if (Number.isFinite(fallback) && fallback > 0) return fallback;
   return null;
+}
+
+function estadoPlanillaEsCerrado(estado = "") {
+  const raw = String(estado || "").trim().toLowerCase();
+  return ESTADOS_PLANILLA_CERRADOS.has(raw);
 }
 
 function formatearMoneda(valor) {
@@ -760,6 +766,7 @@ function normalizarTarjetasFilaCaptura(row) {
       rojasPorDobleAmarilla,
     };
     row.dataset.rojasDobles = String(rojasPorDobleAmarilla);
+    row.dataset.tarjetasPreset = rojasPorDobleAmarilla > 0 ? "1" : "";
     return conteoPreset;
   }
 
@@ -772,6 +779,7 @@ function normalizarTarjetasFilaCaptura(row) {
     inputTr.value = conteo.rojas > 0 ? String(conteo.rojas) : "";
   }
   row.dataset.rojasDobles = String(conteo.rojasPorDobleAmarilla || 0);
+  row.dataset.tarjetasPreset = conteo.rojasPorDobleAmarilla > 0 ? "1" : "";
 
   return conteo;
 }
@@ -1994,6 +2002,18 @@ function poblarJornadasSelectorPlanilla() {
   }
 }
 
+function actualizarResaltadoSelectorPartidoFinalizado() {
+  const selectPartido = document.getElementById("select-partido-planilla");
+  if (!(selectPartido instanceof HTMLSelectElement)) return;
+
+  const partidoSel = Number.parseInt(selectPartido.value, 10);
+  const partidoActual = (Array.isArray(partidosSelectorCache) ? partidosSelectorCache : []).find(
+    (p) => Number.parseInt(p?.id, 10) === partidoSel
+  );
+  const cerrado = estadoPlanillaEsCerrado(partidoActual?.estado);
+  selectPartido.classList.toggle("planilla-select-finalizado", cerrado);
+}
+
 function poblarPartidosSelectorPlanilla() {
   const selectPartido = document.getElementById("select-partido-planilla");
   if (!selectPartido) return;
@@ -2015,14 +2035,22 @@ function poblarPartidosSelectorPlanilla() {
     const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
     const numeroPartido = obtenerNumeroPartidoVisible(p) || "-";
     const grupo = etiquetaGrupoPartido(p);
-    const label = `P${numeroPartido} • ${grupo} • J${p.jornada || "-"} • ${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre} • ${formatearFecha(p.fecha_partido)} ${hora}`;
-    selectPartido.innerHTML += `<option value="${p.id}">${escapeHtml(label)}</option>`;
+    const estadoRaw = String(p?.estado || "").trim().toLowerCase();
+    const estadoTxt = estadoRaw ? estadoRaw.replaceAll("_", " ").toUpperCase() : "PENDIENTE";
+    const esFinalizado = estadoPlanillaEsCerrado(estadoRaw);
+    const label = `P${numeroPartido} • ${grupo} • J${p.jornada || "-"} • ${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre} • ${formatearFecha(p.fecha_partido)} ${hora} • ${estadoTxt}`;
+    const estiloFinalizado = esFinalizado
+      ? ' style="background:#fff3cd;color:#7c5a00;font-weight:700;"'
+      : "";
+    selectPartido.innerHTML += `<option value="${p.id}" data-estado="${escapeHtml(estadoRaw)}"${estiloFinalizado}>${escapeHtml(label)}</option>`;
   });
 
   if (Number.isFinite(Number(partidoId))) {
     const existe = partidos.some((p) => Number(p.id) === Number(partidoId));
     if (existe) selectPartido.value = String(partidoId);
   }
+
+  actualizarResaltadoSelectorPartidoFinalizado();
 }
 
 function obtenerUltimaJornadaDisponible(partidos = []) {
@@ -2164,6 +2192,7 @@ async function cargarEventosSelectorPlanilla() {
     selectPartido.onchange = () => {
       const idSel = Number(selectPartido.value);
       partidoId = Number.isFinite(idSel) ? idSel : NaN;
+      actualizarResaltadoSelectorPartidoFinalizado();
     };
 
     if (Number.isFinite(Number(eventoId))) {
@@ -2432,7 +2461,7 @@ function recolectarPayloadPlanilla() {
           jugador_id: jugadorId,
           tipo_tarjeta: "roja",
           minuto: null,
-          observacion: null,
+          observacion: "Roja directa",
         });
       }
       for (let i = 0; i < rojasDobleAmarillaNum; i += 1) {
@@ -3611,6 +3640,22 @@ async function guardarPlanilla(e) {
   }
 
   const payload = recolectarPayloadPlanilla();
+  const partidoYaFinalizado = estadoPlanillaEsCerrado(dataPlanilla?.partido?.estado);
+  if (partidoYaFinalizado) {
+    const motivo = window.prompt(
+      "Esta planilla ya está finalizada. Ingresa el motivo de edición (mínimo 8 caracteres):",
+      ""
+    );
+    const motivoLimpio = String(motivo || "").trim();
+    if (motivoLimpio.length < 8) {
+      mostrarNotificacion(
+        "Debes ingresar un motivo de edición válido para modificar una planilla finalizada.",
+        "warning"
+      );
+      return;
+    }
+    payload.motivo_edicion = motivoLimpio;
+  }
 
   try {
     const resp = await ApiClient.put(`/partidos/${partidoId}/planilla`, payload);
