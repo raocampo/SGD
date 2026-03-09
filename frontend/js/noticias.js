@@ -210,7 +210,14 @@
   }
 
   async function eliminar(id) {
-    if (!window.confirm("¿Eliminar esta noticia?")) return;
+    const ok = await window.mostrarConfirmacion({
+      titulo: "Eliminar noticia",
+      mensaje: "¿Eliminar esta noticia del portal?",
+      tipo: "warning",
+      textoConfirmar: "Eliminar",
+      claseConfirmar: "btn-danger",
+    });
+    if (!ok) return;
     try {
       await window.NoticiasAPI.eliminar(id);
       if (Number(noticiaEditandoId) === Number(id)) limpiarFormulario();

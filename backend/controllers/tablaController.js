@@ -1,5 +1,9 @@
 const Partido = require("../models/Partido");
 const pool = require("../config/database");
+const {
+  obtenerEstadosEquiposEvento,
+  estaEliminadoCompetencia,
+} = require("../services/competitionStatusService");
 
 const REGLAS_DEFAULT = ["puntos", "diferencia_goles", "goles_favor"];
 const PESOS_FAIR_PLAY_DEFAULT = {
@@ -147,36 +151,42 @@ async function obtenerEquiposEvento(eventoId) {
   return r.rows;
 }
 
-async function obtenerEstadoEquiposEvento(eventoId) {
-  const q = `
-    SELECT
-      equipo_id,
-      COALESCE(no_presentaciones, 0)::int AS no_presentaciones,
-      COALESCE(eliminado_automatico, FALSE) AS eliminado_automatico
-    FROM evento_equipos
-    WHERE evento_id = $1
-  `;
-  const r = await pool.query(q, [eventoId]);
-  return new Map(
-    r.rows.map((row) => [
-      Number(row.equipo_id),
-      {
-        no_presentaciones: Number(row.no_presentaciones || 0),
-        eliminado_automatico: row.eliminado_automatico === true,
-      },
-    ])
-  );
-}
-
 function aplicarEstadoClasificacionTabla(tabla, clasificadosPorGrupo = null) {
   const cupos = aEntero(clasificadosPorGrupo, 0);
   tabla.forEach((item, idx) => {
+    item.posicion_deportiva = aEntero(
+      item.posicion_deportiva ?? item.posicion ?? idx + 1,
+      idx + 1
+    );
+  });
+
+  const elegibles = tabla
+    .filter((item) => !estaEliminadoCompetencia(item))
+    .sort(
+      (a, b) =>
+        aEntero(a.posicion_deportiva, 9999) - aEntero(b.posicion_deportiva, 9999)
+    );
+  const eliminados = tabla
+    .filter((item) => estaEliminadoCompetencia(item))
+    .sort(
+      (a, b) =>
+        aEntero(a.posicion_deportiva, 9999) - aEntero(b.posicion_deportiva, 9999)
+    );
+
+  tabla.splice(0, tabla.length, ...elegibles, ...eliminados);
+
+  let posicionClasificacion = 0;
+  tabla.forEach((item, idx) => {
     const posicion = idx + 1;
-    const eliminadoAutomatico = item.eliminado_automatico === true;
-    const clasifica = cupos > 0 ? posicion <= cupos && !eliminadoAutomatico : !eliminadoAutomatico;
+    const eliminado = estaEliminadoCompetencia(item);
+    if (!eliminado) posicionClasificacion += 1;
+    const clasifica = cupos > 0 ? !eliminado && posicionClasificacion <= cupos : !eliminado;
     item.posicion = posicion;
+    item.posicion_competitiva = posicion;
+    item.posicion_clasificacion = eliminado ? null : posicionClasificacion;
     item.clasifica = clasifica;
-    item.fuera_clasificacion = cupos > 0 ? posicion > cupos || eliminadoAutomatico : eliminadoAutomatico;
+    item.eliminado_competencia = eliminado;
+    item.fuera_clasificacion = cupos > 0 ? eliminado || !clasifica : eliminado;
   });
 }
 
@@ -351,7 +361,7 @@ async function generarTablaGrupoInterna(grupoId) {
   const sistema = grupo.sistema_puntuacion || "tradicional";
   const reglas = parsearReglas(grupo.reglas_desempate);
   const equipos = await obtenerEquiposGrupo(grupo.id);
-  const estadosEquipos = await obtenerEstadoEquiposEvento(grupo.evento_id);
+  const estadosEquipos = await obtenerEstadosEquiposEvento(grupo.evento_id);
   const tabla = [];
 
   for (const equipo of equipos) {
@@ -368,6 +378,10 @@ async function generarTablaGrupoInterna(grupoId) {
     const estadoEquipo = estadosEquipos.get(Number(equipo.id)) || {
       no_presentaciones: 0,
       eliminado_automatico: false,
+      eliminado_manual: false,
+      motivo_eliminacion: null,
+      motivo_eliminacion_label: null,
+      detalle_eliminacion: null,
     };
 
     tabla.push({
@@ -395,6 +409,10 @@ async function generarTablaGrupoInterna(grupoId) {
       diferencia_goles: gf - gc,
       no_presentaciones: estadoEquipo.no_presentaciones,
       eliminado_automatico: estadoEquipo.eliminado_automatico,
+      eliminado_manual: estadoEquipo.eliminado_manual,
+      motivo_eliminacion: estadoEquipo.motivo_eliminacion,
+      motivo_eliminacion_label: estadoEquipo.motivo_eliminacion_label,
+      detalle_eliminacion: estadoEquipo.detalle_eliminacion,
     });
   }
 
@@ -423,7 +441,7 @@ async function generarTablaEventoSinGrupos(evento) {
   const equipos = await obtenerEquiposEvento(evento.id);
   const sistema = evento.sistema_puntuacion || "tradicional";
   const reglas = parsearReglas(evento.reglas_desempate);
-  const estadosEquipos = await obtenerEstadoEquiposEvento(evento.id);
+  const estadosEquipos = await obtenerEstadosEquiposEvento(evento.id);
   const tabla = [];
 
   for (const equipo of equipos) {
@@ -433,6 +451,10 @@ async function generarTablaEventoSinGrupos(evento) {
     const estadoEquipo = estadosEquipos.get(Number(equipo.id)) || {
       no_presentaciones: 0,
       eliminado_automatico: false,
+      eliminado_manual: false,
+      motivo_eliminacion: null,
+      motivo_eliminacion_label: null,
+      detalle_eliminacion: null,
     };
 
     tabla.push({
@@ -460,6 +482,10 @@ async function generarTablaEventoSinGrupos(evento) {
       diferencia_goles: gf - gc,
       no_presentaciones: estadoEquipo.no_presentaciones,
       eliminado_automatico: estadoEquipo.eliminado_automatico,
+      eliminado_manual: estadoEquipo.eliminado_manual,
+      motivo_eliminacion: estadoEquipo.motivo_eliminacion,
+      motivo_eliminacion_label: estadoEquipo.motivo_eliminacion_label,
+      detalle_eliminacion: estadoEquipo.detalle_eliminacion,
     });
   }
 

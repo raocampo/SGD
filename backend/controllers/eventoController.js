@@ -7,6 +7,12 @@ const {
   obtenerCampeonatoIdsOrganizador,
 } = require("../services/organizadorScope");
 const { obtenerPlanPorCampeonatoId } = require("../services/planLimits");
+const {
+  MOTIVOS_ELIMINACION,
+  normalizarMotivoEliminacion,
+  formatearMotivoEliminacion,
+  asegurarEsquemaEstadoCompeticion,
+} = require("../services/competitionStatusService");
 let eventoEsquemaAsegurado = false;
 let eventoColumnaActualizacion = null;
 
@@ -198,11 +204,7 @@ async function asegurarEsquemaEventos() {
     WHERE bloqueo_morosidad_monto IS NOT NULL
       AND bloqueo_morosidad_monto < 0
   `);
-  await pool.query(`
-    ALTER TABLE evento_equipos
-    ADD COLUMN IF NOT EXISTS no_presentaciones INTEGER NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS eliminado_automatico BOOLEAN NOT NULL DEFAULT FALSE
-  `);
+  await asegurarEsquemaEstadoCompeticion(pool);
   await pool.query(`
     WITH ranked AS (
       SELECT
@@ -901,11 +903,18 @@ const eventoController = {
         SELECT
           e.*,
           COALESCE(ee.no_presentaciones, 0)::int AS no_presentaciones,
-          COALESCE(ee.eliminado_automatico, FALSE) AS eliminado_automatico
+          COALESCE(ee.eliminado_automatico, FALSE) AS eliminado_automatico,
+          COALESCE(ee.eliminado_manual, FALSE) AS eliminado_manual,
+          ee.motivo_eliminacion,
+          ee.detalle_eliminacion,
+          ee.eliminado_en
         FROM equipos e
         JOIN evento_equipos ee ON ee.equipo_id = e.id
         WHERE ee.evento_id = $1
-        ORDER BY ee.eliminado_automatico ASC, e.numero_campeonato ASC NULLS LAST, e.nombre
+        ORDER BY
+          (COALESCE(ee.eliminado_automatico, FALSE) OR COALESCE(ee.eliminado_manual, FALSE)) ASC,
+          e.numero_campeonato ASC NULLS LAST,
+          e.nombre
       `,
         [evento_id]
       );
@@ -915,12 +924,129 @@ const eventoController = {
           ? result.rows
           : result.rows.filter((e) => permitidos.includes(Number(e.id)));
 
-      return res.json({ equipos });
+      return res.json({
+        equipos: equipos.map((equipo) => ({
+          ...equipo,
+          eliminado_manual: equipo.eliminado_manual === true,
+          motivo_eliminacion: equipo.motivo_eliminacion || null,
+          motivo_eliminacion_label: equipo.motivo_eliminacion
+            ? formatearMotivoEliminacion(equipo.motivo_eliminacion)
+            : null,
+          detalle_eliminacion: equipo.detalle_eliminacion || null,
+          eliminado_en: equipo.eliminado_en || null,
+          eliminado_competencia:
+            equipo.eliminado_automatico === true || equipo.eliminado_manual === true,
+        })),
+        motivos_eliminacion: MOTIVOS_ELIMINACION,
+      });
     } catch (error) {
       console.error("listarEquiposDeEvento:", error);
       return res
         .status(500)
         .json({ message: "Error listando equipos del evento" });
+    }
+  },
+
+  // PUT /eventos/:evento_id/equipos/:equipo_id/estado-competencia
+  async actualizarEstadoCompetenciaEquipo(req, res) {
+    try {
+      await asegurarEsquemaEventos();
+      const evento_id = parseInt(req.params.evento_id, 10);
+      const equipo_id = parseInt(req.params.equipo_id, 10);
+      if (!Number.isFinite(evento_id) || !Number.isFinite(equipo_id)) {
+        return res.status(400).json({ message: "evento_id o equipo_id inválidos" });
+      }
+
+      const eventoR = await pool.query(
+        `SELECT id, campeonato_id FROM eventos WHERE id = $1 LIMIT 1`,
+        [evento_id]
+      );
+      if (!eventoR.rows.length) {
+        return res.status(404).json({ message: "Evento no encontrado" });
+      }
+
+      const autorizado = await validarAccesoCampeonatoOrganizador(
+        req,
+        res,
+        eventoR.rows[0]?.campeonato_id,
+        "No autorizado para actualizar el estado del equipo en esta categoría."
+      );
+      if (!autorizado) return;
+
+      const relacionR = await pool.query(
+        `
+          SELECT evento_id, equipo_id
+          FROM evento_equipos
+          WHERE evento_id = $1 AND equipo_id = $2
+          LIMIT 1
+        `,
+        [evento_id, equipo_id]
+      );
+      if (!relacionR.rows.length) {
+        return res.status(404).json({ message: "El equipo no está inscrito en esta categoría" });
+      }
+
+      const eliminarManual = req.body?.eliminado_manual === true;
+      const detalle = String(req.body?.detalle_eliminacion || "").trim() || null;
+      const usuarioId = Number.parseInt(req.user?.id, 10);
+
+      let motivo = null;
+      if (eliminarManual) {
+        motivo = normalizarMotivoEliminacion(req.body?.motivo_eliminacion, null);
+        if (!motivo) {
+          return res.status(400).json({
+            message:
+              "motivo_eliminacion inválido. Usa: indisciplina, deudas o sin_justificativo_segunda_no_presentacion.",
+          });
+        }
+      }
+
+      const r = await pool.query(
+        `
+          UPDATE evento_equipos
+          SET eliminado_manual = $3,
+              motivo_eliminacion = $4,
+              detalle_eliminacion = $5,
+              eliminado_en = CASE WHEN $3::boolean THEN CURRENT_TIMESTAMP ELSE NULL END,
+              eliminado_por_usuario_id = CASE WHEN $3::boolean THEN $6::integer ELSE NULL END
+          WHERE evento_id = $1 AND equipo_id = $2
+          RETURNING
+            evento_id,
+            equipo_id,
+            no_presentaciones,
+            eliminado_automatico,
+            eliminado_manual,
+            motivo_eliminacion,
+            detalle_eliminacion,
+            eliminado_en
+        `,
+        [
+          evento_id,
+          equipo_id,
+          eliminarManual,
+          motivo,
+          detalle,
+          Number.isFinite(usuarioId) && usuarioId > 0 ? usuarioId : null,
+        ]
+      );
+
+      return res.json({
+        ok: true,
+        estado: {
+          ...r.rows[0],
+          eliminado_automatico: r.rows[0]?.eliminado_automatico === true,
+          eliminado_manual: r.rows[0]?.eliminado_manual === true,
+          motivo_eliminacion_label: r.rows[0]?.motivo_eliminacion
+            ? formatearMotivoEliminacion(r.rows[0].motivo_eliminacion)
+            : null,
+          eliminado_competencia:
+            r.rows[0]?.eliminado_automatico === true || r.rows[0]?.eliminado_manual === true,
+        },
+        motivos_eliminacion: MOTIVOS_ELIMINACION,
+      });
+    } catch (error) {
+      console.error("actualizarEstadoCompetenciaEquipo:", error);
+      return res.status(500).json({ message: "Error actualizando estado competitivo del equipo" });
     }
   },
 

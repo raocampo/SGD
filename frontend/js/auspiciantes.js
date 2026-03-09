@@ -180,7 +180,14 @@ function editarAuspiciante(id) {
 }
 
 async function eliminarAuspiciante(id) {
-  if (!confirm("¿Eliminar este auspiciantes?")) return;
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Eliminar auspiciante",
+    mensaje: "¿Eliminar este auspiciante del campeonato seleccionado?",
+    tipo: "warning",
+    textoConfirmar: "Eliminar",
+    claseConfirmar: "btn-danger",
+  });
+  if (!ok) return;
   try {
     await AuspiciantesAPI.eliminar(id);
     mostrarNotificacion("Auspiciantes eliminado", "success");

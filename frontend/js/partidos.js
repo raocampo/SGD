@@ -1610,7 +1610,14 @@ function actualizarCabeceraFixture() {
 }
 
 async function eliminarPartido(id) {
-  if (!confirm("Seguro que quieres eliminar este partido?")) return;
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Eliminar partido",
+    mensaje: "¿Seguro que quieres eliminar este partido?",
+    tipo: "warning",
+    textoConfirmar: "Eliminar",
+    claseConfirmar: "btn-danger",
+  });
+  if (!ok) return;
 
   try {
     await ApiClient.delete(`/partidos/${id}`);
@@ -1632,18 +1639,56 @@ async function editarPartido(id) {
       return;
     }
 
-    const nuevaFecha = prompt("Fecha del partido (YYYY-MM-DD):", normalizarFechaISO(p.fecha_partido) || "");
-    if (nuevaFecha === null) return;
-
     const horaActual = (p.hora_partido || "00:00:00").toString().substring(0, 5);
-    const nuevaHora = prompt("Hora del partido (HH:MM) o vacio para NULL:", horaActual);
-    if (nuevaHora === null) return;
+    const form = await window.mostrarFormularioModal({
+      titulo: "Editar partido",
+      mensaje: "Actualiza la programación del partido.",
+      tipo: "info",
+      textoConfirmar: "Guardar cambios",
+      ancho: "md",
+      campos: [
+        {
+          name: "fecha",
+          label: "Fecha",
+          type: "date",
+          value: normalizarFechaISO(p.fecha_partido) || "",
+        },
+        {
+          name: "hora",
+          label: "Hora",
+          type: "time",
+          value: horaActual || "",
+        },
+        {
+          name: "cancha",
+          label: "Cancha",
+          type: "text",
+          value: p.cancha || "",
+          placeholder: "Vacío para sin cancha",
+          span: 2,
+        },
+        {
+          name: "jornada",
+          label: "Jornada",
+          type: "number",
+          value: String(p.jornada || 1),
+          min: 1,
+          step: 1,
+          required: true,
+          validate: (value) => {
+            const n = Number.parseInt(value, 10);
+            if (!Number.isFinite(n) || n <= 0) return "La jornada debe ser un entero mayor a 0.";
+            return "";
+          },
+        },
+      ],
+    });
+    if (!form) return;
 
-    const nuevaCancha = prompt("Cancha (vacio para NULL):", p.cancha || "");
-    if (nuevaCancha === null) return;
-
-    const nuevaJornada = prompt("Jornada (numero):", String(p.jornada || 1));
-    if (nuevaJornada === null) return;
+    const nuevaFecha = String(form.fecha || "").trim();
+    const nuevaHora = String(form.hora || "").trim();
+    const nuevaCancha = String(form.cancha || "").trim();
+    const nuevaJornada = String(form.jornada || "").trim();
 
     await ApiClient.put(`/partidos/${id}`, {
       fecha_partido: nuevaFecha || null,
@@ -1681,9 +1726,14 @@ async function generarFixtureEvento() {
     ? "Se generará la llave eliminatoria de la categoría seleccionada. Si ya existe, se reemplazará. ¿Continuar?"
     : "Se generara el fixture para todos los grupos del evento seleccionado. Si ya existen partidos del evento, se reemplazaran. Continuar?";
 
-  if (
-    !confirm(mensaje)
-  ) {
+  const ok = await window.mostrarConfirmacion({
+    titulo: esEliminatoria ? "Generar llave eliminatoria" : "Generar fixture",
+    mensaje,
+    tipo: "warning",
+    textoConfirmar: esEliminatoria ? "Generar llave" : "Generar fixture",
+    claseConfirmar: "btn-primary",
+  });
+  if (!ok) {
     return;
   }
 
@@ -1717,10 +1767,37 @@ async function editarResultadoEliminatoria(id) {
   const rlActual = Number.isFinite(Number(cruce.resultado_local)) ? Number(cruce.resultado_local) : 0;
   const rvActual = Number.isFinite(Number(cruce.resultado_visitante)) ? Number(cruce.resultado_visitante) : 0;
 
-  const rlStr = prompt("Goles equipo local:", String(rlActual));
-  if (rlStr === null) return;
-  const rvStr = prompt("Goles equipo visitante:", String(rvActual));
-  if (rvStr === null) return;
+  const form = await window.mostrarFormularioModal({
+    titulo: "Resultado eliminatoria",
+    mensaje: "Registra el marcador final del cruce.",
+    tipo: "info",
+    textoConfirmar: "Guardar resultado",
+    ancho: "sm",
+    campos: [
+      {
+        name: "resultado_local",
+        label: cruce.equipo_local_nombre || "Equipo local",
+        type: "number",
+        value: String(rlActual),
+        min: 0,
+        step: 1,
+        required: true,
+      },
+      {
+        name: "resultado_visitante",
+        label: cruce.equipo_visitante_nombre || "Equipo visitante",
+        type: "number",
+        value: String(rvActual),
+        min: 0,
+        step: 1,
+        required: true,
+      },
+    ],
+  });
+  if (!form) return;
+
+  const rlStr = String(form.resultado_local || "").trim();
+  const rvStr = String(form.resultado_visitante || "").trim();
 
   const rl = Number.parseInt(rlStr, 10);
   const rv = Number.parseInt(rvStr, 10);

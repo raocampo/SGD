@@ -7,6 +7,62 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-09 - Eliminacion manual por categoria + clasificacion manual sugerida
+- Configuracion compartida de playoff/clasificacion:
+  - nueva tabla/versionado runtime `evento_playoff_config`,
+  - nuevos endpoints:
+    - `GET /api/eliminatorias/evento/:evento_id/configuracion`,
+    - `PUT /api/eliminatorias/evento/:evento_id/configuracion`,
+    - `DELETE /api/eliminatorias/evento/:evento_id/configuracion`.
+  - `frontend/tablas.html` y `frontend/eliminatorias.html` quedan sincronizados sobre la misma configuracion guardada.
+- Nueva migracion:
+  - `database/migrations/030_evento_playoff_config.sql`.
+- Estado competitivo por equipo en categoria:
+  - nuevo servicio `backend/services/competitionStatusService.js` para centralizar:
+    - causales de eliminacion manual,
+    - lectura de estado competitivo por `evento_equipos`,
+    - lectura de clasificados manuales por grupo.
+  - nuevas causales soportadas:
+    - `indisciplina`,
+    - `deudas`,
+    - `sin_justificativo_segunda_no_presentacion`.
+  - `backend/controllers/eventoController.js` expone:
+    - `PUT /api/eventos/:evento_id/equipos/:equipo_id/estado-competencia`,
+    - campos extendidos en `GET /api/eventos/:evento_id/equipos`.
+- Clasificacion manual con sugerencia del sistema:
+  - nuevo almacenamiento `evento_clasificados_manuales`,
+  - `backend/controllers/eliminatoriaController.js` incorpora:
+    - `GET /api/eliminatorias/evento/:evento_id/clasificacion`,
+    - `PUT /api/eliminatorias/evento/:evento_id/clasificacion-manual`.
+  - `backend/models/Eliminatoria.js` ahora:
+    - excluye equipos eliminados automaticos/manuales al generar llaves,
+    - usa sugerencia por tabla como base,
+    - respeta la decision manual del organizador por grupo/cupo,
+    - propone mejores no clasificados del evento cuando un grupo queda incompleto,
+    - guarda criterio manual por cupo para trazabilidad deportiva.
+- Frontend eliminatorias:
+  - `frontend/eliminatorias.html` agrega:
+    - bloque `Estado competitivo de equipos`,
+    - bloque `Clasificación manual con sugerencia`.
+  - `frontend/js/eliminatorias.js` permite:
+    - eliminar/rehabilitar equipos por causal,
+    - seleccionar clasificados manuales por grupo,
+    - seleccionar candidatos adicionales del evento,
+    - guardar detalle opcional del criterio aplicado.
+- Frontend sincronizado con el nuevo estado:
+  - `frontend/js/tablas.js` marca en rojo eliminaciones manuales con su causal,
+  - `frontend/js/equipos.js` muestra chips de eliminacion manual,
+  - `backend/controllers/tablaController.js` reordena a los eliminados al final de la tabla,
+  - los equipos fuera de clasificacion cambian a color naranja/marron y los eliminados a rojo oscuro,
+  - la leyenda de causal de eliminacion se muestra con mas jerarquia visual dentro de la celda.
+- Sistema visual de mensajes:
+  - `frontend/js/core.js` incorpora notificaciones visuales, confirmaciones, alertas y formularios modales reutilizables,
+  - se elimina dependencia de `alert/confirm/prompt` nativos en los modulos principales del panel.
+- Nueva migracion:
+  - `database/migrations/029_eliminacion_manual_y_clasificacion_manual.sql`.
+
+---
+
 ## 2026-03-08 - Tablas por campeonato (aislamiento por organizador) + guardado explícito de formato
 - Corrección de aislamiento de datos en categorías/tablas:
   - `backend/routes/eventoRoutes.js` ahora protege con `requireAuth + requireRoles` los endpoints de lectura:

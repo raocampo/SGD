@@ -547,9 +547,14 @@ async function iniciarSorteo() {
 
     await recargarEstadoSorteo();
     if (gruposEvento.length > 0) {
-      const confirmar = confirm(
-        "Ya existen grupos para esta categoría. Para iniciar un nuevo sorteo se eliminarán los grupos actuales y sus asignaciones. ¿Deseas continuar?"
-      );
+      const confirmar = await window.mostrarConfirmacion({
+        titulo: "Reiniciar grupos actuales",
+        mensaje:
+          "Ya existen grupos para esta categoría. Para iniciar un nuevo sorteo se eliminarán los grupos actuales y sus asignaciones. ¿Deseas continuar?",
+        tipo: "warning",
+        textoConfirmar: "Reiniciar y continuar",
+        claseConfirmar: "btn-danger",
+      });
       if (!confirmar) return;
       await limpiarGruposEventoActual();
       await recargarEstadoSorteo();
@@ -582,9 +587,13 @@ async function reiniciarSorteo() {
     return;
   }
 
-  const confirmar = confirm(
-    "Se eliminarán los grupos y asignaciones actuales para esta categoría. ¿Deseas continuar?"
-  );
+  const confirmar = await window.mostrarConfirmacion({
+    titulo: "Reiniciar sorteo",
+    mensaje: "Se eliminarán los grupos y asignaciones actuales para esta categoría. ¿Deseas continuar?",
+    tipo: "warning",
+    textoConfirmar: "Reiniciar",
+    claseConfirmar: "btn-danger",
+  });
   if (!confirmar) return;
 
   try {

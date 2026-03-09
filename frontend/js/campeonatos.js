@@ -556,11 +556,15 @@ document
 // Eliminar campeonato
 // ======================
 async function eliminarCampeonato(id) {
-  if (
-    !confirm(
-      "¿Seguro que deseas eliminar este campeonato? Se eliminarán también sus equipos, grupos y partidos relacionados (si así está implementado en el backend)."
-    )
-  ) {
+  const confirmado = await window.mostrarConfirmacion({
+    titulo: "Eliminar campeonato",
+    mensaje:
+      "¿Seguro que deseas eliminar este campeonato? Se eliminarán también sus equipos, grupos y partidos relacionados si el backend lo permite.",
+    tipo: "warning",
+    textoConfirmar: "Eliminar campeonato",
+    claseConfirmar: "btn-danger",
+  });
+  if (!confirmado) {
     return;
   }
 
@@ -578,4 +582,3 @@ async function eliminarCampeonato(id) {
 // Si ya existen abajo en tu archivo original, mantenlas.
 // Si te faltan, me dices y te las dejo completas.
 window.cambiarVistaCampeonatos = cambiarVistaCampeonatos;
-

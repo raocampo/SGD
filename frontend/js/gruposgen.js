@@ -570,7 +570,11 @@ function volverInicio() {
 function getZonaExport() {
   const el = document.getElementById("zona-grupos-export");
   if (!el) {
-    alert("No se encontró la zona de grupos para exportar.");
+    window.mostrarAlerta({
+      titulo: "No se pudo exportar",
+      mensaje: "No se encontró la zona de grupos para exportar.",
+      tipo: "warning",
+    });
     return null;
   }
   return el;

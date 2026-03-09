@@ -269,7 +269,14 @@ async function guardarEquipo() {
 // Editar (simple)
 // ===============================
 async function editarEquipo(id) {
-  const nuevoNombre = prompt("Nuevo nombre del equipo:", "");
+  const nuevoNombre = await window.mostrarPrompt({
+    titulo: "Editar equipo",
+    mensaje: "Ingresa el nuevo nombre del equipo.",
+    label: "Nombre del equipo",
+    value: "",
+    required: true,
+    textoConfirmar: "Guardar",
+  });
   if (!nuevoNombre) return;
 
   try {
@@ -286,7 +293,14 @@ async function editarEquipo(id) {
 // Quitar del evento (NO elimina el equipo del catálogo)
 // ===============================
 async function quitarEquipoDelEvento(equipoId) {
-  if (!confirm("¿Quitar este equipo del evento? (No se elimina del campeonato)")) return;
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Quitar equipo de la categoría",
+    mensaje: "¿Quitar este equipo del evento? No se elimina del catálogo del campeonato.",
+    tipo: "warning",
+    textoConfirmar: "Quitar equipo",
+    claseConfirmar: "btn-danger",
+  });
+  if (!ok) return;
 
   try {
     await ApiClient.delete(`/eventos/${eventoSeleccionado}/equipos/${equipoId}`);

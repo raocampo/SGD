@@ -7,7 +7,11 @@ let eliminatoriaState = {
   gruposEvento: [],
   cruces: [],
   eventoSeleccionado: null,
+  configuracionPlayoff: null,
   esAdminLike: false,
+  motivosEliminacion: [],
+  equiposEvento: [],
+  resumenClasificacion: null,
   contextoPublicacion: {
     campeonatoId: null,
     campeonatoNombre: "",
@@ -22,6 +26,178 @@ let listenersConectoresExportInicializados = false;
 function parsePositiveInt(value) {
   const n = Number.parseInt(value, 10);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function actualizarEventoCache(eventoId, cambios = {}) {
+  const id = Number.parseInt(eventoId, 10);
+  if (!Number.isFinite(id)) return null;
+  let actualizado = null;
+  eliminatoriaState.eventos = eliminatoriaState.eventos.map((evento) => {
+    if (Number(evento.id) !== id) return evento;
+    actualizado = { ...evento, ...cambios };
+    return actualizado;
+  });
+  return actualizado;
+}
+
+function obtenerCrucesConfiguradosDesdeWrap(wrap) {
+  if (!wrap) return [];
+  const aSelects = Array.from(wrap.querySelectorAll("select[data-cruce-a]"));
+  const cruces = [];
+  for (const selA of aSelects) {
+    const idx = selA.getAttribute("data-cruce-a");
+    const selB = wrap.querySelector(`select[data-cruce-b="${idx}"]`);
+    const a = String(selA.value || "").toUpperCase().trim();
+    const b = String(selB?.value || "").toUpperCase().trim();
+    if (!a || !b || a === b) continue;
+    cruces.push([a, b]);
+  }
+  return cruces;
+}
+
+function aplicarBloqueoConfiguracionPlayoff(guardada = false) {
+  const disabled = !!guardada;
+  [
+    "eli-evento",
+    "eli-origen",
+    "eli-clasificados",
+    "eli-metodo-grupos",
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && id !== "eli-evento") el.disabled = disabled;
+  });
+  document.querySelectorAll("#eli-cruces-grupos select").forEach((el) => {
+    el.disabled = disabled;
+  });
+  const btnGuardar = document.getElementById("btn-eli-guardar-config");
+  const btnReset = document.getElementById("btn-eli-reset-config");
+  if (btnGuardar) btnGuardar.style.display = disabled ? "none" : "";
+  if (btnReset) btnReset.style.display = disabled ? "" : "none";
+}
+
+function actualizarEstadoVisualConfiguracionPlayoff() {
+  const statusEl = document.getElementById("eli-config-status");
+  const ayudaEl = document.getElementById("eli-aviso-metodo");
+  const guardada = eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
+  const guardadoEn = eliminatoriaState.configuracionPlayoff?.configuracion?.guardado_en || null;
+  if (statusEl) {
+    statusEl.textContent = guardada
+      ? `Configuración guardada${guardadoEn ? ` el ${new Date(guardadoEn).toLocaleString("es-EC")}` : ""}. Usa Reiniciar configuración para modificarla.`
+      : "La configuración actual todavía no está guardada. Guarda primero para compartirla con Tablas y Grupos.";
+  }
+  if (ayudaEl) {
+    ayudaEl.classList.toggle("is-warning", !guardada);
+  }
+  aplicarBloqueoConfiguracionPlayoff(guardada);
+}
+
+async function cargarConfiguracionPlayoffCompartida({ notificar = false } = {}) {
+  const eventoId = eliminatoriaState.eventoSeleccionado;
+  if (!eventoId) {
+    eliminatoriaState.configuracionPlayoff = null;
+    actualizarMetaEvento();
+    return null;
+  }
+  const resp = await ApiClient.get(`/eliminatorias/evento/${eventoId}/configuracion`);
+  eliminatoriaState.configuracionPlayoff = resp || null;
+  if (resp?.evento) {
+    actualizarEventoCache(eventoId, resp.evento);
+  }
+  eliminatoriaState.gruposEvento = Array.isArray(resp?.configuracion?.grupos)
+    ? resp.configuracion.grupos
+        .map((grupo) => String(grupo?.letra_grupo || "").toUpperCase().trim())
+        .filter(Boolean)
+    : [];
+  actualizarMetaEvento();
+  if (notificar) {
+    mostrarNotificacion("Configuración cargada", "success");
+  }
+  return resp;
+}
+
+async function guardarConfiguracionPlayoffCompartida({ silencioso = false } = {}) {
+  if (!eliminatoriaState.esAdminLike) return true;
+  const evento = obtenerEventoActual();
+  const eventoId = eliminatoriaState.eventoSeleccionado;
+  if (!eventoId || !evento) {
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return false;
+  }
+
+  const metodoCompetencia = String(evento.metodo_competencia || "grupos").toLowerCase();
+  const clasificados = parsePositiveInt(document.getElementById("eli-clasificados")?.value || "");
+  if (["grupos", "mixto", "liga"].includes(metodoCompetencia) && !clasificados) {
+    mostrarNotificacion("Clasifican por grupo debe ser mayor a 0.", "warning");
+    return false;
+  }
+
+  const origen = String(document.getElementById("eli-origen")?.value || "grupos").toLowerCase();
+  const metodoClasificacion = String(
+    document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos"
+  ).toLowerCase();
+  const crucesGrupos =
+    origen === "grupos" && metodoClasificacion === "cruces_grupos"
+      ? obtenerCrucesConfigurados()
+      : [];
+
+  try {
+    const resp = await ApiClient.put(`/eliminatorias/evento/${eventoId}/configuracion`, {
+      metodo_competencia: metodoCompetencia,
+      clasificados_por_grupo: clasificados,
+      origen,
+      metodo_clasificacion: metodoClasificacion,
+      cruces_grupos: crucesGrupos,
+    });
+    eliminatoriaState.configuracionPlayoff = resp || null;
+    if (resp?.evento) {
+      actualizarEventoCache(eventoId, resp.evento);
+    }
+    eliminatoriaState.gruposEvento = Array.isArray(resp?.configuracion?.grupos)
+      ? resp.configuracion.grupos
+          .map((grupo) => String(grupo?.letra_grupo || "").toUpperCase().trim())
+          .filter(Boolean)
+      : eliminatoriaState.gruposEvento;
+    actualizarMetaEvento();
+    if (!silencioso) {
+      mostrarNotificacion("Configuración guardada", "success");
+    }
+    return true;
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo guardar la configuración", "error");
+    return false;
+  }
+}
+
+async function reiniciarConfiguracionPlayoffCompartida() {
+  const eventoId = eliminatoriaState.eventoSeleccionado;
+  if (!eventoId) {
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return;
+  }
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Reiniciar configuración",
+    mensaje:
+      "Se desbloqueará la configuración compartida y se limpiará la selección manual de clasificados. ¿Continuar?",
+    tipo: "warning",
+    textoConfirmar: "Reiniciar",
+    claseConfirmar: "btn-warning",
+  });
+  if (!ok) return;
+  try {
+    const resp = await ApiClient.delete(`/eliminatorias/evento/${eventoId}/configuracion`);
+    eliminatoriaState.configuracionPlayoff = resp || null;
+    if (resp?.evento) {
+      actualizarEventoCache(eventoId, resp.evento);
+    }
+    eliminatoriaState.resumenClasificacion = null;
+    actualizarMetaEvento();
+    await refrescarGestionCompetitiva();
+    mostrarNotificacion("Configuración reiniciada", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo reiniciar la configuración", "error");
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -42,16 +218,19 @@ function aplicarPermisosEliminatoriaUI() {
   if (eliminatoriaState.esAdminLike) return;
   const btn = document.getElementById("btn-eli-generar");
   if (btn) btn.style.display = "none";
+  const adminEstado = document.getElementById("eli-admin-estado-section");
+  const adminClasif = document.getElementById("eli-admin-clasificacion-section");
+  if (adminEstado) adminEstado.style.display = "none";
+  if (adminClasif) adminClasif.style.display = "none";
 }
 
 function bindEventosEliminatoria() {
   document.getElementById("eli-evento")?.addEventListener("change", async () => {
     const id = Number.parseInt(document.getElementById("eli-evento")?.value || "", 10);
     eliminatoriaState.eventoSeleccionado = Number.isFinite(id) ? id : null;
-    actualizarMetaEvento();
     await cargarContextoPublicacion(eliminatoriaState.eventoSeleccionado);
-    await cargarGruposEventoSeleccionado();
-    renderConfiguracionCruces();
+    await cargarConfiguracionPlayoffCompartida();
+    await refrescarGestionCompetitiva();
   });
   document.getElementById("eli-origen")?.addEventListener("change", () => {
     actualizarUIPlayoffPorOrigen();
@@ -59,8 +238,20 @@ function bindEventosEliminatoria() {
   document.getElementById("eli-metodo-grupos")?.addEventListener("change", () => {
     actualizarUIPlayoffPorOrigen();
   });
+  document.getElementById("eli-clasificados")?.addEventListener("change", async () => {
+    await cargarResumenClasificacionManual();
+  });
+  document
+    .getElementById("btn-eli-guardar-config")
+    ?.addEventListener("click", () => guardarConfiguracionPlayoffCompartida());
+  document
+    .getElementById("btn-eli-reset-config")
+    ?.addEventListener("click", reiniciarConfiguracionPlayoffCompartida);
   document.getElementById("btn-eli-cargar")?.addEventListener("click", cargarLlaveEliminatoria);
   document.getElementById("btn-eli-generar")?.addEventListener("click", generarLlaveEliminatoria);
+  document
+    .getElementById("btn-eli-guardar-clasificacion")
+    ?.addEventListener("click", guardarClasificacionManual);
   document.getElementById("btn-eli-exportar")?.addEventListener("click", abrirEnPartidos);
   document.getElementById("btn-eli-export-png")?.addEventListener("click", exportarEliminatoriaPNG);
   document.getElementById("btn-eli-export-pdf")?.addEventListener("click", exportarEliminatoriaPDF);
@@ -80,7 +271,7 @@ async function cargarEventosEliminatoria() {
     eventos.forEach((e) => {
       const op = document.createElement("option");
       op.value = String(e.id);
-      op.textContent = `${e.nombre || "Categoría"} (#${e.id})`;
+      op.textContent = e.nombre || "Categoría";
       select.appendChild(op);
     });
     if ([...select.options].some((x) => x.value === prev)) {
@@ -105,10 +296,9 @@ async function preseleccionarEventoDesdeURL() {
     select.value = String(id);
   }
   eliminatoriaState.eventoSeleccionado = id;
-  actualizarMetaEvento();
   await cargarContextoPublicacion(eliminatoriaState.eventoSeleccionado);
-  await cargarGruposEventoSeleccionado();
-  renderConfiguracionCruces();
+  await cargarConfiguracionPlayoffCompartida();
+  await refrescarGestionCompetitiva();
   await cargarLlaveEliminatoria();
 }
 
@@ -125,6 +315,12 @@ async function cargarGruposEventoSeleccionado() {
     eliminatoriaState.gruposEvento = [];
     return;
   }
+  if (Array.isArray(eliminatoriaState.configuracionPlayoff?.configuracion?.grupos)) {
+    eliminatoriaState.gruposEvento = eliminatoriaState.configuracionPlayoff.configuracion.grupos
+      .map((grupo) => String(grupo?.letra_grupo || "").toUpperCase())
+      .filter(Boolean);
+    return;
+  }
   try {
     const resp = await ApiClient.get(`/grupos/evento/${eventoId}`);
     const grupos = Array.isArray(resp?.grupos) ? resp.grupos : [];
@@ -134,6 +330,515 @@ async function cargarGruposEventoSeleccionado() {
   } catch (error) {
     console.warn("No se pudieron cargar grupos del evento:", error);
     eliminatoriaState.gruposEvento = [];
+  }
+}
+
+async function refrescarGestionCompetitiva() {
+  if (!eliminatoriaState.esAdminLike) return;
+  await cargarEquiposEventoGestion();
+  await cargarResumenClasificacionManual();
+}
+
+async function cargarEquiposEventoGestion() {
+  const cont = document.getElementById("eli-equipo-status-grid");
+  const eventoId = eliminatoriaState.eventoSeleccionado;
+  if (!cont) return;
+
+  if (!eventoId) {
+    eliminatoriaState.equiposEvento = [];
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-users"></i>
+        <p>Selecciona una categoría para gestionar equipos.</p>
+      </div>`;
+    return;
+  }
+
+  cont.innerHTML = `
+    <div class="empty-state">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Cargando estado de equipos...</p>
+    </div>`;
+
+  try {
+    const resp = await ApiClient.get(`/eventos/${eventoId}/equipos`);
+    eliminatoriaState.equiposEvento = Array.isArray(resp?.equipos) ? resp.equipos : [];
+    eliminatoriaState.motivosEliminacion = Array.isArray(resp?.motivos_eliminacion)
+      ? resp.motivos_eliminacion
+      : ["indisciplina", "deudas", "sin_justificativo_segunda_no_presentacion"];
+    renderGestionEquipos();
+  } catch (error) {
+    console.error(error);
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-triangle-exclamation"></i>
+        <p>No se pudo cargar el estado de equipos.</p>
+      </div>`;
+  }
+}
+
+function renderGestionEquipos() {
+  const cont = document.getElementById("eli-equipo-status-grid");
+  if (!cont) return;
+
+  const equipos = Array.isArray(eliminatoriaState.equiposEvento)
+    ? eliminatoriaState.equiposEvento
+    : [];
+  if (!equipos.length) {
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-users-slash"></i>
+        <p>No hay equipos inscritos en esta categoría.</p>
+      </div>`;
+    return;
+  }
+
+  cont.innerHTML = equipos
+    .map((equipo) => {
+      const teamId = Number(equipo.id);
+      const eliminadoAutomatico = equipo.eliminado_automatico === true;
+      const eliminadoManual = equipo.eliminado_manual === true;
+      const eliminado = eliminadoAutomatico || eliminadoManual;
+      const motivoActual = String(equipo.motivo_eliminacion || "");
+      const detalleActual = String(equipo.detalle_eliminacion || "");
+      const estadoHtml = eliminadoAutomatico
+        ? `<span class="eli-badge is-danger">Eliminado automático por 3 no presentaciones</span>`
+        : eliminadoManual
+        ? `<span class="eli-badge is-warning">${escapeHtml(
+            equipo.motivo_eliminacion_label || "Eliminado manualmente"
+          )}</span>`
+        : `<span class="eli-badge is-success">Habilitado</span>`;
+
+      return `
+        <article class="eli-admin-card">
+          <div class="eli-admin-card-head">
+            <div>
+              <h4>${escapeHtml(equipo.nombre || "Equipo")}</h4>
+              <div class="eli-admin-badges">
+                ${estadoHtml}
+                ${
+                  Number(equipo.no_presentaciones || 0) > 0
+                    ? `<span class="eli-badge is-neutral">NP ${Number(
+                        equipo.no_presentaciones || 0
+                      )}</span>`
+                    : ""
+                }
+              </div>
+            </div>
+          </div>
+          <div class="eli-admin-card-body">
+            <label>Motivo de eliminación</label>
+            <select data-equipo-motivo="${teamId}" ${eliminadoAutomatico ? "disabled" : ""}>
+              <option value="">Mantener habilitado</option>
+              ${eliminatoriaState.motivosEliminacion
+                .map(
+                  (motivo) => `
+                    <option value="${escapeHtml(motivo)}" ${
+                    motivoActual === motivo ? "selected" : ""
+                  }>
+                      ${escapeHtml(formatearMotivoEliminacion(motivo))}
+                    </option>
+                  `
+                )
+                .join("")}
+            </select>
+            <label>Detalle</label>
+            <textarea
+              rows="2"
+              data-equipo-detalle="${teamId}"
+              placeholder="Observación o resolución del organizador"
+              ${eliminadoAutomatico ? "disabled" : ""}
+            >${escapeHtml(detalleActual)}</textarea>
+            <div class="eli-admin-actions">
+              <button
+                type="button"
+                class="btn btn-primary"
+                data-accion-equipo="guardar"
+                data-equipo-id="${teamId}"
+                ${eliminadoAutomatico ? "disabled" : ""}
+              >
+                <i class="fas fa-save"></i> ${eliminadoManual ? "Actualizar" : "Guardar"}
+              </button>
+              ${
+                eliminadoManual && !eliminadoAutomatico
+                  ? `
+                    <button
+                      type="button"
+                      class="btn btn-outline"
+                      data-accion-equipo="reactivar"
+                      data-equipo-id="${teamId}"
+                    >
+                      <i class="fas fa-rotate-left"></i> Rehabilitar
+                    </button>
+                  `
+                  : ""
+              }
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+
+  cont.querySelectorAll("[data-accion-equipo]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const equipoId = Number.parseInt(btn.getAttribute("data-equipo-id") || "", 10);
+      const accion = String(btn.getAttribute("data-accion-equipo") || "");
+      if (!Number.isFinite(equipoId)) return;
+      if (accion === "reactivar") {
+        await guardarEstadoCompetitivoEquipo(equipoId, false);
+        return;
+      }
+      await guardarEstadoCompetitivoEquipo(equipoId, true);
+    });
+  });
+}
+
+async function guardarEstadoCompetitivoEquipo(equipoId, desdeFormulario = true) {
+  const eventoId = eliminatoriaState.eventoSeleccionado;
+  if (!eventoId || !Number.isFinite(Number(equipoId))) return;
+
+  const motivoEl = document.querySelector(`[data-equipo-motivo="${Number(equipoId)}"]`);
+  const detalleEl = document.querySelector(`[data-equipo-detalle="${Number(equipoId)}"]`);
+  const motivo = String(motivoEl?.value || "").trim();
+  const detalle = String(detalleEl?.value || "").trim();
+
+  const payload = desdeFormulario && motivo
+    ? {
+        eliminado_manual: true,
+        motivo_eliminacion: motivo,
+        detalle_eliminacion: detalle,
+      }
+    : {
+        eliminado_manual: false,
+        motivo_eliminacion: null,
+        detalle_eliminacion: null,
+      };
+
+  if (desdeFormulario && !motivo) {
+    mostrarNotificacion("Selecciona un motivo o usa Rehabilitar.", "warning");
+    return;
+  }
+
+  try {
+    await ApiClient.put(
+      `/eventos/${eventoId}/equipos/${Number(equipoId)}/estado-competencia`,
+      payload
+    );
+    mostrarNotificacion("Estado del equipo actualizado", "success");
+    await refrescarGestionCompetitiva();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(
+      error.message || "No se pudo actualizar el estado del equipo",
+      "error"
+    );
+  }
+}
+
+async function cargarResumenClasificacionManual() {
+  const cont = document.getElementById("eli-clasificacion-manual");
+  const eventoId = eliminatoriaState.eventoSeleccionado;
+  const cupos = Number.parseInt(document.getElementById("eli-clasificados")?.value || "2", 10);
+  if (!cont) return;
+
+  if (!eventoId) {
+    eliminatoriaState.resumenClasificacion = null;
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-list-check"></i>
+        <p>Selecciona una categoría para revisar la clasificación.</p>
+      </div>`;
+    return;
+  }
+
+  cont.innerHTML = `
+    <div class="empty-state">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Cargando clasificación sugerida...</p>
+    </div>`;
+
+  try {
+    const resp = await ApiClient.get(
+      `/eliminatorias/evento/${eventoId}/clasificacion?clasificados_por_grupo=${cupos}`
+    );
+    eliminatoriaState.resumenClasificacion = resp || null;
+    renderResumenClasificacionManual();
+  } catch (error) {
+    console.error(error);
+    eliminatoriaState.resumenClasificacion = null;
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-triangle-exclamation"></i>
+        <p>No se pudo cargar la clasificación manual.</p>
+      </div>`;
+  }
+}
+
+function construirEtiquetaCandidatoClasificacion(row = {}, includeGrupo = false) {
+  const nombre = escapeHtml(row.equipo_nombre || row.nombre || "-");
+  const posicion = Number.parseInt(row.posicion || row.posicion_deportiva || 0, 10);
+  const grupoOrigen = escapeHtml(row.grupo_origen_letra || row.grupo_letra || "");
+  const criterios = [
+    `Pts ${Number(row.puntos || 0)}`,
+    `DG ${Number(row.diferencia_goles || 0)}`,
+    `GF ${Number(row.goles_favor || 0)}`,
+    `FP ${Number(row.puntaje_fair_play || 0).toFixed(2)}`,
+  ].join(" | ");
+  const extras = [
+    Number.isFinite(posicion) && posicion > 0 ? `Pos. ${posicion}` : null,
+    includeGrupo && grupoOrigen ? `Grupo ${grupoOrigen}` : null,
+    criterios,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+  return `${nombre}${extras ? ` (${extras})` : ""}`;
+}
+
+function renderResumenClasificacionManual() {
+  const cont = document.getElementById("eli-clasificacion-manual");
+  if (!cont) return;
+
+  const grupos = Array.isArray(eliminatoriaState.resumenClasificacion?.grupos)
+    ? eliminatoriaState.resumenClasificacion.grupos
+    : [];
+  const cupos = Number.parseInt(
+    eliminatoriaState.resumenClasificacion?.clasificados_por_grupo || "2",
+    10
+  );
+
+  if (!grupos.length) {
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-layer-group"></i>
+        <p>Esta categoría aún no tiene grupos para configurar clasificación manual.</p>
+      </div>`;
+    return;
+  }
+
+  cont.innerHTML = grupos
+    .map((grupo) => {
+      const elegibles = Array.isArray(grupo?.tabla)
+        ? grupo.tabla.filter(
+            (row) =>
+              row?.eliminado_competencia !== true &&
+              row?.eliminado_automatico !== true &&
+              row?.eliminado_manual !== true
+          )
+        : [];
+      const candidatosAdicionales = Array.isArray(grupo?.candidatos_adicionales)
+        ? grupo.candidatos_adicionales
+        : [];
+      const manualMap = new Map(
+        (Array.isArray(grupo?.manuales) ? grupo.manuales : []).map((item) => [
+          Number(item.slot_posicion),
+          item,
+        ])
+      );
+
+      const filasTabla = (grupo.tabla || [])
+        .map((row) => {
+          const eliminado = row.eliminado_competencia === true || row.eliminado_manual === true;
+          return `
+            <tr class="${eliminado ? "is-disabled" : ""}">
+              <td>${Number(row.posicion || 0)}</td>
+              <td>${escapeHtml(row.equipo_nombre || "-")}</td>
+              <td>${Number(row.puntos || 0)}</td>
+              <td>${Number(row.diferencia_goles || 0)}</td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      const slotsHtml = Array.from({ length: cupos }, (_, idx) => {
+        const slot = idx + 1;
+        const manual = manualMap.get(slot) || null;
+        const sugerido =
+          (Array.isArray(grupo?.sugeridos) ? grupo.sugeridos : []).find(
+            (item) => Number(item.slot_posicion) === slot
+          ) || null;
+        const criterioManual = String(manual?.criterio || "decision_organizador").trim();
+
+        return `
+          <div class="eli-slot-card">
+            <label>Cupo ${slot}</label>
+            <select
+              data-clasif-grupo="${Number(grupo.grupo_id)}"
+              data-clasif-slot="${slot}"
+            >
+              <option value="">Usar sugerencia del sistema${
+                sugerido ? ` (${escapeHtml(sugerido.equipo_nombre || "-")})` : ""
+              }</option>
+              ${
+                elegibles.length
+                  ? `
+                    <optgroup label="Elegibles del grupo">
+                      ${elegibles
+                        .map(
+                          (row) => `
+                            <option value="${Number(row.equipo_id)}" ${
+                              Number(manual?.equipo_id) === Number(row.equipo_id) ? "selected" : ""
+                            }>
+                              ${construirEtiquetaCandidatoClasificacion(row, false)}
+                            </option>
+                          `
+                        )
+                        .join("")}
+                    </optgroup>
+                  `
+                  : ""
+              }
+              ${
+                candidatosAdicionales.length
+                  ? `
+                    <optgroup label="Mejores no clasificados del evento">
+                      ${candidatosAdicionales
+                        .map(
+                          (row) => `
+                            <option value="${Number(row.equipo_id)}" ${
+                              Number(manual?.equipo_id) === Number(row.equipo_id) ? "selected" : ""
+                            }>
+                              ${construirEtiquetaCandidatoClasificacion(row, true)}
+                            </option>
+                          `
+                        )
+                        .join("")}
+                    </optgroup>
+                  `
+                  : ""
+              }
+            </select>
+            <small class="form-hint">
+              Sugerencia: ${escapeHtml(sugerido?.equipo_nombre || "Sin sugerencia")}
+            </small>
+            ${
+              sugerido?.nota
+                ? `<small class="form-hint" style="display:block;color:#7a4b00;">${escapeHtml(sugerido.nota)}</small>`
+                : ""
+            }
+            ${
+              manual && manual.valido === false
+                ? `<small class="form-hint" style="display:block;color:#b42318;">La selección manual anterior quedó invalidada porque ese equipo ya no es elegible.</small>`
+                : ""
+            }
+            <select data-clasif-criterio="${Number(grupo.grupo_id)}:${slot}">
+              <option value="decision_organizador" ${
+                criterioManual === "decision_organizador" ? "selected" : ""
+              }>Decisión del organizador</option>
+              <option value="mejor_no_clasificado_evento" ${
+                criterioManual === "mejor_no_clasificado_evento" ? "selected" : ""
+              }>Mejor no clasificado del evento</option>
+              <option value="partido_extra_reclasificacion" ${
+                criterioManual === "partido_extra_reclasificacion" ? "selected" : ""
+              }>Partido extra / reclasificación</option>
+            </select>
+            <textarea
+              rows="2"
+              data-clasif-detalle="${Number(grupo.grupo_id)}:${slot}"
+              placeholder="Detalle de la decisión manual (opcional)"
+            >${escapeHtml(manual?.detalle || "")}</textarea>
+          </div>
+        `;
+      }).join("");
+
+      return `
+        <article class="eli-admin-card eli-clasif-card">
+          <div class="eli-admin-card-head">
+            <div>
+              <h4>Grupo ${escapeHtml(grupo.grupo_letra || "-")}</h4>
+              <div class="eli-admin-badges">
+                <span class="eli-badge is-neutral">${cupos} cupo(s)</span>
+                ${
+                  grupo.incompleto
+                    ? `<span class="eli-badge is-warning">Clasificación incompleta</span>`
+                    : `<span class="eli-badge is-success">Clasificación completa</span>`
+                }
+              </div>
+              ${
+                grupo.incompleto && candidatosAdicionales.length
+                  ? `<p class="form-hint" style="margin-top:0.55rem;color:#7a4b00;">Este grupo no completa cupos con sus equipos elegibles. El sistema propone mejores no clasificados del evento y puedes registrar el criterio usado.</p>`
+                  : ""
+              }
+            </div>
+          </div>
+          <div class="eli-admin-card-body">
+            <div class="eli-resumen-table-wrap">
+              <table class="eli-resumen-table">
+                <thead>
+                  <tr>
+                    <th>Pos.</th>
+                    <th>Equipo</th>
+                    <th>Pts</th>
+                    <th>DG</th>
+                  </tr>
+                </thead>
+                <tbody>${filasTabla}</tbody>
+              </table>
+            </div>
+            <div class="eli-slot-grid">${slotsHtml}</div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+async function guardarClasificacionManual() {
+  const eventoId = eliminatoriaState.eventoSeleccionado;
+  const cupos = Number.parseInt(document.getElementById("eli-clasificados")?.value || "2", 10);
+  const resumen = eliminatoriaState.resumenClasificacion;
+  if (!eventoId || !resumen?.grupos?.length) {
+    mostrarNotificacion("No hay clasificación para guardar.", "warning");
+    return;
+  }
+
+  const configOk = await guardarConfiguracionPlayoffCompartida({ silencioso: true });
+  if (!configOk) return;
+
+  const grupos = resumen.grupos.map((grupo) => {
+    const selecciones = Array.from({ length: cupos }, (_, idx) => {
+      const slot = idx + 1;
+      const select = document.querySelector(
+        `[data-clasif-grupo="${Number(grupo.grupo_id)}"][data-clasif-slot="${slot}"]`
+      );
+      const criterio = document.querySelector(
+        `[data-clasif-criterio="${Number(grupo.grupo_id)}:${slot}"]`
+      );
+      const detalle = document.querySelector(
+        `[data-clasif-detalle="${Number(grupo.grupo_id)}:${slot}"]`
+      );
+      const equipoId = Number.parseInt(select?.value || "", 10);
+      return {
+        slot_posicion: slot,
+        equipo_id: Number.isFinite(equipoId) ? equipoId : null,
+        criterio: String(criterio?.value || "decision_organizador").trim() || "decision_organizador",
+        detalle: String(detalle?.value || "").trim() || null,
+      };
+    }).filter((item) => Number.isFinite(Number(item.equipo_id)) && Number(item.equipo_id) > 0);
+
+    return {
+      grupo_id: Number(grupo.grupo_id),
+      selecciones,
+    };
+  });
+
+  try {
+    const resp = await ApiClient.put(
+      `/eliminatorias/evento/${eventoId}/clasificacion-manual`,
+      {
+        clasificados_por_grupo: cupos,
+        grupos,
+      }
+    );
+    eliminatoriaState.resumenClasificacion = resp || null;
+    renderResumenClasificacionManual();
+    mostrarNotificacion("Clasificación manual guardada", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(
+      error.message || "No se pudo guardar la clasificación manual",
+      "error"
+    );
   }
 }
 
@@ -292,27 +997,36 @@ async function cargarAuspiciantesPublicacion(campeonatoIdRaw) {
 
 function actualizarMetaEvento() {
   const evento = obtenerEventoActual();
+  const config = eliminatoriaState.configuracionPlayoff?.configuracion || null;
   const metodoEl = document.getElementById("eli-metodo");
   const llaveEl = document.getElementById("eli-llave");
   const avisoEl = document.getElementById("eli-aviso-metodo");
   const origenSel = document.getElementById("eli-origen");
+  const clasificadosSel = document.getElementById("eli-clasificados");
+  const metodoGruposSel = document.getElementById("eli-metodo-grupos");
 
   const metodo = String(evento?.metodo_competencia || "grupos").toLowerCase();
   const llave = Number.parseInt(evento?.eliminatoria_equipos, 10);
+  const clasificados = parsePositiveInt(evento?.clasificados_por_grupo) || 2;
+  const origen = String(
+    config?.origen || (metodo === "eliminatoria" ? "evento" : "grupos")
+  ).toLowerCase();
+  const metodoGrupos = String(config?.metodo_clasificacion || "cruces_grupos").toLowerCase();
 
   if (metodoEl) metodoEl.value = formatearMetodo(metodo);
   if (llaveEl) llaveEl.value = Number.isFinite(llave) ? String(llave) : "Automática";
+  if (clasificadosSel) clasificadosSel.value = String(clasificados);
+  if (metodoGruposSel) metodoGruposSel.value = metodoGrupos;
   if (avisoEl) {
     avisoEl.textContent =
       metodo === "eliminatoria" || metodo === "mixto"
         ? "Esta categoría soporta eliminación directa. También puedes generar playoff desde grupos."
         : "Modo sugerido: playoff desde grupos (clasificados por grupo).";
-    avisoEl.classList.toggle("is-warning", metodo === "grupos" || metodo === "liga");
   }
   if (origenSel) {
-    if (metodo === "grupos" || metodo === "liga") origenSel.value = "grupos";
-    else if (metodo === "eliminatoria") origenSel.value = "evento";
+    origenSel.value = origen;
   }
+  actualizarEstadoVisualConfiguracionPlayoff();
   actualizarUIPlayoffPorOrigen();
 }
 
@@ -337,6 +1051,10 @@ function renderConfiguracionCruces() {
   const cont = document.getElementById("eli-cruces-grupos");
   if (!cont) return;
 
+  const crucesActuales = obtenerCrucesConfiguradosDesdeWrap(cont);
+  const crucesGuardados = Array.isArray(eliminatoriaState.configuracionPlayoff?.configuracion?.cruces_grupos)
+    ? eliminatoriaState.configuracionPlayoff.configuracion.cruces_grupos
+    : [];
   const letras = [...eliminatoriaState.gruposEvento];
   if (letras.length < 2) {
     cont.innerHTML = `
@@ -350,8 +1068,12 @@ function renderConfiguracionCruces() {
   const pares = Math.floor(letras.length / 2);
   const rows = [];
   for (let i = 0; i < pares; i++) {
-    const a = letras[i];
-    const b = letras[letras.length - 1 - i];
+    const parBase = crucesActuales[i] || crucesGuardados[i] || [
+      letras[i],
+      letras[letras.length - 1 - i],
+    ];
+    const a = parBase[0];
+    const b = parBase[1];
     rows.push(`
       <div class="eli-cruce-row">
         <span>Cruce ${i + 1}</span>
@@ -370,22 +1092,15 @@ function renderConfiguracionCruces() {
     `);
   }
   cont.innerHTML = rows.join("");
+  cont.querySelectorAll("select").forEach((select) => {
+    select.disabled = eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
+  });
 }
 
 function obtenerCrucesConfigurados() {
   const wrap = document.getElementById("eli-cruces-grupos");
   if (!wrap) return [];
-  const aSelects = Array.from(wrap.querySelectorAll("select[data-cruce-a]"));
-  const cruces = [];
-
-  for (const selA of aSelects) {
-    const idx = selA.getAttribute("data-cruce-a");
-    const selB = wrap.querySelector(`select[data-cruce-b="${idx}"]`);
-    const a = String(selA.value || "").toUpperCase().trim();
-    const b = String(selB?.value || "").toUpperCase().trim();
-    if (!a || !b || a === b) continue;
-    cruces.push([a, b]);
-  }
+  const cruces = obtenerCrucesConfiguradosDesdeWrap(wrap);
 
   // valida que no se repitan grupos
   const usados = new Set();
@@ -451,12 +1166,22 @@ async function generarLlaveEliminatoria() {
   const metodoGrupos = document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos";
   const cruces = metodoGrupos === "cruces_grupos" ? obtenerCrucesConfigurados() : [];
 
+  const configOk = await guardarConfiguracionPlayoffCompartida({ silencioso: true });
+  if (!configOk) return;
+
   if (origen === "grupos" && metodoGrupos === "cruces_grupos" && !cruces.length) {
     mostrarNotificacion("Configura al menos un cruce de grupos válido.", "warning");
     return;
   }
 
-  if (!confirm("¿Generar/Reemplazar la llave eliminatoria de esta categoría?")) return;
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Generar llave eliminatoria",
+    mensaje: "¿Generar o reemplazar la llave eliminatoria de esta categoría?",
+    tipo: "warning",
+    textoConfirmar: "Generar llave",
+    claseConfirmar: "btn-primary",
+  });
+  if (!ok) return;
 
   try {
     const payload = {
@@ -783,10 +1508,37 @@ async function registrarResultadoEliminatoria(id) {
     return;
   }
 
-  const rlRaw = prompt("Goles equipo local:", String(cruce.resultado_local ?? 0));
-  if (rlRaw === null) return;
-  const rvRaw = prompt("Goles equipo visitante:", String(cruce.resultado_visitante ?? 0));
-  if (rvRaw === null) return;
+  const form = await window.mostrarFormularioModal({
+    titulo: "Registrar resultado",
+    mensaje: "Ingresa el marcador final del cruce eliminatorio.",
+    tipo: "info",
+    textoConfirmar: "Guardar resultado",
+    ancho: "sm",
+    campos: [
+      {
+        name: "resultado_local",
+        label: cruce.equipo_local_nombre || "Equipo local",
+        type: "number",
+        value: String(cruce.resultado_local ?? 0),
+        min: 0,
+        step: 1,
+        required: true,
+      },
+      {
+        name: "resultado_visitante",
+        label: cruce.equipo_visitante_nombre || "Equipo visitante",
+        type: "number",
+        value: String(cruce.resultado_visitante ?? 0),
+        min: 0,
+        step: 1,
+        required: true,
+      },
+    ],
+  });
+  if (!form) return;
+
+  const rlRaw = String(form.resultado_local || "").trim();
+  const rvRaw = String(form.resultado_visitante || "").trim();
 
   const rl = Number.parseInt(rlRaw, 10);
   const rv = Number.parseInt(rvRaw, 10);
@@ -1081,6 +1833,16 @@ function formatearMetodo(metodo) {
   if (key === "eliminatoria") return "Eliminatoria";
   if (key === "mixto") return "Mixto";
   return "Grupos";
+}
+
+function formatearMotivoEliminacion(motivo) {
+  const key = String(motivo || "").trim().toLowerCase();
+  if (key === "indisciplina") return "Indisciplina";
+  if (key === "deudas") return "No pagar cuentas";
+  if (key === "sin_justificativo_segunda_no_presentacion") {
+    return "2da no presentación sin justificativo";
+  }
+  return "Sin motivo";
 }
 
 function escapeHtml(valor) {

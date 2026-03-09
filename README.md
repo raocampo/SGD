@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-08): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo y eliminacion automatica por no presentaciones, y filtro de tablas aislado por campeonato/organizador.
+Estado del proyecto (2026-03-09): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,38 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-03-08)
+## Novedades Recientes (2026-03-09)
+- Configuracion compartida de playoff/clasificacion:
+  - `tablas.html` y `eliminatorias.html` ahora leen/guardan la misma configuracion por categoria,
+  - incluye:
+    - `metodo_competencia`,
+    - `clasificados_por_grupo`,
+    - `origen_playoff`,
+    - `metodo_playoff`,
+    - `cruces_grupos`.
+  - nueva migracion:
+    - `database/migrations/030_evento_playoff_config.sql`.
+- Eliminacion manual por categoria:
+  - nuevo estado competitivo por equipo en `evento_equipos` con causales:
+    - `indisciplina`,
+    - `deudas`,
+    - `sin_justificativo_segunda_no_presentacion`.
+  - `eliminatorias.html` ahora incluye bloque operativo para marcar/revertir equipos eliminados manualmente.
+- Clasificacion manual con sugerencia del sistema:
+  - nuevo resumen por grupo para elegir clasificados manuales cuando la definicion deportiva queda abierta,
+  - el backend sugiere el clasificado segun tabla vigente y respeta la decision guardada del organizador al generar playoff,
+  - si un grupo no completa cupos con sus equipos elegibles, el sistema propone mejores no clasificados del evento,
+  - los equipos eliminados manualmente ya no ingresan a llaves directas ni a playoff desde grupos.
+- Tablas competitivas ajustadas:
+  - los equipos eliminados ya bajan al final de la tabla aunque tengan mayor puntaje,
+  - fuera de clasificacion se pinta en naranja/marron,
+  - eliminados se muestran en rojo oscuro con causal visible.
+- Sistema visual de mensajes:
+  - reemplazo de `alert/confirm/prompt` por dialogos y notificaciones visuales reutilizables en el panel.
+- Nueva migracion:
+  - `database/migrations/029_eliminacion_manual_y_clasificacion_manual.sql`.
+
+## Novedades Anteriores (2026-03-08)
 - Auditoria de planilla finalizada:
   - al editar una planilla cerrada ahora se exige motivo de edicion,
   - se guarda traza de auditoria (`antes/despues`) en `partido_planilla_ediciones`.
@@ -215,6 +246,8 @@ psql -U postgres -d gestionDeportiva -f database/migrations/025_planilla_faltas_
 psql -U postgres -d gestionDeportiva -f database/migrations/026_ambos_no_presentes_sin_resultado.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/027_clasificacion_y_no_presentacion_automatica.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/028_auditoria_edicion_planilla.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/029_eliminacion_manual_y_clasificacion_manual.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/030_evento_playoff_config.sql
 ```
 
 ### 5.3 Ejecutar
@@ -304,17 +337,18 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 
 ## 11. Pendientes Prioritarios
 1. Pruebas E2E con datos reales (flujo completo).
-2. Cierre de planillaje oficial (detalle visual y de impresion).
-3. RBAC (autenticacion + roles).
-4. Completar perfil de organizador en usuarios: agregar `nombre de la organizacion` y `logo` al crear/editar usuario organizador.
-5. Habilitar en portal del organizador la creacion y gestion de usuarios con rol `dirigente` y `tecnico`.
-6. En registro publico desde cards de planes pagados, agregar campos:
+2. Validar en operacion real la nueva eliminacion manual por categoria, la promocion automatica de elegibles y la clasificacion manual sugerida antes de cerrar reglas de playoff.
+3. Cierre de planillaje oficial (detalle visual y de impresion).
+4. RBAC (autenticacion + roles).
+5. Completar perfil de organizador en usuarios: agregar `nombre de la organizacion` y `logo` al crear/editar usuario organizador.
+6. Habilitar en portal del organizador la creacion y gestion de usuarios con rol `dirigente` y `tecnico`.
+7. En registro publico desde cards de planes pagados, agregar campos:
    - `nombre de la organizacion` (obligatorio),
    - `logo` (opcional),
    - `lema` (opcional).
-7. Implementar flujo comercial de onboarding:
+8. Implementar flujo comercial de onboarding:
    - al seleccionar plan pagado -> formulario de registro completo -> pagina/formulario de cobro -> pasarela de pago.
-8. Eliminatorias completas (llaves y reglas operativas).
+8. Eliminatorias completas (llaves, reglas operativas y eventual partido extra/reclasificacion automatizado si el cliente lo define).
 9. Financiero avanzado (multas automaticas, bloqueos por morosidad, reportes ejecutivos).
 10. Plan mobile orientado a app instalable en tiendas:
    - Android (Play Store),

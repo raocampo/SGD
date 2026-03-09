@@ -64,7 +64,7 @@
           </div>
 
           <div class="tablas-formato-config" id="tablas-formato-config">
-            <h4>Formato de Clasificación</h4>
+            <h4>Configuración de Clasificación y Playoff</h4>
             <p id="tablas-formato-ayuda">Selecciona una categoría para editar su formato de clasificación.</p>
             <div class="form-grid">
               <div class="form-group">
@@ -80,10 +80,34 @@
                 <label for="tablas-clasificados-por-grupo">Clasifican por grupo</label>
                 <input type="number" id="tablas-clasificados-por-grupo" min="1" step="1" value="2" />
               </div>
+              <div class="form-group">
+                <label for="tablas-origen-playoff">Origen playoff</label>
+                <select id="tablas-origen-playoff">
+                  <option value="evento">Directo por equipos inscritos</option>
+                  <option value="grupos">Desde fase de grupos</option>
+                </select>
+              </div>
+              <div class="form-group" id="tablas-wrap-metodo-playoff">
+                <label for="tablas-metodo-playoff">Método playoff desde grupos</label>
+                <select id="tablas-metodo-playoff">
+                  <option value="cruces_grupos">Cruces entre grupos</option>
+                  <option value="tabla_unica">Tabla única (1 vs último)</option>
+                </select>
+              </div>
+              <div class="form-group form-group-full" id="tablas-wrap-cruces">
+                <label>Cruces de grupos</label>
+                <div id="tablas-cruces-grupos" class="eli-cruces-grid"></div>
+                <small class="form-hint">
+                  Ejemplo: A vs C y B vs D. Cada cruce genera enfrentamientos por posición.
+                </small>
+              </div>
             </div>
             <div class="tablas-filtros-actions">
               <button class="btn btn-success" id="btn-guardar-formato-tablas">
-                <i class="fas fa-save"></i> Guardar formato
+                <i class="fas fa-save"></i> Guardar configuración
+              </button>
+              <button class="btn btn-warning" id="btn-reiniciar-formato-tablas" type="button" style="display:none;">
+                <i class="fas fa-rotate-left"></i> Reiniciar configuración
               </button>
             </div>
           </div>

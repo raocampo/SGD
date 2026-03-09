@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-08
+Ultima actualizacion: 2026-03-09
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,82 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-09
+- Configuracion compartida de clasificacion/playoff:
+  - nueva persistencia `evento_playoff_config` para mantener sincronizados `tablas.html` y `eliminatorias.html`.
+  - nuevos endpoints:
+    - `GET /api/eliminatorias/evento/:evento_id/configuracion`,
+    - `PUT /api/eliminatorias/evento/:evento_id/configuracion`,
+    - `DELETE /api/eliminatorias/evento/:evento_id/configuracion`.
+  - `frontend/tablas.html` y `frontend/eliminatorias.html` ahora consumen la misma fuente de verdad para:
+    - `metodo_competencia`,
+    - `clasificados_por_grupo`,
+    - `origen_playoff`,
+    - `metodo_playoff`,
+    - `cruces_grupos`.
+  - nueva migracion agregada:
+    - `database/migrations/030_evento_playoff_config.sql`.
+- Eliminacion manual por categoria:
+  - nuevo servicio `backend/services/competitionStatusService.js` para centralizar estados competitivos de `evento_equipos`.
+  - nuevas causales operativas soportadas:
+    - `indisciplina`,
+    - `deudas`,
+    - `sin_justificativo_segunda_no_presentacion`.
+  - nuevo endpoint `PUT /api/eventos/:evento_id/equipos/:equipo_id/estado-competencia` para eliminar o rehabilitar equipos dentro de una categoria.
+- Clasificacion manual con sugerencia del sistema:
+  - nuevo almacenamiento `evento_clasificados_manuales` para guardar decisiones del organizador por `grupo` y `slot_posicion`.
+  - nuevos endpoints:
+    - `GET /api/eliminatorias/evento/:evento_id/clasificacion`,
+    - `PUT /api/eliminatorias/evento/:evento_id/clasificacion-manual`.
+  - `backend/models/Eliminatoria.js` ahora:
+    - excluye eliminados automaticos/manuales de llaves directas y playoff desde grupos,
+    - permite sugerencia automatica por tabla y sobrescritura manual por grupo,
+    - cuando un grupo queda incompleto puede proponer al mejor no clasificado elegible del evento,
+    - permite guardar criterio manual por cupo:
+      - `decision_organizador`,
+      - `mejor_no_clasificado_evento`,
+      - `partido_extra_reclasificacion`.
+- UI operativa en eliminatorias:
+  - `frontend/eliminatorias.html` agrega bloque `Estado competitivo de equipos`,
+  - `frontend/eliminatorias.html` agrega bloque `Clasificación manual con sugerencia`,
+  - `frontend/js/eliminatorias.js` permite:
+    - marcar causal y detalle de eliminacion,
+    - rehabilitar equipos manualmente eliminados,
+    - escoger clasificados por grupo y guardar criterio del organizador,
+    - usar candidatos adicionales del evento cuando no hay suficientes elegibles dentro del grupo.
+- Tablas y equipos ya reflejan el nuevo estado:
+  - `frontend/js/tablas.js` pinta eliminaciones manuales con su causal,
+  - `frontend/js/equipos.js` muestra chips de eliminacion manual en tarjetas y tabla,
+  - `backend/controllers/tablaController.js` reordena posiciones competitivas para que los eliminados bajen al final aunque tengan mejor puntaje,
+  - los equipos fuera de clasificacion ahora se pintan en naranja/marron y los eliminados en rojo oscuro,
+  - la leyenda de eliminacion/no presentacion ocupa mas espacio visual dentro de la celda.
+- Sistema visual de avisos y dialogos unificado:
+  - `frontend/js/core.js` reemplaza `alert/confirm/prompt` por dialogos reutilizables y notificaciones visuales.
+  - integracion aplicada en modulos operativos:
+    - usuarios,
+    - campeonatos,
+    - equipos,
+    - sorteo,
+    - grupos,
+    - partidos,
+    - planilla,
+    - eliminatorias,
+    - CMS.
+- Migraciones agregadas del bloque:
+  - `database/migrations/029_eliminacion_manual_y_clasificacion_manual.sql`,
+  - `database/migrations/030_evento_playoff_config.sql`.
+- Validacion tecnica:
+  - `node --check backend/controllers/eventoController.js` (`PASS`),
+  - `node --check backend/controllers/eliminatoriaController.js` (`PASS`),
+  - `node --check backend/controllers/tablaController.js` (`PASS`),
+  - `node --check backend/models/Eliminatoria.js` (`PASS`),
+  - `node --check backend/services/competitionStatusService.js` (`PASS`),
+  - `node --check frontend/js/eliminatorias.js` (`PASS`),
+  - `node --check frontend/js/tablas.js` (`PASS`),
+  - `node --check frontend/js/equipos.js` (`PASS`),
+  - `node --check frontend/js/core.js` (`PASS`),
+  - `npm --prefix backend run smoke` (`PASS`, 9/9).
 
 ### 2026-03-08
 - Auditoria de edicion de planillas finalizadas:
@@ -868,6 +944,10 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 
 ## Pendientes Prioritarios
 - Ejecutar pruebas end-to-end con datos reales (validar que todo el flujo quede estable).
+- Validar en operacion real:
+  - eliminacion manual por causal,
+  - clasificacion manual con sugerencia,
+  - generacion de playoff con equipos sustituidos manualmente.
 - Consolidar autenticacion y roles (RBAC) minimo.
 - Completar alta/edicion de usuario organizador con campos de perfil:
   - nombre de la organizacion,

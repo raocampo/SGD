@@ -780,7 +780,14 @@ async function actualizarEstadoPase(id, estado, aplicarTransferencia) {
       : estado === "pagado"
         ? "marcar como pagado"
         : "anular";
-  if (!confirm(`¿Deseas ${accion} este pase?`)) return;
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Actualizar estado del pase",
+    mensaje: `¿Deseas ${accion} este pase?`,
+    tipo: estado === "anulado" ? "warning" : "info",
+    textoConfirmar: "Continuar",
+    claseConfirmar: estado === "anulado" ? "btn-danger" : "btn-primary",
+  });
+  if (!ok) return;
 
   try {
     await PasesAPI.actualizarEstado(id, {

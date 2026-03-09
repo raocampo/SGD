@@ -254,42 +254,10 @@ async function cargarCampeonatosParaSorteo() {
     });
 }*/
 function mostrarNotificacion(mensaje, tipo = 'info') {
-    console.log(`🔔 ${tipo.toUpperCase()}: ${mensaje}`);
-    
-    // Crear notificación temporal
-    const notification = document.createElement('div');
-    notification.className = `notification ${tipo}`;
-    notification.textContent = mensaje;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 20px;
-        background: ${tipo === 'error' ? '#e74c3c' : tipo === 'success' ? '#27ae60' : '#3498db'};
-        color: white;
-        border-radius: 5px;
-        z-index: 10000;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-        animation: slideInRight 0.3s ease;
-        font-family: Arial, sans-serif;
-        font-size: 14px;
-        font-weight: bold;
-    `;
-
-    // VERIFICAR que el body existe antes de agregar la notificación
-    if (document.body) {
-        document.body.appendChild(notification);
-        
-        // Remover después de 3 segundos
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, 3000);
-    } else {
-        // Si el body no está disponible, solo mostrar en consola
-        console.log(`NOTIFICATION [${tipo}]: ${mensaje}`);
+    if (typeof window.__sgdToast === 'function') {
+        return window.__sgdToast(mensaje, tipo);
     }
+    console.log(`🔔 ${tipo.toUpperCase()}: ${mensaje}`);
 }
 // En app.js - función para cargar campeonatos en el selector de sorteo
 async function cargarCampeonatosParaSorteo() {

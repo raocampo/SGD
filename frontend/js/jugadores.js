@@ -2062,7 +2062,14 @@ async function eliminarJugador(id) {
     mostrarNotificacion("Tu perfil es solo lectura en jugadores", "warning");
     return;
   }
-  if (!confirm("¿Seguro que deseas eliminar este jugador?")) return;
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Eliminar jugador",
+    mensaje: "¿Seguro que deseas eliminar este jugador?",
+    tipo: "warning",
+    textoConfirmar: "Eliminar",
+    claseConfirmar: "btn-danger",
+  });
+  if (!ok) return;
 
   try {
     await ApiClient.delete(`/jugadores/${id}`);
@@ -2392,7 +2399,12 @@ function inicializarImportadorJugadores() {
         resumen.push(`Primeros errores backend:\n${preview}`);
       }
 
-      alert(resumen.join("\n"));
+      await window.mostrarAlerta({
+        titulo: "Resumen de importación",
+        mensaje: resumen.join("\n"),
+        tipo: totalErroresBackend ? "warning" : "success",
+        textoBoton: "Cerrar resumen",
+      });
       mostrarNotificacion("Importacion finalizada", totalErroresBackend ? "warning" : "success");
     } catch (error) {
       console.error("Error importando jugadores:", error);
@@ -2531,7 +2543,12 @@ function inicializarImportadorDocsZip() {
       if (errores.length) {
         resumen.push(`Detalle:\n${errores.slice(0, 8).join("\n")}`);
       }
-      alert(resumen.join("\n"));
+      await window.mostrarAlerta({
+        titulo: "Resumen de importación ZIP",
+        mensaje: resumen.join("\n"),
+        tipo: errores.length ? "warning" : "success",
+        textoBoton: "Cerrar resumen",
+      });
       mostrarNotificacion("Importación ZIP finalizada", errores.length ? "warning" : "success");
     } catch (error) {
       console.error("Error importando ZIP de documentos:", error);

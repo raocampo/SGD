@@ -97,11 +97,21 @@ function construirChipsAlertaEquipo(alerta, { compacta = false } = {}) {
   const amarillas = Number(alerta?.alerta_amarillas || 0);
   const noPresentaciones = Number(alerta?.no_presentaciones || 0);
   const eliminadoAutomatico = alerta?.eliminado_automatico === true;
+  const eliminadoManual = alerta?.eliminado_manual === true;
+  const motivoEliminacion = alerta?.motivo_eliminacion_label || "Eliminado manualmente";
 
   if (eliminadoAutomatico) {
     chips.push(`
       <span class="equipo-alerta-chip equipo-alerta-deuda" title="Equipo eliminado automáticamente por 3 no presentaciones">
         <i class="fas fa-user-slash"></i> ${compacta ? "Eliminado" : "Eliminado por no presentación"}
+      </span>
+    `);
+  }
+
+  if (eliminadoManual) {
+    chips.push(`
+      <span class="equipo-alerta-chip equipo-alerta-deuda" title="${escapeHtml(motivoEliminacion)}">
+        <i class="fas fa-ban"></i> ${compacta ? "Eliminado" : escapeHtml(motivoEliminacion)}
       </span>
     `);
   }
@@ -453,7 +463,12 @@ function inicializarImportadorEquipos() {
         resumen.push(`Primeros errores:\n${preview}`);
       }
 
-      alert(resumen.join("\n"));
+      await window.mostrarAlerta({
+        titulo: "Resumen de importación",
+        mensaje: resumen.join("\n"),
+        tipo: totalErroresBackend ? "warning" : "success",
+        textoBoton: "Cerrar resumen",
+      });
       mostrarNotificacion(
         `Importación finalizada. Creados: ${totalCreado}, errores: ${totalErroresBackend}`,
         totalErroresBackend ? "warning" : "success"
@@ -907,6 +922,8 @@ function renderEquipoCard(equipo, index = 0) {
     ...(obtenerAlertaOperativaEquipo(equipo.id) || {}),
     no_presentaciones: Number(equipo.no_presentaciones || 0),
     eliminado_automatico: equipo.eliminado_automatico === true,
+    eliminado_manual: equipo.eliminado_manual === true,
+    motivo_eliminacion_label: equipo.motivo_eliminacion_label || null,
   };
   const accionesAdmin = usuarioEsTecnico()
     ? ""
@@ -958,6 +975,8 @@ function renderTablaEquipos(equipos) {
         ...(obtenerAlertaOperativaEquipo(equipo.id) || {}),
         no_presentaciones: Number(equipo.no_presentaciones || 0),
         eliminado_automatico: equipo.eliminado_automatico === true,
+        eliminado_manual: equipo.eliminado_manual === true,
+        motivo_eliminacion_label: equipo.motivo_eliminacion_label || null,
       };
       const logoUrl = equipo.logo_url
         ? (equipo.logo_url.startsWith("http") ? equipo.logo_url : `${baseUrl}${equipo.logo_url}`)
@@ -1286,7 +1305,14 @@ async function eliminarEquipo(id) {
     mostrarNotificacion("No autorizado para eliminar equipos", "warning");
     return;
   }
-  if (!confirm("¿Seguro que quieres eliminar este equipo?")) return;
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Eliminar equipo",
+    mensaje: "¿Seguro que quieres eliminar este equipo?",
+    tipo: "warning",
+    textoConfirmar: "Eliminar",
+    claseConfirmar: "btn-danger",
+  });
+  if (!ok) return;
   try {
     await window.ApiClient.delete(`/equipos/${id}`);
     mostrarNotificacion("Equipo eliminado.", "success");
@@ -1316,14 +1342,30 @@ async function moverEquipoCategoria(equipoId) {
       return;
     }
 
-    const promptListado = opciones.map((e) => `${e.id}: ${e.nombre}`).join("\n");
-    const valor = window.prompt(
-      `Ingresa el ID de la categoría destino:\n${promptListado}`,
-      String(opciones[0].id)
-    );
-    if (valor === null) return;
+    const seleccion = await window.mostrarFormularioModal({
+      titulo: "Cambiar equipo de categoría",
+      mensaje: "Selecciona la categoría destino dentro del campeonato actual.",
+      tipo: "info",
+      textoConfirmar: "Mover equipo",
+      ancho: "sm",
+      campos: [
+        {
+          name: "destino",
+          label: "Categoría destino",
+          type: "select",
+          value: String(opciones[0].id),
+          required: true,
+          options: opciones.map((e) => ({
+            value: String(e.id),
+            label: e.nombre || `Categoría ${e.id}`,
+          })),
+          span: 2,
+        },
+      ],
+    });
+    if (!seleccion) return;
 
-    const destinoId = Number.parseInt(String(valor).trim(), 10);
+    const destinoId = Number.parseInt(String(seleccion.destino || "").trim(), 10);
     if (!Number.isFinite(destinoId) || destinoId <= 0) {
       mostrarNotificacion("Categoría destino inválida", "warning");
       return;

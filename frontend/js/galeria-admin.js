@@ -109,7 +109,14 @@
   }
 
   async function eliminar(id) {
-    if (!window.confirm("¿Eliminar este item de galería?")) return;
+    const ok = await window.mostrarConfirmacion({
+      titulo: "Eliminar item de galería",
+      mensaje: "¿Eliminar este item de la galería pública?",
+      tipo: "warning",
+      textoConfirmar: "Eliminar",
+      claseConfirmar: "btn-danger",
+    });
+    if (!ok) return;
     try {
       await window.GaleriaAPI.eliminar(id);
       if (Number(editandoId) === Number(id)) limpiar();

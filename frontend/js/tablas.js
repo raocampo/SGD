@@ -2,6 +2,7 @@ let tablasEventoSeleccionado = null;
 let tablasEventosCache = [];
 let tablasCampeonatosCache = [];
 let tablasCampeonatoSeleccionado = null;
+let tablasConfigPlayoff = null;
 
 const TABLAS_TAB_IDS = ["tab-posiciones", "tab-goleadores", "tab-tarjetas", "tab-fair-play"];
 const TABLAS_STORAGE_CAMPEONATO = "sgd_tablas_camp";
@@ -21,6 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await cargarEventos(eventoDesdeURL);
 
   if (tablasEventoSeleccionado) {
+    await cargarConfiguracionCompetenciaCompartida();
     await buscarTablasEvento();
   } else {
     limpiarPaneles();
@@ -125,7 +127,10 @@ function inicializarAcciones() {
   const selectEvento = document.getElementById("select-evento-tablas");
   const selectCampeonato = document.getElementById("select-campeonato-tablas");
   const btnGuardarFormato = document.getElementById("btn-guardar-formato-tablas");
+  const btnReiniciarFormato = document.getElementById("btn-reiniciar-formato-tablas");
   const selectMetodo = document.getElementById("tablas-metodo-competencia");
+  const selectOrigen = document.getElementById("tablas-origen-playoff");
+  const selectMetodoPlayoff = document.getElementById("tablas-metodo-playoff");
 
   if (btnBuscar) btnBuscar.addEventListener("click", buscarTablasEvento);
   if (btnRecargar) {
@@ -139,6 +144,7 @@ function inicializarAcciones() {
   if (selectCampeonato) {
     selectCampeonato.addEventListener("change", async () => {
       tablasCampeonatoSeleccionado = parsePositiveInt(selectCampeonato.value);
+      tablasConfigPlayoff = null;
       limpiarContextoTablasEvento();
       guardarContextoTablas();
       await cargarEventos(null);
@@ -147,8 +153,9 @@ function inicializarAcciones() {
   }
 
   if (selectEvento) {
-    selectEvento.addEventListener("change", () => {
+    selectEvento.addEventListener("change", async () => {
       tablasEventoSeleccionado = parsePositiveInt(selectEvento.value);
+      tablasConfigPlayoff = null;
       const eventoSel = tablasEventosCache.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
       const campEvt = parsePositiveInt(eventoSel?.campeonato_id);
       if (campEvt) {
@@ -156,15 +163,25 @@ function inicializarAcciones() {
       }
       guardarContextoTablas();
       actualizarFormularioFormato(eventoSel || null);
+      await cargarConfiguracionCompetenciaCompartida();
     });
   }
 
   if (selectMetodo) {
     selectMetodo.addEventListener("change", actualizarVisibilidadFormatoClasificacion);
   }
+  if (selectOrigen) {
+    selectOrigen.addEventListener("change", actualizarVisibilidadFormatoClasificacion);
+  }
+  if (selectMetodoPlayoff) {
+    selectMetodoPlayoff.addEventListener("change", actualizarVisibilidadFormatoClasificacion);
+  }
 
   if (btnGuardarFormato) {
     btnGuardarFormato.addEventListener("click", guardarFormatoClasificacion);
+  }
+  if (btnReiniciarFormato) {
+    btnReiniciarFormato.addEventListener("click", reiniciarFormatoClasificacion);
   }
 }
 
@@ -172,42 +189,211 @@ function puedeEditarFormato() {
   return window.Auth?.isAdminLike?.() === true;
 }
 
+function obtenerCrucesConfiguradosDesdeContenedor(cont) {
+  if (!cont) return [];
+  const aSelects = Array.from(cont.querySelectorAll("select[data-cruce-a]"));
+  const cruces = [];
+  for (const selA of aSelects) {
+    const idx = selA.getAttribute("data-cruce-a");
+    const selB = cont.querySelector(`select[data-cruce-b="${idx}"]`);
+    const a = String(selA.value || "").toUpperCase().trim();
+    const b = String(selB?.value || "").toUpperCase().trim();
+    if (!a || !b || a === b) continue;
+    cruces.push([a, b]);
+  }
+  const usados = new Set();
+  return cruces.filter(([a, b]) => {
+    if (usados.has(a) || usados.has(b)) return false;
+    usados.add(a);
+    usados.add(b);
+    return true;
+  });
+}
+
+function obtenerCrucesConfiguradosTablas() {
+  return obtenerCrucesConfiguradosDesdeContenedor(document.getElementById("tablas-cruces-grupos"));
+}
+
+function renderCrucesTablas() {
+  const cont = document.getElementById("tablas-cruces-grupos");
+  if (!cont) return;
+  const grupos = Array.isArray(tablasConfigPlayoff?.configuracion?.grupos)
+    ? tablasConfigPlayoff.configuracion.grupos
+        .map((grupo) => String(grupo?.letra_grupo || "").toUpperCase().trim())
+        .filter(Boolean)
+    : [];
+  const crucesActuales = obtenerCrucesConfiguradosDesdeContenedor(cont);
+  const crucesGuardados = Array.isArray(tablasConfigPlayoff?.configuracion?.cruces_grupos)
+    ? tablasConfigPlayoff.configuracion.cruces_grupos
+    : [];
+
+  if (grupos.length < 2) {
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-layer-group"></i>
+        <p>Primero debes tener grupos creados para configurar cruces.</p>
+      </div>`;
+    return;
+  }
+
+  const pares = Math.floor(grupos.length / 2);
+  cont.innerHTML = Array.from({ length: pares }, (_, idx) => {
+    const base = crucesActuales[idx] || crucesGuardados[idx] || [
+      grupos[idx],
+      grupos[grupos.length - 1 - idx],
+    ];
+    const a = base[0];
+    const b = base[1];
+    return `
+      <div class="eli-cruce-row">
+        <span>Cruce ${idx + 1}</span>
+        <select data-cruce-a="${idx}">
+          ${grupos
+            .map(
+              (grupo) =>
+                `<option value="${escaparHtml(grupo)}" ${grupo === a ? "selected" : ""}>Grupo ${escaparHtml(grupo)}</option>`
+            )
+            .join("")}
+        </select>
+        <span>vs</span>
+        <select data-cruce-b="${idx}">
+          ${grupos
+            .map(
+              (grupo) =>
+                `<option value="${escaparHtml(grupo)}" ${grupo === b ? "selected" : ""}>Grupo ${escaparHtml(grupo)}</option>`
+            )
+            .join("")}
+        </select>
+      </div>
+    `;
+  }).join("");
+
+  const bloqueada = tablasConfigPlayoff?.configuracion?.guardada === true || !puedeEditarFormato();
+  cont.querySelectorAll("select").forEach((select) => {
+    select.disabled = bloqueada;
+  });
+}
+
+function aplicarBloqueoConfiguracionTablas(guardada = false) {
+  const disabled = guardada || !puedeEditarFormato();
+  ["tablas-metodo-competencia", "tablas-clasificados-por-grupo", "tablas-origen-playoff", "tablas-metodo-playoff"].forEach(
+    (id) => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = disabled;
+    }
+  );
+  document.querySelectorAll("#tablas-cruces-grupos select").forEach((select) => {
+    select.disabled = disabled;
+  });
+  const btnGuardar = document.getElementById("btn-guardar-formato-tablas");
+  const btnReset = document.getElementById("btn-reiniciar-formato-tablas");
+  if (btnGuardar) {
+    btnGuardar.disabled = !puedeEditarFormato();
+    btnGuardar.style.display = guardada && puedeEditarFormato() ? "none" : "";
+  }
+  if (btnReset) {
+    btnReset.disabled = !puedeEditarFormato();
+    btnReset.style.display = guardada && puedeEditarFormato() ? "" : "none";
+  }
+}
+
 function actualizarVisibilidadFormatoClasificacion() {
   const selectMetodo = document.getElementById("tablas-metodo-competencia");
   const wrapClasificados = document.getElementById("tablas-wrap-clasificados");
+  const selectOrigen = document.getElementById("tablas-origen-playoff");
+  const selectMetodoPlayoff = document.getElementById("tablas-metodo-playoff");
+  const wrapMetodoPlayoff = document.getElementById("tablas-wrap-metodo-playoff");
+  const wrapCruces = document.getElementById("tablas-wrap-cruces");
   if (!selectMetodo || !wrapClasificados) return;
   const metodo = String(selectMetodo.value || "grupos").toLowerCase();
-  wrapClasificados.style.display = ["grupos", "mixto"].includes(metodo) ? "" : "none";
+  const origen = String(selectOrigen?.value || "grupos").toLowerCase();
+  const metodoPlayoff = String(selectMetodoPlayoff?.value || "cruces_grupos").toLowerCase();
+  wrapClasificados.style.display = ["grupos", "mixto", "liga"].includes(metodo) ? "" : "none";
+  if (wrapMetodoPlayoff) wrapMetodoPlayoff.style.display = origen === "grupos" ? "" : "none";
+  if (wrapCruces) wrapCruces.style.display = origen === "grupos" && metodoPlayoff === "cruces_grupos" ? "" : "none";
+  if (origen === "grupos" && metodoPlayoff === "cruces_grupos") {
+    renderCrucesTablas();
+  }
 }
 
 function actualizarFormularioFormato(evento = null) {
   const selectMetodo = document.getElementById("tablas-metodo-competencia");
   const inputClasificados = document.getElementById("tablas-clasificados-por-grupo");
+  const selectOrigen = document.getElementById("tablas-origen-playoff");
+  const selectMetodoPlayoff = document.getElementById("tablas-metodo-playoff");
   const btnGuardar = document.getElementById("btn-guardar-formato-tablas");
   const ayuda = document.getElementById("tablas-formato-ayuda");
   if (!selectMetodo || !inputClasificados || !btnGuardar || !ayuda) return;
 
-  if (!evento) {
+  const eventoVista = tablasConfigPlayoff?.evento || evento || null;
+  const config = tablasConfigPlayoff?.configuracion || null;
+  const guardada = config?.guardada === true;
+
+  if (!eventoVista) {
     selectMetodo.value = "grupos";
     inputClasificados.value = "2";
+    if (selectOrigen) selectOrigen.value = "grupos";
+    if (selectMetodoPlayoff) selectMetodoPlayoff.value = "cruces_grupos";
     btnGuardar.disabled = true;
-    ayuda.textContent = "Selecciona una categoría para editar su formato de clasificación.";
+    ayuda.textContent = "Selecciona una categoría para editar su configuración.";
+    aplicarBloqueoConfiguracionTablas(false);
     actualizarVisibilidadFormatoClasificacion();
     return;
   }
 
-  const metodo = String(evento.metodo_competencia || "grupos").toLowerCase();
+  const metodo = String(eventoVista.metodo_competencia || "grupos").toLowerCase();
   selectMetodo.value = ["grupos", "liga", "eliminatoria", "mixto"].includes(metodo) ? metodo : "grupos";
-  inputClasificados.value = parsePositiveInt(evento.clasificados_por_grupo) || 2;
+  inputClasificados.value = parsePositiveInt(eventoVista.clasificados_por_grupo) || 2;
+  if (selectOrigen) {
+    selectOrigen.value = String(
+      config?.origen || (metodo === "eliminatoria" ? "evento" : "grupos")
+    ).toLowerCase();
+  }
+  if (selectMetodoPlayoff) {
+    selectMetodoPlayoff.value = String(config?.metodo_clasificacion || "cruces_grupos").toLowerCase();
+  }
 
   if (!puedeEditarFormato()) {
     btnGuardar.disabled = true;
-    ayuda.textContent = "Solo administrador u organizador pueden guardar el formato de clasificación.";
+    ayuda.textContent = "Solo administrador u organizador pueden guardar esta configuración.";
   } else {
     btnGuardar.disabled = false;
-    ayuda.textContent = `Configuración activa para: ${evento.nombre || `Categoría ${evento.id}`}.`;
+    ayuda.textContent = guardada
+      ? `Configuración guardada para: ${eventoVista.nombre || `Categoría ${eventoVista.id}`}. Usa Reiniciar configuración para modificarla.`
+      : `Configuración editable para: ${eventoVista.nombre || `Categoría ${eventoVista.id}`}.`;
   }
+  renderCrucesTablas();
+  aplicarBloqueoConfiguracionTablas(guardada);
   actualizarVisibilidadFormatoClasificacion();
+}
+
+async function cargarConfiguracionCompetenciaCompartida({ notificar = false } = {}) {
+  if (!tablasEventoSeleccionado) {
+    tablasConfigPlayoff = null;
+    actualizarFormularioFormato(null);
+    return null;
+  }
+  try {
+    const resp = await ApiClient.get(`/eliminatorias/evento/${tablasEventoSeleccionado}/configuracion`);
+    tablasConfigPlayoff = resp || null;
+    if (resp?.evento) {
+      tablasEventosCache = tablasEventosCache.map((item) =>
+        Number(item.id) === Number(tablasEventoSeleccionado) ? { ...item, ...resp.evento } : item
+      );
+    }
+    const eventoSel = tablasEventosCache.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
+    actualizarFormularioFormato(eventoSel || resp?.evento || null);
+    if (notificar) {
+      mostrarNotificacion("Configuración cargada", "success");
+    }
+    return resp;
+  } catch (error) {
+    console.error(error);
+    tablasConfigPlayoff = null;
+    const eventoSel = tablasEventosCache.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
+    actualizarFormularioFormato(eventoSel || null);
+    return null;
+  }
 }
 
 async function guardarFormatoClasificacion() {
@@ -216,16 +402,24 @@ async function guardarFormatoClasificacion() {
     return;
   }
   if (!puedeEditarFormato()) {
-    mostrarNotificacion("No tienes permisos para guardar este formato.", "warning");
+    mostrarNotificacion("No tienes permisos para guardar esta configuración.", "warning");
     return;
   }
 
   const selectMetodo = document.getElementById("tablas-metodo-competencia");
   const inputClasificados = document.getElementById("tablas-clasificados-por-grupo");
+  const selectOrigen = document.getElementById("tablas-origen-playoff");
+  const selectMetodoPlayoff = document.getElementById("tablas-metodo-playoff");
   const metodo = String(selectMetodo?.value || "grupos").toLowerCase();
-  const payload = { metodo_competencia: metodo };
+  const origen = String(selectOrigen?.value || "grupos").toLowerCase();
+  const metodoPlayoff = String(selectMetodoPlayoff?.value || "cruces_grupos").toLowerCase();
+  const payload = {
+    metodo_competencia: metodo,
+    origen,
+    metodo_clasificacion: metodoPlayoff,
+  };
 
-  if (["grupos", "mixto"].includes(metodo)) {
+  if (["grupos", "mixto", "liga"].includes(metodo)) {
     const clasificados = parsePositiveInt(inputClasificados?.value);
     if (!clasificados) {
       mostrarNotificacion("Clasificados por grupo debe ser un entero mayor a 0.", "warning");
@@ -236,19 +430,55 @@ async function guardarFormatoClasificacion() {
     payload.clasificados_por_grupo = null;
   }
 
+  if (origen === "grupos" && metodoPlayoff === "cruces_grupos") {
+    payload.cruces_grupos = obtenerCrucesConfiguradosTablas();
+  }
+
   try {
-    const resp = await EventosAPI.actualizar(tablasEventoSeleccionado, payload);
+    const resp = await ApiClient.put(`/eliminatorias/evento/${tablasEventoSeleccionado}/configuracion`, payload);
+    tablasConfigPlayoff = resp || null;
     const eventoActualizado = resp?.evento || {};
     tablasEventosCache = tablasEventosCache.map((item) =>
       Number(item.id) === Number(tablasEventoSeleccionado) ? { ...item, ...eventoActualizado } : item
     );
     const eventoSel = tablasEventosCache.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
     actualizarFormularioFormato(eventoSel || eventoActualizado);
-    mostrarNotificacion("Formato de clasificación guardado", "success");
+    mostrarNotificacion("Configuración guardada", "success");
     await buscarTablasEvento();
   } catch (error) {
     console.error(error);
-    mostrarNotificacion(error.message || "No se pudo guardar el formato de clasificación", "error");
+    mostrarNotificacion(error.message || "No se pudo guardar la configuración", "error");
+  }
+}
+
+async function reiniciarFormatoClasificacion() {
+  if (!tablasEventoSeleccionado) {
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return;
+  }
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Reiniciar configuración",
+    mensaje:
+      "Se desbloqueará la configuración compartida y se limpiará la selección manual de clasificados. ¿Continuar?",
+    tipo: "warning",
+    textoConfirmar: "Reiniciar",
+    claseConfirmar: "btn-warning",
+  });
+  if (!ok) return;
+  try {
+    const resp = await ApiClient.delete(`/eliminatorias/evento/${tablasEventoSeleccionado}/configuracion`);
+    tablasConfigPlayoff = resp || null;
+    if (resp?.evento) {
+      tablasEventosCache = tablasEventosCache.map((item) =>
+        Number(item.id) === Number(tablasEventoSeleccionado) ? { ...item, ...resp.evento } : item
+      );
+    }
+    const eventoSel = tablasEventosCache.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
+    actualizarFormularioFormato(eventoSel || resp?.evento || null);
+    mostrarNotificacion("Configuración reiniciada", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo reiniciar la configuración", "error");
   }
 }
 
@@ -290,6 +520,9 @@ async function cargarEventos(eventoPreseleccionado = null) {
     guardarContextoTablas();
     const eventoSel = eventos.find((e) => Number(e.id) === Number(tablasEventoSeleccionado));
     actualizarFormularioFormato(eventoSel || null);
+    if (tablasEventoSeleccionado) {
+      await cargarConfiguracionCompetenciaCompartida();
+    }
   } catch (error) {
     console.error(error);
     mostrarNotificacion("Error cargando categorías", "error");
@@ -304,6 +537,7 @@ function sincronizarFormatoConPosiciones(posicionesPayload = {}) {
     if (Number(item.id) !== Number(tablasEventoSeleccionado)) return item;
     return {
       ...item,
+      metodo_competencia: eventoPos?.metodo_competencia || item.metodo_competencia || "grupos",
       clasificados_por_grupo:
         parsePositiveInt(eventoPos?.clasificados_por_grupo) || item.clasificados_por_grupo || null,
     };
@@ -446,11 +680,23 @@ function renderPosiciones(data) {
 
 function renderEstadoPosicion(row = {}) {
   const noPresentaciones = Number(row.no_presentaciones || 0);
-  if (row.eliminado_automatico === true) {
+  const eliminadoManual = row.eliminado_manual === true;
+  const eliminadoAutomatico = row.eliminado_automatico === true;
+  const motivoManual = escaparHtml(row.motivo_eliminacion_label || "Eliminado manualmente");
+  if (eliminadoAutomatico || eliminadoManual) {
+    const leyenda = eliminadoManual
+      ? motivoManual
+      : noPresentaciones >= 2
+        ? `${noPresentaciones}da no presentación`
+        : "Eliminado";
     return `
       <div class="tabla-posicion-status">
-        <span class="tabla-posicion-chip is-eliminado">Eliminado</span>
-        <span class="tabla-posicion-chip is-neutral">NP ${noPresentaciones}</span>
+        <span class="tabla-posicion-banner is-eliminado">${leyenda}</span>
+        ${
+          eliminadoAutomatico
+            ? `<span class="tabla-posicion-chip is-neutral">NP ${noPresentaciones}</span>`
+            : ""
+        }
       </div>
     `;
   }
@@ -474,7 +720,7 @@ function renderTablaPosiciones(tabla, clasificanPorGrupo = 0) {
       const est = row.estadisticas || {};
       const posicion = Number(row.posicion || idx + 1);
       const fuera = row.fuera_clasificacion === true;
-      const eliminado = row.eliminado_automatico === true;
+      const eliminado = row.eliminado_competencia === true || row.eliminado_manual === true;
       const classes = [
         fuera ? "tabla-posicion-fuera" : "",
         eliminado ? "tabla-posicion-eliminado" : "",
@@ -507,7 +753,7 @@ function renderTablaPosiciones(tabla, clasificanPorGrupo = 0) {
     ${
       Number.isFinite(Number(clasificanPorGrupo)) && Number(clasificanPorGrupo) > 0
         ? `<p class="tablas-clasificacion-help">
-             Se pintan en rojo los equipos fuera de clasificación y los eliminados automáticamente.
+             Se pintan en naranja los equipos fuera de clasificación y en rojo oscuro los equipos eliminados.
            </p>`
         : ""
     }

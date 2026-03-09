@@ -232,35 +232,432 @@
     window.__sgdFetchAuthPatched = true;
   }
 
-  window.mostrarNotificacion = function (mensaje, tipo = "info") {
-    console.log(`${tipo.toUpperCase()}: ${mensaje}`);
+  function escapeFeedbackHtml(valor) {
+    return String(valor ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
 
-    const existing = document.querySelector(".toast-notificacion");
-    if (existing) existing.remove();
+  function iconoFeedback(tipo = "info") {
+    if (tipo === "success") return "fa-circle-check";
+    if (tipo === "error") return "fa-circle-xmark";
+    if (tipo === "warning") return "fa-triangle-exclamation";
+    return "fa-circle-info";
+  }
 
-    const toast = document.createElement("div");
-    toast.className = "toast-notificacion";
-    toast.textContent = mensaje;
-    toast.style.position = "fixed";
-    toast.style.top = "20px";
-    toast.style.right = "20px";
-    toast.style.zIndex = 9999;
-    toast.style.padding = "12px 16px";
-    toast.style.borderRadius = "10px";
-    toast.style.color = "#fff";
-    toast.style.fontWeight = "600";
-    toast.style.boxShadow = "0 10px 25px rgba(0,0,0,.2)";
-    toast.style.background =
-      tipo === "success"
-        ? "#16a34a"
-        : tipo === "error"
-        ? "#ef4444"
-        : tipo === "warning"
-        ? "#f59e0b"
-        : "#3b82f6";
+  function tituloFeedback(tipo = "info") {
+    if (tipo === "success") return "Operación completada";
+    if (tipo === "error") return "Se produjo un error";
+    if (tipo === "warning") return "Atención";
+    return "Información";
+  }
 
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+  function asegurarInfraestructuraFeedback() {
+    let stack = document.getElementById("sgd-toast-stack");
+    if (!stack) {
+      stack = document.createElement("div");
+      stack.id = "sgd-toast-stack";
+      stack.className = "sgd-toast-stack";
+      document.body.appendChild(stack);
+    }
+
+    let root = document.getElementById("sgd-dialog-root");
+    if (!root) {
+      root = document.createElement("div");
+      root.id = "sgd-dialog-root";
+      document.body.appendChild(root);
+    }
+
+    return { stack, root };
+  }
+
+  function sincronizarEstadoModalBody() {
+    const abierto = document.querySelector(".modal.open, .sgd-dialog-backdrop.is-open");
+    document.body.classList.toggle("modal-open", Boolean(abierto));
+  }
+
+  function renderTextoFeedback(mensaje = "") {
+    const texto = Array.isArray(mensaje) ? mensaje.join("\n") : String(mensaje ?? "");
+    return texto
+      .split(/\n+/)
+      .filter(Boolean)
+      .map((linea) => `<p>${escapeFeedbackHtml(linea)}</p>`)
+      .join("");
+  }
+
+  function crearBotonDialogo(texto, clase = "btn btn-outline", type = "button") {
+    const btn = document.createElement("button");
+    btn.type = type;
+    btn.className = `btn ${clase.replace(/\bbtn\b/g, "").trim()}`.trim();
+    btn.textContent = texto;
+    return btn;
+  }
+
+  window.mostrarNotificacion = function (mensaje, tipo = "info", opciones = {}) {
+    console.log(`${String(tipo || "info").toUpperCase()}: ${mensaje}`);
+
+    if (!document?.body) return;
+
+    const { stack } = asegurarInfraestructuraFeedback();
+    const toast = document.createElement("article");
+    const duracion = Number(opciones?.duracion) > 0 ? Number(opciones.duracion) : tipo === "error" ? 5200 : 3600;
+    toast.className = `sgd-toast sgd-toast-${tipo}`;
+    toast.style.setProperty("--toast-duration", `${duracion}ms`);
+    toast.innerHTML = `
+      <div class="sgd-toast-icon" aria-hidden="true">
+        <i class="fas ${iconoFeedback(tipo)}"></i>
+      </div>
+      <div class="sgd-toast-body">
+        <strong>${escapeFeedbackHtml(opciones?.titulo || tituloFeedback(tipo))}</strong>
+        <p>${escapeFeedbackHtml(mensaje || "")}</p>
+      </div>
+      <button type="button" class="sgd-toast-close" aria-label="Cerrar aviso">
+        <i class="fas fa-xmark"></i>
+      </button>
+      <span class="sgd-toast-progress" aria-hidden="true"></span>
+    `;
+
+    const cerrar = () => {
+      toast.classList.add("is-leaving");
+      window.setTimeout(() => {
+        toast.remove();
+      }, 220);
+    };
+
+    toast.querySelector(".sgd-toast-close")?.addEventListener("click", cerrar);
+    stack.prepend(toast);
+
+    while (stack.children.length > 4) {
+      stack.lastElementChild?.remove();
+    }
+
+    window.setTimeout(cerrar, duracion);
+    return toast;
+  };
+  window.__sgdToast = window.mostrarNotificacion;
+
+  window.mostrarAlerta = function (config, tipoPorDefecto = "info") {
+    const opciones =
+      typeof config === "object" && config !== null
+        ? { ...config }
+        : { mensaje: config, tipo: tipoPorDefecto };
+
+    return new Promise((resolve) => {
+      const { root } = asegurarInfraestructuraFeedback();
+      const backdrop = document.createElement("div");
+      backdrop.className = `sgd-dialog-backdrop is-open tipo-${opciones.tipo || tipoPorDefecto}`;
+      backdrop.innerHTML = `
+        <div class="sgd-dialog sgd-dialog-sm" role="alertdialog" aria-modal="true">
+          <div class="sgd-dialog-header">
+            <div class="sgd-dialog-badge">
+              <i class="fas ${iconoFeedback(opciones.tipo || tipoPorDefecto)}"></i>
+            </div>
+            <div>
+              <h3>${escapeFeedbackHtml(opciones.titulo || tituloFeedback(opciones.tipo || tipoPorDefecto))}</h3>
+            </div>
+          </div>
+          <div class="sgd-dialog-body">
+            <div class="sgd-dialog-message">${renderTextoFeedback(opciones.mensaje || "")}</div>
+          </div>
+          <div class="sgd-dialog-actions">
+            <button type="button" class="btn btn-primary sgd-dialog-confirm">${escapeFeedbackHtml(
+              opciones.textoBoton || "Entendido"
+            )}</button>
+          </div>
+        </div>
+      `;
+
+      const cerrar = () => {
+        backdrop.remove();
+        sincronizarEstadoModalBody();
+        resolve(true);
+      };
+
+      backdrop.querySelector(".sgd-dialog-confirm")?.addEventListener("click", cerrar);
+      backdrop.addEventListener("click", (event) => {
+        if (event.target === backdrop) cerrar();
+      });
+      backdrop.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" || event.key === "Enter") {
+          event.preventDefault();
+          cerrar();
+        }
+      });
+
+      root.appendChild(backdrop);
+      sincronizarEstadoModalBody();
+      backdrop.querySelector(".sgd-dialog-confirm")?.focus();
+    });
+  };
+
+  window.mostrarConfirmacion = function (config) {
+    const opciones =
+      typeof config === "object" && config !== null
+        ? { ...config }
+        : { mensaje: config };
+
+    return new Promise((resolve) => {
+      const { root } = asegurarInfraestructuraFeedback();
+      const backdrop = document.createElement("div");
+      backdrop.className = `sgd-dialog-backdrop is-open tipo-${opciones.tipo || "warning"}`;
+      backdrop.innerHTML = `
+        <div class="sgd-dialog sgd-dialog-sm" role="dialog" aria-modal="true">
+          <div class="sgd-dialog-header">
+            <div class="sgd-dialog-badge">
+              <i class="fas ${iconoFeedback(opciones.tipo || "warning")}"></i>
+            </div>
+            <div>
+              <h3>${escapeFeedbackHtml(opciones.titulo || "Confirmar acción")}</h3>
+            </div>
+          </div>
+          <div class="sgd-dialog-body">
+            <div class="sgd-dialog-message">${renderTextoFeedback(opciones.mensaje || "")}</div>
+          </div>
+          <div class="sgd-dialog-actions">
+            <button type="button" class="btn btn-outline sgd-dialog-cancel">${escapeFeedbackHtml(
+              opciones.textoCancelar || "Cancelar"
+            )}</button>
+            <button type="button" class="btn ${escapeFeedbackHtml(
+              opciones.claseConfirmar || (opciones.peligro ? "btn-danger" : "btn-primary")
+            )} sgd-dialog-confirm">${escapeFeedbackHtml(opciones.textoConfirmar || "Confirmar")}</button>
+          </div>
+        </div>
+      `;
+
+      const cerrar = (valor) => {
+        backdrop.remove();
+        sincronizarEstadoModalBody();
+        resolve(Boolean(valor));
+      };
+
+      backdrop.querySelector(".sgd-dialog-cancel")?.addEventListener("click", () => cerrar(false));
+      backdrop.querySelector(".sgd-dialog-confirm")?.addEventListener("click", () => cerrar(true));
+      backdrop.addEventListener("click", (event) => {
+        if (event.target === backdrop) cerrar(false);
+      });
+      backdrop.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          cerrar(false);
+        }
+      });
+
+      root.appendChild(backdrop);
+      sincronizarEstadoModalBody();
+      backdrop.querySelector(".sgd-dialog-confirm")?.focus();
+    });
+  };
+
+  window.mostrarFormularioModal = function (config = {}) {
+    const opciones = {
+      titulo: "Editar datos",
+      mensaje: "",
+      tipo: "info",
+      textoConfirmar: "Guardar",
+      textoCancelar: "Cancelar",
+      claseConfirmar: "btn-primary",
+      campos: [],
+      ...config,
+    };
+
+    return new Promise((resolve) => {
+      const { root } = asegurarInfraestructuraFeedback();
+      const backdrop = document.createElement("div");
+      backdrop.className = `sgd-dialog-backdrop is-open tipo-${opciones.tipo}`;
+      const anchoClase = opciones.ancho === "lg" ? "sgd-dialog-lg" : opciones.ancho === "sm" ? "sgd-dialog-sm" : "sgd-dialog-md";
+      const bodyMensaje = opciones.mensaje
+        ? `<div class="sgd-dialog-message">${renderTextoFeedback(opciones.mensaje)}</div>`
+        : "";
+      backdrop.innerHTML = `
+        <div class="sgd-dialog ${anchoClase}" role="dialog" aria-modal="true">
+          <div class="sgd-dialog-header">
+            <div class="sgd-dialog-badge">
+              <i class="fas ${iconoFeedback(opciones.tipo)}"></i>
+            </div>
+            <div>
+              <h3>${escapeFeedbackHtml(opciones.titulo)}</h3>
+            </div>
+          </div>
+          <form class="sgd-dialog-form">
+            <div class="sgd-dialog-body">
+              ${bodyMensaje}
+              <div class="sgd-form-grid"></div>
+              <div class="sgd-dialog-error" hidden></div>
+            </div>
+            <div class="sgd-dialog-actions">
+              <button type="button" class="btn btn-outline sgd-dialog-cancel">${escapeFeedbackHtml(
+                opciones.textoCancelar
+              )}</button>
+              <button type="submit" class="btn ${escapeFeedbackHtml(
+                opciones.claseConfirmar
+              )} sgd-dialog-confirm">${escapeFeedbackHtml(opciones.textoConfirmar)}</button>
+            </div>
+          </form>
+        </div>
+      `;
+
+      const form = backdrop.querySelector(".sgd-dialog-form");
+      const grid = backdrop.querySelector(".sgd-form-grid");
+      const errorBox = backdrop.querySelector(".sgd-dialog-error");
+      const controls = new Map();
+
+      const cerrar = (valor) => {
+        backdrop.remove();
+        sincronizarEstadoModalBody();
+        resolve(valor);
+      };
+
+      const setError = (mensaje) => {
+        if (!errorBox) return;
+        const limpio = String(mensaje || "").trim();
+        errorBox.hidden = !limpio;
+        errorBox.textContent = limpio;
+      };
+
+      (Array.isArray(opciones.campos) ? opciones.campos : []).forEach((campo) => {
+        const field = document.createElement("label");
+        field.className = `sgd-field ${campo.span === 2 ? "is-full" : ""}`;
+        const label = document.createElement("span");
+        label.className = "sgd-field-label";
+        label.textContent = campo.label || campo.name || "Campo";
+        field.appendChild(label);
+
+        let control;
+        if (campo.type === "textarea") {
+          control = document.createElement("textarea");
+          control.rows = Number(campo.rows) > 0 ? Number(campo.rows) : 3;
+          control.value = campo.value ?? "";
+        } else if (campo.type === "select") {
+          control = document.createElement("select");
+          const opcionesSelect = Array.isArray(campo.options) ? campo.options : [];
+          opcionesSelect.forEach((opt) => {
+            const option = document.createElement("option");
+            option.value = String(opt?.value ?? "");
+            option.textContent = String(opt?.label ?? opt?.text ?? opt?.value ?? "");
+            if (String(campo.value ?? "") === option.value) option.selected = true;
+            control.appendChild(option);
+          });
+        } else {
+          control = document.createElement("input");
+          control.type = campo.type || "text";
+          control.value = campo.value ?? "";
+        }
+
+        control.name = campo.name || "";
+        control.className = "sgd-field-control";
+        if (campo.placeholder) control.placeholder = campo.placeholder;
+        if (campo.required) control.required = true;
+        if (campo.min !== undefined) control.min = String(campo.min);
+        if (campo.max !== undefined) control.max = String(campo.max);
+        if (campo.step !== undefined) control.step = String(campo.step);
+        if (campo.pattern) control.pattern = campo.pattern;
+        if (campo.inputMode) control.setAttribute("inputmode", campo.inputMode);
+        if (campo.autocomplete) control.setAttribute("autocomplete", campo.autocomplete);
+
+        controls.set(campo.name, { control, config: campo });
+        field.appendChild(control);
+
+        if (campo.hint) {
+          const hint = document.createElement("small");
+          hint.className = "sgd-field-hint";
+          hint.textContent = campo.hint;
+          field.appendChild(hint);
+        }
+
+        grid?.appendChild(field);
+      });
+
+      backdrop.querySelector(".sgd-dialog-cancel")?.addEventListener("click", () => cerrar(null));
+      backdrop.addEventListener("click", (event) => {
+        if (event.target === backdrop) cerrar(null);
+      });
+      backdrop.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          cerrar(null);
+        }
+      });
+
+      form?.addEventListener("submit", (event) => {
+        event.preventDefault();
+        setError("");
+
+        const values = {};
+        for (const [name, item] of controls.entries()) {
+          const { control, config: campo } = item;
+          const value = campo.type === "checkbox" ? Boolean(control.checked) : String(control.value ?? "");
+          if (!control.checkValidity()) {
+            setError(control.validationMessage || `Revisa el campo ${campo.label || name}`);
+            control.focus();
+            return;
+          }
+          if (typeof campo.validate === "function") {
+            const resultado = campo.validate(value, values);
+            if (typeof resultado === "string" && resultado.trim()) {
+              setError(resultado);
+              control.focus();
+              return;
+            }
+          }
+          values[name] = value;
+        }
+
+        cerrar(values);
+      });
+
+      root.appendChild(backdrop);
+      sincronizarEstadoModalBody();
+      const primerControl = backdrop.querySelector(".sgd-field-control");
+      if (primerControl) primerControl.focus();
+      else backdrop.querySelector(".sgd-dialog-confirm")?.focus();
+    });
+  };
+
+  window.mostrarPrompt = function (config, valorInicial = "", opcionesExtra = {}) {
+    const opciones =
+      typeof config === "object" && config !== null
+        ? { ...config }
+        : {
+            titulo: "Ingresar dato",
+            mensaje: String(config || ""),
+            value: valorInicial,
+            ...opcionesExtra,
+          };
+
+    const campoNombre = opciones.name || "valor";
+    return window
+      .mostrarFormularioModal({
+        titulo: opciones.titulo || "Ingresar dato",
+        mensaje: opciones.mensaje || "",
+        tipo: opciones.tipo || "info",
+        textoConfirmar: opciones.textoConfirmar || "Aceptar",
+        textoCancelar: opciones.textoCancelar || "Cancelar",
+        claseConfirmar: opciones.claseConfirmar || "btn-primary",
+        ancho: opciones.ancho || "sm",
+        campos: [
+          {
+            name: campoNombre,
+            label: opciones.label || "Valor",
+            type: opciones.inputType || opciones.type || "text",
+            value: opciones.value ?? valorInicial ?? "",
+            placeholder: opciones.placeholder || "",
+            required: opciones.required === true,
+            min: opciones.min,
+            max: opciones.max,
+            step: opciones.step,
+            pattern: opciones.pattern,
+            rows: opciones.rows,
+            options: opciones.options,
+            hint: opciones.hint,
+            validate: opciones.validate,
+            span: 2,
+          },
+        ],
+      })
+      .then((result) => (result ? result[campoNombre] : null));
   };
 
   window.abrirModal = function (modalId) {
@@ -268,7 +665,7 @@
     if (!modal) return;
     modal.style.display = "flex";
     modal.classList.add("open");
-    document.body.classList.add("modal-open");
+    sincronizarEstadoModalBody();
   };
 
   window.cerrarModal = function (modalId) {
@@ -276,9 +673,7 @@
     if (!modal) return;
     modal.style.display = "none";
     modal.classList.remove("open");
-    if (!document.querySelector(".modal.open")) {
-      document.body.classList.remove("modal-open");
-    }
+    sincronizarEstadoModalBody();
   };
 
   function aplicarSidebarPorRol(user) {
@@ -667,4 +1062,3 @@
     return url.searchParams.get(key);
   };
 })();
-

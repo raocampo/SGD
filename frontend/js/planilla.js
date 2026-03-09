@@ -3642,10 +3642,17 @@ async function guardarPlanilla(e) {
   const payload = recolectarPayloadPlanilla();
   const partidoYaFinalizado = estadoPlanillaEsCerrado(dataPlanilla?.partido?.estado);
   if (partidoYaFinalizado) {
-    const motivo = window.prompt(
-      "Esta planilla ya está finalizada. Ingresa el motivo de edición (mínimo 8 caracteres):",
-      ""
-    );
+    const motivo = await window.mostrarPrompt({
+      titulo: "Editar planilla finalizada",
+      mensaje: "Esta planilla ya está finalizada. Ingresa el motivo de edición (mínimo 8 caracteres).",
+      label: "Motivo de edición",
+      inputType: "textarea",
+      rows: 4,
+      required: true,
+      textoConfirmar: "Guardar edición",
+      tipo: "warning",
+      claseConfirmar: "btn-warning",
+    });
     const motivoLimpio = String(motivo || "").trim();
     if (motivoLimpio.length < 8) {
       mostrarNotificacion(

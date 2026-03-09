@@ -70,6 +70,7 @@
                 <option value="5">5 por grupo</option>
                 <option value="6">6 por grupo</option>
               </select>
+              <small class="form-hint">Este valor se sincroniza con el formato guardado de la categoría.</small>
             </div>
             <div class="form-group" id="eli-wrap-metodo-grupos" style="display:none;">
               <label for="eli-metodo-grupos">Método playoff desde grupos</label>
@@ -87,6 +88,12 @@
             </div>
           </div>
           <div class="action-bar">
+            <button type="button" class="btn btn-success" id="btn-eli-guardar-config">
+              <i class="fas fa-save"></i> Guardar configuración
+            </button>
+            <button type="button" class="btn btn-warning" id="btn-eli-reset-config" style="display:none;">
+              <i class="fas fa-rotate-left"></i> Reiniciar configuración
+            </button>
             <button type="button" class="btn btn-primary" id="btn-eli-cargar">
               <i class="fas fa-search"></i> Cargar llave
             </button>
@@ -98,6 +105,44 @@
             </button>
           </div>
           <p class="form-hint" id="eli-aviso-metodo"></p>
+          <p class="form-hint" id="eli-config-status"></p>
+        </section>
+
+        <section class="card" id="eli-admin-estado-section">
+          <div class="section-head-inline">
+            <div>
+              <h3>Estado competitivo de equipos</h3>
+              <p class="form-hint">
+                Marca eliminaciones manuales por indisciplina, deudas o segunda no presentación sin justificativo.
+              </p>
+            </div>
+          </div>
+          <div id="eli-equipo-status-grid" class="eli-admin-grid">
+            <div class="empty-state">
+              <i class="fas fa-users"></i>
+              <p>Selecciona una categoría para gestionar equipos.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="eli-admin-clasificacion-section">
+          <div class="section-head-inline">
+            <div>
+              <h3>Clasificación manual con sugerencia</h3>
+              <p class="form-hint">
+                Si la clasificación queda abierta, puedes confirmar o reemplazar el equipo clasificado por grupo.
+              </p>
+            </div>
+            <button type="button" class="btn btn-primary" id="btn-eli-guardar-clasificacion">
+              <i class="fas fa-save"></i> Guardar selección manual
+            </button>
+          </div>
+          <div id="eli-clasificacion-manual" class="eli-admin-grid">
+            <div class="empty-state">
+              <i class="fas fa-list-check"></i>
+              <p>Selecciona una categoría para revisar la clasificación.</p>
+            </div>
+          </div>
         </section>
 
         <section class="card">

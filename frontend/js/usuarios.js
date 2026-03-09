@@ -432,7 +432,13 @@
       mostrarNotificacion("No puedes eliminar tu propio usuario", "warning");
       return;
     }
-    const ok = window.confirm("¿Deseas eliminar este usuario?");
+    const ok = await window.mostrarConfirmacion({
+      titulo: "Eliminar usuario",
+      mensaje: "¿Deseas eliminar este usuario? Esta acción no se puede deshacer.",
+      tipo: "warning",
+      textoConfirmar: "Eliminar",
+      claseConfirmar: "btn-danger",
+    });
     if (!ok) return;
     try {
       await AuthAPI.eliminarUsuario(id);
@@ -474,4 +480,3 @@
     eliminar: eliminarUsuario,
   };
 })();
-

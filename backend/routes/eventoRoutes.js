@@ -68,6 +68,12 @@ router.get(
   requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   eventoController.listarEquiposDeEvento
 );
+router.put(
+  "/:evento_id/equipos/:equipo_id/estado-competencia",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  eventoController.actualizarEstadoCompetenciaEquipo
+);
 router.delete(
   "/:evento_id/equipos/:equipo_id",
   requireAuth,

@@ -431,7 +431,14 @@ async function crearEvento() {
 }
 
 async function eliminarEvento(id) {
-  if (!confirm("¿Eliminar esta categoría?")) return;
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Eliminar categoría",
+    mensaje: "¿Eliminar esta categoría del campeonato actual?",
+    tipo: "warning",
+    textoConfirmar: "Eliminar",
+    claseConfirmar: "btn-danger",
+  });
+  if (!ok) return;
 
   try {
     await EventosAPI.eliminar(id);
@@ -446,90 +453,151 @@ async function eliminarEvento(id) {
 // (opcional) editar rápido por prompt
 async function editarEvento(id) {
   const evento = eventosCache.find((item) => Number(item.id) === Number(id));
-  const nuevoNombre = prompt(
-    "Nuevo nombre de la categoría:",
-    evento?.nombre || ""
-  );
-  if (!nuevoNombre) return;
+  if (!evento) {
+    mostrarNotificacion("No se encontró la categoría seleccionada.", "warning");
+    return;
+  }
   const costoActual = normalizarCostoInscripcion(evento?.costo_inscripcion, 0);
-  const nuevoCosto = prompt(
-    "Costo de inscripción (ej: 35.00):",
-    String(costoActual ?? 0)
-  );
   const metodoActual = normalizarMetodoCompetencia(evento?.metodo_competencia) || "grupos";
-  const nuevoMetodoRaw = prompt(
-    "Método (grupos, liga, eliminatoria, mixto):",
-    metodoActual
-  );
-  if (nuevoMetodoRaw === null) return;
-  const nuevoMetodo = normalizarMetodoCompetencia(nuevoMetodoRaw);
-  if (!nuevoMetodo) {
-    mostrarNotificacion("Método inválido. Usa: grupos, liga, eliminatoria o mixto.", "warning");
-    return;
-  }
-
-  let nuevaLlave = evento?.eliminatoria_equipos ? String(evento.eliminatoria_equipos) : "";
-  let clasificadosPrompt = evento?.clasificados_por_grupo ? String(evento.clasificados_por_grupo) : "2";
-  if (nuevoMetodo === "grupos" || nuevoMetodo === "mixto") {
-    const clasificadosRaw = prompt(
-      "Clasifican por grupo:",
-      clasificadosPrompt
-    );
-    if (clasificadosRaw === null) return;
-    clasificadosPrompt = String(clasificadosRaw || "").trim();
-    if (!normalizarClasificadosPorGrupo(clasificadosPrompt, null)) {
-      mostrarNotificacion("Clasificados por grupo inválido. Usa un entero mayor a 0.", "warning");
-      return;
-    }
-  } else {
-    clasificadosPrompt = "";
-  }
-  if (nuevoMetodo === "eliminatoria" || nuevoMetodo === "mixto") {
-    const llavePrompt = prompt(
-      "Tamaño de llave eliminatoria (vacío=auto, 4, 8, 16, 32):",
-      nuevaLlave
-    );
-    if (llavePrompt === null) return;
-    nuevaLlave = String(llavePrompt || "").trim();
-    if (nuevaLlave && !["4", "8", "16", "32"].includes(nuevaLlave)) {
-      mostrarNotificacion("Llave inválida. Usa 4, 8, 16, 32 o vacío.", "warning");
-      return;
-    }
-  } else {
-    nuevaLlave = "";
-  }
-
-  const costo_inscripcion = normalizarCostoInscripcion(nuevoCosto, null);
-  if (nuevoCosto !== null && costo_inscripcion === null) {
-    mostrarNotificacion("Costo inválido. Usa solo números.", "warning");
-    return;
-  }
-
   const bloqueoActual =
     evento?.bloquear_morosos === null || evento?.bloquear_morosos === undefined || evento?.bloquear_morosos === ""
       ? "heredar"
       : (evento?.bloquear_morosos === true || String(evento?.bloquear_morosos).toLowerCase() === "true")
         ? "activar"
         : "desactivar";
-  const nuevoBloqueoRaw = prompt(
-    "Bloqueo morosos (heredar, activar, desactivar):",
-    bloqueoActual
-  );
-  if (nuevoBloqueoRaw === null) return;
-  const nuevoBloqueo = String(nuevoBloqueoRaw || "").trim().toLowerCase();
+  const montoBloqueoActual = normalizarCostoInscripcion(evento?.bloqueo_morosidad_monto, null);
+  const form = await window.mostrarFormularioModal({
+    titulo: "Editar categoría",
+    mensaje: "Actualiza la configuración deportiva y financiera de la categoría.",
+    tipo: "info",
+    textoConfirmar: "Guardar cambios",
+    ancho: "lg",
+    campos: [
+      {
+        name: "nombre",
+        label: "Nombre de la categoría",
+        type: "text",
+        value: evento?.nombre || "",
+        required: true,
+      },
+      {
+        name: "costo_inscripcion",
+        label: "Costo de inscripción",
+        type: "number",
+        value: String(costoActual ?? 0),
+        min: 0,
+        step: "0.01",
+      },
+      {
+        name: "metodo_competencia",
+        label: "Método de competencia",
+        type: "select",
+        value: metodoActual,
+        required: true,
+        options: [
+          { value: "grupos", label: "Grupos" },
+          { value: "liga", label: "Liga" },
+          { value: "eliminatoria", label: "Eliminatoria" },
+          { value: "mixto", label: "Mixto" },
+        ],
+      },
+      {
+        name: "clasificados_por_grupo",
+        label: "Clasifican por grupo",
+        type: "number",
+        value: evento?.clasificados_por_grupo ? String(evento.clasificados_por_grupo) : "2",
+        min: 1,
+        step: 1,
+        validate: (value, values) => {
+          if (!["grupos", "mixto"].includes(values.metodo_competencia)) return "";
+          return normalizarClasificadosPorGrupo(value, null)
+            ? ""
+            : "Clasificados por grupo inválido. Usa un entero mayor a 0.";
+        },
+      },
+      {
+        name: "eliminatoria_equipos",
+        label: "Tamaño de llave eliminatoria",
+        type: "select",
+        value: evento?.eliminatoria_equipos ? String(evento.eliminatoria_equipos) : "",
+        options: [
+          { value: "", label: "Automática" },
+          { value: "4", label: "4 equipos" },
+          { value: "8", label: "8 equipos" },
+          { value: "16", label: "16 equipos" },
+          { value: "32", label: "32 equipos" },
+        ],
+        validate: (value, values) => {
+          if (!["eliminatoria", "mixto"].includes(values.metodo_competencia)) return "";
+          return value && !["4", "8", "16", "32"].includes(value)
+            ? "Llave inválida. Usa 4, 8, 16, 32 o vacía."
+            : "";
+        },
+      },
+      {
+        name: "bloquear_morosos",
+        label: "Bloqueo morosos",
+        type: "select",
+        value: bloqueoActual,
+        options: [
+          { value: "heredar", label: "Heredar" },
+          { value: "activar", label: "Activar" },
+          { value: "desactivar", label: "Desactivar" },
+        ],
+      },
+      {
+        name: "bloqueo_morosidad_monto",
+        label: "Monto de bloqueo",
+        type: "number",
+        value: montoBloqueoActual === null ? "" : String(montoBloqueoActual),
+        min: 0,
+        step: "0.01",
+        validate: (value) => {
+          if (String(value || "").trim() === "") return "";
+          return normalizarCostoInscripcion(value, null) === null
+            ? "Monto de bloqueo inválido. Usa solo números >= 0."
+            : "";
+        },
+      },
+    ],
+  });
+  if (!form) return;
+
+  const nuevoNombre = String(form.nombre || "").trim();
+  const nuevoMetodo = normalizarMetodoCompetencia(form.metodo_competencia);
+  const clasificadosPrompt = ["grupos", "mixto"].includes(nuevoMetodo)
+    ? String(form.clasificados_por_grupo || "").trim()
+    : "";
+  const nuevaLlave = ["eliminatoria", "mixto"].includes(nuevoMetodo)
+    ? String(form.eliminatoria_equipos || "").trim()
+    : "";
+  const costo_inscripcion = normalizarCostoInscripcion(form.costo_inscripcion, null);
+  const nuevoBloqueo = String(form.bloquear_morosos || bloqueoActual).trim().toLowerCase();
+  const nuevoMontoBloqueoRaw = String(form.bloqueo_morosidad_monto || "").trim();
+  const nuevoMontoBloqueo = normalizarCostoInscripcion(nuevoMontoBloqueoRaw, null);
+
+  if (!nuevoNombre) return;
+  if (!nuevoMetodo) {
+    mostrarNotificacion("Método inválido. Usa: grupos, liga, eliminatoria o mixto.", "warning");
+    return;
+  }
+  if (["grupos", "mixto"].includes(nuevoMetodo) && !normalizarClasificadosPorGrupo(clasificadosPrompt, null)) {
+    mostrarNotificacion("Clasificados por grupo inválido. Usa un entero mayor a 0.", "warning");
+    return;
+  }
+  if (nuevaLlave && !["4", "8", "16", "32"].includes(nuevaLlave)) {
+    mostrarNotificacion("Llave inválida. Usa 4, 8, 16, 32 o vacío.", "warning");
+    return;
+  }
+  if (String(form.costo_inscripcion || "").trim() !== "" && costo_inscripcion === null) {
+    mostrarNotificacion("Costo inválido. Usa solo números.", "warning");
+    return;
+  }
   if (!["heredar", "activar", "desactivar"].includes(nuevoBloqueo)) {
     mostrarNotificacion("Valor inválido para bloqueo. Usa: heredar, activar, desactivar.", "warning");
     return;
   }
-
-  const montoBloqueoActual = normalizarCostoInscripcion(evento?.bloqueo_morosidad_monto, null);
-  const nuevoMontoBloqueoRaw = prompt(
-    "Monto de bloqueo (vacío = heredar):",
-    montoBloqueoActual === null ? "" : String(montoBloqueoActual)
-  );
-  if (nuevoMontoBloqueoRaw === null) return;
-  const nuevoMontoBloqueo = normalizarCostoInscripcion(nuevoMontoBloqueoRaw, null);
-  if (String(nuevoMontoBloqueoRaw || "").trim() !== "" && nuevoMontoBloqueo === null) {
+  if (nuevoMontoBloqueoRaw && nuevoMontoBloqueo === null) {
     mostrarNotificacion("Monto de bloqueo inválido. Usa solo números >= 0.", "warning");
     return;
   }
@@ -557,5 +625,4 @@ async function editarEvento(id) {
 
 window.cambiarVistaEventos = cambiarVistaEventos;
 window.toggleFormularioCategoria = toggleFormularioCategoria;
-
 

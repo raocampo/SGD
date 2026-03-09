@@ -1,6 +1,14 @@
 // backend/models/Eliminatoria.js
 const pool = require("../config/database");
 const Partido = require("./Partido");
+const {
+  asegurarEsquemaEstadoCompeticion,
+  obtenerEstadosEquiposEvento,
+  obtenerClasificadosManualesEvento,
+  estaEliminadoCompetencia,
+  construirClaveManual,
+} = require("../services/competitionStatusService");
+const { _internals: tablaInternals = {} } = require("../controllers/tablaController");
 
 const REGLAS_DEFAULT = ["puntos", "diferencia_goles", "goles_favor"];
 const RONDAS_ORDEN = ["64vos", "32vos", "16vos", "8vos", "4tos", "semifinal", "final"];
@@ -11,6 +19,7 @@ const RONDAS_POR_EQUIPOS = {
   16: ["8vos", "4tos", "semifinal", "final"],
   32: ["16vos", "8vos", "4tos", "semifinal", "final"],
 };
+const obtenerFairPlayEventoInterno = tablaInternals?.obtenerFairPlayEventoInterno;
 
 class Eliminatoria {
   static _schemaAsegurado = false;
@@ -47,6 +56,18 @@ class Eliminatoria {
     `);
 
     await db.query(`
+      CREATE TABLE IF NOT EXISTS evento_playoff_config (
+          evento_id INTEGER PRIMARY KEY REFERENCES eventos(id) ON DELETE CASCADE,
+          origen VARCHAR(20) NOT NULL DEFAULT 'grupos',
+          metodo_clasificacion VARCHAR(30) NOT NULL DEFAULT 'cruces_grupos',
+          cruces_grupos JSONB,
+          guardado_por_usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await db.query(`
       CREATE INDEX IF NOT EXISTS idx_eliminatoria_evento ON partidos_eliminatoria(evento_id)
     `);
     await db.query(`
@@ -57,6 +78,7 @@ class Eliminatoria {
       ALTER TABLE evento_equipos
       ADD COLUMN IF NOT EXISTS orden_sorteo INTEGER
     `);
+    await asegurarEsquemaEstadoCompeticion(db);
 
     if (db === pool) this._schemaAsegurado = true;
   }
@@ -76,6 +98,100 @@ class Eliminatoria {
       if (Number.isFinite(n) && n > 0) return n;
     } catch (_) {}
     return 3;
+  }
+
+  static async obtenerMapaFairPlayEvento(evento_id) {
+    if (typeof obtenerFairPlayEventoInterno !== "function") return new Map();
+    try {
+      const data = await obtenerFairPlayEventoInterno(evento_id, {});
+      const fairPlay = Array.isArray(data?.fair_play) ? data.fair_play : [];
+      return new Map(
+        fairPlay.map((row) => [
+          Number(row.equipo_id),
+          {
+            posicion: Number.parseInt(row?.posicion, 10) || null,
+            puntaje_fair_play: Number.parseFloat(row?.puntaje_fair_play) || 0,
+            amarillas: Number.parseInt(row?.amarillas, 10) || 0,
+            rojas: Number.parseInt(row?.rojas, 10) || 0,
+            faltas: Number.parseInt(row?.faltas, 10) || 0,
+          },
+        ])
+      );
+    } catch (_) {
+      return new Map();
+    }
+  }
+
+  static compararCandidatoClasificacion(a = {}, b = {}) {
+    if (Number(b?.puntos || 0) !== Number(a?.puntos || 0)) {
+      return Number(b?.puntos || 0) - Number(a?.puntos || 0);
+    }
+    if (Number(b?.diferencia_goles || 0) !== Number(a?.diferencia_goles || 0)) {
+      return Number(b?.diferencia_goles || 0) - Number(a?.diferencia_goles || 0);
+    }
+    if (Number(b?.goles_favor || 0) !== Number(a?.goles_favor || 0)) {
+      return Number(b?.goles_favor || 0) - Number(a?.goles_favor || 0);
+    }
+    if (Number(b?.puntaje_fair_play || 0) !== Number(a?.puntaje_fair_play || 0)) {
+      return Number(b?.puntaje_fair_play || 0) - Number(a?.puntaje_fair_play || 0);
+    }
+    if (Number(a?.tarjetas_rojas || 0) !== Number(b?.tarjetas_rojas || 0)) {
+      return Number(a?.tarjetas_rojas || 0) - Number(b?.tarjetas_rojas || 0);
+    }
+    if (Number(a?.tarjetas_amarillas || 0) !== Number(b?.tarjetas_amarillas || 0)) {
+      return Number(a?.tarjetas_amarillas || 0) - Number(b?.tarjetas_amarillas || 0);
+    }
+    if (Number(a?.faltas_fair_play || 0) !== Number(b?.faltas_fair_play || 0)) {
+      return Number(a?.faltas_fair_play || 0) - Number(b?.faltas_fair_play || 0);
+    }
+    if (Number(a?.posicion || 9999) !== Number(b?.posicion || 9999)) {
+      return Number(a?.posicion || 9999) - Number(b?.posicion || 9999);
+    }
+    return String(a?.equipo_nombre || "").localeCompare(String(b?.equipo_nombre || ""));
+  }
+
+  static describirMotivoSalidaCompetencia(row = {}) {
+    if (row?.eliminado_automatico === true) {
+      return "fue eliminado automáticamente por 3 no presentaciones";
+    }
+    if (row?.eliminado_manual === true) {
+      const motivo = String(row?.motivo_eliminacion_label || "decisión del organizador").trim();
+      return `fue eliminado por ${motivo.toLowerCase()}`;
+    }
+    return "salió de la zona de clasificación";
+  }
+
+  static construirNotaSugerenciaClasificacion({
+    slot = 0,
+    esperadoTabla = null,
+    sugerido = null,
+  } = {}) {
+    if (!sugerido) {
+      return `No existe un equipo elegible para completar el cupo ${slot}.`;
+    }
+
+    const criterios = [
+      `Pts ${Number(sugerido?.puntos || 0)}`,
+      `DG ${Number(sugerido?.diferencia_goles || 0)}`,
+      `GF ${Number(sugerido?.goles_favor || 0)}`,
+      `Fair Play ${Number(sugerido?.puntaje_fair_play || 0).toFixed(2)}`,
+    ].join(" | ");
+
+    if (!esperadoTabla) {
+      return `${sugerido.equipo_nombre} ocupa el cupo ${slot} como mejor equipo elegible restante. Criterio: ${criterios}.`;
+    }
+
+    if (Number(esperadoTabla?.equipo_id) === Number(sugerido?.equipo_id)) {
+      return null;
+    }
+
+    if (estaEliminadoCompetencia(esperadoTabla)) {
+      return `${sugerido.equipo_nombre} reemplaza a ${esperadoTabla.equipo_nombre} porque ${this.describirMotivoSalidaCompetencia(
+        esperadoTabla
+      )}. Criterio aplicado: ${criterios}.`;
+    }
+
+    return `${sugerido.equipo_nombre} ocupa el cupo ${slot} como mejor equipo elegible restante. Criterio aplicado: ${criterios}.`;
   }
 
   static ordenarTablaPorReglas(tabla, reglas) {
@@ -129,6 +245,7 @@ class Eliminatoria {
     const q = `
       SELECT
         e.id, e.nombre, e.campeonato_id, e.metodo_competencia, e.eliminatoria_equipos,
+        e.clasificados_por_grupo,
         c.sistema_puntuacion,
         COALESCE(c.reglas_desempate::text, '["puntos","diferencia_goles","goles_favor"]') AS reglas_desempate
       FROM eventos e
@@ -146,10 +263,21 @@ class Eliminatoria {
       FROM evento_equipos ee
       JOIN equipos e ON e.id = ee.equipo_id
       WHERE ee.evento_id = $1
+        AND COALESCE(ee.eliminado_automatico, FALSE) = FALSE
+        AND COALESCE(ee.eliminado_manual, FALSE) = FALSE
       ORDER BY COALESCE(ee.orden_sorteo, 2147483647), e.id ASC
     `;
     const r = await db.query(q, [evento_id]);
     return r.rows.map((x) => Number(x.id)).filter((x) => Number.isFinite(x));
+  }
+
+  static async obtenerMapaClasificadosManuales(evento_id, db = pool) {
+    const rows = await obtenerClasificadosManualesEvento(evento_id, db);
+    const map = new Map();
+    rows.forEach((row) => {
+      map.set(construirClaveManual(row.grupo_id, row.slot_posicion), row);
+    });
+    return map;
   }
 
   static async obtenerGruposEvento(evento_id, db = pool) {
@@ -295,6 +423,189 @@ class Eliminatoria {
     return pares;
   }
 
+  static normalizarMetodoCompetenciaInput(value, fallback = "grupos") {
+    const metodo = String(value || fallback || "grupos").toLowerCase().trim();
+    return ["grupos", "liga", "eliminatoria", "mixto"].includes(metodo) ? metodo : fallback;
+  }
+
+  static normalizarOrigenPlayoffInput(value, fallback = "grupos") {
+    const origen = String(value || fallback || "grupos").toLowerCase().trim();
+    return ["evento", "grupos"].includes(origen) ? origen : fallback;
+  }
+
+  static normalizarMetodoPlayoffInput(value, fallback = "cruces_grupos") {
+    const metodo = String(value || fallback || "cruces_grupos").toLowerCase().trim();
+    return ["cruces_grupos", "tabla_unica"].includes(metodo) ? metodo : fallback;
+  }
+
+  static async obtenerConfiguracionPlayoff(evento_id, db = pool) {
+    await this.asegurarEsquema(db);
+    const evento = await this.obtenerEventoConfig(evento_id, db);
+    if (!evento) throw new Error("Evento no encontrado");
+
+    const grupos = await this.obtenerGruposEvento(evento_id, db);
+    const letras = grupos
+      .map((grupo) => String(grupo?.letra_grupo || "").toUpperCase().trim())
+      .filter(Boolean);
+
+    const configR = await db.query(
+      `
+        SELECT
+          evento_id,
+          origen,
+          metodo_clasificacion,
+          cruces_grupos,
+          guardado_por_usuario_id,
+          created_at,
+          updated_at
+        FROM evento_playoff_config
+        WHERE evento_id = $1
+        LIMIT 1
+      `,
+      [evento_id]
+    );
+    const config = configR.rows[0] || null;
+    const metodoCompetencia = this.normalizarMetodoCompetenciaInput(
+      evento?.metodo_competencia,
+      "grupos"
+    );
+    const clasificadosPorGrupo =
+      ["grupos", "mixto", "liga"].includes(metodoCompetencia)
+        ? Math.max(1, Number.parseInt(evento?.clasificados_por_grupo, 10) || 2)
+        : null;
+    const origenDefault = metodoCompetencia === "eliminatoria" ? "evento" : "grupos";
+    const origen = this.normalizarOrigenPlayoffInput(config?.origen, origenDefault);
+    const metodoClasificacion = this.normalizarMetodoPlayoffInput(
+      config?.metodo_clasificacion,
+      origen === "grupos" ? "cruces_grupos" : "tabla_unica"
+    );
+    const crucesGrupos =
+      origen === "grupos" && metodoClasificacion === "cruces_grupos"
+        ? this.normalizarCrucesGruposInput(config?.cruces_grupos, letras)
+        : [];
+
+    return {
+      evento: {
+        id: Number(evento.id),
+        nombre: evento.nombre,
+        campeonato_id: Number(evento.campeonato_id),
+        metodo_competencia: metodoCompetencia,
+        clasificados_por_grupo: clasificadosPorGrupo,
+        eliminatoria_equipos: Number.parseInt(evento?.eliminatoria_equipos, 10) || null,
+      },
+      configuracion: {
+        guardada: !!config,
+        origen,
+        metodo_clasificacion: metodoClasificacion,
+        cruces_grupos: crucesGrupos,
+        grupos: grupos.map((grupo) => ({
+          id: Number(grupo.id),
+          letra_grupo: String(grupo?.letra_grupo || "").toUpperCase().trim(),
+          nombre_grupo: grupo?.nombre_grupo || null,
+        })),
+        guardado_por_usuario_id: Number.parseInt(config?.guardado_por_usuario_id, 10) || null,
+        guardado_en: config?.updated_at || config?.created_at || null,
+      },
+    };
+  }
+
+  static async guardarConfiguracionPlayoff(evento_id, payload = {}, userId = null) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await this.asegurarEsquema(client);
+
+      const actual = await this.obtenerEventoConfig(evento_id, client);
+      if (!actual) throw new Error("Evento no encontrado");
+
+      const metodoCompetencia = this.normalizarMetodoCompetenciaInput(
+        payload?.metodo_competencia ?? actual?.metodo_competencia,
+        "grupos"
+      );
+      const clasificadosPorGrupo =
+        ["grupos", "mixto", "liga"].includes(metodoCompetencia)
+          ? Math.max(1, Number.parseInt(payload?.clasificados_por_grupo, 10) || 2)
+          : null;
+      const origenDefault = metodoCompetencia === "eliminatoria" ? "evento" : "grupos";
+      const origen = this.normalizarOrigenPlayoffInput(payload?.origen, origenDefault);
+      const metodoClasificacion = this.normalizarMetodoPlayoffInput(
+        payload?.metodo_clasificacion,
+        origen === "grupos" ? "cruces_grupos" : "tabla_unica"
+      );
+      const grupos = await this.obtenerGruposEvento(evento_id, client);
+      const letras = grupos
+        .map((grupo) => String(grupo?.letra_grupo || "").toUpperCase().trim())
+        .filter(Boolean);
+      const crucesGrupos =
+        origen === "grupos" && metodoClasificacion === "cruces_grupos"
+          ? this.normalizarCrucesGruposInput(payload?.cruces_grupos, letras)
+          : [];
+
+      await client.query(
+        `
+          UPDATE eventos
+          SET metodo_competencia = $2,
+              clasificados_por_grupo = $3
+          WHERE id = $1
+        `,
+        [evento_id, metodoCompetencia, clasificadosPorGrupo]
+      );
+
+      await client.query(
+        `
+          INSERT INTO evento_playoff_config (
+            evento_id,
+            origen,
+            metodo_clasificacion,
+            cruces_grupos,
+            guardado_por_usuario_id,
+            updated_at
+          )
+          VALUES ($1, $2, $3, $4::jsonb, $5, CURRENT_TIMESTAMP)
+          ON CONFLICT (evento_id)
+          DO UPDATE SET
+            origen = EXCLUDED.origen,
+            metodo_clasificacion = EXCLUDED.metodo_clasificacion,
+            cruces_grupos = EXCLUDED.cruces_grupos,
+            guardado_por_usuario_id = EXCLUDED.guardado_por_usuario_id,
+            updated_at = CURRENT_TIMESTAMP
+        `,
+        [
+          evento_id,
+          origen,
+          metodoClasificacion,
+          JSON.stringify(crucesGrupos || []),
+          Number.isFinite(Number.parseInt(userId, 10)) ? Number.parseInt(userId, 10) : null,
+        ]
+      );
+
+      await client.query("COMMIT");
+      return this.obtenerConfiguracionPlayoff(evento_id);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async reiniciarConfiguracionPlayoff(evento_id) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await this.asegurarEsquema(client);
+      await client.query(`DELETE FROM evento_playoff_config WHERE evento_id = $1`, [evento_id]);
+      await client.query(`DELETE FROM evento_clasificados_manuales WHERE evento_id = $1`, [evento_id]);
+      await client.query("COMMIT");
+      return this.obtenerConfiguracionPlayoff(evento_id);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   static async obtenerClasificadosPorGrupo(
     evento_id,
     clasificados_por_grupo = 2,
@@ -308,24 +619,30 @@ class Eliminatoria {
     if (!grupos.length) throw new Error("El evento no tiene grupos");
 
     const nClasificados = Math.max(1, Number.parseInt(clasificados_por_grupo, 10) || 1);
-    const clasificados = [];
-    const detalleGrupos = [];
+    const estadosEquipos = await obtenerEstadosEquiposEvento(evento_id, db);
+    const manualMap = await this.obtenerMapaClasificadosManuales(evento_id, db);
+    const fairPlayMap = await this.obtenerMapaFairPlayEvento(evento_id);
+    const baseGrupos = [];
 
     for (const g of grupos) {
-      const equipos = await this.obtenerEquiposGrupo(g.id, db);
+      const grupoId = Number(g.id);
+      const grupoLetra = String(g.letra_grupo || "").toUpperCase();
+      const equipos = await this.obtenerEquiposGrupo(grupoId, db);
       const tabla = [];
       for (const e of equipos) {
         const resumen = await this.calcularResumenEquipoGrupo(
           e.equipo_id,
-          g.id,
+          grupoId,
           evento.sistema_puntuacion || "tradicional",
           db
         );
         tabla.push({
           equipo_id: Number(e.equipo_id),
           equipo_nombre: e.equipo_nombre,
-          grupo_id: Number(g.id),
-          grupo_letra: String(g.letra_grupo || "").toUpperCase(),
+          grupo_id: grupoId,
+          grupo_letra: grupoLetra,
+          grupo_origen_id: grupoId,
+          grupo_origen_letra: grupoLetra,
           puntos: resumen.puntos,
           diferencia_goles: resumen.diferencia_goles,
           goles_favor: resumen.goles_favor,
@@ -334,22 +651,264 @@ class Eliminatoria {
           partidos_perdidos: resumen.partidos_perdidos,
           porcentaje_rendimiento: resumen.porcentaje_rendimiento,
           posicion: 0,
+          puntaje_fair_play:
+            Number(fairPlayMap.get(Number(e.equipo_id))?.puntaje_fair_play || 0),
+          fair_play_posicion:
+            Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.posicion, 10) || null,
+          tarjetas_amarillas:
+            Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.amarillas, 10) || 0,
+          tarjetas_rojas:
+            Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.rojas, 10) || 0,
+          faltas_fair_play:
+            Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.faltas, 10) || 0,
+          ...(estadosEquipos.get(Number(e.equipo_id)) || {
+            no_presentaciones: 0,
+            eliminado_automatico: false,
+            eliminado_manual: false,
+            motivo_eliminacion: null,
+            motivo_eliminacion_label: null,
+            detalle_eliminacion: null,
+          }),
         });
       }
 
       this.ordenarTablaPorReglas(tabla, reglas);
+      tabla.forEach((row, idx) => {
+        row.posicion_deportiva = idx + 1;
+      });
+      const tablaDeportiva = [...tabla];
+      const tablaVisual = [...tabla].sort((a, b) => {
+        const aEliminado = estaEliminadoCompetencia(a);
+        const bEliminado = estaEliminadoCompetencia(b);
+        if (aEliminado !== bEliminado) return aEliminado ? 1 : -1;
+        return Number(a.posicion_deportiva || 9999) - Number(b.posicion_deportiva || 9999);
+      });
+      tablaVisual.forEach((row, idx) => {
+        row.posicion = idx + 1;
+      });
 
-      const clasifGrupo = tabla.slice(0, nClasificados).map((row) => ({
-        ...row,
-        seed_ref: `${row.posicion}${row.grupo_letra}`,
-      }));
+      const elegiblesRanking = [...tablaVisual.filter((row) => !estaEliminadoCompetencia(row))].sort(
+        (a, b) => this.compararCandidatoClasificacion(a, b)
+      );
+      const sugeridosLocales = [];
+      const clasifLocales = [];
+      const usadosLocales = new Set();
+      for (let slot = 1; slot <= nClasificados; slot += 1) {
+        let sugerido = elegiblesRanking[slot - 1] || null;
+        if (sugerido && usadosLocales.has(Number(sugerido.equipo_id))) {
+          sugerido = elegiblesRanking.find((row) => !usadosLocales.has(Number(row.equipo_id))) || null;
+        }
+        if (!sugerido) continue;
+        usadosLocales.add(Number(sugerido.equipo_id));
+        sugeridosLocales.push({
+          slot_posicion: slot,
+          equipo_id: Number(sugerido.equipo_id),
+          equipo_nombre: sugerido.equipo_nombre,
+        });
+        clasifLocales.push({
+          ...sugerido,
+          slot_posicion: slot,
+        });
+      }
+      const candidatosLocales = elegiblesRanking
+        .filter(
+          (row) =>
+            !clasifLocales.some((clasif) => Number(clasif.equipo_id) === Number(row.equipo_id))
+        )
+        .map((row) => ({
+          ...row,
+          grupo_origen_id: grupoId,
+          grupo_origen_letra: grupoLetra,
+        }));
+
+      baseGrupos.push({
+        grupo_id: grupoId,
+        grupo_letra: grupoLetra,
+        tabla: tablaVisual,
+        tabla_deportiva: tablaDeportiva,
+        elegibles_ranking: elegiblesRanking,
+        sugeridos_locales: sugeridosLocales,
+        candidatos_locales: candidatosLocales,
+      });
+    }
+
+    const candidatosGlobales = baseGrupos
+      .flatMap((grupo) => grupo.candidatos_locales)
+      .sort((a, b) => this.compararCandidatoClasificacion(a, b));
+
+    const clasificados = [];
+    const detalleGrupos = [];
+    const usadosExternosEvento = new Set();
+
+    for (const grupo of baseGrupos) {
+      const manualesGrupo = [];
+      const sugeridosGrupo = [];
+      const clasifGrupo = [];
+      const usadosGrupo = new Set();
+      const candidatosAdicionales = candidatosGlobales.filter(
+        (row) => Number(row.grupo_origen_id) !== Number(grupo.grupo_id)
+      );
+
+      for (let slot = 1; slot <= nClasificados; slot += 1) {
+        const esperadoTabla = grupo.tabla_deportiva[slot - 1] || null;
+        const sugeridoLocal =
+          grupo.sugeridos_locales.find((row) => Number(row.slot_posicion) === slot) || null;
+        const sugeridoLocalRow = sugeridoLocal
+          ? grupo.elegibles_ranking.find(
+              (row) => Number(row.equipo_id) === Number(sugeridoLocal.equipo_id)
+            ) || null
+          : null;
+        const sugeridoExterno = !sugeridoLocalRow
+          ? candidatosAdicionales.find(
+              (row) =>
+                !usadosGrupo.has(Number(row.equipo_id)) &&
+                !usadosExternosEvento.has(Number(row.equipo_id))
+            ) || null
+          : null;
+        const sugeridoBase = sugeridoLocalRow || sugeridoExterno || null;
+        const manual = manualMap.get(construirClaveManual(grupo.grupo_id, slot)) || null;
+        const manualCandidato = manual
+          ? grupo.elegibles_ranking.find(
+              (row) => Number(row.equipo_id) === Number(manual.equipo_id)
+            ) ||
+            candidatosAdicionales.find((row) => Number(row.equipo_id) === Number(manual.equipo_id)) ||
+            null
+          : null;
+
+        let elegido = null;
+        let seleccionManual = false;
+
+        if (
+          manualCandidato &&
+          !usadosGrupo.has(Number(manualCandidato.equipo_id)) &&
+          (!manualCandidato.grupo_origen_id ||
+            Number(manualCandidato.grupo_origen_id) === Number(grupo.grupo_id) ||
+            !usadosExternosEvento.has(Number(manualCandidato.equipo_id)))
+        ) {
+          elegido = manualCandidato;
+          seleccionManual = true;
+        } else if (
+          sugeridoBase &&
+          !usadosGrupo.has(Number(sugeridoBase.equipo_id)) &&
+          (!sugeridoBase.grupo_origen_id ||
+            Number(sugeridoBase.grupo_origen_id) === Number(grupo.grupo_id) ||
+            !usadosExternosEvento.has(Number(sugeridoBase.equipo_id)))
+        ) {
+          elegido = sugeridoBase;
+        } else {
+          elegido =
+            grupo.elegibles_ranking.find((row) => !usadosGrupo.has(Number(row.equipo_id))) ||
+            candidatosAdicionales.find(
+              (row) =>
+                !usadosGrupo.has(Number(row.equipo_id)) &&
+                !usadosExternosEvento.has(Number(row.equipo_id))
+            ) ||
+            null;
+        }
+
+        let notaSugerencia = this.construirNotaSugerenciaClasificacion({
+          slot,
+          esperadoTabla,
+          sugerido: sugeridoLocalRow,
+        });
+        let notaClasificacionFinal = this.construirNotaSugerenciaClasificacion({
+          slot,
+          esperadoTabla,
+          sugerido: elegido,
+        });
+
+        if (sugeridoExterno) {
+          notaSugerencia = `${sugeridoExterno.equipo_nombre} aparece como mejor no clasificado disponible del evento para cubrir el cupo ${slot} del Grupo ${grupo.grupo_letra}. Criterio: Pts ${Number(
+            sugeridoExterno.puntos || 0
+          )} | DG ${Number(sugeridoExterno.diferencia_goles || 0)} | GF ${Number(
+            sugeridoExterno.goles_favor || 0
+          )} | Fair Play ${Number(sugeridoExterno.puntaje_fair_play || 0).toFixed(2)}.`;
+        }
+        if (
+          elegido &&
+          Number(elegido.grupo_origen_id || grupo.grupo_id) !== Number(grupo.grupo_id)
+        ) {
+          notaClasificacionFinal = `${elegido.equipo_nombre} ocupa el cupo ${slot} del Grupo ${grupo.grupo_letra} como mejor no clasificado disponible del evento. Proviene del Grupo ${elegido.grupo_origen_letra}. Criterio: Pts ${Number(
+            elegido.puntos || 0
+          )} | DG ${Number(elegido.diferencia_goles || 0)} | GF ${Number(
+            elegido.goles_favor || 0
+          )} | Fair Play ${Number(elegido.puntaje_fair_play || 0).toFixed(2)}.`;
+        }
+
+        if (sugeridoBase) {
+          sugeridosGrupo.push({
+            slot_posicion: slot,
+            equipo_id: Number(sugeridoBase.equipo_id),
+            equipo_nombre: sugeridoBase.equipo_nombre,
+            posicion_tabla: Number(sugeridoBase.posicion || slot),
+            nota: notaSugerencia,
+            es_candidato_externo:
+              Number(sugeridoBase.grupo_origen_id || grupo.grupo_id) !== Number(grupo.grupo_id),
+            grupo_origen_letra:
+              sugeridoBase.grupo_origen_letra || sugeridoBase.grupo_letra || grupo.grupo_letra,
+            reemplaza_equipo_id:
+              Number(esperadoTabla?.equipo_id || 0) > 0 &&
+              Number(esperadoTabla?.equipo_id || 0) !== Number(sugeridoBase.equipo_id || 0)
+                ? Number(esperadoTabla.equipo_id)
+                : null,
+            reemplaza_equipo_nombre:
+              Number(esperadoTabla?.equipo_id || 0) > 0 &&
+              Number(esperadoTabla?.equipo_id || 0) !== Number(sugeridoBase.equipo_id || 0)
+                ? esperadoTabla.equipo_nombre || null
+                : null,
+          });
+        }
+
+        if (manual) {
+          manualesGrupo.push({
+            ...manual,
+            valido: !!manualCandidato && !estaEliminadoCompetencia(manualCandidato),
+            es_candidato_externo:
+              Number(manualCandidato?.grupo_origen_id || grupo.grupo_id) !== Number(grupo.grupo_id),
+          });
+        }
+
+        if (!elegido) continue;
+        usadosGrupo.add(Number(elegido.equipo_id));
+        if (Number(elegido.grupo_origen_id || grupo.grupo_id) !== Number(grupo.grupo_id)) {
+          usadosExternosEvento.add(Number(elegido.equipo_id));
+        }
+        clasifGrupo.push({
+          ...elegido,
+          grupo_id: Number(grupo.grupo_id),
+          grupo_letra: grupo.grupo_letra,
+          slot_posicion: slot,
+          seed_ref: `${slot}${grupo.grupo_letra}`,
+          seleccion_manual: seleccionManual,
+          seleccion_externa:
+            Number(elegido.grupo_origen_id || grupo.grupo_id) !== Number(grupo.grupo_id),
+          sugerido_equipo_id: sugeridoBase ? Number(sugeridoBase.equipo_id) : null,
+          sugerido_equipo_nombre: sugeridoBase?.equipo_nombre || null,
+          nota_clasificacion: notaClasificacionFinal,
+          reemplaza_equipo_id:
+            Number(esperadoTabla?.equipo_id || 0) > 0 &&
+            Number(esperadoTabla?.equipo_id || 0) !== Number(elegido.equipo_id || 0)
+              ? Number(esperadoTabla.equipo_id)
+              : null,
+          reemplaza_equipo_nombre:
+            Number(esperadoTabla?.equipo_id || 0) > 0 &&
+            Number(esperadoTabla?.equipo_id || 0) !== Number(elegido.equipo_id || 0)
+              ? esperadoTabla.equipo_nombre || null
+              : null,
+        });
+      }
 
       clasificados.push(...clasifGrupo);
       detalleGrupos.push({
-        grupo_id: Number(g.id),
-        grupo_letra: String(g.letra_grupo || "").toUpperCase(),
+        grupo_id: Number(grupo.grupo_id),
+        grupo_letra: grupo.grupo_letra,
+        cupos: nClasificados,
         clasificados: clasifGrupo,
-        tabla,
+        clasificados_sugeridos: sugeridosGrupo,
+        clasificados_manuales: manualesGrupo,
+        candidatos_adicionales: candidatosAdicionales,
+        incompleto: clasifGrupo.length < nClasificados,
+        tabla: grupo.tabla,
       });
     }
 
@@ -357,9 +916,196 @@ class Eliminatoria {
       evento,
       reglas_desempate: reglas,
       clasificados_por_grupo: nClasificados,
+      clasificados_manuales: await obtenerClasificadosManualesEvento(evento_id, db),
       grupos: detalleGrupos,
       clasificados,
     };
+  }
+
+  static async obtenerResumenClasificacionManual(
+    evento_id,
+    clasificados_por_grupo = null,
+    db = pool
+  ) {
+    await this.asegurarEsquema(db);
+    const evento = await this.obtenerEventoConfig(evento_id, db);
+    if (!evento) throw new Error("Evento no encontrado");
+    const cupos =
+      Math.max(
+        1,
+        Number.parseInt(
+          clasificados_por_grupo ?? evento.clasificados_por_grupo ?? 2,
+          10
+        ) || 1
+      );
+    const data = await this.obtenerClasificadosPorGrupo(evento_id, cupos, db);
+    return {
+      evento: {
+        id: Number(evento.id),
+        nombre: evento.nombre,
+        campeonato_id: Number(evento.campeonato_id),
+      },
+      clasificados_por_grupo: cupos,
+      grupos: data.grupos.map((grupo) => ({
+        grupo_id: Number(grupo.grupo_id),
+        grupo_letra: grupo.grupo_letra,
+        cupos: Number(grupo.cupos || cupos),
+        incompleto: grupo.incompleto === true,
+        tabla: grupo.tabla,
+        sugeridos: grupo.clasificados_sugeridos || [],
+        manuales: grupo.clasificados_manuales || [],
+        clasificados_finales: grupo.clasificados || [],
+        candidatos_adicionales: grupo.candidatos_adicionales || [],
+      })),
+    };
+  }
+
+  static async guardarClasificadosManuales(evento_id, payload = {}, userId = null) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await this.asegurarEsquema(client);
+
+      const resumen = await this.obtenerResumenClasificacionManual(
+        evento_id,
+        payload?.clasificados_por_grupo,
+        client
+      );
+      const cupos = Number.parseInt(resumen?.clasificados_por_grupo, 10) || 1;
+      const gruposPayload = Array.isArray(payload?.grupos) ? payload.grupos : [];
+      const usadosEvento = new Map();
+
+      await client.query(`DELETE FROM evento_clasificados_manuales WHERE evento_id = $1`, [
+        evento_id,
+      ]);
+
+      for (const grupoResumen of resumen.grupos) {
+        const grupoPayload =
+          gruposPayload.find((item) => Number(item?.grupo_id) === Number(grupoResumen.grupo_id)) ||
+          null;
+        const selecciones = Array.isArray(grupoPayload?.selecciones)
+          ? grupoPayload.selecciones
+          : [];
+        const elegibles = (grupoResumen.tabla || []).filter(
+          (row) => !estaEliminadoCompetencia(row)
+        );
+        const candidatosAdicionales = Array.isArray(grupoResumen.candidatos_adicionales)
+          ? grupoResumen.candidatos_adicionales
+          : [];
+        const candidatosElegibles = new Map();
+        [...elegibles, ...candidatosAdicionales].forEach((row) => {
+          const equipoId = Number.parseInt(row?.equipo_id, 10);
+          if (Number.isFinite(equipoId) && equipoId > 0) {
+            candidatosElegibles.set(equipoId, row);
+          }
+        });
+        const sugeridosPorSlot = new Map(
+          (Array.isArray(grupoResumen.sugeridos) ? grupoResumen.sugeridos : []).map((item) => [
+            Number(item.slot_posicion),
+            item,
+          ])
+        );
+        const usados = new Set();
+        const slotsInsert = [];
+
+        for (let slot = 1; slot <= cupos; slot += 1) {
+          const seleccion =
+            selecciones.find((item) => Number(item?.slot_posicion) === Number(slot)) || null;
+          const sugeridoBase = sugeridosPorSlot.get(slot) || elegibles[slot - 1] || null;
+          const equipoId = Number.parseInt(seleccion?.equipo_id, 10);
+
+          if (Number.isFinite(equipoId) && equipoId > 0) {
+            const candidato = candidatosElegibles.get(equipoId) || null;
+            if (!candidato) {
+              throw new Error(
+                `El equipo seleccionado para Grupo ${grupoResumen.grupo_letra} / cupo ${slot} no es elegible.`
+              );
+            }
+            if (usados.has(equipoId)) {
+              throw new Error(
+                `El equipo ${candidato.equipo_nombre} está repetido en la selección final del Grupo ${grupoResumen.grupo_letra}.`
+              );
+            }
+            if (usadosEvento.has(equipoId)) {
+              const previo = usadosEvento.get(equipoId);
+              throw new Error(
+                `El equipo ${candidato.equipo_nombre} ya fue seleccionado manualmente para el Grupo ${previo.grupo_letra} / cupo ${previo.slot}.`
+              );
+            }
+            usados.add(equipoId);
+            usadosEvento.set(equipoId, {
+              grupo_id: Number(grupoResumen.grupo_id),
+              grupo_letra: grupoResumen.grupo_letra,
+              slot,
+            });
+            slotsInsert.push({
+              slot,
+              equipo_id: equipoId,
+              criterio:
+                String(seleccion?.criterio || "decision_organizador").trim() ||
+                "decision_organizador",
+              detalle: String(seleccion?.detalle || "").trim() || null,
+            });
+            continue;
+          }
+
+          const sugeridoId = Number(sugeridoBase?.equipo_id || 0);
+          if (Number.isFinite(sugeridoId) && sugeridoId > 0 && !usados.has(sugeridoId)) {
+            usados.add(sugeridoId);
+            continue;
+          }
+
+          const fallback =
+            elegibles.find((row) => !usados.has(Number(row.equipo_id))) ||
+            candidatosAdicionales.find((row) => !usados.has(Number(row.equipo_id))) ||
+            null;
+          if (fallback) {
+            usados.add(Number(fallback.equipo_id));
+          }
+        }
+
+        for (const slotManual of slotsInsert) {
+          await client.query(
+            `
+              INSERT INTO evento_clasificados_manuales (
+                evento_id,
+                grupo_id,
+                slot_posicion,
+                equipo_id,
+                criterio,
+                detalle,
+                usuario_id,
+                updated_at
+              )
+              VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+            `,
+            [
+              evento_id,
+              grupoResumen.grupo_id,
+              slotManual.slot,
+              slotManual.equipo_id,
+              slotManual.criterio,
+              slotManual.detalle,
+              Number.isFinite(Number(userId)) ? Number(userId) : null,
+            ]
+          );
+        }
+      }
+
+      const actualizado = await this.obtenerResumenClasificacionManual(
+        evento_id,
+        cupos,
+        client
+      );
+
+      await client.query("COMMIT");
+      return actualizado;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static construirSembradoCrucesGrupos(clasificadosData, crucesGrupos = []) {
