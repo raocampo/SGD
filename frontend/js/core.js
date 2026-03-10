@@ -26,7 +26,7 @@
 
   const AUTH_TOKEN_KEY = "sgd_auth_token";
   const AUTH_USER_KEY = "sgd_auth_user";
-  const BRAND_FAVICON_SVG = "assets/ltc/favicon.svg";
+  const BRAND_FAVICON_SVG = "favicon.svg";
   const BRAND_FAVICON_FALLBACK = "assets/ltc/Logo.jpeg";
   const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html", "register.html", "blog.html", "noticia.html"]);
   const CMS_PAGES = new Set([
