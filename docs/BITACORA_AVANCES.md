@@ -13,6 +13,32 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 
 ## Avances Recientes
 
+### 2026-03-10
+- Preparacion de despliegue en Render:
+  - nuevo documento `docs/DEPLOY_RENDER.md` con:
+    - variables requeridas,
+    - uso de `DATABASE_URL`,
+    - `render.yaml`,
+    - consideraciones de `uploads/`.
+  - nuevo archivo `render.yaml` para bootstrap de un solo servicio Node en Render.
+- Backend listo para despliegue por URL de conexion:
+  - `backend/config/database.js` ahora soporta:
+    - `DATABASE_URL`,
+    - `DATABASE_SSL` / `PGSSLMODE`,
+    - fallback al esquema clasico `DB_*`.
+- Frontend preparado para mismo origen en produccion:
+  - `frontend/js/core.js` y `frontend/js/api.js` resuelven automaticamente la base de API segun entorno.
+  - en local con Live Server se mantiene compatibilidad con `http://localhost:5000/api`.
+  - en produccion el frontend consume `/api` sobre el mismo dominio.
+- Portal publico mejorado:
+  - `frontend/portal.html`, `frontend/js/portal.js` y `frontend/css/portal.css` ahora muestran:
+    - detalle de campeonato con tabs por categoria,
+    - subtabs por posiciones, jornadas, goleadores, tarjetas, fair play y playoff,
+    - vista de jornadas agrupadas con metadatos de fecha/hora/cancha.
+- Branding tecnico:
+  - nuevo `frontend/favicon.svg`.
+  - favicon agregado al portal y a las pantallas principales del sistema.
+
 ### 2026-03-09
 - Configuracion compartida de clasificacion/playoff:
   - nueva persistencia `evento_playoff_config` para mantener sincronizados `tablas.html` y `eliminatorias.html`.

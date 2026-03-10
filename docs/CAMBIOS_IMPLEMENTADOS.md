@@ -7,6 +7,33 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-10 - Preparacion de despliegue + portal publico por mismo origen
+- Despliegue:
+  - nuevo documento `docs/DEPLOY_RENDER.md`,
+  - nuevo archivo `render.yaml` para desplegar LT&C como un solo servicio Node en Render.
+- Conexion a base de datos:
+  - `backend/config/database.js` ahora acepta `DATABASE_URL`,
+  - soporte de SSL configurable por:
+    - `DATABASE_SSL`,
+    - `PGSSLMODE`.
+  - se mantiene compatibilidad con `DB_USER/DB_HOST/DB_NAME/DB_PASSWORD/DB_PORT`.
+- Frontend por entorno:
+  - `frontend/js/core.js` y `frontend/js/api.js` ya resuelven la API automaticamente:
+    - local con Live Server -> `http://localhost:5000/api`,
+    - produccion -> `${window.location.origin}/api`.
+  - modulos visuales ajustados para construir URLs de backend por mismo origen.
+- Portal publico:
+  - `frontend/portal.html` y `frontend/js/portal.js` fueron reestructurados para mostrar:
+    - tabs por categoria,
+    - subtabs por seccion deportiva,
+    - jornadas agrupadas,
+    - tablas/fair play/goleadores/playoff dentro de un mismo detalle navegable.
+- Branding tecnico:
+  - nuevo `frontend/favicon.svg`,
+  - favicon agregado a las vistas principales del sistema y del portal.
+
+---
+
 ## 2026-03-09 - Eliminacion manual por categoria + clasificacion manual sugerida
 - Configuracion compartida de playoff/clasificacion:
   - nueva tabla/versionado runtime `evento_playoff_config`,
