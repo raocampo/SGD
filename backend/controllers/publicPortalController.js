@@ -132,6 +132,75 @@ const publicPortalController = {
       });
     }
   },
+
+  async obtenerGoleadoresPorEvento(req, res) {
+    try {
+      const eventoId = Number.parseInt(req.params.evento_id, 10);
+      if (!Number.isFinite(eventoId)) {
+        return res.status(400).json({ error: "evento_id invalido" });
+      }
+
+      const payload = await publicPortalService.obtenerGoleadoresPublicosPorEvento(eventoId);
+      if (!payload) {
+        return res.status(404).json({ error: "Evento publico no encontrado" });
+      }
+
+      return res.json(payload);
+    } catch (error) {
+      console.error("Error obteniendo goleadores publicos:", error);
+      return res.status(500).json({
+        error: "Error obteniendo goleadores publicos",
+        detalle: error.message,
+      });
+    }
+  },
+
+  async obtenerTarjetasPorEvento(req, res) {
+    try {
+      const eventoId = Number.parseInt(req.params.evento_id, 10);
+      if (!Number.isFinite(eventoId)) {
+        return res.status(400).json({ error: "evento_id invalido" });
+      }
+
+      const payload = await publicPortalService.obtenerTarjetasPublicasPorEvento(eventoId);
+      if (!payload) {
+        return res.status(404).json({ error: "Evento publico no encontrado" });
+      }
+
+      return res.json(payload);
+    } catch (error) {
+      console.error("Error obteniendo tarjetas publicas:", error);
+      return res.status(500).json({
+        error: "Error obteniendo tarjetas publicas",
+        detalle: error.message,
+      });
+    }
+  },
+
+  async obtenerFairPlayPorEvento(req, res) {
+    try {
+      const eventoId = Number.parseInt(req.params.evento_id, 10);
+      if (!Number.isFinite(eventoId)) {
+        return res.status(400).json({ error: "evento_id invalido" });
+      }
+
+      const payload = await publicPortalService.obtenerFairPlayPublicoPorEvento(
+        eventoId,
+        req.query || {}
+      );
+      if (!payload) {
+        return res.status(404).json({ error: "Evento publico no encontrado" });
+      }
+
+      return res.json(payload);
+    } catch (error) {
+      console.error("Error obteniendo fair play publico:", error);
+      return res.status(500).json({
+        error: "Error obteniendo fair play publico",
+        detalle: error.message,
+      });
+    }
+  },
 };
 
 module.exports = publicPortalController;

@@ -8,6 +8,27 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 ---
 
 ## 2026-03-10 - Preparacion de despliegue + portal publico por mismo origen
+- Portal publico endurecido para competiciones reales:
+  - `backend/services/publicPortalService.js` filtra campeonatos publicos solo por `creador_usuario_id` cuyo usuario tenga rol `organizador`.
+  - quedan fuera del portal general los campeonatos creados por `administrador` y los torneos QA asociados a cuentas administrativas.
+  - `backend/controllers/publicPortalController.js` asume tambien la capa publica de:
+    - goleadores,
+    - tarjetas,
+    - fair play,
+    evitando que eventos no publicos se consulten por URL directa.
+  - `backend/routes/publicRoutes.js` deja de exponer esos endpoints por `tablaController` sin filtro publico.
+- Landing publica del organizador ajustada:
+  - `backend/controllers/authController.js` ya no mezcla campeonatos por alias de texto,
+  - solo lista campeonatos creados por el organizador real (`creador_usuario_id = organizador.id`).
+- Portal deportivo refinado en frontend:
+  - `frontend/js/portal.js` mantiene tabs por categoria y deja subtabs enfocadas en:
+    - `Tabla de posiciones`,
+    - `Goleadores`,
+    - `Fair play`,
+    - `Tarjetas amarillas`,
+    - `Tarjetas rojas`.
+  - se separa la tabla de tarjetas en dos vistas por equipo para lectura mas clara.
+  - las tablas de posiciones por grupo ahora se renderizan en grid responsive `2x1` mediante `frontend/css/portal.css`.
 - Despliegue:
   - nuevo documento `docs/DEPLOY_RENDER.md`,
   - nuevo archivo `render.yaml` para desplegar LT&C como un solo servicio Node en Render.

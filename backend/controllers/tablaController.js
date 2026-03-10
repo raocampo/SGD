@@ -1159,5 +1159,7 @@ const tablaController = {
 module.exports = tablaController;
 module.exports._internals = {
   generarTablasEventoInterna,
+  obtenerGoleadoresEventoInterno,
+  obtenerTarjetasEventoInterno,
   obtenerFairPlayEventoInterno,
 };

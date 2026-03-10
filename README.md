@@ -31,6 +31,19 @@ Flujo principal operativo:
 7. Consultar tablas y portal publico.
 
 ## Novedades Recientes (2026-03-10)
+- Portal publico deportivo:
+  - el listado general ya expone solo campeonatos creados por usuarios con rol `organizador`,
+  - quedan fuera campeonatos creados por `administrador` y torneos QA ligados a cuentas administrativas,
+  - el detalle del campeonato mantiene tabs por categoria y ahora usa subtabs enfocadas en:
+    - `Tabla de posiciones`,
+    - `Goleadores`,
+    - `Fair play`,
+    - `Tarjetas amarillas`,
+    - `Tarjetas rojas`,
+  - las tablas de posiciones por grupo ahora se muestran en grid responsive:
+    - `2 columnas` en desktop,
+    - `1 columna` en tablet/movil.
+  - los endpoints publicos de `goleadores`, `tarjetas` y `fair play` ya pasan por el filtro del `publicPortalController`, evitando exponer eventos no publicos por URL directa.
 - Soporte estable para uploads en despliegue:
   - nuevo archivo `backend/config/uploads.js`,
   - `server.js`, `multerConfig.js` y controladores de borrado/lectura ahora usan `UPLOADS_DIR`,

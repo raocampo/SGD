@@ -477,7 +477,7 @@ function renderTablasPortal(tablas = []) {
     return '<p class="empty-msg">No hay tablas de posicion disponibles.</p>';
   }
 
-  return tablas
+  const bloques = tablas
     .map((grupoData) => {
       const grupo = grupoData?.grupo || {};
       const filas = Array.isArray(grupoData?.tabla) ? grupoData.tabla : [];
@@ -513,7 +513,14 @@ function renderTablasPortal(tablas = []) {
         </div>
       `;
     })
+    .filter(Boolean)
     .join("");
+
+  if (!bloques) {
+    return '<p class="empty-msg">No hay tablas de posicion disponibles.</p>';
+  }
+
+  return `<div class="portal-stat-grid">${bloques}</div>`;
 }
 
 function formatearHoraPortal(hora) {
@@ -691,19 +698,29 @@ function renderGoleadoresPortal(goleadores = []) {
   `;
 }
 
-function renderTarjetasPortal(tarjetas = []) {
-  const rows = Array.isArray(tarjetas) ? tarjetas.slice(0, 10) : [];
+function renderTarjetasPortal(tarjetas = [], tipo = "amarillas") {
+  const rows = Array.isArray(tarjetas) ? [...tarjetas] : [];
   if (!rows.length) {
-    return '<p class="empty-msg">No hay datos de tarjetas para esta categoría.</p>';
+    return `<p class="empty-msg">No hay datos de tarjetas ${tipo === "rojas" ? "rojas" : "amarillas"} para esta categoría.</p>`;
   }
+
+  const labelColumna = tipo === "rojas" ? "TR" : "TA";
+  rows.sort((a, b) => {
+    const valorA = Number(a?.[tipo] || 0);
+    const valorB = Number(b?.[tipo] || 0);
+    if (valorB !== valorA) return valorB - valorA;
+    const secundarioA = Number(a?.[tipo === "rojas" ? "amarillas" : "rojas"] || 0);
+    const secundarioB = Number(b?.[tipo === "rojas" ? "amarillas" : "rojas"] || 0);
+    if (secundarioB !== secundarioA) return secundarioB - secundarioA;
+    return String(a?.equipo_nombre || "").localeCompare(String(b?.equipo_nombre || ""));
+  });
 
   const rowsHtml = rows
     .map((row, index) => `
       <tr>
         <td>${index + 1}</td>
         <td>${escPortal(row.equipo_nombre || "-")}</td>
-        <td>${Number(row.amarillas || 0)}</td>
-        <td>${Number(row.rojas || 0)}</td>
+        <td>${Number(row[tipo] || 0)}</td>
       </tr>
     `)
     .join("");
@@ -711,7 +728,7 @@ function renderTarjetasPortal(tarjetas = []) {
   return `
     <div class="portal-table-wrap">
       <table class="tabla-posicion">
-        <tr><th>#</th><th>Equipo</th><th>TA</th><th>TR</th></tr>
+        <tr><th>#</th><th>Equipo</th><th>${labelColumna}</th></tr>
         ${rowsHtml}
       </table>
     </div>
@@ -772,15 +789,11 @@ function renderCategoriaPanelPortal(data, index = 0) {
   const panelId = `portal-category-panel-${evento.id}`;
   const subtabs = [
     { key: "posiciones", label: "Tabla de posiciones", html: renderTablasPortal(data?.tablas || []) },
-    { key: "jornadas", label: "Jornadas", html: renderJornadasPortal(data?.jornadas || [], data?.partidos || []) },
     { key: "goleadores", label: "Goleadores", html: renderGoleadoresPortal(data?.goleadores || []) },
-    { key: "tarjetas", label: "Tarjetas", html: renderTarjetasPortal(data?.tarjetas || []) },
     { key: "fair-play", label: "Fair play", html: renderFairPlayPortal(data?.fairPlay || []) },
+    { key: "tarjetas-amarillas", label: "Tarjetas amarillas", html: renderTarjetasPortal(data?.tarjetas || [], "amarillas") },
+    { key: "tarjetas-rojas", label: "Tarjetas rojas", html: renderTarjetasPortal(data?.tarjetas || [], "rojas") },
   ];
-
-  if (Array.isArray(data?.rondas) && data.rondas.length) {
-    subtabs.push({ key: "playoff", label: "Playoff", html: renderEliminatoriasPortal(data.rondas) });
-  }
 
   return `
     <section id="${panelId}" class="portal-category-panel ${index === 0 ? "active" : ""}" ${index === 0 ? "" : "hidden"}>
@@ -898,22 +911,12 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
 
     const eventosData = await Promise.all(
       eventosFiltrados.map(async (ev) => {
-        const [partidosRes, tablasRes, eliminatoriasRes, goleadoresRes, tarjetasRes, fairPlayRes] = await Promise.all([
-          (
-            window.PortalPublicAPI
-              ? window.PortalPublicAPI.obtenerPartidosPorEvento(ev.id)
-              : fetch(`${API}/public/eventos/${ev.id}/partidos`).then((r) => r.json())
-          ).catch(() => ({ partidos: [], jornadas: [] })),
+        const [tablasRes, goleadoresRes, tarjetasRes, fairPlayRes] = await Promise.all([
           (
             window.PortalPublicAPI
               ? window.PortalPublicAPI.obtenerTablasPorEvento(ev.id)
               : fetch(`${API}/public/eventos/${ev.id}/tablas`).then((r) => r.json())
           ).catch(() => ({ grupos: [] })),
-          (
-            window.PortalPublicAPI
-              ? window.PortalPublicAPI.obtenerEliminatoriasPorEvento(ev.id)
-              : fetch(`${API}/public/eventos/${ev.id}/eliminatorias`).then((r) => r.json())
-          ).catch(() => ({ rondas: [] })),
           (
             window.PortalPublicAPI
               ? window.PortalPublicAPI.obtenerGoleadoresPorEvento(ev.id)
@@ -933,10 +936,7 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
 
         return {
           evento: ev,
-          partidos: partidosRes.partidos || [],
-          jornadas: partidosRes.jornadas || [],
           tablas: tablasRes.grupos || [],
-          rondas: eliminatoriasRes.rondas || [],
           goleadores: goleadoresRes.goleadores || [],
           tarjetas: tarjetasRes.tarjetas || [],
           fairPlay: fairPlayRes.fair_play || [],

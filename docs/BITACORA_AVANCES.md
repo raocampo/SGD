@@ -14,6 +14,33 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-10
+- Portal publico deportivo ajustado para operacion real:
+  - `backend/services/publicPortalService.js` ahora expone solo campeonatos creados por usuarios con rol `organizador`.
+  - quedan excluidos del portal general:
+    - campeonatos creados por `administrador`,
+    - campeonatos de QA/pruebas ligados a cuentas administrativas.
+  - `backend/controllers/publicPortalController.js` y `backend/routes/publicRoutes.js` ahora protegen tambien en dominio publico:
+    - `goleadores`,
+    - `tarjetas`,
+    - `fair play`,
+    de modo que no puedan consultarse por `evento_id` oculto si el campeonato no es publico.
+- Landing publica por organizador endurecida:
+  - `backend/controllers/authController.js` deja de mezclar campeonatos por alias de texto,
+  - la landing de organizador ahora lista solo campeonatos con `creador_usuario_id = organizador`.
+- UX del detalle publico del campeonato refinada:
+  - `frontend/js/portal.js` mantiene nombre del campeonato arriba y tabs por categoria,
+  - las subtabs deportivas quedan alineadas a la operacion solicitada:
+    - `Tabla de posiciones`,
+    - `Goleadores`,
+    - `Fair play`,
+    - `Tarjetas amarillas`,
+    - `Tarjetas rojas`.
+  - se elimina de esta vista publica el foco en `Jornadas`/`Tarjetas` combinadas para simplificar lectura estadistica.
+- Layout responsive de tablas publicas:
+  - `frontend/css/portal.css` y `frontend/js/portal.js` ahora muestran tablas de posiciones:
+    - `2` bloques por fila en desktop,
+    - `1` bloque por fila en tablet/movil.
+
 - Preparacion de despliegue en Render:
   - nuevo documento `docs/DEPLOY_RENDER.md` con:
     - variables requeridas,
@@ -1028,6 +1055,11 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Validar en produccion Render:
   - carga real de logos/fotos/documentos desde el disco persistente,
   - reimpresion de carnets usando jugadores con foto existente.
+- Validar visualmente portal publico en produccion/local:
+  - listado general sin campeonatos administrativos,
+  - detalle por campeonato con tabs de categorias,
+  - subtabs deportivas correctas por categoria,
+  - tablas de posiciones en `2 columnas` desktop / `1 columna` movil.
 - Reorientar plan mobile a aplicacion instalable para tiendas:
   - app Android (Play Store),
   - app iOS (App Store).

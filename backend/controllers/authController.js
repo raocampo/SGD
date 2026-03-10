@@ -284,12 +284,6 @@ const authController = {
         });
       }
 
-      const aliasOrganizador = [
-        String(organizador.nombre || "").trim().toLowerCase(),
-        String(organizador.organizacion_nombre || "").trim().toLowerCase(),
-        String(organizador.email || "").trim().toLowerCase(),
-      ].filter(Boolean);
-
       const campeonatosR = await pool.query(
         `
           SELECT
@@ -306,13 +300,9 @@ const authController = {
             ) AS total_equipos
           FROM campeonatos c
           WHERE c.creador_usuario_id = $1
-             OR (
-               c.creador_usuario_id IS NULL
-               AND LOWER(COALESCE(TRIM(c.organizador), '')) = ANY($2::text[])
-             )
           ORDER BY c.fecha_inicio DESC NULLS LAST, c.id DESC
         `,
-        [organizadorId, aliasOrganizador]
+        [organizadorId]
       );
 
       return res.json({

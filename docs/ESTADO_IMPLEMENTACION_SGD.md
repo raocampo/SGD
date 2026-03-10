@@ -15,7 +15,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
 | 3.7 Resultados/Tablas/Clasificados | Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play) con selector de campeonato en UI y guardado explícito del formato de clasificación (`metodo_competencia` + `clasificados_por_grupo`). Planillaje ya alimenta resultado + estadisticas. Clasificacion por grupo parametrizable; equipos eliminados ya bajan al final aunque tengan mayor puntaje y los fuera de cupo quedan diferenciados visualmente en naranja. Pendiente refinamiento de desempates avanzados. |
 | 3.8 Eliminatorias | Alto | Configuracion por categoria (`metodo_competencia`) y generacion automatica de llave integrada en `partidos`; soporte de siembra/byes/progresion de ganador; UI dedicada de llaves en `eliminatorias.html`; playoff desde grupos con `clasificados por grupo`, `cruces de grupos` o `tabla unica`; configuracion compartida con `tablas.html`; nueva clasificacion manual sugerida por grupo con candidatos externos del evento cuando el grupo queda incompleto, y exclusion de equipos eliminados manualmente. Pendiente validacion operativa real y reglas avanzadas de desempate. |
-| 4 Portal publico | Alto | Portal operativo con vistas de campeonato/grupos/tablas; iniciada separacion formal entre landing de organizador y CMS institucional del portal; noticias/blog, galeria, contenido institucional y contacto ya tienen base CRUD/CMS y consumo publico integrado en landing; detalle de campeonato mejorado con tabs por categoria y subtabs por jornadas/tabla/goleadores/tarjetas/fair play/playoff; Fase 6 CMS cerrada tecnicamente con hardening de validaciones/anti-spam y smoke tecnico (`npm run smoke`). |
+| 4 Portal publico | Alto | Portal operativo con vistas publicas deportivas e institucionales; el listado general ya expone solo campeonatos creados por `organizadores` (no `administrador`/QA), la landing publica de organizador ya no mezcla torneos por alias de texto, y el detalle del campeonato muestra tabs por categoria con subtabs de `tabla de posiciones`, `goleadores`, `fair play`, `tarjetas amarillas` y `tarjetas rojas`. Las tablas de posiciones publicas ya salen en grid `2 columnas` desktop / `1 columna` movil. |
 | 5 Roles y permisos (RBAC) | Medio-Alto | Autenticacion operativa; fase 1 de separacion de dominios iniciada con rol `operador` para CMS publico; rol `jugador` agregado para consulta de equipo en modo solo lectura; noticias, galeria, contenido y contacto institucional fuera del alcance de organizadores; smokes RBAC (`npm run smoke:roles`, `npm run smoke:matrix`, `npm run smoke:frontend`) operativos para validacion rapida por rol. Se agrega bandera `debe_cambiar_password`, cambio obligatorio de clave al primer ingreso para cuentas creadas por admin/organizador y accion de cambio de contraseña propio desde UI. |
 | 6 Extras profesionales | Parcial | Exportaciones (PNG/PDF/XLSX) en modulos clave; pendiente notificaciones, auditoria completa y reportes ejecutivos. |
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR, resumen ejecutivo por campeonato e impresion dedicadas; politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). Pendiente cierre de reglas avanzadas y reporteria ejecutiva adicional. |
@@ -117,6 +117,21 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - cards del home,
   - datos y redes de contacto.
 - Formulario de contacto persistente con seguimiento basico por estado.
+
+7. Portal deportivo publico:
+- El listado general ya muestra solo campeonatos creados por cuentas `organizador`.
+- Quedan fuera del portal general:
+  - campeonatos creados por `administrador`,
+  - campeonatos de QA ligados a cuentas administrativas.
+- Los endpoints publicos de:
+  - `goleadores`,
+  - `tarjetas`,
+  - `fair play`,
+  ya quedaron encapsulados bajo `publicPortalController` para respetar el mismo filtro publico por campeonato/evento.
+- La vista publica del torneo ya usa navegacion por:
+  - tabs de categoria,
+  - subtabs deportivas separadas,
+  - tablas de posiciones agrupadas en layout `2x1` en escritorio y `1x1` en movil.
 
 ## Pendientes Prioritarios Recomendados
 
