@@ -1,6 +1,7 @@
 const pool = require("../config/database");
 const Partido = require("../models/Partido");
 const Eliminatoria = require("../models/Eliminatoria");
+const Auspiciante = require("../models/Auspiciante");
 const tablaController = require("../controllers/tablaController");
 
 const ESTADOS_PUBLICOS = new Set([
@@ -72,6 +73,29 @@ function resumirEvento(evento) {
   };
 }
 
+function normalizarCategoriasResumen(resumen) {
+  if (!resumen) return [];
+  const data =
+    typeof resumen === "string"
+      ? (() => {
+          try {
+            return JSON.parse(resumen);
+          } catch (_) {
+            return [];
+          }
+        })()
+      : resumen;
+
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((item) => ({
+      id: normalizarEntero(item?.id),
+      nombre: item?.nombre || null,
+      total_equipos: normalizarEntero(item?.total_equipos) || 0,
+    }))
+    .filter((item) => item.id !== null && item.nombre);
+}
+
 async function obtenerTotalesCampeonato(ids = []) {
   const idsValidos = ids.map((item) => normalizarEntero(item)).filter((item) => item !== null);
   if (!idsValidos.length) return new Map();
@@ -97,6 +121,42 @@ async function obtenerTotalesCampeonato(ids = []) {
         total_equipos: Number(row.total_equipos || 0),
         total_grupos: Number(row.total_grupos || 0),
       },
+    ])
+  );
+}
+
+async function obtenerResumenCategoriasCampeonatos(ids = []) {
+  const idsValidos = ids.map((item) => normalizarEntero(item)).filter((item) => item !== null);
+  if (!idsValidos.length) return new Map();
+
+  const q = `
+    SELECT
+      e.campeonato_id,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'id', e.id,
+            'nombre', e.nombre,
+            'total_equipos', COALESCE(eq.total_equipos, 0)
+          )
+          ORDER BY COALESCE(e.numero_campeonato, 999999), e.id
+        ),
+        '[]'::json
+      ) AS categorias_resumen
+    FROM eventos e
+    LEFT JOIN LATERAL (
+      SELECT COUNT(DISTINCT ee.equipo_id)::int AS total_equipos
+      FROM evento_equipos ee
+      WHERE ee.evento_id = e.id
+    ) eq ON TRUE
+    WHERE e.campeonato_id = ANY($1::int[])
+    GROUP BY e.campeonato_id
+  `;
+  const result = await pool.query(q, [idsValidos]);
+  return new Map(
+    result.rows.map((row) => [
+      Number(row.campeonato_id),
+      normalizarCategoriasResumen(row.categorias_resumen),
     ])
   );
 }
@@ -152,12 +212,16 @@ async function listarCampeonatosPublicos() {
   const campeonatos = result.rows;
   const visibles = campeonatos.filter((item) => esEstadoPublico(item.estado));
   const totales = await obtenerTotalesCampeonato(visibles.map((item) => item.id));
+  const categorias = await obtenerResumenCategoriasCampeonatos(visibles.map((item) => item.id));
 
   return visibles.map((item) =>
-    resumirCampeonato(item, totales.get(Number(item.id)) || {
-      total_eventos: 0,
-      total_equipos: 0,
-      total_grupos: 0,
+    resumirCampeonato(item, {
+      ...(totales.get(Number(item.id)) || {
+        total_eventos: 0,
+        total_equipos: 0,
+        total_grupos: 0,
+      }),
+      categorias_resumen: categorias.get(Number(item.id)) || [],
     })
   );
 }
@@ -166,10 +230,14 @@ async function obtenerCampeonatoPublico(campeonatoId) {
   const campeonato = await obtenerCampeonatoVisible(campeonatoId);
   if (!campeonato) return null;
   const totales = await obtenerTotalesCampeonato([campeonatoId]);
-  return resumirCampeonato(campeonato, totales.get(Number(campeonatoId)) || {
-    total_eventos: 0,
-    total_equipos: 0,
-    total_grupos: 0,
+  const categorias = await obtenerResumenCategoriasCampeonatos([campeonatoId]);
+  return resumirCampeonato(campeonato, {
+    ...(totales.get(Number(campeonatoId)) || {
+      total_eventos: 0,
+      total_equipos: 0,
+      total_grupos: 0,
+    }),
+    categorias_resumen: categorias.get(Number(campeonatoId)) || [],
   });
 }
 
@@ -322,6 +390,26 @@ async function obtenerFairPlayPublicoPorEvento(eventoId, query = {}) {
   };
 }
 
+async function listarAuspiciantesPublicosPorCampeonato(campeonatoId) {
+  const campeonato = await obtenerCampeonatoVisible(campeonatoId);
+  if (!campeonato) return null;
+
+  const auspiciantes = await Auspiciante.listarPorCampeonato(campeonatoId, true);
+  return {
+    ok: true,
+    campeonato: resumirCampeonato(campeonato),
+    total: auspiciantes.length,
+    auspiciantes: auspiciantes.map((item) => ({
+      id: Number(item.id),
+      campeonato_id: Number(item.campeonato_id),
+      nombre: item.nombre,
+      logo_url: item.logo_url || null,
+      orden: normalizarEntero(item.orden) || 1,
+      activo: item.activo === true,
+    })),
+  };
+}
+
 module.exports = {
   listarCampeonatosPublicos,
   obtenerCampeonatoPublico,
@@ -332,4 +420,5 @@ module.exports = {
   obtenerGoleadoresPublicosPorEvento,
   obtenerTarjetasPublicasPorEvento,
   obtenerFairPlayPublicoPorEvento,
+  listarAuspiciantesPublicosPorCampeonato,
 };

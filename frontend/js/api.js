@@ -247,6 +247,9 @@
     listarEventosPorCampeonato(campeonatoId) {
       return window.ApiClient.get(`/public/campeonatos/${campeonatoId}/eventos`);
     },
+    listarAuspiciantesPorCampeonato(campeonatoId) {
+      return window.ApiClient.get(`/public/campeonatos/${campeonatoId}/auspiciantes`);
+    },
     obtenerPartidosPorEvento(eventoId) {
       return window.ApiClient.get(`/public/eventos/${eventoId}/partidos`);
     },

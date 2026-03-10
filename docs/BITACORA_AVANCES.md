@@ -1081,6 +1081,29 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - app Android (Play Store),
   - app iOS (App Store).
 
+## Actualizacion 2026-03-10 (Portal publico compartible)
+- Se enriquecio el listado publico de campeonatos con `categorias_resumen` para mostrar en cada card:
+  - nombre de categoria,
+  - cantidad de equipos por categoria.
+- Se habilito vista publica compartible por campeonato en `portal.html?campeonato=<id>`:
+  - header completo,
+  - detalle del campeonato,
+  - tabs por categoria,
+  - subtabs deportivas (`Tabla de posiciones`, `Goleadores`, `Fair Play`, `Tarjetas amarillas`, `Tarjetas rojas`, `Playoff`),
+  - seccion de auspiciantes,
+  - footer institucional.
+- Se agrego endpoint publico para auspiciantes del campeonato:
+  - `GET /api/public/campeonatos/:campeonato_id/auspiciantes`
+- La landing publica del organizador ahora tambien entrega `categorias_resumen`, manteniendo consistencia entre:
+  - `index.html?organizador=<id>`
+  - `portal.html?campeonato=<id>&organizador=<id>`
+
+## En Curso
+- Validacion visual del detalle compartible del portal en produccion (`portal.html?campeonato=<id>`), incluyendo auspiciantes, tabs y subtabs por categoria.
+- Continuidad del hardening de despliegue Render:
+  - carga historica de `uploads`,
+  - verificacion real de logos, fotos y documentos.
+
 ## Checklist de Pruebas Siguiente Sesion
 1. Crear/seleccionar campeonato y evento.
 2. Registrar y asignar equipos al evento.

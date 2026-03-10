@@ -67,6 +67,28 @@ const publicPortalController = {
     }
   },
 
+  async listarAuspiciantesPorCampeonato(req, res) {
+    try {
+      const campeonatoId = Number.parseInt(req.params.campeonato_id, 10);
+      if (!Number.isFinite(campeonatoId)) {
+        return res.status(400).json({ error: "campeonato_id invalido" });
+      }
+
+      const payload = await publicPortalService.listarAuspiciantesPublicosPorCampeonato(campeonatoId);
+      if (!payload) {
+        return res.status(404).json({ error: "Campeonato publico no encontrado" });
+      }
+
+      return res.json(payload);
+    } catch (error) {
+      console.error("Error listando auspiciantes publicos:", error);
+      return res.status(500).json({
+        error: "Error listando auspiciantes publicos",
+        detalle: error.message,
+      });
+    }
+  },
+
   async obtenerPartidosPorEvento(req, res) {
     try {
       const eventoId = Number.parseInt(req.params.evento_id, 10);

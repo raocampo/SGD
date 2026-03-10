@@ -426,6 +426,30 @@ body.ltc-landing {
   font-size: 0.86rem;
 }
 
+.portal-card-categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+  margin-top: 0.5rem;
+}
+
+.portal-card-categoria-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  background: #eef5fd;
+  border: 1px solid #d0def0;
+  color: #294768;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.28rem 0.55rem;
+}
+
+.portal-card-categoria-chip strong {
+  color: #173657;
+}
+
 .portal-card-btn {
   margin-top: auto;
   border: 1px solid #2f5e96;
@@ -1482,6 +1506,10 @@ body.ltc-landing {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .portal-card-categorias {
+    gap: 0.35rem;
+  }
+
   .ltc-header-brand-sub {
     display: none;
   }
@@ -1608,6 +1636,10 @@ body.ltc-landing {
 @media (max-width: 700px) {
   .portal-campeonatos-grid {
     grid-template-columns: 1fr;
+  }
+
+  .portal-card-categoria-chip {
+    font-size: 0.72rem;
   }
 
   .portal-detail-heading {

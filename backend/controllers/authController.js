@@ -300,7 +300,26 @@ const authController = {
               SELECT COUNT(*)::int
               FROM equipos eq
               WHERE eq.campeonato_id = c.id
-            ) AS total_equipos
+            ) AS total_equipos,
+            (
+              SELECT COALESCE(
+                json_agg(
+                  json_build_object(
+                    'id', e.id,
+                    'nombre', e.nombre,
+                    'total_equipos', (
+                      SELECT COUNT(DISTINCT ee.equipo_id)::int
+                      FROM evento_equipos ee
+                      WHERE ee.evento_id = e.id
+                    )
+                  )
+                  ORDER BY COALESCE(e.numero_campeonato, 999999), e.id
+                ),
+                '[]'::json
+              )
+              FROM eventos e
+              WHERE e.campeonato_id = c.id
+            ) AS categorias_resumen
           FROM campeonatos c
           WHERE c.creador_usuario_id = $1
           ORDER BY c.fecha_inicio DESC NULLS LAST, c.id DESC

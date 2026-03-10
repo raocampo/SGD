@@ -10,6 +10,10 @@ const router = express.Router();
 router.get("/campeonatos", publicPortalController.listarCampeonatos);
 router.get("/campeonatos/:campeonato_id", publicPortalController.obtenerCampeonato);
 router.get("/campeonatos/:campeonato_id/eventos", publicPortalController.listarEventosPorCampeonato);
+router.get(
+  "/campeonatos/:campeonato_id/auspiciantes",
+  publicPortalController.listarAuspiciantesPorCampeonato
+);
 router.get("/eventos/:evento_id/partidos", publicPortalController.obtenerPartidosPorEvento);
 router.get("/eventos/:evento_id/tablas", publicPortalController.obtenerTablasPorEvento);
 router.get("/eventos/:evento_id/eliminatorias", publicPortalController.obtenerEliminatoriasPorEvento);

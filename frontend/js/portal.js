@@ -6,6 +6,9 @@ const IMG_TORNEO_ACTIVO = "assets/ltc/torneos/Torneo1.jpeg";
 const IMG_TORNEO_PROXIMO = "assets/ltc/torneos/ProximoTorneo.jpeg";
 const IMG_TORNEO_SVG_A = "assets/ltc/torneos/ProximoA.svg";
 const IMG_TORNEO_SVG_B = "assets/ltc/torneos/ProximoB.svg";
+const ES_PORTAL_PAGE = /\/portal\.html$/i.test(window.location.pathname);
+
+let portalContextoActual = null;
 
 function leerContextoPortalDesdeUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -69,6 +72,59 @@ function escPortal(texto) {
     .replace(/'/g, "&#39;");
 }
 
+function normalizarCategoriasResumenPortal(resumen) {
+  const data =
+    typeof resumen === "string"
+      ? (() => {
+          try {
+            return JSON.parse(resumen);
+          } catch (_) {
+            return [];
+          }
+        })()
+      : resumen;
+
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((item) => ({
+      id: Number.parseInt(item?.id, 10),
+      nombre: limpiarCodigoTorneo(item?.nombre || ""),
+      total_equipos: Number.parseInt(item?.total_equipos, 10) || 0,
+    }))
+    .filter((item) => Number.isFinite(item.id) && item.id > 0 && item.nombre);
+}
+
+function construirUrlPortalCampeonato(campeonatoId, options = {}) {
+  const params = new URLSearchParams();
+  params.set("campeonato", String(campeonatoId));
+  if (Number.isFinite(Number.parseInt(options?.eventoId, 10))) {
+    params.set("evento", String(Number.parseInt(options.eventoId, 10)));
+  }
+  if (Number.isFinite(Number.parseInt(options?.organizadorId, 10))) {
+    params.set("organizador", String(Number.parseInt(options.organizadorId, 10)));
+  }
+  return `portal.html?${params.toString()}`;
+}
+
+function renderCategoriasResumenCard(torneo) {
+  const categorias = normalizarCategoriasResumenPortal(torneo?.categorias_resumen);
+  if (!categorias.length) return "";
+
+  return `
+    <div class="portal-card-categorias">
+      ${categorias
+        .map(
+          (categoria) => `
+            <span class="portal-card-categoria-chip">
+              ${escPortal(categoria.nombre)} <strong>${categoria.total_equipos}</strong>
+            </span>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function renderCardTorneoPrincipal(torneo) {
   const nombre = limpiarCodigoTorneo(torneo?.nombre) || "Torneo LT&C";
   const estado = (torneo?.estado || "planificacion").replace("planificacion", "borrador");
@@ -77,9 +133,18 @@ function renderCardTorneoPrincipal(torneo) {
     "Activo";
   const fechaInicio = formatearFechaPortal(torneo?.fecha_inicio);
   const fechaFin = formatearFechaPortal(torneo?.fecha_fin);
+  const href = construirUrlPortalCampeonato(torneo?.id, {
+    organizadorId: portalContextoActual?.organizadorId,
+  });
 
   return `
-    <article class="portal-campeonato-card" onclick="portalVerCampeonato(${torneo.id})" role="button" tabindex="0">
+    <article
+      class="portal-campeonato-card"
+      onclick="window.location.href='${escPortal(href)}'"
+      onkeypress="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='${escPortal(href)}';}"
+      role="button"
+      tabindex="0"
+    >
       <div class="portal-card-media">
         <img src="${IMG_TORNEO_ACTIVO}" alt="${nombre}" />
       </div>
@@ -87,7 +152,8 @@ function renderCardTorneoPrincipal(torneo) {
         <span class="badge-estado estado-${estado}">${labelEstado}</span>
         <h3>${nombre}</h3>
         <p class="portal-card-date">Fecha: ${fechaInicio} - ${fechaFin}</p>
-        <button class="portal-card-btn" type="button">Ver torneo</button>
+        ${renderCategoriasResumenCard(torneo)}
+        <a class="portal-card-btn" href="${escPortal(href)}" onclick="event.stopPropagation()">Ver torneo</a>
       </div>
     </article>
   `;
@@ -943,6 +1009,68 @@ function renderDetalleCampeonatoPortal(campeonato, eventosData = []) {
   `;
 }
 
+function renderTrackAuspiciantesPortal(auspiciantes = []) {
+  const items = Array.isArray(auspiciantes) ? auspiciantes.filter((item) => item?.logo_url) : [];
+  if (!items.length) return "";
+  const repetidos = items.length > 1 ? [...items, ...items] : items;
+  return repetidos
+    .map(
+      (item, index) => `
+        <img
+          src="${escPortal(normalizarLogoUrl(item.logo_url))}"
+          alt="${index < items.length ? escPortal(item.nombre || "Auspiciante") : ""}"
+          ${index >= items.length ? 'aria-hidden="true"' : ""}
+        />
+      `
+    )
+    .join("");
+}
+
+async function cargarAuspiciantesCampeonatoPublico(campeonatoId, campeonatoNombre = "") {
+  const section = document.getElementById("portal-auspiciantes-section");
+  const track = document.getElementById("portal-auspiciantes-track");
+  const description = document.getElementById("portal-auspiciantes-description");
+  if (!section || !track) return;
+
+  section.hidden = true;
+  track.innerHTML = "";
+  if (description) {
+    description.textContent = campeonatoNombre
+      ? `Marcas que respaldan ${campeonatoNombre}.`
+      : "Marcas que respaldan esta competencia.";
+  }
+
+  try {
+    const data = window.PortalPublicAPI
+      ? await window.PortalPublicAPI.listarAuspiciantesPorCampeonato(campeonatoId)
+      : await (async () => {
+          const resp = await fetch(`${API}/public/campeonatos/${campeonatoId}/auspiciantes`);
+          const payload = await resp.json().catch(() => ({}));
+          if (!resp.ok) throw new Error(payload?.error || "No se pudieron cargar auspiciantes");
+          return payload;
+        })();
+    const auspiciantes = Array.isArray(data?.auspiciantes) ? data.auspiciantes : [];
+    if (!auspiciantes.length) return;
+    track.innerHTML = renderTrackAuspiciantesPortal(auspiciantes);
+    section.hidden = false;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function prepararVistaDetallePortal(campeonato = null, options = {}) {
+  const backBtn = document.getElementById("portal-back-btn");
+  const esVistaCompartible = options?.detalleCompartible === true;
+
+  if (backBtn) {
+    backBtn.style.display = esVistaCompartible ? "none" : "";
+  }
+
+  if (esVistaCompartible && campeonato?.nombre) {
+    document.title = `${limpiarCodigoTorneo(campeonato.nombre)} | LT&C`;
+  }
+}
+
 function activarPortalTab(scope, buttonSelector, panelSelector, targetId) {
   if (!scope || !targetId) return;
   scope.querySelectorAll(buttonSelector).forEach((button) => {
@@ -958,9 +1086,13 @@ function activarPortalTab(scope, buttonSelector, panelSelector, targetId) {
 }
 
 async function portalVerCampeonato(campeonatoId, options = {}) {
-  document.getElementById("portal-inicio").classList.remove("active");
-  document.getElementById("portal-detalle").classList.add("active");
+  const inicio = document.getElementById("portal-inicio");
+  const detalle = document.getElementById("portal-detalle");
   const cont = document.getElementById("portal-detalle-contenido");
+  if (!inicio || !detalle || !cont) return;
+
+  inicio.classList.remove("active");
+  detalle.classList.add("active");
   cont.innerHTML = "<p>Cargando...</p>";
 
   try {
@@ -1022,14 +1154,25 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
     );
 
     cont.innerHTML = renderDetalleCampeonatoPortal(camp, eventosData);
+    prepararVistaDetallePortal(camp, options);
+    if (options?.cargarAuspiciantes !== false) {
+      await cargarAuspiciantesCampeonatoPublico(campeonatoId, limpiarCodigoTorneo(camp?.nombre || ""));
+    }
   } catch (err) {
     console.error(err);
     cont.innerHTML = '<p class="empty-msg">Error cargando datos.</p>';
   }
 }
 function portalVolver() {
-  document.getElementById("portal-detalle").classList.remove("active");
-  document.getElementById("portal-inicio").classList.add("active");
+  const detalle = document.getElementById("portal-detalle");
+  const inicio = document.getElementById("portal-inicio");
+  const section = document.getElementById("portal-auspiciantes-section");
+  const backBtn = document.getElementById("portal-back-btn");
+  if (detalle) detalle.classList.remove("active");
+  if (inicio) inicio.classList.add("active");
+  if (section) section.hidden = true;
+  if (backBtn) backBtn.style.display = "";
+  document.title = "Portal Público - LT&C";
 }
 
 window.portalVerCampeonato = portalVerCampeonato;
@@ -1052,6 +1195,44 @@ document.addEventListener("click", (event) => {
 
 document.addEventListener("DOMContentLoaded", async () => {
   const contexto = leerContextoPortalDesdeUrl();
+  portalContextoActual = contexto;
+
+  if (ES_PORTAL_PAGE) {
+    const cargarListado = async () => {
+      if (contexto.organizadorId) {
+        const landing = await cargarLandingOrganizador(contexto.organizadorId);
+        return landing;
+      }
+      await portalCargarCampeonatos(null, { mostrarProximos: false });
+      return null;
+    };
+
+    try {
+      const landing = contexto.organizadorId ? await cargarListado() : null;
+      if (!contexto.organizadorId && !contexto.campeonatoId) {
+        await portalCargarCampeonatos(null, { mostrarProximos: false });
+      }
+      if (contexto.campeonatoId) {
+        if (landing && Array.isArray(landing?.campeonatos) && landing.campeonatos.length) {
+          const permitido = landing.campeonatos.some((item) => Number(item.id) === Number(contexto.campeonatoId));
+          if (!permitido) {
+            renderErrorPortal("El campeonato solicitado no esta disponible en esta landing.");
+            return;
+          }
+        }
+        await portalVerCampeonato(contexto.campeonatoId, {
+          eventoId: contexto.eventoId,
+          detalleCompartible: true,
+          cargarAuspiciantes: true,
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      renderErrorPortal(error.message || "No se pudo cargar el portal publico.");
+    }
+    return;
+  }
+
   await cargarContenidoPortalPublico();
   await cargarGaleriaPublica();
   initFormularioContactoPublico();

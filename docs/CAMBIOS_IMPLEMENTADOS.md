@@ -653,3 +653,23 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - tablas de posiciones/goleadores/tarjetas/fair play,
   - finanzas (`movimientos`, `estado-cuenta`, `morosidad`),
   - portal publico (campeonato, eventos, partidos, tablas).
+
+---
+
+## 18. Portal publico compartible por campeonato
+- **Ubicacion backend:** `backend/services/publicPortalService.js`, `backend/controllers/publicPortalController.js`, `backend/routes/publicRoutes.js`, `backend/controllers/authController.js`
+- **Ubicacion frontend:** `frontend/portal.html`, `frontend/js/portal.js`, `frontend/js/api.js`, `frontend/css/portal.css`
+- Se agrego resumen por categoria a los payloads publicos del campeonato:
+  - `categorias_resumen` con nombre de categoria y cantidad de equipos.
+- Las cards del portal ahora muestran chips de categoria + equipos.
+- El detalle del campeonato ya puede compartirse directamente con:
+  - `portal.html?campeonato=<id>`
+- La pagina compartible incluye:
+  - header completo,
+  - tabs por categoria,
+  - subtabs deportivas,
+  - auspiciantes del campeonato,
+  - footer institucional completo.
+- Nuevo endpoint publico:
+  - `GET /api/public/campeonatos/:campeonato_id/auspiciantes`
+- La landing publica del organizador tambien quedo alineada con ese mismo resumen de categorias para no divergir del portal general.

@@ -51,7 +51,7 @@
         </section>
 
         <section id="portal-detalle" class="portal-section">
-          <button class="ltc-btn ltc-btn-back" type="button" onclick="portalVolver()">
+          <button id="portal-back-btn" class="ltc-btn ltc-btn-back" type="button" onclick="portalVolver()">
             <i class="fas fa-arrow-left"></i>
             Volver al listado
           </button>
@@ -59,7 +59,34 @@
         </section>
       </div>
     </section>
+
+    <section id="portal-auspiciantes-section" class="ltc-sponsors-section" hidden>
+      <div class="container">
+        <div class="ltc-section-title">
+          <h2>AUSPICIANTES DEL CAMPEONATO</h2>
+          <p id="portal-auspiciantes-description">Marcas que respaldan esta competencia.</p>
+        </div>
+        <div class="ltc-sponsors-strip" aria-label="Auspiciantes del campeonato">
+          <div id="portal-auspiciantes-track" class="ltc-sponsors-track"></div>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <footer class="ltc-footer">
+    <div class="container ltc-footer-inner">
+      <div class="ltc-footer-social">
+        <a href="https://www.facebook.com/LojaTorneosCompetencia" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+        <a href="https://www.instagram.com/lojatorneoycompetencia" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        <a href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+      </div>
+      <p class="ltc-footer-copy">LT&C &copy; Derechos reservados 2026</p>
+      <p class="ltc-footer-copy">
+        Desarrollado por
+        <a href="https://www.corpsimtelec.com" target="_blank" rel="noopener noreferrer">CorpSimtelec</a>
+      </p>
+    </div>
+  </footer>
 
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>

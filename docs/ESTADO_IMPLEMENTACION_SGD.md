@@ -132,6 +132,16 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - tabs de categoria,
   - subtabs deportivas separadas,
   - tablas de posiciones agrupadas en layout `2x1` en escritorio y `1x1` en movil.
+- Las cards del portal ya muestran resumen de categorias con cantidad de equipos.
+- El detalle publico compartible del campeonato ya puede abrirse de forma directa en:
+  - `portal.html?campeonato=<id>`
+- La pagina compartible ya incluye:
+  - header completo,
+  - tabs/subtabs deportivas,
+  - auspiciantes del campeonato,
+  - footer institucional.
+- Endpoint publico agregado para auspiciantes:
+  - `/api/public/campeonatos/:campeonato_id/auspiciantes`
 
 ## Pendientes Prioritarios Recomendados
 
@@ -221,6 +231,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 9. Auspiciantes (calidad de datos):
 - Migrar/cargar auspiciantes por campeonato en tabla `campeonato_auspiciantes` para no depender de fallback por filesystem.
 - Mantener consistencia entre logos en `uploads` y registros de BD (nombre, orden, activo, campeonato).
+- Validar visualmente la nueva seccion publica de auspiciantes por campeonato en `portal.html?campeonato=<id>`.
 
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`

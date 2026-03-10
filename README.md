@@ -406,6 +406,17 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
    - Android (Play Store),
    - iOS (App Store).
 
+## 11.1. Novedades Recientes del Portal Publico
+- Las cards de campeonatos ahora muestran resumen por categoria con cantidad de equipos.
+- El detalle deportivo de cada campeonato puede abrirse en `portal.html?campeonato=<id>` como pagina compartible con:
+  - header completo,
+  - tabs por categoria,
+  - subtabs de posiciones, goleadores, fair play, tarjetas y playoff,
+  - seccion de auspiciantes del campeonato,
+  - footer institucional completo.
+- Nuevo endpoint publico disponible:
+  - `/api/public/campeonatos/:campeonato_id/auspiciantes`
+
 ## 12. Solucion de Problemas
 - `DB_PASSWORD no definido`: configurar `backend/.env`.
 - Error 404 de imagen/logo:
