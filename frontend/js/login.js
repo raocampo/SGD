@@ -54,18 +54,18 @@
   async function onSubmitLogin(e) {
     e.preventDefault();
 
-    const email = String(document.getElementById("login-email")?.value || "").trim();
+    const identificador = String(document.getElementById("login-email")?.value || "").trim();
     const password = String(document.getElementById("login-password")?.value || "");
     const btn = document.getElementById("login-submit");
 
-    if (!email || !password) {
-      mostrarNotificacion("Correo y contraseña son obligatorios", "warning");
+    if (!identificador || !password) {
+      mostrarNotificacion("Correo o usuario y contraseña son obligatorios", "warning");
       return;
     }
 
     try {
       if (btn) btn.disabled = true;
-      const data = await AuthAPI.login({ email, password });
+      const data = await AuthAPI.login({ identificador, password });
       const token = data?.token || "";
       const usuario = data?.usuario || null;
       if (!token || !usuario) throw new Error("Respuesta de login inválida");

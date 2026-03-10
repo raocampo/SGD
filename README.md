@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-10): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente.
+Estado del proyecto (2026-03-10): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria y autenticacion admite `correo o username` para cuentas internas.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -40,9 +40,14 @@ Flujo principal operativo:
     - `Fair play`,
     - `Tarjetas amarillas`,
     - `Tarjetas rojas`,
+    - `Playoff`,
   - las tablas de posiciones por grupo ahora se muestran en grid responsive:
     - `2 columnas` en desktop,
     - `1 columna` en tablet/movil.
+  - el portal replica el estado competitivo del sistema:
+    - equipos fuera de clasificacion en naranja,
+    - equipos eliminados en rojo oscuro con causal visible,
+    - `Fair play` excluye equipos eliminados.
   - los endpoints publicos de `goleadores`, `tarjetas` y `fair play` ya pasan por el filtro del `publicPortalController`, evitando exponer eventos no publicos por URL directa.
 - Soporte estable para uploads en despliegue:
   - nuevo archivo `backend/config/uploads.js`,
@@ -59,6 +64,14 @@ Flujo principal operativo:
   - usuarios creados por administrador/organizador quedan marcados para cambio obligatorio al primer ingreso,
   - nuevo endpoint autenticado `POST /api/auth/password/change`,
   - flujo de login y panel administrativo ya fuerzan/permiten cambio de contraseña desde UI.
+- Identificadores de acceso internos mas flexibles:
+  - nueva migracion `database/migrations/032_usuarios_username_opcional.sql`,
+  - usuarios internos ahora pueden crearse con:
+    - `correo`,
+    - `username`,
+    - o ambos.
+  - el login web acepta `correo o usuario`.
+  - la recuperacion de contraseña sigue siendo exclusiva para cuentas con correo.
 
 ## Novedades Anteriores (2026-03-09)
 - Configuracion compartida de playoff/clasificacion:
@@ -282,6 +295,7 @@ psql -U postgres -d gestionDeportiva -f database/migrations/028_auditoria_edicio
 psql -U postgres -d gestionDeportiva -f database/migrations/029_eliminacion_manual_y_clasificacion_manual.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/030_evento_playoff_config.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/031_usuarios_cambio_password_obligatorio.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/032_usuarios_username_opcional.sql
 ```
 
 ### 5.3 Ejecutar

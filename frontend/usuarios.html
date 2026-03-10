@@ -43,7 +43,11 @@
               </div>
               <div class="form-group">
                 <label for="usr-email">Correo</label>
-                <input id="usr-email" type="email" required />
+                <input id="usr-email" type="email" placeholder="Opcional si usarás usuario" />
+              </div>
+              <div class="form-group">
+                <label for="usr-username">Usuario</label>
+                <input id="usr-username" type="text" placeholder="Opcional si usarás correo" />
               </div>
               <div class="form-group">
                 <label for="usr-password">Contraseña</label>
@@ -95,6 +99,9 @@
                 <input id="usr-organizacion" placeholder="Ej: Loja Torneos & Competencias" />
               </div>
             </div>
+            <p style="margin:10px 0 0; color:#64748b; font-size:13px;">
+              Debes ingresar correo o usuario. La recuperación de contraseña solo funciona para cuentas con correo.
+            </p>
             <div class="actions">
               <button id="btn-usuarios-guardar" type="submit" class="btn btn-success">
                 <i class="fas fa-plus"></i> Crear usuario
@@ -130,4 +137,3 @@
 </body>
 
 </html>
-

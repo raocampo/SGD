@@ -12,6 +12,20 @@ class UsuarioAuth {
     return String(email || "").trim().toLowerCase();
   }
 
+  static normalizarUsername(username) {
+    return String(username || "").trim().toLowerCase();
+  }
+
+  static validarEmail(email) {
+    if (!email) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email));
+  }
+
+  static validarUsername(username) {
+    if (!username) return true;
+    return /^[a-z0-9._-]{3,40}$/.test(String(username));
+  }
+
   static hashToken(token) {
     return crypto.createHash("sha256").update(String(token || "")).digest("hex");
   }
@@ -23,6 +37,7 @@ class UsuarioAuth {
       nombre: row.nombre,
       organizacion_nombre: row.organizacion_nombre || "",
       email: row.email,
+      username: row.username || "",
       rol: row.rol,
       activo: row.activo === true,
       solo_lectura: row.solo_lectura === true,
@@ -44,7 +59,8 @@ class UsuarioAuth {
       CREATE TABLE IF NOT EXISTS usuarios (
         id SERIAL PRIMARY KEY,
         nombre VARCHAR(140) NOT NULL,
-        email VARCHAR(180) NOT NULL UNIQUE,
+        email VARCHAR(180) UNIQUE,
+        username VARCHAR(80),
         password_hash TEXT NOT NULL,
         rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'operador', 'organizador', 'tecnico', 'dirigente', 'jugador')),
         activo BOOLEAN NOT NULL DEFAULT TRUE,
@@ -55,6 +71,10 @@ class UsuarioAuth {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+    await client.query(`
+      ALTER TABLE usuarios
+      ADD COLUMN IF NOT EXISTS username VARCHAR(80)
     `);
     await client.query(`
       ALTER TABLE usuarios
@@ -75,6 +95,25 @@ class UsuarioAuth {
     await client.query(`
       ALTER TABLE usuarios
       ADD COLUMN IF NOT EXISTS plan_estado VARCHAR(20) NOT NULL DEFAULT 'activo'
+    `);
+    await client.query(`
+      ALTER TABLE usuarios
+      ALTER COLUMN email DROP NOT NULL
+    `);
+    await client.query(`
+      UPDATE usuarios
+      SET email = NULL
+      WHERE TRIM(COALESCE(email, '')) = ''
+    `);
+    await client.query(`
+      UPDATE usuarios
+      SET username = NULL
+      WHERE TRIM(COALESCE(username, '')) = ''
+    `);
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_username_unique
+      ON usuarios(LOWER(username))
+      WHERE username IS NOT NULL
     `);
     await client.query(`
       DO $$
@@ -144,7 +183,29 @@ class UsuarioAuth {
         UNIQUE (usuario_id, equipo_id)
       )
     `);
+    await client.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'usuarios_identificador_check'
+            AND conrelid = 'usuarios'::regclass
+        ) THEN
+          ALTER TABLE usuarios DROP CONSTRAINT usuarios_identificador_check;
+        END IF;
+
+        ALTER TABLE usuarios
+        ADD CONSTRAINT usuarios_identificador_check
+        CHECK (
+          (email IS NOT NULL AND btrim(email) <> '')
+          OR (username IS NOT NULL AND btrim(username) <> '')
+        );
+      EXCEPTION WHEN duplicate_object THEN
+        NULL;
+      END $$;
+    `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios(username)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios(rol)`);
     await client.query(
       `CREATE INDEX IF NOT EXISTS idx_usuario_equipos_usuario ON usuario_equipos(usuario_id)`
@@ -204,7 +265,7 @@ class UsuarioAuth {
 
     if (!adminEmail || !adminPass) return;
 
-    const check = await client.query("SELECT id FROM usuarios WHERE email = $1 LIMIT 1", [
+    const check = await client.query("SELECT id FROM usuarios WHERE LOWER(COALESCE(email, '')) = $1 LIMIT 1", [
       adminEmail,
     ]);
     if (check.rows.length) return;
@@ -233,17 +294,56 @@ class UsuarioAuth {
 
   static async obtenerPorEmail(email, client = pool) {
     await this.asegurarEsquema(client);
+    const emailNormalizado = this.normalizarEmail(email);
+    if (!emailNormalizado) return null;
     const q = `
       SELECT
         u.*,
         COALESCE(ARRAY_AGG(ue.equipo_id) FILTER (WHERE ue.equipo_id IS NOT NULL), '{}') AS equipo_ids
       FROM usuarios u
       LEFT JOIN usuario_equipos ue ON ue.usuario_id = u.id
-      WHERE u.email = $1
+      WHERE LOWER(COALESCE(u.email, '')) = $1
       GROUP BY u.id
       LIMIT 1
     `;
-    const r = await client.query(q, [this.normalizarEmail(email)]);
+    const r = await client.query(q, [emailNormalizado]);
+    return r.rows[0] || null;
+  }
+
+  static async obtenerPorUsername(username, client = pool) {
+    await this.asegurarEsquema(client);
+    const usernameNormalizado = this.normalizarUsername(username);
+    if (!usernameNormalizado) return null;
+    const q = `
+      SELECT
+        u.*,
+        COALESCE(ARRAY_AGG(ue.equipo_id) FILTER (WHERE ue.equipo_id IS NOT NULL), '{}') AS equipo_ids
+      FROM usuarios u
+      LEFT JOIN usuario_equipos ue ON ue.usuario_id = u.id
+      WHERE LOWER(COALESCE(u.username, '')) = $1
+      GROUP BY u.id
+      LIMIT 1
+    `;
+    const r = await client.query(q, [usernameNormalizado]);
+    return r.rows[0] || null;
+  }
+
+  static async obtenerPorIdentificador(identificador, client = pool) {
+    await this.asegurarEsquema(client);
+    const valor = this.normalizarEmail(identificador);
+    if (!valor) return null;
+    const q = `
+      SELECT
+        u.*,
+        COALESCE(ARRAY_AGG(ue.equipo_id) FILTER (WHERE ue.equipo_id IS NOT NULL), '{}') AS equipo_ids
+      FROM usuarios u
+      LEFT JOIN usuario_equipos ue ON ue.usuario_id = u.id
+      WHERE LOWER(COALESCE(u.email, '')) = $1 OR LOWER(COALESCE(u.username, '')) = $1
+      GROUP BY u.id
+      ORDER BY CASE WHEN LOWER(COALESCE(u.email, '')) = $1 THEN 0 ELSE 1 END
+      LIMIT 1
+    `;
+    const r = await client.query(q, [valor]);
     return r.rows[0] || null;
   }
 
@@ -285,6 +385,7 @@ class UsuarioAuth {
 
     const nombre = String(data.nombre || "").trim();
     const email = this.normalizarEmail(data.email);
+    const username = this.normalizarUsername(data.username);
     const password = String(data.password || "");
     const rol = String(data.rol || "tecnico").trim().toLowerCase();
     const activo =
@@ -305,7 +406,15 @@ class UsuarioAuth {
       : "activo";
 
     if (!nombre) throw new Error("nombre es obligatorio");
-    if (!email) throw new Error("email es obligatorio");
+    if (!email && !username) {
+      throw new Error("Debes ingresar email o username");
+    }
+    if (!this.validarEmail(email)) {
+      throw new Error("email invalido");
+    }
+    if (!this.validarUsername(username)) {
+      throw new Error("username invalido. Use solo letras, numeros, punto, guion o guion bajo (3-40).");
+    }
     if (!password || password.length < 6) {
       throw new Error("password debe tener al menos 6 caracteres");
     }
@@ -316,8 +425,20 @@ class UsuarioAuth {
       throw new Error("organizacion_nombre es obligatorio para organizador");
     }
 
-    const exists = await client.query("SELECT 1 FROM usuarios WHERE email = $1 LIMIT 1", [email]);
-    if (exists.rows.length) throw new Error("Ya existe un usuario con ese email");
+    if (email) {
+      const exists = await client.query(
+        "SELECT 1 FROM usuarios WHERE LOWER(COALESCE(email, '')) = $1 LIMIT 1",
+        [email]
+      );
+      if (exists.rows.length) throw new Error("Ya existe un usuario con ese email");
+    }
+    if (username) {
+      const existsUsername = await client.query(
+        "SELECT 1 FROM usuarios WHERE LOWER(COALESCE(username, '')) = $1 LIMIT 1",
+        [username]
+      );
+      if (existsUsername.rows.length) throw new Error("Ya existe un usuario con ese username");
+    }
 
     const hash = await bcrypt.hash(password, 10);
     const r = await client.query(
@@ -326,6 +447,7 @@ class UsuarioAuth {
           nombre,
           organizacion_nombre,
           email,
+          username,
           password_hash,
           rol,
           activo,
@@ -334,13 +456,14 @@ class UsuarioAuth {
           plan_codigo,
           plan_estado
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
       `,
       [
         nombre,
         rol === "organizador" ? organizacionNombre : null,
-        email,
+        email || null,
+        username || null,
         hash,
         rol,
         activo,
@@ -375,14 +498,32 @@ class UsuarioAuth {
 
     if (data.email !== undefined) {
       const email = this.normalizarEmail(data.email);
-      if (!email) throw new Error("email es obligatorio");
-      const exists = await client.query(
-        "SELECT 1 FROM usuarios WHERE email = $1 AND id <> $2 LIMIT 1",
-        [email, uId]
-      );
-      if (exists.rows.length) throw new Error("Ya existe un usuario con ese email");
+      if (!this.validarEmail(email)) throw new Error("email invalido");
+      if (email) {
+        const exists = await client.query(
+          "SELECT 1 FROM usuarios WHERE LOWER(COALESCE(email, '')) = $1 AND id <> $2 LIMIT 1",
+          [email, uId]
+        );
+        if (exists.rows.length) throw new Error("Ya existe un usuario con ese email");
+      }
       campos.push(`email = $${idx++}`);
-      valores.push(email);
+      valores.push(email || null);
+    }
+
+    if (data.username !== undefined) {
+      const username = this.normalizarUsername(data.username);
+      if (!this.validarUsername(username)) {
+        throw new Error("username invalido. Use solo letras, numeros, punto, guion o guion bajo (3-40).");
+      }
+      if (username) {
+        const exists = await client.query(
+          "SELECT 1 FROM usuarios WHERE LOWER(COALESCE(username, '')) = $1 AND id <> $2 LIMIT 1",
+          [username, uId]
+        );
+        if (exists.rows.length) throw new Error("Ya existe un usuario con ese username");
+      }
+      campos.push(`username = $${idx++}`);
+      valores.push(username || null);
     }
 
     if (data.password !== undefined && String(data.password || "").trim() !== "") {
@@ -458,6 +599,16 @@ class UsuarioAuth {
       valores.push(planEstado);
     }
 
+    const emailFinal =
+      data.email !== undefined ? this.normalizarEmail(data.email) || null : actual.email || null;
+    const usernameFinal =
+      data.username !== undefined
+        ? this.normalizarUsername(data.username) || null
+        : actual.username || null;
+    if (!emailFinal && !usernameFinal) {
+      throw new Error("Debes mantener email o username");
+    }
+
     if (!campos.length) throw new Error("No hay campos para actualizar");
 
     valores.push(uId);
@@ -489,7 +640,7 @@ class UsuarioAuth {
   }
 
   static async validarCredenciales(email, password, client = pool) {
-    const row = await this.obtenerPorEmail(email, client);
+    const row = await this.obtenerPorIdentificador(email, client);
     if (!row) return null;
     if (!row.activo) return null;
 

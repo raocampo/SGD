@@ -483,20 +483,31 @@ function renderTablasPortal(tablas = []) {
       const filas = Array.isArray(grupoData?.tabla) ? grupoData.tabla : [];
       if (!filas.length) return "";
       const titulo = grupo.nombre_grupo || grupo.letra_grupo || "Tabla";
+      const cuposGrupo = Number.parseInt(grupo?.clasificados_por_grupo, 10);
       const rowsHtml = filas
         .map((row, index) => {
           const est = row.estadisticas || {};
+          const fuera = row.fuera_clasificacion === true;
+          const eliminado = row.eliminado_competencia === true || row.eliminado_manual === true;
+          const classes = [fuera ? "portal-tabla-posicion-fuera" : "", eliminado ? "portal-tabla-posicion-eliminado" : ""]
+            .filter(Boolean)
+            .join(" ");
           return `<tr>
-            <td>${row.posicion || index + 1}</td>
-            <td>${row.equipo?.nombre || "-"}</td>
-            <td>${est.partidos_jugados || 0}</td>
-            <td>${est.partidos_ganados || 0}</td>
-            <td>${est.partidos_empatados || 0}</td>
-            <td>${est.partidos_perdidos || 0}</td>
-            <td>${est.goles_favor || 0}</td>
-            <td>${est.goles_contra || 0}</td>
-            <td>${(est.goles_favor || 0) - (est.goles_contra || 0)}</td>
-            <td><strong>${row.puntos || 0}</strong></td>
+            <td class="${classes}">${row.posicion || index + 1}</td>
+            <td class="${classes}">
+              <div class="portal-tabla-posicion-equipo">
+                <span>${escPortal(row.equipo?.nombre || "-")}</span>
+                ${renderEstadoPosicionPortal(row)}
+              </div>
+            </td>
+            <td class="${classes}">${est.partidos_jugados || 0}</td>
+            <td class="${classes}">${est.partidos_ganados || 0}</td>
+            <td class="${classes}">${est.partidos_empatados || 0}</td>
+            <td class="${classes}">${est.partidos_perdidos || 0}</td>
+            <td class="${classes}">${est.goles_favor || 0}</td>
+            <td class="${classes}">${est.goles_contra || 0}</td>
+            <td class="${classes}">${(est.goles_favor || 0) - (est.goles_contra || 0)}</td>
+            <td class="${classes}"><strong>${row.puntos || 0}</strong></td>
           </tr>`;
         })
         .join("");
@@ -504,10 +515,19 @@ function renderTablasPortal(tablas = []) {
       return `
         <div class="portal-stat-block">
           <p><strong>${titulo}</strong></p>
+          ${
+            Number.isFinite(cuposGrupo) && cuposGrupo > 0
+              ? '<p class="portal-tabla-clasificacion-help">Se pintan en naranja los equipos fuera de clasificación y en rojo oscuro los equipos eliminados.</p>'
+              : ""
+          }
           <div class="portal-table-wrap">
-            <table class="tabla-posicion">
-              <tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr>
-              ${rowsHtml}
+            <table class="tabla-posicion portal-tabla-posiciones">
+              <thead>
+                <tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
             </table>
           </div>
         </div>
@@ -521,6 +541,42 @@ function renderTablasPortal(tablas = []) {
   }
 
   return `<div class="portal-stat-grid">${bloques}</div>`;
+}
+
+function renderEstadoPosicionPortal(row = {}) {
+  const noPresentaciones = Number(row.no_presentaciones || 0);
+  const eliminadoManual = row.eliminado_manual === true;
+  const eliminadoAutomatico = row.eliminado_automatico === true;
+  const motivoManual = escPortal(row.motivo_eliminacion_label || "Eliminado manualmente");
+
+  if (eliminadoAutomatico || eliminadoManual) {
+    const leyenda = eliminadoManual
+      ? motivoManual
+      : noPresentaciones >= 2
+        ? `${noPresentaciones}da no presentación`
+        : "Eliminado";
+
+    return `
+      <div class="portal-tabla-posicion-status">
+        <span class="portal-tabla-posicion-banner is-eliminado">${leyenda}</span>
+        ${
+          eliminadoAutomatico
+            ? `<span class="portal-tabla-posicion-chip is-neutral">NP ${noPresentaciones}</span>`
+            : ""
+        }
+      </div>
+    `;
+  }
+
+  if (noPresentaciones > 0) {
+    return `
+      <div class="portal-tabla-posicion-status">
+        <span class="portal-tabla-posicion-chip is-neutral">NP ${noPresentaciones}</span>
+      </div>
+    `;
+  }
+
+  return "";
 }
 
 function formatearHoraPortal(hora) {
@@ -648,27 +704,41 @@ function renderEliminatoriasPortal(rondas = []) {
     return '<p class="empty-msg">No hay llave eliminatoria generada.</p>';
   }
 
-  return rondasValidas
-    .map((ronda) => {
-      const partidosHtml = ronda.partidos
-        .map((partido) => {
-          const marcador =
-            Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante))
-              ? `${partido.resultado_local ?? 0} - ${partido.resultado_visitante ?? 0}`
-              : "vs";
+  return `
+    <div class="portal-eliminatoria-grid">
+      ${rondasValidas
+        .map((ronda) => {
+          const partidosHtml = ronda.partidos
+            .map((partido) => {
+              const marcador =
+                Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante))
+                  ? `${partido.resultado_local ?? 0} - ${partido.resultado_visitante ?? 0}`
+                  : "vs";
+              return `
+                <div class="partido-publico">
+                  <div class="equipo-nombre">${escPortal(partido.equipo_local_nombre || "Por definir")}</div>
+                  <div class="marcador">${escPortal(marcador)}</div>
+                  <div class="equipo-nombre">${escPortal(partido.equipo_visitante_nombre || "Por definir")}</div>
+                </div>
+              `;
+            })
+            .join("");
+
           return `
-            <div class="partido-publico">
-              <div class="equipo-nombre">${partido.equipo_local_nombre || "Por definir"}</div>
-              <div class="marcador">${marcador}</div>
-              <div class="equipo-nombre">${partido.equipo_visitante_nombre || "Por definir"}</div>
-            </div>
+            <section class="portal-eliminatoria-ronda">
+              <div class="portal-eliminatoria-ronda-head">
+                <h4>${escPortal(ronda.ronda || "Ronda")}</h4>
+                <span>${Array.isArray(ronda.partidos) ? ronda.partidos.length : 0} partido(s)</span>
+              </div>
+              <div class="portal-eliminatoria-ronda-body">
+                ${partidosHtml}
+              </div>
+            </section>
           `;
         })
-        .join("");
-
-      return `<h4>Llave ${escPortal(ronda.ronda || "Ronda")}</h4>${partidosHtml}`;
-    })
-    .join("");
+        .join("")}
+    </div>
+  `;
 }
 
 function renderGoleadoresPortal(goleadores = []) {
@@ -793,6 +863,7 @@ function renderCategoriaPanelPortal(data, index = 0) {
     { key: "fair-play", label: "Fair play", html: renderFairPlayPortal(data?.fairPlay || []) },
     { key: "tarjetas-amarillas", label: "Tarjetas amarillas", html: renderTarjetasPortal(data?.tarjetas || [], "amarillas") },
     { key: "tarjetas-rojas", label: "Tarjetas rojas", html: renderTarjetasPortal(data?.tarjetas || [], "rojas") },
+    { key: "playoff", label: "Playoff", html: renderEliminatoriasPortal(data?.eliminatorias || []) },
   ];
 
   return `
@@ -911,7 +982,7 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
 
     const eventosData = await Promise.all(
       eventosFiltrados.map(async (ev) => {
-        const [tablasRes, goleadoresRes, tarjetasRes, fairPlayRes] = await Promise.all([
+        const [tablasRes, goleadoresRes, tarjetasRes, fairPlayRes, eliminatoriasRes] = await Promise.all([
           (
             window.PortalPublicAPI
               ? window.PortalPublicAPI.obtenerTablasPorEvento(ev.id)
@@ -932,6 +1003,11 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
               ? window.PortalPublicAPI.obtenerFairPlayPorEvento(ev.id)
               : fetch(`${API}/public/eventos/${ev.id}/fair-play`).then((r) => r.json())
           ).catch(() => ({ fair_play: [] })),
+          (
+            window.PortalPublicAPI
+              ? window.PortalPublicAPI.obtenerEliminatoriasPorEvento(ev.id)
+              : fetch(`${API}/public/eventos/${ev.id}/eliminatorias`).then((r) => r.json())
+          ).catch(() => ({ rondas: [] })),
         ]);
 
         return {
@@ -940,6 +1016,7 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
           goleadores: goleadoresRes.goleadores || [],
           tarjetas: tarjetasRes.tarjetas || [],
           fairPlay: fairPlayRes.fair_play || [],
+          eliminatorias: eliminatoriasRes.rondas || [],
         };
       })
     );

@@ -79,6 +79,23 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
   - `backend/middleware/authMiddleware.js` permite esta operacion incluso para cuentas `solo_lectura`.
   - `frontend/js/core.js` fuerza cambio de contraseña pendiente y agrega accion `Cambiar clave` en top bar.
   - `frontend/js/login.js` y `frontend/js/usuarios.js` muestran mensajes claros al ingresar/crear/actualizar usuarios.
+- Portal publico deportivo:
+  - `frontend/js/portal.js` vuelve a exponer `Playoff` como subtab por categoria consumiendo `GET /api/public/eventos/:evento_id/eliminatorias`.
+  - la llave publica se renderiza por rondas con tarjetas propias y marcador progresivo.
+  - `frontend/css/portal.css` y `frontend/js/portal.js` ya replican en portal los estados visuales del sistema:
+    - fuera de clasificacion en naranja,
+    - eliminados en rojo oscuro con causal visible.
+  - `backend/controllers/tablaController.js` ya excluye equipos eliminados de `Fair Play`.
+- Usuarios internos con correo o username:
+  - nueva migracion `database/migrations/032_usuarios_username_opcional.sql`.
+  - `backend/models/UsuarioAuth.js` ahora soporta `username` opcional, `email` nullable y validacion de al menos un identificador.
+  - el login (`backend/controllers/authController.js`) acepta `identificador` y resuelve `correo o usuario`.
+  - `frontend/login.html` y `frontend/js/login.js` muestran `Correo o usuario`.
+  - `frontend/usuarios.html` y `frontend/js/usuarios.js` permiten alta/edicion con:
+    - correo,
+    - username,
+    - o ambos.
+  - la recuperacion de contraseña se mantiene exclusiva para cuentas con correo.
 
 ---
 

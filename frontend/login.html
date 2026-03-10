@@ -27,8 +27,15 @@
 
         <form id="login-form" class="auth-form">
           <div class="auth-form-group">
-            <label for="login-email">Correo</label>
-            <input id="login-email" type="email" autocomplete="username" class="auth-input" required />
+            <label for="login-email">Correo o usuario</label>
+            <input
+              id="login-email"
+              type="text"
+              autocomplete="username"
+              class="auth-input"
+              placeholder="correo@dominio.com o usuario"
+              required
+            />
           </div>
           <div class="auth-form-group">
             <label for="login-password">Contraseña</label>

@@ -610,6 +610,66 @@ body.ltc-landing {
   margin: 0 0 0.75rem;
 }
 
+.portal-tabla-clasificacion-help {
+  margin: 0 0 0.85rem;
+  color: #7c2d12;
+  font-size: 0.84rem;
+}
+
+.portal-tabla-posicion-equipo {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.portal-tabla-posicion-status {
+  display: grid;
+  gap: 0.32rem;
+  justify-items: start;
+}
+
+.portal-tabla-posicion-banner {
+  display: block;
+  width: 100%;
+  padding: 0.24rem 0.52rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.portal-tabla-posicion-banner.is-eliminado {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff7ed;
+}
+
+.portal-tabla-posicion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.08rem 0.42rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.portal-tabla-posicion-chip.is-neutral {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.portal-tabla-posiciones td.portal-tabla-posicion-fuera {
+  background: rgba(245, 158, 11, 0.14);
+  color: #7c2d12;
+}
+
+.portal-tabla-posiciones td.portal-tabla-posicion-eliminado {
+  background: #7f1d1d;
+  color: #fff7ed;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
 .portal-stat-block + .portal-stat-block {
   margin-top: 0;
 }
@@ -623,6 +683,46 @@ body.ltc-landing {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.portal-eliminatoria-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.portal-eliminatoria-ronda {
+  border: 1px solid #d5e2f0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 6px 14px rgba(35, 58, 92, 0.08);
+  overflow: hidden;
+}
+
+.portal-eliminatoria-ronda-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(135deg, #203a5d 0%, #315d95 100%);
+  color: #fff;
+}
+
+.portal-eliminatoria-ronda-head h4 {
+  margin: 0;
+  color: inherit;
+}
+
+.portal-eliminatoria-ronda-head span {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.portal-eliminatoria-ronda-body {
+  padding: 0.65rem 0.8rem 0.85rem;
+  display: grid;
+  gap: 0.6rem;
 }
 
 .portal-jornada-card {
@@ -1461,6 +1561,10 @@ body.ltc-landing {
   }
 
   .portal-jornadas-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-eliminatoria-grid {
     grid-template-columns: 1fr;
   }
 

@@ -97,6 +97,7 @@ const authController = {
       const status =
         msg.includes("obligatorio") ||
         msg.includes("invalido") ||
+        msg.includes("username") ||
         msg.includes("Ya existe") ||
         msg.includes("password")
           ? 400
@@ -172,13 +173,15 @@ const authController = {
 
   async login(req, res) {
     try {
-      const email = String(req.body?.email || "").trim();
+      const identificador = String(
+        req.body?.identificador || req.body?.email || req.body?.username || ""
+      ).trim();
       const password = String(req.body?.password || "");
-      if (!email || !password) {
-        return res.status(400).json({ error: "email y password son obligatorios" });
+      if (!identificador || !password) {
+        return res.status(400).json({ error: "identificador y password son obligatorios" });
       }
 
-      const user = await UsuarioAuth.validarCredenciales(email, password);
+      const user = await UsuarioAuth.validarCredenciales(identificador, password);
       if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
 
       const session = await crearSession(user, {
@@ -380,6 +383,7 @@ const authController = {
       const status =
         msg.includes("obligatorio") ||
         msg.includes("invalido") ||
+        msg.includes("username") ||
         msg.includes("Ya existe") ||
         msg.includes("password")
           ? 400
@@ -435,6 +439,7 @@ const authController = {
       const status =
         msgL.includes("obligatorio") ||
         msgL.includes("invalido") ||
+        msgL.includes("username") ||
         msgL.includes("ya existe") ||
         msgL.includes("password") ||
         msgL.includes("no hay campos") ||

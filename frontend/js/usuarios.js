@@ -13,6 +13,20 @@
       .replace(/'/g, "&#39;");
   }
 
+  function normalizarUsername(username) {
+    return String(username || "").trim().toLowerCase();
+  }
+
+  function validarEmailOpcional(email) {
+    if (!email) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email));
+  }
+
+  function validarUsernameOpcional(username) {
+    if (!username) return true;
+    return /^[a-z0-9._-]{3,40}$/i.test(String(username));
+  }
+
   function rolActual() {
     return String(window.Auth?.getUser?.()?.rol || "").toLowerCase();
   }
@@ -213,6 +227,7 @@
           <tr>
             <td>${Number(u.id || 0)}</td>
             <td>${esc(u.nombre || "-")}</td>
+            <td>${esc(u.username || "-")}</td>
             <td>${esc(u.email || "-")}</td>
             <td>${esc((u.rol || "-").toUpperCase())}</td>
             <td>${esc(u.organizacion_nombre || "-")}</td>
@@ -250,6 +265,7 @@
             <tr>
               <th>ID</th>
               <th>Nombre</th>
+              <th>Usuario</th>
               <th>Correo</th>
               <th>Rol</th>
               <th>Organización</th>
@@ -285,6 +301,7 @@
     usuarioEditandoId = null;
     document.getElementById("usr-nombre").value = "";
     document.getElementById("usr-email").value = "";
+    document.getElementById("usr-username").value = "";
     document.getElementById("usr-password").value = "";
     document.getElementById("usr-equipo").value = "";
     document.getElementById("usr-activo").value = "true";
@@ -308,6 +325,7 @@
     usuarioEditandoId = Number(u.id);
     document.getElementById("usr-nombre").value = u.nombre || "";
     document.getElementById("usr-email").value = u.email || "";
+    document.getElementById("usr-username").value = u.username || "";
     document.getElementById("usr-password").value = "";
     document.getElementById("usr-rol").value = u.rol || "tecnico";
     document.getElementById("usr-activo").value = String(u.activo === true);
@@ -347,6 +365,7 @@
 
     const nombre = String(document.getElementById("usr-nombre")?.value || "").trim();
     const email = String(document.getElementById("usr-email")?.value || "").trim();
+    const username = normalizarUsername(document.getElementById("usr-username")?.value || "");
     const password = String(document.getElementById("usr-password")?.value || "");
     const rolCampo = String(document.getElementById("usr-rol")?.value || "tecnico").trim();
     const rol = esOrganizadorActual() ? "dirigente" : rolCampo;
@@ -360,8 +379,19 @@
       .toLowerCase();
     const organizacionNombre = String(document.getElementById("usr-organizacion")?.value || "").trim();
 
-    if (!nombre || !email) {
-      mostrarNotificacion("Nombre y correo son obligatorios", "warning");
+    if (!nombre || (!email && !username)) {
+      mostrarNotificacion("Nombre y al menos un correo o usuario son obligatorios", "warning");
+      return;
+    }
+    if (!validarEmailOpcional(email)) {
+      mostrarNotificacion("El correo no tiene un formato válido", "warning");
+      return;
+    }
+    if (!validarUsernameOpcional(username)) {
+      mostrarNotificacion(
+        "El usuario debe tener entre 3 y 40 caracteres y usar solo letras, números, punto, guion o guion bajo",
+        "warning"
+      );
       return;
     }
     if (!usuarioEditandoId && !password) {
@@ -383,7 +413,7 @@
 
     try {
       if (!usuarioEditandoId) {
-        const payload = { nombre, email, password, rol, activo };
+        const payload = { nombre, email: email || null, username: username || null, password, rol, activo };
         if (esAdminActual() && rol === "organizador") {
           payload.plan_codigo = planCodigo;
           payload.plan_estado = planEstado;
@@ -400,7 +430,7 @@
         );
       } else {
         const antes = usuariosCache.find((u) => Number(u.id) === Number(usuarioEditandoId));
-        const payload = { nombre, email, rol, activo };
+        const payload = { nombre, email: email || null, username: username || null, rol, activo };
         if (esAdminActual() && rol === "organizador") {
           payload.plan_codigo = planCodigo;
           payload.plan_estado = planEstado;

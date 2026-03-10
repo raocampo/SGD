@@ -925,6 +925,7 @@ async function obtenerFairPlayEventoInterno(eventoId, query = {}) {
   };
 
   const equipos = await obtenerEquiposEvento(eventoIdNumerico);
+  const estadosEquipos = await obtenerEstadosEquiposEvento(eventoIdNumerico);
   const tarjetasData = await obtenerTarjetasEventoInterno(eventoIdNumerico);
   const faltasData = usaFaltas
     ? await obtenerFaltasEventoInterno(eventoIdNumerico)
@@ -933,12 +934,16 @@ async function obtenerFairPlayEventoInterno(eventoId, query = {}) {
 
   const mapaEquipos = new Map();
   for (const e of equipos) {
+    const estadoEquipo = estadosEquipos.get(Number(e.id));
+    if (estaEliminadoCompetencia(estadoEquipo || {})) continue;
     mapaEquipos.set(Number(e.id), {
       equipo_id: Number(e.id),
       equipo_nombre: e.nombre,
     });
   }
   for (const t of tarjetasData.tarjetas) {
+    const estadoEquipo = estadosEquipos.get(Number(t.equipo_id));
+    if (estaEliminadoCompetencia(estadoEquipo || {})) continue;
     if (!mapaEquipos.has(Number(t.equipo_id))) {
       mapaEquipos.set(Number(t.equipo_id), {
         equipo_id: Number(t.equipo_id),

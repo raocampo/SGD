@@ -92,6 +92,23 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - `frontend/js/core.js` ya fuerza el cambio al detectar una cuenta pendiente y expone accion visible `Cambiar clave` en el top bar.
   - `frontend/js/login.js` y `frontend/js/usuarios.js` ya informan al usuario/administrador cuando la cuenta exige cambio de contraseña.
   - `backend/middleware/authMiddleware.js` permite esta operacion incluso para roles en modo `solo_lectura` (`jugador`).
+- Portal publico deportivo refinado para cierre visual:
+  - `frontend/js/portal.js` reincorpora la subtab `Playoff` por categoria consumiendo `GET /api/public/eventos/:evento_id/eliminatorias`.
+  - la llave publica ahora se muestra por rondas con tarjetas propias, manteniendo el avance del cuadro eliminatorio.
+  - el portal ya replica el color de estados de la tabla interna:
+    - fuera de clasificacion en naranja,
+    - eliminados en rojo oscuro con causal visible.
+  - `backend/controllers/tablaController.js` excluye equipos eliminados de `Fair Play`, tanto en panel interno como en portal publico.
+- Usuarios internos con correo o username:
+  - nueva migracion `database/migrations/032_usuarios_username_opcional.sql`.
+  - `backend/models/UsuarioAuth.js` ahora acepta `email` nullable y `username` opcional/unique, con regla obligatoria de al menos un identificador.
+  - `backend/controllers/authController.js` permite login por `identificador` (`correo o usuario`).
+  - `frontend/login.html` y `frontend/js/login.js` cambian la UX de acceso a `Correo o usuario`.
+  - `frontend/usuarios.html` y `frontend/js/usuarios.js` permiten crear/editar usuarios con:
+    - correo,
+    - username,
+    - o ambos.
+  - la recuperacion de contraseña sigue funcionando solo para cuentas con correo.
 
 ### 2026-03-09
 - Configuracion compartida de clasificacion/playoff:
