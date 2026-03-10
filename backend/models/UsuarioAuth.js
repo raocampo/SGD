@@ -26,6 +26,7 @@ class UsuarioAuth {
       rol: row.rol,
       activo: row.activo === true,
       solo_lectura: row.solo_lectura === true,
+      debe_cambiar_password: row.debe_cambiar_password === true,
       plan_codigo: normalizarPlanCodigo(row.plan_codigo, "premium"),
       plan_estado: String(row.plan_estado || "activo").toLowerCase(),
       equipo_ids: Array.isArray(row.equipo_ids)
@@ -48,6 +49,7 @@ class UsuarioAuth {
         rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'operador', 'organizador', 'tecnico', 'dirigente', 'jugador')),
         activo BOOLEAN NOT NULL DEFAULT TRUE,
         solo_lectura BOOLEAN NOT NULL DEFAULT FALSE,
+        debe_cambiar_password BOOLEAN NOT NULL DEFAULT FALSE,
         plan_codigo VARCHAR(24) NOT NULL DEFAULT 'premium',
         plan_estado VARCHAR(20) NOT NULL DEFAULT 'activo',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -61,6 +63,10 @@ class UsuarioAuth {
     await client.query(`
       ALTER TABLE usuarios
       ADD COLUMN IF NOT EXISTS organizacion_nombre VARCHAR(180)
+    `);
+    await client.query(`
+      ALTER TABLE usuarios
+      ADD COLUMN IF NOT EXISTS debe_cambiar_password BOOLEAN NOT NULL DEFAULT FALSE
     `);
     await client.query(`
       ALTER TABLE usuarios
@@ -290,6 +296,9 @@ class UsuarioAuth {
     const soloLectura = rolEsJugador
       ? true
       : data.solo_lectura === true || String(data.solo_lectura || "").toLowerCase() === "true";
+    const debeCambiarPassword =
+      data.debe_cambiar_password === true ||
+      String(data.debe_cambiar_password || "").toLowerCase() === "true";
     const planCodigo = normalizarPlanCodigo(data.plan_codigo, "premium");
     const planEstado = String(data.plan_estado || "activo").trim().toLowerCase() === "suspendido"
       ? "suspendido"
@@ -313,8 +322,19 @@ class UsuarioAuth {
     const hash = await bcrypt.hash(password, 10);
     const r = await client.query(
       `
-        INSERT INTO usuarios (nombre, organizacion_nombre, email, password_hash, rol, activo, solo_lectura, plan_codigo, plan_estado)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        INSERT INTO usuarios (
+          nombre,
+          organizacion_nombre,
+          email,
+          password_hash,
+          rol,
+          activo,
+          solo_lectura,
+          debe_cambiar_password,
+          plan_codigo,
+          plan_estado
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
       `,
       [
@@ -325,6 +345,7 @@ class UsuarioAuth {
         rol,
         activo,
         soloLectura,
+        debeCambiarPassword,
         planCodigo,
         planEstado,
       ]
@@ -370,6 +391,14 @@ class UsuarioAuth {
       const hash = await bcrypt.hash(password, 10);
       campos.push(`password_hash = $${idx++}`);
       valores.push(hash);
+    }
+
+    if (data.debe_cambiar_password !== undefined) {
+      const debeCambiarPassword =
+        data.debe_cambiar_password === true ||
+        String(data.debe_cambiar_password || "").toLowerCase() === "true";
+      campos.push(`debe_cambiar_password = $${idx++}`);
+      valores.push(debeCambiarPassword);
     }
 
     if (data.rol !== undefined) {
@@ -594,7 +623,7 @@ class UsuarioAuth {
       await client.query(
         `
           UPDATE usuarios
-          SET password_hash = $1, updated_at = CURRENT_TIMESTAMP
+          SET password_hash = $1, debe_cambiar_password = FALSE, updated_at = CURRENT_TIMESTAMP
           WHERE id = $2
         `,
         [hash, user.id]
@@ -614,6 +643,49 @@ class UsuarioAuth {
     }
 
     const actualizado = await this.obtenerPorId(user.id, client);
+    return this.limpiarUsuario(actualizado);
+  }
+
+  static async cambiarPasswordActual(usuarioId, passwordActual, passwordNuevo, client = pool) {
+    await this.asegurarEsquema(client);
+
+    const uId = Number.parseInt(usuarioId, 10);
+    if (!Number.isFinite(uId) || uId <= 0) {
+      throw new Error("usuario_id invalido");
+    }
+
+    const currentPassword = String(passwordActual || "");
+    const newPassword = String(passwordNuevo || "");
+    if (!currentPassword) {
+      throw new Error("current_password es obligatorio");
+    }
+    if (newPassword.length < 6) {
+      throw new Error("new_password debe tener al menos 6 caracteres");
+    }
+
+    const row = await this.obtenerPorId(uId, client);
+    if (!row || !row.activo) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    const ok = await bcrypt.compare(currentPassword, row.password_hash || "");
+    if (!ok) {
+      throw new Error("La contraseña actual no es válida");
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await client.query(
+      `
+        UPDATE usuarios
+        SET password_hash = $1,
+            debe_cambiar_password = FALSE,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+      `,
+      [hash, uId]
+    );
+
+    const actualizado = await this.obtenerPorId(uId, client);
     return this.limpiarUsuario(actualizado);
   }
 

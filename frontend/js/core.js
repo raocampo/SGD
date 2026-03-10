@@ -187,6 +187,10 @@
       if (token) localStorage.setItem(AUTH_TOKEN_KEY, token);
       setStoredUser(user || null);
     },
+    updateUser(userPatch) {
+      const current = this.getUser() || {};
+      setStoredUser({ ...current, ...(userPatch || {}) });
+    },
     clearSession() {
       localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem(AUTH_USER_KEY);
@@ -208,6 +212,9 @@
     isReadOnly() {
       return this.getUser()?.solo_lectura === true;
     },
+    requiresPasswordChange() {
+      return this.getUser()?.debe_cambiar_password === true;
+    },
     getDefaultPage() {
       return getDefaultPageByRole(this.getUser());
     },
@@ -223,7 +230,98 @@
         window.location.href = `login.html?next=${next}`;
       }
     },
+    promptChangePassword(opciones = {}) {
+      return solicitarCambioPassword(opciones);
+    },
   };
+
+  async function solicitarCambioPassword(opciones = {}) {
+    const forced = opciones?.forced === true;
+    const user = window.Auth?.getUser?.();
+    if (!user) return false;
+
+    while (true) {
+      const values = await window.mostrarFormularioModal({
+        titulo: forced ? "Cambio obligatorio de contraseña" : "Cambiar contraseña",
+        mensaje: forced
+          ? "Tu cuenta fue creada por un administrador u organizador. Debes definir una contraseña propia antes de continuar."
+          : "Ingresa tu contraseña actual y define una nueva clave segura.",
+        tipo: forced ? "warning" : "info",
+        textoConfirmar: "Actualizar contraseña",
+        textoCancelar: forced ? "Cerrar sesión" : "Cancelar",
+        claseConfirmar: "btn-primary",
+        ancho: "sm",
+        campos: [
+          {
+            name: "current_password",
+            label: "Contraseña actual",
+            type: "password",
+            required: true,
+            autocomplete: "current-password",
+          },
+          {
+            name: "new_password",
+            label: "Nueva contraseña",
+            type: "password",
+            required: true,
+            autocomplete: "new-password",
+            hint: "Mínimo 6 caracteres.",
+          },
+          {
+            name: "confirm_password",
+            label: "Confirmar contraseña",
+            type: "password",
+            required: true,
+            autocomplete: "new-password",
+          },
+        ],
+      });
+
+      if (!values) {
+        if (forced) window.Auth.logout();
+        return false;
+      }
+
+      const currentPassword = String(values.current_password || "");
+      const newPassword = String(values.new_password || "");
+      const confirmPassword = String(values.confirm_password || "");
+
+      if (newPassword.length < 6) {
+        window.mostrarNotificacion("La nueva contraseña debe tener al menos 6 caracteres", "warning");
+        continue;
+      }
+      if (newPassword !== confirmPassword) {
+        window.mostrarNotificacion("Las contraseñas nuevas no coinciden", "warning");
+        continue;
+      }
+      if (newPassword === currentPassword) {
+        window.mostrarNotificacion("La nueva contraseña debe ser distinta a la actual", "warning");
+        continue;
+      }
+
+      try {
+        const data = await window.AuthAPI.changePassword({
+          current_password: currentPassword,
+          new_password: newPassword,
+        });
+        const usuarioActualizado = {
+          ...(window.Auth.getUser() || {}),
+          ...(data?.usuario || {}),
+          debe_cambiar_password: false,
+        };
+        window.Auth.updateUser(usuarioActualizado);
+        inyectarUsuarioTopbar(usuarioActualizado);
+        window.mostrarNotificacion("Contraseña actualizada correctamente", "success");
+        return true;
+      } catch (error) {
+        console.error(error);
+        window.mostrarNotificacion(
+          error.message || "No se pudo actualizar la contraseña",
+          "error"
+        );
+      }
+    }
+  }
 
   if (!window.__sgdFetchAuthPatched) {
     const nativeFetch = window.fetch.bind(window);
@@ -874,21 +972,45 @@
     const topBar = document.querySelector(".top-bar");
     if (!topBar || !user) return;
 
-    let badge = topBar.querySelector(".top-user-badge");
+    let actions = topBar.querySelector(".top-user-actions");
+    if (!actions) {
+      actions = document.createElement("div");
+      actions.className = "top-user-actions";
+      actions.style.display = "flex";
+      actions.style.alignItems = "center";
+      actions.style.gap = "10px";
+      actions.style.marginLeft = "auto";
+      topBar.appendChild(actions);
+    }
+
+    let badge = actions.querySelector(".top-user-badge");
     if (!badge) {
       badge = document.createElement("div");
       badge.className = "top-user-badge";
-      badge.style.marginLeft = "auto";
       badge.style.padding = "6px 10px";
       badge.style.borderRadius = "8px";
       badge.style.background = "rgba(15,23,42,.08)";
       badge.style.fontSize = "12px";
       badge.style.fontWeight = "700";
-      topBar.appendChild(badge);
+      actions.appendChild(badge);
     }
     const rol = String(user.rol || "").toUpperCase();
     const lectura = user?.solo_lectura === true ? " | SOLO LECTURA" : "";
+    const passwordPendiente = user?.debe_cambiar_password === true ? " | CAMBIO CLAVE PENDIENTE" : "";
     badge.textContent = `${user.nombre || user.email || "Usuario"} (${rol}${lectura})`;
+    badge.textContent += passwordPendiente;
+
+    let btnPassword = actions.querySelector(".top-user-password-btn");
+    if (!btnPassword) {
+      btnPassword = document.createElement("button");
+      btnPassword.type = "button";
+      btnPassword.className = "btn btn-outline top-user-password-btn";
+      btnPassword.innerHTML = '<i class="fas fa-key"></i> Cambiar clave';
+      btnPassword.addEventListener("click", async () => {
+        await window.Auth.promptChangePassword({ forced: false });
+      });
+      actions.appendChild(btnPassword);
+    }
   }
 
   function obtenerEquipoIdsUsuario(user) {
@@ -1074,6 +1196,10 @@
     const user = window.Auth.getUser();
     aplicarSidebarPorRol(user);
     inyectarUsuarioTopbar(user);
+    if (window.Auth.requiresPasswordChange() && !PUBLIC_PAGES.has(getCurrentPage())) {
+      const actualizada = await window.Auth.promptChangePassword({ forced: true });
+      if (!actualizada) return;
+    }
     initMenuMovil();
     mostrarAvisoDeudaEquiposUsuario(user);
   });

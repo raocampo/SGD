@@ -45,6 +45,26 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - controladores que eliminan o leen archivos (`campeonatos`, `equipos`, `auspiciantes`) ya no dependen de una ruta fija dentro del contenedor.
   - `render.yaml` queda preparado con disco persistente en `/var/data` y `UPLOADS_DIR=/var/data/uploads`.
   - documentado el paso operativo para copiar el contenido historico de `backend/uploads/` al disco persistente en Render.
+- Jugadores: uploads reorganizados sin romper compatibilidad:
+  - `backend/config/multerConfig.js` ahora permite carpetas por campo.
+  - `backend/routes/jugadorRoutes.js` enruta:
+    - `foto_cedula` -> `uploads/jugadores/cedulas`,
+    - `foto_carnet` -> `uploads/jugadores/fotos`.
+  - `backend/controllers/jugadorController.js` ya guarda nuevas URLs por subcarpeta manteniendo los campos existentes:
+    - `foto_cedula_url`,
+    - `foto_carnet_url`.
+  - impacto operativo:
+    - los carnets siguen reimprimiendose regenerando PDF desde BD + foto del jugador,
+    - no se almacena una imagen final del carnet, por lo que no se rompe reimpresion historica.
+- Seguridad de usuarios reforzada:
+  - nueva migracion `database/migrations/031_usuarios_cambio_password_obligatorio.sql`.
+  - `usuarios.debe_cambiar_password` ya queda disponible en backend.
+  - usuarios creados por `administrador` u `organizador` quedan obligados a cambiar contraseña al primer ingreso.
+  - nuevo endpoint autenticado:
+    - `POST /api/auth/password/change`.
+  - `frontend/js/core.js` ya fuerza el cambio al detectar una cuenta pendiente y expone accion visible `Cambiar clave` en el top bar.
+  - `frontend/js/login.js` y `frontend/js/usuarios.js` ya informan al usuario/administrador cuando la cuenta exige cambio de contraseña.
+  - `backend/middleware/authMiddleware.js` permite esta operacion incluso para roles en modo `solo_lectura` (`jugador`).
 
 ### 2026-03-09
 - Configuracion compartida de clasificacion/playoff:
@@ -1004,6 +1024,10 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - ya disponible reporte/listado de sanciones por categoria/equipo/jugador,
   - pendiente extender la disciplina a otros reportes operativos.
 - Completar carga inicial del disco persistente de `uploads` en Render con el contenido historico local antes de validar logos/fotos/documentos en produccion.
+- Ejecutar migracion `031_usuarios_cambio_password_obligatorio.sql` en todos los entornos antes de probar el nuevo flujo de cambio obligatorio de contraseña.
+- Validar en produccion Render:
+  - carga real de logos/fotos/documentos desde el disco persistente,
+  - reimpresion de carnets usando jugadores con foto existente.
 - Reorientar plan mobile a aplicacion instalable para tiendas:
   - app Android (Play Store),
   - app iOS (App Store).

@@ -12,6 +12,7 @@ router.post("/refresh", authController.refresh);
 router.post("/logout", authController.logout);
 router.post("/password/forgot", authController.solicitarRecuperacionPassword);
 router.post("/password/reset", authController.resetearPassword);
+router.post("/password/change", requireAuth, authController.cambiarPasswordActual);
 router.get("/organizadores/:id/landing", authController.landingOrganizadorPublica);
 router.get("/me", requireAuth, authController.me);
 

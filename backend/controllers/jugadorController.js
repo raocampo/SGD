@@ -46,18 +46,23 @@ async function validarAccesoTecnicoEquipo(req, res, equipoId, mensaje = "No auto
     return false;
 }
 
+function construirUrlArchivoJugador(req, file) {
+    if (!file) return null;
+    const folder =
+        req.uploadFolderByField?.[file.fieldname] ||
+        req.uploadFolder ||
+        "jugadores";
+    return `/uploads/${String(folder).replace(/^\/+|\/+$/g, "")}/${file.filename}`;
+}
+
 const jugadorController = {
 
     // CREAR - Nuevo jugador
     crearJugador: async (req, res) => {
         try {
             const { equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan } = req.body;
-            const fotoCedula = req.files?.foto_cedula?.[0]
-                ? `/uploads/jugadores/${req.files.foto_cedula[0].filename}`
-                : null;
-            const fotoCarnet = req.files?.foto_carnet?.[0]
-                ? `/uploads/jugadores/${req.files.foto_carnet[0].filename}`
-                : null;
+            const fotoCedula = construirUrlArchivoJugador(req, req.files?.foto_cedula?.[0]);
+            const fotoCarnet = construirUrlArchivoJugador(req, req.files?.foto_carnet?.[0]);
 
             // Validaciones básicas
             if (!equipo_id || !nombre || !apellido) {
@@ -346,12 +351,8 @@ const jugadorController = {
         try {
             const { id } = req.params;
             const datos = req.body;
-            const fotoCedula = req.files?.foto_cedula?.[0]
-                ? `/uploads/jugadores/${req.files.foto_cedula[0].filename}`
-                : null;
-            const fotoCarnet = req.files?.foto_carnet?.[0]
-                ? `/uploads/jugadores/${req.files.foto_carnet[0].filename}`
-                : null;
+            const fotoCedula = construirUrlArchivoJugador(req, req.files?.foto_cedula?.[0]);
+            const fotoCarnet = construirUrlArchivoJugador(req, req.files?.foto_carnet?.[0]);
 
             if (fotoCedula) datos.foto_cedula_url = fotoCedula;
             if (fotoCarnet) datos.foto_carnet_url = fotoCarnet;

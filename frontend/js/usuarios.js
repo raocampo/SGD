@@ -220,6 +220,11 @@
             <td>${esc(String(u.plan_estado || "activo"))}</td>
             <td>${equipoIds}</td>
             <td>${u.activo ? '<span class="badge status-finalizado">Activo</span>' : '<span class="badge status-pendiente">Inactivo</span>'}</td>
+            <td>${
+              u.debe_cambiar_password === true
+                ? '<span class="badge status-pendiente">Pendiente</span>'
+                : '<span class="badge status-finalizado">OK</span>'
+            }</td>
             <td>${landing}</td>
             <td>
               ${
@@ -252,6 +257,7 @@
               <th>Estado plan</th>
               <th>Equipos</th>
               <th>Estado</th>
+              <th>Cambio clave</th>
               <th>Landing</th>
               <th>Acciones</th>
             </tr>
@@ -384,8 +390,14 @@
           payload.organizacion_nombre = organizacionNombre;
         }
         if (esRolConEquipo(rol) && equipo) payload.equipo_id = Number.parseInt(equipo, 10);
-        await AuthAPI.crearUsuario(payload);
-        mostrarNotificacion("Usuario creado", "success");
+        const respuesta = await AuthAPI.crearUsuario(payload);
+        const pendiente = respuesta?.usuario?.debe_cambiar_password === true;
+        mostrarNotificacion(
+          pendiente
+            ? "Usuario creado. Debe cambiar su contraseña al primer ingreso."
+            : "Usuario creado",
+          "success"
+        );
       } else {
         const antes = usuariosCache.find((u) => Number(u.id) === Number(usuarioEditandoId));
         const payload = { nombre, email, rol, activo };
@@ -399,7 +411,12 @@
         if (password) payload.password = password;
         await AuthAPI.actualizarUsuario(usuarioEditandoId, payload);
         if (antes) await sincronizarEquipoTecnico(antes, rol, equipo);
-        mostrarNotificacion("Usuario actualizado", "success");
+        mostrarNotificacion(
+          password
+            ? "Usuario actualizado. Debe cambiar su contraseña al volver a ingresar."
+            : "Usuario actualizado",
+          "success"
+        );
       }
 
       limpiarFormulario();

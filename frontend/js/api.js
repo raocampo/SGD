@@ -123,6 +123,9 @@
     resetPassword(payload) {
       return window.ApiClient.post("/auth/password/reset", payload);
     },
+    changePassword(payload) {
+      return window.ApiClient.post("/auth/password/change", payload);
+    },
     landingOrganizadorPublica(organizadorId) {
       return window.ApiClient.get(`/auth/organizadores/${organizadorId}/landing`);
     },

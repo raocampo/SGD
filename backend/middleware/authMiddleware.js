@@ -27,7 +27,9 @@ async function requireAuth(req, res, next) {
     req.user = UsuarioAuth.limpiarUsuario(user);
     const metodo = String(req.method || "").toUpperCase();
     const esLectura = metodo === "GET" || metodo === "HEAD" || metodo === "OPTIONS";
-    if (req.user?.solo_lectura === true && !esLectura) {
+    const rutaActual = `${req.baseUrl || ""}${req.path || ""}`;
+    const excepcionCuentaPropia = rutaActual.endsWith("/auth/password/change");
+    if (req.user?.solo_lectura === true && !esLectura && !excepcionCuentaPropia) {
       return res.status(403).json({
         error: "Tu cuenta está en modo solo lectura. No tienes permisos de modificación.",
       });

@@ -16,7 +16,11 @@
     }
   }
 
-  function redirigirPostLogin() {
+  function redirigirPostLogin(forzarPaginaProtegida = false) {
+    if (forzarPaginaProtegida) {
+      window.location.href = window.Auth.getDefaultPage();
+      return;
+    }
     const next = getNextPath();
     if (next && next !== "/login.html") {
       window.location.href = next;
@@ -67,8 +71,16 @@
       if (!token || !usuario) throw new Error("Respuesta de login inválida");
 
       window.Auth.setSession(token, usuario);
-      mostrarNotificacion("Sesión iniciada", "success");
-      redirigirPostLogin();
+      if (usuario?.debe_cambiar_password === true) {
+        mostrarNotificacion(
+          "Debes cambiar tu contraseña antes de continuar.",
+          "warning"
+        );
+        redirigirPostLogin(true);
+      } else {
+        mostrarNotificacion("Sesión iniciada", "success");
+        redirigirPostLogin();
+      }
     } catch (error) {
       console.error(error);
       mostrarNotificacion(error.message || "No se pudo iniciar sesión", "error");

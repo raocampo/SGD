@@ -37,6 +37,27 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
   - `backend/config/multerConfig.js` y los controladores de borrado/lectura de archivos (`campeonatos`, `equipos`, `auspiciantes`) consumen la misma ruta centralizada,
   - `backend/.env.example` incorpora `UPLOADS_DIR`,
   - `render.yaml` queda preparado con disco persistente en `/var/data` y `UPLOADS_DIR=/var/data/uploads`.
+- Jugadores:
+  - `backend/config/multerConfig.js` ya permite definir carpetas por campo de archivo.
+  - `backend/routes/jugadorRoutes.js` separa fisicamente:
+    - `foto_cedula` en `uploads/jugadores/cedulas`,
+    - `foto_carnet` en `uploads/jugadores/fotos`.
+  - `backend/controllers/jugadorController.js` construye URLs por subcarpeta manteniendo compatibilidad con:
+    - `foto_cedula_url`,
+    - `foto_carnet_url`.
+  - criterio operativo mantenido:
+    - el carnet generado no se almacena como imagen final,
+    - la reimpresion se resuelve regenerando el PDF desde la informacion del jugador y sus fotos/documentos almacenados.
+- Seguridad:
+  - nueva migracion `database/migrations/031_usuarios_cambio_password_obligatorio.sql`.
+  - `backend/models/UsuarioAuth.js` ahora soporta `debe_cambiar_password`.
+  - usuarios creados por `administrador/organizador` quedan marcados para cambio obligatorio al primer ingreso.
+  - `backend/controllers/authController.js` expone cambio de contraseña propio y marca nuevamente la cuenta cuando un admin reasigna clave desde usuarios.
+  - nuevo endpoint:
+    - `POST /api/auth/password/change`.
+  - `backend/middleware/authMiddleware.js` permite esta operacion incluso para cuentas `solo_lectura`.
+  - `frontend/js/core.js` fuerza cambio de contraseña pendiente y agrega accion `Cambiar clave` en top bar.
+  - `frontend/js/login.js` y `frontend/js/usuarios.js` muestran mensajes claros al ingresar/crear/actualizar usuarios.
 
 ---
 

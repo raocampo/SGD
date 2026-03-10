@@ -7,8 +7,12 @@ ensureUploadsRoot();
 // Configuración de almacenamiento de multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Si el campo uploadFolder está definido, usarlo; de lo contrario, "equipos"
-    const folder = req.uploadFolder || "equipos";
+    // Permite definir carpetas por campo sin romper la convención previa.
+    const folder =
+      (typeof req.getUploadFolder === "function" && req.getUploadFolder(file, req)) ||
+      req.uploadFolderByField?.[file.fieldname] ||
+      req.uploadFolder ||
+      "equipos";
     const fullPath = getUploadsSubdir(folder);
 
     cb(null, fullPath);

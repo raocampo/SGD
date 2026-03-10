@@ -80,6 +80,7 @@ const authController = {
         password,
         rol: "administrador",
         activo: true,
+        debe_cambiar_password: false,
       });
       const user = await UsuarioAuth.obtenerPorId(creado.id);
       const limpio = UsuarioAuth.limpiarUsuario(user || creado);
@@ -137,6 +138,7 @@ const authController = {
         rol: rolSolicitado,
         activo: true,
         solo_lectura: false,
+        debe_cambiar_password: false,
         plan_codigo: planCodigo,
         plan_estado: "activo",
         organizacion_nombre: rolSolicitado === "organizador" ? organizacionNombre : null,
@@ -348,8 +350,10 @@ const authController = {
         body.rol = "dirigente";
         body.plan_codigo = req.user?.plan_codigo || "free";
         body.plan_estado = "activo";
+        body.debe_cambiar_password = true;
       } else if (esAdmin) {
         const rolDestino = String(body?.rol || "").trim().toLowerCase();
+        body.debe_cambiar_password = true;
         if (rolDestino === "organizador") {
           const organizacionNombre = String(body?.organizacion_nombre || "").trim();
           if (!organizacionNombre) {
@@ -428,7 +432,11 @@ const authController = {
   async actualizarUsuario(req, res) {
     try {
       const usuarioId = Number.parseInt(req.params?.id, 10);
-      const actualizado = await UsuarioAuth.actualizar(usuarioId, req.body || {});
+      const payload = { ...(req.body || {}) };
+      if (payload.password !== undefined && String(payload.password || "").trim() !== "") {
+        payload.debe_cambiar_password = true;
+      }
+      const actualizado = await UsuarioAuth.actualizar(usuarioId, payload);
       return res.json({ ok: true, usuario: actualizado });
     } catch (error) {
       console.error("Error actualizando usuario:", error);
@@ -533,6 +541,47 @@ const authController = {
       const msg = String(error?.message || "");
       const status = msg.includes("Token") || msg.includes("password") ? 400 : 500;
       return res.status(status).json({ error: msg || "No se pudo restablecer la contraseña" });
+    }
+  },
+
+  async cambiarPasswordActual(req, res) {
+    try {
+      const currentPassword = String(
+        req.body?.current_password || req.body?.actual_password || req.body?.password_actual || ""
+      );
+      const newPassword = String(
+        req.body?.new_password || req.body?.nuevo_password || req.body?.password_nuevo || ""
+      );
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          error: "current_password y new_password son obligatorios",
+        });
+      }
+
+      const usuario = await UsuarioAuth.cambiarPasswordActual(
+        req.user?.id,
+        currentPassword,
+        newPassword,
+        pool
+      );
+
+      return res.json({
+        ok: true,
+        mensaje: "Contraseña actualizada correctamente",
+        usuario,
+      });
+    } catch (error) {
+      console.error("Error cambiarPasswordActual:", error);
+      const msg = String(error?.message || "");
+      const status =
+        msg.includes("current_password") ||
+        msg.includes("new_password") ||
+        msg.includes("contraseña actual") ||
+        msg.includes("password")
+          ? 400
+          : 500;
+      return res.status(status).json({ error: msg || "No se pudo actualizar la contraseña" });
     }
   },
 };

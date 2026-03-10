@@ -36,6 +36,16 @@ Flujo principal operativo:
   - `server.js`, `multerConfig.js` y controladores de borrado/lectura ahora usan `UPLOADS_DIR`,
   - si `UPLOADS_DIR` no existe, el sistema sigue usando `backend/uploads` como fallback local,
   - `render.yaml` queda preparado para disco persistente en `/var/data` con `UPLOADS_DIR=/var/data/uploads`.
+- Documentos de jugadores reorganizados:
+  - nuevas rutas fisicas para uploads por campo:
+    - `uploads/jugadores/cedulas`,
+    - `uploads/jugadores/fotos`,
+  - se mantienen los campos BD `foto_cedula_url` y `foto_carnet_url`, por lo que no se rompe la reimpresion de carnets ni la compatibilidad con registros existentes.
+- Seguridad de contraseñas reforzada:
+  - nuevo flag `debe_cambiar_password` en usuarios,
+  - usuarios creados por administrador/organizador quedan marcados para cambio obligatorio al primer ingreso,
+  - nuevo endpoint autenticado `POST /api/auth/password/change`,
+  - flujo de login y panel administrativo ya fuerzan/permiten cambio de contraseña desde UI.
 
 ## Novedades Anteriores (2026-03-09)
 - Configuracion compartida de playoff/clasificacion:
@@ -258,6 +268,7 @@ psql -U postgres -d gestionDeportiva -f database/migrations/027_clasificacion_y_
 psql -U postgres -d gestionDeportiva -f database/migrations/028_auditoria_edicion_planilla.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/029_eliminacion_manual_y_clasificacion_manual.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/030_evento_playoff_config.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/031_usuarios_cambio_password_obligatorio.sql
 ```
 
 ### 5.3 Ejecutar
@@ -322,7 +333,7 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 - Portal publico: alto
 - CMS portal publico: en progreso
 - Finanzas: medio-alto
-- RBAC/seguridad: pendiente
+- RBAC/seguridad: medio-alto
 
 ## 9. Documentacion del Proyecto
 - Indice general de documentos: `docs/INDICE_DOCUMENTACION.md`
@@ -351,17 +362,20 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 2. Validar en operacion real la nueva eliminacion manual por categoria, la promocion automatica de elegibles y la clasificacion manual sugerida antes de cerrar reglas de playoff.
 3. Cierre de planillaje oficial (detalle visual y de impresion).
 4. RBAC (autenticacion + roles).
-5. Completar perfil de organizador en usuarios: agregar `nombre de la organizacion` y `logo` al crear/editar usuario organizador.
-6. Habilitar en portal del organizador la creacion y gestion de usuarios con rol `dirigente` y `tecnico`.
-7. En registro publico desde cards de planes pagados, agregar campos:
+5. Completar endurecimiento de seguridad:
+   - rotacion operativa de secretos productivos (`DATABASE_URL`, `JWT_SECRET`),
+   - politica final de cambio de contraseña y expiracion si el cliente la requiere.
+6. Completar perfil de organizador en usuarios: agregar `nombre de la organizacion` y `logo` al crear/editar usuario organizador.
+7. Habilitar en portal del organizador la creacion y gestion de usuarios con rol `dirigente` y `tecnico`.
+8. En registro publico desde cards de planes pagados, agregar campos:
    - `nombre de la organizacion` (obligatorio),
    - `logo` (opcional),
    - `lema` (opcional).
-8. Implementar flujo comercial de onboarding:
+9. Implementar flujo comercial de onboarding:
    - al seleccionar plan pagado -> formulario de registro completo -> pagina/formulario de cobro -> pasarela de pago.
-8. Eliminatorias completas (llaves, reglas operativas y eventual partido extra/reclasificacion automatizado si el cliente lo define).
-9. Financiero avanzado (multas automaticas, bloqueos por morosidad, reportes ejecutivos).
-10. Plan mobile orientado a app instalable en tiendas:
+10. Eliminatorias completas (llaves, reglas operativas y eventual partido extra/reclasificacion automatizado si el cliente lo define).
+11. Financiero avanzado (multas automaticas, bloqueos por morosidad, reportes ejecutivos).
+12. Plan mobile orientado a app instalable en tiendas:
    - Android (Play Store),
    - iOS (App Store).
 

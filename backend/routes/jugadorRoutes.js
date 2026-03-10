@@ -5,7 +5,10 @@ const jugadorController = require('../controllers/jugadorController');
 const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 
 function setJugadoresFolder(req, res, next) {
-  req.uploadFolder = "jugadores";
+  req.uploadFolderByField = {
+    foto_cedula: "jugadores/cedulas",
+    foto_carnet: "jugadores/fotos",
+  };
   next();
 }
 
