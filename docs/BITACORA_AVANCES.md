@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-09
+Ultima actualizacion: 2026-03-10
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -38,6 +38,13 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Branding tecnico:
   - nuevo `frontend/favicon.svg`.
   - favicon agregado al portal y a las pantallas principales del sistema.
+- Uploads estables para despliegue:
+  - nuevo archivo `backend/config/uploads.js` para centralizar la ruta real de almacenamiento.
+  - `backend/server.js` ahora publica `/uploads` desde `UPLOADS_DIR` si existe; en local mantiene fallback a `backend/uploads`.
+  - `backend/config/multerConfig.js` escribe siempre sobre la misma ruta configurada.
+  - controladores que eliminan o leen archivos (`campeonatos`, `equipos`, `auspiciantes`) ya no dependen de una ruta fija dentro del contenedor.
+  - `render.yaml` queda preparado con disco persistente en `/var/data` y `UPLOADS_DIR=/var/data/uploads`.
+  - documentado el paso operativo para copiar el contenido historico de `backend/uploads/` al disco persistente en Render.
 
 ### 2026-03-09
 - Configuracion compartida de clasificacion/playoff:
@@ -996,6 +1003,7 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - ya visible en `jugadores.html`,
   - ya disponible reporte/listado de sanciones por categoria/equipo/jugador,
   - pendiente extender la disciplina a otros reportes operativos.
+- Completar carga inicial del disco persistente de `uploads` en Render con el contenido historico local antes de validar logos/fotos/documentos en produccion.
 - Reorientar plan mobile a aplicacion instalable para tiendas:
   - app Android (Play Store),
   - app iOS (App Store).

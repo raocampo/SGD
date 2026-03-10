@@ -3,6 +3,7 @@ const Equipo = require("../models/Equipo");
 const path = require("path");
 const fs = require("fs");
 const pool = require("../config/database");
+const { resolveUploadPath } = require("../config/uploads");
 const {
   obtenerEquiposPermitidosTecnico,
   tecnicoPuedeAccederEquipo,
@@ -648,11 +649,7 @@ const equipoController = {
 
       // 👉 Si tenía logo, intentamos borrarlo del disco
       if (equipoEliminado.logo_url) {
-        const filePath = path.join(
-          __dirname,
-          "..",
-          equipoEliminado.logo_url.replace(/^\//, "") // quitar "/" inicial
-        );
+        const filePath = resolveUploadPath(equipoEliminado.logo_url);
 
         fs.unlink(filePath, (err) => {
           if (err) {

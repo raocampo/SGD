@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const pool = require("./config/database");
+const { uploadsDir, ensureUploadsRoot } = require("./config/uploads");
 
 require("dotenv").config();
 
@@ -31,11 +32,11 @@ app.use(express.urlencoded({ extended: true })); // ✅ por compatibilidad
 // =====================
 // Static: UPLOADS (logos)
 // =====================
-const uploadsPath = path.join(__dirname, "uploads");
+ensureUploadsRoot();
 
 app.use(
   "/uploads",
-  express.static(uploadsPath, {
+  express.static(uploadsDir, {
     setHeaders: (res) => {
       // ✅ Permitir que html2canvas pueda leer imágenes y exportarlas
       res.setHeader("Access-Control-Allow-Origin", "*");
@@ -218,4 +219,5 @@ app.listen(PORT, () => {
   console.log(`   http://localhost:${PORT}/api/auth/login`);
   console.log(`   http://localhost:${PORT}/tablas`);
   console.log(`📂 Uploads: http://localhost:${PORT}/uploads`);
+  console.log(`📁 Directorio de uploads: ${uploadsDir}`);
 });

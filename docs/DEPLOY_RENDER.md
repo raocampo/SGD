@@ -1,6 +1,6 @@
 # Despliegue en Render
 
-Ultima actualizacion: 2026-03-09
+Ultima actualizacion: 2026-03-10
 
 ## Enfoque recomendado
 Este proyecto ya esta preparado para desplegarse como un solo Web Service en Render:
@@ -31,6 +31,7 @@ DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DBNAME
 DATABASE_SSL=false
 JWT_SECRET=un-secret-largo-y-unico
 FRONTEND_RESET_URL=https://tu-servicio.onrender.com/login.html
+UPLOADS_DIR=/var/data/uploads
 ```
 
 Variables opcionales:
@@ -58,6 +59,10 @@ Si creas una base administrada en Render:
 ```env
 DATABASE_SSL=true
 ```
+5. Define tambien la ruta persistente de archivos:
+```env
+UPLOADS_DIR=/var/data/uploads
+```
 
 ## Creacion del servicio
 ### Metodo recomendado: Blueprint
@@ -76,6 +81,10 @@ DATABASE_SSL=true
    - `Health Check Path`: `/salud`
    - `Runtime`: `Node`
 4. Agrega las variables de entorno.
+5. Agrega un disco persistente:
+   - `Name`: `uploads`
+   - `Mount path`: `/var/data`
+   - `Size`: segun necesidad (recomendado 5 GB o mas si manejaras fotos/documentos)
 
 ## Migraciones y esquema
 Render no aplica tus migraciones automaticamente.
@@ -104,18 +113,73 @@ Checklist minima:
 4. portal publico mostrando torneos
 5. modulo financiero y planillaje leyendo datos reales
 
-## Limitacion importante: uploads
-`backend/uploads/` es almacenamiento local del servidor.
+## Uploads estables en Render
+El backend ya soporta `UPLOADS_DIR`.
 
-En Render:
-- un deploy o reinicio puede dejarte sin persistencia si no usas almacenamiento persistente
-- logos, fotos de jugadores, cedulas, auspiciantes y adjuntos son sensibles a esto
+Comportamiento:
+1. Si `UPLOADS_DIR` no esta definido:
+   - usa `backend/uploads` (solo adecuado para local).
+2. Si `UPLOADS_DIR` esta definido:
+   - escribe, lee y elimina archivos desde esa ruta,
+   - mantiene las URLs publicas como `/uploads/...`.
 
-Recomendacion operativa:
-1. para pruebas: puedes desplegar asi y validar flujo
-2. para produccion real:
-   - usar disco persistente si tu plan lo permite, o
-   - mover uploads a almacenamiento externo (S3, Cloudinary, Supabase Storage, etc.)
+Configuracion recomendada en Render:
+```env
+UPLOADS_DIR=/var/data/uploads
+```
+
+Con esto:
+- el servicio sigue sirviendo archivos por `https://tu-servicio.onrender.com/uploads/...`
+- los archivos viven en el disco persistente y sobreviven a reinicios/redeploys
+
+## Restaurar la carpeta de uploads actual
+La base de datos ya puede restaurarse por dump, pero los logos/fotos/documentos existentes requieren copiar tambien la estructura de archivos.
+
+Debes preservar la misma estructura relativa:
+```text
+uploads/
+  campeonatos/
+  equipos/
+  jugadores/
+  auspiciantes/
+  noticias/
+  galeria/
+  portal/
+```
+
+El contenido actual de `backend/uploads/` debe copiarse dentro de `UPLOADS_DIR`.
+
+En Render, el destino practico es:
+```text
+/var/data/uploads
+```
+
+Por tanto, el objetivo final es:
+```text
+/var/data/uploads/campeonatos
+/var/data/uploads/equipos
+/var/data/uploads/jugadores
+...
+```
+
+## Checklist de uploads despues del deploy
+1. Crear el disco persistente.
+2. Definir `UPLOADS_DIR=/var/data/uploads`.
+3. Redeploy del servicio.
+4. Verificar que el backend arranca sin errores.
+5. Copiar el contenido historico de `backend/uploads/` al disco persistente.
+6. Probar URLs reales:
+   - `https://tu-servicio.onrender.com/uploads/campeonatos/...`
+   - `https://tu-servicio.onrender.com/uploads/equipos/...`
+   - `https://tu-servicio.onrender.com/uploads/jugadores/...`
+
+## Recomendacion de mediano plazo
+Para operacion real a escala, conviene evaluar almacenamiento externo:
+- S3 compatible
+- Cloudinary
+- Supabase Storage
+
+Pero para la primera salida productiva en Render, disco persistente + `UPLOADS_DIR` es la via mas pragmatica.
 
 ## Dominio personalizado
 Cuando el servicio ya responda:

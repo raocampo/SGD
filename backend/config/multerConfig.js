@@ -1,28 +1,17 @@
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
+const { ensureUploadsRoot, getUploadsSubdir } = require("./uploads");
 
-// Ruta general para uploads
-const uploadPath = path.join(__dirname, "..", "uploads");
-
-// Crear carpeta uploads si no existe
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath);
-}
+ensureUploadsRoot();
 
 // Configuración de almacenamiento de multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     // Si el campo uploadFolder está definido, usarlo; de lo contrario, "equipos"
-    const folder = req.uploadFolder || "equipos";  // Aquí asignamos por defecto "equipos"
-    const fullPath = path.join(uploadPath, folder);
+    const folder = req.uploadFolder || "equipos";
+    const fullPath = getUploadsSubdir(folder);
 
-    // Verificar si existe la carpeta, sino crearla
-    if (!fs.existsSync(fullPath)) {
-      fs.mkdirSync(fullPath, { recursive: true });
-    }
-
-    cb(null, fullPath); // Establecer destino de almacenamiento
+    cb(null, fullPath);
   },
 
   filename: function (req, file, cb) {

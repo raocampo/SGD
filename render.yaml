@@ -6,6 +6,12 @@ services:
     startCommand: npm start --prefix backend
     healthCheckPath: /salud
     autoDeploy: true
+    disk:
+      name: uploads
+      mountPath: /var/data
+      sizeGB: 5
     envVars:
       - key: NODE_ENV
         value: production
+      - key: UPLOADS_DIR
+        value: /var/data/uploads

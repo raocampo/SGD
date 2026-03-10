@@ -1,10 +1,11 @@
 const fs = require("fs");
 const path = require("path");
 const Auspiciante = require("../models/Auspiciante");
+const { resolveUploadPath } = require("../config/uploads");
 
 function safeUnlinkLogo(urlPath) {
   if (!urlPath) return;
-  const filePath = path.join(__dirname, "..", urlPath.replace(/^\//, ""));
+  const filePath = resolveUploadPath(urlPath);
   fs.unlink(filePath, () => {});
 }
 
@@ -22,7 +23,7 @@ function extraerNombreDesdeArchivo(filename = "", idx = 0) {
 }
 
 function obtenerFallbackAuspiciantesDesdeArchivos(campeonatoId) {
-  const carpeta = path.join(__dirname, "..", "uploads", "auspiciantes");
+  const carpeta = resolveUploadPath("/uploads/auspiciantes");
   if (!fs.existsSync(carpeta)) return [];
 
   const validExt = new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]);

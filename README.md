@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-09): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento.
+Estado del proyecto (2026-03-10): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,14 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-03-09)
+## Novedades Recientes (2026-03-10)
+- Soporte estable para uploads en despliegue:
+  - nuevo archivo `backend/config/uploads.js`,
+  - `server.js`, `multerConfig.js` y controladores de borrado/lectura ahora usan `UPLOADS_DIR`,
+  - si `UPLOADS_DIR` no existe, el sistema sigue usando `backend/uploads` como fallback local,
+  - `render.yaml` queda preparado para disco persistente en `/var/data` con `UPLOADS_DIR=/var/data/uploads`.
+
+## Novedades Anteriores (2026-03-09)
 - Configuracion compartida de playoff/clasificacion:
   - `tablas.html` y `eliminatorias.html` ahora leen/guardan la misma configuracion por categoria,
   - incluye:
@@ -155,7 +162,9 @@ Flujo principal operativo:
 ## 2. Arquitectura
 - Backend: Node.js + Express + PostgreSQL.
 - Frontend: HTML/CSS/JS vanilla (multi-pagina administrativa).
-- Almacenamiento de archivos: `backend/uploads/` (logos, fotos, adjuntos).
+- Almacenamiento de archivos:
+  - local: `backend/uploads/`,
+  - despliegue: directorio configurable por `UPLOADS_DIR` (por ejemplo `/var/data/uploads` en Render).
 - Exportaciones: XLSX y PDF para planillaje/plantillas.
 
 ## 3. Estructura del Repositorio
@@ -207,6 +216,7 @@ DB_HOST=localhost
 DB_NAME=gestionDeportiva
 DB_PASSWORD=tu_password
 DB_PORT=5432
+UPLOADS_DIR=
 PORT=5000
 ```
 
@@ -357,13 +367,15 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 
 ## 12. Solucion de Problemas
 - `DB_PASSWORD no definido`: configurar `backend/.env`.
-- Error 404 de imagen/logo: verificar rutas en `backend/uploads` y URL normalizada.
+- Error 404 de imagen/logo:
+  - local: verificar rutas en `backend/uploads`,
+  - despliegue: verificar `UPLOADS_DIR`, el contenido del disco persistente y la URL normalizada en BD.
 - Frontend no conecta API: revisar `API_BASE_URL` y puerto del backend.
 - Verificacion rapida:
   - `http://localhost:5000/salud`
   - `http://localhost:5000/testDb`
 
 ## Notas de Versionado
-- `backend/uploads/` debe permanecer fuera del versionado (runtime).
+- `backend/uploads/` y cualquier ruta definida por `UPLOADS_DIR` deben permanecer fuera del versionado (runtime).
 - Dumps pesados de DB deben mantenerse fuera del flujo principal de commits.
 - No incluir secretos reales en archivos `.env`.

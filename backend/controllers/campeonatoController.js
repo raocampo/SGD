@@ -1,8 +1,8 @@
-const path = require("path");
 const fs = require("fs");
 const pool = require("../config/database");
 const Campeonato = require("../models/Campeonato");
 const { obtenerPlanUsuarioPorId } = require("../services/planLimits");
+const { resolveUploadPath } = require("../config/uploads");
 
 function esOrganizador(user) {
   return String(user?.rol || "").toLowerCase() === "organizador";
@@ -400,11 +400,7 @@ const campeonatoController = {
       }
 
       if (campeonatoEliminado.logo_url) {
-        const filePath = path.join(
-          __dirname,
-          "..",
-          campeonatoEliminado.logo_url.replace(/^\//, "")
-        );
+        const filePath = resolveUploadPath(campeonatoEliminado.logo_url);
         fs.unlink(filePath, (err) => {
           if (err) {
             console.warn(

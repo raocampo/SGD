@@ -21,6 +21,15 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR, resumen ejecutivo por campeonato e impresion dedicadas; politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). Pendiente cierre de reglas avanzadas y reporteria ejecutiva adicional. |
 | 8 Adaptacion mobile web | En progreso | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; fase 1 base responsive iniciada en `style.css`/`core.js` (layout, topbar, acciones y sidebar) con cierre parcial en `tablas`, `finanzas`, `partidos` y `planilla`; pendiente cierre de `grupos/eliminatorias/pases` y validacion final en viewports objetivo. |
 
+## Infraestructura de Despliegue
+- Render:
+  - backend y frontend ya operan por mismo origen en un solo servicio Node.
+  - la conexion a PostgreSQL remoto por `DATABASE_URL` y `DATABASE_SSL` ya fue validada en `/salud` y `/testDb`.
+- Uploads:
+  - el backend ya soporta `UPLOADS_DIR` para desacoplar logos/fotos/documentos del contenedor efimero.
+  - `render.yaml` queda preparado para usar disco persistente en `/var/data` con `UPLOADS_DIR=/var/data/uploads`.
+  - pendiente operativo: copiar el contenido historico de `backend/uploads/` al disco persistente antes de validar carga completa de imagenes/documentos en produccion.
+
 ## Estado Detallado del Alcance Actual
 
 1. Planillaje oficial de partido:

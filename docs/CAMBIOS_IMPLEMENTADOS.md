@@ -31,6 +31,12 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 - Branding tecnico:
   - nuevo `frontend/favicon.svg`,
   - favicon agregado a las vistas principales del sistema y del portal.
+- Uploads estables en despliegue:
+  - nuevo archivo `backend/config/uploads.js`,
+  - `backend/server.js` ahora expone `/uploads` desde `UPLOADS_DIR` si esta configurado,
+  - `backend/config/multerConfig.js` y los controladores de borrado/lectura de archivos (`campeonatos`, `equipos`, `auspiciantes`) consumen la misma ruta centralizada,
+  - `backend/.env.example` incorpora `UPLOADS_DIR`,
+  - `render.yaml` queda preparado con disco persistente en `/var/data` y `UPLOADS_DIR=/var/data/uploads`.
 
 ---
 
