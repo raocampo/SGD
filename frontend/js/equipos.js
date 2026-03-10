@@ -1209,7 +1209,11 @@ async function guardarEquipo() {
   }
 
   try {
-    const baseUrl = (window.API_BASE_URL || "http://localhost:5000/api").replace(/\/?$/, "");
+    const baseUrl = (
+      window.resolveApiBaseUrl
+        ? window.resolveApiBaseUrl()
+        : window.API_BASE_URL || `${window.location.origin}/api`
+    ).replace(/\/?$/, "");
     const url = estaEditando ? `${baseUrl}/equipos/${equipoEditandoId}` : `${baseUrl}/equipos`;
     const resp = await fetch(url, {
       method: estaEditando ? "PUT" : "POST",
@@ -1438,6 +1442,5 @@ window.irAJugadores = irAJugadores;
 window.cambiarVistaEquipos = cambiarVistaEquipos;
 window.abrirImportadorEquipos = abrirImportadorEquipos;
 window.descargarPlantillaEquipos = descargarPlantillaEquipos;
-
 
 

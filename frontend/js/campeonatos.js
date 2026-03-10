@@ -6,7 +6,11 @@ document.addEventListener("DOMContentLoaded", () => {
   cargarCampeonatos();
 });
 
-const BACKEND_BASE = (window.API_BASE_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
+const BACKEND_BASE = (
+  window.resolveApiBaseUrl
+    ? window.resolveApiBaseUrl()
+    : window.API_BASE_URL || `${window.location.origin}/api`
+).replace(/\/api\/?$/, "");
 let campeonatosCache = [];
 let vistaCampeonatos = localStorage.getItem("sgd_vista_campeonatos") || "cards";
 vistaCampeonatos = vistaCampeonatos === "table" ? "table" : "cards";

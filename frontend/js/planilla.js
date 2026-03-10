@@ -441,7 +441,11 @@ function normalizarArchivoUrl(url) {
   const normal = raw.replaceAll("\\", "/");
   if (/^https?:\/\//i.test(normal)) return normal;
 
-  const apiBase = String(window.API_BASE_URL || "http://localhost:5000/api");
+  const apiBase = String(
+    window.resolveApiBaseUrl
+      ? window.resolveApiBaseUrl()
+      : window.API_BASE_URL || `${window.location.origin}/api`
+  );
   const backendBase = apiBase.replace(/\/api\/?$/i, "");
   if (normal.startsWith(`${backendBase}/`)) return normal;
   if (normal.startsWith("/")) return `${backendBase}${normal}`;

@@ -3,189 +3,75 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Portal Público - LT&C (Loja Torneos & Competencias)</title>
+  <title>Portal Público - LT&C</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Sora:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/portal.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
-  <style>
-    .portal-header { background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); color: white; padding: 1.5rem 0; }
-    .portal-header h1 { font-size: 1.8rem; }
-    .portal-nav { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
-    .portal-nav a { color: rgba(255,255,255,0.9); text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; }
-    .portal-nav a:hover { background: rgba(255,255,255,0.2); }
-    .portal-section { display: none; }
-    .portal-section.active { display: block; }
-    .portal-card { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 1.5rem; margin-bottom: 1rem; }
-    .portal-card h3 { margin-bottom: 1rem; color: #1e3a5f; }
-    .partido-publico { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; padding: 0.8rem; border-bottom: 1px solid #eee; }
-    .partido-publico:last-child { border-bottom: none; }
-    .equipo-nombre { font-weight: 600; text-align: center; }
-    .marcador { font-size: 1.5rem; font-weight: bold; text-align: center; }
-    .tabla-posicion th, .tabla-posicion td { padding: 0.5rem 0.8rem; text-align: center; }
-    .tabla-posicion th { background: #1e3a5f; color: white; }
-    .tabla-posicion tr:nth-child(even) { background: #f8f9fa; }
-    .empty-msg { color: #888; padding: 2rem; text-align: center; }
-    .badge-estado { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; }
-    .estado-en_curso { background: #d4edda; color: #155724; }
-    .estado-inscripcion { background: #cce5ff; color: #004085; }
-    .estado-finalizado { background: #e2e3e5; color: #383d41; }
-  </style>
 </head>
-<body>
-  <header class="portal-header">
-    <div class="container">
-      <h1>⚽ Portal de Torneos</h1>
-      <p>LT&C (Loja Torneos & Competencias) - Información pública</p>
-      <nav class="portal-nav">
-        <a href="admin.html"><i class="fas fa-cog"></i> Acceso Administración</a>
+<body class="ltc-landing">
+  <header class="ltc-site-header">
+    <div class="container ltc-header-inner">
+      <a class="ltc-header-brand" href="index.html">
+        <img src="assets/ltc/Logo.jpeg" alt="LT&C" />
+        <span>LT&C</span>
+        <span class="ltc-header-brand-sub">Portal público</span>
+      </a>
+      <button class="ltc-nav-toggle" id="ltc-nav-toggle" aria-label="Abrir menu">
+        <i class="fas fa-bars"></i>
+      </button>
+      <nav class="ltc-header-nav" id="ltc-nav">
+        <a href="index.html#torneos">Torneos</a>
+        <a href="index.html#contacto">Contacto</a>
+        <a href="login.html" class="ltc-nav-auth-link ltc-nav-auth-link-solid">Ingresar</a>
       </nav>
     </div>
   </header>
 
-  <main class="main">
-    <div class="container">
-      <section id="portal-inicio" class="portal-section active">
-        <h2>Torneos y campeonatos</h2>
-        <div id="portal-lista-campeonatos" class="grid-container">
-          <p class="empty-msg">Cargando...</p>
+  <main class="ltc-main">
+    <section class="ltc-teams-section">
+      <div class="container">
+        <div class="ltc-section-title">
+          <h2>PORTAL DE TORNEOS</h2>
+          <p>Consulta categorías, jornadas, tabla de posiciones, goleadores y fair play.</p>
         </div>
-      </section>
 
-      <section id="portal-detalle" class="portal-section">
-        <button class="btn btn-secondary" onclick="portalVolver()"><i class="fas fa-arrow-left"></i> Volver</button>
-        <div id="portal-detalle-contenido"></div>
-      </section>
-    </div>
+        <section id="portal-inicio" class="portal-section active">
+          <div id="portal-lista-campeonatos" class="portal-campeonatos-grid">
+            <p class="empty-msg">Cargando torneos...</p>
+          </div>
+        </section>
+
+        <section id="portal-detalle" class="portal-section">
+          <button class="ltc-btn ltc-btn-back" type="button" onclick="portalVolver()">
+            <i class="fas fa-arrow-left"></i>
+            Volver al listado
+          </button>
+          <div id="portal-detalle-contenido"></div>
+        </section>
+      </div>
+    </section>
   </main>
 
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/portal.js"></script>
   <script>
-    const API = window.API_BASE_URL || "http://localhost:5000/api";
-
-    async function portalCargarCampeonatos() {
-      const cont = document.getElementById("portal-lista-campeonatos");
-      try {
-        const data = await fetch(`${API}/public/campeonatos`).then(r => r.json());
-        const lista = data.campeonatos || data || [];
-        const activos = lista.filter(c => ["en_curso", "inscripcion", "planificacion", "borrador"].includes(c.estado || ""));
-
-        if (!activos.length) {
-          cont.innerHTML = '<p class="empty-msg">No hay torneos activos en este momento.</p>';
-          return;
-        }
-
-        cont.innerHTML = activos.map(c => {
-          const estado = (c.estado || "planificacion").replace("planificacion", "borrador");
-          const label = { borrador: "Borrador", inscripcion: "Inscripción", en_curso: "En Curso" }[estado] || estado;
-          return `
-            <div class="portal-card" style="cursor:pointer" onclick="portalVerCampeonato(${c.id})">
-              <div style="display:flex;align-items:center;gap:1rem">
-                ${c.logo_url ? `<img src="${c.logo_url}" alt="" style="width:60px;height:60px;object-fit:contain" />` : ""}
-                <div>
-                  <h3>${c.nombre || "Sin nombre"}</h3>
-                  <p><span class="badge-estado estado-${estado}">${label}</span></p>
-                  <p><small>${c.fecha_inicio || ""} - ${c.fecha_fin || ""}</small></p>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join("");
-      } catch (err) {
-        console.error(err);
-        cont.innerHTML = '<p class="empty-msg">Error cargando torneos.</p>';
+    document.addEventListener("DOMContentLoaded", () => {
+      const toggle = document.getElementById("ltc-nav-toggle");
+      const nav = document.getElementById("ltc-nav");
+      if (toggle && nav) {
+        toggle.addEventListener("click", () => nav.classList.toggle("open"));
+        nav.querySelectorAll("a").forEach((lnk) =>
+          lnk.addEventListener("click", () => nav.classList.remove("open"))
+        );
       }
-    }
-
-    async function portalVerCampeonato(campeonatoId) {
-      document.getElementById("portal-inicio").classList.remove("active");
-      document.getElementById("portal-detalle").classList.add("active");
-      const cont = document.getElementById("portal-detalle-contenido");
-      cont.innerHTML = "<p>Cargando...</p>";
-
-      try {
-        const [campRes, eventosRes] = await Promise.all([
-          fetch(`${API}/public/campeonatos/${campeonatoId}`).then(r => r.json()),
-          fetch(`${API}/public/campeonatos/${campeonatoId}/eventos`).then(r => r.json())
-        ]);
-        const camp = campRes.campeonato || campRes;
-        const eventos = eventosRes.eventos || eventosRes || [];
-
-        let html = `
-          <div class="portal-card">
-            <h2>${camp.nombre || "Torneo"}</h2>
-            <p>${camp.organizador || ""} • ${camp.fecha_inicio || ""} - ${camp.fecha_fin || ""}</p>
-          </div>
-        `;
-
-        for (const ev of eventos) {
-          const partidosRes = await fetch(`${API}/public/eventos/${ev.id}/partidos`).then(r => r.json());
-          const partidos = partidosRes.partidos || partidosRes || [];
-          const tablasRes = await fetch(`${API}/public/eventos/${ev.id}/tablas`).then(r => r.json()).catch(() => ({ grupos: [] }));
-          const grupos = tablasRes.grupos || [];
-
-          html += `<div class="portal-card"><h3>📅 ${ev.nombre || "Categoría"}</h3>`;
-
-          if (partidos.length) {
-            html += `<h4>Fixture / Resultados</h4>`;
-            partidos.slice(0, 20).forEach(p => {
-              const res = p.estado === "finalizado" ? `${p.resultado_local || 0} - ${p.resultado_visitante || 0}` : "vs";
-              html += `
-                <div class="partido-publico">
-                  <div class="equipo-nombre">${p.equipo_local_nombre || "-"}</div>
-                  <div class="marcador">${res}</div>
-                  <div class="equipo-nombre">${p.equipo_visitante_nombre || "-"}</div>
-                </div>
-              `;
-            });
-            if (partidos.length > 20) html += `<p><small>... y ${partidos.length - 20} partidos más</small></p>`;
-          }
-
-          if (grupos.length) {
-            html += `<h4>Tablas de posición</h4>`;
-            for (const g of grupos) {
-              try {
-                const tabla = g.tabla || [];
-                if (tabla.length) {
-                  html += `<p><strong>${g.grupo?.nombre_grupo || g.grupo?.letra_grupo || "Grupo"}</strong></p>`;
-                  html += `<table class="tabla-posicion"><tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr>`;
-                  tabla.forEach((row, i) => {
-                    const est = row.estadisticas || {};
-                    html += `<tr>
-                      <td>${row.posicion || i + 1}</td>
-                      <td>${row.equipo?.nombre || "-"}</td>
-                      <td>${est.partidos_jugados || 0}</td>
-                      <td>${est.partidos_ganados || 0}</td>
-                      <td>${est.partidos_empatados || 0}</td>
-                      <td>${est.partidos_perdidos || 0}</td>
-                      <td>${est.goles_favor || 0}</td>
-                      <td>${est.goles_contra || 0}</td>
-                      <td>${(est.goles_favor || 0) - (est.goles_contra || 0)}</td>
-                      <td><strong>${row.puntos || 0}</strong></td>
-                    </tr>`;
-                  });
-                  html += "</table>";
-                }
-              } catch (_) {}
-            }
-          }
-
-          html += "</div>";
-        }
-
-        cont.innerHTML = html || '<p class="empty-msg">Sin datos disponibles.</p>';
-      } catch (err) {
-        console.error(err);
-        cont.innerHTML = '<p class="empty-msg">Error cargando datos.</p>';
-      }
-    }
-
-    function portalVolver() {
-      document.getElementById("portal-detalle").classList.remove("active");
-      document.getElementById("portal-inicio").classList.add("active");
-    }
-
-    document.addEventListener("DOMContentLoaded", portalCargarCampeonatos);
+    });
   </script>
 </body>
 </html>
-

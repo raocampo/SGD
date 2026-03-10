@@ -1,5 +1,7 @@
 // frontend/js/gruposgen.js
-const BACKEND_BASE = "http://localhost:5000"; // para logos si vienen como /uploads/...
+const BACKEND_BASE = (window.resolveBackendBaseUrl
+  ? window.resolveBackendBaseUrl()
+  : `${window.location.origin}`).replace(/\/$/, "");
 
 let contextoGrupos = {
   campeonatoId: null,
@@ -824,4 +826,3 @@ window.exportarGruposPNG = exportarGruposPNG;
 window.exportarPDF = exportarPDF;
 window.compartirRedes = compartirRedes;
 window.volverInicio = volverInicio;
-

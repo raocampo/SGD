@@ -1,4 +1,6 @@
-const BACKEND_BASE = "http://localhost:5000";
+const BACKEND_BASE = (window.resolveBackendBaseUrl
+  ? window.resolveBackendBaseUrl()
+  : `${window.location.origin}`).replace(/\/$/, "");
 
 let eventoId = null;
 let grupoId = null;

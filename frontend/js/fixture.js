@@ -2,7 +2,9 @@
 
 const API_BASE = (typeof API_BASE_URL !== "undefined")
   ? API_BASE_URL
-  : "http://localhost:5000/api";
+  : (window.resolveApiBaseUrl
+      ? window.resolveApiBaseUrl()
+      : `${window.location.origin}/api`);
 
 const UPLOADS_BASE = API_BASE.replace(/\/api$/, "");
 

@@ -476,6 +476,226 @@ body.ltc-landing {
   color: #5e748f;
 }
 
+.portal-detail-header {
+  padding: 1.2rem;
+}
+
+.portal-detail-heading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.portal-detail-heading h2 {
+  margin: 0;
+  color: #203246;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  line-height: 1;
+}
+
+.portal-detail-heading p,
+.portal-detail-heading span {
+  margin: 0.2rem 0 0;
+  display: block;
+}
+
+.portal-detail-logo {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  border-radius: 20px;
+  background: #eef4fb;
+  border: 1px solid #d7e5f3;
+  padding: 0.45rem;
+  flex-shrink: 0;
+}
+
+.portal-detail-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.portal-category-tabs,
+.portal-subtabs {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 0.2rem;
+}
+
+.portal-category-tab,
+.portal-subtab {
+  border: 1px solid #c6d8eb;
+  border-radius: 999px;
+  background: #fff;
+  color: #2b4d73;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.portal-category-tab {
+  padding: 0.8rem 1rem;
+  box-shadow: 0 6px 14px rgba(35, 58, 92, 0.08);
+}
+
+.portal-subtab {
+  padding: 0.62rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.portal-category-tab:hover,
+.portal-subtab:hover,
+.portal-category-tab.active,
+.portal-subtab.active {
+  background: #2f5e96;
+  border-color: #2f5e96;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.portal-category-panel,
+.portal-subtab-panel {
+  display: none;
+}
+
+.portal-category-panel.active,
+.portal-subtab-panel.active {
+  display: block;
+}
+
+.portal-category-panel {
+  border: 1px solid #d5e2f0;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  box-shadow: 0 8px 20px rgba(33, 58, 88, 0.08);
+  padding: 1rem;
+}
+
+.portal-category-summary {
+  margin-bottom: 1rem;
+}
+
+.portal-category-summary h3 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+  color: #203246;
+}
+
+.portal-category-summary p {
+  margin: 0.3rem 0 0;
+  color: #57708d;
+}
+
+.portal-stat-block + .portal-stat-block {
+  margin-top: 1rem;
+}
+
+.portal-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.portal-jornadas-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.portal-jornada-card {
+  border: 1px solid #d5e2f0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 6px 14px rgba(35, 58, 92, 0.08);
+  overflow: hidden;
+}
+
+.portal-jornada-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(135deg, #203a5d 0%, #315d95 100%);
+  color: #fff;
+}
+
+.portal-jornada-card-head h4 {
+  margin: 0;
+  color: inherit;
+}
+
+.portal-jornada-card-head span {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.portal-jornada-card-body {
+  padding: 0.4rem 0.8rem 0.6rem;
+}
+
+.portal-jornada-match {
+  border-bottom: 1px solid #e4edf8;
+  padding: 0.7rem 0;
+}
+
+.portal-jornada-match:last-child {
+  border-bottom: none;
+}
+
+.portal-jornada-match-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 0.45rem;
+}
+
+.portal-jornada-match-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.58rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  background: #e7eef8;
+  color: #27486f;
+}
+
+.portal-jornada-match-meta {
+  font-size: 0.78rem;
+  color: #607691;
+  text-align: right;
+}
+
+.portal-jornada-match-status.estado-finalizado {
+  background: #daf7e7;
+  color: #1b7245;
+}
+
+.portal-jornada-match-status.estado-programado,
+.portal-jornada-match-status.estado-pendiente {
+  background: #dcecff;
+  color: #1c4f95;
+}
+
+.portal-jornada-match-status.estado-en_curso {
+  background: #fff0c8;
+  color: #906000;
+}
+
+.portal-jornada-match-status.estado-suspendido,
+.portal-jornada-match-status.estado-aplazado,
+.portal-jornada-match-status.estado-no_presentaron_ambos {
+  background: #fde2e2;
+  color: #9a3030;
+}
+
 .ltc-team-figure {
   width: 68px;
   height: 68px;
@@ -1221,6 +1441,10 @@ body.ltc-landing {
   .portal-card-featured {
     grid-column: span 1;
   }
+
+  .portal-jornadas-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 1100px) {
@@ -1260,6 +1484,11 @@ body.ltc-landing {
     grid-template-columns: 1fr;
   }
 
+  .portal-detail-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .ltc-pricing-grid {
     grid-template-columns: 1fr;
   }
@@ -1288,6 +1517,15 @@ body.ltc-landing {
     grid-template-columns: 1fr;
     text-align: center;
     gap: 0.28rem;
+  }
+
+  .portal-jornada-match-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .portal-jornada-match-meta {
+    text-align: left;
   }
 
   .ltc-contact-row {

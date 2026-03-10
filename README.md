@@ -322,6 +322,7 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 - Plan de adaptacion mobile web: `docs/PLAN_MOBILE_LT_C.md`
 - Guia operativa para cliente: `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`
 - Guia de video/tutoriales: `docs/GUIA_VIDEO_TUTORIALES_LT_C.md`
+- Guia de despliegue en Render: `docs/DEPLOY_RENDER.md`
 - Propuesta base del proyecto: `docs/propuestaDesarrolloSGD.md`
 
 ## 10. Flujo de Trabajo Recomendado

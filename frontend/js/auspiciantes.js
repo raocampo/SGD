@@ -218,7 +218,11 @@ function limpiarFormularioAuspiciante(opts = {}) {
 function normalizarLogoUrlAuspiciante(url) {
   if (!url) return "";
   if (/^https?:\/\//i.test(url)) return url;
-  const base = (window.API_BASE_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
+  const base = (
+    window.resolveApiBaseUrl
+      ? window.resolveApiBaseUrl()
+      : window.API_BASE_URL || `${window.location.origin}/api`
+  ).replace(/\/api\/?$/, "");
   return url.startsWith("/") ? `${base}${url}` : `${base}/${url}`;
 }
 
@@ -233,4 +237,3 @@ function escapeHtmlAuspiciante(v) {
 
 window.editarAuspiciante = editarAuspiciante;
 window.eliminarAuspiciante = eliminarAuspiciante;
-

@@ -1,6 +1,8 @@
 // frontend/js/partidos.js
 
-const BACKEND_BASE = "http://localhost:5000";
+const BACKEND_BASE = (window.resolveBackendBaseUrl
+  ? window.resolveBackendBaseUrl()
+  : `${window.location.origin}`).replace(/\/$/, "");
 
 let eventoSeleccionado = null;
 let campeonatoSeleccionado = null;
@@ -1993,6 +1995,5 @@ window.abrirPlanillaPartido = abrirPlanillaPartido;
 window.cambiarVistaPartidos = cambiarVistaPartidos;
 window.editarResultadoEliminatoria = editarResultadoEliminatoria;
 window.abrirVistaEliminatoria = abrirVistaEliminatoria;
-
 
 

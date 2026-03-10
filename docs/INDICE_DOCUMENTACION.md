@@ -1,6 +1,6 @@
 # Indice de Documentacion LT&C
 
-Ultima actualizacion: 2026-03-05
+Ultima actualizacion: 2026-03-09
 
 ## Documentos clave
 - `docs/BITACORA_AVANCES.md`
@@ -25,6 +25,8 @@ Ultima actualizacion: 2026-03-05
   - Lista de pruebas funcionales y de seguridad para cierre operativo del CMS.
 - `docs/GUIA_DESPLIEGUE_CMS_PORTAL_PUBLICO.md`
   - Pasos de despliegue, verificacion y rollback del CMS institucional.
+- `docs/DEPLOY_RENDER.md`
+  - Guia de despliegue del sistema completo LT&C en Render con un solo servicio Node.
 - `docs/RESULTADO_QA_CMS_2026-03-05.md`
   - Evidencia de pruebas automáticas del CMS y estado de cierre de Fase 6.
 - `docs/ACTA_ACEPTACION_CMS_FASE6_2026-03-05.md`

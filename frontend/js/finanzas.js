@@ -1010,7 +1010,11 @@ function normalizarLogoReporte(url) {
   const texto = String(url).trim();
   if (!texto) return "";
   if (/^https?:\/\//i.test(texto)) return texto;
-  const base = (window.API_BASE_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
+  const base = (
+    window.resolveApiBaseUrl
+      ? window.resolveApiBaseUrl()
+      : window.API_BASE_URL || `${window.location.origin}/api`
+  ).replace(/\/api\/?$/, "");
   return texto.startsWith("/") ? `${base}${texto}` : `${base}/${texto}`;
 }
 

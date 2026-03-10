@@ -1,4 +1,6 @@
-const API = window.API_BASE_URL || "http://localhost:5000/api";
+const API = window.resolveApiBaseUrl
+  ? window.resolveApiBaseUrl()
+  : window.API_BASE_URL || `${window.location.origin}/api`;
 const BACKEND_BASE = API.replace(/\/api\/?$/, "");
 const IMG_TORNEO_ACTIVO = "assets/ltc/torneos/Torneo1.jpeg";
 const IMG_TORNEO_PROXIMO = "assets/ltc/torneos/ProximoTorneo.jpeg";
@@ -500,14 +502,137 @@ function renderTablasPortal(tablas = []) {
         .join("");
 
       return `
-        <p><strong>${titulo}</strong></p>
-        <table class="tabla-posicion">
-          <tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr>
-          ${rowsHtml}
-        </table>
+        <div class="portal-stat-block">
+          <p><strong>${titulo}</strong></p>
+          <div class="portal-table-wrap">
+            <table class="tabla-posicion">
+              <tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr>
+              ${rowsHtml}
+            </table>
+          </div>
+        </div>
       `;
     })
     .join("");
+}
+
+function formatearHoraPortal(hora) {
+  if (!hora) return "";
+  const raw = String(hora).trim();
+  const match = raw.match(/^(\d{2}:\d{2})/);
+  if (match) return match[1];
+  const fecha = new Date(raw);
+  if (!Number.isNaN(fecha.getTime())) {
+    return fecha.toLocaleTimeString("es-EC", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+  return raw;
+}
+
+function normalizarJornadasPortal(jornadas = [], partidos = []) {
+  if (Array.isArray(jornadas) && jornadas.length) {
+    return jornadas
+      .map((item) => ({
+        numero: item?.numero ?? "Sin jornada",
+        partidos: Array.isArray(item?.partidos) ? item.partidos : [],
+      }))
+      .sort((a, b) => {
+        const aNum = Number.parseInt(a.numero, 10);
+        const bNum = Number.parseInt(b.numero, 10);
+        if (Number.isFinite(aNum) && Number.isFinite(bNum)) return aNum - bNum;
+        return String(a.numero).localeCompare(String(b.numero));
+      });
+  }
+
+  const jornadasMap = new Map();
+  (Array.isArray(partidos) ? partidos : []).forEach((partido) => {
+    const numero = partido?.jornada ?? "Sin jornada";
+    const key = String(numero);
+    if (!jornadasMap.has(key)) {
+      jornadasMap.set(key, { numero, partidos: [] });
+    }
+    jornadasMap.get(key).partidos.push(partido);
+  });
+
+  return Array.from(jornadasMap.values()).sort((a, b) => {
+    const aNum = Number.parseInt(a.numero, 10);
+    const bNum = Number.parseInt(b.numero, 10);
+    if (Number.isFinite(aNum) && Number.isFinite(bNum)) return aNum - bNum;
+    return String(a.numero).localeCompare(String(b.numero));
+  });
+}
+
+function obtenerEstadoPartidoPortal(partido) {
+  const estado = String(partido?.estado || "").trim().toLowerCase();
+  const mapa = {
+    finalizado: "Finalizado",
+    programado: "Programado",
+    pendiente: "Pendiente",
+    en_curso: "En curso",
+    suspendido: "Suspendido",
+    aplazado: "Aplazado",
+    no_presentaron_ambos: "No se presentaron",
+  };
+  return mapa[estado] || (estado ? estado.replace(/_/g, " ") : "Programado");
+}
+
+function renderPartidoJornadaPortal(partido = {}) {
+  const fecha = formatearFechaPortal(partido.fecha_partido || partido.fecha || partido.fecha_programada);
+  const hora = formatearHoraPortal(partido.hora_partido || partido.hora || partido.hora_programada);
+  const cancha = String(partido.cancha || partido.escenario || "").trim();
+  const meta = [fecha, hora ? `Hora ${hora}` : "", cancha].filter(Boolean).join(" • ");
+  const finalizado = String(partido.estado || "").trim().toLowerCase() === "finalizado";
+  const tieneMarcador =
+    Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante));
+  const marcador = finalizado || tieneMarcador
+    ? `${partido.resultado_local ?? 0} - ${partido.resultado_visitante ?? 0}`
+    : "vs";
+  const estado = obtenerEstadoPartidoPortal(partido);
+  const estadoClass = String(partido.estado || "programado").replace(/[^a-z_]/gi, "_").toLowerCase();
+
+  return `
+    <article class="portal-jornada-match">
+      <div class="portal-jornada-match-head">
+        <span class="portal-jornada-match-status estado-${estadoClass}">${escPortal(estado)}</span>
+        ${meta ? `<span class="portal-jornada-match-meta">${escPortal(meta)}</span>` : ""}
+      </div>
+      <div class="partido-publico">
+        <div class="equipo-nombre">${escPortal(partido.equipo_local_nombre || "-")}</div>
+        <div class="marcador">${escPortal(marcador)}</div>
+        <div class="equipo-nombre">${escPortal(partido.equipo_visitante_nombre || "-")}</div>
+      </div>
+    </article>
+  `;
+}
+
+function renderJornadasPortal(jornadas = [], partidos = []) {
+  const bloques = normalizarJornadasPortal(jornadas, partidos);
+  if (!bloques.length) {
+    return '<p class="empty-msg">No hay jornadas publicadas para esta categoría.</p>';
+  }
+
+  return `
+    <div class="portal-jornadas-grid">
+      ${bloques
+        .map((jornada) => `
+          <section class="portal-jornada-card">
+            <div class="portal-jornada-card-head">
+              <h4>Jornada ${escPortal(jornada.numero)}</h4>
+              <span>${Array.isArray(jornada.partidos) ? jornada.partidos.length : 0} partido(s)</span>
+            </div>
+            <div class="portal-jornada-card-body">
+              ${(Array.isArray(jornada.partidos) ? jornada.partidos : [])
+                .map((partido) => renderPartidoJornadaPortal(partido))
+                .join("")}
+            </div>
+          </section>
+        `)
+        .join("")}
+    </div>
+  `;
 }
 
 function renderEliminatoriasPortal(rondas = []) {
@@ -557,10 +682,12 @@ function renderGoleadoresPortal(goleadores = []) {
     .join("");
 
   return `
-    <table class="tabla-posicion">
-      <tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Goles</th></tr>
-      ${rowsHtml}
-    </table>
+    <div class="portal-table-wrap">
+      <table class="tabla-posicion">
+        <tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Goles</th></tr>
+        ${rowsHtml}
+      </table>
+    </div>
   `;
 }
 
@@ -582,10 +709,12 @@ function renderTarjetasPortal(tarjetas = []) {
     .join("");
 
   return `
-    <table class="tabla-posicion">
-      <tr><th>#</th><th>Equipo</th><th>TA</th><th>TR</th></tr>
-      ${rowsHtml}
-    </table>
+    <div class="portal-table-wrap">
+      <table class="tabla-posicion">
+        <tr><th>#</th><th>Equipo</th><th>TA</th><th>TR</th></tr>
+        ${rowsHtml}
+      </table>
+    </div>
   `;
 }
 
@@ -609,11 +738,139 @@ function renderFairPlayPortal(fairPlay = []) {
     .join("");
 
   return `
-    <table class="tabla-posicion">
-      <tr><th>#</th><th>Equipo</th><th>TA</th><th>TR</th><th>Faltas</th><th>Puntaje</th></tr>
-      ${rowsHtml}
-    </table>
+    <div class="portal-table-wrap">
+      <table class="tabla-posicion">
+        <tr><th>#</th><th>Equipo</th><th>TA</th><th>TR</th><th>Faltas</th><th>Puntaje</th></tr>
+        ${rowsHtml}
+      </table>
+    </div>
   `;
+}
+
+function renderResumenCategoriaPortal(evento, data) {
+  const resumen = [
+    evento?.modalidad ? `Modalidad: ${evento.modalidad}` : "",
+    evento?.metodo_competencia ? `Formato: ${String(evento.metodo_competencia).replace(/_/g, " ")}` : "",
+    `Equipos: ${Number(evento?.total_equipos || 0)}`,
+    Number(evento?.total_grupos || 0) > 0 ? `Grupos: ${Number(evento.total_grupos || 0)}` : "",
+    `Partidos: ${Number(evento?.partidos_finalizados || 0)}/${Number(evento?.total_partidos || 0)}`,
+    Number(data?.goleadores?.length || 0) > 0 ? `Goleadores activos: ${Number(data.goleadores.length)}` : "",
+  ].filter(Boolean);
+
+  return `
+    <div class="portal-category-summary">
+      <div>
+        <h3>${limpiarCodigoTorneo(evento?.nombre) || "Categoría"}</h3>
+        <p>${escPortal(resumen.join(" • "))}</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderCategoriaPanelPortal(data, index = 0) {
+  const evento = data?.evento || {};
+  const panelId = `portal-category-panel-${evento.id}`;
+  const subtabs = [
+    { key: "posiciones", label: "Tabla de posiciones", html: renderTablasPortal(data?.tablas || []) },
+    { key: "jornadas", label: "Jornadas", html: renderJornadasPortal(data?.jornadas || [], data?.partidos || []) },
+    { key: "goleadores", label: "Goleadores", html: renderGoleadoresPortal(data?.goleadores || []) },
+    { key: "tarjetas", label: "Tarjetas", html: renderTarjetasPortal(data?.tarjetas || []) },
+    { key: "fair-play", label: "Fair play", html: renderFairPlayPortal(data?.fairPlay || []) },
+  ];
+
+  if (Array.isArray(data?.rondas) && data.rondas.length) {
+    subtabs.push({ key: "playoff", label: "Playoff", html: renderEliminatoriasPortal(data.rondas) });
+  }
+
+  return `
+    <section id="${panelId}" class="portal-category-panel ${index === 0 ? "active" : ""}" ${index === 0 ? "" : "hidden"}>
+      ${renderResumenCategoriaPortal(evento, data)}
+      <div class="portal-subtabs" role="tablist" aria-label="Secciones de ${escPortal(evento?.nombre || "categoría")}">
+        ${subtabs
+          .map(
+            (subtab, subIndex) => `
+              <button
+                class="portal-subtab ${subIndex === 0 ? "active" : ""}"
+                type="button"
+                data-portal-tab="subcategoria"
+                data-target="${panelId}-${subtab.key}"
+                aria-selected="${subIndex === 0 ? "true" : "false"}"
+              >
+                ${subtab.label}
+              </button>
+            `
+          )
+          .join("")}
+      </div>
+      ${subtabs
+        .map(
+          (subtab, subIndex) => `
+            <div id="${panelId}-${subtab.key}" class="portal-subtab-panel ${subIndex === 0 ? "active" : ""}" ${subIndex === 0 ? "" : "hidden"}>
+              ${subtab.html}
+            </div>
+          `
+        )
+        .join("")}
+    </section>
+  `;
+}
+
+function renderDetalleCampeonatoPortal(campeonato, eventosData = []) {
+  const nombre = limpiarCodigoTorneo(campeonato?.nombre) || "Torneo";
+  const base = `
+    <div class="portal-card portal-detail-header">
+      <div class="portal-detail-heading">
+        ${campeonato?.logo_url ? `<img class="portal-detail-logo" src="${normalizarLogoUrl(campeonato.logo_url)}" alt="${escPortal(nombre)}" />` : ""}
+        <div>
+          <h2>${nombre}</h2>
+          <p>${escPortal(campeonato?.organizador || "")}</p>
+          <span>${formatearFechaPortal(campeonato?.fecha_inicio)} - ${formatearFechaPortal(campeonato?.fecha_fin)}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (!Array.isArray(eventosData) || !eventosData.length) {
+    return `${base}<p class="empty-msg">Este campeonato no tiene categorías públicas disponibles.</p>`;
+  }
+
+  return `
+    ${base}
+    <div class="portal-detail-shell">
+      <div class="portal-category-tabs" role="tablist" aria-label="Categorías del campeonato">
+        ${eventosData
+          .map(
+            (item, index) => `
+              <button
+                class="portal-category-tab ${index === 0 ? "active" : ""}"
+                type="button"
+                data-portal-tab="categoria"
+                data-target="portal-category-panel-${item.evento.id}"
+                aria-selected="${index === 0 ? "true" : "false"}"
+              >
+                ${escPortal(limpiarCodigoTorneo(item?.evento?.nombre) || "Categoría")}
+              </button>
+            `
+          )
+          .join("")}
+      </div>
+      ${eventosData.map((item, index) => renderCategoriaPanelPortal(item, index)).join("")}
+    </div>
+  `;
+}
+
+function activarPortalTab(scope, buttonSelector, panelSelector, targetId) {
+  if (!scope || !targetId) return;
+  scope.querySelectorAll(buttonSelector).forEach((button) => {
+    const activo = button.dataset.target === targetId;
+    button.classList.toggle("active", activo);
+    button.setAttribute("aria-selected", activo ? "true" : "false");
+  });
+  scope.querySelectorAll(panelSelector).forEach((panel) => {
+    const activo = panel.id === targetId;
+    panel.classList.toggle("active", activo);
+    panel.hidden = !activo;
+  });
 }
 
 async function portalVerCampeonato(campeonatoId, options = {}) {
@@ -639,96 +896,60 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
         ? eventos.filter((ev) => Number(ev.id) === eventoObjetivo)
         : eventos;
 
-    let html = `
-      <div class="portal-card">
-        <h2>${limpiarCodigoTorneo(camp.nombre) || "Torneo"}</h2>
-        <p>${camp.organizador || ""} • ${camp.fecha_inicio || ""} - ${camp.fecha_fin || ""}</p>
-      </div>
-    `;
+    const eventosData = await Promise.all(
+      eventosFiltrados.map(async (ev) => {
+        const [partidosRes, tablasRes, eliminatoriasRes, goleadoresRes, tarjetasRes, fairPlayRes] = await Promise.all([
+          (
+            window.PortalPublicAPI
+              ? window.PortalPublicAPI.obtenerPartidosPorEvento(ev.id)
+              : fetch(`${API}/public/eventos/${ev.id}/partidos`).then((r) => r.json())
+          ).catch(() => ({ partidos: [], jornadas: [] })),
+          (
+            window.PortalPublicAPI
+              ? window.PortalPublicAPI.obtenerTablasPorEvento(ev.id)
+              : fetch(`${API}/public/eventos/${ev.id}/tablas`).then((r) => r.json())
+          ).catch(() => ({ grupos: [] })),
+          (
+            window.PortalPublicAPI
+              ? window.PortalPublicAPI.obtenerEliminatoriasPorEvento(ev.id)
+              : fetch(`${API}/public/eventos/${ev.id}/eliminatorias`).then((r) => r.json())
+          ).catch(() => ({ rondas: [] })),
+          (
+            window.PortalPublicAPI
+              ? window.PortalPublicAPI.obtenerGoleadoresPorEvento(ev.id)
+              : fetch(`${API}/public/eventos/${ev.id}/goleadores`).then((r) => r.json())
+          ).catch(() => ({ goleadores: [] })),
+          (
+            window.PortalPublicAPI
+              ? window.PortalPublicAPI.obtenerTarjetasPorEvento(ev.id)
+              : fetch(`${API}/public/eventos/${ev.id}/tarjetas`).then((r) => r.json())
+          ).catch(() => ({ tarjetas: [] })),
+          (
+            window.PortalPublicAPI
+              ? window.PortalPublicAPI.obtenerFairPlayPorEvento(ev.id)
+              : fetch(`${API}/public/eventos/${ev.id}/fair-play`).then((r) => r.json())
+          ).catch(() => ({ fair_play: [] })),
+        ]);
 
-    for (const ev of eventosFiltrados) {
-      const [partidosRes, tablasRes, eliminatoriasRes, goleadoresRes, tarjetasRes, fairPlayRes] = await Promise.all([
-        (
-          window.PortalPublicAPI
-            ? window.PortalPublicAPI.obtenerPartidosPorEvento(ev.id)
-            : fetch(`${API}/public/eventos/${ev.id}/partidos`).then((r) => r.json())
-        ).catch(() => ({ partidos: [] })),
-        (
-          window.PortalPublicAPI
-            ? window.PortalPublicAPI.obtenerTablasPorEvento(ev.id)
-            : fetch(`${API}/public/eventos/${ev.id}/tablas`).then((r) => r.json())
-        ).catch(() => ({ grupos: [] })),
-        (
-          window.PortalPublicAPI
-            ? window.PortalPublicAPI.obtenerEliminatoriasPorEvento(ev.id)
-            : fetch(`${API}/public/eventos/${ev.id}/eliminatorias`).then((r) => r.json())
-        ).catch(() => ({ rondas: [] })),
-        (
-          window.PortalPublicAPI
-            ? window.PortalPublicAPI.obtenerGoleadoresPorEvento(ev.id)
-            : fetch(`${API}/public/eventos/${ev.id}/goleadores`).then((r) => r.json())
-        ).catch(() => ({ goleadores: [] })),
-        (
-          window.PortalPublicAPI
-            ? window.PortalPublicAPI.obtenerTarjetasPorEvento(ev.id)
-            : fetch(`${API}/public/eventos/${ev.id}/tarjetas`).then((r) => r.json())
-        ).catch(() => ({ tarjetas: [] })),
-        (
-          window.PortalPublicAPI
-            ? window.PortalPublicAPI.obtenerFairPlayPorEvento(ev.id)
-            : fetch(`${API}/public/eventos/${ev.id}/fair-play`).then((r) => r.json())
-        ).catch(() => ({ fair_play: [] })),
-      ]);
-      const partidos = partidosRes.partidos || [];
-      const tablas = tablasRes.grupos || [];
-      const rondas = eliminatoriasRes.rondas || [];
-      const goleadores = goleadoresRes.goleadores || [];
-      const tarjetas = tarjetasRes.tarjetas || [];
-      const fairPlay = fairPlayRes.fair_play || [];
+        return {
+          evento: ev,
+          partidos: partidosRes.partidos || [],
+          jornadas: partidosRes.jornadas || [],
+          tablas: tablasRes.grupos || [],
+          rondas: eliminatoriasRes.rondas || [],
+          goleadores: goleadoresRes.goleadores || [],
+          tarjetas: tarjetasRes.tarjetas || [],
+          fairPlay: fairPlayRes.fair_play || [],
+        };
+      })
+    );
 
-      html += `<div class="portal-card"><h3>📅 ${limpiarCodigoTorneo(ev.nombre) || "Categoría"}</h3>`;
-
-      if (partidos.length) {
-        html += "<h4>Fixture / Resultados</h4>";
-        partidos.slice(0, 20).forEach((p) => {
-          const res =
-            p.estado === "finalizado" ? `${p.resultado_local || 0} - ${p.resultado_visitante || 0}` : "vs";
-          html += `
-            <div class="partido-publico">
-              <div class="equipo-nombre">${p.equipo_local_nombre || "-"}</div>
-              <div class="marcador">${res}</div>
-              <div class="equipo-nombre">${p.equipo_visitante_nombre || "-"}</div>
-            </div>
-          `;
-        });
-        if (partidos.length > 20) html += `<p><small>... y ${partidos.length - 20} partidos más</small></p>`;
-      }
-
-      html += "<h4>Tablas de posición</h4>";
-      html += renderTablasPortal(tablas);
-
-      if (rondas.length) {
-        html += "<h4>Eliminatorias</h4>";
-        html += renderEliminatoriasPortal(rondas);
-      }
-
-      html += "<h4>Goleadores</h4>";
-      html += renderGoleadoresPortal(goleadores);
-      html += "<h4>Tarjetas</h4>";
-      html += renderTarjetasPortal(tarjetas);
-      html += "<h4>Fair play</h4>";
-      html += renderFairPlayPortal(fairPlay);
-
-      html += "</div>";
-    }
-
-    cont.innerHTML = html || '<p class="empty-msg">Sin datos disponibles.</p>';
+    cont.innerHTML = renderDetalleCampeonatoPortal(camp, eventosData);
   } catch (err) {
     console.error(err);
     cont.innerHTML = '<p class="empty-msg">Error cargando datos.</p>';
   }
 }
-
 function portalVolver() {
   document.getElementById("portal-detalle").classList.remove("active");
   document.getElementById("portal-inicio").classList.add("active");
@@ -736,6 +957,21 @@ function portalVolver() {
 
 window.portalVerCampeonato = portalVerCampeonato;
 window.portalVolver = portalVolver;
+
+document.addEventListener("click", (event) => {
+  const categoryButton = event.target.closest("[data-portal-tab='categoria']");
+  if (categoryButton) {
+    const scope = categoryButton.closest(".portal-detail-shell");
+    activarPortalTab(scope, ".portal-category-tab", ".portal-category-panel", categoryButton.dataset.target);
+    return;
+  }
+
+  const subtabButton = event.target.closest("[data-portal-tab='subcategoria']");
+  if (subtabButton) {
+    const scope = subtabButton.closest(".portal-category-panel");
+    activarPortalTab(scope, ".portal-subtab", ".portal-subtab-panel", subtabButton.dataset.target);
+  }
+});
 
 document.addEventListener("DOMContentLoaded", async () => {
   const contexto = leerContextoPortalDesdeUrl();
@@ -767,4 +1003,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     portalVerCampeonato(contexto.campeonatoId, { eventoId: contexto.eventoId });
   }
 });
+
 

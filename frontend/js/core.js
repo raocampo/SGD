@@ -1,7 +1,28 @@
 // frontend/js/core.js
 
 (function () {
-  window.API_BASE_URL = window.API_BASE_URL || "http://localhost:5000/api";
+  function resolveApiBaseUrl() {
+    const explicitBase = String(window.API_BASE_URL || "").trim();
+    if (explicitBase) return explicitBase.replace(/\/$/, "");
+
+    const openedFromFile = window.location.protocol === "file:";
+    const usesStaticDevHost =
+      /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname) &&
+      window.location.port &&
+      window.location.port !== "5000";
+
+    if (openedFromFile || usesStaticDevHost) {
+      return "http://localhost:5000/api";
+    }
+
+    return `${window.location.origin}/api`;
+  }
+
+  window.resolveApiBaseUrl = window.resolveApiBaseUrl || resolveApiBaseUrl;
+  window.resolveBackendBaseUrl =
+    window.resolveBackendBaseUrl ||
+    (() => window.resolveApiBaseUrl().replace(/\/api\/?$/, ""));
+  window.API_BASE_URL = window.resolveApiBaseUrl();
 
   const AUTH_TOKEN_KEY = "sgd_auth_token";
   const AUTH_USER_KEY = "sgd_auth_user";

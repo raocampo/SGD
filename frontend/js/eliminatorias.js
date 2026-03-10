@@ -1,5 +1,7 @@
 const RONDAS_ORDEN_ELI = ["32vos", "16vos", "8vos", "4tos", "semifinal", "final"];
-const BACKEND_BASE = "http://localhost:5000";
+const BACKEND_BASE = (window.resolveBackendBaseUrl
+  ? window.resolveBackendBaseUrl()
+  : `${window.location.origin}`).replace(/\/$/, "");
 const EMBED_MODE = new URLSearchParams(window.location.search).get("embed") === "1";
 
 let eliminatoriaState = {

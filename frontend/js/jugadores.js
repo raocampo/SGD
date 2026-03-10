@@ -30,7 +30,11 @@ let jugadoresActuales = [];
 let vistaJugadores = localStorage.getItem("sgd_vista_jugadores") || "cards";
 vistaJugadores = vistaJugadores === "table" ? "table" : "cards";
 
-const BACKEND_BASE = (window.API_BASE_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
+const BACKEND_BASE = (
+  window.resolveApiBaseUrl
+    ? window.resolveApiBaseUrl()
+    : window.API_BASE_URL || `${window.location.origin}/api`
+).replace(/\/api\/?$/, "");
 
 function rolUsuarioActual() {
   return String(window.Auth?.getUser?.()?.rol || "").toLowerCase();
