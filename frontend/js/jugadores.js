@@ -338,7 +338,7 @@ function actualizarResumenReglasDocumentos() {
   const partes = [];
   partes.push(reqIdentidad ? "cédula obligatoria" : "cédula opcional");
   partes.push(reqCedula ? "foto de cédula requerida" : "foto de cédula opcional");
-  partes.push(reqCarnet ? "foto carnet requerida" : "foto carnet opcional");
+  partes.push(reqCarnet ? "foto carné requerida" : "foto carné opcional");
   el.innerHTML = `<strong>Documentos jugador:</strong> ${partes.join(" • ")}`;
 }
 
@@ -347,12 +347,12 @@ function actualizarResumenCarnets() {
   if (!el) return;
 
   if (campeonatoMeta.genera_carnets) {
-    el.innerHTML = "<strong>Carnets:</strong> habilitado para este campeonato.";
+    el.innerHTML = "<strong>Carnés:</strong> habilitado para este campeonato.";
     el.style.color = "#166534";
     return;
   }
 
-  el.innerHTML = "<strong>Carnets:</strong> no habilitado para este campeonato.";
+  el.innerHTML = "<strong>Carnés:</strong> no habilitado para este campeonato.";
   el.style.color = "#6b7280";
 }
 
@@ -401,14 +401,14 @@ function actualizarEstadoRequisitosEnModal(jugador = null) {
   if (prevCarnet) {
     if (jugador?.foto_carnet_url && !eliminarCarnet) {
       prevCarnet.innerHTML = `
-        Documento actual: ${renderLinkDocumento(jugador.foto_carnet_url, "Ver foto carnet")}
+        Documento actual: ${renderLinkDocumento(jugador.foto_carnet_url, "Ver foto carné")}
         <button type="button" class="btn btn-danger btn-inline-action" onclick="marcarEliminacionFotoCarnet(true)">
-          Eliminar foto carnet
+          Eliminar foto carné
         </button>
       `;
     } else if (jugador?.foto_carnet_url && eliminarCarnet) {
       prevCarnet.innerHTML = `
-        <span class="form-hint is-warning">La foto carnet actual se eliminara al guardar.</span>
+        <span class="form-hint is-warning">La foto carné actual se eliminará al guardar.</span>
         <button type="button" class="btn btn-secondary btn-inline-action" onclick="marcarEliminacionFotoCarnet(false)">
           Deshacer
         </button>
@@ -811,7 +811,7 @@ function renderTarjetasJugadores(jugadores) {
           <p><strong>Fecha nac.:</strong> ${escapeHtml(formatearFecha(jugador.fecha_nacimiento))}</p>
           <p><strong>Capitán:</strong> ${jugador.es_capitan ? "Sí" : "No"}</p>
           <p><strong>Disciplina:</strong> ${renderEstadoDisciplinarioJugador(jugador)}</p>
-          <p><strong>Documentos:</strong> ${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carnet")}</p>
+          <p><strong>Documentos:</strong> ${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carné")}</p>
           ${
             soloLectura
               ? ""
@@ -844,7 +844,7 @@ function renderTablaJugadores(jugadores) {
           <td>${escapeHtml(jugador.numero_camiseta || "-")}</td>
           <td>${jugador.es_capitan ? "Sí" : "No"}</td>
           <td>${renderEstadoDisciplinarioJugador(jugador)}</td>
-          <td>${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carnet")}</td>
+          <td>${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carné")}</td>
           ${
             soloLectura
               ? ""
@@ -1020,7 +1020,7 @@ function renderPlantillaNominaJugadores() {
               <th>N°</th>
               <th>Cap.</th>
               <th>Foto Céd.</th>
-              <th>Foto Carnet</th>
+              <th>Foto Carné</th>
               <th>Firma</th>
             </tr>
           </thead>
@@ -1333,12 +1333,12 @@ function renderPlantillaCarnets() {
   if (!zona) return;
 
   if (!campeonatoMeta.genera_carnets) {
-    zona.innerHTML = "<p class='empty-state'>Este campeonato no tiene habilitada la emisión de carnets.</p>";
+    zona.innerHTML = "<p class='empty-state'>Este campeonato no tiene habilitada la emisión de carnés.</p>";
     return;
   }
 
   if (!equipoActual || !jugadoresActuales.length) {
-    zona.innerHTML = "<p class='empty-state'>No hay jugadores para generar carnets.</p>";
+    zona.innerHTML = "<p class='empty-state'>No hay jugadores para generar carnés.</p>";
     return;
   }
 
@@ -1353,7 +1353,7 @@ function renderPlantillaCarnets() {
         <article class="carnet-card">
           <header class="carnet-header">
             <div class="carnet-org">${escapeHtml(campeonatoMeta.organizador || "Organizador")}</div>
-            <div class="carnet-title">CARNET DE JUGADOR</div>
+            <div class="carnet-title">CARNÉ DE JUGADOR</div>
           </header>
           <div class="carnet-body">
             <div class="carnet-foto-wrap">
@@ -1459,7 +1459,7 @@ function mostrarPlantillaCarnets() {
     return;
   }
   if (!campeonatoMeta.genera_carnets) {
-    mostrarNotificacion("Este campeonato no tiene habilitada la generación de carnets", "warning");
+    mostrarNotificacion("Este campeonato no tiene habilitada la generación de carnés", "warning");
     return;
   }
   cambiarPestanaJugadores("tab-jugadores-reportes");
@@ -1607,7 +1607,7 @@ async function exportarCarnetsEnPDFA4(node, nombreArchivo) {
 
   const cards = Array.from(node.querySelectorAll(".carnet-card"));
   if (!cards.length) {
-    throw new Error("No hay carnets para exportar");
+    throw new Error("No hay carnés para exportar");
   }
 
   const { jsPDF } = window.jspdf;
@@ -1823,17 +1823,17 @@ function imprimirCarnetsJugadores() {
     return;
   }
   if (!campeonatoMeta.genera_carnets) {
-    mostrarNotificacion("Este campeonato no tiene habilitada la generación de carnets", "warning");
+    mostrarNotificacion("Este campeonato no tiene habilitada la generación de carnés", "warning");
     return;
   }
   if (!jugadoresActuales.length) {
-    mostrarNotificacion("No hay jugadores para imprimir carnets", "warning");
+    mostrarNotificacion("No hay jugadores para imprimir carnés", "warning");
     return;
   }
   renderPlantillaCarnets();
   activarLayoutCarnetsA4(true);
   const zona = document.getElementById("carnets-jugadores-export");
-  imprimirNodoEnVentana(zona, "Carnets de Jugadores");
+  imprimirNodoEnVentana(zona, "Carnés de Jugadores");
   setTimeout(() => activarLayoutCarnetsA4(false), 450);
 }
 
@@ -1844,11 +1844,11 @@ async function exportarCarnetsPDF() {
     return;
   }
   if (!campeonatoMeta.genera_carnets) {
-    mostrarNotificacion("Este campeonato no tiene habilitada la generación de carnets", "warning");
+    mostrarNotificacion("Este campeonato no tiene habilitada la generación de carnés", "warning");
     return;
   }
   if (!jugadoresActuales.length) {
-    mostrarNotificacion("No hay jugadores para exportar carnets", "warning");
+    mostrarNotificacion("No hay jugadores para exportar carnés", "warning");
     return;
   }
   const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
@@ -1863,17 +1863,17 @@ async function exportarCarnetsPDF() {
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
     const zona = document.getElementById("carnets-jugadores-export");
     if (!zona || zona.clientWidth < 50 || zona.clientHeight < 50) {
-      throw new Error("No se pudo preparar la vista de carnets para exportar");
+      throw new Error("No se pudo preparar la vista de carnés para exportar");
     }
     const slugEquipo = valorTextoImportacion(equipoActual?.nombre || "equipo")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "");
     await exportarCarnetsEnPDFA4(zona, `carnets_jugadores_${slugEquipo || "equipo"}.pdf`);
-    mostrarNotificacion("Carnets exportados en PDF", "success");
+    mostrarNotificacion("Carnés exportados en PDF", "success");
   } catch (error) {
     console.error(error);
-    mostrarNotificacion(error.message || "No se pudo exportar carnets", "error");
+    mostrarNotificacion(error.message || "No se pudo exportar carnés", "error");
   } finally {
     activarLayoutCarnetsA4(false);
     if (bloqueCarnets && displayCarnetsPrev !== null) bloqueCarnets.style.display = displayCarnetsPrev;
@@ -2097,7 +2097,7 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   }
 
   if (reglasDocumentos.requiere_foto_carnet && !fotoCarnetFile && !(id && tieneCarnetActual)) {
-    mostrarNotificacion("Este campeonato exige foto carnet", "warning");
+    mostrarNotificacion("Este campeonato exige foto carné", "warning");
     return;
   }
 

@@ -14,6 +14,10 @@ router.get(
   "/campeonatos/:campeonato_id/auspiciantes",
   publicPortalController.listarAuspiciantesPorCampeonato
 );
+router.get(
+  "/campeonatos/:campeonato_id/media",
+  publicPortalController.listarMediaPorCampeonato
+);
 router.get("/eventos/:evento_id/partidos", publicPortalController.obtenerPartidosPorEvento);
 router.get("/eventos/:evento_id/tablas", publicPortalController.obtenerTablasPorEvento);
 router.get("/eventos/:evento_id/eliminatorias", publicPortalController.obtenerEliminatoriasPorEvento);

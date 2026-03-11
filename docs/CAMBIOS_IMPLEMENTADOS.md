@@ -8,9 +8,30 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 ---
 
 ## 2026-03-11 - Jugadores, portal publico y tipos de futbol ampliados
+- Portal del organizador:
+  - `database/migrations/034_organizador_portal_branding.sql` crea:
+    - `organizador_portal_config`,
+    - `organizador_portal_media`,
+    - `organizador_portal_auspiciantes`.
+  - `backend/models/OrganizadorPortal.js` encapsula configuracion, media y auspiciantes propios del organizador.
+  - nuevo modulo:
+    - `backend/controllers/organizadorPortalController.js`,
+    - `backend/routes/organizadorPortalRoutes.js`,
+    - `frontend/organizador-portal.html`,
+    - `frontend/js/organizador-portal.js`.
+  - `backend/server.js` expone `/api/organizador-portal`.
+  - `backend/controllers/authController.js`, `backend/services/publicPortalService.js`, `backend/controllers/publicPortalController.js`, `backend/routes/publicRoutes.js` y `frontend/js/portal.js` ya consumen branding/media/auspiciantes propios del organizador y dejan de mezclar auspiciantes LT&C con los del torneo/organizador.
+  - `frontend/js/core.js`, `frontend/portal-admin.html` y `frontend/js/portal-admin.js` agregan acceso directo a `Mi Landing` para organizadores.
+  - la migracion `034` se aplico y verifico tanto en local como en Render.
+- Estilo/ortografia:
+  - formularios, reportes y mensajes visibles al usuario quedan estandarizados con `carné/carnés`.
+  - no se alteran claves tecnicas existentes como:
+    - `foto_carnet_url`,
+    - `requiere_foto_carnet`,
+    - ids/nombres internos usados por backend/frontend.
 - Jugadores:
   - `frontend/js/jugadores.js` corrige el formateo de `fecha_nacimiento` para evitar el desfase de `-1 dia` provocado por la zona horaria del navegador.
-  - `frontend/jugadores.html`, `frontend/js/jugadores.js` y `backend/controllers/jugadorController.js` agregan eliminacion explicita de `foto carnet` desde el perfil/modal del jugador, incluyendo limpieza del archivo local cuando se reemplaza o marca para borrado.
+  - `frontend/jugadores.html`, `frontend/js/jugadores.js` y `backend/controllers/jugadorController.js` agregan eliminacion explicita de `foto carné` desde el perfil/modal del jugador, incluyendo limpieza del archivo local cuando se reemplaza o marca para borrado.
   - los inputs de `foto_cedula` y `foto_carnet` quedan preparados para captura directa desde celular con:
     - `capture="environment"` para cédula,
     - `capture="user"` para foto del jugador/foto carnet.

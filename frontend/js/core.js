@@ -856,6 +856,11 @@
       window.location.pathname.endsWith("pases.html")
     );
     ensureNavLink(
+      "organizador-portal.html",
+      '<i class="fas fa-globe"></i> Mi Landing',
+      window.location.pathname.endsWith("organizador-portal.html")
+    );
+    ensureNavLink(
       "usuarios.html",
       '<i class="fas fa-user-shield"></i> Usuarios',
       window.location.pathname.endsWith("usuarios.html")
@@ -941,6 +946,9 @@
       const rol = String(user?.rol || "").toLowerCase();
       if (rol !== "administrador" && rol !== "organizador") {
         document.querySelectorAll('a[href="usuarios.html"]').forEach((lnk) => lnk.remove());
+      }
+      if (rol !== "organizador") {
+        document.querySelectorAll('a[href="organizador-portal.html"]').forEach((lnk) => lnk.remove());
       }
       if (rol !== "administrador") {
         document.querySelectorAll('a[href="noticias.html"]').forEach((lnk) => lnk.remove());

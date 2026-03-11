@@ -5634,3 +5634,15 @@ body.page-finanzas {
     flex-basis: 100%;
   }
 }
+
+.page-organizador-portal .form-grid .form-group-full {
+  grid-column: 1 / -1;
+}
+
+.page-organizador-portal .tabla-posicion img {
+  display: block;
+}
+
+.page-organizador-portal .welcome-card p {
+  max-width: 75ch;
+}

@@ -68,6 +68,7 @@ const mobileRoutes = require("./routes/mobileRoutes");
 const noticiaRoutes = require("./routes/noticiaRoutes");
 const galeriaRoutes = require("./routes/galeriaRoutes");
 const portalContenidoRoutes = require("./routes/portalContenidoRoutes");
+const organizadorPortalRoutes = require("./routes/organizadorPortalRoutes");
 const contactoRoutes = require("./routes/contactoRoutes");
 const publicRoutes = require("./routes/publicRoutes");
 
@@ -89,6 +90,7 @@ app.use("/api/mobile/v1", mobileRoutes);
 app.use("/api/noticias", noticiaRoutes);
 app.use("/api/galeria", galeriaRoutes);
 app.use("/api/portal-contenido", portalContenidoRoutes);
+app.use("/api/organizador-portal", organizadorPortalRoutes);
 app.use("/api/contacto", contactoRoutes);
 app.use("/api/public", publicRoutes);
 
@@ -128,6 +130,7 @@ app.get("/", (req, res) => {
       "/api/noticias",
       "/api/galeria",
       "/api/portal-contenido",
+      "/api/organizador-portal",
       "/api/contacto",
       "/api/public/campeonatos",
       "/api/public/campeonatos/:id",

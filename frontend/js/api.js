@@ -217,6 +217,54 @@
     },
   };
 
+  window.OrganizadorPortalAPI = window.OrganizadorPortalAPI || {
+    obtenerContexto(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/organizador-portal/contexto${suffix}`);
+    },
+    actualizarConfig(formData) {
+      return window.ApiClient.requestForm("PUT", "/organizador-portal/config", formData);
+    },
+    listarAuspiciantes(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/organizador-portal/auspiciantes${suffix}`);
+    },
+    crearAuspiciante(formData) {
+      return window.ApiClient.requestForm("POST", "/organizador-portal/auspiciantes", formData);
+    },
+    actualizarAuspiciante(id, formData) {
+      return window.ApiClient.requestForm("PUT", `/organizador-portal/auspiciantes/${id}`, formData);
+    },
+    eliminarAuspiciante(id) {
+      return window.ApiClient.delete(`/organizador-portal/auspiciantes/${id}`);
+    },
+    listarMedia(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/organizador-portal/media${suffix}`);
+    },
+    crearMedia(formData) {
+      return window.ApiClient.requestForm("POST", "/organizador-portal/media", formData);
+    },
+    actualizarMedia(id, formData) {
+      return window.ApiClient.requestForm("PUT", `/organizador-portal/media/${id}`, formData);
+    },
+    eliminarMedia(id) {
+      return window.ApiClient.delete(`/organizador-portal/media/${id}`);
+    },
+  };
+
   window.ContactoAPI = window.ContactoAPI || {
     enviar(payload) {
       return window.ApiClient.post("/public/contacto", payload);
@@ -249,6 +297,9 @@
     },
     listarAuspiciantesPorCampeonato(campeonatoId) {
       return window.ApiClient.get(`/public/campeonatos/${campeonatoId}/auspiciantes`);
+    },
+    listarMediaPorCampeonato(campeonatoId) {
+      return window.ApiClient.get(`/public/campeonatos/${campeonatoId}/media`);
     },
     obtenerPartidosPorEvento(eventoId) {
       return window.ApiClient.get(`/public/eventos/${eventoId}/partidos`);

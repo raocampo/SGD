@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LT&C - Mi Landing</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+<body class="app-layout page-organizador-portal">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ LT&C</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="portal-admin.html"><i class="fas fa-home"></i> Mi Portal</a>
+      <a class="nav-btn active" href="organizador-portal.html"><i class="fas fa-globe"></i> Mi Landing</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="usuarios.html"><i class="fas fa-user-shield"></i> Usuarios</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-up-right-from-square"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>Mi Landing Pública</h1>
+    </header>
+
+    <main class="main">
+      <div class="container">
+        <div class="welcome-card">
+          <h2>Portal del organizador</h2>
+          <p id="op-resumen" style="margin-top:8px; color:#475569;">Cargando configuración del portal...</p>
+          <div class="actions" style="margin-top:12px;">
+            <a id="op-open-landing" class="btn btn-primary" href="#" target="_blank" rel="noopener noreferrer">
+              <i class="fas fa-up-right-from-square"></i> Abrir landing
+            </a>
+            <button id="op-copy-landing" type="button" class="btn btn-secondary">
+              <i class="fas fa-copy"></i> Copiar enlace
+            </button>
+          </div>
+        </div>
+
+        <div class="config-card">
+          <h3><i class="fas fa-palette"></i> Branding y contenido principal</h3>
+          <form id="op-config-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="op-organizacion-nombre">Nombre de organización</label>
+                <input id="op-organizacion-nombre" />
+              </div>
+              <div class="form-group">
+                <label for="op-lema">Lema</label>
+                <input id="op-lema" />
+              </div>
+              <div class="form-group">
+                <label for="op-logo">Logo del organizador</label>
+                <input id="op-logo" type="file" accept="image/*" />
+              </div>
+              <div class="form-group">
+                <label for="op-hero-image">Imagen principal / banner</label>
+                <input id="op-hero-image" type="file" accept="image/*" />
+              </div>
+              <div class="form-group">
+                <label for="op-hero-title">Título hero</label>
+                <input id="op-hero-title" />
+              </div>
+              <div class="form-group">
+                <label for="op-hero-chip">Etiqueta superior</label>
+                <input id="op-hero-chip" />
+              </div>
+              <div class="form-group form-group-full">
+                <label for="op-hero-description">Descripción hero</label>
+                <textarea id="op-hero-description" rows="3"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="op-about-title">Título de nosotros</label>
+                <input id="op-about-title" />
+              </div>
+              <div class="form-group">
+                <label for="op-contact-email">Correo de contacto</label>
+                <input id="op-contact-email" type="email" />
+              </div>
+              <div class="form-group">
+                <label for="op-contact-phone">Teléfono / WhatsApp</label>
+                <input id="op-contact-phone" />
+              </div>
+              <div class="form-group">
+                <label for="op-facebook-url">Facebook</label>
+                <input id="op-facebook-url" />
+              </div>
+              <div class="form-group">
+                <label for="op-instagram-url">Instagram</label>
+                <input id="op-instagram-url" />
+              </div>
+              <div class="form-group">
+                <label for="op-whatsapp-url">WhatsApp URL</label>
+                <input id="op-whatsapp-url" />
+              </div>
+              <div class="form-group form-group-full">
+                <label for="op-about-text-1">Texto nosotros 1</label>
+                <textarea id="op-about-text-1" rows="3"></textarea>
+              </div>
+              <div class="form-group form-group-full">
+                <label for="op-about-text-2">Texto nosotros 2</label>
+                <textarea id="op-about-text-2" rows="3"></textarea>
+              </div>
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-floppy-disk"></i> Guardar configuración
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="config-card">
+          <h3><i class="fas fa-handshake"></i> Auspiciantes del organizador</h3>
+          <form id="op-auspiciante-form">
+            <input id="op-auspiciante-id" type="hidden" />
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="op-auspiciante-nombre">Nombre</label>
+                <input id="op-auspiciante-nombre" required />
+              </div>
+              <div class="form-group">
+                <label for="op-auspiciante-logo">Logo</label>
+                <input id="op-auspiciante-logo" type="file" accept="image/*" />
+              </div>
+              <div class="form-group">
+                <label for="op-auspiciante-enlace">Enlace</label>
+                <input id="op-auspiciante-enlace" placeholder="https://..." />
+              </div>
+              <div class="form-group">
+                <label for="op-auspiciante-orden">Orden</label>
+                <input id="op-auspiciante-orden" type="number" min="1" value="1" />
+              </div>
+              <div class="form-group">
+                <label for="op-auspiciante-activo">Estado</label>
+                <select id="op-auspiciante-activo">
+                  <option value="true">Activo</option>
+                  <option value="false">Inactivo</option>
+                </select>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="op-auspiciante-guardar" type="submit" class="btn btn-success">
+                <i class="fas fa-plus"></i> Guardar auspiciante
+              </button>
+              <button id="op-auspiciante-cancelar" type="button" class="btn btn-warning" style="display:none;">
+                <i class="fas fa-xmark"></i> Cancelar edición
+              </button>
+            </div>
+          </form>
+          <div class="tabla-scroll" id="op-auspiciantes-listado" style="margin-top:16px;">
+            <p>Cargando auspiciantes...</p>
+          </div>
+        </div>
+
+        <div class="config-card">
+          <h3><i class="fas fa-images"></i> Media pública de landing y campeonatos</h3>
+          <form id="op-media-form">
+            <input id="op-media-id" type="hidden" />
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="op-media-tipo">Tipo</label>
+                <select id="op-media-tipo" required>
+                  <option value="landing_gallery">Galería de landing</option>
+                  <option value="campeonato_card">Imagen de card del campeonato</option>
+                  <option value="campeonato_gallery">Galería del campeonato</option>
+                </select>
+              </div>
+              <div class="form-group" id="op-media-campeonato-group" style="display:none;">
+                <label for="op-media-campeonato">Campeonato</label>
+                <select id="op-media-campeonato">
+                  <option value="">Selecciona un campeonato</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="op-media-titulo">Título</label>
+                <input id="op-media-titulo" />
+              </div>
+              <div class="form-group">
+                <label for="op-media-orden">Orden</label>
+                <input id="op-media-orden" type="number" min="1" value="1" />
+              </div>
+              <div class="form-group">
+                <label for="op-media-imagen">Imagen</label>
+                <input id="op-media-imagen" type="file" accept="image/*" />
+              </div>
+              <div class="form-group">
+                <label for="op-media-activo">Estado</label>
+                <select id="op-media-activo">
+                  <option value="true">Activo</option>
+                  <option value="false">Inactivo</option>
+                </select>
+              </div>
+              <div class="form-group form-group-full">
+                <label for="op-media-descripcion">Descripción</label>
+                <textarea id="op-media-descripcion" rows="3"></textarea>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="op-media-guardar" type="submit" class="btn btn-success">
+                <i class="fas fa-plus"></i> Guardar media
+              </button>
+              <button id="op-media-cancelar" type="button" class="btn btn-warning" style="display:none;">
+                <i class="fas fa-xmark"></i> Cancelar edición
+              </button>
+            </div>
+          </form>
+          <div class="tabla-scroll" id="op-media-listado" style="margin-top:16px;">
+            <p>Cargando media...</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/organizador-portal.js"></script>
+</body>
+</html>

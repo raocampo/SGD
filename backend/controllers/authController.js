@@ -1,5 +1,6 @@
 const pool = require("../config/database");
 const UsuarioAuth = require("../models/UsuarioAuth");
+const OrganizadorPortal = require("../models/OrganizadorPortal");
 const {
   isOrganizador,
   obtenerEquipoIdsOrganizador,
@@ -327,17 +328,49 @@ const authController = {
         [organizadorId]
       );
 
+      const [portalConfig, auspiciantes, landingGallery] = await Promise.all([
+        OrganizadorPortal.obtenerConfig(organizadorId, pool),
+        OrganizadorPortal.listarAuspiciantesConFallback(organizadorId, pool),
+        OrganizadorPortal.listarMedia(
+          organizadorId,
+          { tipo: "landing_gallery", activo: true, campeonato_id: null },
+          pool
+        ),
+      ]);
+      const campeonatos = await Promise.all(
+        (campeonatosR.rows || []).map(async (campeonato) => {
+          const mediaCard = await OrganizadorPortal.obtenerMediaCardCampeonato(
+            organizadorId,
+            campeonato.id,
+            pool
+          );
+          return {
+            ...campeonato,
+            card_image_url:
+              mediaCard?.imagen_url ||
+              portalConfig?.logo_url ||
+              campeonato.logo_url ||
+              null,
+            organizador_logo_url: portalConfig?.logo_url || null,
+          };
+        })
+      );
+
       return res.json({
         ok: true,
         organizador: {
           id: organizador.id,
           nombre: organizador.nombre,
+          organizacion_nombre: organizador.organizacion_nombre || "",
           email: organizador.email,
           plan_codigo: organizador.plan_codigo,
           plan_nombre: obtenerPlan(organizador.plan_codigo)?.nombre || "Plan",
           landing_url: `/index.html?organizador=${organizador.id}`,
         },
-        campeonatos: campeonatosR.rows || [],
+        portal_config: portalConfig,
+        auspiciantes,
+        landing_gallery: landingGallery,
+        campeonatos,
       });
     } catch (error) {
       console.error("Error landingOrganizadorPublica:", error);

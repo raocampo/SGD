@@ -145,7 +145,7 @@ const campeonatoController = {
 
       if (!esAdmin && genera_carnets === true && plan?.permite_carnets === false) {
         return res.status(400).json({
-          error: `Tu plan ${plan.nombre} no permite generar carnets`,
+          error: `Tu plan ${plan.nombre} no permite generar carnés`,
         });
       }
 
@@ -334,7 +334,7 @@ const campeonatoController = {
 
         if (!esAdmin && datos.genera_carnets === true && plan?.permite_carnets === false) {
           return res.status(400).json({
-            error: `Tu plan ${plan.nombre} no permite generar carnets`,
+            error: `Tu plan ${plan.nombre} no permite generar carnés`,
           });
         }
       }

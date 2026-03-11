@@ -10,12 +10,12 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.1 Gestion de Torneos/Campeonatos | Parcial-Alto | CRUD y estados operativos, organizador/logo/colores; tipos de futbol ampliados (`futbol_11`, `futbol_9`, `futbol_8`, `futbol_7`, `futbol_6`, `futbol_5`, `futsala`, `indor`); pendiente reglamento PDF/bases y sedes multiples. |
 | 3.2 Categorias por torneo | Alto | Eventos/categorias por campeonato funcionales con asignacion de equipos y parametro `clasificados_por_grupo`. |
 | 3.3 Gestion de Equipos | Alto | Registro completo con logo/contacto/colores, asignacion por evento, flujo hacia sorteo y vista Tarjetas/Tabla. |
-| 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por campeonato; documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Uploads reorganizados por tipo (`jugadores/cedulas`, `jugadores/fotos`) sin romper carnets ni reporteria; fecha de nacimiento ya no sufre desfase por zona horaria y la `foto carnet` puede borrarse desde el perfil del jugador. Modulo de pases con UI operativa, sincronizacion contable integrada (cargo/abono por pase) e historial visual por jugador/equipo. |
+| 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por campeonato; documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Uploads reorganizados por tipo (`jugadores/cedulas`, `jugadores/fotos`) sin romper carnés ni reporteria; fecha de nacimiento ya no sufre desfase por zona horaria y la `foto carné` puede borrarse desde el perfil del jugador. Modulo de pases con UI operativa, sincronizacion contable integrada (cargo/abono por pase) e historial visual por jugador/equipo. |
 | 3.5 Creacion de Grupos | Alto | Modo aleatorio, cabezas de serie y manual con ruleta funcionando. |
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
 | 3.7 Resultados/Tablas/Clasificados | Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play) con selector de campeonato en UI y guardado explícito del formato de clasificación (`metodo_competencia` + `clasificados_por_grupo`). Planillaje ya alimenta resultado + estadisticas. Clasificacion por grupo parametrizable; equipos eliminados ya bajan al final aunque tengan mayor puntaje y los fuera de cupo quedan diferenciados visualmente en naranja. Pendiente refinamiento de desempates avanzados. |
 | 3.8 Eliminatorias | Alto | Configuracion por categoria (`metodo_competencia`) y generacion automatica de llave integrada en `partidos`; soporte de siembra/byes/progresion de ganador; UI dedicada de llaves en `eliminatorias.html`; playoff desde grupos con `clasificados por grupo`, `cruces de grupos` o `tabla unica`; configuracion compartida con `tablas.html`; nueva clasificacion manual sugerida por grupo con candidatos externos del evento cuando el grupo queda incompleto, y exclusion de equipos eliminados manualmente. Pendiente validacion operativa real y reglas avanzadas de desempate. |
-| 4 Portal publico | Alto | Portal operativo con vistas publicas deportivas e institucionales; el listado general expone campeonatos de organizadores reales y tambien registros legacy con `organizador` informado, manteniendo fuera `administrador`/QA. La landing publica de organizador ya no mezcla torneos por alias de texto y ya muestra todas las cards reales visibles del organizador, incluidos torneos proximos/inscripcion. El detalle del campeonato muestra tabs por categoria con subtabs de `tabla de posiciones`, `goleadores`, `fair play`, `tarjetas amarillas`, `tarjetas rojas` y `playoff`. Las tablas de posiciones publicas ya salen en grid `2 columnas` desktop / `1 columna` movil, replican estados competitivos (fuera de clasificacion / eliminado) y excluyen eliminados del ranking de `Fair Play`. |
+| 4 Portal publico | Alto | Portal operativo con vistas publicas deportivas e institucionales; el listado general expone campeonatos de organizadores reales y tambien registros legacy con `organizador` informado, manteniendo fuera `administrador`/QA. La landing publica de organizador ya no mezcla torneos por alias de texto y ya muestra todas las cards reales visibles del organizador, incluidos torneos proximos/inscripcion. El detalle del campeonato muestra tabs por categoria con subtabs de `tabla de posiciones`, `goleadores`, `fair play`, `tarjetas amarillas`, `tarjetas rojas` y `playoff`. Las tablas de posiciones publicas ya salen en grid `2 columnas` desktop / `1 columna` movil, replican estados competitivos (fuera de clasificacion / eliminado) y excluyen eliminados del ranking de `Fair Play`. Ademas queda operativa la base de branding/publicidad por organizador (`Mi Landing`) con auspiciantes y media publica separados de LT&C. |
 | 5 Roles y permisos (RBAC) | Medio-Alto | Autenticacion operativa; fase 1 de separacion de dominios iniciada con rol `operador` para CMS publico; rol `jugador` agregado para consulta de equipo en modo solo lectura; noticias, galeria, contenido y contacto institucional fuera del alcance de organizadores; smokes RBAC (`npm run smoke:roles`, `npm run smoke:matrix`, `npm run smoke:frontend`) operativos para validacion rapida por rol. Se agrega bandera `debe_cambiar_password`, cambio obligatorio de clave al primer ingreso para cuentas creadas por admin/organizador y accion de cambio de contraseña propio desde UI. Las cuentas internas ya pueden autenticarse con `correo o username`; la recuperacion de contraseña sigue limitada a cuentas con correo. |
 | 6 Extras profesionales | Parcial | Exportaciones (PNG/PDF/XLSX) en modulos clave; pendiente notificaciones, auditoria completa y reportes ejecutivos. |
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR, resumen ejecutivo por campeonato e impresion dedicadas; politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). Pendiente cierre de reglas avanzadas y reporteria ejecutiva adicional. |
@@ -30,6 +30,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - el backend ya soporta `UPLOADS_DIR` para desacoplar logos/fotos/documentos del contenedor efimero.
   - `render.yaml` queda preparado para usar disco persistente en `/var/data` con `UPLOADS_DIR=/var/data/uploads`.
   - la migracion `033_campeonatos_tipos_futbol_ampliados.sql` ya fue aplicada en Render para alinear el `CHECK` de `campeonatos.tipo_futbol` con las nuevas modalidades.
+  - la migracion `034_organizador_portal_branding.sql` ya fue aplicada en Render para habilitar branding/media/auspiciantes propios por organizador.
   - pendiente operativo: copiar el contenido historico de `backend/uploads/` al disco persistente antes de validar carga completa de imagenes/documentos en produccion.
 
 ## Estado Detallado del Alcance Actual
@@ -58,7 +59,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - `uploads/jugadores/cedulas`,
   - `uploads/jugadores/fotos`.
 - La `fecha_nacimiento` ya se renderiza sin desplazar el dia por zona horaria del navegador.
-- La `foto carnet` puede eliminarse desde el perfil del jugador.
+- La `foto carné` puede eliminarse desde el perfil del jugador.
 - Los formularios ya permiten apertura directa de camara en celular cuando el navegador soporta `capture`.
 - Los carnets se reimprimen regenerando el PDF desde BD + foto/documentos del jugador; no se persiste una imagen final del carnet.
 - Importacion masiva por archivo con normalizacion de encabezados.
@@ -112,6 +113,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Cambio de contraseña propio disponible para cuentas autenticadas.
 - Cuentas creadas por administrador/organizador quedan en estado `debe_cambiar_password` hasta que el usuario defina su clave.
 - Noticias quedan definidas como contenido institucional del portal, no como modulo del organizador.
+- Nuevo modulo `Mi Landing` para organizadores con gestion de branding y publicidad publica.
 
 6. CMS del portal publico:
 - Noticias/blog con CRUD base, vistas publicas y detalle por `slug`.
@@ -132,6 +134,8 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - cards reales visibles del organizador,
   - torneos proximos/inscripcion creados desde el sistema,
   - nombre del organizador sobre el nombre del campeonato.
+- Los auspiciantes del organizador ya quedan separados de los auspiciantes institucionales LT&C.
+- Las cards y el detalle publico del campeonato ya pueden consumir media publica propia del organizador/campeonato.
 - Los endpoints publicos de:
   - `goleadores`,
   - `tarjetas`,
@@ -204,8 +208,10 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - contacto.
 - Ejecutar la migracion `031_usuarios_cambio_password_obligatorio.sql` en todos los entornos y validar el flujo de primer ingreso con cambio obligatorio.
 - Completar alta/edicion de usuario organizador con datos de perfil:
+  - alinear `usuarios.html` con los datos base usados por `Mi Landing`,
   - nombre de la organizacion,
-  - logo de la organizacion.
+  - logo de la organizacion,
+  - contacto minimo.
 - Extender portal de organizador para gestion de usuarios internos:
   - alta de dirigentes,
   - alta de tecnicos.

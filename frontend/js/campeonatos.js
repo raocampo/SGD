@@ -142,7 +142,7 @@ function renderCampeonatoCard(camp, index = null) {
         <p><strong>Jugadores:</strong> ${escapeHtml(meta.jugadoresMinMax)}</p>
         <p><strong>Costos:</strong> Arb ${meta.costoArbitraje.toFixed(2)} | TA ${meta.costoTA.toFixed(2)} | TR ${meta.costoTR.toFixed(2)}</p>
         <p><strong>Bloqueo morosidad:</strong> ${meta.bloquearMorosos ? `Activo (>${meta.bloqueoMorosidadMonto.toFixed(2)})` : "Inactivo"}</p>
-        <p><strong>Carnets:</strong> ${meta.carnets}</p>
+        <p><strong>Carnés:</strong> ${meta.carnets}</p>
       </div>
 
       <div class="campeonato-actions">
@@ -218,7 +218,7 @@ function renderTablaCampeonatos(campeonatos) {
             <th>Jugadores</th>
             <th>Costos</th>
             <th>Bloqueo morosos</th>
-            <th>Carnets</th>
+            <th>Carnés</th>
             <th>Acciones</th>
           </tr>
         </thead>

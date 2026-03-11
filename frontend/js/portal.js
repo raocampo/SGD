@@ -33,6 +33,34 @@ function normalizarLogoUrl(logoUrl) {
   return `${BACKEND_BASE}/${s}`;
 }
 
+function normalizarMediaPortal(url) {
+  return normalizarLogoUrl(url);
+}
+
+function obtenerUrlInicioPortalCompartible() {
+  if (Number.isFinite(Number.parseInt(portalContextoActual?.organizadorId, 10))) {
+    return `index.html?organizador=${Number.parseInt(portalContextoActual.organizadorId, 10)}#torneos`;
+  }
+  return "index.html#torneos";
+}
+
+function abrirTorneoEnNuevaPestana(href) {
+  if (!href) return;
+  window.open(href, "_blank", "noopener");
+}
+
+function obtenerImagenCardPortal(torneo) {
+  const custom = normalizarMediaPortal(
+    torneo?.card_image_url || torneo?.organizador_logo_url || torneo?.logo_url || ""
+  );
+  if (custom) return custom;
+  const estado = String(torneo?.estado || "planificacion")
+    .trim()
+    .toLowerCase()
+    .replace("planificacion", "borrador");
+  return estado === "en_curso" ? IMG_TORNEO_ACTIVO : IMG_TORNEO_PROXIMO;
+}
+
 function limpiarCodigoTorneo(texto) {
   if (texto == null) return "";
   return String(texto)
@@ -211,7 +239,7 @@ function renderCardTorneoPrincipal(torneo) {
   const labelEstado =
     { borrador: "Borrador", inscripcion: "Inscripción", en_curso: "En Curso", finalizado: "Finalizado" }[estado] ||
     "Activo";
-  const imagenCard = estado === "en_curso" ? IMG_TORNEO_ACTIVO : IMG_TORNEO_PROXIMO;
+  const imagenCard = obtenerImagenCardPortal(torneo);
   const fechaInicio = formatearFechaPortal(torneo?.fecha_inicio);
   const fechaFin = formatearFechaPortal(torneo?.fecha_fin);
   const href = construirUrlPortalCampeonato(torneo?.id, {
@@ -223,8 +251,8 @@ function renderCardTorneoPrincipal(torneo) {
   return `
     <article
       class="portal-campeonato-card"
-      onclick="window.location.href='${escPortal(href)}'"
-      onkeypress="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='${escPortal(href)}';}"
+      onclick="abrirTorneoEnNuevaPestana('${escPortal(href)}')"
+      onkeypress="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirTorneoEnNuevaPestana('${escPortal(href)}');}"
       role="button"
       tabindex="0"
     >
@@ -239,7 +267,7 @@ function renderCardTorneoPrincipal(torneo) {
         ${renderMetaCardPortal(torneo)}
         ${renderCategoriasResumenCard(torneo)}
         <div class="portal-card-actions">
-          <a class="portal-card-btn" href="${escPortal(href)}" onclick="event.stopPropagation()">Ver torneo</a>
+          <a class="portal-card-btn" href="${escPortal(href)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">Ver torneo</a>
         </div>
       </div>
     </article>
@@ -305,6 +333,8 @@ async function portalCargarCampeonatos(listaForzada = null, options = {}) {
 
 function aplicarModoLandingOrganizador(payload) {
   const organizador = payload?.organizador || {};
+  const portalConfig = payload?.portal_config || {};
+  const auspiciantes = Array.isArray(payload?.auspiciantes) ? payload.auspiciantes : [];
   const campeonatos = Array.isArray(payload?.campeonatos) ? payload.campeonatos : [];
   const torneosVisibles = campeonatos.filter((c) => estadoEsVisibleEnPortal(c.estado));
   const totalCategorias = campeonatos.reduce(
@@ -326,21 +356,49 @@ function aplicarModoLandingOrganizador(payload) {
   const newsDescription = document.getElementById("ltc-news-description");
   const newsAuthor = document.getElementById("ltc-news-author");
   const contactEmail = document.getElementById("ltc-contact-email");
+  const contactPhone = document.getElementById("ltc-contact-phone");
+  const contactTitle = document.getElementById("ltc-contact-title");
+  const contactDescription = document.getElementById("ltc-contact-description");
+  const aboutTitle = document.getElementById("ltc-about-title");
+  const aboutText1 = document.getElementById("ltc-about-text-1");
+  const aboutText2 = document.getElementById("ltc-about-text-2");
+  const aboutImage = document.getElementById("ltc-about-image");
+  const heroMediaImage = document.querySelector(".ltc-hero-media-shape img");
+  const socialFacebook = document.getElementById("ltc-social-facebook");
+  const socialInstagram = document.getElementById("ltc-social-instagram");
+  const socialWhatsapp = document.getElementById("ltc-social-whatsapp");
+  const gallerySection = document.getElementById("galeria");
+  const galleryTitle = document.getElementById("ltc-gallery-title");
+  const gallerySubtitle = document.getElementById("ltc-gallery-subtitle");
+  const galleryGrid = document.getElementById("ltc-gallery-grid");
+  const sponsorsSection = document.getElementById("auspiciantes");
+  const sponsorsTitle = document.getElementById("ltc-sponsors-title");
+  const sponsorsSubtitle = document.getElementById("ltc-sponsors-subtitle");
+  const sponsorsTrack = document.getElementById("ltc-sponsors-track");
+  const brandImages = document.querySelectorAll(".ltc-header-brand img");
   const banner = document.getElementById("ltc-organizador-banner");
   const preciosSection = document.getElementById("precios");
   const navPrecios = document.getElementById("ltc-nav-link-precios");
 
-  if (heroTitle) heroTitle.textContent = `Torneos de ${organizador.nombre || "Organizador"}`;
+  if (heroTitle) {
+    heroTitle.textContent =
+      portalConfig.hero_title || `Torneos de ${organizador.organizacion_nombre || organizador.nombre || "Organizador"}`;
+  }
   if (heroDescription) {
     heroDescription.textContent =
+      portalConfig.hero_description ||
       "Landing pública del organizador con campeonatos activos, categorías, fixture y tablas actualizadas.";
   }
-  if (heroChip) heroChip.textContent = "LANDING OFICIAL";
+  if (heroChip) heroChip.textContent = portalConfig.hero_chip || "LANDING OFICIAL";
   if (heroCta) {
-    heroCta.textContent = "Ver torneos";
+    heroCta.textContent = portalConfig.hero_cta_label || "Ver torneos";
     heroCta.href = "#torneos";
   }
-  if (torneosTitle) torneosTitle.textContent = `CAMPEONATOS DE ${String(organizador.nombre || "ORGANIZADOR").toUpperCase()}`;
+  if (torneosTitle) {
+    torneosTitle.textContent = `CAMPEONATOS DE ${String(
+      portalConfig.organizacion_nombre || organizador.organizacion_nombre || organizador.nombre || "ORGANIZADOR"
+    ).toUpperCase()}`;
+  }
   if (torneosSubtitle) {
     torneosSubtitle.textContent =
       "Competencias visibles para equipos, jugadores y audiencia del campeonato.";
@@ -350,20 +408,87 @@ function aplicarModoLandingOrganizador(payload) {
   if (newsDescription) {
     newsDescription.textContent = `Actualmente tiene ${torneosVisibles.length} torneo(s) visible(s), ${totalCategorias} categoría(s) y ${totalEquipos} equipo(s) registrados.`;
   }
-  if (newsAuthor) newsAuthor.textContent = organizador.nombre || "Organizador";
+  if (newsAuthor) {
+    newsAuthor.textContent =
+      portalConfig.organizacion_nombre || organizador.organizacion_nombre || organizador.nombre || "Organizador";
+  }
 
   if (contactEmail) {
-    const mail = String(organizador.email || "").trim();
+    const mail = String(portalConfig.contact_email || organizador.email || "").trim();
     if (mail) {
       contactEmail.textContent = mail;
       contactEmail.href = `mailto:${mail}`;
+    }
+  }
+  if (contactPhone) {
+    const phone = String(portalConfig.contact_phone || "").trim();
+    if (phone) {
+      contactPhone.textContent = phone;
+    }
+  }
+  if (contactTitle && portalConfig.contact_title) {
+    contactTitle.textContent = portalConfig.contact_title;
+  }
+  if (contactDescription && portalConfig.contact_description) {
+    contactDescription.textContent = portalConfig.contact_description;
+  }
+
+  if (aboutTitle && portalConfig.about_title) {
+    aboutTitle.textContent = portalConfig.about_title;
+  }
+  if (aboutText1 && portalConfig.about_text_1) {
+    aboutText1.textContent = portalConfig.about_text_1;
+  }
+  if (aboutText2 && portalConfig.about_text_2) {
+    aboutText2.textContent = portalConfig.about_text_2;
+  }
+  if (aboutImage && portalConfig.hero_image_url) {
+    aboutImage.src = normalizarMediaPortal(portalConfig.hero_image_url);
+  }
+  if (heroMediaImage && portalConfig.hero_image_url) {
+    heroMediaImage.src = normalizarMediaPortal(portalConfig.hero_image_url);
+  }
+  if (socialFacebook && portalConfig.facebook_url) {
+    socialFacebook.href = portalConfig.facebook_url;
+  }
+  if (socialInstagram && portalConfig.instagram_url) {
+    socialInstagram.href = portalConfig.instagram_url;
+  }
+  if (socialWhatsapp && portalConfig.whatsapp_url) {
+    socialWhatsapp.href = portalConfig.whatsapp_url;
+  }
+
+  const brandLogo = normalizarMediaPortal(portalConfig.logo_url);
+  if (brandLogo) {
+    brandImages.forEach((img) => {
+      img.src = brandLogo;
+      img.alt = portalConfig.organizacion_nombre || organizador.organizacion_nombre || organizador.nombre || "Organizador";
+    });
+  }
+
+  if (gallerySection) {
+    const landingGallery = Array.isArray(payload?.landing_gallery) ? payload.landing_gallery : [];
+    if (landingGallery.length && galleryGrid) {
+      if (galleryTitle) galleryTitle.textContent = "GALERÍA DEL ORGANIZADOR";
+      if (gallerySubtitle) {
+        gallerySubtitle.textContent = `Imágenes públicas de ${
+          portalConfig.organizacion_nombre || organizador.organizacion_nombre || organizador.nombre || "este organizador"
+        }.`;
+      }
+      galleryGrid.innerHTML = renderGaleriaPortalItems(
+        landingGallery,
+        "Este organizador todavía no ha publicado imágenes en su landing."
+      );
+      gallerySection.style.display = "";
+    } else {
+      gallerySection.style.display = "none";
     }
   }
 
   if (banner) {
     const plan = String(organizador.plan_nombre || organizador.plan_codigo || "").trim();
     banner.innerHTML = `
-      <strong>${organizador.nombre || "Organizador"}</strong> •
+      <strong>${portalConfig.organizacion_nombre || organizador.organizacion_nombre || organizador.nombre || "Organizador"}</strong> •
       Plan: <strong>${plan || "N/D"}</strong> •
       Torneos visibles: <strong>${torneosVisibles.length}</strong>
     `;
@@ -380,6 +505,23 @@ function aplicarModoLandingOrganizador(payload) {
     .forEach((el) => {
       if (el) el.style.display = "none";
     });
+
+  if (sponsorsSection) {
+    if (auspiciantes.length && sponsorsTrack) {
+      if (sponsorsTitle) sponsorsTitle.textContent = "AUSPICIANTES DEL ORGANIZADOR";
+      if (sponsorsSubtitle) {
+        sponsorsSubtitle.textContent = `Marcas que respaldan ${
+          portalConfig.organizacion_nombre || organizador.organizacion_nombre || organizador.nombre || "este organizador"
+        }.`;
+      }
+      sponsorsTrack.innerHTML = renderTrackAuspiciantesPortal(auspiciantes);
+      sponsorsSection.style.display = "";
+      sponsorsSection.hidden = false;
+    } else {
+      sponsorsSection.style.display = "none";
+      sponsorsSection.hidden = true;
+    }
+  }
 }
 
 async function cargarLandingOrganizador(organizadorId) {
@@ -1030,6 +1172,13 @@ function renderDetalleCampeonatoPortal(campeonato, eventosData = []) {
           .join("")}
       </div>
       ${eventosData.map((item, index) => renderCategoriaPanelPortal(item, index)).join("")}
+      <section id="portal-detail-galeria-${campeonato?.id}" class="ltc-gallery-section portal-detail-gallery" hidden>
+        <div class="ltc-section-title">
+          <h2>GALERÍA DEL TORNEO</h2>
+          <p id="portal-detail-galeria-description-${campeonato?.id}">Imágenes públicas del campeonato.</p>
+        </div>
+        <div id="portal-detail-galeria-grid-${campeonato?.id}" class="ltc-gallery-grid"></div>
+      </section>
       <section id="portal-detail-auspiciantes-${campeonato?.id}" class="portal-detail-sponsors" hidden>
         <div class="portal-detail-sponsors-head">
           <h3>Auspiciantes</h3>
@@ -1041,6 +1190,38 @@ function renderDetalleCampeonatoPortal(campeonato, eventosData = []) {
       </section>
     </div>
   `;
+}
+
+async function cargarMediaCampeonatoPublica(campeonatoId, campeonatoNombre = "") {
+  const section = document.getElementById(`portal-detail-galeria-${campeonatoId}`);
+  const grid = document.getElementById(`portal-detail-galeria-grid-${campeonatoId}`);
+  const description = document.getElementById(`portal-detail-galeria-description-${campeonatoId}`);
+  if (!section || !grid) return;
+
+  section.hidden = true;
+  grid.innerHTML = "";
+  if (description) {
+    description.textContent = campeonatoNombre
+      ? `Imágenes públicas de ${campeonatoNombre}.`
+      : "Imágenes públicas del campeonato.";
+  }
+
+  try {
+    const data = window.PortalPublicAPI
+      ? await window.PortalPublicAPI.listarMediaPorCampeonato(campeonatoId)
+      : await (async () => {
+          const resp = await fetch(`${API}/public/campeonatos/${campeonatoId}/media`);
+          const payload = await resp.json().catch(() => ({}));
+          if (!resp.ok) throw new Error(payload?.error || "No se pudo cargar la galería del campeonato");
+          return payload;
+        })();
+    const media = Array.isArray(data?.media) ? data.media : [];
+    if (!media.length) return;
+    grid.innerHTML = renderGaleriaPortalItems(media, "No hay imágenes públicas del campeonato.");
+    section.hidden = false;
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function renderTrackAuspiciantesPortal(auspiciantes = []) {
@@ -1055,6 +1236,26 @@ function renderTrackAuspiciantesPortal(auspiciantes = []) {
           alt="${index < items.length ? escPortal(item.nombre || "Auspiciante") : ""}"
           ${index >= items.length ? 'aria-hidden="true"' : ""}
         />
+      `
+    )
+    .join("");
+}
+
+function renderGaleriaPortalItems(items = [], emptyMessage = "No hay imágenes públicas disponibles.") {
+  const rows = Array.isArray(items) ? items.filter((item) => item?.imagen_url) : [];
+  if (!rows.length) {
+    return `<p class="empty-msg">${escPortal(emptyMessage)}</p>`;
+  }
+  return rows
+    .map(
+      (item) => `
+        <article class="ltc-gallery-card">
+          <img src="${escPortal(normalizarMediaPortal(item.imagen_url))}" alt="${escPortal(item.titulo || "Galería pública")}" />
+          <div class="ltc-gallery-card-copy">
+            <h3>${escPortal(item.titulo || "Imagen destacada")}</h3>
+            <p>${escPortal(item.descripcion || "Contenido público del organizador o campeonato.")}</p>
+          </div>
+        </article>
       `
     )
     .join("");
@@ -1113,7 +1314,17 @@ function prepararVistaDetallePortal(campeonato = null, options = {}) {
   const esVistaCompartible = options?.detalleCompartible === true;
 
   if (backBtn) {
-    backBtn.style.display = esVistaCompartible ? "none" : "";
+    if (esVistaCompartible || ES_PORTAL_PAGE) {
+      backBtn.style.display = "";
+      backBtn.dataset.href = obtenerUrlInicioPortalCompartible();
+      backBtn.innerHTML = portalContextoActual?.organizadorId
+        ? '<i class="fas fa-arrow-left"></i> Volver al portal del organizador'
+        : '<i class="fas fa-arrow-left"></i> Volver al inicio';
+    } else {
+      backBtn.style.display = "";
+      delete backBtn.dataset.href;
+      backBtn.innerHTML = '<i class="fas fa-arrow-left"></i> Volver al listado';
+    }
   }
 
   if (esVistaCompartible && campeonato?.nombre) {
@@ -1208,16 +1419,22 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
     if (options?.cargarAuspiciantes !== false) {
       await cargarAuspiciantesCampeonatoPublico(campeonatoId, limpiarCodigoTorneo(camp?.nombre || ""));
     }
+    await cargarMediaCampeonatoPublica(campeonatoId, limpiarCodigoTorneo(camp?.nombre || ""));
   } catch (err) {
     console.error(err);
     cont.innerHTML = '<p class="empty-msg">Error cargando datos.</p>';
   }
 }
 function portalVolver() {
+  const backBtn = document.getElementById("portal-back-btn");
+  const hrefRetorno = String(backBtn?.dataset?.href || "").trim();
+  if (hrefRetorno) {
+    window.location.href = hrefRetorno;
+    return;
+  }
   const detalle = document.getElementById("portal-detalle");
   const inicio = document.getElementById("portal-inicio");
   const section = document.getElementById("portal-auspiciantes-section");
-  const backBtn = document.getElementById("portal-back-btn");
   if (detalle) detalle.classList.remove("active");
   if (inicio) inicio.classList.add("active");
   if (section) section.hidden = true;
@@ -1225,6 +1442,7 @@ function portalVolver() {
   document.title = "Portal Público - LT&C";
 }
 
+window.abrirTorneoEnNuevaPestana = abrirTorneoEnNuevaPestana;
 window.portalVerCampeonato = portalVerCampeonato;
 window.portalVolver = portalVolver;
 

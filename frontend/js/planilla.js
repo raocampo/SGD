@@ -964,8 +964,8 @@ function renderEncabezado() {
     ? "Foto cédula: requerida"
     : "Foto cédula: opcional";
   const reqCar = documentosRequeridos.foto_carnet
-    ? "Foto carnet: requerida"
-    : "Foto carnet: opcional";
+    ? "Foto carné: requerida"
+    : "Foto carné: opcional";
 
   cont.innerHTML = `
     <div class="planilla-head-sheet${logosDerecha ? "" : " no-right-logos"}">
@@ -1294,7 +1294,7 @@ function renderPlantel(idContenedor, jugadores) {
         docs.push(j.foto_cedula_url ? "Cédula OK" : "Cédula pendiente");
       }
       if (documentosRequeridos.foto_carnet) {
-        docs.push(j.foto_carnet_url ? "Carnet OK" : "Carnet pendiente");
+        docs.push(j.foto_carnet_url ? "Carné OK" : "Carné pendiente");
       }
       const docsTxt = docs.length ? ` • ${docs.join(" • ")}` : "";
       const suspensionTxt = suspendido
@@ -1363,7 +1363,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
       const nombre = nombreJugador(j) || `Jugador ${idx + 1}`;
       const docs = [];
       if (documentosRequeridos.foto_cedula) docs.push(j.foto_cedula_url ? "Cedula OK" : "Cedula pendiente");
-      if (documentosRequeridos.foto_carnet) docs.push(j.foto_carnet_url ? "Carnet OK" : "Carnet pendiente");
+      if (documentosRequeridos.foto_carnet) docs.push(j.foto_carnet_url ? "Carné OK" : "Carné pendiente");
       const docsHtml = docs.length ? `<small>${docs.join(" • ")}</small>` : "";
       const suspensionHtml = suspendido
         ? `<small class="planilla-player-suspension">${escapeHtml(
@@ -1576,12 +1576,12 @@ function actualizarHintsDocumentosPlanillaJugador() {
 
   if (labelFotoCarnet) {
     labelFotoCarnet.textContent = documentosRequeridos.foto_carnet
-      ? "Foto carnet"
-      : "Foto carnet (opcional)";
+      ? "Foto carné"
+      : "Foto carné (opcional)";
   }
   if (hintFotoCarnet) {
     hintFotoCarnet.textContent = documentosRequeridos.foto_carnet
-      ? "Este campeonato exige foto carnet."
+      ? "Este campeonato exige foto carné."
       : "Puedes adjuntarla ahora o dejarla para después.";
   }
   if (inputFotoCarnet instanceof HTMLInputElement) {

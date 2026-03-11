@@ -14,9 +14,27 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-11
+- Portal del organizador:
+  - se implemento la base de branding/media propia por organizador con nueva migracion:
+    - `database/migrations/034_organizador_portal_branding.sql`.
+  - nuevo modulo privado `Mi Landing` para organizadores con gestion de:
+    - configuracion basica del portal,
+    - auspiciantes propios,
+    - media publica para landing,
+    - media publica para cards/galeria de campeonatos.
+  - el portal publico ya separa los auspiciantes del organizador de los auspiciantes institucionales LT&C.
+  - las cards de campeonatos ahora pueden consumir primero:
+    - media publica del campeonato,
+    - logo del organizador,
+    - y solo despues fallback LT&C.
+  - la migracion `034` ya fue aplicada:
+    - en BD local,
+    - en PostgreSQL remoto de Render.
+- Textos visibles:
+  - se corrigio la ortografia visible de `carnet/carnets` a `carné/carnés` en formularios, reportes y mensajes al usuario sin tocar claves tecnicas (`foto_carnet_url`, ids internos, etc.).
 - Jugadores:
   - se corrigio el bug de `fecha_nacimiento` que restaba un dia en tarjetas/listados por conversion de zona horaria del navegador.
-  - ahora se puede eliminar la `foto carnet` desde el modal/perfil del jugador y el backend limpia el archivo reemplazado o marcado para borrado.
+  - ahora se puede eliminar la `foto carné` desde el modal/perfil del jugador y el backend limpia el archivo reemplazado o marcado para borrado.
   - los campos de `foto_cedula` y `foto_carnet` quedan listos para captura directa desde celular (`capture=environment` / `capture=user`), facilitando la toma de foto en cancha.
 - Portal publico:
   - el listado general vuelve a mostrar torneos `borrador` / `inscripcion` cuando son campeonatos reales del organizador o registros legacy con `organizador` informado.
@@ -1100,8 +1118,10 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - generacion de playoff con equipos sustituidos manualmente.
 - Consolidar autenticacion y roles (RBAC) minimo.
 - Completar alta/edicion de usuario organizador con campos de perfil:
+  - alinear `usuarios.html` con los datos base usados por `Mi Landing`,
   - nombre de la organizacion,
-  - logo de la organizacion.
+  - logo de la organizacion,
+  - contacto minimo.
 - Habilitar en el portal del organizador la gestion de usuarios internos:
   - crear usuarios con rol dirigente,
   - crear usuarios con rol tecnico.

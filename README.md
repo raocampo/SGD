@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-11): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales y autenticacion admite `correo o username` para cuentas internas.
+Estado del proyecto (2026-03-11): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -31,9 +31,24 @@ Flujo principal operativo:
 7. Consultar tablas y portal publico.
 
 ## Novedades Recientes (2026-03-11)
+- Portal del organizador:
+  - nueva migracion `database/migrations/034_organizador_portal_branding.sql`,
+  - nuevo modulo privado `Mi Landing` para organizadores,
+  - permite gestionar:
+    - configuracion visual basica del portal,
+    - auspiciantes propios del organizador,
+    - media publica para landing y campeonatos.
+  - el portal publico ya separa los auspiciantes del organizador de los auspiciantes institucionales LT&C.
+  - las cards del portal ya pueden usar:
+    - imagen publica del campeonato,
+    - logo del organizador,
+    - fallback LT&C si no existe configuracion propia.
+  - la migracion `034` ya fue aplicada:
+    - en BD local,
+    - en PostgreSQL remoto de Render.
 - Jugadores:
   - se corrigio el desfase de `fecha_nacimiento` en tarjetas/listados causado por conversion de zona horaria del navegador,
-  - ya se puede eliminar la `foto carnet` desde el modal/perfil del jugador y el backend limpia tambien el archivo asociado cuando corresponde,
+  - ya se puede eliminar la `foto carné` desde el modal/perfil del jugador y el backend limpia tambien el archivo asociado cuando corresponde,
   - los inputs de `foto_cedula` y `foto_carnet` ya quedan preparados para captura directa desde celular (`capture=environment` / `capture=user`), facilitando alta en campo.
 - Portal publico:
   - el listado general vuelve a mostrar campeonatos `borrador` / `inscripcion` cuando son torneos reales de organizador o registros legacy con `organizador` informado,
@@ -52,6 +67,7 @@ Flujo principal operativo:
     - `database/migrations/033_campeonatos_tipos_futbol_ampliados.sql`.
 - Navegacion publica:
   - `Ingresar` y `Registrarse` en landing/portal ahora abren en nueva ventana para no romper la lectura del portal compartible.
+  - `Ver torneo` queda preparado para abrir el detalle en nueva pestaña y el detalle compartible soporta regreso al portal del organizador.
 
 ## Novedades Anteriores (2026-03-10)
 - Portal publico deportivo:
@@ -81,7 +97,7 @@ Flujo principal operativo:
   - nuevas rutas fisicas para uploads por campo:
     - `uploads/jugadores/cedulas`,
     - `uploads/jugadores/fotos`,
-  - se mantienen los campos BD `foto_cedula_url` y `foto_carnet_url`, por lo que no se rompe la reimpresion de carnets ni la compatibilidad con registros existentes.
+  - se mantienen los campos BD `foto_cedula_url` y `foto_carnet_url`, por lo que no se rompe la reimpresion de carnés ni la compatibilidad con registros existentes.
 - Seguridad de contraseñas reforzada:
   - nuevo flag `debe_cambiar_password` en usuarios,
   - usuarios creados por administrador/organizador quedan marcados para cambio obligatorio al primer ingreso,
@@ -320,6 +336,7 @@ psql -U postgres -d gestionDeportiva -f database/migrations/030_evento_playoff_c
 psql -U postgres -d gestionDeportiva -f database/migrations/031_usuarios_cambio_password_obligatorio.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/032_usuarios_username_opcional.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/033_campeonatos_tipos_futbol_ampliados.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/034_organizador_portal_branding.sql
 ```
 
 ### 5.3 Ejecutar
@@ -362,6 +379,7 @@ APIs principales:
 - `/api/eliminatorias`
 - `/api/finanzas`
 - `/api/auth/organizadores/:id/landing`
+- `/api/organizador-portal`
 - `/api/noticias`
 - `/api/galeria`
 - `/api/portal-contenido`
@@ -416,8 +434,8 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 5. Completar endurecimiento de seguridad:
    - rotacion operativa de secretos productivos (`DATABASE_URL`, `JWT_SECRET`),
    - politica final de cambio de contraseña y expiracion si el cliente la requiere.
-6. Completar perfil de organizador en usuarios: agregar `nombre de la organizacion` y `logo` al crear/editar usuario organizador.
-7. Habilitar en portal del organizador la creacion y gestion de usuarios con rol `dirigente` y `tecnico`.
+6. Completar perfil de organizador en usuarios: alinear alta/edicion con los datos base usados por `Mi Landing` (`nombre de la organizacion`, `logo`, contacto minimo).
+7. Habilitar en el portal del organizador la creacion y gestion de usuarios con rol `dirigente` y `tecnico`.
 8. En registro publico desde cards de planes pagados, agregar campos:
    - `nombre de la organizacion` (obligatorio),
    - `logo` (opcional),

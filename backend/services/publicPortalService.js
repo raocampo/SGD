@@ -4,6 +4,7 @@ const pool = require("../config/database");
 const Partido = require("../models/Partido");
 const Eliminatoria = require("../models/Eliminatoria");
 const Auspiciante = require("../models/Auspiciante");
+const OrganizadorPortal = require("../models/OrganizadorPortal");
 const tablaController = require("../controllers/tablaController");
 const { resolveUploadPath } = require("../config/uploads");
 
@@ -59,6 +60,38 @@ function resumirCampeonato(campeonato, extras = {}) {
     color_secundario: campeonato.color_secundario || null,
     color_acento: campeonato.color_acento || null,
     ...extras,
+  };
+}
+
+async function enriquecerCampeonatoConAssets(campeonato, caches = {}) {
+  if (!campeonato) return {};
+  const usuarioId = normalizarEntero(campeonato.creador_usuario_id);
+  const campeonatoId = normalizarEntero(campeonato.id);
+  let portalConfig = null;
+  let mediaCard = null;
+
+  if (usuarioId) {
+    if (!caches.portalConfig) caches.portalConfig = new Map();
+    if (!caches.portalConfig.has(usuarioId)) {
+      caches.portalConfig.set(usuarioId, await OrganizadorPortal.obtenerConfig(usuarioId));
+    }
+    portalConfig = caches.portalConfig.get(usuarioId) || null;
+  }
+
+  if (usuarioId && campeonatoId) {
+    if (!caches.mediaCard) caches.mediaCard = new Map();
+    if (!caches.mediaCard.has(campeonatoId)) {
+      caches.mediaCard.set(
+        campeonatoId,
+        await OrganizadorPortal.obtenerMediaCardCampeonato(usuarioId, campeonatoId)
+      );
+    }
+    mediaCard = caches.mediaCard.get(campeonatoId) || null;
+  }
+
+  return {
+    card_image_url: mediaCard?.imagen_url || portalConfig?.logo_url || campeonato.logo_url || null,
+    organizador_logo_url: portalConfig?.logo_url || null,
   };
 }
 
@@ -268,16 +301,23 @@ async function listarCampeonatosPublicos() {
   const totales = await obtenerTotalesCampeonato(visibles.map((item) => item.id));
   const categorias = await obtenerResumenCategoriasCampeonatos(visibles.map((item) => item.id));
 
-  return visibles.map((item) =>
-    resumirCampeonato(item, {
-      ...(totales.get(Number(item.id)) || {
-        total_eventos: 0,
-        total_equipos: 0,
-        total_grupos: 0,
-      }),
-      categorias_resumen: categorias.get(Number(item.id)) || [],
-    })
-  );
+  const caches = {};
+  const payload = [];
+  for (const item of visibles) {
+    const assets = await enriquecerCampeonatoConAssets(item, caches);
+    payload.push(
+      resumirCampeonato(item, {
+        ...(totales.get(Number(item.id)) || {
+          total_eventos: 0,
+          total_equipos: 0,
+          total_grupos: 0,
+        }),
+        categorias_resumen: categorias.get(Number(item.id)) || [],
+        ...assets,
+      })
+    );
+  }
+  return payload;
 }
 
 async function obtenerCampeonatoPublico(campeonatoId) {
@@ -285,6 +325,7 @@ async function obtenerCampeonatoPublico(campeonatoId) {
   if (!campeonato) return null;
   const totales = await obtenerTotalesCampeonato([campeonatoId]);
   const categorias = await obtenerResumenCategoriasCampeonatos([campeonatoId]);
+  const assets = await enriquecerCampeonatoConAssets(campeonato);
   return resumirCampeonato(campeonato, {
     ...(totales.get(Number(campeonatoId)) || {
       total_eventos: 0,
@@ -292,6 +333,7 @@ async function obtenerCampeonatoPublico(campeonatoId) {
       total_grupos: 0,
     }),
     categorias_resumen: categorias.get(Number(campeonatoId)) || [],
+    ...assets,
   });
 }
 
@@ -467,6 +509,36 @@ async function listarAuspiciantesPublicosPorCampeonato(campeonatoId) {
   };
 }
 
+async function listarMediaPublicaPorCampeonato(campeonatoId) {
+  const campeonato = await obtenerCampeonatoVisible(campeonatoId);
+  if (!campeonato) return null;
+
+  const organizadorId = normalizarEntero(campeonato.creador_usuario_id);
+  const media = organizadorId
+    ? await OrganizadorPortal.listarMedia(organizadorId, {
+        tipo: "campeonato_gallery",
+        campeonato_id: campeonatoId,
+        activo: true,
+      })
+    : [];
+
+  return {
+    ok: true,
+    campeonato: resumirCampeonato(campeonato),
+    total: media.length,
+    media: media.map((item) => ({
+      id: Number(item.id),
+      campeonato_id: normalizarEntero(item.campeonato_id),
+      tipo: item.tipo,
+      titulo: item.titulo || "",
+      descripcion: item.descripcion || "",
+      imagen_url: item.imagen_url || "",
+      orden: normalizarEntero(item.orden) || 1,
+      activo: item.activo === true,
+    })),
+  };
+}
+
 module.exports = {
   listarCampeonatosPublicos,
   obtenerCampeonatoPublico,
@@ -478,4 +550,5 @@ module.exports = {
   obtenerTarjetasPublicasPorEvento,
   obtenerFairPlayPublicoPorEvento,
   listarAuspiciantesPublicosPorCampeonato,
+  listarMediaPublicaPorCampeonato,
 };

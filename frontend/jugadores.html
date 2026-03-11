@@ -147,7 +147,7 @@
                   <option value="nomina">Nómina de jugadores</option>
                   <option value="sanciones">Reporte de sanciones</option>
                   <option value="sanciones_categoria">Consolidado sanciones categoría</option>
-                  <option value="carnets">Carnets de jugadores</option>
+                  <option value="carnets">Carnés de jugadores</option>
                 </select>
               </div>
               <div class="reportes-actions">
@@ -212,22 +212,22 @@
             <div class="form-group carnets-mode-group">
               <label for="carnet-foto-anverso">Foto anverso:</label>
               <select id="carnet-foto-anverso">
-                <option value="auto">Automático (carnet/cédula)</option>
-                <option value="carnet">Solo foto carnet</option>
+                <option value="auto">Automático (carné/cédula)</option>
+                <option value="carnet">Solo foto carné</option>
                 <option value="cedula">Solo foto cédula</option>
               </select>
             </div>
             <div class="fixture-accordion-actions">
               <button class="btn btn-warning" type="button" onclick="imprimirCarnetsJugadores()">
-                <i class="fas fa-print"></i> Imprimir Carnets
+                <i class="fas fa-print"></i> Imprimir Carnés
               </button>
               <button class="btn btn-danger" type="button" onclick="exportarCarnetsPDF()">
-                <i class="fas fa-file-pdf"></i> Exportar Carnets PDF
+                <i class="fas fa-file-pdf"></i> Exportar Carnés PDF
               </button>
             </div>
           </div>
           <div id="carnets-jugadores-export" class="carnets-board">
-            <p class="empty-state">Activa la generación de carnets en el campeonato para visualizar esta plantilla.</p>
+            <p class="empty-state">Activa la generación de carnés en el campeonato para visualizar esta plantilla.</p>
           </div>
         </div>
         </div>
@@ -300,7 +300,7 @@
         </div>
 
         <div class="form-group">
-          <label for="jugador-foto-carnet">Foto carnet (opcional):</label>
+          <label for="jugador-foto-carnet">Foto carné (opcional):</label>
           <input type="hidden" id="jugador-eliminar-foto-carnet" value="false" />
           <input type="file" id="jugador-foto-carnet" accept="image/*" capture="user" />
           <small id="hint-foto-carnet" class="form-hint">Opcional para este campeonato. En celular puedes tomar la foto directamente desde la cámara.</small>
@@ -353,4 +353,3 @@
   <script src="js/jugadores.js"></script>
 </body>
 </html>
-

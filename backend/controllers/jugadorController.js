@@ -104,7 +104,7 @@ const jugadorController = {
             }
             if (reglasDocs.requiere_foto_carnet && !fotoCarnet) {
                 return res.status(400).json({
-                    error: "Este campeonato exige foto carnet para inscribir jugadores"
+                    error: "Este campeonato exige foto carné para inscribir jugadores"
                 });
             }
 
@@ -219,7 +219,7 @@ const jugadorController = {
                     errores.push({
                         fila: i + 1,
                         cedidentidad,
-                        error: "Este campeonato exige foto carnet"
+                        error: "Este campeonato exige foto carné"
                     });
                     continue;
                 }
@@ -418,7 +418,7 @@ const jugadorController = {
             }
             if (reglasDocs.requiere_foto_carnet && !fotoCarnetFinal) {
                 return res.status(400).json({
-                    error: "Este campeonato exige foto carnet para el jugador"
+                    error: "Este campeonato exige foto carné para el jugador"
                 });
             }
 

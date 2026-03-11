@@ -31,6 +31,7 @@
     if (!window.location.pathname.endsWith("portal-admin.html")) return;
 
     const card = document.getElementById("landing-organizador-card");
+    const shortcut = document.getElementById("landing-organizador-shortcut");
     const msg = document.getElementById("landing-organizador-msg");
     const actions = document.getElementById("landing-organizador-actions");
     const openLink = document.getElementById("landing-organizador-open");
@@ -41,10 +42,12 @@
     const rol = String(user?.rol || "").toLowerCase();
     if (rol !== "organizador") {
       card.style.display = "none";
+      if (shortcut) shortcut.style.display = "none";
       return;
     }
 
     card.style.display = "block";
+    if (shortcut) shortcut.style.display = "";
 
     if (!esPlanPagado(user?.plan_codigo)) {
       msg.textContent =

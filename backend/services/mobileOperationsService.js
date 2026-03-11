@@ -470,7 +470,7 @@ async function crearJugadorMovil(user, body = {}) {
     throw new Error("Este campeonato exige foto de cédula para inscribir jugadores");
   }
   if (reglasDocs.requiere_foto_carnet) {
-    throw new Error("Este campeonato exige foto carnet para inscribir jugadores");
+    throw new Error("Este campeonato exige foto carné para inscribir jugadores");
   }
 
   const jugador = await Jugador.crear(
