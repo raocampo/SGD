@@ -1,6 +1,8 @@
+const fs = require("fs");
 const Jugador = require('../models/Jugador');
 const Partido = require("../models/Partido");
 const pool = require("../config/database");
+const { resolveUploadPath } = require("../config/uploads");
 const {
     tecnicoPuedeAccederEquipo,
     obtenerEquiposPermitidosTecnico,
@@ -53,6 +55,21 @@ function construirUrlArchivoJugador(req, file) {
         req.uploadFolder ||
         "jugadores";
     return `/uploads/${String(folder).replace(/^\/+|\/+$/g, "")}/${file.filename}`;
+}
+
+function parseBooleanFlag(value) {
+    if (typeof value === "boolean") return value;
+    const normalized = String(value ?? "").trim().toLowerCase();
+    return ["true", "1", "si", "sí", "on"].includes(normalized);
+}
+
+function eliminarArchivoJugador(urlPath) {
+    const raw = String(urlPath || "").trim();
+    if (!raw) return;
+    if (!raw.startsWith("/uploads/") && !raw.startsWith("uploads/")) return;
+
+    const filePath = resolveUploadPath(raw);
+    fs.unlink(filePath, () => {});
 }
 
 const jugadorController = {
@@ -353,9 +370,15 @@ const jugadorController = {
             const datos = req.body;
             const fotoCedula = construirUrlArchivoJugador(req, req.files?.foto_cedula?.[0]);
             const fotoCarnet = construirUrlArchivoJugador(req, req.files?.foto_carnet?.[0]);
+            const eliminarFotoCedula = parseBooleanFlag(datos.eliminar_foto_cedula);
+            const eliminarFotoCarnet = parseBooleanFlag(datos.eliminar_foto_carnet);
 
             if (fotoCedula) datos.foto_cedula_url = fotoCedula;
             if (fotoCarnet) datos.foto_carnet_url = fotoCarnet;
+            if (eliminarFotoCedula && !fotoCedula) datos.foto_cedula_url = null;
+            if (eliminarFotoCarnet && !fotoCarnet) datos.foto_carnet_url = null;
+            delete datos.eliminar_foto_cedula;
+            delete datos.eliminar_foto_carnet;
 
             // Validación de requisitos del campeonato en actualización.
             const jugadorActual = await Jugador.obtenerPorId(id);
@@ -373,8 +396,14 @@ const jugadorController = {
 
             const equipoEvaluar = Number(datos.equipo_id || jugadorActual.equipo_id);
             const reglasDocs = await obtenerReglasDocumentosPorEquipo(equipoEvaluar);
-            const fotoCedulaFinal = datos.foto_cedula_url || jugadorActual.foto_cedula_url || null;
-            const fotoCarnetFinal = datos.foto_carnet_url || jugadorActual.foto_carnet_url || null;
+            const fotoCedulaFinal =
+                Object.prototype.hasOwnProperty.call(datos, "foto_cedula_url")
+                    ? datos.foto_cedula_url
+                    : jugadorActual.foto_cedula_url || null;
+            const fotoCarnetFinal =
+                Object.prototype.hasOwnProperty.call(datos, "foto_carnet_url")
+                    ? datos.foto_carnet_url
+                    : jugadorActual.foto_carnet_url || null;
             const cedulaFinal = datos.cedidentidad ?? jugadorActual.cedidentidad ?? null;
 
             if (reglasDocs.requiere_cedula_jugador && !String(cedulaFinal || "").trim()) {
@@ -399,6 +428,13 @@ const jugadorController = {
                 return res.status(404).json({
                     error: 'Jugador no encontrado'
                 });
+            }
+
+            if (jugadorActual.foto_cedula_url && jugadorActual.foto_cedula_url !== (jugadorActualizado.foto_cedula_url || null)) {
+                eliminarArchivoJugador(jugadorActual.foto_cedula_url);
+            }
+            if (jugadorActual.foto_carnet_url && jugadorActual.foto_carnet_url !== (jugadorActualizado.foto_carnet_url || null)) {
+                eliminarArchivoJugador(jugadorActual.foto_carnet_url);
             }
 
             res.json({

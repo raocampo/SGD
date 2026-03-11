@@ -6,7 +6,7 @@
 CREATE TABLE IF NOT EXISTS campeonatos (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
-    tipo_futbol VARCHAR(10) CHECK (tipo_futbol IN ('futbol_11', 'futbol_7', 'futbol_5')),
+    tipo_futbol VARCHAR(20) CHECK (tipo_futbol IN ('futbol_11', 'futbol_9', 'futbol_8', 'futbol_7', 'futbol_6', 'futbol_5', 'futsala', 'indor')),
     fecha_inicio DATE,
     fecha_fin DATE,
     max_equipos INTEGER DEFAULT 16,

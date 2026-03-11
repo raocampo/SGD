@@ -39,8 +39,10 @@ function modalidadUsaFaltasFairPlay(tipoFutbol) {
   const tipo = String(tipoFutbol || "").trim().toLowerCase();
   return (
     tipo.includes("futbol_7") ||
+    tipo.includes("futbol_6") ||
     tipo.includes("futbol_5") ||
     tipo.includes("futbol5") ||
+    tipo.includes("futbol6") ||
     tipo.includes("futbol7") ||
     tipo.includes("sala") ||
     tipo.includes("futsal")

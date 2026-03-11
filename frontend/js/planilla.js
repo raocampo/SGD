@@ -533,9 +533,13 @@ function formatearTipoFutbolTexto(tipo) {
 function obtenerTipoFutbolPlanilla() {
   const tipo = String(dataPlanilla?.partido?.tipo_futbol || "").toLowerCase();
   if (tipo.includes("11")) return "futbol_11";
+  if (tipo.includes("9")) return "futbol_11";
+  if (tipo.includes("8")) return "futbol_11";
   if (tipo.includes("indor")) return "futbol_11";
   if (tipo.includes("sala")) return "futbol_sala";
+  if (tipo.includes("futsal")) return "futbol_sala";
   if (tipo.includes("5")) return "futbol_5";
+  if (tipo.includes("6")) return "futbol_7";
   if (tipo.includes("7")) return "futbol_7";
   return "futbol_7";
 }
@@ -2626,7 +2630,12 @@ function renderListaEventosVistaPrevia(payload) {
 
 function obtenerModeloPlanillaOficial() {
   const tipo = String(dataPlanilla?.partido?.tipo_futbol || "").toLowerCase();
-  if (tipo.includes("11") || tipo.includes("indor")) return "futbol_11_indor";
+  if (
+    tipo.includes("11") ||
+    tipo.includes("9") ||
+    tipo.includes("8") ||
+    tipo.includes("indor")
+  ) return "futbol_11_indor";
   return "futbol_7_5_sala";
 }
 

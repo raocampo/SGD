@@ -294,15 +294,16 @@
 
         <div class="form-group">
           <label for="jugador-foto-cedula">Foto de cédula (opcional):</label>
-          <input type="file" id="jugador-foto-cedula" accept="image/*" />
+          <input type="file" id="jugador-foto-cedula" accept="image/*" capture="environment" />
           <small id="hint-foto-cedula" class="form-hint">Opcional para este campeonato.</small>
           <div id="preview-foto-cedula-actual" class="form-hint"></div>
         </div>
 
         <div class="form-group">
           <label for="jugador-foto-carnet">Foto carnet (opcional):</label>
-          <input type="file" id="jugador-foto-carnet" accept="image/*" />
-          <small id="hint-foto-carnet" class="form-hint">Opcional para este campeonato.</small>
+          <input type="hidden" id="jugador-eliminar-foto-carnet" value="false" />
+          <input type="file" id="jugador-foto-carnet" accept="image/*" capture="user" />
+          <small id="hint-foto-carnet" class="form-hint">Opcional para este campeonato. En celular puedes tomar la foto directamente desde la cámara.</small>
           <div id="preview-foto-carnet-actual" class="form-hint"></div>
         </div>
 
@@ -352,5 +353,4 @@
   <script src="js/jugadores.js"></script>
 </body>
 </html>
-
 

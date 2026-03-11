@@ -2005,6 +2005,13 @@ body.modal-open {
 .form-equipo-nuevo label { font-weight: 600; color: #374151; }
 .form-equipo-nuevo .req { color: var(--danger-color); }
 .form-hint { display: block; margin-top: 4px; color: #6b7280; font-size: 0.8rem; }
+.form-hint.is-warning { color: #b45309; font-weight: 600; }
+.btn-inline-action {
+  margin-top: 8px;
+  margin-right: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+}
 .checkbox-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
 .checkbox-label input[type="checkbox"] { width: auto; }
 

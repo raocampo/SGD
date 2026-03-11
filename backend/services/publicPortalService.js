@@ -15,6 +15,16 @@ const ESTADOS_PUBLICOS = new Set([
   "finalizado",
 ]);
 
+const SQL_FILTRO_PUBLICO_CAMPEONATO = `
+  (
+    LOWER(COALESCE(u.rol, '')) = 'organizador'
+    OR (
+      c.creador_usuario_id IS NULL
+      AND NULLIF(TRIM(COALESCE(c.organizador, '')), '') IS NOT NULL
+    )
+  )
+`;
+
 function esEstadoPublico(estado) {
   return ESTADOS_PUBLICOS.has(String(estado || "").trim().toLowerCase());
 }
@@ -209,9 +219,9 @@ async function obtenerCampeonatoVisible(campeonatoId) {
   const q = `
     SELECT c.*
     FROM campeonatos c
-    JOIN usuarios u ON u.id = c.creador_usuario_id
+    LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
     WHERE c.id = $1
-      AND LOWER(COALESCE(u.rol, '')) = 'organizador'
+      AND ${SQL_FILTRO_PUBLICO_CAMPEONATO}
     LIMIT 1
   `;
   const result = await pool.query(q, [campeonatoId]);
@@ -233,9 +243,9 @@ async function obtenerEventoPublico(eventoId) {
       c.sistema_puntuacion AS campeonato_sistema_puntuacion
     FROM eventos e
     JOIN campeonatos c ON c.id = e.campeonato_id
-    JOIN usuarios u ON u.id = c.creador_usuario_id
+    LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
     WHERE e.id = $1
-      AND LOWER(COALESCE(u.rol, '')) = 'organizador'
+      AND ${SQL_FILTRO_PUBLICO_CAMPEONATO}
     LIMIT 1
   `;
   const result = await pool.query(q, [eventoId]);
@@ -248,8 +258,8 @@ async function listarCampeonatosPublicos() {
   const q = `
     SELECT c.*
     FROM campeonatos c
-    JOIN usuarios u ON u.id = c.creador_usuario_id
-    WHERE LOWER(COALESCE(u.rol, '')) = 'organizador'
+    LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
+    WHERE ${SQL_FILTRO_PUBLICO_CAMPEONATO}
     ORDER BY c.created_at DESC
   `;
   const result = await pool.query(q);
@@ -304,12 +314,12 @@ async function listarEventosPublicosPorCampeonato(campeonatoId) {
       COUNT(DISTINCT CASE WHEN p.estado = 'finalizado' THEN p.id END)::int AS partidos_finalizados
     FROM eventos e
     JOIN campeonatos c ON c.id = e.campeonato_id
-    JOIN usuarios u ON u.id = c.creador_usuario_id
+    LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
     LEFT JOIN evento_equipos ee ON ee.evento_id = e.id
     LEFT JOIN grupos g ON g.evento_id = e.id
     LEFT JOIN partidos p ON p.evento_id = e.id
     WHERE e.campeonato_id = $1
-      AND LOWER(COALESCE(u.rol, '')) = 'organizador'
+      AND ${SQL_FILTRO_PUBLICO_CAMPEONATO}
     GROUP BY e.id, c.nombre, c.organizador, c.fecha_inicio, c.fecha_fin, c.tipo_futbol, c.sistema_puntuacion
     ORDER BY COALESCE(e.numero_campeonato, 999999), e.id
   `;

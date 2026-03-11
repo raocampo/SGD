@@ -204,10 +204,14 @@ function renderCategoriasResumenCard(torneo) {
 function renderCardTorneoPrincipal(torneo) {
   const nombre = limpiarCodigoTorneo(torneo?.nombre) || "Torneo LT&C";
   const organizador = String(torneo?.organizador || "").trim();
-  const estado = (torneo?.estado || "planificacion").replace("planificacion", "borrador");
+  const estado = String(torneo?.estado || "planificacion")
+    .trim()
+    .toLowerCase()
+    .replace("planificacion", "borrador");
   const labelEstado =
     { borrador: "Borrador", inscripcion: "Inscripción", en_curso: "En Curso", finalizado: "Finalizado" }[estado] ||
     "Activo";
+  const imagenCard = estado === "en_curso" ? IMG_TORNEO_ACTIVO : IMG_TORNEO_PROXIMO;
   const fechaInicio = formatearFechaPortal(torneo?.fecha_inicio);
   const fechaFin = formatearFechaPortal(torneo?.fecha_fin);
   const href = construirUrlPortalCampeonato(torneo?.id, {
@@ -225,7 +229,7 @@ function renderCardTorneoPrincipal(torneo) {
       tabindex="0"
     >
       <div class="portal-card-media">
-        <img src="${IMG_TORNEO_ACTIVO}" alt="${nombre}" />
+        <img src="${imagenCard}" alt="${nombre}" />
       </div>
       <div class="portal-card-body">
         <span class="badge-estado estado-${estado}">${labelEstado}</span>
@@ -264,7 +268,9 @@ function ordenarTorneosPortal(lista = []) {
 }
 
 function estadoEsVisibleEnPortal(estado) {
-  return ["en_curso", "inscripcion", "planificacion", "borrador"].includes(String(estado || ""));
+  return ["en_curso", "inscripcion", "planificacion", "borrador"].includes(
+    String(estado || "").trim().toLowerCase()
+  );
 }
 
 function renderErrorPortal(mensaje) {

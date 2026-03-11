@@ -137,11 +137,59 @@ function escapeHtml(valor) {
     .replace(/'/g, "&#39;");
 }
 
+function descomponerFechaTexto(value) {
+  if (!value) return null;
+  const texto = String(value).trim();
+  if (!texto) return null;
+
+  let match = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return {
+      year: match[1],
+      month: match[2],
+      day: match[3],
+    };
+  }
+
+  match = texto.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
+  if (match) {
+    return {
+      year: match[3],
+      month: match[2],
+      day: match[1],
+    };
+  }
+
+  const parsed = new Date(texto);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return {
+    year: String(parsed.getUTCFullYear()),
+    month: String(parsed.getUTCMonth() + 1).padStart(2, "0"),
+    day: String(parsed.getUTCDate()).padStart(2, "0"),
+  };
+}
+
 function formatearFecha(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
-  return d.toLocaleDateString("es-EC");
+  const partes = descomponerFechaTexto(value);
+  if (!partes) return value ? String(value).slice(0, 10) : "—";
+  return `${partes.day}/${partes.month}/${partes.year}`;
+}
+
+function obtenerFechaInput(value) {
+  const partes = descomponerFechaTexto(value);
+  if (!partes) return "";
+  return `${partes.year}-${partes.month}-${partes.day}`;
+}
+
+function fotoCarnetMarcadaParaEliminar() {
+  return document.getElementById("jugador-eliminar-foto-carnet")?.value === "true";
+}
+
+function marcarEliminacionFotoCarnet(flag = true) {
+  const input = document.getElementById("jugador-eliminar-foto-carnet");
+  if (!input) return;
+  input.value = flag ? "true" : "false";
+  actualizarEstadoRequisitosEnModal(jugadorActualEnEdicion);
 }
 
 function normalizarCedulaValor(valor) {
@@ -316,6 +364,7 @@ function actualizarEstadoRequisitosEnModal(jugador = null) {
   const reqIdentidad = esCedulaObligatoriaEnCampeonato();
   const reqCedula = reglasDocumentos.requiere_foto_cedula;
   const reqCarnet = reglasDocumentos.requiere_foto_carnet;
+  const eliminarCarnet = fotoCarnetMarcadaParaEliminar();
 
   const inputIdentidad = document.getElementById("jugador-ced");
   const inputCedula = document.getElementById("jugador-foto-cedula");
@@ -330,7 +379,7 @@ function actualizarEstadoRequisitosEnModal(jugador = null) {
 
   inputIdentidad.required = reqIdentidad;
   inputCedula.required = reqCedula && !jugador?.foto_cedula_url;
-  inputCarnet.required = reqCarnet && !jugador?.foto_carnet_url;
+  inputCarnet.required = reqCarnet && (!jugador?.foto_carnet_url || eliminarCarnet);
 
   if (hintIdentidad) {
     hintIdentidad.textContent = reqIdentidad
@@ -350,9 +399,23 @@ function actualizarEstadoRequisitosEnModal(jugador = null) {
       : "";
   }
   if (prevCarnet) {
-    prevCarnet.innerHTML = jugador?.foto_carnet_url
-      ? `Documento actual: ${renderLinkDocumento(jugador.foto_carnet_url, "Ver foto carnet")}`
-      : "";
+    if (jugador?.foto_carnet_url && !eliminarCarnet) {
+      prevCarnet.innerHTML = `
+        Documento actual: ${renderLinkDocumento(jugador.foto_carnet_url, "Ver foto carnet")}
+        <button type="button" class="btn btn-danger btn-inline-action" onclick="marcarEliminacionFotoCarnet(true)">
+          Eliminar foto carnet
+        </button>
+      `;
+    } else if (jugador?.foto_carnet_url && eliminarCarnet) {
+      prevCarnet.innerHTML = `
+        <span class="form-hint is-warning">La foto carnet actual se eliminara al guardar.</span>
+        <button type="button" class="btn btn-secondary btn-inline-action" onclick="marcarEliminacionFotoCarnet(false)">
+          Deshacer
+        </button>
+      `;
+    } else {
+      prevCarnet.innerHTML = "";
+    }
   }
 }
 
@@ -1929,6 +1992,7 @@ function mostrarModalCrearJugador() {
   document.getElementById("jugador-capitan").checked = false;
   document.getElementById("jugador-foto-cedula").value = "";
   document.getElementById("jugador-foto-carnet").value = "";
+  document.getElementById("jugador-eliminar-foto-carnet").value = "false";
 
   actualizarEstadoRequisitosEnModal(null);
   abrirModal("modal-jugador");
@@ -1952,12 +2016,13 @@ async function editarJugador(id) {
     document.getElementById("jugador-nombre").value = jugador.nombre || "";
     document.getElementById("jugador-apellido").value = jugador.apellido || "";
     document.getElementById("jugador-ced").value = jugador.cedidentidad || "";
-    document.getElementById("jugador-fecha").value = jugador.fecha_nacimiento ? String(jugador.fecha_nacimiento).split("T")[0] : "";
+    document.getElementById("jugador-fecha").value = obtenerFechaInput(jugador.fecha_nacimiento);
     document.getElementById("jugador-posicion").value = jugador.posicion || "";
     document.getElementById("jugador-numero").value = jugador.numero_camiseta || "";
     document.getElementById("jugador-capitan").checked = !!jugador.es_capitan;
     document.getElementById("jugador-foto-cedula").value = "";
     document.getElementById("jugador-foto-carnet").value = "";
+    document.getElementById("jugador-eliminar-foto-carnet").value = "false";
 
     actualizarEstadoRequisitosEnModal(jugador);
     abrirModal("modal-jugador");
@@ -2008,6 +2073,7 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   const esCapitan = document.getElementById("jugador-capitan").checked;
   const fotoCedulaFile = document.getElementById("jugador-foto-cedula").files?.[0] || null;
   const fotoCarnetFile = document.getElementById("jugador-foto-carnet").files?.[0] || null;
+  const eliminarFotoCarnet = fotoCarnetMarcadaParaEliminar();
 
   if (!nombre || !apellido) {
     mostrarNotificacion(
@@ -2023,7 +2089,7 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   }
 
   const tieneCedulaActual = Boolean(jugadorActualEnEdicion?.foto_cedula_url);
-  const tieneCarnetActual = Boolean(jugadorActualEnEdicion?.foto_carnet_url);
+  const tieneCarnetActual = Boolean(jugadorActualEnEdicion?.foto_carnet_url) && !eliminarFotoCarnet;
 
   if (reglasDocumentos.requiere_foto_cedula && !fotoCedulaFile && !(id && tieneCedulaActual)) {
     mostrarNotificacion("Este campeonato exige foto de cédula", "warning");
@@ -2049,6 +2115,7 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
 
   if (fotoCedulaFile) fd.append("foto_cedula", fotoCedulaFile);
   if (fotoCarnetFile) fd.append("foto_carnet", fotoCarnetFile);
+  if (eliminarFotoCarnet) fd.append("eliminar_foto_carnet", "true");
 
   try {
     await guardarJugadorConFormData({ id, fd });
@@ -2058,6 +2125,15 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   } catch (error) {
     console.error("Error guardando jugador:", error);
     mostrarNotificacion(error.message || "Error guardando el jugador", "error");
+  }
+});
+
+document.getElementById("jugador-foto-carnet")?.addEventListener("change", () => {
+  const input = document.getElementById("jugador-foto-carnet");
+  if (input?.files?.length) {
+    marcarEliminacionFotoCarnet(false);
+  } else {
+    actualizarEstadoRequisitosEnModal(jugadorActualEnEdicion);
   }
 });
 

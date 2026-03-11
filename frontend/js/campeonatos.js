@@ -38,6 +38,22 @@ function formatearFechaSolo(valor) {
   return texto.slice(0, 10);
 }
 
+function formatearTipoFutbolEtiqueta(valor) {
+  const raw = String(valor || "").trim().toLowerCase();
+  const mapa = {
+    futbol_11: "Fútbol 11",
+    futbol_9: "Fútbol 9",
+    futbol_8: "Fútbol 8",
+    futbol_7: "Fútbol 7",
+    futbol_6: "Fútbol 6",
+    futbol_5: "Fútbol 5",
+    futsala: "Futsala",
+    indor: "Indor",
+  };
+  if (mapa[raw]) return mapa[raw];
+  return String(valor || "").replaceAll("_", " ");
+}
+
 function obtenerNumeroCampeonatoVisible(camp, fallback = null) {
   if (Number.isFinite(Number(fallback)) && Number(fallback) > 0) return Number(fallback);
   const n = Number.parseInt(camp?.numero_organizador, 10);
@@ -46,7 +62,7 @@ function obtenerNumeroCampeonatoVisible(camp, fallback = null) {
 }
 
 function obtenerMetadatosCampeonato(camp) {
-  const tipoFutbol = (camp.tipo_futbol || "").replace("_", " ");
+  const tipoFutbol = formatearTipoFutbolEtiqueta(camp.tipo_futbol || "");
   const sistema = camp.sistema_puntuacion || "tradicional";
   const estadoRaw = camp.estado || "planificacion";
   const estadoMap = {
