@@ -1,6 +1,22 @@
 // controllers/grupoController.js
 const Grupo = require("../models/Grupo");
 
+function statusForGrupo(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  if (
+    msg.includes("no se puede reiniciar el sorteo") ||
+    msg.includes("ya tiene partidos programados") ||
+    msg.includes("ya tiene eliminatorias generadas") ||
+    msg.includes("requerido") ||
+    msg.includes("inválido") ||
+    msg.includes("invalido") ||
+    msg.includes("no encontrado")
+  ) {
+    return 400;
+  }
+  return 500;
+}
+
 exports.crearGruposPorEvento = async (req, res) => {
   try {
     const { evento_id, cantidad_grupos, nombres_grupos } = req.body;
@@ -18,7 +34,7 @@ exports.crearGruposPorEvento = async (req, res) => {
     res.json({ ok: true, grupos });
   } catch (err) {
     console.error("crearGruposPorEvento:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
 
@@ -29,7 +45,7 @@ exports.obtenerGruposPorEvento = async (req, res) => {
     res.json({ ok: true, grupos });
   } catch (err) {
     console.error("obtenerGruposPorEvento:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
 
@@ -40,7 +56,7 @@ exports.obtenerGruposPorEventoCompleto = async (req, res) => {
     res.json({ ok: true, grupos });
   } catch (err) {
     console.error("obtenerGruposPorEventoCompleto:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
 
@@ -51,7 +67,7 @@ exports.obtenerGruposPorCampeonato = async (req, res) => {
     res.json({ ok: true, grupos });
   } catch (err) {
     console.error("obtenerGruposPorCampeonato:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
 
@@ -62,7 +78,7 @@ exports.obtenerGruposPorCampeonatoCompleto = async (req, res) => {
     res.json({ ok: true, grupos });
   } catch (err) {
     console.error("obtenerGruposPorCampeonatoCompleto:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
 
@@ -73,7 +89,7 @@ exports.obtenerGrupo = async (req, res) => {
     res.json({ ok: true, grupo: g });
   } catch (err) {
     console.error("obtenerGrupo:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
 
@@ -83,7 +99,7 @@ exports.obtenerEquiposDelGrupo = async (req, res) => {
     res.json({ ok: true, equipos });
   } catch (err) {
     console.error("obtenerEquiposDelGrupo:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
 
@@ -103,7 +119,7 @@ exports.asignarEquipo = async (req, res) => {
     res.json({ ok: true, asignacion });
   } catch (err) {
     console.error("asignarEquipo:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
 
@@ -114,7 +130,7 @@ exports.removerEquipo = async (req, res) => {
     res.json({ ok: true, removed: r });
   } catch (err) {
     console.error("removerEquipo:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
 
@@ -124,7 +140,7 @@ exports.actualizarGrupo = async (req, res) => {
     res.json({ ok: true, grupo: g });
   } catch (err) {
     console.error("actualizarGrupo:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
 
@@ -134,6 +150,6 @@ exports.eliminarGrupo = async (req, res) => {
     res.json({ ok: true, eliminado: g });
   } catch (err) {
     console.error("eliminarGrupo:", err);
-    res.status(500).json({ error: err.message });
+    res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };

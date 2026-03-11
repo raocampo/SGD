@@ -1,8 +1,11 @@
+const fs = require("fs");
+const path = require("path");
 const pool = require("../config/database");
 const Partido = require("../models/Partido");
 const Eliminatoria = require("../models/Eliminatoria");
 const Auspiciante = require("../models/Auspiciante");
 const tablaController = require("../controllers/tablaController");
+const { resolveUploadPath } = require("../config/uploads");
 
 const ESTADOS_PUBLICOS = new Set([
   "planificacion",
@@ -96,6 +99,43 @@ function normalizarCategoriasResumen(resumen) {
       metodo_competencia: item?.metodo_competencia || "grupos",
     }))
     .filter((item) => item.id !== null && item.nombre);
+}
+
+function extraerNombreAuspicianteDesdeArchivo(filename = "", idx = 0) {
+  const base = String(filename || "")
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/^\d+-\d+-?/, "")
+    .replace(/[_-]+/g, " ")
+    .trim();
+
+  if (!base) return `Auspiciante ${idx + 1}`;
+  return base
+    .split(/\s+/)
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : ""))
+    .join(" ");
+}
+
+function obtenerFallbackAuspiciantesDesdeArchivos(campeonatoId) {
+  const carpeta = resolveUploadPath("/uploads/auspiciantes");
+  if (!fs.existsSync(carpeta)) return [];
+
+  const extensionesValidas = new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]);
+  const archivos = fs
+    .readdirSync(carpeta, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((name) => extensionesValidas.has(path.extname(name).toLowerCase()))
+    .sort((a, b) => a.localeCompare(b));
+
+  return archivos.map((name, idx) => ({
+    id: `fs-${idx + 1}`,
+    campeonato_id: Number.parseInt(campeonatoId, 10) || null,
+    nombre: extraerNombreAuspicianteDesdeArchivo(name, idx),
+    logo_url: `/uploads/auspiciantes/${name}`,
+    orden: idx + 1,
+    activo: true,
+    origen: "filesystem",
+  }));
 }
 
 async function obtenerTotalesCampeonato(ids = []) {
@@ -398,7 +438,10 @@ async function listarAuspiciantesPublicosPorCampeonato(campeonatoId) {
   const campeonato = await obtenerCampeonatoVisible(campeonatoId);
   if (!campeonato) return null;
 
-  const auspiciantes = await Auspiciante.listarPorCampeonato(campeonatoId, true);
+  let auspiciantes = await Auspiciante.listarPorCampeonato(campeonatoId, true);
+  if (!Array.isArray(auspiciantes) || !auspiciantes.length) {
+    auspiciantes = obtenerFallbackAuspiciantesDesdeArchivos(campeonatoId);
+  }
   return {
     ok: true,
     campeonato: resumirCampeonato(campeonato),

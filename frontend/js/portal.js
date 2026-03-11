@@ -203,6 +203,7 @@ function renderCategoriasResumenCard(torneo) {
 
 function renderCardTorneoPrincipal(torneo) {
   const nombre = limpiarCodigoTorneo(torneo?.nombre) || "Torneo LT&C";
+  const organizador = String(torneo?.organizador || "").trim();
   const estado = (torneo?.estado || "planificacion").replace("planificacion", "borrador");
   const labelEstado =
     { borrador: "Borrador", inscripcion: "Inscripción", en_curso: "En Curso", finalizado: "Finalizado" }[estado] ||
@@ -212,6 +213,8 @@ function renderCardTorneoPrincipal(torneo) {
   const href = construirUrlPortalCampeonato(torneo?.id, {
     organizadorId: portalContextoActual?.organizadorId,
   });
+  const textoFecha =
+    fechaInicio && fechaFin ? `Fecha: ${fechaInicio} - ${fechaFin}` : fechaInicio ? `Fecha: ${fechaInicio}` : "Fecha por confirmar";
 
   return `
     <article
@@ -226,8 +229,9 @@ function renderCardTorneoPrincipal(torneo) {
       </div>
       <div class="portal-card-body">
         <span class="badge-estado estado-${estado}">${labelEstado}</span>
+        ${organizador ? `<p class="portal-card-organizer">${escPortal(organizador)}</p>` : ""}
         <h3>${nombre}</h3>
-        <p class="portal-card-date">Fecha: ${fechaInicio} - ${fechaFin}</p>
+        <p class="portal-card-date">${textoFecha}</p>
         ${renderMetaCardPortal(torneo)}
         ${renderCategoriasResumenCard(torneo)}
         <div class="portal-card-actions">
@@ -238,48 +242,25 @@ function renderCardTorneoPrincipal(torneo) {
   `;
 }
 
-function renderCardsProximos() {
-  const proximos = [
-    {
-      titulo: "1er Campeonato Interjorgas Financiero",
-      fecha: "Inauguración 28 de marzo de 2026",
-      imagen: IMG_TORNEO_PROXIMO,
-      className: "portal-card-featured",
-      boton: "Próximo torneo",
-    },
-    {
-      titulo: "Próximo Torneo Empresarial",
-      fecha: "Fecha: Próximamente",
-      imagen: IMG_TORNEO_SVG_A,
-      className: "",
-      boton: "Muy pronto",
-    },
-    {
-      titulo: "Copa LT&C 2026",
-      fecha: "Fecha: Próximamente",
-      imagen: IMG_TORNEO_SVG_B,
-      className: "",
-      boton: "Muy pronto",
-    },
-  ];
+function ordenarTorneosPortal(lista = []) {
+  const prioridadEstado = {
+    en_curso: 0,
+    inscripcion: 1,
+    planificacion: 2,
+    borrador: 3,
+    finalizado: 4,
+  };
 
-  return proximos
-    .map((item) => {
-    return `
-      <article class="portal-campeonato-card portal-card-upcoming ${item.className}">
-        <div class="portal-card-media">
-          <img src="${item.imagen}" alt="${item.titulo}" />
-        </div>
-        <div class="portal-card-body">
-          <span class="badge-estado estado-borrador">Próximo</span>
-          <h3>${item.titulo}</h3>
-          <p class="portal-card-date">${item.fecha}</p>
-          <button class="portal-card-btn" type="button" disabled>${item.boton}</button>
-        </div>
-      </article>
-    `;
-    })
-    .join("");
+  return [...lista].sort((a, b) => {
+    const estadoA = String(a?.estado || "").trim().toLowerCase();
+    const estadoB = String(b?.estado || "").trim().toLowerCase();
+    const diffEstado = (prioridadEstado[estadoA] ?? 99) - (prioridadEstado[estadoB] ?? 99);
+    if (diffEstado !== 0) return diffEstado;
+
+    const fechaA = new Date(a?.fecha_inicio || a?.created_at || 0).getTime() || 0;
+    const fechaB = new Date(b?.fecha_inicio || b?.created_at || 0).getTime() || 0;
+    return fechaA - fechaB;
+  });
 }
 
 function estadoEsVisibleEnPortal(estado) {
@@ -294,7 +275,6 @@ function renderErrorPortal(mensaje) {
 
 async function portalCargarCampeonatos(listaForzada = null, options = {}) {
   const cont = document.getElementById("portal-lista-campeonatos");
-  const mostrarProximos = options?.mostrarProximos !== false;
   try {
     let lista = Array.isArray(listaForzada) ? listaForzada : null;
     if (!lista) {
@@ -303,37 +283,14 @@ async function portalCargarCampeonatos(listaForzada = null, options = {}) {
         : await fetch(`${API}/public/campeonatos`).then((r) => r.json());
       lista = data.campeonatos || data || [];
     }
-    const activos = (lista || []).filter((c) => estadoEsVisibleEnPortal(c.estado));
-
-    if (!mostrarProximos) {
-      if (!activos.length) {
-        cont.innerHTML = '<p class="empty-msg">No hay torneos públicos para este organizador.</p>';
-        return;
-      }
-      cont.innerHTML = activos.map((t) => renderCardTorneoPrincipal(t)).join("");
-      return;
-    }
+    const activos = ordenarTorneosPortal((lista || []).filter((c) => estadoEsVisibleEnPortal(c.estado)));
 
     if (!activos.length) {
-      cont.innerHTML = `
-        <article class="portal-campeonato-card portal-card-upcoming">
-          <div class="portal-card-media">
-            <img src="${IMG_TORNEO_ACTIVO}" alt="Torneo LT&C" />
-          </div>
-          <div class="portal-card-body">
-            <span class="badge-estado estado-borrador">Borrador</span>
-            <h3>Torneo LT&C</h3>
-            <p class="portal-card-date">Fecha: Por definir</p>
-            <button class="portal-card-btn" type="button" disabled>Sin torneos activos</button>
-          </div>
-        </article>
-        ${renderCardsProximos()}
-      `;
+      cont.innerHTML = '<p class="empty-msg">No hay torneos públicos para este organizador.</p>';
       return;
     }
 
-    const principal = activos[0];
-    cont.innerHTML = `${renderCardTorneoPrincipal(principal)}${renderCardsProximos()}`;
+    cont.innerHTML = activos.map((t) => renderCardTorneoPrincipal(t)).join("");
   } catch (err) {
     console.error(err);
     cont.innerHTML = '<p class="empty-msg">Error cargando torneos.</p>';
@@ -1133,6 +1090,7 @@ async function cargarAuspiciantesCampeonatoPublico(campeonatoId, campeonatoNombr
     const auspiciantes = Array.isArray(data?.auspiciantes) ? data.auspiciantes : [];
     if (!auspiciantes.length) return;
     const html = renderTrackAuspiciantesPortal(auspiciantes);
+    if (!html) return;
     if (detailTrack) detailTrack.innerHTML = html;
     if (detailSection) detailSection.hidden = false;
     if (!detailSection) {

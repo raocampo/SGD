@@ -2,6 +2,41 @@
 const pool = require("../config/database");
 
 class Grupo {
+  static async assertSorteoEditable(evento_id, client = pool) {
+    const partidosR = await client.query(
+      `SELECT COUNT(*)::int AS total FROM partidos WHERE evento_id = $1`,
+      [evento_id]
+    );
+    const totalPartidos = Number(partidosR.rows[0]?.total || 0);
+    if (totalPartidos > 0) {
+      throw new Error(
+        "No se puede reiniciar el sorteo porque la categoría ya tiene partidos programados"
+      );
+    }
+
+    const existeEliminatoriaR = await client.query(`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'partidos_eliminatoria'
+      ) AS existe
+    `);
+    const existeTablaEliminatoria = existeEliminatoriaR.rows[0]?.existe === true;
+    if (!existeTablaEliminatoria) return;
+
+    const eliminatoriaR = await client.query(
+      `SELECT COUNT(*)::int AS total FROM partidos_eliminatoria WHERE evento_id = $1`,
+      [evento_id]
+    );
+    const totalEliminatoria = Number(eliminatoriaR.rows[0]?.total || 0);
+    if (totalEliminatoria > 0) {
+      throw new Error(
+        "No se puede reiniciar el sorteo porque la categoría ya tiene eliminatorias generadas"
+      );
+    }
+  }
+
   // ===========================
   // CREATE - Crear grupos por EVENTO
   // ===========================
@@ -105,9 +140,27 @@ class Grupo {
   // DELETE - Eliminar grupo y asignaciones
   // ===========================
   static async eliminar(id) {
-    await pool.query("DELETE FROM grupo_equipos WHERE grupo_id=$1", [id]);
-    const r = await pool.query("DELETE FROM grupos WHERE id=$1 RETURNING *", [id]);
-    return r.rows[0];
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const grupoR = await client.query("SELECT id, evento_id FROM grupos WHERE id = $1", [id]);
+      const grupo = grupoR.rows[0];
+      if (!grupo) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+
+      await this.assertSorteoEditable(grupo.evento_id, client);
+      await client.query("DELETE FROM grupo_equipos WHERE grupo_id = $1", [id]);
+      const r = await client.query("DELETE FROM grupos WHERE id = $1 RETURNING *", [id]);
+      await client.query("COMMIT");
+      return r.rows[0];
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   // ===========================

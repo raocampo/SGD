@@ -423,6 +423,15 @@ body.ltc-landing {
   text-align: center;
 }
 
+.portal-card-organizer {
+  margin: 0.18rem 0 0;
+  color: #5e748f;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .portal-card-date {
   margin: 0;
   color: #5e748f;
@@ -752,11 +761,11 @@ body.ltc-landing {
       rgba(255, 255, 255, 0.04) 10px,
       rgba(255, 255, 255, 0.01) 10px,
       rgba(255, 255, 255, 0.01) 20px
-    );
+  );
   color: #fee2e2;
-  font-size: clamp(1rem, 2vw, 1.35rem);
+  font-size: clamp(0.74rem, 1.1vw, 0.9rem);
   font-weight: 900;
-  letter-spacing: clamp(0.16rem, 0.45vw, 0.48rem);
+  letter-spacing: clamp(0.06rem, 0.18vw, 0.14rem);
   text-transform: uppercase;
 }
 

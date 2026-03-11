@@ -77,6 +77,32 @@
     return page.toLowerCase();
   }
 
+  const CURRENT_PAGE = getCurrentPage();
+
+  function ensureAuthPendingStyle() {
+    if (!document?.head || document.getElementById("sgd-auth-pending-style")) return;
+    const style = document.createElement("style");
+    style.id = "sgd-auth-pending-style";
+    style.textContent = `
+      html[data-auth-pending="true"] body {
+        visibility: hidden;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function setAuthPendingState(enabled) {
+    if (!document?.documentElement) return;
+    if (enabled) {
+      ensureAuthPendingStyle();
+      document.documentElement.setAttribute("data-auth-pending", "true");
+      return;
+    }
+    document.documentElement.removeAttribute("data-auth-pending");
+  }
+
+  setAuthPendingState(!PUBLIC_PAGES.has(CURRENT_PAGE));
+
   function asegurarLinkHead({ rel, href, type }) {
     if (!rel || !href) return;
     const selector = `link[rel="${rel}"]`;
@@ -1153,7 +1179,7 @@
   }
 
   async function validarAccesoPagina() {
-    const page = getCurrentPage();
+    const page = CURRENT_PAGE;
     const token = window.Auth.getToken();
 
     if (!token) {
@@ -1196,6 +1222,7 @@
     const user = window.Auth.getUser();
     aplicarSidebarPorRol(user);
     inyectarUsuarioTopbar(user);
+    setAuthPendingState(false);
     if (window.Auth.requiresPasswordChange() && !PUBLIC_PAGES.has(getCurrentPage())) {
       const actualizada = await window.Auth.promptChangePassword({ forced: true });
       if (!actualizada) return;
