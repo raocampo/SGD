@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-10
+Ultima actualizacion: 2026-03-11
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,32 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-11
+- Jugadores:
+  - se corrigio el bug de `fecha_nacimiento` que restaba un dia en tarjetas/listados por conversion de zona horaria del navegador.
+  - ahora se puede eliminar la `foto carnet` desde el modal/perfil del jugador y el backend limpia el archivo reemplazado o marcado para borrado.
+  - los campos de `foto_cedula` y `foto_carnet` quedan listos para captura directa desde celular (`capture=environment` / `capture=user`), facilitando la toma de foto en cancha.
+- Portal publico:
+  - el listado general vuelve a mostrar torneos `borrador` / `inscripcion` cuando son campeonatos reales del organizador o registros legacy con `organizador` informado.
+  - se mantiene fuera del portal cualquier campeonato de `administrador` o QA.
+- Campeonatos:
+  - se ampliaron los tipos de futbol soportados en backend/frontend:
+    - `futbol_11`,
+    - `futbol_9`,
+    - `futbol_8`,
+    - `futbol_7`,
+    - `futbol_6`,
+    - `futbol_5`,
+    - `futsala`,
+    - `indor`.
+  - nueva migracion agregada:
+    - `database/migrations/033_campeonatos_tipos_futbol_ampliados.sql`.
+  - la migracion `033` ya fue aplicada:
+    - en BD local,
+    - en PostgreSQL de Render.
+- Portal/landing:
+  - `Ingresar` y `Registrarse` ahora abren en nueva ventana para no romper la navegacion del portal publico compartible.
 
 ### 2026-03-10
 - Render ya quedo operativo en produccion inicial:
@@ -1099,8 +1125,12 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Validar en produccion Render:
   - carga real de logos/fotos/documentos desde el disco persistente,
   - reimpresion de carnets usando jugadores con foto existente.
+- Verificar en operacion real de campo la captura directa de foto desde celular para:
+  - foto de cedula,
+  - foto de jugador/foto carnet.
 - Validar visualmente portal publico en produccion/local:
   - listado general sin campeonatos administrativos,
+  - inclusion correcta de torneos `borrador` / `inscripcion` del organizador,
   - detalle por campeonato con tabs de categorias,
   - subtabs deportivas correctas por categoria,
   - tablas de posiciones en `2 columnas` desktop / `1 columna` movil.

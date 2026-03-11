@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-10): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria y autenticacion admite `correo o username` para cuentas internas.
+Estado del proyecto (2026-03-11): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales y autenticacion admite `correo o username` para cuentas internas.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,30 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-03-10)
+## Novedades Recientes (2026-03-11)
+- Jugadores:
+  - se corrigio el desfase de `fecha_nacimiento` en tarjetas/listados causado por conversion de zona horaria del navegador,
+  - ya se puede eliminar la `foto carnet` desde el modal/perfil del jugador y el backend limpia tambien el archivo asociado cuando corresponde,
+  - los inputs de `foto_cedula` y `foto_carnet` ya quedan preparados para captura directa desde celular (`capture=environment` / `capture=user`), facilitando alta en campo.
+- Portal publico:
+  - el listado general vuelve a mostrar campeonatos `borrador` / `inscripcion` cuando son torneos reales de organizador o registros legacy con `organizador` informado,
+  - se mantiene excluido todo campeonato QA / administrativo del portal general.
+- Campeonatos:
+  - se ampliaron los tipos de futbol soportados en UI + BD:
+    - `futbol_11`,
+    - `futbol_9`,
+    - `futbol_8`,
+    - `futbol_7`,
+    - `futbol_6`,
+    - `futbol_5`,
+    - `futsala`,
+    - `indor`.
+  - nueva migracion:
+    - `database/migrations/033_campeonatos_tipos_futbol_ampliados.sql`.
+- Navegacion publica:
+  - `Ingresar` y `Registrarse` en landing/portal ahora abren en nueva ventana para no romper la lectura del portal compartible.
+
+## Novedades Anteriores (2026-03-10)
 - Portal publico deportivo:
   - el listado general ya expone solo campeonatos creados por usuarios con rol `organizador`,
   - quedan fuera campeonatos creados por `administrador` y torneos QA ligados a cuentas administrativas,
@@ -296,6 +319,7 @@ psql -U postgres -d gestionDeportiva -f database/migrations/029_eliminacion_manu
 psql -U postgres -d gestionDeportiva -f database/migrations/030_evento_playoff_config.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/031_usuarios_cambio_password_obligatorio.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/032_usuarios_username_opcional.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/033_campeonatos_tipos_futbol_ampliados.sql
 ```
 
 ### 5.3 Ejecutar

@@ -7,6 +7,38 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-11 - Jugadores, portal publico y tipos de futbol ampliados
+- Jugadores:
+  - `frontend/js/jugadores.js` corrige el formateo de `fecha_nacimiento` para evitar el desfase de `-1 dia` provocado por la zona horaria del navegador.
+  - `frontend/jugadores.html`, `frontend/js/jugadores.js` y `backend/controllers/jugadorController.js` agregan eliminacion explicita de `foto carnet` desde el perfil/modal del jugador, incluyendo limpieza del archivo local cuando se reemplaza o marca para borrado.
+  - los inputs de `foto_cedula` y `foto_carnet` quedan preparados para captura directa desde celular con:
+    - `capture="environment"` para cédula,
+    - `capture="user"` para foto del jugador/foto carnet.
+- Portal publico:
+  - `frontend/js/portal.js` vuelve a mostrar campeonatos `borrador` / `inscripcion` cuando son torneos reales del organizador o registros legacy con `organizador` informado.
+  - `backend/services/publicPortalService.js` amplía la regla publica para aceptar campeonatos legacy con `creador_usuario_id IS NULL` y `organizador` poblado, manteniendo fuera torneos QA/admin.
+- Campeonatos:
+  - `frontend/campeonatos.html` y `frontend/js/campeonatos.js` amplian el catalogo de modalidades:
+    - `futbol_11`,
+    - `futbol_9`,
+    - `futbol_8`,
+    - `futbol_7`,
+    - `futbol_6`,
+    - `futbol_5`,
+    - `futsala`,
+    - `indor`.
+  - `frontend/js/planilla.js` y `backend/controllers/tablaController.js` se alinean para que fair play/planilla entiendan correctamente las nuevas modalidades.
+  - nueva migracion:
+    - `database/migrations/033_campeonatos_tipos_futbol_ampliados.sql`.
+  - `database/esquema.sql` queda alineado con el nuevo `CHECK` de `campeonatos.tipo_futbol`.
+  - la migracion `033` se aplico en:
+    - entorno local,
+    - PostgreSQL remoto en Render.
+- Navegacion publica:
+  - `frontend/index.html` y `frontend/portal.html` ahora abren `Ingresar` / `Registrarse` en nueva ventana para no perder el contexto del portal compartible.
+
+---
+
 ## 2026-03-10 - Preparacion de despliegue + portal publico por mismo origen
 - Render:
   - servicio `https://ltyc.onrender.com` desplegado y en estado `Live`,
