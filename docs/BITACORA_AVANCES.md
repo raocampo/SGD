@@ -14,6 +14,25 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-11
+- Carnés:
+  - nueva migracion:
+    - `database/migrations/035_campeonato_fondo_carnet.sql`.
+  - `campeonatos` ya permite gestionar un `fondo de carné / marca de agua` independiente del logo.
+  - el fondo se usa como capa visual sobre el carné mezclando:
+    - imagen subida,
+    - colores del campeonato,
+    - logo del campeonato.
+  - el organizador puede:
+    - subirlo,
+    - reemplazarlo,
+    - eliminarlo.
+  - el render queda unificado para:
+    - vista previa,
+    - impresion,
+    - exportacion PDF.
+  - la migracion `035` ya fue aplicada:
+    - en BD local,
+    - en PostgreSQL remoto de Render.
 - Portal del organizador:
   - se implemento la base de branding/media propia por organizador con nueva migracion:
     - `database/migrations/034_organizador_portal_branding.sql`.
@@ -1145,6 +1164,11 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Validar en produccion Render:
   - carga real de logos/fotos/documentos desde el disco persistente,
   - reimpresion de carnets usando jugadores con foto existente.
+- Validar visualmente el nuevo `fondo de carné` en:
+  - vista previa,
+  - impresion,
+  - exportacion PDF,
+  para confirmar opacidad/mezcla adecuados con logo y colores.
 - Verificar en operacion real de campo la captura directa de foto desde celular para:
   - foto de cedula,
   - foto de jugador/foto carnet.

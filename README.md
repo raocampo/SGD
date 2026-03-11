@@ -31,6 +31,26 @@ Flujo principal operativo:
 7. Consultar tablas y portal publico.
 
 ## Novedades Recientes (2026-03-11)
+- Carnés:
+  - nueva migracion `database/migrations/035_campeonato_fondo_carnet.sql`,
+  - los campeonatos ahora pueden subir un `fondo de carné / marca de agua` opcional,
+  - el fondo se mezcla con:
+    - `color_primario`,
+    - `color_secundario`,
+    - `color_acento`,
+    - `logo del campeonato`,
+  - el mismo diseño se usa en:
+    - vista previa,
+    - impresion,
+    - exportacion PDF.
+  - el fondo de carné puede:
+    - cargarse,
+    - reemplazarse,
+    - eliminarse
+    desde el formulario de campeonatos.
+  - la migracion `035` ya fue aplicada en:
+    - BD local,
+    - PostgreSQL remoto de Render.
 - Portal del organizador:
   - nueva migracion `database/migrations/034_organizador_portal_branding.sql`,
   - nuevo modulo privado `Mi Landing` para organizadores,
@@ -337,6 +357,7 @@ psql -U postgres -d gestionDeportiva -f database/migrations/031_usuarios_cambio_
 psql -U postgres -d gestionDeportiva -f database/migrations/032_usuarios_username_opcional.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/033_campeonatos_tipos_futbol_ampliados.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/034_organizador_portal_branding.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/035_campeonato_fondo_carnet.sql
 ```
 
 ### 5.3 Ejecutar

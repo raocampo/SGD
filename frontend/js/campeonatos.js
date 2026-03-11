@@ -265,6 +265,24 @@ function normalizarLogoCampeonato(logoUrl) {
   return `${BACKEND_BASE}/${s}`;
 }
 
+function normalizarMediaCampeonato(url) {
+  return normalizarLogoCampeonato(url);
+}
+
+function renderPreviewMediaActual(url, etiqueta) {
+  const href = normalizarMediaCampeonato(url);
+  if (!href) return "";
+  return `
+    <div class="media-current-preview-card">
+      <img src="${href}" alt="${escapeHtml(etiqueta)}" class="media-current-preview-image" />
+      <div class="media-current-preview-info">
+        <span class="media-current-preview-label">${escapeHtml(etiqueta)} actual</span>
+        <a href="${href}" target="_blank" rel="noopener noreferrer">Ver archivo</a>
+      </div>
+    </div>
+  `;
+}
+
 // ======================
 // Cargar Campeonatos
 // ======================
@@ -318,6 +336,11 @@ function mostrarModalCrearCampeonato() {
   const reqCedula = document.getElementById("campeonato-req-foto-cedula");
   const reqCarnet = document.getElementById("campeonato-req-foto-carnet");
   const generaCarnets = document.getElementById("campeonato-genera-carnets");
+  const logoInput = document.getElementById("campeonato-logo");
+  const fondoInput = document.getElementById("campeonato-carnet-fondo");
+  const logoActual = document.getElementById("campeonato-logo-actual");
+  const fondoActual = document.getElementById("campeonato-carnet-fondo-actual");
+  const eliminarFondo = document.getElementById("campeonato-eliminar-carnet-fondo");
   if (colorPrimario) colorPrimario.value = "#FACC15";
   if (colorSecundario) colorSecundario.value = "#111827";
   if (colorAcento) colorAcento.value = "#22C55E";
@@ -337,6 +360,11 @@ function mostrarModalCrearCampeonato() {
   if (costoCarnet) costoCarnet.value = "0";
   if (bloquearMorosos) bloquearMorosos.checked = false;
   if (bloqueoMorosidadMonto) bloqueoMorosidadMonto.value = "0";
+  if (logoInput) logoInput.value = "";
+  if (fondoInput) fondoInput.value = "";
+  if (logoActual) logoActual.innerHTML = "";
+  if (fondoActual) fondoActual.innerHTML = "";
+  if (eliminarFondo) eliminarFondo.checked = false;
 
   document.getElementById("campeonato-estado").value = "borrador";
   abrirModal("modal-campeonato");
@@ -394,6 +422,17 @@ async function editarCampeonato(id) {
       document.getElementById("campeonato-color-acento").value =
         camp.color_acento;
     }
+    document.getElementById("campeonato-logo").value = "";
+    document.getElementById("campeonato-carnet-fondo").value = "";
+    document.getElementById("campeonato-logo-actual").innerHTML = renderPreviewMediaActual(
+      camp.logo_url,
+      "Logo del campeonato"
+    );
+    document.getElementById("campeonato-carnet-fondo-actual").innerHTML = renderPreviewMediaActual(
+      camp.carnet_fondo_url,
+      "Fondo de carné"
+    );
+    document.getElementById("campeonato-eliminar-carnet-fondo").checked = false;
 
     const estadoVal = camp.estado === "planificacion" ? "borrador" : (camp.estado || "borrador");
     document.getElementById("campeonato-estado").value = estadoVal;
@@ -489,6 +528,9 @@ document
 
     const fileInput = document.getElementById("campeonato-logo");
     const file = fileInput.files[0];
+    const carnetFondoInput = document.getElementById("campeonato-carnet-fondo");
+    const carnetFondoFile = carnetFondoInput.files[0];
+    const eliminarCarnetFondo = document.getElementById("campeonato-eliminar-carnet-fondo").checked;
 
     if (!nombre) {
       mostrarNotificacion("El nombre del campeonato es obligatorio", "error");
@@ -505,6 +547,10 @@ document
 
     if (file && file.size > 2 * 1024 * 1024) {
       mostrarNotificacion("El logo no debe superar los 2MB", "error");
+      return;
+    }
+    if (carnetFondoFile && carnetFondoFile.size > 2 * 1024 * 1024) {
+      mostrarNotificacion("El fondo de carné no debe superar los 2MB", "error");
       return;
     }
 
@@ -534,6 +580,12 @@ document
 
     if (file) {
       fd.append("logo", file);
+    }
+    if (carnetFondoFile) {
+      fd.append("carnet_fondo", carnetFondoFile);
+    }
+    if (eliminarCarnetFondo) {
+      fd.append("eliminar_carnet_fondo", "true");
     }
 
     try {

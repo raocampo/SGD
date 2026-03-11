@@ -39,6 +39,20 @@ async function puedeAccederCampeonato(req, campeonato) {
   return false;
 }
 
+function parseBooleanFlag(value) {
+  return value === true || String(value || "").trim().toLowerCase() === "true";
+}
+
+function safeUnlinkUpload(relativeUrl) {
+  if (!relativeUrl) return;
+  const filePath = resolveUploadPath(relativeUrl);
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      console.warn("No se pudo eliminar archivo de campeonato:", err.message);
+    }
+  });
+}
+
 const campeonatoController = {
   // Crear nuevo campeonato
   crearCampeonato: async (req, res) => {
@@ -153,8 +167,11 @@ const campeonatoController = {
         return res.status(400).json({ error: req.fileValidationError });
       }
 
-      const logo_url = req.file
-        ? `/uploads/campeonatos/${req.file.filename}`
+      const logoFile = req.files?.logo?.[0] || req.file || null;
+      const carnetFondoFile = req.files?.carnet_fondo?.[0] || null;
+      const logo_url = logoFile ? `/uploads/campeonatos/${logoFile.filename}` : null;
+      const carnet_fondo_url = carnetFondoFile
+        ? `/uploads/campeonatos/carnets/${carnetFondoFile.filename}`
         : null;
       const organizadorFinal =
         organizador ||
@@ -187,7 +204,8 @@ const campeonatoController = {
         costo_tarjeta_roja,
         costo_carnet,
         bloquear_morosos,
-        bloqueo_morosidad_monto
+        bloqueo_morosidad_monto,
+        carnet_fondo_url
       );
 
       res.status(201).json({
@@ -352,9 +370,19 @@ const campeonatoController = {
         return res.status(400).json({ error: req.fileValidationError });
       }
 
-      if (req.file) {
-        datos.logo_url = `/uploads/campeonatos/${req.file.filename}`;
+      const logoFile = req.files?.logo?.[0] || req.file || null;
+      const carnetFondoFile = req.files?.carnet_fondo?.[0] || null;
+      const eliminarCarnetFondo = parseBooleanFlag(datos.eliminar_carnet_fondo);
+
+      if (logoFile) {
+        datos.logo_url = `/uploads/campeonatos/${logoFile.filename}`;
       }
+      if (carnetFondoFile) {
+        datos.carnet_fondo_url = `/uploads/campeonatos/carnets/${carnetFondoFile.filename}`;
+      } else if (eliminarCarnetFondo) {
+        datos.carnet_fondo_url = null;
+      }
+      delete datos.eliminar_carnet_fondo;
 
       const campeonatoActualizado = await Campeonato.actualizar(id, datos);
 
@@ -362,6 +390,14 @@ const campeonatoController = {
         return res.status(404).json({
           error: "Campeonato no encontrado",
         });
+      }
+
+      if (
+        Object.prototype.hasOwnProperty.call(datos, "carnet_fondo_url") &&
+        campeonatoActual.carnet_fondo_url &&
+        campeonatoActual.carnet_fondo_url !== (campeonatoActualizado.carnet_fondo_url || null)
+      ) {
+        safeUnlinkUpload(campeonatoActual.carnet_fondo_url);
       }
 
       res.json({
@@ -400,15 +436,10 @@ const campeonatoController = {
       }
 
       if (campeonatoEliminado.logo_url) {
-        const filePath = resolveUploadPath(campeonatoEliminado.logo_url);
-        fs.unlink(filePath, (err) => {
-          if (err) {
-            console.warn(
-              "No se pudo eliminar el logo del campeonato:",
-              err.message
-            );
-          }
-        });
+        safeUnlinkUpload(campeonatoEliminado.logo_url);
+      }
+      if (campeonatoEliminado.carnet_fondo_url) {
+        safeUnlinkUpload(campeonatoEliminado.carnet_fondo_url);
       }
 
       res.json({

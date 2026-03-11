@@ -12,11 +12,16 @@ router.post(
   requireAuth,
   requireRoles("administrador", "organizador"),
   (req, res, next) => {
-    // carpeta donde se guardarán los logos de campeonatos
-    req.uploadFolder = "campeonatos";
+    req.uploadFolderByField = {
+      logo: "campeonatos",
+      carnet_fondo: "campeonatos/carnets",
+    };
     next();
   },
-  upload.single("logo"),             // el campo del form se debe llamar "logo"
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "carnet_fondo", maxCount: 1 },
+  ]),
   campeonatoController.crearCampeonato
 );
 
@@ -54,10 +59,16 @@ router.put(
   requireAuth,
   requireRoles("administrador", "organizador"),
   (req, res, next) => {
-    req.uploadFolder = "campeonatos";
+    req.uploadFolderByField = {
+      logo: "campeonatos",
+      carnet_fondo: "campeonatos/carnets",
+    };
     next();
   },
-  upload.single("logo"),
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "carnet_fondo", maxCount: 1 },
+  ]),
   campeonatoController.actualizarCampeonato
 );
 

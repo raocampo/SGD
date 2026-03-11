@@ -7,6 +7,47 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-11 - Fondo de carné configurable por campeonato
+- Campeonatos:
+  - nueva migracion:
+    - `database/migrations/035_campeonato_fondo_carnet.sql`.
+  - `backend/models/Campeonato.js` agrega soporte para `carnet_fondo_url`.
+  - `backend/routes/campeonatoRoutes.js` pasa de `upload.single("logo")` a `upload.fields(...)` para soportar:
+    - `logo`,
+    - `carnet_fondo`.
+  - `backend/controllers/campeonatoController.js` ahora:
+    - guarda el fondo de carné como upload propio en `uploads/campeonatos/carnets`,
+    - permite reemplazarlo,
+    - permite eliminarlo,
+    - limpia el archivo anterior cuando cambia.
+- Frontend de campeonatos:
+  - `frontend/campeonatos.html` incorpora:
+    - campo de archivo para `Fondo de carné / marca de agua`,
+    - preview del archivo actual,
+    - checkbox para eliminar fondo actual.
+  - `frontend/js/campeonatos.js` ya envia:
+    - `carnet_fondo`,
+    - `eliminar_carnet_fondo`,
+    y muestra previews del logo/fondo actuales.
+- Render de carnés:
+  - `frontend/js/jugadores.js` ahora incorpora en `campeonatoMeta`:
+    - `carnet_fondo_url`,
+    - `color_primario`,
+    - `color_secundario`,
+    - `color_acento`.
+  - se genera un estilo por carné con variables CSS para mezclar:
+    - colores del campeonato,
+    - logo,
+    - imagen de fondo tipo marca de agua.
+  - el carné sigue generandose dinamicamente, por lo que al reimprimir toma siempre la identidad visual actual del campeonato.
+- Estilos:
+  - `frontend/css/style.css` agrega capa `carnet-backdrop` y variables visuales para que preview, impresion y PDF compartan el mismo layout.
+- Migracion aplicada:
+  - local: `OK`,
+  - Render: `OK`.
+
+---
+
 ## 2026-03-11 - Jugadores, portal publico y tipos de futbol ampliados
 - Portal del organizador:
   - `database/migrations/034_organizador_portal_branding.sql` crea:

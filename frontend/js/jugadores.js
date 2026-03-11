@@ -22,6 +22,10 @@ let campeonatoMeta = {
   nombre: "",
   organizador: "",
   logo_url: "",
+  carnet_fondo_url: "",
+  color_primario: "#FACC15",
+  color_secundario: "#111827",
+  color_acento: "#22C55E",
   requiere_cedula_jugador: false,
   genera_carnets: false,
 };
@@ -71,6 +75,52 @@ function normalizarArchivoUrl(valor) {
   if (/^https?:\/\//i.test(s)) return s;
   if (s.startsWith("/")) return `${BACKEND_BASE}${s}`;
   return `${BACKEND_BASE}/${s}`;
+}
+
+function normalizarColorHex(valor, fallback) {
+  const raw = String(valor || "").trim();
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) {
+    if (raw.length === 4) {
+      return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toUpperCase();
+    }
+    return raw.toUpperCase();
+  }
+  return fallback;
+}
+
+function hexToRgbTriplet(hex) {
+  const safeHex = normalizarColorHex(hex, "#000000").slice(1);
+  const intVal = Number.parseInt(safeHex, 16);
+  const r = (intVal >> 16) & 255;
+  const g = (intVal >> 8) & 255;
+  const b = intVal & 255;
+  return `${r}, ${g}, ${b}`;
+}
+
+function escapeCssUrl(url) {
+  return String(url || "")
+    .replace(/"/g, "%22")
+    .replace(/'/g, "%27")
+    .replace(/\(/g, "%28")
+    .replace(/\)/g, "%29")
+    .replace(/\s/g, "%20");
+}
+
+function construirEstiloCarnet(meta = {}) {
+  const primario = normalizarColorHex(meta.color_primario, "#FACC15");
+  const secundario = normalizarColorHex(meta.color_secundario, "#111827");
+  const acento = normalizarColorHex(meta.color_acento, "#22C55E");
+  const fondo = normalizarArchivoUrl(meta.carnet_fondo_url);
+  const variables = [
+    `--carnet-primary:${primario}`,
+    `--carnet-secondary:${secundario}`,
+    `--carnet-accent:${acento}`,
+    `--carnet-primary-rgb:${hexToRgbTriplet(primario)}`,
+    `--carnet-secondary-rgb:${hexToRgbTriplet(secundario)}`,
+    `--carnet-accent-rgb:${hexToRgbTriplet(acento)}`,
+    `--carnet-watermark:${fondo ? `url("${escapeCssUrl(fondo)}")` : "none"}`,
+  ];
+  return variables.join("; ");
 }
 
 function renderLinkDocumento(url, texto) {
@@ -689,6 +739,10 @@ async function cargarConfigCampeonato() {
       nombre: "",
       organizador: "",
       logo_url: "",
+      carnet_fondo_url: "",
+      color_primario: "#FACC15",
+      color_secundario: "#111827",
+      color_acento: "#22C55E",
       requiere_cedula_jugador: false,
       genera_carnets: false,
     };
@@ -711,6 +765,10 @@ async function cargarConfigCampeonato() {
       nombre: camp.nombre || "",
       organizador: camp.organizador || "",
       logo_url: camp.logo_url || "",
+      carnet_fondo_url: camp.carnet_fondo_url || "",
+      color_primario: camp.color_primario || "#FACC15",
+      color_secundario: camp.color_secundario || "#111827",
+      color_acento: camp.color_acento || "#22C55E",
       requiere_cedula_jugador:
         camp.requiere_cedula_jugador === true ||
         camp.requiere_cedula_jugador === "true" ||
@@ -1349,8 +1407,10 @@ function renderPlantillaCarnets() {
   const cards = jugadoresActuales
     .map((j) => {
       const foto = obtenerFotoAnversoCarnet(j);
+      const estiloCarnet = construirEstiloCarnet(campeonatoMeta);
       return `
-        <article class="carnet-card">
+        <article class="carnet-card" style="${escapeHtml(estiloCarnet)}">
+          <div class="carnet-backdrop" aria-hidden="true"></div>
           <header class="carnet-header">
             <div class="carnet-org">${escapeHtml(campeonatoMeta.organizador || "Organizador")}</div>
             <div class="carnet-title">CARNÉ DE JUGADOR</div>

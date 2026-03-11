@@ -182,6 +182,20 @@
             <label for="campeonato-logo">Logo del Campeonato:</label>
             <input type="file" id="campeonato-logo" accept="image/*" />
             <small>Formatos permitidos: JPG, PNG, WEBP. Máx: 2MB.</small>
+            <div id="campeonato-logo-actual" class="media-current-preview"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="campeonato-carnet-fondo">Fondo de carné / marca de agua:</label>
+            <input type="file" id="campeonato-carnet-fondo" accept="image/*" />
+            <small>Se mezclará con los colores del campeonato y el logo para el diseño del carné. Máx: 2MB.</small>
+            <div id="campeonato-carnet-fondo-actual" class="media-current-preview"></div>
+            <div class="fixture-generation-options">
+              <div class="form-group checkbox-inline-control">
+                <input type="checkbox" id="campeonato-eliminar-carnet-fondo" />
+                <label for="campeonato-eliminar-carnet-fondo">Eliminar fondo actual del carné</label>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">

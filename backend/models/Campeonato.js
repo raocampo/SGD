@@ -22,7 +22,8 @@ class Campeonato {
       ADD COLUMN IF NOT EXISTS costo_tarjeta_roja NUMERIC(12,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS costo_carnet NUMERIC(12,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS bloquear_morosos BOOLEAN DEFAULT FALSE,
-      ADD COLUMN IF NOT EXISTS bloqueo_morosidad_monto NUMERIC(12,2) DEFAULT 0
+      ADD COLUMN IF NOT EXISTS bloqueo_morosidad_monto NUMERIC(12,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS carnet_fondo_url TEXT
     `);
     await pool.query(`
       UPDATE campeonatos
@@ -127,7 +128,8 @@ class Campeonato {
     costo_tarjeta_roja = 0,
     costo_carnet = 0,
     bloquear_morosos = false,
-    bloqueo_morosidad_monto = 0
+    bloqueo_morosidad_monto = 0,
+    carnet_fondo_url = null
   ) {
     await this.asegurarColumnasDocumentos();
     await this.asegurarSecuenciaId();
@@ -165,11 +167,12 @@ class Campeonato {
         costo_carnet,
         bloquear_morosos,
         bloqueo_morosidad_monto,
+        carnet_fondo_url,
         estado,
         numero_organizador
       )
       SELECT
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,'borrador',
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,'borrador',
         next_num.next_num
       FROM next_num
       RETURNING *
@@ -200,6 +203,7 @@ class Campeonato {
       this.parseDecimalNoNegativo(costo_carnet, 0),
       bloquear_morosos === true || bloquear_morosos === "true",
       this.parseDecimalNoNegativo(bloqueo_morosidad_monto, 0),
+      carnet_fondo_url || null,
     ];
 
     const result = await pool.query(query, values);
@@ -245,7 +249,7 @@ class Campeonato {
     const allowed = new Set([
       "nombre", "organizador", "fecha_inicio", "fecha_fin", "tipo_futbol",
       "sistema_puntuacion", "max_equipos", "min_jugador", "max_jugador",
-      "color_primario", "color_secundario", "color_acento", "logo_url", "estado",
+      "color_primario", "color_secundario", "color_acento", "logo_url", "carnet_fondo_url", "estado",
       "reglas_desempate", "requiere_cedula_jugador", "requiere_foto_cedula", "requiere_foto_carnet", "genera_carnets",
       "costo_arbitraje", "costo_tarjeta_amarilla", "costo_tarjeta_roja", "costo_carnet",
       "bloquear_morosos", "bloqueo_morosidad_monto"
