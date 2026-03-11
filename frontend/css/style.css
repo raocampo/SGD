@@ -3982,14 +3982,15 @@ body.modal-open {
 }
 
 .page-tablas .tabla-posicion-equipo {
-  display: grid;
-  gap: 0.28rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
 }
 
 .page-tablas .tabla-posicion-status {
-  display: grid;
-  gap: 0.32rem;
-  justify-items: start;
+  display: inline-flex;
+  align-items: center;
 }
 
 .page-tablas .tabla-posicion-banner {
@@ -4038,6 +4039,33 @@ body.modal-open {
   background: #7f1d1d;
   color: #fff7ed;
   border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.page-tablas .tabla-estadistica-posiciones td.tabla-posicion-eliminado-main {
+  padding: 0;
+  min-width: 16rem;
+}
+
+.page-tablas .tabla-posicion-eliminado-overlay {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.95rem 0.8rem;
+  background:
+    linear-gradient(90deg, rgba(127, 29, 29, 0.97), rgba(153, 27, 27, 0.93)),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.04) 0,
+      rgba(255, 255, 255, 0.04) 10px,
+      rgba(255, 255, 255, 0.01) 10px,
+      rgba(255, 255, 255, 0.01) 20px
+    );
+  color: #fee2e2;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  font-weight: 900;
+  letter-spacing: clamp(0.16rem, 0.45vw, 0.48rem);
+  text-transform: uppercase;
 }
 
 /* ============================

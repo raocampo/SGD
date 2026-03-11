@@ -680,26 +680,6 @@ function renderPosiciones(data) {
 
 function renderEstadoPosicion(row = {}) {
   const noPresentaciones = Number(row.no_presentaciones || 0);
-  const eliminadoManual = row.eliminado_manual === true;
-  const eliminadoAutomatico = row.eliminado_automatico === true;
-  const motivoManual = escaparHtml(row.motivo_eliminacion_label || "Eliminado manualmente");
-  if (eliminadoAutomatico || eliminadoManual) {
-    const leyenda = eliminadoManual
-      ? motivoManual
-      : noPresentaciones >= 2
-        ? `${noPresentaciones}da no presentación`
-        : "Eliminado";
-    return `
-      <div class="tabla-posicion-status">
-        <span class="tabla-posicion-banner is-eliminado">${leyenda}</span>
-        ${
-          eliminadoAutomatico
-            ? `<span class="tabla-posicion-chip is-neutral">NP ${noPresentaciones}</span>`
-            : ""
-        }
-      </div>
-    `;
-  }
   if (noPresentaciones > 0) {
     return `
       <div class="tabla-posicion-status">
@@ -708,6 +688,27 @@ function renderEstadoPosicion(row = {}) {
     `;
   }
   return "";
+}
+
+function obtenerMotivoEliminacionTabla(row = {}) {
+  if (row.eliminado_manual === true) {
+    return row.motivo_eliminacion_label || "Eliminado manualmente";
+  }
+  const noPresentaciones = Number(row.no_presentaciones || 0);
+  if (row.eliminado_automatico === true && noPresentaciones > 0) {
+    return `${noPresentaciones} no presentaciones`;
+  }
+  return row.eliminado_competencia === true ? "Equipo eliminado" : "";
+}
+
+function renderCeldaEliminadoTabla(row = {}, classes = "") {
+  const motivo = obtenerMotivoEliminacionTabla(row);
+  const className = [classes, "tabla-posicion-eliminado-main"].filter(Boolean).join(" ");
+  return `
+    <td class="${className}" colspan="8" ${motivo ? `title="${escaparHtml(motivo)}"` : ""}>
+      <div class="tabla-posicion-eliminado-overlay">ELIMINADO</div>
+    </td>
+  `;
 }
 
 function renderTablaPosiciones(tabla, clasificanPorGrupo = 0) {
@@ -727,6 +728,18 @@ function renderTablaPosiciones(tabla, clasificanPorGrupo = 0) {
       ]
         .filter(Boolean)
         .join(" ");
+      const statsHtml = eliminado
+        ? renderCeldaEliminadoTabla(row, classes)
+        : `
+          <td>${Number(est.partidos_jugados || 0)}</td>
+          <td>${Number(est.partidos_ganados || 0)}</td>
+          <td>${Number(est.partidos_empatados || 0)}</td>
+          <td>${Number(est.partidos_perdidos || 0)}</td>
+          <td>${Number(est.goles_favor || 0)}</td>
+          <td>${Number(est.goles_contra || 0)}</td>
+          <td>${Number(est.diferencia_goles || 0)}</td>
+          <td><strong>${Number(row.puntos || 0)}</strong></td>
+        `;
       return `
         <tr class="${classes}">
           <td>${posicion}</td>
@@ -736,14 +749,7 @@ function renderTablaPosiciones(tabla, clasificanPorGrupo = 0) {
               ${renderEstadoPosicion(row)}
             </div>
           </td>
-          <td>${Number(est.partidos_jugados || 0)}</td>
-          <td>${Number(est.partidos_ganados || 0)}</td>
-          <td>${Number(est.partidos_empatados || 0)}</td>
-          <td>${Number(est.partidos_perdidos || 0)}</td>
-          <td>${Number(est.goles_favor || 0)}</td>
-          <td>${Number(est.goles_contra || 0)}</td>
-          <td>${Number(est.diferencia_goles || 0)}</td>
-          <td><strong>${Number(row.puntos || 0)}</strong></td>
+          ${statsHtml}
         </tr>
       `;
     })
@@ -943,6 +949,7 @@ function escaparHtml(valor) {
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
 
 
 

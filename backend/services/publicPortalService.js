@@ -92,6 +92,8 @@ function normalizarCategoriasResumen(resumen) {
       id: normalizarEntero(item?.id),
       nombre: item?.nombre || null,
       total_equipos: normalizarEntero(item?.total_equipos) || 0,
+      modalidad: item?.modalidad || null,
+      metodo_competencia: item?.metodo_competencia || "grupos",
     }))
     .filter((item) => item.id !== null && item.nombre);
 }
@@ -137,7 +139,9 @@ async function obtenerResumenCategoriasCampeonatos(ids = []) {
           json_build_object(
             'id', e.id,
             'nombre', e.nombre,
-            'total_equipos', COALESCE(eq.total_equipos, 0)
+            'total_equipos', COALESCE(eq.total_equipos, 0),
+            'modalidad', e.modalidad,
+            'metodo_competencia', e.metodo_competencia
           )
           ORDER BY COALESCE(e.numero_campeonato, 999999), e.id
         ),

@@ -90,8 +90,84 @@ function normalizarCategoriasResumenPortal(resumen) {
       id: Number.parseInt(item?.id, 10),
       nombre: limpiarCodigoTorneo(item?.nombre || ""),
       total_equipos: Number.parseInt(item?.total_equipos, 10) || 0,
+      modalidad: item?.modalidad || null,
+      metodo_competencia: item?.metodo_competencia || "grupos",
     }))
     .filter((item) => Number.isFinite(item.id) && item.id > 0 && item.nombre);
+}
+
+function capitalizarPortal(texto = "") {
+  const clean = String(texto || "").trim();
+  if (!clean) return "";
+  return `${clean.charAt(0).toUpperCase()}${clean.slice(1)}`;
+}
+
+function humanizarTokenPortal(valor = "") {
+  return String(valor || "")
+    .trim()
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function formatearModalidadPortal(valor = "") {
+  const raw = String(valor || "").trim().toLowerCase();
+  if (!raw) return "";
+  const alias = {
+    weekend: "Fin de semana",
+    fin_de_semana: "Fin de semana",
+    semanal: "Semanal",
+    diario: "Diario",
+  };
+  return alias[raw] || capitalizarPortal(humanizarTokenPortal(raw));
+}
+
+function formatearFormatoCompetenciaPortal(valor = "") {
+  const raw = String(valor || "").trim().toLowerCase();
+  if (!raw) return "";
+  const alias = {
+    grupos: "Grupos",
+    liga: "Liga",
+    eliminatoria: "Eliminatoria",
+    todos_contra_todos: "Todos contra todos",
+    grupos_y_eliminacion: "Grupos y eliminacion",
+  };
+  return alias[raw] || capitalizarPortal(humanizarTokenPortal(raw));
+}
+
+function renderMetaCardPortal(torneo) {
+  const categorias = normalizarCategoriasResumenPortal(torneo?.categorias_resumen);
+  if (!categorias.length) return "";
+
+  const modalidades = [...new Set(categorias.map((item) => formatearModalidadPortal(item.modalidad)).filter(Boolean))];
+  const formatos = [
+    ...new Set(categorias.map((item) => formatearFormatoCompetenciaPortal(item.metodo_competencia)).filter(Boolean)),
+  ];
+  const resumen = [];
+  if (modalidades.length) resumen.push(`Modalidad: ${modalidades.join(" / ")}`);
+  if (formatos.length) resumen.push(`Formato: ${formatos.join(" / ")}`);
+  if (!resumen.length) return "";
+  return `<p class="portal-card-meta">${escPortal(resumen.join(" · "))}</p>`;
+}
+
+function obtenerMotivoEliminacionPortal(row = {}) {
+  if (row.eliminado_manual === true) {
+    return row.motivo_eliminacion_label || "Eliminado manualmente";
+  }
+  const noPresentaciones = Number(row.no_presentaciones || 0);
+  if (row.eliminado_automatico === true && noPresentaciones > 0) {
+    return `${noPresentaciones} no presentaciones`;
+  }
+  return row.eliminado_competencia === true ? "Equipo eliminado" : "";
+}
+
+function renderCeldaEliminadoPortal(row = {}, classes = "") {
+  const motivo = obtenerMotivoEliminacionPortal(row);
+  const className = [classes, "portal-tabla-posicion-eliminado-main"].filter(Boolean).join(" ");
+  return `
+    <td class="${className}" colspan="8" ${motivo ? `title="${escPortal(motivo)}"` : ""}>
+      <div class="portal-tabla-posicion-eliminado-overlay">ELIMINADO</div>
+    </td>
+  `;
 }
 
 function construirUrlPortalCampeonato(campeonatoId, options = {}) {
@@ -152,8 +228,11 @@ function renderCardTorneoPrincipal(torneo) {
         <span class="badge-estado estado-${estado}">${labelEstado}</span>
         <h3>${nombre}</h3>
         <p class="portal-card-date">Fecha: ${fechaInicio} - ${fechaFin}</p>
+        ${renderMetaCardPortal(torneo)}
         ${renderCategoriasResumenCard(torneo)}
-        <a class="portal-card-btn" href="${escPortal(href)}" onclick="event.stopPropagation()">Ver torneo</a>
+        <div class="portal-card-actions">
+          <a class="portal-card-btn" href="${escPortal(href)}" onclick="event.stopPropagation()">Ver torneo</a>
+        </div>
       </div>
     </article>
   `;
@@ -558,6 +637,18 @@ function renderTablasPortal(tablas = []) {
           const classes = [fuera ? "portal-tabla-posicion-fuera" : "", eliminado ? "portal-tabla-posicion-eliminado" : ""]
             .filter(Boolean)
             .join(" ");
+          const statsHtml = eliminado
+            ? renderCeldaEliminadoPortal(row, classes)
+            : `
+                <td class="${classes}">${est.partidos_jugados || 0}</td>
+                <td class="${classes}">${est.partidos_ganados || 0}</td>
+                <td class="${classes}">${est.partidos_empatados || 0}</td>
+                <td class="${classes}">${est.partidos_perdidos || 0}</td>
+                <td class="${classes}">${est.goles_favor || 0}</td>
+                <td class="${classes}">${est.goles_contra || 0}</td>
+                <td class="${classes}">${(est.goles_favor || 0) - (est.goles_contra || 0)}</td>
+                <td class="${classes}"><strong>${row.puntos || 0}</strong></td>
+              `;
           return `<tr>
             <td class="${classes}">${row.posicion || index + 1}</td>
             <td class="${classes}">
@@ -566,14 +657,7 @@ function renderTablasPortal(tablas = []) {
                 ${renderEstadoPosicionPortal(row)}
               </div>
             </td>
-            <td class="${classes}">${est.partidos_jugados || 0}</td>
-            <td class="${classes}">${est.partidos_ganados || 0}</td>
-            <td class="${classes}">${est.partidos_empatados || 0}</td>
-            <td class="${classes}">${est.partidos_perdidos || 0}</td>
-            <td class="${classes}">${est.goles_favor || 0}</td>
-            <td class="${classes}">${est.goles_contra || 0}</td>
-            <td class="${classes}">${(est.goles_favor || 0) - (est.goles_contra || 0)}</td>
-            <td class="${classes}"><strong>${row.puntos || 0}</strong></td>
+            ${statsHtml}
           </tr>`;
         })
         .join("");
@@ -611,28 +695,6 @@ function renderTablasPortal(tablas = []) {
 
 function renderEstadoPosicionPortal(row = {}) {
   const noPresentaciones = Number(row.no_presentaciones || 0);
-  const eliminadoManual = row.eliminado_manual === true;
-  const eliminadoAutomatico = row.eliminado_automatico === true;
-  const motivoManual = escPortal(row.motivo_eliminacion_label || "Eliminado manualmente");
-
-  if (eliminadoAutomatico || eliminadoManual) {
-    const leyenda = eliminadoManual
-      ? motivoManual
-      : noPresentaciones >= 2
-        ? `${noPresentaciones}da no presentación`
-        : "Eliminado";
-
-    return `
-      <div class="portal-tabla-posicion-status">
-        <span class="portal-tabla-posicion-banner is-eliminado">${leyenda}</span>
-        ${
-          eliminadoAutomatico
-            ? `<span class="portal-tabla-posicion-chip is-neutral">NP ${noPresentaciones}</span>`
-            : ""
-        }
-      </div>
-    `;
-  }
 
   if (noPresentaciones > 0) {
     return `
@@ -902,8 +964,8 @@ function renderFairPlayPortal(fairPlay = []) {
 
 function renderResumenCategoriaPortal(evento, data) {
   const resumen = [
-    evento?.modalidad ? `Modalidad: ${evento.modalidad}` : "",
-    evento?.metodo_competencia ? `Formato: ${String(evento.metodo_competencia).replace(/_/g, " ")}` : "",
+    evento?.modalidad ? `Modalidad: ${formatearModalidadPortal(evento.modalidad)}` : "",
+    evento?.metodo_competencia ? `Formato: ${formatearFormatoCompetenciaPortal(evento.metodo_competencia)}` : "",
     `Equipos: ${Number(evento?.total_equipos || 0)}`,
     Number(evento?.total_grupos || 0) > 0 ? `Grupos: ${Number(evento.total_grupos || 0)}` : "",
     `Partidos: ${Number(evento?.partidos_finalizados || 0)}/${Number(evento?.total_partidos || 0)}`,
@@ -1005,6 +1067,15 @@ function renderDetalleCampeonatoPortal(campeonato, eventosData = []) {
           .join("")}
       </div>
       ${eventosData.map((item, index) => renderCategoriaPanelPortal(item, index)).join("")}
+      <section id="portal-detail-auspiciantes-${campeonato?.id}" class="portal-detail-sponsors" hidden>
+        <div class="portal-detail-sponsors-head">
+          <h3>Auspiciantes</h3>
+          <p id="portal-detail-auspiciantes-description-${campeonato?.id}">Marcas que respaldan ${escPortal(nombre)}.</p>
+        </div>
+        <div class="ltc-sponsors-strip portal-detail-sponsors-strip" aria-label="Auspiciantes del campeonato">
+          <div id="portal-detail-auspiciantes-track-${campeonato?.id}" class="ltc-sponsors-track portal-detail-sponsors-track"></div>
+        </div>
+      </section>
     </div>
   `;
 }
@@ -1030,12 +1101,22 @@ async function cargarAuspiciantesCampeonatoPublico(campeonatoId, campeonatoNombr
   const section = document.getElementById("portal-auspiciantes-section");
   const track = document.getElementById("portal-auspiciantes-track");
   const description = document.getElementById("portal-auspiciantes-description");
-  if (!section || !track) return;
+  const detailSection = document.getElementById(`portal-detail-auspiciantes-${campeonatoId}`);
+  const detailTrack = document.getElementById(`portal-detail-auspiciantes-track-${campeonatoId}`);
+  const detailDescription = document.getElementById(`portal-detail-auspiciantes-description-${campeonatoId}`);
+  if (!section && !detailSection) return;
 
-  section.hidden = true;
-  track.innerHTML = "";
+  if (section) section.hidden = true;
+  if (track) track.innerHTML = "";
+  if (detailSection) detailSection.hidden = true;
+  if (detailTrack) detailTrack.innerHTML = "";
   if (description) {
     description.textContent = campeonatoNombre
+      ? `Marcas que respaldan ${campeonatoNombre}.`
+      : "Marcas que respaldan esta competencia.";
+  }
+  if (detailDescription) {
+    detailDescription.textContent = campeonatoNombre
       ? `Marcas que respaldan ${campeonatoNombre}.`
       : "Marcas que respaldan esta competencia.";
   }
@@ -1051,8 +1132,13 @@ async function cargarAuspiciantesCampeonatoPublico(campeonatoId, campeonatoNombr
         })();
     const auspiciantes = Array.isArray(data?.auspiciantes) ? data.auspiciantes : [];
     if (!auspiciantes.length) return;
-    track.innerHTML = renderTrackAuspiciantesPortal(auspiciantes);
-    section.hidden = false;
+    const html = renderTrackAuspiciantesPortal(auspiciantes);
+    if (detailTrack) detailTrack.innerHTML = html;
+    if (detailSection) detailSection.hidden = false;
+    if (!detailSection) {
+      if (track) track.innerHTML = html;
+      if (section) section.hidden = false;
+    }
   } catch (error) {
     console.error(error);
   }
@@ -1261,5 +1347,3 @@ document.addEventListener("DOMContentLoaded", async () => {
     portalVerCampeonato(contexto.campeonatoId, { eventoId: contexto.eventoId });
   }
 });
-
-

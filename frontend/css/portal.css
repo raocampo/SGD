@@ -410,14 +410,17 @@ body.ltc-landing {
   padding: 0.9rem 0.95rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.28rem;
   flex: 1;
+  align-items: center;
+  text-align: center;
 }
 
 .portal-card-body h3 {
   margin: 0.48rem 0 0.3rem;
   font-size: 1.02rem;
   color: #2f3a4a;
+  text-align: center;
 }
 
 .portal-card-date {
@@ -426,11 +429,18 @@ body.ltc-landing {
   font-size: 0.86rem;
 }
 
+.portal-card-meta {
+  margin: 0;
+  color: #36506c;
+  font-size: 0.83rem;
+}
+
 .portal-card-categorias {
   display: flex;
   flex-wrap: wrap;
   gap: 0.42rem;
   margin-top: 0.5rem;
+  justify-content: center;
 }
 
 .portal-card-categoria-chip {
@@ -451,16 +461,29 @@ body.ltc-landing {
 }
 
 .portal-card-btn {
-  margin-top: auto;
+  margin-top: 0;
   border: 1px solid #2f5e96;
   border-radius: 8px;
   background: #2f5e96;
   color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: min(100%, 10.5rem);
   font-weight: 700;
   font-size: 0.8rem;
   padding: 0.52rem 0.78rem;
   cursor: pointer;
+  text-decoration: none;
   transition: background-color 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
+}
+
+.portal-card-actions {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 0.4rem;
+  display: flex;
+  justify-content: center;
 }
 
 .portal-card-btn:hover:not(:disabled) {
@@ -538,6 +561,21 @@ body.ltc-landing {
 .portal-detail-shell {
   display: grid;
   gap: 1rem;
+}
+
+.portal-detail-sponsors {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.portal-detail-sponsors-head h3 {
+  margin: 0;
+  color: #203246;
+}
+
+.portal-detail-sponsors-head p {
+  margin: 0.2rem 0 0;
+  color: #57708d;
 }
 
 .portal-category-tabs,
@@ -641,14 +679,15 @@ body.ltc-landing {
 }
 
 .portal-tabla-posicion-equipo {
-  display: grid;
-  gap: 0.28rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
 }
 
 .portal-tabla-posicion-status {
-  display: grid;
-  gap: 0.32rem;
-  justify-items: start;
+  display: inline-flex;
+  align-items: center;
 }
 
 .portal-tabla-posicion-banner {
@@ -692,6 +731,33 @@ body.ltc-landing {
   background: #7f1d1d;
   color: #fff7ed;
   border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.portal-tabla-posiciones td.portal-tabla-posicion-eliminado-main {
+  padding: 0;
+  min-width: 16rem;
+}
+
+.portal-tabla-posicion-eliminado-overlay {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.95rem 0.8rem;
+  background:
+    linear-gradient(90deg, rgba(127, 29, 29, 0.97), rgba(153, 27, 27, 0.93)),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.04) 0,
+      rgba(255, 255, 255, 0.04) 10px,
+      rgba(255, 255, 255, 0.01) 10px,
+      rgba(255, 255, 255, 0.01) 20px
+    );
+  color: #fee2e2;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  font-weight: 900;
+  letter-spacing: clamp(0.16rem, 0.45vw, 0.48rem);
+  text-transform: uppercase;
 }
 
 .portal-stat-block + .portal-stat-block {
