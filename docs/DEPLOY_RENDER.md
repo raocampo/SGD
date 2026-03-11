@@ -113,6 +113,15 @@ Checklist minima:
 4. portal publico mostrando torneos
 5. modulo financiero y planillaje leyendo datos reales
 
+Estado actual del despliegue de referencia:
+- servicio operativo validado: `https://ltyc.onrender.com`
+- checks completados:
+  - `/salud`
+  - `/testDb`
+- pendiente operativo:
+  - restaurar/cargar la BD definitiva del entorno de oficina,
+  - copiar `uploads/` reales al disco persistente.
+
 ## Uploads estables en Render
 El backend ya soporta `UPLOADS_DIR`.
 
@@ -172,6 +181,12 @@ Por tanto, el objetivo final es:
    - `https://tu-servicio.onrender.com/uploads/campeonatos/...`
    - `https://tu-servicio.onrender.com/uploads/equipos/...`
    - `https://tu-servicio.onrender.com/uploads/jugadores/...`
+   - `https://tu-servicio.onrender.com/uploads/auspiciantes/...`
+
+## Nota sobre auspiciantes
+El portal publico ya tiene fallback por filesystem para auspiciantes. Eso significa:
+- si la tabla `campeonato_auspiciantes` esta vacia, el portal intentara mostrar logos desde `uploads/auspiciantes`.
+- en Render, ese fallback solo funcionara si esos archivos fueron copiados al volumen persistente.
 
 ## Recomendacion de mediano plazo
 Para operacion real a escala, conviene evaluar almacenamiento externo:

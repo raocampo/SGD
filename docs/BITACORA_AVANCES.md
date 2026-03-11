@@ -14,6 +14,33 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-10
+- Render ya quedo operativo en produccion inicial:
+  - servicio `https://ltyc.onrender.com` en estado `Live`,
+  - verificados endpoints:
+    - `/salud`,
+    - `/testDb`.
+  - favicon LT&C visible en navegador.
+- Sorteo endurecido para no romper integridad:
+  - `backend/models/Grupo.js` ya impide reiniciar/eliminar grupos si la categoria tiene:
+    - partidos programados,
+    - eliminatorias generadas.
+  - `backend/controllers/grupoController.js` devuelve error de negocio controlado (`400`) en vez de fallo FK/`500`.
+- Portal publico refinado para operacion real:
+  - `frontend/js/portal.js` ya lista todas las cards reales visibles del organizador, incluyendo torneos proximos creados en el sistema.
+  - se eliminan cards estaticas/de relleno de proximos torneos.
+  - las cards ahora muestran:
+    - nombre del organizador sobre el nombre del campeonato,
+    - fecha consistente aun cuando falte `fecha_fin`.
+  - la palabra `ELIMINADO` en tablas publicas/internas se redujo visualmente para no endurecer tanto la fila.
+- Auspiciantes del portal compartible reforzados:
+  - `backend/services/publicPortalService.js` ya usa fallback por filesystem (`/uploads/auspiciantes`) cuando no existen relaciones cargadas en BD.
+  - pendiente operativo en Render:
+    - copiar tambien los archivos reales de `uploads/` al almacenamiento persistente para que el portal muestre imagenes reales.
+- Proteccion visual de rutas privadas:
+  - `frontend/js/core.js` ahora oculta el `body` de paginas privadas mientras se valida la sesion/rol.
+  - objetivo:
+    - evitar que se vea contenido interno durante la navegacion directa antes del redirect/autorizacion.
+
 - Portal publico deportivo ajustado para operacion real:
   - `backend/services/publicPortalService.js` ahora expone solo campeonatos creados por usuarios con rol `organizador`.
   - quedan excluidos del portal general:

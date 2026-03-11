@@ -15,7 +15,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
 | 3.7 Resultados/Tablas/Clasificados | Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play) con selector de campeonato en UI y guardado explícito del formato de clasificación (`metodo_competencia` + `clasificados_por_grupo`). Planillaje ya alimenta resultado + estadisticas. Clasificacion por grupo parametrizable; equipos eliminados ya bajan al final aunque tengan mayor puntaje y los fuera de cupo quedan diferenciados visualmente en naranja. Pendiente refinamiento de desempates avanzados. |
 | 3.8 Eliminatorias | Alto | Configuracion por categoria (`metodo_competencia`) y generacion automatica de llave integrada en `partidos`; soporte de siembra/byes/progresion de ganador; UI dedicada de llaves en `eliminatorias.html`; playoff desde grupos con `clasificados por grupo`, `cruces de grupos` o `tabla unica`; configuracion compartida con `tablas.html`; nueva clasificacion manual sugerida por grupo con candidatos externos del evento cuando el grupo queda incompleto, y exclusion de equipos eliminados manualmente. Pendiente validacion operativa real y reglas avanzadas de desempate. |
-| 4 Portal publico | Alto | Portal operativo con vistas publicas deportivas e institucionales; el listado general ya expone solo campeonatos creados por `organizadores` (no `administrador`/QA), la landing publica de organizador ya no mezcla torneos por alias de texto, y el detalle del campeonato muestra tabs por categoria con subtabs de `tabla de posiciones`, `goleadores`, `fair play`, `tarjetas amarillas`, `tarjetas rojas` y `playoff`. Las tablas de posiciones publicas ya salen en grid `2 columnas` desktop / `1 columna` movil, replican estados competitivos (fuera de clasificacion / eliminado) y excluyen eliminados del ranking de `Fair Play`. |
+| 4 Portal publico | Alto | Portal operativo con vistas publicas deportivas e institucionales; el listado general ya expone solo campeonatos creados por `organizadores` (no `administrador`/QA), la landing publica de organizador ya no mezcla torneos por alias de texto y ya muestra todas las cards reales visibles del organizador, incluidos torneos proximos. El detalle del campeonato muestra tabs por categoria con subtabs de `tabla de posiciones`, `goleadores`, `fair play`, `tarjetas amarillas`, `tarjetas rojas` y `playoff`. Las tablas de posiciones publicas ya salen en grid `2 columnas` desktop / `1 columna` movil, replican estados competitivos (fuera de clasificacion / eliminado) y excluyen eliminados del ranking de `Fair Play`. |
 | 5 Roles y permisos (RBAC) | Medio-Alto | Autenticacion operativa; fase 1 de separacion de dominios iniciada con rol `operador` para CMS publico; rol `jugador` agregado para consulta de equipo en modo solo lectura; noticias, galeria, contenido y contacto institucional fuera del alcance de organizadores; smokes RBAC (`npm run smoke:roles`, `npm run smoke:matrix`, `npm run smoke:frontend`) operativos para validacion rapida por rol. Se agrega bandera `debe_cambiar_password`, cambio obligatorio de clave al primer ingreso para cuentas creadas por admin/organizador y accion de cambio de contraseña propio desde UI. Las cuentas internas ya pueden autenticarse con `correo o username`; la recuperacion de contraseña sigue limitada a cuentas con correo. |
 | 6 Extras profesionales | Parcial | Exportaciones (PNG/PDF/XLSX) en modulos clave; pendiente notificaciones, auditoria completa y reportes ejecutivos. |
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR, resumen ejecutivo por campeonato e impresion dedicadas; politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). Pendiente cierre de reglas avanzadas y reporteria ejecutiva adicional. |
@@ -25,6 +25,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Render:
   - backend y frontend ya operan por mismo origen en un solo servicio Node.
   - la conexion a PostgreSQL remoto por `DATABASE_URL` y `DATABASE_SSL` ya fue validada en `/salud` y `/testDb`.
+  - servicio activo verificado: `https://ltyc.onrender.com`.
 - Uploads:
   - el backend ya soporta `UPLOADS_DIR` para desacoplar logos/fotos/documentos del contenedor efimero.
   - `render.yaml` queda preparado para usar disco persistente en `/var/data` con `UPLOADS_DIR=/var/data/uploads`.
@@ -123,6 +124,10 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Quedan fuera del portal general:
   - campeonatos creados por `administrador`,
   - campeonatos de QA ligados a cuentas administrativas.
+- La landing publica del organizador ya muestra:
+  - cards reales visibles del organizador,
+  - torneos proximos creados desde el sistema,
+  - nombre del organizador sobre el nombre del campeonato.
 - Los endpoints publicos de:
   - `goleadores`,
   - `tarjetas`,
@@ -140,6 +145,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - tabs/subtabs deportivas,
   - auspiciantes del campeonato,
   - footer institucional.
+- El endpoint publico de auspiciantes ya soporta fallback por filesystem cuando no existen relaciones cargadas en BD.
 - Endpoint publico agregado para auspiciantes:
   - `/api/public/campeonatos/:campeonato_id/auspiciantes`
 
@@ -208,6 +214,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - desde card de plan -> registro con datos de organizacion (`nombre organizacion` obligatorio, `logo` opcional, `lema` opcional),
   - paso a formulario/pagina de cobro,
   - integracion con pasarela de pago y confirmacion de activacion de plan.
+- Revisar si la proteccion visual de rutas privadas debe extenderse con skeleton/spinner para evitar pantalla en blanco mientras se valida sesion.
 
 5. Eliminatorias:
 - Validar con datos reales la nueva clasificacion manual sugerida, la promocion automatica de elegibles y el reemplazo manual de clasificados antes de cierre definitivo del modulo.
@@ -232,6 +239,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Migrar/cargar auspiciantes por campeonato en tabla `campeonato_auspiciantes` para no depender de fallback por filesystem.
 - Mantener consistencia entre logos en `uploads` y registros de BD (nombre, orden, activo, campeonato).
 - Validar visualmente la nueva seccion publica de auspiciantes por campeonato en `portal.html?campeonato=<id>`.
+- En Render, copiar el contenido real de `uploads/auspiciantes` al almacenamiento persistente para que el fallback muestre logos en produccion.
 
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`

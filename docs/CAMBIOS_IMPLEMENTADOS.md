@@ -8,6 +8,28 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 ---
 
 ## 2026-03-10 - Preparacion de despliegue + portal publico por mismo origen
+- Render:
+  - servicio `https://ltyc.onrender.com` desplegado y en estado `Live`,
+  - verificacion tecnica inicial completada en:
+    - `/salud`,
+    - `/testDb`.
+  - favicon LT&C visible en el navegador.
+- Sorteo:
+  - `backend/models/Grupo.js` impide reiniciar el sorteo si la categoria ya tiene:
+    - partidos programados,
+    - eliminatorias generadas.
+  - `backend/controllers/grupoController.js` devuelve error controlado de negocio en lugar de excepcion FK sobre `grupos`.
+- Portal publico:
+  - `frontend/js/portal.js` ya renderiza todas las cards reales visibles del organizador, incluyendo torneos proximos creados desde el sistema.
+  - se eliminan las cards estaticas/de relleno de "proximo torneo".
+  - las cards ahora muestran el nombre del organizador por encima del campeonato.
+  - el texto `ELIMINADO` en tablas publicas/internas se reduce para suavizar la fila visualmente.
+- Auspiciantes:
+  - `backend/services/publicPortalService.js` incorpora fallback desde `/uploads/auspiciantes` si no existen registros vinculados en BD.
+  - esto alinea el portal publico con el comportamiento ya aplicado en grupos, fixture y eliminatorias.
+- Seguridad visual:
+  - `frontend/js/core.js` oculta el contenido de paginas privadas mientras se valida sesion/rol para evitar exposicion visual transitoria al navegar directo.
+
 - Portal publico endurecido para competiciones reales:
   - `backend/services/publicPortalService.js` filtra campeonatos publicos solo por `creador_usuario_id` cuyo usuario tenga rol `organizador`.
   - quedan fuera del portal general los campeonatos creados por `administrador` y los torneos QA asociados a cuentas administrativas.
