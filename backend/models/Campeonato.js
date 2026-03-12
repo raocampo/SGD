@@ -1,4 +1,5 @@
 const pool = require("../config/database");
+const OrganizadorPortal = require("./OrganizadorPortal");
 
 // Estados del torneo según propuesta SGD
 const ESTADOS_TORNEO = ["borrador", "inscripcion", "en_curso", "finalizado", "archivado"];
@@ -227,7 +228,16 @@ class Campeonato {
   // READ - Obtener todos los campeonatos
   static async obtenerTodos() {
     await this.asegurarColumnasDocumentos();
-    const query = "SELECT * FROM campeonatos ORDER BY created_at DESC";
+    await OrganizadorPortal.asegurarEsquema();
+    const query = `
+      SELECT
+        c.*,
+        opc.logo_url AS organizador_logo_url
+      FROM campeonatos c
+      LEFT JOIN organizador_portal_config opc
+        ON opc.usuario_id = c.creador_usuario_id
+      ORDER BY c.created_at DESC
+    `;
     const result = await pool.query(query);
     return result.rows;
   }
@@ -235,7 +245,17 @@ class Campeonato {
   // READ - Obtener campeonato por ID
   static async obtenerPorId(id) {
     await this.asegurarColumnasDocumentos();
-    const query = "SELECT * FROM campeonatos WHERE id = $1";
+    await OrganizadorPortal.asegurarEsquema();
+    const query = `
+      SELECT
+        c.*,
+        opc.logo_url AS organizador_logo_url
+      FROM campeonatos c
+      LEFT JOIN organizador_portal_config opc
+        ON opc.usuario_id = c.creador_usuario_id
+      WHERE c.id = $1
+      LIMIT 1
+    `;
     const result = await pool.query(query, [id]);
     return result.rows[0];
   }

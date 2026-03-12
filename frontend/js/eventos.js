@@ -55,6 +55,35 @@ function normalizarClasificadosPorGrupo(valor, fallback = null) {
   return n;
 }
 
+function normalizarColorHexEvento(valor, fallback = "") {
+  const raw = String(valor || "").trim();
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) {
+    if (raw.length === 4) {
+      return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toUpperCase();
+    }
+    return raw.toUpperCase();
+  }
+  return fallback;
+}
+
+function obtenerColoresCarnetCampeonatoSeleccionado() {
+  const camp = campeonatosEventosCache.find((item) => Number(item.id) === Number(campeonatoSeleccionado));
+  return {
+    primario: normalizarColorHexEvento(camp?.color_primario, "#FACC15"),
+    secundario: normalizarColorHexEvento(camp?.color_secundario, "#111827"),
+    acento: normalizarColorHexEvento(camp?.color_acento, "#22C55E"),
+  };
+}
+
+function formatearCarnetEstilo(valor) {
+  const key = String(valor || "").toLowerCase();
+  if (key === "franja") return "Franja diagonal";
+  if (key === "marco") return "Marco deportivo";
+  if (key === "minimal") return "Minimal";
+  if (key === "clasico") return "Clásico";
+  return "Hereda campeonato";
+}
+
 function formatearClasificadosPorGrupo(evento = {}) {
   const metodo = normalizarMetodoCompetencia(evento?.metodo_competencia) || "grupos";
   if (!["grupos", "mixto"].includes(metodo)) return "No aplica";
@@ -122,6 +151,13 @@ function aplicarFechasDesdeCampeonato() {
   const fechaFin = formatearFechaSolo(camp.fecha_fin);
   inicio.value = fechaInicio === "-" ? "" : fechaInicio;
   fin.value = fechaFin === "-" ? "" : fechaFin;
+  const colores = obtenerColoresCarnetCampeonatoSeleccionado();
+  const colorPrimario = document.getElementById("evt-carnet-color-primario");
+  const colorSecundario = document.getElementById("evt-carnet-color-secundario");
+  const colorAcento = document.getElementById("evt-carnet-color-acento");
+  if (colorPrimario) colorPrimario.value = colores.primario;
+  if (colorSecundario) colorSecundario.value = colores.secundario;
+  if (colorAcento) colorAcento.value = colores.acento;
 }
 
 function actualizarBotonesVistaEventos() {
@@ -272,6 +308,7 @@ function renderEventoCard(e) {
         <p><strong>Llave elim.:</strong> ${escapeHtml(e.eliminatoria_equipos || "Automática")}</p>
         <p><strong>Costo inscripción:</strong> ${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</p>
         <p><strong>Bloqueo morosos:</strong> ${escapeHtml(formatearBloqueoMorososEvento(e))}</p>
+        <p><strong>Diseño carné:</strong> ${escapeHtml(formatearCarnetEstilo(e.carnet_estilo))}</p>
         <p><strong>Fechas:</strong> ${escapeHtml(formatearFechaSolo(e.fecha_inicio))} - ${escapeHtml(formatearFechaSolo(e.fecha_fin))}</p>
       </div>
       <div class="campeonato-actions">
@@ -303,6 +340,7 @@ function renderTablaEventos(eventos) {
           <td>${escapeHtml(e.eliminatoria_equipos || "Auto")}</td>
           <td>${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</td>
           <td>${escapeHtml(formatearBloqueoMorososEvento(e))}</td>
+          <td>${escapeHtml(formatearCarnetEstilo(e.carnet_estilo))}</td>
           <td>${escapeHtml(formatearFechaSolo(e.fecha_inicio))}</td>
           <td>${escapeHtml(formatearFechaSolo(e.fecha_fin))}</td>
           <td class="list-table-actions">
@@ -334,6 +372,7 @@ function renderTablaEventos(eventos) {
             <th>Llave elim.</th>
             <th>Costo inscripción</th>
             <th>Bloqueo morosos</th>
+            <th>Diseño carné</th>
             <th>Fecha inicio</th>
             <th>Fecha fin</th>
             <th>Acciones</th>
@@ -375,6 +414,25 @@ async function crearEvento() {
     document.getElementById("evt-bloqueo-morosidad-monto")?.value,
     null
   );
+  const carnet_estilo = String(document.getElementById("evt-carnet-estilo")?.value || "").trim() || null;
+  const carnet_color_primario = normalizarColorHexEvento(
+    document.getElementById("evt-carnet-color-primario")?.value,
+    ""
+  ) || null;
+  const carnet_color_secundario = normalizarColorHexEvento(
+    document.getElementById("evt-carnet-color-secundario")?.value,
+    ""
+  ) || null;
+  const carnet_color_acento = normalizarColorHexEvento(
+    document.getElementById("evt-carnet-color-acento")?.value,
+    ""
+  ) || null;
+  const coloresCamp = obtenerColoresCarnetCampeonatoSeleccionado();
+  const personalizaCarnetCategoria =
+    Boolean(carnet_estilo) ||
+    carnet_color_primario !== coloresCamp.primario ||
+    carnet_color_secundario !== coloresCamp.secundario ||
+    carnet_color_acento !== coloresCamp.acento;
   const metodo_competencia = normalizarMetodoCompetencia(metodoCompetencia);
   if (!metodo_competencia) {
     mostrarNotificacion("Método de competencia inválido.", "warning");
@@ -407,6 +465,10 @@ async function crearEvento() {
       costo_inscripcion,
       bloquear_morosos: bloqueoMorosos,
       bloqueo_morosidad_monto: bloqueoMorosidadMonto,
+      carnet_estilo: personalizaCarnetCategoria ? carnet_estilo : null,
+      carnet_color_primario: personalizaCarnetCategoria ? carnet_color_primario : null,
+      carnet_color_secundario: personalizaCarnetCategoria ? carnet_color_secundario : null,
+      carnet_color_acento: personalizaCarnetCategoria ? carnet_color_acento : null,
     });
     mostrarNotificacion("Categoría creada", "success");
     document.getElementById("evt-nombre").value = "";
@@ -421,6 +483,15 @@ async function crearEvento() {
     const inputBloqMonto = document.getElementById("evt-bloqueo-morosidad-monto");
     if (selectBloqMorosos) selectBloqMorosos.value = "";
     if (inputBloqMonto) inputBloqMonto.value = "";
+    const selectCarnetEstilo = document.getElementById("evt-carnet-estilo");
+    const colorPrimario = document.getElementById("evt-carnet-color-primario");
+    const colorSecundario = document.getElementById("evt-carnet-color-secundario");
+    const colorAcento = document.getElementById("evt-carnet-color-acento");
+    const coloresCamp = obtenerColoresCarnetCampeonatoSeleccionado();
+    if (selectCarnetEstilo) selectCarnetEstilo.value = "";
+    if (colorPrimario) colorPrimario.value = coloresCamp.primario;
+    if (colorSecundario) colorSecundario.value = coloresCamp.secundario;
+    if (colorAcento) colorAcento.value = coloresCamp.acento;
     actualizarVisibilidadConfigEliminatoria();
     toggleFormularioCategoria(false);
     await cargarEventos();
@@ -466,6 +537,7 @@ async function editarEvento(id) {
         ? "activar"
         : "desactivar";
   const montoBloqueoActual = normalizarCostoInscripcion(evento?.bloqueo_morosidad_monto, null);
+  const coloresCamp = obtenerColoresCarnetCampeonatoSeleccionado();
   const form = await window.mostrarFormularioModal({
     titulo: "Editar categoría",
     mensaje: "Actualiza la configuración deportiva y financiera de la categoría.",
@@ -559,6 +631,37 @@ async function editarEvento(id) {
             : "";
         },
       },
+      {
+        name: "carnet_estilo",
+        label: "Diseño de carné",
+        type: "select",
+        value: String(evento?.carnet_estilo || "").trim(),
+        options: [
+          { value: "", label: "Heredar campeonato" },
+          { value: "clasico", label: "Clásico" },
+          { value: "franja", label: "Franja diagonal" },
+          { value: "marco", label: "Marco deportivo" },
+          { value: "minimal", label: "Minimal" },
+        ],
+      },
+      {
+        name: "carnet_color_primario",
+        label: "Color primario carné",
+        type: "color",
+        value: normalizarColorHexEvento(evento?.carnet_color_primario, coloresCamp.primario),
+      },
+      {
+        name: "carnet_color_secundario",
+        label: "Color secundario carné",
+        type: "color",
+        value: normalizarColorHexEvento(evento?.carnet_color_secundario, coloresCamp.secundario),
+      },
+      {
+        name: "carnet_color_acento",
+        label: "Color acento carné",
+        type: "color",
+        value: normalizarColorHexEvento(evento?.carnet_color_acento, coloresCamp.acento),
+      },
     ],
   });
   if (!form) return;
@@ -614,6 +717,19 @@ async function editarEvento(id) {
       nuevoBloqueo === "heredar" ? null : nuevoBloqueo === "activar";
     payload.bloqueo_morosidad_monto =
       String(nuevoMontoBloqueoRaw || "").trim() === "" ? null : nuevoMontoBloqueo;
+    const nuevoEstiloCarnet = String(form.carnet_estilo || "").trim() || null;
+    const nuevoColorPrimarioCarnet = normalizarColorHexEvento(form.carnet_color_primario, "") || null;
+    const nuevoColorSecundarioCarnet = normalizarColorHexEvento(form.carnet_color_secundario, "") || null;
+    const nuevoColorAcentoCarnet = normalizarColorHexEvento(form.carnet_color_acento, "") || null;
+    const personalizaCarnet =
+      Boolean(nuevoEstiloCarnet) ||
+      nuevoColorPrimarioCarnet !== coloresCamp.primario ||
+      nuevoColorSecundarioCarnet !== coloresCamp.secundario ||
+      nuevoColorAcentoCarnet !== coloresCamp.acento;
+    payload.carnet_estilo = personalizaCarnet ? nuevoEstiloCarnet : null;
+    payload.carnet_color_primario = personalizaCarnet ? nuevoColorPrimarioCarnet : null;
+    payload.carnet_color_secundario = personalizaCarnet ? nuevoColorSecundarioCarnet : null;
+    payload.carnet_color_acento = personalizaCarnet ? nuevoColorAcentoCarnet : null;
     await EventosAPI.actualizar(id, payload);
     mostrarNotificacion("Categoría actualizada", "success");
     await cargarEventos();
@@ -625,4 +741,3 @@ async function editarEvento(id) {
 
 window.cambiarVistaEventos = cambiarVistaEventos;
 window.toggleFormularioCategoria = toggleFormularioCategoria;
-

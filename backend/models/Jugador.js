@@ -21,12 +21,27 @@ class Jugador {
         return Number.isFinite(numero) && numero > 0 ? numero : null;
     }
 
+    static normalizarPosicionFoto(valor, fallback = 50) {
+        if (valor === undefined || valor === null || valor === "") return fallback;
+        const numero = Number.parseFloat(String(valor).replace(",", "."));
+        if (!Number.isFinite(numero)) return fallback;
+        return Math.max(0, Math.min(100, Number(numero.toFixed(2))));
+    }
+
     static async asegurarColumnasDocumentos() {
         if (this._columnasDocumentosAseguradas) return;
         await pool.query(`
             ALTER TABLE jugadores
             ADD COLUMN IF NOT EXISTS foto_cedula_url TEXT,
-            ADD COLUMN IF NOT EXISTS foto_carnet_url TEXT
+            ADD COLUMN IF NOT EXISTS foto_carnet_url TEXT,
+            ADD COLUMN IF NOT EXISTS foto_carnet_pos_x NUMERIC(5,2) DEFAULT 50,
+            ADD COLUMN IF NOT EXISTS foto_carnet_pos_y NUMERIC(5,2) DEFAULT 35
+        `);
+        await pool.query(`
+            UPDATE jugadores
+            SET
+              foto_carnet_pos_x = COALESCE(foto_carnet_pos_x, 50),
+              foto_carnet_pos_y = COALESCE(foto_carnet_pos_y, 35)
         `);
         this._columnasDocumentosAseguradas = true;
     }
@@ -105,11 +120,26 @@ class Jugador {
     }
     
     // CREATE - Crear nuevo jugador
-    static async crear(equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan = false, foto_cedula_url = null, foto_carnet_url = null) {
+    static async crear(
+        equipo_id,
+        nombre,
+        apellido,
+        cedidentidad,
+        fecha_nacimiento,
+        posicion,
+        numero_camiseta,
+        es_capitan = false,
+        foto_cedula_url = null,
+        foto_carnet_url = null,
+        foto_carnet_pos_x = 50,
+        foto_carnet_pos_y = 35
+    ) {
         await this.asegurarColumnasDocumentos();
         const cedulaNormalizada = this.normalizarCedidentidad(cedidentidad);
         const fechaNacimientoNormalizada = this.normalizarFechaNacimiento(fecha_nacimiento);
         const numeroCamisetaNormalizado = this.normalizarNumeroCamiseta(numero_camiseta);
+        const fotoCarnetPosX = this.normalizarPosicionFoto(foto_carnet_pos_x, 50);
+        const fotoCarnetPosY = this.normalizarPosicionFoto(foto_carnet_pos_y, 35);
 
         // Verificar límites de jugadores en el equipo
         const equipo = await this.obtenerEquipoConLimites(equipo_id);
@@ -164,8 +194,8 @@ class Jugador {
         // Crear jugador
         const insertQuery = `
             INSERT INTO jugadores 
-            (equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan, foto_cedula_url, foto_carnet_url) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+            (equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan, foto_cedula_url, foto_carnet_url, foto_carnet_pos_x, foto_carnet_pos_y) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
             RETURNING *
         `;
         const values = [
@@ -179,6 +209,8 @@ class Jugador {
             es_capitan,
             foto_cedula_url,
             foto_carnet_url,
+            fotoCarnetPosX,
+            fotoCarnetPosY,
         ];
         
         const result = await pool.query(insertQuery, values);
@@ -240,6 +272,12 @@ class Jugador {
         if (Object.prototype.hasOwnProperty.call(datos, "numero_camiseta")) {
             datos.numero_camiseta = this.normalizarNumeroCamiseta(datos.numero_camiseta);
         }
+        if (Object.prototype.hasOwnProperty.call(datos, "foto_carnet_pos_x")) {
+            datos.foto_carnet_pos_x = this.normalizarPosicionFoto(datos.foto_carnet_pos_x, 50);
+        }
+        if (Object.prototype.hasOwnProperty.call(datos, "foto_carnet_pos_y")) {
+            datos.foto_carnet_pos_y = this.normalizarPosicionFoto(datos.foto_carnet_pos_y, 35);
+        }
         // Si cambia equipo_id o cedidentidad, validar jugador único por campeonato
         if (datos.equipo_id) {
             const jugadorActual = await pool.query(
@@ -279,7 +317,8 @@ class Jugador {
         let contador = 1;
         const allowed = new Set([
             'equipo_id', 'nombre', 'apellido', 'cedidentidad', 'fecha_nacimiento',
-            'posicion', 'numero_camiseta', 'es_capitan', 'foto_cedula_url', 'foto_carnet_url'
+            'posicion', 'numero_camiseta', 'es_capitan', 'foto_cedula_url', 'foto_carnet_url',
+            'foto_carnet_pos_x', 'foto_carnet_pos_y'
         ]);
 
         for (const [key, value] of Object.entries(datos)) {
@@ -322,6 +361,39 @@ class Jugador {
         const query = 'UPDATE jugadores SET es_capitan = true WHERE id = $1 RETURNING *';
         const result = await pool.query(query, [jugador_id]);
         return result.rows[0];
+    }
+
+    static async buscarPerfilPorCedula(cedula) {
+        await this.asegurarColumnasDocumentos();
+        const cedulaNormalizada = this.normalizarCedidentidad(cedula);
+        if (!cedulaNormalizada) return null;
+
+        const query = `
+            SELECT
+              j.id,
+              j.nombre,
+              j.apellido,
+              j.cedidentidad,
+              j.fecha_nacimiento,
+              j.posicion,
+              j.numero_camiseta,
+              j.foto_cedula_url,
+              j.foto_carnet_url,
+              j.foto_carnet_pos_x,
+              j.foto_carnet_pos_y,
+              e.id AS equipo_id,
+              e.nombre AS equipo_nombre,
+              c.id AS campeonato_id,
+              c.nombre AS campeonato_nombre
+            FROM jugadores j
+            JOIN equipos e ON e.id = j.equipo_id
+            JOIN campeonatos c ON c.id = e.campeonato_id
+            WHERE j.cedidentidad = $1
+            ORDER BY j.id DESC
+            LIMIT 1
+        `;
+        const result = await pool.query(query, [cedulaNormalizada]);
+        return result.rows[0] || null;
     }
 }
 

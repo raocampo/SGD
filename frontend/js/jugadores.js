@@ -7,6 +7,14 @@ let eventoNombreActual = "";
 let equipoActual = null;
 let jugadorActualEnEdicion = null;
 let modoDirecto = false;
+let eventoCarnetMeta = {
+  carnet_estilo: "",
+  carnet_color_primario: "",
+  carnet_color_secundario: "",
+  carnet_color_acento: "",
+};
+let jugadorEncontradoPorCedula = null;
+let fotoCarnetPreviewTempUrl = "";
 
 let minJugadoresPorEquipo = null;
 let maxJugadoresPorEquipo = null;
@@ -22,6 +30,7 @@ let campeonatoMeta = {
   nombre: "",
   organizador: "",
   logo_url: "",
+  organizador_logo_url: "",
   carnet_fondo_url: "",
   color_primario: "#FACC15",
   color_secundario: "#111827",
@@ -110,7 +119,7 @@ function construirEstiloCarnet(meta = {}) {
   const primario = normalizarColorHex(meta.color_primario, "#FACC15");
   const secundario = normalizarColorHex(meta.color_secundario, "#111827");
   const acento = normalizarColorHex(meta.color_acento, "#22C55E");
-  const fondo = normalizarArchivoUrl(meta.carnet_fondo_url);
+  const fondo = normalizarArchivoUrl(meta.carnet_fondo_url || meta.organizador_logo_url || "");
   const variables = [
     `--carnet-primary:${primario}`,
     `--carnet-secondary:${secundario}`,
@@ -121,6 +130,30 @@ function construirEstiloCarnet(meta = {}) {
     `--carnet-watermark:${fondo ? `url("${escapeCssUrl(fondo)}")` : "none"}`,
   ];
   return variables.join("; ");
+}
+
+function normalizarPosicionPorcentaje(valor, fallback = 50) {
+  const numero = Number.parseFloat(String(valor ?? "").replace(",", "."));
+  if (!Number.isFinite(numero)) return fallback;
+  return Math.max(0, Math.min(100, Number(numero.toFixed(2))));
+}
+
+function obtenerMetaVisualCarnet() {
+  return {
+    ...campeonatoMeta,
+    color_primario: eventoCarnetMeta.carnet_color_primario || campeonatoMeta.color_primario,
+    color_secundario: eventoCarnetMeta.carnet_color_secundario || campeonatoMeta.color_secundario,
+    color_acento: eventoCarnetMeta.carnet_color_acento || campeonatoMeta.color_acento,
+    carnet_estilo: eventoCarnetMeta.carnet_estilo || "clasico",
+  };
+}
+
+function obtenerClaseEstiloCarnet(meta = {}) {
+  const estilo = String(meta.carnet_estilo || "clasico").trim().toLowerCase();
+  if (["franja", "marco", "minimal"].includes(estilo)) {
+    return `carnet-style-${estilo}`;
+  }
+  return "carnet-style-clasico";
 }
 
 function renderLinkDocumento(url, texto) {
@@ -424,16 +457,19 @@ function actualizarEstadoRequisitosEnModal(jugador = null) {
   const hintCarnet = document.getElementById("hint-foto-carnet");
   const prevCedula = document.getElementById("preview-foto-cedula-actual");
   const prevCarnet = document.getElementById("preview-foto-carnet-actual");
+  const fotoCedulaReferencia = jugador?.foto_cedula_url || jugadorEncontradoPorCedula?.foto_cedula_url || "";
+  const fotoCarnetReferencia = jugador?.foto_carnet_url || jugadorEncontradoPorCedula?.foto_carnet_url || "";
 
   if (!inputIdentidad || !inputCedula || !inputCarnet || !hintCedula || !hintCarnet) return;
+  aplicarModoCedulaEnFormulario();
 
   inputIdentidad.required = reqIdentidad;
-  inputCedula.required = reqCedula && !jugador?.foto_cedula_url;
-  inputCarnet.required = reqCarnet && (!jugador?.foto_carnet_url || eliminarCarnet);
+  inputCedula.required = reqCedula && !fotoCedulaReferencia;
+  inputCarnet.required = reqCarnet && (!fotoCarnetReferencia || eliminarCarnet);
 
   if (hintIdentidad) {
     hintIdentidad.textContent = reqIdentidad
-      ? "Requerida para este campeonato."
+      ? "Requerida para este campeonato. Empieza por la cédula y usa la búsqueda local si el jugador ya estuvo inscrito."
       : "Opcional para este campeonato.";
   }
   hintCedula.textContent = reqCedula
@@ -444,17 +480,22 @@ function actualizarEstadoRequisitosEnModal(jugador = null) {
     : "Opcional para este campeonato.";
 
   if (prevCedula) {
-    prevCedula.innerHTML = jugador?.foto_cedula_url
-      ? `Documento actual: ${renderLinkDocumento(jugador.foto_cedula_url, "Ver foto de cédula")}`
+    prevCedula.innerHTML = fotoCedulaReferencia
+      ? `Documento disponible: ${renderLinkDocumento(fotoCedulaReferencia, "Ver foto de cédula")}`
       : "";
   }
   if (prevCarnet) {
-    if (jugador?.foto_carnet_url && !eliminarCarnet) {
+    if (fotoCarnetReferencia && !eliminarCarnet) {
       prevCarnet.innerHTML = `
-        Documento actual: ${renderLinkDocumento(jugador.foto_carnet_url, "Ver foto carné")}
+        Documento disponible: ${renderLinkDocumento(fotoCarnetReferencia, "Ver foto carné")}
+        ${
+          jugador?.foto_carnet_url
+            ? `
         <button type="button" class="btn btn-danger btn-inline-action" onclick="marcarEliminacionFotoCarnet(true)">
           Eliminar foto carné
-        </button>
+        </button>`
+            : ""
+        }
       `;
     } else if (jugador?.foto_carnet_url && eliminarCarnet) {
       prevCarnet.innerHTML = `
@@ -466,6 +507,115 @@ function actualizarEstadoRequisitosEnModal(jugador = null) {
     } else {
       prevCarnet.innerHTML = "";
     }
+  }
+  actualizarPreviewFotoCarnet();
+}
+
+function obtenerArchivoActivo(...ids) {
+  for (const id of ids) {
+    const archivo = document.getElementById(id)?.files?.[0];
+    if (archivo) return archivo;
+  }
+  return null;
+}
+
+function obtenerUrlFotoCarnetPreview() {
+  const archivo =
+    obtenerArchivoActivo("jugador-foto-carnet", "jugador-foto-carnet-camara") || null;
+  if (archivo) {
+    if (fotoCarnetPreviewTempUrl) {
+      URL.revokeObjectURL(fotoCarnetPreviewTempUrl);
+      fotoCarnetPreviewTempUrl = "";
+    }
+    fotoCarnetPreviewTempUrl = URL.createObjectURL(archivo);
+    return fotoCarnetPreviewTempUrl;
+  }
+  if (fotoCarnetPreviewTempUrl) {
+    URL.revokeObjectURL(fotoCarnetPreviewTempUrl);
+    fotoCarnetPreviewTempUrl = "";
+  }
+  return normalizarArchivoUrl(jugadorActualEnEdicion?.foto_carnet_url || jugadorEncontradoPorCedula?.foto_carnet_url || "");
+}
+
+function actualizarPreviewFotoCarnet() {
+  const bloque = document.getElementById("bloque-jugador-foto-carnet-posicion");
+  const img = document.getElementById("jugador-foto-carnet-preview-img");
+  const sliderX = document.getElementById("jugador-foto-carnet-pos-x");
+  const sliderY = document.getElementById("jugador-foto-carnet-pos-y");
+  if (!bloque || !img || !sliderX || !sliderY) return;
+
+  const url = obtenerUrlFotoCarnetPreview();
+  if (!url) {
+    bloque.style.display = "none";
+    img.removeAttribute("src");
+    return;
+  }
+
+  bloque.style.display = "";
+  img.src = url;
+  img.style.setProperty("--preview-foto-pos-x", `${normalizarPosicionPorcentaje(sliderX.value, 50)}%`);
+  img.style.setProperty("--preview-foto-pos-y", `${normalizarPosicionPorcentaje(sliderY.value, 35)}%`);
+}
+
+function actualizarResultadoBusquedaCedula(html = "", tipo = "") {
+  const el = document.getElementById("resultado-busqueda-cedula");
+  if (!el) return;
+  el.classList.remove("is-success", "is-warning", "is-error");
+  if (tipo) el.classList.add(`is-${tipo}`);
+  el.innerHTML = html;
+}
+
+function aplicarModoCedulaEnFormulario() {
+  const bloque = document.getElementById("bloque-jugador-busqueda-cedula");
+  const hiddenModo = document.getElementById("jugador-modo-cedula");
+  const obligatoria = esCedulaObligatoriaEnCampeonato();
+  if (hiddenModo) hiddenModo.value = obligatoria ? "obligatoria" : "opcional";
+  if (bloque) bloque.classList.toggle("is-required-flow", obligatoria);
+}
+
+function rellenarFormularioJugadorDesdePerfil(jugador = {}) {
+  document.getElementById("jugador-nombre").value = jugador.nombre || "";
+  document.getElementById("jugador-apellido").value = jugador.apellido || "";
+  document.getElementById("jugador-fecha").value = obtenerFechaInput(jugador.fecha_nacimiento);
+  document.getElementById("jugador-posicion").value = jugador.posicion || "";
+  document.getElementById("jugador-ced").value = jugador.cedidentidad || "";
+  document.getElementById("jugador-foto-carnet-pos-x").value = String(
+    normalizarPosicionPorcentaje(jugador.foto_carnet_pos_x, 50)
+  );
+  document.getElementById("jugador-foto-carnet-pos-y").value = String(
+    normalizarPosicionPorcentaje(jugador.foto_carnet_pos_y, 35)
+  );
+  actualizarPreviewFotoCarnet();
+}
+
+async function buscarJugadorPorCedulaEnBaseLocal() {
+  const inputCedula = document.getElementById("jugador-ced");
+  const cedula = String(inputCedula?.value || "").trim();
+  if (!cedula) {
+    actualizarResultadoBusquedaCedula("Ingresa una cédula para buscar en la base local.", "warning");
+    return;
+  }
+
+  try {
+    const data = await ApiClient.get(`/jugadores/buscar-cedula/${encodeURIComponent(cedula)}`);
+    const jugador = data?.jugador || null;
+    jugadorEncontradoPorCedula = jugador;
+
+    if (!jugador) {
+      actualizarResultadoBusquedaCedula("No se encontró un jugador previo con esa cédula. Continúa con el registro manual.", "warning");
+      return;
+    }
+
+    rellenarFormularioJugadorDesdePerfil(jugador);
+    actualizarResultadoBusquedaCedula(
+      `Se cargaron datos desde <strong>${escapeHtml(jugador.campeonato_nombre || "otro campeonato")}</strong> / ${escapeHtml(
+        jugador.equipo_nombre || "otro equipo"
+      )}. Se reutilizan los datos personales como referencia; las fotos deben validarse o cargarse nuevamente antes de guardar.`,
+      "success"
+    );
+  } catch (error) {
+    console.error("Error buscando por cédula:", error);
+    actualizarResultadoBusquedaCedula("No se pudo consultar la base local por cédula.", "error");
   }
 }
 
@@ -529,6 +679,12 @@ async function cargarCampeonatosSelectDirecto() {
       eventoId = null;
       equipoId = null;
       campeonatoMeta = null;
+      eventoCarnetMeta = {
+        carnet_estilo: "",
+        carnet_color_primario: "",
+        carnet_color_secundario: "",
+        carnet_color_acento: "",
+      };
       await cargarEventosSelectDirecto(campeonatoId);
       await cargarEquiposSelectDirecto(campeonatoId, null);
       await cargarConfigCampeonato();
@@ -562,6 +718,13 @@ async function cargarEventosSelectDirecto(campId) {
       if (optSel?.textContent && String(optSel.value || "").trim()) {
         eventoNombreActual = optSel.textContent.trim();
       }
+      const eventoSel = lista.find((item) => Number(item.id) === Number(eventoId));
+      eventoCarnetMeta = {
+        carnet_estilo: String(eventoSel?.carnet_estilo || "").trim().toLowerCase(),
+        carnet_color_primario: eventoSel?.carnet_color_primario || "",
+        carnet_color_secundario: eventoSel?.carnet_color_secundario || "",
+        carnet_color_acento: eventoSel?.carnet_color_acento || "",
+      };
     }
 
     select.onchange = async () => {
@@ -569,6 +732,13 @@ async function cargarEventosSelectDirecto(campId) {
       const optSel = select.options[select.selectedIndex];
       eventoNombreActual =
         eventoId && optSel?.textContent ? optSel.textContent.trim() : "";
+      const eventoSel = lista.find((item) => Number(item.id) === Number(eventoId));
+      eventoCarnetMeta = {
+        carnet_estilo: String(eventoSel?.carnet_estilo || "").trim().toLowerCase(),
+        carnet_color_primario: eventoSel?.carnet_color_primario || "",
+        carnet_color_secundario: eventoSel?.carnet_color_secundario || "",
+        carnet_color_acento: eventoSel?.carnet_color_acento || "",
+      };
       equipoId = null;
       await cargarEquiposSelectDirecto(campId, eventoId);
       limpiarVistaSinEquipo();
@@ -640,14 +810,32 @@ async function cargarJugadoresDesdeSeleccion() {
 async function cargarNombreEventoActual() {
   if (!eventoId) {
     eventoNombreActual = "";
+    eventoCarnetMeta = {
+      carnet_estilo: "",
+      carnet_color_primario: "",
+      carnet_color_secundario: "",
+      carnet_color_acento: "",
+    };
     return;
   }
   try {
     const data = await window.ApiClient.get(`/eventos/${eventoId}`);
     const evento = data?.evento || data;
     eventoNombreActual = (evento?.nombre || "").toString().trim();
+    eventoCarnetMeta = {
+      carnet_estilo: String(evento?.carnet_estilo || "").trim().toLowerCase(),
+      carnet_color_primario: evento?.carnet_color_primario || "",
+      carnet_color_secundario: evento?.carnet_color_secundario || "",
+      carnet_color_acento: evento?.carnet_color_acento || "",
+    };
   } catch (_) {
     eventoNombreActual = "";
+    eventoCarnetMeta = {
+      carnet_estilo: "",
+      carnet_color_primario: "",
+      carnet_color_secundario: "",
+      carnet_color_acento: "",
+    };
   }
 }
 
@@ -739,6 +927,7 @@ async function cargarConfigCampeonato() {
       nombre: "",
       organizador: "",
       logo_url: "",
+      organizador_logo_url: "",
       carnet_fondo_url: "",
       color_primario: "#FACC15",
       color_secundario: "#111827",
@@ -765,6 +954,7 @@ async function cargarConfigCampeonato() {
       nombre: camp.nombre || "",
       organizador: camp.organizador || "",
       logo_url: camp.logo_url || "",
+      organizador_logo_url: camp.organizador_logo_url || "",
       carnet_fondo_url: camp.carnet_fondo_url || "",
       color_primario: camp.color_primario || "#FACC15",
       color_secundario: camp.color_secundario || "#111827",
@@ -1400,26 +1590,32 @@ function renderPlantillaCarnets() {
     return;
   }
 
-  const logoCampeonato = normalizarArchivoUrl(campeonatoMeta.logo_url);
+  const metaCarnet = obtenerMetaVisualCarnet();
+  const logoCampeonato = normalizarArchivoUrl(metaCarnet.logo_url);
   const categoriaActual = obtenerNombreEventoActual();
   const urlPortalParticipacion = construirUrlPortalParticipacion();
   const qrUrlParticipacion = construirQrUrlParticipacion();
   const cards = jugadoresActuales
     .map((j) => {
       const foto = obtenerFotoAnversoCarnet(j);
-      const estiloCarnet = construirEstiloCarnet(campeonatoMeta);
+      const estiloCarnet = construirEstiloCarnet(metaCarnet);
+      const claseEstilo = obtenerClaseEstiloCarnet(metaCarnet);
+      const fotoCarnetJugador = normalizarArchivoUrl(j?.foto_carnet_url);
+      const usaPosicionCarnet = foto && fotoCarnetJugador && foto === fotoCarnetJugador;
+      const fotoPosX = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_x, 50) : 50;
+      const fotoPosY = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_y, 35) : 35;
       return `
-        <article class="carnet-card" style="${escapeHtml(estiloCarnet)}">
+        <article class="carnet-card ${claseEstilo}" style="${escapeHtml(estiloCarnet)}">
           <div class="carnet-backdrop" aria-hidden="true"></div>
           <header class="carnet-header">
-            <div class="carnet-org">${escapeHtml(campeonatoMeta.organizador || "Organizador")}</div>
+            <div class="carnet-org">${escapeHtml(metaCarnet.organizador || "Organizador")}</div>
             <div class="carnet-title">CARNÉ DE JUGADOR</div>
           </header>
           <div class="carnet-body">
             <div class="carnet-foto-wrap">
               ${
                 foto
-                  ? `<img src="${foto}" alt="Foto jugador" class="carnet-foto" />`
+                  ? `<img src="${foto}" alt="Foto jugador" class="carnet-foto" style="--carnet-foto-pos-x:${fotoPosX}%; --carnet-foto-pos-y:${fotoPosY}%;" />`
                   : `<div class="carnet-foto carnet-foto-empty"><i class="fas fa-user"></i></div>`
               }
             </div>
@@ -1427,13 +1623,13 @@ function renderPlantillaCarnets() {
               <p><strong>Nombre:</strong> ${escapeHtml(`${j.nombre || ""} ${j.apellido || ""}`.trim())}</p>
               <p><strong>Cédula:</strong> ${escapeHtml(j.cedidentidad || "—")}</p>
               <p><strong>Categoría:</strong> ${escapeHtml(categoriaActual || "—")}</p>
-              <p><strong>Equipo:</strong> ${escapeHtml(equipoActual.nombre || "—")}</p>
-              <p><strong>N°:</strong> ${escapeHtml(j.numero_camiseta || "—")}</p>
+              <p class="carnet-data-team"><strong>Equipo:</strong> ${escapeHtml(equipoActual.nombre || "—")}</p>
+              <p class="carnet-data-numero"><strong>N° ${escapeHtml(j.numero_camiseta || "—")}</strong></p>
             </div>
           </div>
           <footer class="carnet-footer">
             <div class="carnet-footer-main">
-              <div class="carnet-campeonato">${escapeHtml(campeonatoMeta.nombre || "Campeonato")}</div>
+              <div class="carnet-campeonato">${escapeHtml(metaCarnet.nombre || "Campeonato")}</div>
               <div class="carnet-categoria">${escapeHtml(categoriaActual || "Categoría")}</div>
             </div>
             <div class="carnet-footer-media">
@@ -1660,13 +1856,57 @@ async function esperarImagenesEnNodo(node, timeoutMs = 1400) {
   );
 }
 
+function crearContenedorTemporalCarnets(node) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "carnets-export-temp";
+  wrapper.setAttribute("aria-hidden", "true");
+  wrapper.style.position = "fixed";
+  wrapper.style.left = "-20000px";
+  wrapper.style.top = "0";
+  wrapper.style.width = `${Math.max(node.scrollWidth, node.clientWidth, 720)}px`;
+  wrapper.style.maxWidth = "none";
+  wrapper.style.padding = "0";
+  wrapper.style.margin = "0";
+  wrapper.style.opacity = "1";
+  wrapper.style.pointerEvents = "none";
+  wrapper.style.zIndex = "-1";
+  wrapper.style.background = "#ffffff";
+
+  const cloned = node.cloneNode(true);
+  cloned.id = "";
+  cloned.classList.add("carnets-a4-layout");
+  wrapper.appendChild(cloned);
+  document.body.appendChild(wrapper);
+
+  return { wrapper, cloned };
+}
+
+function descargarPdfDirecto(pdf, nombreArchivo) {
+  const blob = pdf.output("blob");
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nombreArchivo || "reporte.pdf";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+}
+
 async function exportarCarnetsEnPDFA4(node, nombreArchivo) {
   if (!node || !window.html2canvas || !window.jspdf?.jsPDF) {
     throw new Error("No se pudo preparar la exportación PDF");
   }
 
-  const cards = Array.from(node.querySelectorAll(".carnet-card"));
+  const cardsOriginales = Array.from(node.querySelectorAll(".carnet-card"));
+  if (!cardsOriginales.length) {
+    throw new Error("No hay carnés para exportar");
+  }
+
+  const { wrapper, cloned } = crearContenedorTemporalCarnets(node);
+  const cards = Array.from(cloned.querySelectorAll(".carnet-card"));
   if (!cards.length) {
+    wrapper.remove();
     throw new Error("No hay carnés para exportar");
   }
 
@@ -1692,24 +1932,11 @@ async function exportarCarnetsEnPDFA4(node, nombreArchivo) {
   );
   const carnetsPorPagina = filasPorPagina * columnas;
 
-  const restaurar = cards.map((card) => ({
-    card,
-    minHeight: card.style.minHeight,
-    maxHeight: card.style.maxHeight,
-    height: card.style.height,
-    overflow: card.style.overflow,
-  }));
   const pixelVacio = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
   const hostsPermitidos = obtenerHostsPermitidosImagenesPDF();
   const restaurarImagenes = [];
-  const imagenes = Array.from(node.querySelectorAll("img"));
+  const imagenes = Array.from(cloned.querySelectorAll("img"));
 
-  for (const item of restaurar) {
-    item.card.style.minHeight = "auto";
-    item.card.style.maxHeight = "none";
-    item.card.style.height = "auto";
-    item.card.style.overflow = "visible";
-  }
   for (const img of imagenes) {
     const srcAttr = img.getAttribute("src") || "";
     const srcReal = img.currentSrc || srcAttr;
@@ -1723,7 +1950,7 @@ async function exportarCarnetsEnPDFA4(node, nombreArchivo) {
   }
 
   await new Promise((resolve) => window.requestAnimationFrame(resolve));
-  await esperarImagenesEnNodo(node, 1200);
+  await esperarImagenesEnNodo(cloned, 1200);
 
   try {
     for (let i = 0; i < cards.length; i += 1) {
@@ -1740,7 +1967,7 @@ async function exportarCarnetsEnPDFA4(node, nombreArchivo) {
 
       const canvas = await window.html2canvas(cards[i], {
         backgroundColor: "#ffffff",
-        scale: 1.25,
+        scale: 1.12,
         useCORS: true,
         logging: false,
         imageTimeout: 1200,
@@ -1750,18 +1977,13 @@ async function exportarCarnetsEnPDFA4(node, nombreArchivo) {
       pdf.addImage(imgData, "JPEG", x, y, anchoCarnetMm, altoCarnetMm, undefined, "FAST");
     }
   } finally {
-    for (const item of restaurar) {
-      item.card.style.minHeight = item.minHeight;
-      item.card.style.maxHeight = item.maxHeight;
-      item.card.style.height = item.height;
-      item.card.style.overflow = item.overflow;
-    }
     for (const item of restaurarImagenes) {
       item.img.setAttribute("src", item.src);
     }
+    wrapper.remove();
   }
 
-  pdf.save(nombreArchivo);
+  descargarPdfDirecto(pdf, nombreArchivo);
 }
 
 function imprimirNominaJugadores() {
@@ -2051,11 +2273,21 @@ function mostrarModalCrearJugador() {
   document.getElementById("jugador-equipo-id").value = equipoId;
   document.getElementById("jugador-capitan").checked = false;
   document.getElementById("jugador-foto-cedula").value = "";
+  document.getElementById("jugador-foto-cedula-camara").value = "";
   document.getElementById("jugador-foto-carnet").value = "";
+  document.getElementById("jugador-foto-carnet-camara").value = "";
   document.getElementById("jugador-eliminar-foto-carnet").value = "false";
+  document.getElementById("jugador-foto-carnet-pos-x").value = "50";
+  document.getElementById("jugador-foto-carnet-pos-y").value = "35";
+  jugadorEncontradoPorCedula = null;
 
+  actualizarResultadoBusquedaCedula("");
   actualizarEstadoRequisitosEnModal(null);
   abrirModal("modal-jugador");
+  window.setTimeout(() => {
+    const targetId = esCedulaObligatoriaEnCampeonato() ? "jugador-ced" : "jugador-nombre";
+    document.getElementById(targetId)?.focus();
+  }, 60);
 }
 
 async function editarJugador(id) {
@@ -2081,9 +2313,19 @@ async function editarJugador(id) {
     document.getElementById("jugador-numero").value = jugador.numero_camiseta || "";
     document.getElementById("jugador-capitan").checked = !!jugador.es_capitan;
     document.getElementById("jugador-foto-cedula").value = "";
+    document.getElementById("jugador-foto-cedula-camara").value = "";
     document.getElementById("jugador-foto-carnet").value = "";
+    document.getElementById("jugador-foto-carnet-camara").value = "";
     document.getElementById("jugador-eliminar-foto-carnet").value = "false";
+    document.getElementById("jugador-foto-carnet-pos-x").value = String(
+      normalizarPosicionPorcentaje(jugador.foto_carnet_pos_x, 50)
+    );
+    document.getElementById("jugador-foto-carnet-pos-y").value = String(
+      normalizarPosicionPorcentaje(jugador.foto_carnet_pos_y, 35)
+    );
+    jugadorEncontradoPorCedula = null;
 
+    actualizarResultadoBusquedaCedula("");
     actualizarEstadoRequisitosEnModal(jugador);
     abrirModal("modal-jugador");
   } catch (error) {
@@ -2131,9 +2373,17 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   const posicion = document.getElementById("jugador-posicion").value || "";
   const numeroRaw = document.getElementById("jugador-numero").value;
   const esCapitan = document.getElementById("jugador-capitan").checked;
-  const fotoCedulaFile = document.getElementById("jugador-foto-cedula").files?.[0] || null;
-  const fotoCarnetFile = document.getElementById("jugador-foto-carnet").files?.[0] || null;
+  const fotoCedulaFile = obtenerArchivoActivo("jugador-foto-cedula", "jugador-foto-cedula-camara");
+  const fotoCarnetFile = obtenerArchivoActivo("jugador-foto-carnet", "jugador-foto-carnet-camara");
   const eliminarFotoCarnet = fotoCarnetMarcadaParaEliminar();
+  const fotoCarnetPosX = normalizarPosicionPorcentaje(
+    document.getElementById("jugador-foto-carnet-pos-x")?.value,
+    50
+  );
+  const fotoCarnetPosY = normalizarPosicionPorcentaje(
+    document.getElementById("jugador-foto-carnet-pos-y")?.value,
+    35
+  );
 
   if (!nombre || !apellido) {
     mostrarNotificacion(
@@ -2148,8 +2398,8 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
     return;
   }
 
-  const tieneCedulaActual = Boolean(jugadorActualEnEdicion?.foto_cedula_url);
-  const tieneCarnetActual = Boolean(jugadorActualEnEdicion?.foto_carnet_url) && !eliminarFotoCarnet;
+  const tieneCedulaActual = Boolean(jugadorActualEnEdicion?.foto_cedula_url || jugadorEncontradoPorCedula?.foto_cedula_url);
+  const tieneCarnetActual = Boolean(jugadorActualEnEdicion?.foto_carnet_url || jugadorEncontradoPorCedula?.foto_carnet_url) && !eliminarFotoCarnet;
 
   if (reglasDocumentos.requiere_foto_cedula && !fotoCedulaFile && !(id && tieneCedulaActual)) {
     mostrarNotificacion("Este campeonato exige foto de cédula", "warning");
@@ -2172,9 +2422,17 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   if (posicion) fd.append("posicion", posicion);
   if (numeroRaw) fd.append("numero_camiseta", String(Number.parseInt(numeroRaw, 10)));
   fd.append("es_capitan", esCapitan ? "true" : "false");
+  fd.append("foto_carnet_pos_x", String(fotoCarnetPosX));
+  fd.append("foto_carnet_pos_y", String(fotoCarnetPosY));
 
   if (fotoCedulaFile) fd.append("foto_cedula", fotoCedulaFile);
   if (fotoCarnetFile) fd.append("foto_carnet", fotoCarnetFile);
+  if (!id && !fotoCedulaFile && jugadorEncontradoPorCedula?.foto_cedula_url) {
+    fd.append("foto_cedula_url", jugadorEncontradoPorCedula.foto_cedula_url);
+  }
+  if (!id && !fotoCarnetFile && jugadorEncontradoPorCedula?.foto_carnet_url) {
+    fd.append("foto_carnet_url", jugadorEncontradoPorCedula.foto_carnet_url);
+  }
   if (eliminarFotoCarnet) fd.append("eliminar_foto_carnet", "true");
 
   try {
@@ -2188,13 +2446,50 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   }
 });
 
-document.getElementById("jugador-foto-carnet")?.addEventListener("change", () => {
-  const input = document.getElementById("jugador-foto-carnet");
-  if (input?.files?.length) {
-    marcarEliminacionFotoCarnet(false);
-  } else {
-    actualizarEstadoRequisitosEnModal(jugadorActualEnEdicion);
-  }
+[
+  ["jugador-foto-carnet", "jugador-foto-carnet-camara"],
+  ["jugador-foto-carnet-camara", "jugador-foto-carnet"],
+].forEach(([idInput, idAlterno]) => {
+  document.getElementById(idInput)?.addEventListener("change", () => {
+    const input = document.getElementById(idInput);
+    if (input?.files?.length) {
+      const alterno = document.getElementById(idAlterno);
+      if (alterno) alterno.value = "";
+      marcarEliminacionFotoCarnet(false);
+    } else {
+      actualizarEstadoRequisitosEnModal(jugadorActualEnEdicion);
+    }
+    actualizarPreviewFotoCarnet();
+  });
+});
+
+[
+  ["jugador-foto-cedula", "jugador-foto-cedula-camara"],
+  ["jugador-foto-cedula-camara", "jugador-foto-cedula"],
+].forEach(([idInput, idAlterno]) => {
+  document.getElementById(idInput)?.addEventListener("change", () => {
+    const input = document.getElementById(idInput);
+    if (input?.files?.length) {
+      const alterno = document.getElementById(idAlterno);
+      if (alterno) alterno.value = "";
+    }
+  });
+});
+
+["jugador-foto-carnet-pos-x", "jugador-foto-carnet-pos-y"].forEach((idInput) => {
+  document.getElementById(idInput)?.addEventListener("input", actualizarPreviewFotoCarnet);
+});
+
+document.getElementById("btn-jugador-buscar-cedula")?.addEventListener("click", buscarJugadorPorCedulaEnBaseLocal);
+document.getElementById("jugador-ced")?.addEventListener("input", () => {
+  jugadorEncontradoPorCedula = null;
+  actualizarResultadoBusquedaCedula("");
+});
+document.getElementById("btn-jugador-foto-cedula-camara")?.addEventListener("click", () => {
+  document.getElementById("jugador-foto-cedula-camara")?.click();
+});
+document.getElementById("btn-jugador-foto-carnet-camara")?.addEventListener("click", () => {
+  document.getElementById("jugador-foto-carnet-camara")?.click();
 });
 
 async function eliminarJugador(id) {

@@ -63,6 +63,13 @@ function parseBooleanFlag(value) {
     return ["true", "1", "si", "sí", "on"].includes(normalized);
 }
 
+function parsePhotoPosition(value, fallback = 50) {
+    if (value === undefined || value === null || value === "") return fallback;
+    const numero = Number.parseFloat(String(value).replace(",", "."));
+    if (!Number.isFinite(numero)) return fallback;
+    return Math.max(0, Math.min(100, Number(numero.toFixed(2))));
+}
+
 function eliminarArchivoJugador(urlPath) {
     const raw = String(urlPath || "").trim();
     if (!raw) return;
@@ -72,14 +79,40 @@ function eliminarArchivoJugador(urlPath) {
     fs.unlink(filePath, () => {});
 }
 
+function normalizarUrlInternaJugador(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+    if (raw.startsWith("/uploads/") || raw.startsWith("uploads/")) {
+        return raw.startsWith("/") ? raw : `/${raw}`;
+    }
+    return null;
+}
+
 const jugadorController = {
 
     // CREAR - Nuevo jugador
     crearJugador: async (req, res) => {
         try {
-            const { equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan } = req.body;
-            const fotoCedula = construirUrlArchivoJugador(req, req.files?.foto_cedula?.[0]);
-            const fotoCarnet = construirUrlArchivoJugador(req, req.files?.foto_carnet?.[0]);
+            const {
+                equipo_id,
+                nombre,
+                apellido,
+                cedidentidad,
+                fecha_nacimiento,
+                posicion,
+                numero_camiseta,
+                es_capitan,
+                foto_carnet_pos_x,
+                foto_carnet_pos_y,
+            } = req.body;
+            const fotoCedula =
+                construirUrlArchivoJugador(req, req.files?.foto_cedula?.[0]) ||
+                normalizarUrlInternaJugador(req.body?.foto_cedula_url);
+            const fotoCarnet =
+                construirUrlArchivoJugador(req, req.files?.foto_carnet?.[0]) ||
+                normalizarUrlInternaJugador(req.body?.foto_carnet_url);
+            const fotoCarnetPosX = parsePhotoPosition(foto_carnet_pos_x, 50);
+            const fotoCarnetPosY = parsePhotoPosition(foto_carnet_pos_y, 35);
 
             // Validaciones básicas
             if (!equipo_id || !nombre || !apellido) {
@@ -118,7 +151,9 @@ const jugadorController = {
                 numero_camiseta,
                 es_capitan,
                 fotoCedula,
-                fotoCarnet
+                fotoCarnet,
+                fotoCarnetPosX,
+                fotoCarnetPosY
             );
 
             res.status(201).json({
@@ -235,7 +270,9 @@ const jugadorController = {
                         numero_camiseta,
                         es_capitan,
                         foto_cedula_url,
-                        foto_carnet_url
+                        foto_carnet_url,
+                        50,
+                        35
                     );
                     creados.push(jugador);
                 } catch (errorFila) {
@@ -363,6 +400,27 @@ const jugadorController = {
         }
     },
 
+    buscarJugadorPorCedula: async (req, res) => {
+        try {
+            const cedula = String(req.params?.cedula || "").trim();
+            if (!cedula) {
+                return res.status(400).json({ error: "Debes indicar una cédula válida." });
+            }
+
+            const jugador = await Jugador.buscarPerfilPorCedula(cedula);
+            return res.json({
+                encontrado: Boolean(jugador),
+                jugador: jugador || null,
+            });
+        } catch (error) {
+            console.error("Error buscando jugador por cédula:", error);
+            return res.status(500).json({
+                error: "Error buscando jugador por cédula",
+                detalle: error.message,
+            });
+        }
+    },
+
     // ACTUALIZAR - Modificar jugador
     actualizarJugador: async (req, res) => {
         try {
@@ -375,6 +433,12 @@ const jugadorController = {
 
             if (fotoCedula) datos.foto_cedula_url = fotoCedula;
             if (fotoCarnet) datos.foto_carnet_url = fotoCarnet;
+            if (datos.foto_carnet_pos_x !== undefined) {
+                datos.foto_carnet_pos_x = parsePhotoPosition(datos.foto_carnet_pos_x, 50);
+            }
+            if (datos.foto_carnet_pos_y !== undefined) {
+                datos.foto_carnet_pos_y = parsePhotoPosition(datos.foto_carnet_pos_y, 35);
+            }
             if (eliminarFotoCedula && !fotoCedula) datos.foto_cedula_url = null;
             if (eliminarFotoCarnet && !fotoCarnet) datos.foto_carnet_url = null;
             delete datos.eliminar_foto_cedula;

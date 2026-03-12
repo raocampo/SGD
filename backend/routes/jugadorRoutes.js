@@ -43,6 +43,12 @@ router.get(
   jugadorController.obtenerJugadoresPorEquipo
 ); // READ por equipo
 router.get(
+  '/buscar-cedula/:cedula',
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente"),
+  jugadorController.buscarJugadorPorCedula
+); // READ perfil por cédula
+router.get(
   '/:id',
   requireAuth,
   requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),

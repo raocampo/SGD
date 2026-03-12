@@ -72,6 +72,25 @@ function normalizarClasificadosPorGrupo(value, fallback = null) {
   return n;
 }
 
+function normalizarColorHex(value, fallback = null) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return fallback;
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) {
+    if (raw.length === 4) {
+      return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toUpperCase();
+    }
+    return raw.toUpperCase();
+  }
+  return fallback;
+}
+
+function normalizarCarnetEstilo(value, fallback = null) {
+  const raw = String(value || "").trim().toLowerCase();
+  const permitidos = new Set(["clasico", "franja", "marco", "minimal"]);
+  if (!raw) return fallback;
+  return permitidos.has(raw) ? raw : fallback;
+}
+
 function esAdministrador(user) {
   return String(user?.rol || "").toLowerCase() === "administrador";
 }
@@ -175,6 +194,13 @@ async function asegurarEsquemaEventos() {
     ALTER TABLE eventos
     ADD COLUMN IF NOT EXISTS bloqueo_morosidad_monto NUMERIC(12,2)
   `);
+  await pool.query(`
+    ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS carnet_estilo VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS carnet_color_primario VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS carnet_color_secundario VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS carnet_color_acento VARCHAR(20)
+  `);
 
   await pool.query(`
     UPDATE eventos
@@ -257,6 +283,10 @@ const eventoController = {
         eliminatoria_equipos,
         bloquear_morosos,
         bloqueo_morosidad_monto,
+        carnet_estilo,
+        carnet_color_primario,
+        carnet_color_secundario,
+        carnet_color_acento,
       } = req.body;
 
       if (!campeonato_id || !nombre || !fecha_inicio || !fecha_fin) {
@@ -331,6 +361,13 @@ const eventoController = {
       }
       const clasificadosFinal =
         ["grupos", "mixto"].includes(metodoCompetencia) ? clasificadosPorGrupo || 2 : null;
+      const carnetEstilo = normalizarCarnetEstilo(carnet_estilo, null);
+      if (carnet_estilo !== undefined && carnet_estilo !== null && carnet_estilo !== "" && !carnetEstilo) {
+        return res.status(400).json({ error: "carnet_estilo inválido. Usa: clasico, franja, marco o minimal." });
+      }
+      const carnetColorPrimario = normalizarColorHex(carnet_color_primario, null);
+      const carnetColorSecundario = normalizarColorHex(carnet_color_secundario, null);
+      const carnetColorAcento = normalizarColorHex(carnet_color_acento, null);
 
       const query = `
         WITH next_num AS (
@@ -344,13 +381,14 @@ const eventoController = {
           metodo_competencia, eliminatoria_equipos,
           costo_inscripcion, clasificados_por_grupo,
           bloquear_morosos, bloqueo_morosidad_monto,
+          carnet_estilo, carnet_color_primario, carnet_color_secundario, carnet_color_acento,
           horario_weekday_inicio, horario_weekday_fin,
           horario_sab_inicio, horario_sab_fin,
           horario_dom_inicio, horario_dom_fin,
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -368,6 +406,10 @@ const eventoController = {
         clasificadosFinal,
         bloquearMorososValor,
         bloqueoMorosidadMonto,
+        carnetEstilo,
+        carnetColorPrimario,
+        carnetColorSecundario,
+        carnetColorAcento,
         wkStart,
         wkEnd,
         satStart,
@@ -579,6 +621,28 @@ const eventoController = {
           }
           campos.push(`${k} = $${i}`);
           valores.push(montoParseado);
+          i++;
+          continue;
+        }
+        if (k === "carnet_estilo") {
+          const estilo = normalizarCarnetEstilo(v, null);
+          if (v !== null && v !== "" && !estilo) {
+            return res
+              .status(400)
+              .json({ error: "carnet_estilo inválido. Usa: clasico, franja, marco o minimal." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(v === null || v === "" ? null : estilo);
+          i++;
+          continue;
+        }
+        if (["carnet_color_primario", "carnet_color_secundario", "carnet_color_acento"].includes(k)) {
+          const color = normalizarColorHex(v, null);
+          if (v !== null && v !== "" && !color) {
+            return res.status(400).json({ error: `${k} debe ser un color hexadecimal válido.` });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(v === null || v === "" ? null : color);
           i++;
           continue;
         }

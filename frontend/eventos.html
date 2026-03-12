@@ -158,6 +158,33 @@
               />
             </div>
 
+            <div class="form-group">
+              <label>Diseño de carné por categoría:</label>
+              <select id="evt-carnet-estilo">
+                <option value="">Heredar del campeonato</option>
+                <option value="clasico">Clásico</option>
+                <option value="franja">Franja diagonal</option>
+                <option value="marco">Marco deportivo</option>
+                <option value="minimal">Minimal</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Color primario carné:</label>
+              <input id="evt-carnet-color-primario" type="color" value="#FACC15" />
+            </div>
+
+            <div class="form-group">
+              <label>Color secundario carné:</label>
+              <input id="evt-carnet-color-secundario" type="color" value="#111827" />
+            </div>
+
+            <div class="form-group">
+              <label>Color acento carné:</label>
+              <input id="evt-carnet-color-acento" type="color" value="#22C55E" />
+              <small class="form-hint">Estos colores solo afectan el carné de esta categoría si se definen aquí.</small>
+            </div>
+
             <div class="actions">
               <button class="btn btn-success" onclick="crearEvento()">
                 <i class="fas fa-plus"></i> Crear Categoría
@@ -202,5 +229,4 @@
     <script src="js/eventos.js"></script>
   </body>
 </html>
-
 

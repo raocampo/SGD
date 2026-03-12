@@ -275,6 +275,19 @@
       <form id="form-jugador">
         <input type="hidden" id="jugador-id" />
         <input type="hidden" id="jugador-equipo-id" />
+        <input type="hidden" id="jugador-modo-cedula" value="opcional" />
+
+        <div class="form-group" id="bloque-jugador-busqueda-cedula">
+          <label for="jugador-ced">Cédula de Identidad:</label>
+          <div class="inline-file-actions">
+            <input type="text" id="jugador-ced" />
+            <button type="button" class="btn btn-outline" id="btn-jugador-buscar-cedula">
+              <i class="fas fa-search"></i> Buscar en base local
+            </button>
+          </div>
+          <small id="hint-cedidentidad" class="form-hint">Opcional para este campeonato.</small>
+          <div id="resultado-busqueda-cedula" class="form-hint"></div>
+        </div>
 
         <div class="form-group">
           <label for="jugador-nombre">Nombre:</label>
@@ -287,14 +300,14 @@
         </div>
 
         <div class="form-group">
-          <label for="jugador-ced">Cédula de Identidad:</label>
-          <input type="text" id="jugador-ced" />
-          <small id="hint-cedidentidad" class="form-hint">Opcional para este campeonato.</small>
-        </div>
-
-        <div class="form-group">
           <label for="jugador-foto-cedula">Foto de cédula (opcional):</label>
-          <input type="file" id="jugador-foto-cedula" accept="image/*" capture="environment" />
+          <input type="file" id="jugador-foto-cedula" accept="image/*" />
+          <input type="file" id="jugador-foto-cedula-camara" accept="image/*" capture="environment" hidden />
+          <div class="inline-file-actions">
+            <button type="button" class="btn btn-outline" id="btn-jugador-foto-cedula-camara">
+              <i class="fas fa-camera"></i> Tomar foto
+            </button>
+          </div>
           <small id="hint-foto-cedula" class="form-hint">Opcional para este campeonato.</small>
           <div id="preview-foto-cedula-actual" class="form-hint"></div>
         </div>
@@ -302,9 +315,33 @@
         <div class="form-group">
           <label for="jugador-foto-carnet">Foto carné (opcional):</label>
           <input type="hidden" id="jugador-eliminar-foto-carnet" value="false" />
-          <input type="file" id="jugador-foto-carnet" accept="image/*" capture="user" />
-          <small id="hint-foto-carnet" class="form-hint">Opcional para este campeonato. En celular puedes tomar la foto directamente desde la cámara.</small>
+          <input type="file" id="jugador-foto-carnet" accept="image/*" />
+          <input type="file" id="jugador-foto-carnet-camara" accept="image/*" capture="user" hidden />
+          <div class="inline-file-actions">
+            <button type="button" class="btn btn-outline" id="btn-jugador-foto-carnet-camara">
+              <i class="fas fa-camera"></i> Tomar foto
+            </button>
+          </div>
+          <small id="hint-foto-carnet" class="form-hint">Opcional para este campeonato. Puedes elegir desde galería/archivos o tomar la foto con la cámara.</small>
           <div id="preview-foto-carnet-actual" class="form-hint"></div>
+        </div>
+
+        <div class="form-group form-group-full" id="bloque-jugador-foto-carnet-posicion" style="display: none;">
+          <label>Ajuste de foto para carné:</label>
+          <div class="jugador-foto-ajuste">
+            <div class="jugador-foto-ajuste-preview-wrap">
+              <div class="jugador-foto-ajuste-preview">
+                <img id="jugador-foto-carnet-preview-img" alt="Previsualización foto carné" />
+              </div>
+            </div>
+            <div class="jugador-foto-ajuste-controles">
+              <label for="jugador-foto-carnet-pos-x">Horizontal</label>
+              <input type="range" id="jugador-foto-carnet-pos-x" min="0" max="100" step="1" value="50" />
+              <label for="jugador-foto-carnet-pos-y">Vertical</label>
+              <input type="range" id="jugador-foto-carnet-pos-y" min="0" max="100" step="1" value="35" />
+              <small class="form-hint">Ajusta la foto para centrar el rostro en el carné sin recortarlo mal.</small>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
