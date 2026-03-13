@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-12
+Ultima actualizacion: 2026-03-13
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,19 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-13
+- Repositorio:
+  - se auditaron y consolidaron cambios locales pendientes antes de sincronizar con remoto.
+  - migraciones aplicadas en BD local:
+    - `database/migrations/037_eventos_clasificacion_tabla_acumulada.sql`
+    - `database/migrations/038_jugadores_foto_carnet_zoom.sql`
+  - validacion tecnica:
+    - `node --check` sobre backend/frontend modificados,
+    - `npm --prefix backend run smoke` => `PASS 9/9`.
+- UX del sistema deportivo:
+  - `frontend/js/core.js` y `frontend/css/style.css` ahora muestran un boton visible `Salir` junto al badge del usuario en la topbar.
+  - en movil el bloque de usuario hace wrap y el boton baja debajo del nombre cuando no entra en una sola fila.
 
 ### 2026-03-12
 - Usuarios / organizadores:

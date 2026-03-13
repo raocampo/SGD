@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-03-12
+Ultima actualizacion: 2026-03-13
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -113,6 +113,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - `portal deportivo`,
   - `portal web publico / CMS`.
 - Cambio de contraseña propio disponible para cuentas autenticadas.
+- Boton visible `Salir` agregado a la topbar del sistema deportivo, junto al badge del usuario, manteniendo tambien la accion en sidebar.
 - Cuentas creadas por administrador/organizador quedan en estado `debe_cambiar_password` hasta que el usuario defina su clave.
 - Noticias quedan definidas como contenido institucional del portal, no como modulo del organizador.
 - Nuevo modulo `Mi Landing` para organizadores con gestion de branding y publicidad publica.

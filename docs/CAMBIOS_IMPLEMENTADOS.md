@@ -7,6 +7,21 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-13 - Consolidacion local y salida visible en topbar
+- Repositorio:
+  - se auditaron y consolidaron cambios locales antes de sincronizar con `origin/main`.
+  - se aplicaron en la BD local las migraciones:
+    - `037_eventos_clasificacion_tabla_acumulada.sql`
+    - `038_jugadores_foto_carnet_zoom.sql`
+  - verificacion tecnica ejecutada:
+    - `node --check` sobre backend/frontend modificado,
+    - `npm --prefix backend run smoke` => `PASS 9/9`.
+- UX del sistema deportivo:
+  - `frontend/js/core.js` ahora agrega un boton visible `Salir` junto al badge del usuario en la topbar.
+  - `frontend/css/style.css` hace que ese bloque sea responsivo, permitiendo que el boton baje debajo del nombre del usuario en pantallas pequenas sin romper el header.
+
+---
+
 ## 2026-03-12 - Usuarios organizadores alineados con Mi Landing
 - Usuarios / roles:
   - `frontend/usuarios.html` incorpora campos base del organizador para no fragmentar el perfil entre modulos:

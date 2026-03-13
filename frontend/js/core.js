@@ -1010,10 +1010,6 @@
     if (!actions) {
       actions = document.createElement("div");
       actions.className = "top-user-actions";
-      actions.style.display = "flex";
-      actions.style.alignItems = "center";
-      actions.style.gap = "10px";
-      actions.style.marginLeft = "auto";
       topBar.appendChild(actions);
     }
 
@@ -1044,6 +1040,18 @@
         await window.Auth.promptChangePassword({ forced: false });
       });
       actions.appendChild(btnPassword);
+    }
+
+    let btnLogoutTop = actions.querySelector(".top-user-logout-btn");
+    if (!btnLogoutTop) {
+      btnLogoutTop = document.createElement("button");
+      btnLogoutTop.type = "button";
+      btnLogoutTop.className = "btn btn-danger top-user-logout-btn";
+      btnLogoutTop.innerHTML = '<i class="fas fa-right-from-bracket"></i> Salir';
+      btnLogoutTop.addEventListener("click", () => {
+        window.Auth.logout();
+      });
+      actions.appendChild(btnLogoutTop);
     }
   }
 

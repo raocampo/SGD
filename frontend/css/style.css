@@ -1419,6 +1419,24 @@ body.app-layout {
   text-overflow: ellipsis;
 }
 
+.top-user-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-left: auto;
+}
+
+.top-user-actions .btn {
+  min-height: 38px;
+  padding: 0.7rem 0.9rem;
+}
+
+.top-user-logout-btn {
+  box-shadow: none;
+}
+
 .item-index {
   display: inline-block;
   min-width: 0.5rem;
@@ -1813,6 +1831,22 @@ body.app-layout {
   .top-bar {
     align-items: flex-start;
     gap: 0.6rem;
+  }
+
+  .top-user-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .top-user-badge {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .top-user-password-btn,
+  .top-user-logout-btn {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 
   .top-bar h1 {
