@@ -7,6 +7,35 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-12 - Usuarios organizadores alineados con Mi Landing
+- Usuarios / roles:
+  - `frontend/usuarios.html` incorpora campos base del organizador para no fragmentar el perfil entre modulos:
+    - `organizacion`,
+    - `lema publico`,
+    - `correo de contacto publico`,
+    - `telefono / WhatsApp publico`,
+    - `logo de la organizacion`.
+  - `frontend/js/usuarios.js` ahora:
+    - muestra/oculta esos campos segun el rol seleccionado,
+    - precarga el contexto real de `Mi Landing` al editar un organizador,
+    - renderiza preview del logo actual,
+    - sincroniza el logo con `Mi Landing` cuando el administrador lo sube desde usuarios.
+- API / backend:
+  - `frontend/js/api.js` permite actualizar configuracion de `Mi Landing` por `organizador_id`, para que el administrador pueda operar sobre organizadores concretos desde `usuarios.html`.
+  - `backend/controllers/authController.js` sincroniza el perfil base del organizador hacia `OrganizadorPortal` en:
+    - registro publico,
+    - alta por administrador,
+    - edicion por administrador.
+  - `backend/models/OrganizadorPortal.js` devuelve la sincronizacion en sentido inverso y actualiza `usuarios.organizacion_nombre` cuando ese dato cambia desde `Mi Landing`.
+- Verificacion:
+  - `node --check frontend/js/usuarios.js`
+  - `node --check frontend/js/api.js`
+  - `node --check backend/controllers/authController.js`
+  - `node --check backend/models/OrganizadorPortal.js`
+  - `npm --prefix backend run smoke` => `PASS 9/9`
+
+---
+
 ## 2026-03-11 - Fondo de carné configurable por campeonato
 - Campeonatos:
   - nueva migracion:
@@ -789,3 +818,26 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
 - Nuevo endpoint publico:
   - `GET /api/public/campeonatos/:campeonato_id/auspiciantes`
 - La landing publica del organizador tambien quedo alineada con ese mismo resumen de categorias para no divergir del portal general.
+
+---
+
+## 19. Tabla acumulada, zoom de foto carné y planilla del jugador
+- **Ubicacion backend:** `backend/controllers/eventoController.js`, `backend/controllers/eliminatoriaController.js`, `backend/controllers/jugadorController.js`, `backend/models/Jugador.js`, `backend/services/publicPortalService.js`
+- **Ubicacion frontend:** `frontend/eventos.html`, `frontend/jugadores.html`, `frontend/planilla.html`, `frontend/js/eventos.js`, `frontend/js/tablas.js`, `frontend/js/eliminatorias.js`, `frontend/js/jugadores.js`, `frontend/js/equipos.js`, `frontend/css/style.css`, `frontend/css/portal.css`
+- **Migraciones:** `database/migrations/037_eventos_clasificacion_tabla_acumulada.sql`, `database/migrations/038_jugadores_foto_carnet_zoom.sql`
+- Competencia:
+  - nuevo metodo visible `tabla acumulada`,
+  - pensado para clasificar desde grupos hacia una tabla global de rendimiento,
+  - fuerza origen `grupos` + metodo `tabla_unica` en configuracion de playoff,
+  - sin modificar `backend/models/Eliminatoria.js`.
+- Jugadores:
+  - nuevo control de zoom para la foto del carné,
+  - direccional de ajuste fino para mover la foto,
+  - persistencia de `foto_carnet_zoom`,
+  - nueva `Planilla del jugador` con vista, impresion y PDF.
+- UI:
+  - tarjetas de equipo con nombre a la izquierda y logo a la derecha,
+  - tarjetas de jugador reordenadas,
+  - marca `ELIMINADO` reducida visualmente en tablas internas y portal.
+- Posiciones:
+  - se agrego `Polifuncional` en formularios de jugadores y planilla manual.

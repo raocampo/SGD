@@ -122,6 +122,188 @@ class Eliminatoria {
     }
   }
 
+  static construirClaveEnfrentamiento(grupoId, equipoAId, equipoBId) {
+    const grupo = Number.parseInt(grupoId, 10);
+    const ids = [Number.parseInt(equipoAId, 10), Number.parseInt(equipoBId, 10)]
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
+    if (!Number.isFinite(grupo) || ids.length !== 2 || ids[0] === ids[1]) return null;
+    return `${grupo}:${ids[0]}-${ids[1]}`;
+  }
+
+  static async obtenerMapaEnfrentamientosDirectosEvento(
+    evento_id,
+    sistemaPuntuacion = "tradicional",
+    db = pool
+  ) {
+    const q = `
+      SELECT
+        id,
+        grupo_id,
+        equipo_local_id,
+        equipo_visitante_id,
+        resultado_local,
+        resultado_visitante,
+        resultado_local_shootouts,
+        resultado_visitante_shootouts,
+        shootouts
+      FROM partidos
+      WHERE evento_id = $1
+        AND grupo_id IS NOT NULL
+        AND estado = 'finalizado'
+        AND equipo_local_id IS NOT NULL
+        AND equipo_visitante_id IS NOT NULL
+      ORDER BY grupo_id ASC, id ASC
+    `;
+    const r = await db.query(q, [evento_id]);
+    const mapa = new Map();
+
+    for (const partido of r.rows) {
+      const grupoId = Number.parseInt(partido.grupo_id, 10);
+      const localId = Number.parseInt(partido.equipo_local_id, 10);
+      const visitanteId = Number.parseInt(partido.equipo_visitante_id, 10);
+      const clave = this.construirClaveEnfrentamiento(grupoId, localId, visitanteId);
+      if (!clave) continue;
+
+      const [equipoAId, equipoBId] = [localId, visitanteId].sort((a, b) => a - b);
+      const esLocalA = equipoAId === localId;
+      const esLocalB = equipoBId === localId;
+      const puntos = Partido.calcularPuntos(
+        sistemaPuntuacion || "tradicional",
+        partido.resultado_local,
+        partido.resultado_visitante,
+        partido.resultado_local_shootouts,
+        partido.resultado_visitante_shootouts,
+        partido.shootouts
+      );
+      const resultadoLocal = Number.parseInt(partido.resultado_local, 10) || 0;
+      const resultadoVisitante = Number.parseInt(partido.resultado_visitante, 10) || 0;
+      const golesA = esLocalA ? resultadoLocal : resultadoVisitante;
+      const golesB = esLocalB ? resultadoLocal : resultadoVisitante;
+      const puntosA = esLocalA
+        ? Number.parseInt(puntos?.puntosLocal, 10) || 0
+        : Number.parseInt(puntos?.puntosVisitante, 10) || 0;
+      const puntosB = esLocalB
+        ? Number.parseInt(puntos?.puntosLocal, 10) || 0
+        : Number.parseInt(puntos?.puntosVisitante, 10) || 0;
+
+      if (!mapa.has(clave)) {
+        mapa.set(clave, {
+          grupo_id: grupoId,
+          equipo_a_id: equipoAId,
+          equipo_b_id: equipoBId,
+          partidos_jugados: 0,
+          puntos_a: 0,
+          puntos_b: 0,
+          victorias_a: 0,
+          victorias_b: 0,
+          goles_a: 0,
+          goles_b: 0,
+        });
+      }
+
+      const resumen = mapa.get(clave);
+      resumen.partidos_jugados += 1;
+      resumen.puntos_a += puntosA;
+      resumen.puntos_b += puntosB;
+      resumen.goles_a += golesA;
+      resumen.goles_b += golesB;
+      if (golesA > golesB) resumen.victorias_a += 1;
+      if (golesB > golesA) resumen.victorias_b += 1;
+    }
+
+    return mapa;
+  }
+
+  static obtenerComparacionEnfrentamientoDirecto(
+    a = {},
+    b = {},
+    enfrentamientosDirectos = new Map()
+  ) {
+    const grupoA = Number.parseInt(a?.grupo_origen_id ?? a?.grupo_id, 10);
+    const grupoB = Number.parseInt(b?.grupo_origen_id ?? b?.grupo_id, 10);
+    const equipoAId = Number.parseInt(a?.equipo_id, 10);
+    const equipoBId = Number.parseInt(b?.equipo_id, 10);
+    if (
+      !Number.isFinite(grupoA) ||
+      !Number.isFinite(grupoB) ||
+      grupoA !== grupoB ||
+      !Number.isFinite(equipoAId) ||
+      !Number.isFinite(equipoBId)
+    ) {
+      return 0;
+    }
+
+    const clave = this.construirClaveEnfrentamiento(grupoA, equipoAId, equipoBId);
+    if (!clave || !enfrentamientosDirectos.has(clave)) return 0;
+
+    const resumen = enfrentamientosDirectos.get(clave);
+    const equipoAEsLadoA = Number(resumen?.equipo_a_id) === equipoAId;
+    const puntosA = equipoAEsLadoA ? Number(resumen?.puntos_a || 0) : Number(resumen?.puntos_b || 0);
+    const puntosB = equipoAEsLadoA ? Number(resumen?.puntos_b || 0) : Number(resumen?.puntos_a || 0);
+    if (puntosA !== puntosB) return puntosB - puntosA;
+
+    const victoriasA = equipoAEsLadoA
+      ? Number(resumen?.victorias_a || 0)
+      : Number(resumen?.victorias_b || 0);
+    const victoriasB = equipoAEsLadoA
+      ? Number(resumen?.victorias_b || 0)
+      : Number(resumen?.victorias_a || 0);
+    if (victoriasA !== victoriasB) return victoriasB - victoriasA;
+
+    const golesA = equipoAEsLadoA ? Number(resumen?.goles_a || 0) : Number(resumen?.goles_b || 0);
+    const golesB = equipoAEsLadoA ? Number(resumen?.goles_b || 0) : Number(resumen?.goles_a || 0);
+    if (golesA !== golesB) return golesB - golesA;
+
+    return 0;
+  }
+
+  static compararTablaAcumulada(
+    a = {},
+    b = {},
+    { enfrentamientosDirectos = new Map() } = {}
+  ) {
+    if (Number(b?.porcentaje_rendimiento || 0) !== Number(a?.porcentaje_rendimiento || 0)) {
+      return Number(b?.porcentaje_rendimiento || 0) - Number(a?.porcentaje_rendimiento || 0);
+    }
+    if (Number(b?.diferencia_goles || 0) !== Number(a?.diferencia_goles || 0)) {
+      return Number(b?.diferencia_goles || 0) - Number(a?.diferencia_goles || 0);
+    }
+    if (Number(b?.goles_favor || 0) !== Number(a?.goles_favor || 0)) {
+      return Number(b?.goles_favor || 0) - Number(a?.goles_favor || 0);
+    }
+
+    const comparacionDirecta = this.obtenerComparacionEnfrentamientoDirecto(
+      a,
+      b,
+      enfrentamientosDirectos
+    );
+    if (comparacionDirecta !== 0) return comparacionDirecta;
+
+    if (Number(b?.puntaje_fair_play || 0) !== Number(a?.puntaje_fair_play || 0)) {
+      return Number(b?.puntaje_fair_play || 0) - Number(a?.puntaje_fair_play || 0);
+    }
+    if (Number(a?.tarjetas_rojas || 0) !== Number(b?.tarjetas_rojas || 0)) {
+      return Number(a?.tarjetas_rojas || 0) - Number(b?.tarjetas_rojas || 0);
+    }
+    if (Number(a?.tarjetas_amarillas || 0) !== Number(b?.tarjetas_amarillas || 0)) {
+      return Number(a?.tarjetas_amarillas || 0) - Number(b?.tarjetas_amarillas || 0);
+    }
+    if (Number(a?.faltas_fair_play || 0) !== Number(b?.faltas_fair_play || 0)) {
+      return Number(a?.faltas_fair_play || 0) - Number(b?.faltas_fair_play || 0);
+    }
+    if (
+      Number(a?.posicion_deportiva || a?.posicion || 9999) !==
+      Number(b?.posicion_deportiva || b?.posicion || 9999)
+    ) {
+      return (
+        Number(a?.posicion_deportiva || a?.posicion || 9999) -
+        Number(b?.posicion_deportiva || b?.posicion || 9999)
+      );
+    }
+    return String(a?.equipo_nombre || "").localeCompare(String(b?.equipo_nombre || ""));
+  }
+
   static compararCandidatoClasificacion(a = {}, b = {}) {
     if (Number(b?.puntos || 0) !== Number(a?.puntos || 0)) {
       return Number(b?.puntos || 0) - Number(a?.puntos || 0);
@@ -1135,16 +1317,82 @@ class Eliminatoria {
     return sembrados;
   }
 
-  static construirSembradoTablaUnica(clasificadosData) {
-    const ranking = [...(clasificadosData.clasificados || [])].sort((a, b) => {
-      if (b.porcentaje_rendimiento !== a.porcentaje_rendimiento) {
-        return b.porcentaje_rendimiento - a.porcentaje_rendimiento;
+  static seleccionarClasificadosTablaAcumulada(
+    clasificadosData,
+    cantidadObjetivo = null,
+    contextoComparacion = {}
+  ) {
+    const base = [];
+    const usados = new Set();
+
+    for (const row of clasificadosData?.clasificados || []) {
+      const equipoId = Number.parseInt(row?.equipo_id, 10);
+      if (!Number.isFinite(equipoId) || usados.has(equipoId)) continue;
+      usados.add(equipoId);
+      base.push({
+        ...row,
+        clasificacion_extra: false,
+      });
+    }
+
+    const objetivo = Number.parseInt(cantidadObjetivo, 10);
+    if (!Number.isFinite(objetivo) || objetivo <= base.length) {
+      return {
+        clasificados: base,
+        adicionales: [],
+        objetivo: Number.isFinite(objetivo) ? objetivo : null,
+        faltantes_para_objetivo: 0,
+      };
+    }
+
+    const candidatos = [];
+    for (const grupo of clasificadosData?.grupos || []) {
+      for (const row of grupo?.tabla || []) {
+        const equipoId = Number.parseInt(row?.equipo_id, 10);
+        if (!Number.isFinite(equipoId) || usados.has(equipoId) || estaEliminadoCompetencia(row)) continue;
+        candidatos.push({
+          ...row,
+          grupo_id: Number.parseInt(row?.grupo_id ?? grupo?.grupo_id, 10) || null,
+          grupo_letra: row?.grupo_letra || grupo?.grupo_letra || null,
+          grupo_origen_id: Number.parseInt(row?.grupo_origen_id ?? row?.grupo_id ?? grupo?.grupo_id, 10) || null,
+          grupo_origen_letra:
+            row?.grupo_origen_letra || row?.grupo_letra || grupo?.grupo_letra || null,
+          slot_posicion: null,
+          seed_ref: null,
+          clasificacion_extra: true,
+        });
       }
-      if (b.puntos !== a.puntos) return b.puntos - a.puntos;
-      if (b.diferencia_goles !== a.diferencia_goles) return b.diferencia_goles - a.diferencia_goles;
-      if (b.goles_favor !== a.goles_favor) return b.goles_favor - a.goles_favor;
-      return String(a.equipo_nombre || "").localeCompare(String(b.equipo_nombre || ""));
-    });
+    }
+
+    candidatos.sort((a, b) => this.compararTablaAcumulada(a, b, contextoComparacion));
+
+    const adicionales = [];
+    const faltantes = objetivo - base.length;
+    for (const candidato of candidatos) {
+      const equipoId = Number.parseInt(candidato?.equipo_id, 10);
+      if (!Number.isFinite(equipoId) || usados.has(equipoId)) continue;
+      usados.add(equipoId);
+      adicionales.push(candidato);
+      if (adicionales.length >= faltantes) break;
+    }
+
+    return {
+      clasificados: [...base, ...adicionales],
+      adicionales,
+      objetivo,
+      faltantes_para_objetivo: Math.max(0, objetivo - (base.length + adicionales.length)),
+    };
+  }
+
+  static construirSembradoTablaUnica(clasificadosData, opciones = {}) {
+    const seleccion = this.seleccionarClasificadosTablaAcumulada(
+      clasificadosData,
+      opciones?.cantidad_objetivo,
+      opciones
+    );
+    const ranking = [...(seleccion.clasificados || [])].sort((a, b) =>
+      this.compararTablaAcumulada(a, b, opciones)
+    );
 
     ranking.forEach((r, idx) => {
       r.posicion_general = idx + 1;
@@ -1168,7 +1416,14 @@ class Eliminatoria {
       i += 1;
       j -= 1;
     }
-    return { ranking, sembrados };
+
+    return {
+      ranking,
+      sembrados,
+      adicionales: seleccion.adicionales || [],
+      objetivo: seleccion.objetivo,
+      faltantes_para_objetivo: seleccion.faltantes_para_objetivo || 0,
+    };
   }
 
   static async crearSlot(
@@ -1569,6 +1824,11 @@ class Eliminatoria {
         clasificadosPorGrupo,
         client
       );
+      const enfrentamientosDirectos = await this.obtenerMapaEnfrentamientosDirectosEvento(
+        evento_id,
+        evento.sistema_puntuacion || "tradicional",
+        client
+      );
 
       const gruposLetras = clasificadosData.grupos.map((g) => String(g.grupo_letra || "").toUpperCase());
 
@@ -1580,9 +1840,16 @@ class Eliminatoria {
       };
 
       if (metodo === "tabla_unica") {
-        const tabla = this.construirSembradoTablaUnica(clasificadosData);
+        const cantidadObjetivo = Number.parseInt(opciones.cantidad_equipos, 10);
+        const tabla = this.construirSembradoTablaUnica(clasificadosData, {
+          cantidad_objetivo: Number.isFinite(cantidadObjetivo) ? cantidadObjetivo : null,
+          enfrentamientosDirectos,
+        });
         entradas = tabla.sembrados;
         meta.ranking_tabla_unica = tabla.ranking;
+        meta.objetivo_tabla_unica = tabla.objetivo || null;
+        meta.clasificados_adicionales_tabla_unica = tabla.adicionales || [];
+        meta.faltantes_tabla_unica = Number(tabla.faltantes_para_objetivo || 0);
       } else {
         const cruces = this.normalizarCrucesGruposInput(opciones.cruces_grupos, gruposLetras);
         if (!cruces.length) {

@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-11
+Ultima actualizacion: 2026-03-12
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,35 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-12
+- Usuarios / organizadores:
+  - `frontend/usuarios.html` y `frontend/js/usuarios.js` ya alinean el alta/edicion del rol `organizador` con la base usada por `Mi Landing`.
+  - desde el formulario de usuarios ya se puede capturar:
+    - nombre de organizacion,
+    - lema publico,
+    - correo de contacto publico,
+    - telefono / WhatsApp publico,
+    - logo de la organizacion.
+  - al editar un organizador, `usuarios.html` consulta su contexto real de `Mi Landing` y precarga:
+    - branding,
+    - contacto,
+    - logo actual.
+  - si el administrador sube logo desde usuarios, el archivo se sincroniza contra `organizador_portal_config` sin obligar a entrar luego a `organizador-portal.html`.
+- Backend / sincronizacion:
+  - `backend/controllers/authController.js` ahora sincroniza automaticamente el perfil base del organizador hacia `OrganizadorPortal` en:
+    - registro publico del organizador,
+    - alta de usuario organizador por administrador,
+    - actualizacion de usuario organizador.
+  - `backend/models/OrganizadorPortal.js` ya mantiene sincronizado `usuarios.organizacion_nombre` cuando el nombre de organizacion se cambia desde `Mi Landing`, evitando divergencia entre ambos modulos.
+- Verificacion:
+  - validacion de sintaxis OK en:
+    - `frontend/js/usuarios.js`,
+    - `frontend/js/api.js`,
+    - `backend/controllers/authController.js`,
+    - `backend/models/OrganizadorPortal.js`.
+  - smoke backend:
+    - `npm --prefix backend run smoke` => `PASS 9/9`.
 
 ### 2026-03-11
 - Carnés:
@@ -1204,6 +1233,42 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Continuidad del hardening de despliegue Render:
   - carga historica de `uploads`,
   - verificacion real de logos, fotos y documentos.
+
+## Actualizacion 2026-03-12 (Tabla acumulada, foto carné y planilla del jugador)
+- Se incorporo el tipo visible de competencia `tabla acumulada` para categorias/eventos:
+  - pensado para grupos + clasificacion global por rendimiento,
+  - soportado en `eventos`, `tablas`, `eliminatorias` y payloads del portal publico,
+  - reutilizando la logica ya existente de `tabla_unica` sin tocar `backend/models/Eliminatoria.js`.
+- Se agrego migracion formal:
+  - `database/migrations/037_eventos_clasificacion_tabla_acumulada.sql`
+- Se aplico/verifico en BD local:
+  - columna `eventos.clasificacion_tabla_acumulada`.
+- Se mejoro el ajuste de foto para carné en `jugadores.html`:
+  - zoom `+/-`,
+  - control direccional arriba/abajo/izquierda/derecha,
+  - persistencia del zoom del jugador,
+  - reubicacion del bloque informativo de `foto carné cargada` debajo del panel de ajuste.
+- Se agrego migracion formal:
+  - `database/migrations/038_jugadores_foto_carnet_zoom.sql`
+- Se aplico/verifico en BD local:
+  - columna `jugadores.foto_carnet_zoom`.
+- Se implemento `Planilla del jugador` dentro de reportes:
+  - selector individual,
+  - vista previa,
+  - impresion,
+  - exportacion PDF,
+  - acceso directo desde cards/listado del jugador.
+- Se ajustaron cards:
+  - equipos con nombre a la izquierda y logo a la derecha,
+  - jugadores con layout mas ordenado en metadata/documentos.
+- Se redujo visualmente la marca `ELIMINADO` en tablas internas y portal publico.
+- Se agrego `Polifuncional` como posicion disponible para:
+  - formulario de jugadores,
+  - planilla/manual de jugador.
+- Render / produccion:
+  - las migraciones `037` y `038` quedaron versionadas en repo,
+  - el backend ya incorpora endurecimiento de esquema para crear esas columnas al usar modulos de `eventos` / `jugadores` tras el redeploy,
+  - pendiente ejecutar migracion formal directa sobre la BD de Render cuando se disponga de la cadena/console operativa del servicio.
 
 ## Checklist de Pruebas Siguiente Sesion
 1. Crear/seleccionar campeonato y evento.

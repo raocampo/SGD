@@ -313,6 +313,19 @@ class OrganizadorPortal {
       ]
     );
 
+    if (Object.prototype.hasOwnProperty.call(data, "organizacion_nombre")) {
+      await client.query(
+        `
+          UPDATE usuarios
+          SET organizacion_nombre = $1,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2
+            AND LOWER(COALESCE(rol, '')) = 'organizador'
+        `,
+        [payload.organizacion_nombre, uId]
+      );
+    }
+
     return this.limpiarConfig(result.rows[0] || null);
   }
 

@@ -120,6 +120,7 @@ function normalizarCategoriasResumenPortal(resumen) {
       total_equipos: Number.parseInt(item?.total_equipos, 10) || 0,
       modalidad: item?.modalidad || null,
       metodo_competencia: item?.metodo_competencia || "grupos",
+      clasificacion_tabla_acumulada: item?.clasificacion_tabla_acumulada === true,
     }))
     .filter((item) => Number.isFinite(item.id) && item.id > 0 && item.nombre);
 }
@@ -158,8 +159,14 @@ function formatearFormatoCompetenciaPortal(valor = "") {
     eliminatoria: "Eliminatoria",
     todos_contra_todos: "Todos contra todos",
     grupos_y_eliminacion: "Grupos y eliminacion",
+    tabla_acumulada: "Tabla acumulada",
   };
   return alias[raw] || capitalizarPortal(humanizarTokenPortal(raw));
+}
+
+function obtenerMetodoCompetenciaVisiblePortal(item = {}) {
+  if (item?.clasificacion_tabla_acumulada === true) return "tabla_acumulada";
+  return String(item?.metodo_competencia || "grupos").trim().toLowerCase();
 }
 
 function renderMetaCardPortal(torneo) {
@@ -168,7 +175,11 @@ function renderMetaCardPortal(torneo) {
 
   const modalidades = [...new Set(categorias.map((item) => formatearModalidadPortal(item.modalidad)).filter(Boolean))];
   const formatos = [
-    ...new Set(categorias.map((item) => formatearFormatoCompetenciaPortal(item.metodo_competencia)).filter(Boolean)),
+    ...new Set(
+      categorias
+        .map((item) => formatearFormatoCompetenciaPortal(obtenerMetodoCompetenciaVisiblePortal(item)))
+        .filter(Boolean)
+    ),
   ];
   const resumen = [];
   if (modalidades.length) resumen.push(`Modalidad: ${modalidades.join(" / ")}`);
@@ -1070,7 +1081,9 @@ function renderFairPlayPortal(fairPlay = []) {
 function renderResumenCategoriaPortal(evento, data) {
   const resumen = [
     evento?.modalidad ? `Modalidad: ${formatearModalidadPortal(evento.modalidad)}` : "",
-    evento?.metodo_competencia ? `Formato: ${formatearFormatoCompetenciaPortal(evento.metodo_competencia)}` : "",
+    evento?.metodo_competencia
+      ? `Formato: ${formatearFormatoCompetenciaPortal(obtenerMetodoCompetenciaVisiblePortal(evento))}`
+      : "",
     `Equipos: ${Number(evento?.total_equipos || 0)}`,
     Number(evento?.total_grupos || 0) > 0 ? `Grupos: ${Number(evento.total_grupos || 0)}` : "",
     `Partidos: ${Number(evento?.partidos_finalizados || 0)}/${Number(evento?.total_partidos || 0)}`,
@@ -1225,17 +1238,23 @@ async function cargarMediaCampeonatoPublica(campeonatoId, campeonatoNombre = "")
 }
 
 function renderTrackAuspiciantesPortal(auspiciantes = []) {
-  const items = Array.isArray(auspiciantes) ? auspiciantes.filter((item) => item?.logo_url) : [];
+  const items = Array.isArray(auspiciantes) ? auspiciantes.filter((item) => item?.logo_url || item?.nombre) : [];
   if (!items.length) return "";
   const repetidos = items.length > 1 ? [...items, ...items] : items;
   return repetidos
     .map(
       (item, index) => `
-        <img
-          src="${escPortal(normalizarLogoUrl(item.logo_url))}"
-          alt="${index < items.length ? escPortal(item.nombre || "Auspiciante") : ""}"
-          ${index >= items.length ? 'aria-hidden="true"' : ""}
-        />
+        ${
+          item?.logo_url
+            ? `<img
+                src="${escPortal(normalizarLogoUrl(item.logo_url))}"
+                alt="${index < items.length ? escPortal(item.nombre || "Auspiciante") : ""}"
+                ${index >= items.length ? 'aria-hidden="true"' : ""}
+              />`
+            : `<span class="ltc-sponsor-text-chip" ${index >= items.length ? 'aria-hidden="true"' : ""}>${escPortal(
+                item?.nombre || "Auspiciante"
+              )}</span>`
+        }
       `
     )
     .join("");

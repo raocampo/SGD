@@ -28,6 +28,13 @@ class Jugador {
         return Math.max(0, Math.min(100, Number(numero.toFixed(2))));
     }
 
+    static normalizarZoomFoto(valor, fallback = 1) {
+        if (valor === undefined || valor === null || valor === "") return fallback;
+        const numero = Number.parseFloat(String(valor).replace(",", "."));
+        if (!Number.isFinite(numero)) return fallback;
+        return Math.max(0.6, Math.min(2.5, Number(numero.toFixed(2))));
+    }
+
     static async asegurarColumnasDocumentos() {
         if (this._columnasDocumentosAseguradas) return;
         await pool.query(`
@@ -35,13 +42,15 @@ class Jugador {
             ADD COLUMN IF NOT EXISTS foto_cedula_url TEXT,
             ADD COLUMN IF NOT EXISTS foto_carnet_url TEXT,
             ADD COLUMN IF NOT EXISTS foto_carnet_pos_x NUMERIC(5,2) DEFAULT 50,
-            ADD COLUMN IF NOT EXISTS foto_carnet_pos_y NUMERIC(5,2) DEFAULT 35
+            ADD COLUMN IF NOT EXISTS foto_carnet_pos_y NUMERIC(5,2) DEFAULT 35,
+            ADD COLUMN IF NOT EXISTS foto_carnet_zoom NUMERIC(5,2) DEFAULT 1.00
         `);
         await pool.query(`
             UPDATE jugadores
             SET
               foto_carnet_pos_x = COALESCE(foto_carnet_pos_x, 50),
-              foto_carnet_pos_y = COALESCE(foto_carnet_pos_y, 35)
+              foto_carnet_pos_y = COALESCE(foto_carnet_pos_y, 35),
+              foto_carnet_zoom = COALESCE(foto_carnet_zoom, 1.00)
         `);
         this._columnasDocumentosAseguradas = true;
     }
@@ -132,7 +141,8 @@ class Jugador {
         foto_cedula_url = null,
         foto_carnet_url = null,
         foto_carnet_pos_x = 50,
-        foto_carnet_pos_y = 35
+        foto_carnet_pos_y = 35,
+        foto_carnet_zoom = 1
     ) {
         await this.asegurarColumnasDocumentos();
         const cedulaNormalizada = this.normalizarCedidentidad(cedidentidad);
@@ -140,6 +150,7 @@ class Jugador {
         const numeroCamisetaNormalizado = this.normalizarNumeroCamiseta(numero_camiseta);
         const fotoCarnetPosX = this.normalizarPosicionFoto(foto_carnet_pos_x, 50);
         const fotoCarnetPosY = this.normalizarPosicionFoto(foto_carnet_pos_y, 35);
+        const fotoCarnetZoom = this.normalizarZoomFoto(foto_carnet_zoom, 1);
 
         // Verificar límites de jugadores en el equipo
         const equipo = await this.obtenerEquipoConLimites(equipo_id);
@@ -194,8 +205,8 @@ class Jugador {
         // Crear jugador
         const insertQuery = `
             INSERT INTO jugadores 
-            (equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan, foto_cedula_url, foto_carnet_url, foto_carnet_pos_x, foto_carnet_pos_y) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+            (equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan, foto_cedula_url, foto_carnet_url, foto_carnet_pos_x, foto_carnet_pos_y, foto_carnet_zoom) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
             RETURNING *
         `;
         const values = [
@@ -211,6 +222,7 @@ class Jugador {
             foto_carnet_url,
             fotoCarnetPosX,
             fotoCarnetPosY,
+            fotoCarnetZoom,
         ];
         
         const result = await pool.query(insertQuery, values);
@@ -278,6 +290,9 @@ class Jugador {
         if (Object.prototype.hasOwnProperty.call(datos, "foto_carnet_pos_y")) {
             datos.foto_carnet_pos_y = this.normalizarPosicionFoto(datos.foto_carnet_pos_y, 35);
         }
+        if (Object.prototype.hasOwnProperty.call(datos, "foto_carnet_zoom")) {
+            datos.foto_carnet_zoom = this.normalizarZoomFoto(datos.foto_carnet_zoom, 1);
+        }
         // Si cambia equipo_id o cedidentidad, validar jugador único por campeonato
         if (datos.equipo_id) {
             const jugadorActual = await pool.query(
@@ -318,7 +333,7 @@ class Jugador {
         const allowed = new Set([
             'equipo_id', 'nombre', 'apellido', 'cedidentidad', 'fecha_nacimiento',
             'posicion', 'numero_camiseta', 'es_capitan', 'foto_cedula_url', 'foto_carnet_url',
-            'foto_carnet_pos_x', 'foto_carnet_pos_y'
+            'foto_carnet_pos_x', 'foto_carnet_pos_y', 'foto_carnet_zoom'
         ]);
 
         for (const [key, value] of Object.entries(datos)) {

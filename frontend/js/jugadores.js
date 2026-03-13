@@ -138,6 +138,12 @@ function normalizarPosicionPorcentaje(valor, fallback = 50) {
   return Math.max(0, Math.min(100, Number(numero.toFixed(2))));
 }
 
+function normalizarZoomFotoCarnet(valor, fallback = 1) {
+  const numero = Number.parseFloat(String(valor ?? "").replace(",", "."));
+  if (!Number.isFinite(numero)) return fallback;
+  return Math.max(0.6, Math.min(2.5, Number(numero.toFixed(2))));
+}
+
 function obtenerMetaVisualCarnet() {
   return {
     ...campeonatoMeta,
@@ -341,10 +347,35 @@ function actualizarEstadoPanelReportes() {
         : "Selecciona campeonato y categoría para habilitar el consolidado disciplinario.";
     } else if (!tienePermisoReportesJugadores()) {
       hint.textContent = "Tu rol puede gestionar jugadores, pero no generar reportes.";
+    } else if (tipoReporte === "ficha") {
+      hint.textContent = "Selecciona el jugador y genera su planilla individual.";
     } else {
       hint.textContent = "Selecciona el tipo de reporte y ejecuta la acción.";
     }
   }
+  actualizarSelectorJugadorReporte();
+}
+
+function actualizarSelectorJugadorReporte() {
+  const wrap = document.getElementById("reporte-jugadores-jugador-wrap");
+  const select = document.getElementById("reporte-jugadores-jugador-id");
+  const tipoReporte = obtenerTipoReporteJugadores();
+  if (!wrap || !select) return;
+
+  const visible = tipoReporte === "ficha";
+  wrap.style.display = visible ? "" : "none";
+  if (!visible) return;
+
+  const actual = String(select.value || "").trim();
+  select.innerHTML = '<option value="">— Selecciona un jugador —</option>';
+  jugadoresActuales.forEach((jugador) => {
+    const nombre = `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim();
+    select.innerHTML += `<option value="${jugador.id}">${escapeHtml(nombre)}${jugador.numero_camiseta ? ` · #${escapeHtml(jugador.numero_camiseta)}` : ""}</option>`;
+  });
+  if (actual && jugadoresActuales.some((jugador) => String(jugador.id) === actual)) {
+    select.value = actual;
+  }
+  select.disabled = !tienePermisoReportesJugadores() || !contextoListoParaReportes("ficha") || !jugadoresActuales.length;
 }
 
 function actualizarBotonesVistaJugadores() {
@@ -542,7 +573,8 @@ function actualizarPreviewFotoCarnet() {
   const img = document.getElementById("jugador-foto-carnet-preview-img");
   const sliderX = document.getElementById("jugador-foto-carnet-pos-x");
   const sliderY = document.getElementById("jugador-foto-carnet-pos-y");
-  if (!bloque || !img || !sliderX || !sliderY) return;
+  const sliderZoom = document.getElementById("jugador-foto-carnet-zoom");
+  if (!bloque || !img || !sliderX || !sliderY || !sliderZoom) return;
 
   const url = obtenerUrlFotoCarnetPreview();
   if (!url) {
@@ -555,6 +587,30 @@ function actualizarPreviewFotoCarnet() {
   img.src = url;
   img.style.setProperty("--preview-foto-pos-x", `${normalizarPosicionPorcentaje(sliderX.value, 50)}%`);
   img.style.setProperty("--preview-foto-pos-y", `${normalizarPosicionPorcentaje(sliderY.value, 35)}%`);
+  img.style.setProperty("--preview-foto-scale", String(normalizarZoomFotoCarnet(sliderZoom.value, 1)));
+}
+
+function desplazarPreviewFotoCarnet(direccion = "") {
+  const sliderX = document.getElementById("jugador-foto-carnet-pos-x");
+  const sliderY = document.getElementById("jugador-foto-carnet-pos-y");
+  if (!sliderX || !sliderY) return;
+  const paso = 2;
+  const actualX = normalizarPosicionPorcentaje(sliderX.value, 50);
+  const actualY = normalizarPosicionPorcentaje(sliderY.value, 35);
+
+  if (direccion === "left") sliderX.value = String(normalizarPosicionPorcentaje(actualX - paso, 50));
+  if (direccion === "right") sliderX.value = String(normalizarPosicionPorcentaje(actualX + paso, 50));
+  if (direccion === "up") sliderY.value = String(normalizarPosicionPorcentaje(actualY - paso, 35));
+  if (direccion === "down") sliderY.value = String(normalizarPosicionPorcentaje(actualY + paso, 35));
+  actualizarPreviewFotoCarnet();
+}
+
+function ajustarZoomPreviewFotoCarnet(delta = 0) {
+  const sliderZoom = document.getElementById("jugador-foto-carnet-zoom");
+  if (!sliderZoom) return;
+  const actual = normalizarZoomFotoCarnet(sliderZoom.value, 1);
+  sliderZoom.value = String(normalizarZoomFotoCarnet(actual + delta, 1));
+  actualizarPreviewFotoCarnet();
 }
 
 function actualizarResultadoBusquedaCedula(html = "", tipo = "") {
@@ -584,6 +640,9 @@ function rellenarFormularioJugadorDesdePerfil(jugador = {}) {
   );
   document.getElementById("jugador-foto-carnet-pos-y").value = String(
     normalizarPosicionPorcentaje(jugador.foto_carnet_pos_y, 35)
+  );
+  document.getElementById("jugador-foto-carnet-zoom").value = String(
+    normalizarZoomFotoCarnet(jugador.foto_carnet_zoom, 1)
   );
   actualizarPreviewFotoCarnet();
 }
@@ -622,12 +681,10 @@ async function buscarJugadorPorCedulaEnBaseLocal() {
 function limpiarVistaSinEquipo() {
   const info = document.getElementById("info-equipo");
   const lista = document.getElementById("lista-jugadores");
-  const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
-  const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
   jugadoresActuales = [];
   if (info) info.style.display = "none";
-  if (bloqueNomina) bloqueNomina.style.display = "none";
-  if (bloqueCarnets) bloqueCarnets.style.display = "none";
+  mostrarBloqueReportesJugador("");
+  renderPlanillaJugador();
   actualizarEstadoPanelReportes();
   if (lista) {
     lista.innerHTML = `
@@ -870,6 +927,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("reporte-jugadores-tipo")?.addEventListener("change", () => {
     actualizarEstadoPanelReportes();
   });
+  document.getElementById("reporte-jugadores-jugador-id")?.addEventListener("change", () => {
+    if (obtenerTipoReporteJugadores() === "ficha" && document.getElementById("bloque-ficha-jugador")?.style.display === "block") {
+      renderPlanillaJugador();
+    }
+  });
   document
     .getElementById("carnet-foto-anverso")
     ?.addEventListener("change", () => {
@@ -1023,6 +1085,7 @@ async function cargarJugadores() {
       actualizarResumenJugadores();
       renderPlantillaNominaJugadores();
       renderReporteSancionesJugadores();
+      renderPlanillaJugador();
       renderPlantillaCarnets();
       return;
     }
@@ -1032,6 +1095,7 @@ async function cargarJugadores() {
     actualizarResumenJugadores();
     renderPlantillaNominaJugadores();
     renderReporteSancionesJugadores();
+    renderPlanillaJugador();
     renderPlantillaCarnets();
   } catch (error) {
     console.error("Error cargando jugadores:", error);
@@ -1039,6 +1103,7 @@ async function cargarJugadores() {
     cont.innerHTML = "<p>Error cargando jugadores.</p>";
     renderPlantillaNominaJugadores();
     renderReporteSancionesJugadores();
+    renderPlanillaJugador();
     renderPlantillaCarnets();
   }
 }
@@ -1047,23 +1112,40 @@ function renderTarjetasJugadores(jugadores) {
   const soloLectura = usuarioSoloLecturaJugadores();
   return jugadores
     .map((jugador, index) => {
+      const nombreCompleto = `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim();
       return `
-        <div class="equipo-card">
-          <h3>
-            <span class="item-index">${index + 1}.</span>
-            ${escapeHtml(jugador.nombre || "")} ${escapeHtml(jugador.apellido || "")}
-          </h3>
-          <p><strong>Número:</strong> ${escapeHtml(jugador.numero_camiseta || "-")}</p>
-          <p><strong>Posición:</strong> ${escapeHtml(jugador.posicion || "-")}</p>
-          <p><strong>Cédula de Identidad:</strong> ${escapeHtml(jugador.cedidentidad || "-")}</p>
-          <p><strong>Fecha nac.:</strong> ${escapeHtml(formatearFecha(jugador.fecha_nacimiento))}</p>
-          <p><strong>Capitán:</strong> ${jugador.es_capitan ? "Sí" : "No"}</p>
-          <p><strong>Disciplina:</strong> ${renderEstadoDisciplinarioJugador(jugador)}</p>
-          <p><strong>Documentos:</strong> ${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carné")}</p>
+        <div class="jugador-card">
+          <div class="jugador-card-head">
+            <h3>
+              <span class="item-index">${index + 1}.</span>
+              ${escapeHtml(nombreCompleto)}
+            </h3>
+            <button class="btn btn-outline" type="button" onclick="abrirPlanillaJugadorDesdeLista(${jugador.id})">
+              <i class="fas fa-id-card"></i> Planilla
+            </button>
+          </div>
+          <div class="jugador-card-meta-grid">
+            <p><strong>Número:</strong> ${escapeHtml(jugador.numero_camiseta || "-")}</p>
+            <p><strong>Posición:</strong> ${escapeHtml(jugador.posicion || "-")}</p>
+            <p><strong>Cédula de Identidad:</strong> ${escapeHtml(jugador.cedidentidad || "-")}</p>
+            <p><strong>Fecha nac.:</strong> ${escapeHtml(formatearFecha(jugador.fecha_nacimiento))}</p>
+            <p><strong>Capitán:</strong> ${jugador.es_capitan ? "Sí" : "No"}</p>
+            <p><strong>Disciplina:</strong> ${renderEstadoDisciplinarioJugador(jugador)}</p>
+          </div>
+          <div class="jugador-documentos-row">
+            <strong>Documentos:</strong>
+            <div class="jugador-documentos-chips">
+              ${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")}
+              ${renderEstadoDocumento(jugador.foto_carnet_url, "Carné")}
+            </div>
+          </div>
           ${
             soloLectura
               ? ""
               : `<div class="jugador-actions">
+            <button class="btn btn-outline" type="button" onclick="abrirPlanillaJugadorDesdeLista(${jugador.id})">
+              <i class="fas fa-id-card"></i> Planilla
+            </button>
             <button class="btn btn-warning" onclick="editarJugador(${jugador.id})">
               <i class="fas fa-edit"></i> Editar
             </button>
@@ -1095,8 +1177,15 @@ function renderTablaJugadores(jugadores) {
           <td>${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carné")}</td>
           ${
             soloLectura
-              ? ""
+              ? `<td class="list-table-actions">
+            <button class="btn btn-outline" onclick="abrirPlanillaJugadorDesdeLista(${jugador.id})">
+              <i class="fas fa-id-card"></i> Planilla
+            </button>
+          </td>`
               : `<td class="list-table-actions">
+            <button class="btn btn-outline" onclick="abrirPlanillaJugadorDesdeLista(${jugador.id})">
+              <i class="fas fa-id-card"></i> Planilla
+            </button>
             <button class="btn btn-warning" onclick="editarJugador(${jugador.id})">
               <i class="fas fa-edit"></i> Editar
             </button>
@@ -1124,7 +1213,7 @@ function renderTablaJugadores(jugadores) {
             <th>Capitán</th>
             <th>Disciplina</th>
             <th>Documentos</th>
-            ${soloLectura ? "" : "<th>Acciones</th>"}
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>${filas}</tbody>
@@ -1276,6 +1365,97 @@ function renderPlantillaNominaJugadores() {
         </table>
       </div>
     </div>
+  `;
+}
+
+function obtenerJugadorSeleccionadoParaFicha() {
+  const select = document.getElementById("reporte-jugadores-jugador-id");
+  const jugadorId = Number.parseInt(select?.value || "", 10);
+  if (!Number.isFinite(jugadorId) || jugadorId <= 0) return null;
+  return jugadoresActuales.find((jugador) => Number(jugador.id) === jugadorId) || null;
+}
+
+function renderPlanillaJugador() {
+  const zona = document.getElementById("ficha-jugador-export");
+  if (!zona) return;
+
+  const jugador = obtenerJugadorSeleccionadoParaFicha();
+  if (!equipoActual || !jugador) {
+    zona.innerHTML = '<p class="empty-state">Selecciona un jugador para generar su planilla individual.</p>';
+    return;
+  }
+
+  const fotoPrincipal = obtenerFotoAnversoCarnet(jugador);
+  const fotoCedula = normalizarArchivoUrl(jugador?.foto_cedula_url);
+  const logoCampeonato = normalizarArchivoUrl(campeonatoMeta.logo_url);
+  const nombreCompleto = `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim();
+
+  zona.innerHTML = `
+    <article class="jugador-ficha-sheet">
+      <header class="jugador-ficha-head">
+        <div class="jugador-ficha-brand">
+          ${logoCampeonato ? `<img src="${logoCampeonato}" alt="Logo campeonato" />` : "<div class='logo-fallback'>LT&C</div>"}
+          <div>
+            <h3>Planilla Individual del Jugador</h3>
+            <p><strong>Campeonato:</strong> ${escapeHtml(campeonatoMeta.nombre || "—")}</p>
+            <p><strong>Organizador:</strong> ${escapeHtml(campeonatoMeta.organizador || "—")}</p>
+          </div>
+        </div>
+        <div class="jugador-ficha-meta">
+          <p><strong>Categoría:</strong> ${escapeHtml(obtenerNombreEventoActual())}</p>
+          <p><strong>Equipo:</strong> ${escapeHtml(equipoActual.nombre || "—")}</p>
+          <p><strong>Fecha:</strong> ${escapeHtml(new Date().toLocaleDateString("es-EC"))}</p>
+        </div>
+      </header>
+
+      <div class="jugador-ficha-body">
+        <div class="jugador-ficha-photos">
+          <div class="jugador-ficha-photo-card">
+            <span>Foto principal</span>
+            ${
+              fotoPrincipal
+                ? `<img src="${fotoPrincipal}" alt="Foto del jugador" />`
+                : `<div class="jugador-ficha-photo-empty"><i class="fas fa-user"></i></div>`
+            }
+          </div>
+          <div class="jugador-ficha-photo-card">
+            <span>Foto cédula</span>
+            ${
+              fotoCedula
+                ? `<img src="${fotoCedula}" alt="Foto de cédula" />`
+                : `<div class="jugador-ficha-photo-empty"><i class="fas fa-id-card"></i></div>`
+            }
+          </div>
+        </div>
+
+        <div class="jugador-ficha-data">
+          <div class="jugador-ficha-data-grid">
+            <p><strong>Jugador:</strong> ${escapeHtml(nombreCompleto || "—")}</p>
+            <p><strong>Cédula:</strong> ${escapeHtml(jugador.cedidentidad || "—")}</p>
+            <p><strong>Fecha de nacimiento:</strong> ${escapeHtml(formatearFecha(jugador.fecha_nacimiento))}</p>
+            <p><strong>Posición:</strong> ${escapeHtml(jugador.posicion || "—")}</p>
+            <p><strong>Número:</strong> ${escapeHtml(jugador.numero_camiseta || "—")}</p>
+            <p><strong>Capitán:</strong> ${jugador.es_capitan ? "Sí" : "No"}</p>
+            <p><strong>Disciplina:</strong> ${renderEstadoDisciplinarioJugador(jugador)}</p>
+            <p><strong>Documentos:</strong> ${renderEstadoDocumento(jugador.foto_cedula_url, "Cédula")} ${renderEstadoDocumento(jugador.foto_carnet_url, "Carné")}</p>
+          </div>
+          <div class="jugador-ficha-notas">
+            <h4>Observaciones</h4>
+            <div class="jugador-ficha-notas-box"></div>
+            <div class="jugador-ficha-firmas">
+              <div>
+                <span>Firma jugador</span>
+                <div class="jugador-ficha-linea"></div>
+              </div>
+              <div>
+                <span>Firma dirigente / técnico</span>
+                <div class="jugador-ficha-linea"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
   `;
 }
 
@@ -1604,6 +1784,7 @@ function renderPlantillaCarnets() {
       const usaPosicionCarnet = foto && fotoCarnetJugador && foto === fotoCarnetJugador;
       const fotoPosX = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_x, 50) : 50;
       const fotoPosY = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_y, 35) : 35;
+      const fotoZoom = usaPosicionCarnet ? normalizarZoomFotoCarnet(j.foto_carnet_zoom, 1) : 1;
       return `
         <article class="carnet-card ${claseEstilo}" style="${escapeHtml(estiloCarnet)}">
           <div class="carnet-backdrop" aria-hidden="true"></div>
@@ -1615,7 +1796,7 @@ function renderPlantillaCarnets() {
             <div class="carnet-foto-wrap">
               ${
                 foto
-                  ? `<img src="${foto}" alt="Foto jugador" class="carnet-foto" style="--carnet-foto-pos-x:${fotoPosX}%; --carnet-foto-pos-y:${fotoPosY}%;" />`
+                  ? `<img src="${foto}" alt="Foto jugador" class="carnet-foto" style="--carnet-foto-pos-x:${fotoPosX}%; --carnet-foto-pos-y:${fotoPosY}%; --carnet-foto-scale:${fotoZoom};" />`
                   : `<div class="carnet-foto carnet-foto-empty"><i class="fas fa-user"></i></div>`
               }
             </div>
@@ -1651,6 +1832,20 @@ function renderPlantillaCarnets() {
   zona.innerHTML = `<div class="carnets-grid">${cards}</div>`;
 }
 
+function mostrarBloqueReportesJugador(idBloqueVisible) {
+  [
+    "bloque-nomina-jugadores",
+    "bloque-sanciones-jugadores",
+    "bloque-sanciones-categoria-jugadores",
+    "bloque-ficha-jugador",
+    "bloque-carnets-jugadores",
+  ].forEach((id) => {
+    const bloque = document.getElementById(id);
+    if (!bloque) return;
+    bloque.style.display = id === idBloqueVisible ? "block" : "none";
+  });
+}
+
 function mostrarPlantillaNominaJugadores() {
   if (!validarPermisoReportesJugadores()) return;
   if (!contextoListoParaReportes()) {
@@ -1659,14 +1854,8 @@ function mostrarPlantillaNominaJugadores() {
   }
   cambiarPestanaJugadores("tab-jugadores-reportes");
   renderPlantillaNominaJugadores();
+  mostrarBloqueReportesJugador("bloque-nomina-jugadores");
   const bloque = document.getElementById("bloque-nomina-jugadores");
-  const bloqueSanciones = document.getElementById("bloque-sanciones-jugadores");
-  const bloqueSancionesCategoria = document.getElementById("bloque-sanciones-categoria-jugadores");
-  const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
-  if (bloque) bloque.style.display = "block";
-  if (bloqueSanciones) bloqueSanciones.style.display = "none";
-  if (bloqueSancionesCategoria) bloqueSancionesCategoria.style.display = "none";
-  if (bloqueCarnets) bloqueCarnets.style.display = "none";
   bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1678,14 +1867,8 @@ function mostrarReporteSancionesJugadores() {
   }
   cambiarPestanaJugadores("tab-jugadores-reportes");
   renderReporteSancionesJugadores();
+  mostrarBloqueReportesJugador("bloque-sanciones-jugadores");
   const bloque = document.getElementById("bloque-sanciones-jugadores");
-  const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
-  const bloqueSancionesCategoria = document.getElementById("bloque-sanciones-categoria-jugadores");
-  const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
-  if (bloque) bloque.style.display = "block";
-  if (bloqueNomina) bloqueNomina.style.display = "none";
-  if (bloqueSancionesCategoria) bloqueSancionesCategoria.style.display = "none";
-  if (bloqueCarnets) bloqueCarnets.style.display = "none";
   bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1697,15 +1880,33 @@ async function mostrarReporteSancionesCategoriaJugadores() {
   }
   cambiarPestanaJugadores("tab-jugadores-reportes");
   await renderReporteSancionesCategoriaJugadores();
+  mostrarBloqueReportesJugador("bloque-sanciones-categoria-jugadores");
   const bloque = document.getElementById("bloque-sanciones-categoria-jugadores");
-  const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
-  const bloqueSanciones = document.getElementById("bloque-sanciones-jugadores");
-  const bloqueCarnets = document.getElementById("bloque-carnets-jugadores");
-  if (bloque) bloque.style.display = "block";
-  if (bloqueNomina) bloqueNomina.style.display = "none";
-  if (bloqueSanciones) bloqueSanciones.style.display = "none";
-  if (bloqueCarnets) bloqueCarnets.style.display = "none";
   bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function mostrarPlanillaJugador() {
+  if (!validarPermisoReportesJugadores()) return;
+  if (!contextoListoParaReportes("ficha")) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para ver la planilla del jugador", "warning");
+    return;
+  }
+  const selectTipo = document.getElementById("reporte-jugadores-tipo");
+  if (selectTipo) selectTipo.value = "ficha";
+  actualizarSelectorJugadorReporte();
+  const selectJugador = document.getElementById("reporte-jugadores-jugador-id");
+  if (selectJugador && !selectJugador.value && jugadoresActuales.length) {
+    selectJugador.value = String(jugadoresActuales[0].id);
+  }
+  const jugador = obtenerJugadorSeleccionadoParaFicha();
+  if (!jugador) {
+    mostrarNotificacion("Selecciona un jugador para generar su planilla individual", "warning");
+    return;
+  }
+  cambiarPestanaJugadores("tab-jugadores-reportes");
+  renderPlanillaJugador();
+  mostrarBloqueReportesJugador("bloque-ficha-jugador");
+  document.getElementById("bloque-ficha-jugador")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function mostrarPlantillaCarnets() {
@@ -1720,14 +1921,8 @@ function mostrarPlantillaCarnets() {
   }
   cambiarPestanaJugadores("tab-jugadores-reportes");
   renderPlantillaCarnets();
+  mostrarBloqueReportesJugador("bloque-carnets-jugadores");
   const bloque = document.getElementById("bloque-carnets-jugadores");
-  const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
-  const bloqueSanciones = document.getElementById("bloque-sanciones-jugadores");
-  const bloqueSancionesCategoria = document.getElementById("bloque-sanciones-categoria-jugadores");
-  if (bloque) bloque.style.display = "block";
-  if (bloqueNomina) bloqueNomina.style.display = "none";
-  if (bloqueSanciones) bloqueSanciones.style.display = "none";
-  if (bloqueSancionesCategoria) bloqueSancionesCategoria.style.display = "none";
   bloque?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -2119,6 +2314,21 @@ function imprimirCarnetsJugadores() {
   setTimeout(() => activarLayoutCarnetsA4(false), 450);
 }
 
+function imprimirPlanillaJugador() {
+  if (!validarPermisoReportesJugadores()) return;
+  if (!contextoListoParaReportes("ficha")) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para imprimir la planilla", "warning");
+    return;
+  }
+  const jugador = obtenerJugadorSeleccionadoParaFicha();
+  if (!jugador) {
+    mostrarNotificacion("Selecciona un jugador para imprimir la planilla individual", "warning");
+    return;
+  }
+  renderPlanillaJugador();
+  imprimirNodoEnVentana(document.getElementById("ficha-jugador-export"), "Planilla Individual del Jugador");
+}
+
 async function exportarCarnetsPDF() {
   if (!validarPermisoReportesJugadores()) return;
   if (!contextoListoParaReportes()) {
@@ -2163,6 +2373,43 @@ async function exportarCarnetsPDF() {
   }
 }
 
+async function exportarPlanillaJugadorPDF() {
+  if (!validarPermisoReportesJugadores()) return;
+  if (!contextoListoParaReportes("ficha")) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para exportar la planilla", "warning");
+    return;
+  }
+  const jugador = obtenerJugadorSeleccionadoParaFicha();
+  if (!jugador) {
+    mostrarNotificacion("Selecciona un jugador para exportar la planilla individual", "warning");
+    return;
+  }
+  try {
+    renderPlanillaJugador();
+    const zona = document.getElementById("ficha-jugador-export");
+    const slugJugador = valorTextoImportacion(`${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "jugador")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    await exportarNodoPDF(zona, `planilla_jugador_${slugJugador || "jugador"}.pdf`);
+    mostrarNotificacion("Planilla del jugador exportada en PDF", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo exportar la planilla del jugador", "error");
+  }
+}
+
+function abrirPlanillaJugadorDesdeLista(jugadorId) {
+  const selectTipo = document.getElementById("reporte-jugadores-tipo");
+  const selectJugador = document.getElementById("reporte-jugadores-jugador-id");
+  if (selectTipo) selectTipo.value = "ficha";
+  actualizarEstadoPanelReportes();
+  if (selectJugador) {
+    selectJugador.value = String(jugadorId);
+  }
+  mostrarPlanillaJugador();
+}
+
 function obtenerTipoReporteJugadores() {
   const select = document.getElementById("reporte-jugadores-tipo");
   return select?.value || "nomina";
@@ -2171,6 +2418,10 @@ function obtenerTipoReporteJugadores() {
 async function verReporteJugadores() {
   if (!validarPermisoReportesJugadores()) return;
   const tipo = obtenerTipoReporteJugadores();
+  if (tipo === "ficha") {
+    mostrarPlanillaJugador();
+    return;
+  }
   if (tipo === "carnets") {
     mostrarPlantillaCarnets();
     return;
@@ -2189,6 +2440,10 @@ async function verReporteJugadores() {
 async function imprimirReporteJugadores() {
   if (!validarPermisoReportesJugadores()) return;
   const tipo = obtenerTipoReporteJugadores();
+  if (tipo === "ficha") {
+    imprimirPlanillaJugador();
+    return;
+  }
   if (tipo === "carnets") {
     imprimirCarnetsJugadores();
     return;
@@ -2207,6 +2462,10 @@ async function imprimirReporteJugadores() {
 async function exportarReporteJugadoresPDF() {
   if (!validarPermisoReportesJugadores()) return;
   const tipo = obtenerTipoReporteJugadores();
+  if (tipo === "ficha") {
+    await exportarPlanillaJugadorPDF();
+    return;
+  }
   if (tipo === "carnets") {
     await exportarCarnetsPDF();
     return;
@@ -2279,6 +2538,7 @@ function mostrarModalCrearJugador() {
   document.getElementById("jugador-eliminar-foto-carnet").value = "false";
   document.getElementById("jugador-foto-carnet-pos-x").value = "50";
   document.getElementById("jugador-foto-carnet-pos-y").value = "35";
+  document.getElementById("jugador-foto-carnet-zoom").value = "1";
   jugadorEncontradoPorCedula = null;
 
   actualizarResultadoBusquedaCedula("");
@@ -2322,6 +2582,9 @@ async function editarJugador(id) {
     );
     document.getElementById("jugador-foto-carnet-pos-y").value = String(
       normalizarPosicionPorcentaje(jugador.foto_carnet_pos_y, 35)
+    );
+    document.getElementById("jugador-foto-carnet-zoom").value = String(
+      normalizarZoomFotoCarnet(jugador.foto_carnet_zoom, 1)
     );
     jugadorEncontradoPorCedula = null;
 
@@ -2384,6 +2647,10 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
     document.getElementById("jugador-foto-carnet-pos-y")?.value,
     35
   );
+  const fotoCarnetZoom = normalizarZoomFotoCarnet(
+    document.getElementById("jugador-foto-carnet-zoom")?.value,
+    1
+  );
 
   if (!nombre || !apellido) {
     mostrarNotificacion(
@@ -2424,6 +2691,7 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   fd.append("es_capitan", esCapitan ? "true" : "false");
   fd.append("foto_carnet_pos_x", String(fotoCarnetPosX));
   fd.append("foto_carnet_pos_y", String(fotoCarnetPosY));
+  fd.append("foto_carnet_zoom", String(fotoCarnetZoom));
 
   if (fotoCedulaFile) fd.append("foto_cedula", fotoCedulaFile);
   if (fotoCarnetFile) fd.append("foto_carnet", fotoCarnetFile);
@@ -2476,8 +2744,13 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   });
 });
 
-["jugador-foto-carnet-pos-x", "jugador-foto-carnet-pos-y"].forEach((idInput) => {
+["jugador-foto-carnet-pos-x", "jugador-foto-carnet-pos-y", "jugador-foto-carnet-zoom"].forEach((idInput) => {
   document.getElementById(idInput)?.addEventListener("input", actualizarPreviewFotoCarnet);
+});
+document.getElementById("btn-jugador-zoom-in")?.addEventListener("click", () => ajustarZoomPreviewFotoCarnet(0.05));
+document.getElementById("btn-jugador-zoom-out")?.addEventListener("click", () => ajustarZoomPreviewFotoCarnet(-0.05));
+document.querySelectorAll("[data-preview-move]").forEach((btn) => {
+  btn.addEventListener("click", () => desplazarPreviewFotoCarnet(btn.getAttribute("data-preview-move")));
 });
 
 document.getElementById("btn-jugador-buscar-cedula")?.addEventListener("click", buscarJugadorPorCedulaEnBaseLocal);
@@ -3097,3 +3370,7 @@ window.exportarReporteSancionesCategoriaJugadoresPDF = exportarReporteSancionesC
 window.mostrarPlantillaCarnets = mostrarPlantillaCarnets;
 window.imprimirCarnetsJugadores = imprimirCarnetsJugadores;
 window.exportarCarnetsPDF = exportarCarnetsPDF;
+window.mostrarPlanillaJugador = mostrarPlanillaJugador;
+window.imprimirPlanillaJugador = imprimirPlanillaJugador;
+window.exportarPlanillaJugadorPDF = exportarPlanillaJugadorPDF;
+window.abrirPlanillaJugadorDesdeLista = abrirPlanillaJugadorDesdeLista;

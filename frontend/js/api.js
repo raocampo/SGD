@@ -226,8 +226,13 @@
       const suffix = qs.toString() ? `?${qs.toString()}` : "";
       return window.ApiClient.get(`/organizador-portal/contexto${suffix}`);
     },
-    actualizarConfig(formData) {
-      return window.ApiClient.requestForm("PUT", "/organizador-portal/config", formData);
+    actualizarConfig(formData, params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.requestForm("PUT", `/organizador-portal/config${suffix}`, formData);
     },
     listarAuspiciantes(params = {}) {
       const qs = new URLSearchParams();

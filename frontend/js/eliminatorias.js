@@ -42,6 +42,11 @@ function actualizarEventoCache(eventoId, cambios = {}) {
   return actualizado;
 }
 
+function obtenerMetodoCompetenciaVisibleEliminatoria(evento = {}) {
+  if (evento?.clasificacion_tabla_acumulada === true) return "tabla_acumulada";
+  return String(evento?.metodo_competencia || "grupos").toLowerCase();
+}
+
 function obtenerCrucesConfiguradosDesdeWrap(wrap) {
   if (!wrap) return [];
   const aSelects = Array.from(wrap.querySelectorAll("select[data-cruce-a]"));
@@ -126,17 +131,21 @@ async function guardarConfiguracionPlayoffCompartida({ silencioso = false } = {}
     return false;
   }
 
-  const metodoCompetencia = String(evento.metodo_competencia || "grupos").toLowerCase();
+  const metodoCompetencia = obtenerMetodoCompetenciaVisibleEliminatoria(evento);
   const clasificados = parsePositiveInt(document.getElementById("eli-clasificados")?.value || "");
-  if (["grupos", "mixto", "liga"].includes(metodoCompetencia) && !clasificados) {
+  if (["grupos", "mixto", "liga", "tabla_acumulada"].includes(metodoCompetencia) && !clasificados) {
     mostrarNotificacion("Clasifican por grupo debe ser mayor a 0.", "warning");
     return false;
   }
 
-  const origen = String(document.getElementById("eli-origen")?.value || "grupos").toLowerCase();
-  const metodoClasificacion = String(
-    document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos"
-  ).toLowerCase();
+  const origen = metodoCompetencia === "tabla_acumulada"
+    ? "grupos"
+    : String(document.getElementById("eli-origen")?.value || "grupos").toLowerCase();
+  const metodoClasificacion = metodoCompetencia === "tabla_acumulada"
+    ? "tabla_unica"
+    : String(
+        document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos"
+      ).toLowerCase();
   const crucesGrupos =
     origen === "grupos" && metodoClasificacion === "cruces_grupos"
       ? obtenerCrucesConfigurados()
@@ -1007,13 +1016,17 @@ function actualizarMetaEvento() {
   const clasificadosSel = document.getElementById("eli-clasificados");
   const metodoGruposSel = document.getElementById("eli-metodo-grupos");
 
-  const metodo = String(evento?.metodo_competencia || "grupos").toLowerCase();
+  const metodo = obtenerMetodoCompetenciaVisibleEliminatoria(evento);
   const llave = Number.parseInt(evento?.eliminatoria_equipos, 10);
   const clasificados = parsePositiveInt(evento?.clasificados_por_grupo) || 2;
   const origen = String(
-    config?.origen || (metodo === "eliminatoria" ? "evento" : "grupos")
+    metodo === "tabla_acumulada"
+      ? "grupos"
+      : (config?.origen || (metodo === "eliminatoria" ? "evento" : "grupos"))
   ).toLowerCase();
-  const metodoGrupos = String(config?.metodo_clasificacion || "cruces_grupos").toLowerCase();
+  const metodoGrupos = String(
+    metodo === "tabla_acumulada" ? "tabla_unica" : (config?.metodo_clasificacion || "cruces_grupos")
+  ).toLowerCase();
 
   if (metodoEl) metodoEl.value = formatearMetodo(metodo);
   if (llaveEl) llaveEl.value = Number.isFinite(llave) ? String(llave) : "Automática";
@@ -1021,9 +1034,11 @@ function actualizarMetaEvento() {
   if (metodoGruposSel) metodoGruposSel.value = metodoGrupos;
   if (avisoEl) {
     avisoEl.textContent =
-      metodo === "eliminatoria" || metodo === "mixto"
-        ? "Esta categoría soporta eliminación directa. También puedes generar playoff desde grupos."
-        : "Modo sugerido: playoff desde grupos (clasificados por grupo).";
+      metodo === "tabla_acumulada"
+        ? "Esta categoría clasifica por tabla acumulada: ranking global de clasificados por rendimiento."
+        : metodo === "eliminatoria" || metodo === "mixto"
+          ? "Esta categoría soporta eliminación directa. También puedes generar playoff desde grupos."
+          : "Modo sugerido: playoff desde grupos (clasificados por grupo).";
   }
   if (origenSel) {
     origenSel.value = origen;
@@ -1033,8 +1048,16 @@ function actualizarMetaEvento() {
 }
 
 function actualizarUIPlayoffPorOrigen() {
-  const origen = document.getElementById("eli-origen")?.value || "evento";
-  const metodoGrupos = document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos";
+  const evento = obtenerEventoActual();
+  const metodoCompetencia = obtenerMetodoCompetenciaVisibleEliminatoria(evento);
+  const origenEl = document.getElementById("eli-origen");
+  const metodoGruposEl = document.getElementById("eli-metodo-grupos");
+  if (metodoCompetencia === "tabla_acumulada") {
+    if (origenEl) origenEl.value = "grupos";
+    if (metodoGruposEl) metodoGruposEl.value = "tabla_unica";
+  }
+  const origen = origenEl?.value || "evento";
+  const metodoGrupos = metodoGruposEl?.value || "cruces_grupos";
   const wrapClasificados = document.getElementById("eli-wrap-clasificados");
   const wrapMetodo = document.getElementById("eli-wrap-metodo-grupos");
   const wrapCruces = document.getElementById("eli-wrap-cruces");
@@ -1043,6 +1066,8 @@ function actualizarUIPlayoffPorOrigen() {
   if (wrapClasificados) wrapClasificados.style.display = usaGrupos ? "" : "none";
   if (wrapMetodo) wrapMetodo.style.display = usaGrupos ? "" : "none";
   if (wrapCruces) wrapCruces.style.display = usaGrupos && metodoGrupos === "cruces_grupos" ? "" : "none";
+  if (origenEl) origenEl.disabled = metodoCompetencia === "tabla_acumulada" || eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
+  if (metodoGruposEl) metodoGruposEl.disabled = metodoCompetencia === "tabla_acumulada" || eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
 
   if (usaGrupos && metodoGrupos === "cruces_grupos") {
     renderConfiguracionCruces();
@@ -1160,12 +1185,17 @@ async function generarLlaveEliminatoria() {
 
   const evento = obtenerEventoActual();
   const cantidadObjetivo = Number.parseInt(evento?.eliminatoria_equipos, 10);
-  const origen = document.getElementById("eli-origen")?.value || "evento";
+  const metodoEvento = obtenerMetodoCompetenciaVisibleEliminatoria(evento);
+  const origen = metodoEvento === "tabla_acumulada"
+    ? "grupos"
+    : (document.getElementById("eli-origen")?.value || "evento");
   const clasificadosPorGrupo = Number.parseInt(
     document.getElementById("eli-clasificados")?.value || "2",
     10
   );
-  const metodoGrupos = document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos";
+  const metodoGrupos = metodoEvento === "tabla_acumulada"
+    ? "tabla_unica"
+    : (document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos");
   const cruces = metodoGrupos === "cruces_grupos" ? obtenerCrucesConfigurados() : [];
 
   const configOk = await guardarConfiguracionPlayoffCompartida({ silencioso: true });

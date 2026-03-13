@@ -54,8 +54,25 @@ function normalizarMetodoCompetencia(value, fallback = "grupos") {
     eliminatoria_directa: "eliminatoria",
     mixto: "mixto",
     grupos_y_eliminatoria: "mixto",
+    tabla_acumulada: "tabla_acumulada",
+    tabla_unica: "tabla_acumulada",
+    rendimiento: "tabla_acumulada",
+    acumulada: "tabla_acumulada",
   };
   return map[raw] || null;
+}
+
+function requiereClasificadosPorGrupo(metodoCompetencia) {
+  return ["grupos", "mixto", "tabla_acumulada"].includes(String(metodoCompetencia || "").toLowerCase());
+}
+
+function soportaLlaveEliminatoria(metodoCompetencia) {
+  return ["eliminatoria", "mixto", "tabla_acumulada"].includes(String(metodoCompetencia || "").toLowerCase());
+}
+
+function obtenerMetodoVisibleEvento(evento = {}) {
+  if (evento?.clasificacion_tabla_acumulada === true) return "tabla_acumulada";
+  return normalizarMetodoCompetencia(evento?.metodo_competencia, "grupos") || "grupos";
 }
 
 function normalizarEliminatoriaEquipos(value, fallback = null) {
@@ -188,6 +205,10 @@ async function asegurarEsquemaEventos() {
   `);
   await pool.query(`
     ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS clasificacion_tabla_acumulada BOOLEAN DEFAULT FALSE
+  `);
+  await pool.query(`
+    ALTER TABLE eventos
     ADD COLUMN IF NOT EXISTS bloquear_morosos BOOLEAN
   `);
   await pool.query(`
@@ -223,6 +244,11 @@ async function asegurarEsquemaEventos() {
     SET clasificados_por_grupo = 2
     WHERE (clasificados_por_grupo IS NULL OR clasificados_por_grupo <= 0)
       AND LOWER(COALESCE(metodo_competencia, 'grupos')) IN ('grupos', 'mixto')
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET clasificacion_tabla_acumulada = COALESCE(clasificacion_tabla_acumulada, false)
+    WHERE clasificacion_tabla_acumulada IS NULL
   `);
   await pool.query(`
     UPDATE eventos
@@ -336,13 +362,15 @@ const eventoController = {
           ? null
           : bloquear_morosos === true || String(bloquear_morosos).toLowerCase() === "true";
       const bloqueoMorosidadMonto = parseDecimalNullable(bloqueo_morosidad_monto, null);
-      const metodoCompetencia = normalizarMetodoCompetencia(metodo_competencia, "grupos");
-      if (!metodoCompetencia) {
+      const metodoCompetenciaVisible = normalizarMetodoCompetencia(metodo_competencia, "grupos");
+      if (!metodoCompetenciaVisible) {
         return res.status(400).json({
           error:
-            "metodo_competencia invalido. Usa: grupos, liga, eliminatoria o mixto.",
+            "metodo_competencia invalido. Usa: grupos, liga, eliminatoria, mixto o tabla_acumulada.",
         });
       }
+      const clasificacionTablaAcumulada = metodoCompetenciaVisible === "tabla_acumulada";
+      const metodoCompetencia = clasificacionTablaAcumulada ? "mixto" : metodoCompetenciaVisible;
       const eliminatoriaEquipos = normalizarEliminatoriaEquipos(eliminatoria_equipos, null);
       if (eliminatoria_equipos !== undefined && eliminatoria_equipos !== null && eliminatoriaEquipos === null) {
         return res.status(400).json({
@@ -359,8 +387,9 @@ const eventoController = {
           error: "clasificados_por_grupo invalido. Debe ser un entero mayor a 0.",
         });
       }
-      const clasificadosFinal =
-        ["grupos", "mixto"].includes(metodoCompetencia) ? clasificadosPorGrupo || 2 : null;
+      const clasificadosFinal = requiereClasificadosPorGrupo(metodoCompetenciaVisible)
+        ? clasificadosPorGrupo || 2
+        : null;
       const carnetEstilo = normalizarCarnetEstilo(carnet_estilo, null);
       if (carnet_estilo !== undefined && carnet_estilo !== null && carnet_estilo !== "" && !carnetEstilo) {
         return res.status(400).json({ error: "carnet_estilo inválido. Usa: clasico, franja, marco o minimal." });
@@ -379,7 +408,7 @@ const eventoController = {
           campeonato_id, nombre, organizador, fecha_inicio, fecha_fin, estado,
           modalidad,
           metodo_competencia, eliminatoria_equipos,
-          costo_inscripcion, clasificados_por_grupo,
+          costo_inscripcion, clasificados_por_grupo, clasificacion_tabla_acumulada,
           bloquear_morosos, bloqueo_morosidad_monto,
           carnet_estilo, carnet_color_primario, carnet_color_secundario, carnet_color_acento,
           horario_weekday_inicio, horario_weekday_fin,
@@ -388,7 +417,7 @@ const eventoController = {
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -404,6 +433,7 @@ const eventoController = {
         eliminatoriaEquipos,
         costoInscripcion,
         clasificadosFinal,
+        clasificacionTablaAcumulada,
         bloquearMorososValor,
         bloqueoMorosidadMonto,
         carnetEstilo,
@@ -540,10 +570,15 @@ const eventoController = {
         "No autorizado para actualizar esta categoría."
       );
       if (!autorizado) return;
-      const metodoObjetivo =
+      const metodoObjetivoVisible =
         req.body.metodo_competencia !== undefined
           ? normalizarMetodoCompetencia(req.body.metodo_competencia, null)
-          : normalizarMetodoCompetencia(eventoActual.metodo_competencia, "grupos");
+          : obtenerMetodoVisibleEvento(eventoActual);
+      if (!metodoObjetivoVisible) {
+        return res.status(400).json({
+          error: "metodo_competencia invalido. Usa: grupos, liga, eliminatoria, mixto o tabla_acumulada.",
+        });
+      }
 
       const campos = [];
       const valores = [];
@@ -552,13 +587,14 @@ const eventoController = {
       for (const [k, v] of Object.entries(req.body)) {
         if (k === "id") continue;
         if (k === "metodo_competencia") {
-          const metodo = normalizarMetodoCompetencia(v, null);
-          if (!metodo) {
+          const metodoVisible = normalizarMetodoCompetencia(v, null);
+          if (!metodoVisible) {
             return res.status(400).json({
               error:
-                "metodo_competencia invalido. Usa: grupos, liga, eliminatoria o mixto.",
+                "metodo_competencia invalido. Usa: grupos, liga, eliminatoria, mixto o tabla_acumulada.",
             });
           }
+          const metodo = metodoVisible === "tabla_acumulada" ? "mixto" : metodoVisible;
           campos.push(`${k} = $${i}`);
           valores.push(metodo);
           i++;
@@ -597,7 +633,7 @@ const eventoController = {
           }
           campos.push(`${k} = $${i}`);
           valores.push(
-            ["grupos", "mixto"].includes(metodoObjetivo) ? clasificados || 2 : null
+            requiereClasificadosPorGrupo(metodoObjetivoVisible) ? clasificados || 2 : null
           );
           i++;
           continue;
@@ -651,6 +687,12 @@ const eventoController = {
         i++;
       }
 
+      if (req.body.metodo_competencia !== undefined) {
+        campos.push(`clasificacion_tabla_acumulada = $${i}`);
+        valores.push(metodoObjetivoVisible === "tabla_acumulada");
+        i++;
+      }
+
       if (!campos.length) {
         return res
           .status(400)
@@ -663,7 +705,7 @@ const eventoController = {
       ) {
         campos.push(`clasificados_por_grupo = $${i}`);
         valores.push(
-          ["grupos", "mixto"].includes(metodoObjetivo)
+          requiereClasificadosPorGrupo(metodoObjetivoVisible)
             ? normalizarClasificadosPorGrupo(eventoActual.clasificados_por_grupo, 2) || 2
             : null
         );

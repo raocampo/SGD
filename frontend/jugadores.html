@@ -145,9 +145,16 @@
                 <label for="reporte-jugadores-tipo">Tipo de reporte:</label>
                 <select id="reporte-jugadores-tipo">
                   <option value="nomina">Nómina de jugadores</option>
+                  <option value="ficha">Planilla del jugador</option>
                   <option value="sanciones">Reporte de sanciones</option>
                   <option value="sanciones_categoria">Consolidado sanciones categoría</option>
                   <option value="carnets">Carnés de jugadores</option>
+                </select>
+              </div>
+              <div class="form-group" id="reporte-jugadores-jugador-wrap" style="display:none;">
+                <label for="reporte-jugadores-jugador-id">Jugador:</label>
+                <select id="reporte-jugadores-jugador-id">
+                  <option value="">— Selecciona un jugador —</option>
                 </select>
               </div>
               <div class="reportes-actions">
@@ -204,6 +211,20 @@
           </div>
           <div id="sanciones-categoria-jugadores-export" class="jugadores-nomina-board">
             <p class="empty-state">Selecciona una categoría para generar el consolidado disciplinario.</p>
+          </div>
+        </div>
+
+        <div id="bloque-ficha-jugador" class="config-card" style="display:none;">
+          <div class="fixture-accordion-actions">
+            <button class="btn btn-warning" type="button" onclick="imprimirPlanillaJugador()">
+              <i class="fas fa-print"></i> Imprimir
+            </button>
+            <button class="btn btn-danger" type="button" onclick="exportarPlanillaJugadorPDF()">
+              <i class="fas fa-file-pdf"></i> Exportar PDF
+            </button>
+          </div>
+          <div id="ficha-jugador-export" class="jugadores-nomina-board">
+            <p class="empty-state">Selecciona un jugador para generar su planilla individual.</p>
           </div>
         </div>
 
@@ -323,7 +344,6 @@
             </button>
           </div>
           <small id="hint-foto-carnet" class="form-hint">Opcional para este campeonato. Puedes elegir desde galería/archivos o tomar la foto con la cámara.</small>
-          <div id="preview-foto-carnet-actual" class="form-hint"></div>
         </div>
 
         <div class="form-group form-group-full" id="bloque-jugador-foto-carnet-posicion" style="display: none;">
@@ -339,7 +359,34 @@
               <input type="range" id="jugador-foto-carnet-pos-x" min="0" max="100" step="1" value="50" />
               <label for="jugador-foto-carnet-pos-y">Vertical</label>
               <input type="range" id="jugador-foto-carnet-pos-y" min="0" max="100" step="1" value="35" />
+              <label for="jugador-foto-carnet-zoom">Zoom</label>
+              <div class="jugador-foto-ajuste-zoom-row">
+                <button type="button" class="btn btn-outline btn-icon-square" id="btn-jugador-zoom-out" title="Alejar">
+                  <i class="fas fa-search-minus"></i>
+                </button>
+                <input type="range" id="jugador-foto-carnet-zoom" min="0.6" max="2.5" step="0.05" value="1" />
+                <button type="button" class="btn btn-outline btn-icon-square" id="btn-jugador-zoom-in" title="Acercar">
+                  <i class="fas fa-search-plus"></i>
+                </button>
+              </div>
+              <div class="jugador-foto-ajuste-direccional" aria-label="Mover foto">
+                <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="up" title="Mover arriba">
+                  <i class="fas fa-arrow-up"></i>
+                </button>
+                <div class="jugador-foto-ajuste-direccional-middle">
+                  <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="left" title="Mover izquierda">
+                    <i class="fas fa-arrow-left"></i>
+                  </button>
+                  <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="right" title="Mover derecha">
+                    <i class="fas fa-arrow-right"></i>
+                  </button>
+                </div>
+                <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="down" title="Mover abajo">
+                  <i class="fas fa-arrow-down"></i>
+                </button>
+              </div>
               <small class="form-hint">Ajusta la foto para centrar el rostro en el carné sin recortarlo mal.</small>
+              <div id="preview-foto-carnet-actual" class="form-hint jugador-foto-ajuste-status"></div>
             </div>
           </div>
         </div>
@@ -357,6 +404,7 @@
             <option value="Defensa">Defensa</option>
             <option value="Volante">Volante</option>
             <option value="Delantero">Delantero</option>
+            <option value="Polifuncional">Polifuncional</option>
           </select>
         </div>
 

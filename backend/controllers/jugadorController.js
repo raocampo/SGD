@@ -70,6 +70,13 @@ function parsePhotoPosition(value, fallback = 50) {
     return Math.max(0, Math.min(100, Number(numero.toFixed(2))));
 }
 
+function parsePhotoZoom(value, fallback = 1) {
+    if (value === undefined || value === null || value === "") return fallback;
+    const numero = Number.parseFloat(String(value).replace(",", "."));
+    if (!Number.isFinite(numero)) return fallback;
+    return Math.max(0.6, Math.min(2.5, Number(numero.toFixed(2))));
+}
+
 function eliminarArchivoJugador(urlPath) {
     const raw = String(urlPath || "").trim();
     if (!raw) return;
@@ -104,6 +111,7 @@ const jugadorController = {
                 es_capitan,
                 foto_carnet_pos_x,
                 foto_carnet_pos_y,
+                foto_carnet_zoom,
             } = req.body;
             const fotoCedula =
                 construirUrlArchivoJugador(req, req.files?.foto_cedula?.[0]) ||
@@ -113,6 +121,7 @@ const jugadorController = {
                 normalizarUrlInternaJugador(req.body?.foto_carnet_url);
             const fotoCarnetPosX = parsePhotoPosition(foto_carnet_pos_x, 50);
             const fotoCarnetPosY = parsePhotoPosition(foto_carnet_pos_y, 35);
+            const fotoCarnetZoom = parsePhotoZoom(foto_carnet_zoom, 1);
 
             // Validaciones básicas
             if (!equipo_id || !nombre || !apellido) {
@@ -153,7 +162,8 @@ const jugadorController = {
                 fotoCedula,
                 fotoCarnet,
                 fotoCarnetPosX,
-                fotoCarnetPosY
+                fotoCarnetPosY,
+                fotoCarnetZoom
             );
 
             res.status(201).json({
@@ -272,7 +282,8 @@ const jugadorController = {
                         foto_cedula_url,
                         foto_carnet_url,
                         50,
-                        35
+                        35,
+                        1
                     );
                     creados.push(jugador);
                 } catch (errorFila) {
@@ -438,6 +449,9 @@ const jugadorController = {
             }
             if (datos.foto_carnet_pos_y !== undefined) {
                 datos.foto_carnet_pos_y = parsePhotoPosition(datos.foto_carnet_pos_y, 35);
+            }
+            if (datos.foto_carnet_zoom !== undefined) {
+                datos.foto_carnet_zoom = parsePhotoZoom(datos.foto_carnet_zoom, 1);
             }
             if (eliminarFotoCedula && !fotoCedula) datos.foto_cedula_url = null;
             if (eliminarFotoCarnet && !fotoCarnet) datos.foto_carnet_url = null;

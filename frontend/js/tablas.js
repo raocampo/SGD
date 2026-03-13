@@ -34,6 +34,11 @@ function parsePositiveInt(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function obtenerMetodoCompetenciaVisibleTablas(evento = {}) {
+  if (evento?.clasificacion_tabla_acumulada === true) return "tabla_acumulada";
+  return String(evento?.metodo_competencia || "grupos").toLowerCase();
+}
+
 function storageKey(base) {
   const userId = parsePositiveInt(window.Auth?.getUser?.()?.id);
   return userId ? `${base}_${userId}` : base;
@@ -306,11 +311,23 @@ function actualizarVisibilidadFormatoClasificacion() {
   const wrapCruces = document.getElementById("tablas-wrap-cruces");
   if (!selectMetodo || !wrapClasificados) return;
   const metodo = String(selectMetodo.value || "grupos").toLowerCase();
+  if (metodo === "tabla_acumulada") {
+    if (selectOrigen) selectOrigen.value = "grupos";
+    if (selectMetodoPlayoff) selectMetodoPlayoff.value = "tabla_unica";
+  }
   const origen = String(selectOrigen?.value || "grupos").toLowerCase();
   const metodoPlayoff = String(selectMetodoPlayoff?.value || "cruces_grupos").toLowerCase();
-  wrapClasificados.style.display = ["grupos", "mixto", "liga"].includes(metodo) ? "" : "none";
+  wrapClasificados.style.display = ["grupos", "mixto", "liga", "tabla_acumulada"].includes(metodo) ? "" : "none";
   if (wrapMetodoPlayoff) wrapMetodoPlayoff.style.display = origen === "grupos" ? "" : "none";
   if (wrapCruces) wrapCruces.style.display = origen === "grupos" && metodoPlayoff === "cruces_grupos" ? "" : "none";
+  if (selectOrigen) {
+    const bloqueado = metodo === "tabla_acumulada" || !puedeEditarFormato() || tablasConfigPlayoff?.configuracion?.guardada === true;
+    selectOrigen.disabled = bloqueado;
+  }
+  if (selectMetodoPlayoff) {
+    const bloqueado = metodo === "tabla_acumulada" || !puedeEditarFormato() || tablasConfigPlayoff?.configuracion?.guardada === true;
+    selectMetodoPlayoff.disabled = bloqueado;
+  }
   if (origen === "grupos" && metodoPlayoff === "cruces_grupos") {
     renderCrucesTablas();
   }
@@ -341,16 +358,18 @@ function actualizarFormularioFormato(evento = null) {
     return;
   }
 
-  const metodo = String(eventoVista.metodo_competencia || "grupos").toLowerCase();
-  selectMetodo.value = ["grupos", "liga", "eliminatoria", "mixto"].includes(metodo) ? metodo : "grupos";
+  const metodo = obtenerMetodoCompetenciaVisibleTablas(eventoVista);
+  selectMetodo.value = ["grupos", "liga", "eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? metodo : "grupos";
   inputClasificados.value = parsePositiveInt(eventoVista.clasificados_por_grupo) || 2;
   if (selectOrigen) {
     selectOrigen.value = String(
-      config?.origen || (metodo === "eliminatoria" ? "evento" : "grupos")
+      metodo === "tabla_acumulada" ? "grupos" : (config?.origen || (metodo === "eliminatoria" ? "evento" : "grupos"))
     ).toLowerCase();
   }
   if (selectMetodoPlayoff) {
-    selectMetodoPlayoff.value = String(config?.metodo_clasificacion || "cruces_grupos").toLowerCase();
+    selectMetodoPlayoff.value = String(
+      metodo === "tabla_acumulada" ? "tabla_unica" : (config?.metodo_clasificacion || "cruces_grupos")
+    ).toLowerCase();
   }
 
   if (!puedeEditarFormato()) {
@@ -411,8 +430,12 @@ async function guardarFormatoClasificacion() {
   const selectOrigen = document.getElementById("tablas-origen-playoff");
   const selectMetodoPlayoff = document.getElementById("tablas-metodo-playoff");
   const metodo = String(selectMetodo?.value || "grupos").toLowerCase();
-  const origen = String(selectOrigen?.value || "grupos").toLowerCase();
-  const metodoPlayoff = String(selectMetodoPlayoff?.value || "cruces_grupos").toLowerCase();
+  const origen = metodo === "tabla_acumulada"
+    ? "grupos"
+    : String(selectOrigen?.value || "grupos").toLowerCase();
+  const metodoPlayoff = metodo === "tabla_acumulada"
+    ? "tabla_unica"
+    : String(selectMetodoPlayoff?.value || "cruces_grupos").toLowerCase();
   const payload = {
     metodo_competencia: metodo,
     origen,

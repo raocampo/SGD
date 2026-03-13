@@ -107,6 +107,7 @@ function resumirEvento(evento) {
     fecha_fin: evento.fecha_fin || null,
     modalidad: evento.modalidad || null,
     metodo_competencia: evento.metodo_competencia || "grupos",
+    clasificacion_tabla_acumulada: evento.clasificacion_tabla_acumulada === true,
     eliminatoria_equipos: normalizarEntero(evento.eliminatoria_equipos),
     numero_campeonato: normalizarEntero(evento.numero_campeonato),
     costo_inscripcion: Number(evento.costo_inscripcion || 0),
@@ -140,6 +141,7 @@ function normalizarCategoriasResumen(resumen) {
       total_equipos: normalizarEntero(item?.total_equipos) || 0,
       modalidad: item?.modalidad || null,
       metodo_competencia: item?.metodo_competencia || "grupos",
+      clasificacion_tabla_acumulada: item?.clasificacion_tabla_acumulada === true,
     }))
     .filter((item) => item.id !== null && item.nombre);
 }
@@ -224,7 +226,8 @@ async function obtenerResumenCategoriasCampeonatos(ids = []) {
             'nombre', e.nombre,
             'total_equipos', COALESCE(eq.total_equipos, 0),
             'modalidad', e.modalidad,
-            'metodo_competencia', e.metodo_competencia
+            'metodo_competencia', e.metodo_competencia,
+            'clasificacion_tabla_acumulada', COALESCE(e.clasificacion_tabla_acumulada, false)
           )
           ORDER BY COALESCE(e.numero_campeonato, 999999), e.id
         ),

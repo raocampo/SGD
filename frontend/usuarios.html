@@ -98,6 +98,48 @@
                 <label for="usr-organizacion">Organización (solo organizador)</label>
                 <input id="usr-organizacion" placeholder="Ej: Loja Torneos & Competencias" />
               </div>
+              <div class="form-group" id="usr-lema-group" style="display:none;">
+                <label for="usr-lema">Lema público</label>
+                <input id="usr-lema" placeholder="Opcional para Mi Landing" />
+              </div>
+              <div class="form-group" id="usr-contact-email-group" style="display:none;">
+                <label for="usr-contact-email">Correo de contacto público</label>
+                <input
+                  id="usr-contact-email"
+                  type="email"
+                  placeholder="Si lo dejas vacío, se usará el correo del usuario"
+                />
+              </div>
+              <div class="form-group" id="usr-contact-phone-group" style="display:none;">
+                <label for="usr-contact-phone">Teléfono / WhatsApp público</label>
+                <input id="usr-contact-phone" placeholder="Ej: 0999999999" />
+              </div>
+              <div class="form-group" id="usr-organizacion-logo-group" style="display:none;">
+                <label for="usr-organizacion-logo">Logo de la organización</label>
+                <input id="usr-organizacion-logo" type="file" accept="image/*" />
+                <small style="display:block; margin-top:6px; color:#64748b;">
+                  Se sincroniza con Mi Landing y las cards del portal público.
+                </small>
+                <div
+                  id="usr-organizacion-logo-preview-wrap"
+                  style="display:none; margin-top:10px; align-items:center; gap:10px;"
+                >
+                  <img
+                    id="usr-organizacion-logo-preview"
+                    alt="Logo actual"
+                    style="width:56px; height:56px; object-fit:contain; border-radius:12px; border:1px solid #d9e2f1; background:#fff; padding:6px;"
+                  />
+                  <a
+                    id="usr-organizacion-logo-link"
+                    href="#"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="font-size:13px;"
+                  >
+                    Ver logo actual
+                  </a>
+                </div>
+              </div>
             </div>
             <p style="margin:10px 0 0; color:#64748b; font-size:13px;">
               Debes ingresar correo o usuario. La recuperación de contraseña solo funciona para cuentas con correo.
@@ -137,3 +179,4 @@
 </body>
 
 </html>
+

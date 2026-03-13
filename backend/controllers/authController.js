@@ -34,6 +34,26 @@ function planLandingHabilitado(planCodigo) {
   return esPlanPagado(planCodigo);
 }
 
+async function sincronizarPerfilOrganizador(usuario, data = {}) {
+  if (String(usuario?.rol || "").toLowerCase() !== "organizador") return;
+
+  const organizacionNombre = String(
+    data.organizacion_nombre ?? usuario.organizacion_nombre ?? ""
+  ).trim();
+  const lema = String(data.lema ?? "").trim();
+  const contactEmail = String(
+    data.contact_email_publico ?? data.contact_email ?? usuario.email ?? ""
+  ).trim();
+  const contactPhone = String(data.contact_phone ?? "").trim();
+
+  await OrganizadorPortal.guardarConfig(usuario.id, {
+    organizacion_nombre: organizacionNombre || null,
+    lema: lema || null,
+    contact_email: contactEmail || null,
+    contact_phone: contactPhone || null,
+  });
+}
+
 async function listarUsuariosVisiblesPorOrganizador(user) {
   const equiposPermitidos = await obtenerEquipoIdsOrganizador(user);
   if (!equiposPermitidos?.length) return [];
@@ -145,6 +165,15 @@ const authController = {
         plan_estado: "activo",
         organizacion_nombre: rolSolicitado === "organizador" ? organizacionNombre : null,
       });
+
+      if (rolSolicitado === "organizador") {
+        await sincronizarPerfilOrganizador(creado, {
+          organizacion_nombre: organizacionNombre,
+          contact_email_publico: email,
+          lema: req.body?.lema,
+          contact_phone: req.body?.contact_phone,
+        });
+      }
 
       const user = await UsuarioAuth.obtenerPorId(creado.id);
       const limpio = UsuarioAuth.limpiarUsuario(user || creado);
@@ -417,6 +446,10 @@ const authController = {
 
       const user = await UsuarioAuth.crear(body);
 
+      if (String(user?.rol || "").toLowerCase() === "organizador") {
+        await sincronizarPerfilOrganizador(user, body);
+      }
+
       if (
         (user.rol === "tecnico" || user.rol === "dirigente" || user.rol === "jugador") &&
         Number.isFinite(equipoId) &&
@@ -483,6 +516,7 @@ const authController = {
         payload.debe_cambiar_password = true;
       }
       const actualizado = await UsuarioAuth.actualizar(usuarioId, payload);
+      await sincronizarPerfilOrganizador(actualizado, payload);
       return res.json({ ok: true, usuario: actualizado });
     } catch (error) {
       console.error("Error actualizando usuario:", error);

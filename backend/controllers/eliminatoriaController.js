@@ -26,6 +26,11 @@ async function validarAccesoEventoGestion(req, res, eventoId) {
   return evento;
 }
 
+function obtenerMetodoCompetenciaVisibleEvento(evento = {}) {
+  if (evento?.clasificacion_tabla_acumulada === true) return "tabla_acumulada";
+  return String(evento?.metodo_competencia || "grupos").toLowerCase();
+}
+
 const eliminatoriaController = {
   obtenerConfiguracion: async (req, res) => {
     try {
@@ -36,6 +41,9 @@ const eliminatoriaController = {
       const evento = await validarAccesoEventoGestion(req, res, evento_id);
       if (!evento) return;
       const config = await Eliminatoria.obtenerConfiguracionPlayoff(evento_id);
+      if (config?.evento) {
+        config.evento.metodo_competencia = obtenerMetodoCompetenciaVisibleEvento(config.evento);
+      }
       res.json({ ok: true, ...config });
     } catch (error) {
       console.error("Error obteniendo configuración playoff:", error);
@@ -53,11 +61,29 @@ const eliminatoriaController = {
       }
       const evento = await validarAccesoEventoGestion(req, res, evento_id);
       if (!evento) return;
+      const payload = { ...(req.body || {}) };
+      const metodoVisible = String(payload.metodo_competencia || "").toLowerCase();
+      if (metodoVisible === "tabla_acumulada") {
+        payload.metodo_competencia = "mixto";
+        payload.origen = "grupos";
+        payload.metodo_clasificacion = "tabla_unica";
+      }
+
       const config = await Eliminatoria.guardarConfiguracionPlayoff(
         evento_id,
-        req.body || {},
+        payload,
         req.user?.id || null
       );
+      await pool.query(
+        `UPDATE eventos
+         SET clasificacion_tabla_acumulada = $2
+         WHERE id = $1`,
+        [evento_id, metodoVisible === "tabla_acumulada"]
+      );
+      if (config?.evento) {
+        config.evento.clasificacion_tabla_acumulada = metodoVisible === "tabla_acumulada";
+        config.evento.metodo_competencia = metodoVisible === "tabla_acumulada" ? "tabla_acumulada" : obtenerMetodoCompetenciaVisibleEvento(config.evento);
+      }
       res.json({ ok: true, ...config });
     } catch (error) {
       console.error("Error guardando configuración playoff:", error);
@@ -117,7 +143,8 @@ const eliminatoriaController = {
       const evento = await validarAccesoEventoGestion(req, res, evento_id);
       if (!evento) return;
       const eventoDetalleR = await pool.query(
-        `SELECT id, nombre, metodo_competencia, eliminatoria_equipos FROM eventos WHERE id = $1 LIMIT 1`,
+        `SELECT id, nombre, metodo_competencia, eliminatoria_equipos, clasificacion_tabla_acumulada
+         FROM eventos WHERE id = $1 LIMIT 1`,
         [evento_id]
       );
       const eventoDetalle = eventoDetalleR.rows[0];
@@ -131,9 +158,16 @@ const eliminatoriaController = {
       let meta = null;
 
       if (origen === "grupos") {
-        const generado = await Eliminatoria.generarBracketDesdeGrupos(evento_id, {
+        const payload = {
           ...req.body,
           cantidad_equipos: cantidadEquipos,
+        };
+        if (eventoDetalle?.clasificacion_tabla_acumulada === true) {
+          payload.metodo_clasificacion = "tabla_unica";
+          payload.origen = "grupos";
+        }
+        const generado = await Eliminatoria.generarBracketDesdeGrupos(evento_id, {
+          ...payload,
         });
         partidos = Array.isArray(generado?.partidos) ? generado.partidos : [];
         meta = generado?.meta || null;
@@ -145,7 +179,7 @@ const eliminatoriaController = {
         mensaje: "Bracket generado",
         evento_id,
         evento_nombre: eventoDetalle?.nombre,
-        metodo_competencia: eventoDetalle?.metodo_competencia || "eliminatoria",
+        metodo_competencia: obtenerMetodoCompetenciaVisibleEvento(eventoDetalle),
         origen_generacion: origen === "grupos" ? "grupos" : "evento",
         cantidad_equipos_objetivo: cantidadEquipos,
         total: partidos.length,

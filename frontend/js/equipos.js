@@ -947,8 +947,12 @@ function renderEquipoCard(equipo, index = 0) {
     <div class="equipo-card campeonato-card">
       <div class="equipo-header campeonato-header">
         <span class="item-index">${numero || index + 1}.</span>
-        ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="equipo-logo">` : ""}
         <h4>${equipo.nombre}</h4>
+        ${
+          logoUrl
+            ? `<img src="${logoUrl}" alt="Logo ${escapeHtml(equipo.nombre || "")}" class="equipo-logo">`
+            : `<span class="equipo-logo equipo-logo-placeholder" aria-hidden="true">${escapeHtml((equipo.nombre || "E").slice(0, 1).toUpperCase())}</span>`
+        }
       </div>
       <div class="equipo-body campeonato-info">
         <p><strong>Director:</strong> ${equipo.director_tecnico || "-"}</p>
@@ -1442,5 +1446,4 @@ window.irAJugadores = irAJugadores;
 window.cambiarVistaEquipos = cambiarVistaEquipos;
 window.abrirImportadorEquipos = abrirImportadorEquipos;
 window.descargarPlantillaEquipos = descargarPlantillaEquipos;
-
 

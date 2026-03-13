@@ -976,7 +976,7 @@ body.app-layout {
 /* Tarjetas de equipos: encabezado más estable para nombres largos */
 #lista-equipos .equipo-header {
   display: grid;
-  grid-template-columns: auto 50px 1fr;
+  grid-template-columns: auto 1fr 50px;
   align-items: center;
   gap: 0.65rem;
   justify-content: stretch;
@@ -1000,6 +1000,17 @@ body.app-layout {
   height: 50px;
   margin-right: 0;
   object-fit: contain;
+  justify-self: end;
+}
+
+#lista-equipos .equipo-logo-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1d4ed8;
+  font-weight: 800;
 }
 
 .equipo-meta {
@@ -4069,9 +4080,9 @@ body.modal-open {
       rgba(255, 255, 255, 0.01) 20px
   );
   color: #fee2e2;
-  font-size: clamp(0.74rem, 1.1vw, 0.9rem);
+  font-size: clamp(0.56rem, 0.9vw, 0.72rem);
   font-weight: 900;
-  letter-spacing: clamp(0.06rem, 0.18vw, 0.14rem);
+  letter-spacing: clamp(0.03rem, 0.12vw, 0.08rem);
   text-transform: uppercase;
 }
 
@@ -4357,7 +4368,9 @@ body.modal-open {
   height: 96px;
   border-radius: 8px;
   object-fit: cover;
-  object-position: var(--carnet-foto-pos-x, 50%) var(--carnet-foto-pos-y, 35%);
+  object-position: center;
+  transform: scale(var(--carnet-foto-scale, 1));
+  transform-origin: var(--carnet-foto-pos-x, 50%) var(--carnet-foto-pos-y, 35%);
   border: 1px solid rgba(var(--carnet-secondary-rgb, 17, 24, 39), 0.18);
   background: #fff;
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.16);
@@ -4561,17 +4574,244 @@ body.modal-open {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: var(--preview-foto-pos-x, 50%) var(--preview-foto-pos-y, 35%);
+  object-position: center;
+  transform: scale(var(--preview-foto-scale, 1));
+  transform-origin: var(--preview-foto-pos-x, 50%) var(--preview-foto-pos-y, 35%);
 }
 
 .jugador-foto-ajuste-controles {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.6rem;
 }
 
 .jugador-foto-ajuste-controles label {
   font-weight: 700;
   color: #243247;
+}
+
+.jugador-foto-ajuste-zoom-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.jugador-foto-ajuste-direccional {
+  display: grid;
+  grid-template-columns: repeat(3, 42px);
+  grid-template-rows: repeat(3, 42px);
+  gap: 0.35rem;
+  justify-content: start;
+}
+
+.jugador-foto-ajuste-direccional-middle {
+  display: contents;
+}
+
+.jugador-foto-ajuste-direccional [data-preview-move="up"] { grid-column: 2; grid-row: 1; }
+.jugador-foto-ajuste-direccional [data-preview-move="left"] { grid-column: 1; grid-row: 2; }
+.jugador-foto-ajuste-direccional [data-preview-move="right"] { grid-column: 3; grid-row: 2; }
+.jugador-foto-ajuste-direccional [data-preview-move="down"] { grid-column: 2; grid-row: 3; }
+
+.btn-icon-square {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.jugador-foto-ajuste-status {
+  margin-top: 0.15rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed #d6e2f0;
+}
+
+.jugador-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.jugador-card-head h3 {
+  margin: 0;
+  font-size: 1.18rem;
+  line-height: 1.25;
+  color: var(--primary-color);
+}
+
+.jugador-card-head .btn {
+  flex: 0 0 auto;
+}
+
+.jugador-card-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 0.4rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.jugador-card-meta-grid p,
+.jugador-documentos-row {
+  margin: 0;
+}
+
+.jugador-documentos-row {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+}
+
+.jugador-documentos-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.jugador-ficha-sheet {
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
+  border-radius: 18px;
+  padding: 1.25rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.jugador-ficha-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(220px, 0.9fr);
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #dbe4ef;
+}
+
+.jugador-ficha-brand {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.jugador-ficha-brand img,
+.jugador-ficha-brand .logo-fallback {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  object-fit: cover;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+.jugador-ficha-brand h3 {
+  margin: 0 0 0.35rem;
+  color: #0f172a;
+}
+
+.jugador-ficha-brand p,
+.jugador-ficha-meta p {
+  margin: 0.18rem 0;
+}
+
+.jugador-ficha-body {
+  display: grid;
+  grid-template-columns: minmax(210px, 280px) minmax(0, 1fr);
+  gap: 1.15rem;
+  padding-top: 1rem;
+}
+
+.jugador-ficha-photos {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.jugador-ficha-photo-card {
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  padding: 0.85rem;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+}
+
+.jugador-ficha-photo-card span {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.jugador-ficha-photo-card img,
+.jugador-ficha-photo-empty {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid #d5deeb;
+  background: #fff;
+}
+
+.jugador-ficha-photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 2rem;
+}
+
+.jugador-ficha-data {
+  display: grid;
+  gap: 1rem;
+}
+
+.jugador-ficha-data-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 0.55rem 1rem;
+}
+
+.jugador-ficha-data-grid p {
+  margin: 0;
+}
+
+.jugador-ficha-notas {
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  padding: 0.95rem;
+  background: #fcfdff;
+}
+
+.jugador-ficha-notas h4 {
+  margin: 0 0 0.7rem;
+}
+
+.jugador-ficha-notas-box {
+  min-height: 120px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.jugador-ficha-firmas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.jugador-ficha-firmas span {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-weight: 700;
+}
+
+.jugador-ficha-linea {
+  border-bottom: 1px solid #334155;
+  min-height: 2rem;
 }
 
 #bloque-jugador-busqueda-cedula.is-required-flow {
@@ -4661,6 +4901,20 @@ body.modal-open {
 }
 
 @media (max-width: 700px) {
+  .jugador-card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jugador-foto-ajuste,
+  .jugador-ficha-head,
+  .jugador-ficha-body,
+  .jugador-ficha-data-grid,
+  .jugador-ficha-firmas,
+  .jugador-card-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
   .nomina-sheet {
     min-width: 740px;
   }

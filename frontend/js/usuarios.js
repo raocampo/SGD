@@ -2,6 +2,7 @@
   let equiposCache = [];
   let usuariosCache = [];
   let usuarioEditandoId = null;
+  const organizadorPortalCache = new Map();
   const PLANES_PAGADOS = new Set(["base", "competencia", "premium"]);
 
   function esc(texto) {
@@ -58,10 +59,87 @@
     return base.toString();
   }
 
+  function backendBase() {
+    return window.resolveBackendBaseUrl ? window.resolveBackendBaseUrl() : window.location.origin;
+  }
+
+  function normalizarMedia(url) {
+    const value = String(url || "").trim();
+    if (!value) return "";
+    if (/^https?:\/\//i.test(value)) return value;
+    if (value.startsWith("/")) return `${backendBase()}${value}`;
+    if (value.startsWith("uploads/")) return `${backendBase()}/${value}`;
+    return `${backendBase()}/${value}`;
+  }
+
   function formatearPlan(plan) {
     const code = String(plan || "").trim().toLowerCase();
     if (!code) return "—";
     return code.charAt(0).toUpperCase() + code.slice(1);
+  }
+
+  function idsCamposOrganizador() {
+    return [
+      "usr-organizacion-group",
+      "usr-lema-group",
+      "usr-contact-email-group",
+      "usr-contact-phone-group",
+      "usr-organizacion-logo-group",
+    ];
+  }
+
+  function renderLogoOrganizacion(url) {
+    const wrap = document.getElementById("usr-organizacion-logo-preview-wrap");
+    const img = document.getElementById("usr-organizacion-logo-preview");
+    const link = document.getElementById("usr-organizacion-logo-link");
+    const src = normalizarMedia(url);
+    if (!wrap || !img || !link) return;
+
+    if (!src) {
+      wrap.style.display = "none";
+      img.removeAttribute("src");
+      link.href = "#";
+      return;
+    }
+
+    wrap.style.display = "flex";
+    img.src = src;
+    link.href = src;
+  }
+
+  function limpiarPerfilOrganizador() {
+    const lema = document.getElementById("usr-lema");
+    const contactEmail = document.getElementById("usr-contact-email");
+    const contactPhone = document.getElementById("usr-contact-phone");
+    const logoInput = document.getElementById("usr-organizacion-logo");
+    if (lema) lema.value = "";
+    if (contactEmail) contactEmail.value = "";
+    if (contactPhone) contactPhone.value = "";
+    if (logoInput) logoInput.value = "";
+    renderLogoOrganizacion("");
+  }
+
+  async function obtenerContextoOrganizador(usuarioId, force = false) {
+    const id = Number.parseInt(usuarioId, 10);
+    if (!Number.isFinite(id) || id <= 0) return null;
+    if (!force && organizadorPortalCache.has(id)) return organizadorPortalCache.get(id);
+    const contexto = await window.OrganizadorPortalAPI.obtenerContexto({ organizador_id: id });
+    organizadorPortalCache.set(id, contexto);
+    return contexto;
+  }
+
+  function poblarPerfilOrganizador(contexto = {}, usuario = null) {
+    const config = contexto?.config || {};
+    const organizador = contexto?.organizador || usuario || {};
+    const orgInput = document.getElementById("usr-organizacion");
+    const lema = document.getElementById("usr-lema");
+    const contactEmail = document.getElementById("usr-contact-email");
+    const contactPhone = document.getElementById("usr-contact-phone");
+    if (orgInput) orgInput.value = config.organizacion_nombre || organizador.organizacion_nombre || "";
+    if (lema) lema.value = config.lema || "";
+    if (contactEmail) contactEmail.value = config.contact_email || organizador.email || "";
+    if (contactPhone) contactPhone.value = config.contact_phone || "";
+    renderLogoOrganizacion(config.logo_url || "");
   }
 
   function configurarUIporRol() {
@@ -81,10 +159,12 @@
       }
       const planGroup = document.getElementById("usr-plan-group");
       const planEstadoGroup = document.getElementById("usr-plan-estado-group");
-      const orgGroup = document.getElementById("usr-organizacion-group");
       if (planGroup) planGroup.style.display = "none";
       if (planEstadoGroup) planEstadoGroup.style.display = "none";
-      if (orgGroup) orgGroup.style.display = "none";
+      idsCamposOrganizador().forEach((id) => {
+        const group = document.getElementById(id);
+        if (group) group.style.display = "none";
+      });
       return;
     }
 
@@ -103,10 +183,8 @@
     }
     const planGroup = document.getElementById("usr-plan-group");
     const planEstadoGroup = document.getElementById("usr-plan-estado-group");
-    const orgGroup = document.getElementById("usr-organizacion-group");
     if (planGroup) planGroup.style.display = "";
     if (planEstadoGroup) planEstadoGroup.style.display = "";
-    if (orgGroup) orgGroup.style.display = "";
   }
 
   function actualizarTituloFormulario() {
@@ -149,6 +227,10 @@
     const planEstadoGroup = document.getElementById("usr-plan-estado-group");
     const organizacionGroup = document.getElementById("usr-organizacion-group");
     const organizacionInput = document.getElementById("usr-organizacion");
+    const lemaInput = document.getElementById("usr-lema");
+    const contactEmailInput = document.getElementById("usr-contact-email");
+    const contactPhoneInput = document.getElementById("usr-contact-phone");
+    const logoInput = document.getElementById("usr-organizacion-logo");
     const esAdmin = esAdminActual();
     const rol = String(rolSel?.value || "").toLowerCase();
     const habilitar = esAdmin && rol === "organizador";
@@ -173,11 +255,25 @@
     }
     if (organizacionGroup) {
       organizacionGroup.style.opacity = habilitar ? "1" : "0.6";
+      organizacionGroup.style.display = habilitar ? "" : "none";
     }
     if (organizacionInput) {
       organizacionInput.disabled = !habilitar;
       organizacionInput.required = habilitar;
       if (!habilitar && !usuarioEditandoId) organizacionInput.value = "";
+    }
+    idsCamposOrganizador()
+      .filter((id) => id !== "usr-organizacion-group")
+      .forEach((id) => {
+        const group = document.getElementById(id);
+        if (group) group.style.display = habilitar ? "" : "none";
+      });
+    if (lemaInput) lemaInput.disabled = !habilitar;
+    if (contactEmailInput) contactEmailInput.disabled = !habilitar;
+    if (contactPhoneInput) contactPhoneInput.disabled = !habilitar;
+    if (logoInput) logoInput.disabled = !habilitar;
+    if (!habilitar && !usuarioEditandoId) {
+      limpiarPerfilOrganizador();
     }
     if (equipoSel) {
       equipoSel.disabled = !usaEquipo;
@@ -311,6 +407,7 @@
     if (planSel) planSel.value = "free";
     if (planEstadoSel) planEstadoSel.value = "activo";
     if (orgInput) orgInput.value = "";
+    limpiarPerfilOrganizador();
 
     const selRol = document.getElementById("usr-rol");
     if (selRol) {
@@ -340,6 +437,9 @@
     document.getElementById("usr-equipo").value = equipo ? String(equipo) : "";
     actualizarTituloFormulario();
     actualizarCamposPlan();
+    if (String(u.rol || "").toLowerCase() !== "organizador") {
+      limpiarPerfilOrganizador();
+    }
   }
 
   async function sincronizarEquipoTecnico(usuarioAntes, rolDestino, equipoDestino) {
@@ -353,6 +453,19 @@
     if (esDestinoConEquipo && equipoDestino) {
       await AuthAPI.asignarEquipo(usuarioAntes.id, Number.parseInt(equipoDestino, 10));
     }
+  }
+
+  async function sincronizarConfigOrganizador(usuarioId, payload = {}, logoFile = null) {
+    const id = Number.parseInt(usuarioId, 10);
+    if (!Number.isFinite(id) || id <= 0) return;
+
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) formData.append(key, String(value));
+    });
+    if (logoFile) formData.append("logo", logoFile);
+    await window.OrganizadorPortalAPI.actualizarConfig(formData, { organizador_id: id });
+    organizadorPortalCache.delete(id);
   }
 
   async function guardarUsuario(e) {
@@ -378,6 +491,10 @@
       .trim()
       .toLowerCase();
     const organizacionNombre = String(document.getElementById("usr-organizacion")?.value || "").trim();
+    const lema = String(document.getElementById("usr-lema")?.value || "").trim();
+    const contactEmailPublico = String(document.getElementById("usr-contact-email")?.value || "").trim();
+    const contactPhone = String(document.getElementById("usr-contact-phone")?.value || "").trim();
+    const logoFile = document.getElementById("usr-organizacion-logo")?.files?.[0] || null;
 
     if (!nombre || (!email && !username)) {
       mostrarNotificacion("Nombre y al menos un correo o usuario son obligatorios", "warning");
@@ -410,6 +527,23 @@
       mostrarNotificacion("La organización del organizador es obligatoria (mínimo 3 caracteres)", "warning");
       return;
     }
+    if (contactEmailPublico && !validarEmailOpcional(contactEmailPublico)) {
+      mostrarNotificacion("El correo de contacto público no tiene un formato válido", "warning");
+      return;
+    }
+    if (
+      esAdminActual() &&
+      rol === "organizador" &&
+      !email &&
+      !contactEmailPublico &&
+      !contactPhone
+    ) {
+      mostrarNotificacion(
+        "Para un organizador debes dejar al menos un contacto público: correo o teléfono/WhatsApp",
+        "warning"
+      );
+      return;
+    }
 
     try {
       if (!usuarioEditandoId) {
@@ -418,9 +552,32 @@
           payload.plan_codigo = planCodigo;
           payload.plan_estado = planEstado;
           payload.organizacion_nombre = organizacionNombre;
+          payload.lema = lema || null;
+          payload.contact_email_publico = contactEmailPublico || null;
+          payload.contact_phone = contactPhone || null;
         }
         if (esRolConEquipo(rol) && equipo) payload.equipo_id = Number.parseInt(equipo, 10);
         const respuesta = await AuthAPI.crearUsuario(payload);
+        if (esAdminActual() && rol === "organizador" && logoFile && respuesta?.usuario?.id) {
+          try {
+            await sincronizarConfigOrganizador(
+              respuesta.usuario.id,
+              {
+                organizacion_nombre: organizacionNombre,
+                lema,
+                contact_email: contactEmailPublico || email || "",
+                contact_phone: contactPhone,
+              },
+              logoFile
+            );
+          } catch (logoError) {
+            console.error(logoError);
+            mostrarNotificacion(
+              "El usuario se creó, pero no se pudo sincronizar el logo con Mi Landing.",
+              "warning"
+            );
+          }
+        }
         const pendiente = respuesta?.usuario?.debe_cambiar_password === true;
         mostrarNotificacion(
           pendiente
@@ -435,12 +592,35 @@
           payload.plan_codigo = planCodigo;
           payload.plan_estado = planEstado;
           payload.organizacion_nombre = organizacionNombre;
+          payload.lema = lema || null;
+          payload.contact_email_publico = contactEmailPublico || null;
+          payload.contact_phone = contactPhone || null;
         } else if (esAdminActual()) {
           payload.organizacion_nombre = null;
         }
         if (password) payload.password = password;
-        await AuthAPI.actualizarUsuario(usuarioEditandoId, payload);
+        const respuesta = await AuthAPI.actualizarUsuario(usuarioEditandoId, payload);
         if (antes) await sincronizarEquipoTecnico(antes, rol, equipo);
+        if (esAdminActual() && rol === "organizador" && logoFile && respuesta?.usuario?.id) {
+          try {
+            await sincronizarConfigOrganizador(
+              respuesta.usuario.id,
+              {
+                organizacion_nombre: organizacionNombre,
+                lema,
+                contact_email: contactEmailPublico || email || "",
+                contact_phone: contactPhone,
+              },
+              logoFile
+            );
+          } catch (logoError) {
+            console.error(logoError);
+            mostrarNotificacion(
+              "El usuario se actualizó, pero no se pudo sincronizar el logo con Mi Landing.",
+              "warning"
+            );
+          }
+        }
         mostrarNotificacion(
           password
             ? "Usuario actualizado. Debe cambiar su contraseña al volver a ingresar."
@@ -468,6 +648,18 @@
       return;
     }
     cargarFormularioDesdeUsuario(user);
+    if (String(user.rol || "").toLowerCase() === "organizador") {
+      try {
+        const contexto = await obtenerContextoOrganizador(user.id, true);
+        poblarPerfilOrganizador(contexto, user);
+      } catch (error) {
+        console.error(error);
+        mostrarNotificacion(
+          "No se pudo cargar el branding del organizador. Puedes continuar editando los datos base.",
+          "warning"
+        );
+      }
+    }
     const form = document.getElementById("usuarios-form");
     form?.scrollIntoView({ behavior: "smooth", block: "start" });
     document.getElementById("usr-nombre")?.focus();
@@ -514,6 +706,7 @@
     document.getElementById("usr-rol")?.addEventListener("change", actualizarCamposPlan);
     document.getElementById("btn-usuarios-cancelar")?.addEventListener("click", limpiarFormulario);
     document.getElementById("btn-usuarios-recargar")?.addEventListener("click", async () => {
+      organizadorPortalCache.clear();
       await Promise.all([cargarEquipos(), cargarUsuarios()]);
       mostrarNotificacion("Datos actualizados", "success");
     });
