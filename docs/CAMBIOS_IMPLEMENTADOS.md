@@ -8,6 +8,32 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 ---
 
 ## 2026-03-14 - Recorte estable de foto para carné
+- Navegacion interna limpia:
+  - `frontend/js/core.js` incorpora `RouteContext` para guardar contexto por pagina en `sessionStorage`.
+  - las pantallas internas dejan de exponer IDs operativos en la URL y recuperan el contexto desde sesion.
+  - se adapto la navegacion entre:
+    - `campeonatos`, `eventos`, `equipos`, `jugadores`,
+    - `sorteo`, `grupos`, `eliminatorias`,
+    - `partidos`, `planilla`, `fixtureplantilla`,
+    - `tablas`.
+  - tambien se agrega limpieza de la barra al cargar cuando la pagina entra desde un enlace legacy con query string.
+  - verificacion:
+    - `node --check frontend/js/core.js`
+    - `node --check frontend/js/campeonatos.js`
+    - `node --check frontend/js/eventos.js`
+    - `node --check frontend/js/equipos.js`
+    - `node --check frontend/js/jugadores.js`
+    - `node --check frontend/js/sorteo.js`
+    - `node --check frontend/js/gruposgen.js`
+    - `node --check frontend/js/eliminatorias.js`
+    - `node --check frontend/js/partidos.js`
+    - `node --check frontend/js/planilla.js`
+    - `node --check frontend/js/fixtureplantilla.js`
+    - `node --check frontend/js/tablas.js`
+
+---
+
+## 2026-03-14 - Recorte estable de foto para carné
 - Jugadores / carnés:
   - `frontend/jugadores.html` reemplaza la previsualización de ajuste por un `canvas` que muestra el encuadre real del carné.
   - `frontend/js/jugadores.js` genera una imagen recortada específica al guardar (`foto_carnet_recorte`) usando el mismo algoritmo que la vista previa.

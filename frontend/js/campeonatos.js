@@ -306,6 +306,10 @@ async function cargarCampeonatos() {
 // Navegación
 // ======================
 function irAEventos(campeonatoId) {
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("eventos.html", { campeonato: Number(campeonatoId) || null });
+    return;
+  }
   window.location.href = `eventos.html?campeonato=${campeonatoId}`;
 }
 

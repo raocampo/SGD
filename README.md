@@ -31,6 +31,15 @@ Flujo principal operativo:
 7. Consultar tablas y portal publico.
 
 ## Novedades Recientes (2026-03-14)
+- Navegacion interna:
+  - el sistema deportivo ahora usa `RouteContext` en `sessionStorage` para conservar el contexto entre pantallas internas sin exponer IDs operativos en la barra del navegador.
+  - ya queda cubierto el flujo interno principal:
+    - `campeonatos -> eventos -> equipos -> jugadores`
+    - `equipos -> sorteo -> grupos -> playoff`
+    - `partidos -> planilla / fixture plantilla / eliminatorias`
+    - `planilla -> partidos`
+    - `tablas`
+  - los enlaces antiguos con query string siguen siendo compatibles, pero la pagina limpia la barra despues de leer el contexto.
 - Jugadores / carnés:
   - se agrega `foto_carnet_recorte_url` con la migración `database/migrations/039_jugadores_foto_carnet_recorte.sql`.
   - el modal de jugador ahora previsualiza el encuadre real del carné usando `canvas`.

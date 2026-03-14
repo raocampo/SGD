@@ -14,9 +14,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   inicializarTabs();
   inicializarAcciones();
 
-  const params = new URLSearchParams(window.location.search);
-  const campeonatoDesdeURL = parsePositiveInt(params.get("campeonato"));
-  const eventoDesdeURL = parsePositiveInt(params.get("evento"));
+  const routeContext = window.RouteContext?.read?.("tablas.html", ["campeonato", "evento"]) || {};
+  const campeonatoDesdeURL = parsePositiveInt(routeContext.campeonato);
+  const eventoDesdeURL = parsePositiveInt(routeContext.evento);
 
   await cargarCampeonatos(campeonatoDesdeURL, eventoDesdeURL);
   await cargarEventos(eventoDesdeURL);
@@ -152,6 +152,10 @@ function inicializarAcciones() {
       tablasConfigPlayoff = null;
       limpiarContextoTablasEvento();
       guardarContextoTablas();
+      window.RouteContext?.save?.("tablas.html", {
+        campeonato: tablasCampeonatoSeleccionado,
+        evento: null,
+      });
       await cargarEventos(null);
       limpiarPaneles();
     });
@@ -167,6 +171,10 @@ function inicializarAcciones() {
         tablasCampeonatoSeleccionado = campEvt;
       }
       guardarContextoTablas();
+      window.RouteContext?.save?.("tablas.html", {
+        campeonato: tablasCampeonatoSeleccionado,
+        evento: tablasEventoSeleccionado,
+      });
       actualizarFormularioFormato(eventoSel || null);
       await cargarConfiguracionCompetenciaCompartida();
     });

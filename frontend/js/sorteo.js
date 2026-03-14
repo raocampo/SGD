@@ -36,9 +36,9 @@ function obtenerSistemaSorteoActual() {
 }
 
 async function aplicarContextoDesdeURL() {
-  const params = new URLSearchParams(window.location.search);
-  const camp = params.get("campeonato");
-  const ev = params.get("evento");
+  const routeContext = window.RouteContext?.read?.("sorteo.html", ["campeonato", "evento"]) || {};
+  const camp = routeContext.campeonato;
+  const ev = routeContext.evento;
 
   const selectCamp = document.getElementById("select-campeonato");
   const selectEvt = document.getElementById("select-evento");
@@ -46,6 +46,10 @@ async function aplicarContextoDesdeURL() {
   if (camp && selectCamp) {
     selectCamp.value = String(camp);
     campeonatoSeleccionado = parseInt(camp, 10);
+    window.RouteContext?.save?.("sorteo.html", {
+      campeonato: campeonatoSeleccionado,
+      evento: eventoSeleccionado,
+    });
     await cargarEventosPorCampeonato(campeonatoSeleccionado);
   }
 
@@ -71,6 +75,10 @@ async function cargarCampeonatos() {
     select.onchange = async () => {
       campeonatoSeleccionado = select.value ? parseInt(select.value, 10) : null;
       eventoSeleccionado = null;
+      window.RouteContext?.save?.("sorteo.html", {
+        campeonato: campeonatoSeleccionado,
+        evento: null,
+      });
       await cargarEventosPorCampeonato(campeonatoSeleccionado);
       limpiarSorteoUI();
     };
@@ -96,6 +104,10 @@ async function cargarEventosPorCampeonato(campeonatoId) {
 
     selectEvt.onchange = async () => {
       eventoSeleccionado = selectEvt.value ? parseInt(selectEvt.value, 10) : null;
+      window.RouteContext?.save?.("sorteo.html", {
+        campeonato: campeonatoSeleccionado,
+        evento: eventoSeleccionado,
+      });
       await recargarEstadoSorteo();
     };
   } catch (error) {
@@ -755,6 +767,13 @@ function verGruposSorteo() {
     mostrarNotificacion("Selecciona campeonato", "warning");
     return;
   }
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("gruposgen.html", {
+      campeonato: Number(campeonatoSeleccionado) || null,
+      evento: Number(eventoSeleccionado) || null,
+    });
+    return;
+  }
   const q = new URLSearchParams({
     campeonato: String(campeonatoSeleccionado),
     evento: String(eventoSeleccionado || ""),
@@ -768,4 +787,3 @@ window.asignarEquipoSeleccionado = asignarEquipoSeleccionado;
 window.asignarEquipoManualDirecto = asignarEquipoManualDirecto;
 window.verGruposSorteo = verGruposSorteo;
 window.reiniciarSorteo = reiniciarSorteo;
-

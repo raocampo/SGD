@@ -92,6 +92,47 @@ function obtenerParametroUrl(nombre) {
   return params.get(nombre);
 }
 
+function obtenerContextoJugadoresDesdeSesion() {
+  try {
+    const raw = window.sessionStorage.getItem("sgd_jugadores_contexto");
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return {
+      campeonato: Number.parseInt(data?.campeonato, 10) || null,
+      equipo: Number.parseInt(data?.equipo, 10) || null,
+      evento: Number.parseInt(data?.evento, 10) || null,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function guardarContextoJugadoresEnSesion() {
+  try {
+    window.sessionStorage.setItem(
+      "sgd_jugadores_contexto",
+      JSON.stringify({
+        campeonato: Number(campeonatoId) || null,
+        equipo: Number(equipoId) || null,
+        evento: Number(eventoId) || null,
+        guardado_en: Date.now(),
+      })
+    );
+  } catch (_) {
+    // no-op
+  }
+}
+
+function limpiarParametrosVisiblesJugadores() {
+  if (!window.location.search) return;
+  try {
+    const nuevaUrl = `${window.location.origin}${window.location.pathname}${window.location.hash || ""}`;
+    window.history.replaceState(window.history.state, document.title, nuevaUrl);
+  } catch (_) {
+    // no-op
+  }
+}
+
 function normalizarArchivoUrl(valor) {
   if (!valor) return "";
   const s = String(valor).trim();
@@ -1058,6 +1099,7 @@ async function cargarCampeonatosSelectDirecto() {
         carnet_color_secundario: "",
         carnet_color_acento: "",
       };
+      guardarContextoJugadoresEnSesion();
       await cargarEventosSelectDirecto(campeonatoId);
       await cargarEquiposSelectDirecto(campeonatoId, null);
       await cargarConfigCampeonato();
@@ -1113,6 +1155,7 @@ async function cargarEventosSelectDirecto(campId) {
         carnet_color_acento: eventoSel?.carnet_color_acento || "",
       };
       equipoId = null;
+      guardarContextoJugadoresEnSesion();
       await cargarEquiposSelectDirecto(campId, eventoId);
       limpiarVistaSinEquipo();
       actualizarEstadoPanelReportes();
@@ -1153,6 +1196,7 @@ async function cargarEquiposSelectDirecto(campId, evtId = null) {
 
     select.onchange = () => {
       equipoId = select.value ? Number.parseInt(select.value, 10) : null;
+      guardarContextoJugadoresEnSesion();
       actualizarEstadoPanelReportes();
     };
   } catch (error) {
@@ -1171,11 +1215,8 @@ async function cargarJugadoresDesdeSeleccion() {
     return;
   }
 
-  const params = new URLSearchParams();
-  params.set("campeonato", String(campeonatoId));
-  params.set("equipo", String(equipoId));
-  if (eventoId) params.set("evento", String(eventoId));
-  history.replaceState({}, "", `jugadores.html?${params.toString()}`);
+  guardarContextoJugadoresEnSesion();
+  limpiarParametrosVisiblesJugadores();
 
   await cargarContextoEquipo();
 }
@@ -1221,6 +1262,7 @@ async function cargarContextoEquipo() {
   await cargarInfoEquipo();
   await cargarConfigCampeonato();
   await cargarJugadores();
+  guardarContextoJugadoresEnSesion();
   actualizarEstadoRequisitosEnModal(null);
   actualizarEstadoPanelReportes();
 }
@@ -1231,9 +1273,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   inicializarImportadorJugadores();
   inicializarImportadorDocsZip();
 
-  equipoId = obtenerParametroUrl("equipo") ? Number.parseInt(obtenerParametroUrl("equipo"), 10) : null;
-  campeonatoId = obtenerParametroUrl("campeonato") ? Number.parseInt(obtenerParametroUrl("campeonato"), 10) : null;
-  eventoId = obtenerParametroUrl("evento") ? Number.parseInt(obtenerParametroUrl("evento"), 10) : null;
+  const equipoParam = obtenerParametroUrl("equipo");
+  const campeonatoParam = obtenerParametroUrl("campeonato");
+  const eventoParam = obtenerParametroUrl("evento");
+  const contextoSesion = obtenerContextoJugadoresDesdeSesion();
+
+  equipoId = equipoParam
+    ? Number.parseInt(equipoParam, 10)
+    : contextoSesion?.equipo || null;
+  campeonatoId = campeonatoParam
+    ? Number.parseInt(campeonatoParam, 10)
+    : contextoSesion?.campeonato || null;
+  eventoId = eventoParam
+    ? Number.parseInt(eventoParam, 10)
+    : contextoSesion?.evento || null;
+
+  if (equipoParam || campeonatoParam || eventoParam) {
+    guardarContextoJugadoresEnSesion();
+    limpiarParametrosVisiblesJugadores();
+  }
 
   modoDirecto = !equipoId;
   actualizarBotonesVistaJugadores();

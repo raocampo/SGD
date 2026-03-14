@@ -50,6 +50,14 @@ function qp(nombre) {
   return params.get(nombre);
 }
 
+function guardarContextoRutaPlanilla() {
+  window.RouteContext?.save?.("planilla.html", {
+    campeonato: Number.isFinite(Number(campeonatoIdContexto)) ? Number(campeonatoIdContexto) : null,
+    evento: Number.isFinite(Number(eventoId)) ? Number(eventoId) : null,
+    partido: Number.isFinite(Number(partidoId)) ? Number(partidoId) : null,
+  });
+}
+
 function aEntero(valor, fallback = 0) {
   const n = Number.parseInt(valor, 10);
   return Number.isFinite(n) ? n : fallback;
@@ -2171,6 +2179,7 @@ async function cargarEventosSelectorPlanilla() {
       grupoSelectorActual = "";
       jornadaSelectorActual = "";
       partidoId = NaN;
+      guardarContextoRutaPlanilla();
       await cargarPartidosSelectorPorEvento(eventoId);
       actualizarVisibilidadContenidoPlanilla(false);
     };
@@ -2200,6 +2209,7 @@ async function cargarEventosSelectorPlanilla() {
     selectPartido.onchange = () => {
       const idSel = Number(selectPartido.value);
       partidoId = Number.isFinite(idSel) ? idSel : NaN;
+      guardarContextoRutaPlanilla();
       actualizarResaltadoSelectorPartidoFinalizado();
     };
 
@@ -2257,6 +2267,7 @@ async function cargarCampeonatosSelectorPlanilla() {
       partidoId = NaN;
       grupoSelectorActual = "";
       jornadaSelectorActual = "";
+      guardarContextoRutaPlanilla();
       actualizarVisibilidadContenidoPlanilla(false);
       await cargarEventosSelectorPlanilla();
     };
@@ -2269,10 +2280,12 @@ async function cargarCampeonatosSelectorPlanilla() {
 }
 
 async function resolverCampeonatoContextoPlanilla() {
-  const campFromUrl = aEntero(qp("campeonato"), NaN);
-  if (Number.isFinite(campFromUrl) && campFromUrl > 0) {
-    campeonatoIdContexto = campFromUrl;
-    localStorage.setItem("sgd_planilla_camp", String(campFromUrl));
+  const routeContext = window.RouteContext?.read?.("planilla.html", ["campeonato", "evento", "partido"]) || {};
+
+  const campFromRoute = aEntero(routeContext.campeonato, NaN);
+  if (Number.isFinite(campFromRoute) && campFromRoute > 0) {
+    campeonatoIdContexto = campFromRoute;
+    localStorage.setItem("sgd_planilla_camp", String(campFromRoute));
     return;
   }
 
@@ -2286,10 +2299,10 @@ async function resolverCampeonatoContextoPlanilla() {
     campeonatoIdContexto = campCachePartidos;
   }
 
-  const eventoFromUrl = aEntero(qp("evento"), NaN);
-  if (Number.isFinite(eventoFromUrl) && eventoFromUrl > 0) {
+  const eventoFromRoute = aEntero(routeContext.evento, NaN);
+  if (Number.isFinite(eventoFromRoute) && eventoFromRoute > 0) {
     try {
-      const respEvento = await ApiClient.get(`/eventos/${eventoFromUrl}`);
+      const respEvento = await ApiClient.get(`/eventos/${eventoFromRoute}`);
       const evento = respEvento?.evento || respEvento || {};
       const campEvt = Number.parseInt(evento?.campeonato_id, 10);
       if (Number.isFinite(campEvt) && campEvt > 0) {
@@ -2311,6 +2324,7 @@ async function resolverCampeonatoContextoPlanilla() {
         if (Number.isFinite(campDefault) && campDefault > 0) {
           campeonatoIdContexto = campDefault;
           localStorage.setItem("sgd_planilla_camp", String(campDefault));
+          guardarContextoRutaPlanilla();
         }
       }
     } catch (error) {
@@ -2367,11 +2381,8 @@ async function cargarPlanillaDesdeSelector() {
 
   partidoId = idPartido;
   eventoId = Number.isFinite(idEvento) ? idEvento : null;
-
-  const params = new URLSearchParams();
-  params.set("partido", String(partidoId));
-  if (eventoId) params.set("evento", String(eventoId));
-  window.history.replaceState({}, "", `planilla.html?${params.toString()}`);
+  guardarContextoRutaPlanilla();
+  window.RouteContext?.cleanUrl?.();
 
   await cargarPlanilla();
 }
@@ -3847,6 +3858,13 @@ async function exportarPlanillaXLSX() {
 }
 
 function volverAPartidos() {
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("partidos.html", {
+      campeonato: Number.isFinite(Number(campeonatoIdContexto)) ? Number(campeonatoIdContexto) : null,
+      evento: Number.isFinite(Number(eventoId)) ? Number(eventoId) : null,
+    });
+    return;
+  }
   const params = new URLSearchParams();
   if (Number.isFinite(Number(campeonatoIdContexto)) && Number(campeonatoIdContexto) > 0) {
     params.set("campeonato", String(campeonatoIdContexto));
@@ -3868,10 +3886,12 @@ function recargarPlanilla() {
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("planilla.html")) return;
 
-  partidoId = aEntero(qp("partido"), NaN);
-  eventoId = aEntero(qp("evento"), NaN);
+  const routeContext = window.RouteContext?.read?.("planilla.html", ["partido", "evento", "campeonato"]) || {};
+  partidoId = aEntero(routeContext.partido, NaN);
+  eventoId = aEntero(routeContext.evento, NaN);
   if (!Number.isFinite(Number(eventoId))) eventoId = null;
   await resolverCampeonatoContextoPlanilla();
+  guardarContextoRutaPlanilla();
 
   const formPlanilla = document.getElementById("form-planilla");
   const formJugadorPlanilla = document.getElementById("form-planilla-jugador");

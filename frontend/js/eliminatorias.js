@@ -239,6 +239,7 @@ function bindEventosEliminatoria() {
   document.getElementById("eli-evento")?.addEventListener("change", async () => {
     const id = Number.parseInt(document.getElementById("eli-evento")?.value || "", 10);
     eliminatoriaState.eventoSeleccionado = Number.isFinite(id) ? id : null;
+    window.RouteContext?.save?.("eliminatorias.html", { evento: eliminatoriaState.eventoSeleccionado });
     await cargarContextoPublicacion(eliminatoriaState.eventoSeleccionado);
     await cargarConfiguracionPlayoffCompartida();
     await refrescarGestionCompetitiva();
@@ -295,7 +296,8 @@ async function cargarEventosEliminatoria() {
 }
 
 async function preseleccionarEventoDesdeURL() {
-  const param = new URLSearchParams(window.location.search).get("evento");
+  const routeContext = window.RouteContext?.read?.("eliminatorias.html", ["evento"]) || {};
+  const param = routeContext.evento;
   const id = Number.parseInt(param || "", 10);
   if (!Number.isFinite(id)) {
     actualizarMetaEvento();
@@ -1602,6 +1604,10 @@ function abrirEnPartidos() {
   const eventoId = eliminatoriaState.eventoSeleccionado;
   if (!eventoId) {
     mostrarNotificacion("Selecciona una categoría", "warning");
+    return;
+  }
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("partidos.html", { evento: Number(eventoId) || null });
     return;
   }
   window.location.href = `partidos.html?evento=${encodeURIComponent(eventoId)}`;

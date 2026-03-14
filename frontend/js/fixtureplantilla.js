@@ -24,12 +24,13 @@ let contexto = {
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("fixtureplantilla.html")) return;
 
-  const params = new URLSearchParams(window.location.search);
-  eventoId = Number.parseInt(params.get("evento") || "", 10);
-  grupoId = Number.parseInt(params.get("grupo") || "", 10);
-  jornada = params.get("jornada");
-  fecha = params.get("fecha");
-  vistaFixture = params.get("vista") || "todos";
+  const routeContext =
+    window.RouteContext?.read?.("fixtureplantilla.html", ["evento", "grupo", "jornada", "fecha", "vista"]) || {};
+  eventoId = Number.parseInt(routeContext.evento || "", 10);
+  grupoId = Number.parseInt(routeContext.grupo || "", 10);
+  jornada = routeContext.jornada || null;
+  fecha = routeContext.fecha || null;
+  vistaFixture = routeContext.vista || "todos";
 
   if (!Number.isFinite(eventoId) || eventoId <= 0) {
     mostrarNotificacion("Evento no valido para plantilla.", "warning");

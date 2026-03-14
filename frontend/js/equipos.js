@@ -575,10 +575,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   actualizarBotonesVistaEquipos();
   inicializarImportadorEquipos();
 
-  // Parámetros URL (si viene desde Categorías)
-  const params = new URLSearchParams(window.location.search);
-  eventoIdSeleccionado = params.get("evento") ? parseInt(params.get("evento"), 10) : null;
-  campeonatoId = params.get("campeonato") ? parseInt(params.get("campeonato"), 10) : null;
+  const routeContext = window.RouteContext?.read?.("equipos.html", ["campeonato", "evento"]) || {};
+  eventoIdSeleccionado = routeContext.evento ? parseInt(routeContext.evento, 10) : null;
+  campeonatoId = routeContext.campeonato ? parseInt(routeContext.campeonato, 10) : null;
 
   // Cargar selects de campeonato y evento
   await cargarCampeonatosSelect();
@@ -634,6 +633,10 @@ async function cargarCampeonatosSelect() {
     select.onchange = async () => {
       campeonatoId = select.value ? parseInt(select.value, 10) : null;
       eventoIdSeleccionado = null;
+      window.RouteContext?.save?.("equipos.html", {
+        campeonato: campeonatoId,
+        evento: null,
+      });
       alertasOperativasEquipos = new Map();
       cargandoAlertasOperativas = false;
       tokenAlertasOperativas += 1;
@@ -678,6 +681,10 @@ async function cargarEventosSelect(eventoPreservado = null) {
 
     select.onchange = () => {
       eventoIdSeleccionado = select.value ? parseInt(select.value, 10) : null;
+      window.RouteContext?.save?.("equipos.html", {
+        campeonato: campeonatoId,
+        evento: eventoIdSeleccionado,
+      });
       alertasOperativasEquipos = new Map();
       cargarEquipos();
     };
@@ -1399,14 +1406,19 @@ function irAJugadores(equipoId) {
     return;
   }
 
-  const params = new URLSearchParams();
-  params.set("campeonato", String(campeonatoId));
-  params.set("equipo", String(equipoId));
-  if (eventoIdSeleccionado) {
-    params.set("evento", String(eventoIdSeleccionado));
+  try {
+    const contexto = {
+      campeonato: Number(campeonatoId) || null,
+      equipo: Number(equipoId) || null,
+      evento: eventoIdSeleccionado ? Number(eventoIdSeleccionado) : null,
+      guardado_en: Date.now(),
+    };
+    window.sessionStorage.setItem("sgd_jugadores_contexto", JSON.stringify(contexto));
+  } catch (_) {
+    // no-op
   }
 
-  window.location.href = `jugadores.html?${params.toString()}`;
+  window.location.href = "jugadores.html";
 }
 
 function irASorteo() {
@@ -1430,6 +1442,13 @@ function irASorteo() {
     return;
   }
 
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("sorteo.html", {
+      campeonato: Number(campId) || null,
+      evento: Number(evtId) || null,
+    });
+    return;
+  }
   window.location.href = `sorteo.html?campeonato=${campId}&evento=${evtId}`;
 }
 
@@ -1446,4 +1465,3 @@ window.irAJugadores = irAJugadores;
 window.cambiarVistaEquipos = cambiarVistaEquipos;
 window.abrirImportadorEquipos = abrirImportadorEquipos;
 window.descargarPlantillaEquipos = descargarPlantillaEquipos;
-

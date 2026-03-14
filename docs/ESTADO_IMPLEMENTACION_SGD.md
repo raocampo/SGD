@@ -21,6 +21,24 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR, resumen ejecutivo por campeonato e impresion dedicadas; politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). Pendiente cierre de reglas avanzadas y reporteria ejecutiva adicional. |
 | 8 Adaptacion mobile web | En progreso | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; fase 1 base responsive iniciada en `style.css`/`core.js` (layout, topbar, acciones y sidebar) con cierre parcial en `tablas`, `finanzas`, `partidos` y `planilla`; pendiente cierre de `grupos/eliminatorias/pases` y validacion final en viewports objetivo. |
 
+## Navegacion Interna y Seguridad Visual
+- El sistema deportivo ya oculta el contexto operativo principal de la barra del navegador para los modulos internos.
+- La navegacion ahora usa `RouteContext` en `sessionStorage` para mantener:
+  - campeonato,
+  - evento,
+  - equipo,
+  - partido,
+  - filtros de fixture/playoff.
+- Flujos ya cubiertos:
+  - `campeonatos -> eventos -> equipos -> jugadores`
+  - `equipos -> sorteo -> grupos -> playoff`
+  - `partidos -> planilla / fixture plantilla / eliminatorias`
+  - `planilla -> partidos`
+  - `tablas`
+- Aclaracion tecnica:
+  - ocultar la query string mejora UX y reduce exposicion visual de IDs,
+  - la seguridad real sigue dependiendo del backend (token, rol y permisos sobre campeonato/evento/equipo).
+
 ## Infraestructura de Despliegue
 - Render:
   - backend y frontend ya operan por mismo origen en un solo servicio Node.

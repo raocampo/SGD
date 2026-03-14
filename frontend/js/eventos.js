@@ -199,13 +199,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await cargarCampeonatosSelect();
 
-  // si vienes desde campeonatos.html?campeonato=1
-  const params = new URLSearchParams(window.location.search);
-  const cId = params.get("campeonato");
+  const routeContext = window.RouteContext?.read?.("eventos.html", ["campeonato"]) || {};
+  const cId = routeContext.campeonato;
   if (cId) {
     campeonatoSeleccionado = parseInt(cId, 10);
     const sel = document.getElementById("select-campeonato");
     sel.value = String(campeonatoSeleccionado);
+    window.RouteContext?.save?.("eventos.html", { campeonato: campeonatoSeleccionado });
     aplicarFechasDesdeCampeonato();
     await cargarEventos();
     return;
@@ -234,16 +234,18 @@ async function cargarCampeonatosSelect() {
       const ultimo = [...lista]
         .sort((a, b) => Number(b.id || 0) - Number(a.id || 0))[0];
       if (ultimo?.id) {
-        campeonatoSeleccionado = Number.parseInt(ultimo.id, 10);
-        select.value = String(campeonatoSeleccionado);
-      }
+      campeonatoSeleccionado = Number.parseInt(ultimo.id, 10);
+      select.value = String(campeonatoSeleccionado);
+      window.RouteContext?.save?.("eventos.html", { campeonato: campeonatoSeleccionado });
     }
+  }
 
-    select.onchange = async () => {
-      campeonatoSeleccionado = select.value ? parseInt(select.value, 10) : null;
-      aplicarFechasDesdeCampeonato();
-      eventosCache = [];
-      document.getElementById("lista-eventos").innerHTML = "";
+  select.onchange = async () => {
+    campeonatoSeleccionado = select.value ? parseInt(select.value, 10) : null;
+    window.RouteContext?.save?.("eventos.html", { campeonato: campeonatoSeleccionado });
+    aplicarFechasDesdeCampeonato();
+    eventosCache = [];
+    document.getElementById("lista-eventos").innerHTML = "";
       if (campeonatoSeleccionado) {
         await cargarEventos();
       }
@@ -399,6 +401,13 @@ function renderTablaEventos(eventos) {
 function irAElegirEquipos(eventoId) {
   // aquí enlazamos a una pantalla de equipos por evento
   // (puede ser equipos.html si lo adaptas, o una nueva equipos_evento.html)
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("equipos.html", {
+      campeonato: Number(campeonatoSeleccionado) || null,
+      evento: Number(eventoId) || null,
+    });
+    return;
+  }
   window.location.href = `equipos.html?campeonato=${campeonatoSeleccionado}&evento=${eventoId}`;
 }
 

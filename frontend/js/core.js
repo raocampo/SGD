@@ -32,6 +32,7 @@
   const AUTH_IDLE_TIMEOUT_MS = 60 * 60 * 1000;
   const AUTH_IDLE_WARNING_MS = 5 * 60 * 1000;
   const AUTH_ACTIVITY_DEBOUNCE_MS = 15000;
+  const ROUTE_CONTEXT_PREFIX = "sgd_route_ctx:";
   const BRAND_FAVICON_SVG = "favicon.svg";
   const BRAND_FAVICON_FALLBACK = "assets/ltc/Logo.jpeg";
   const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html", "register.html", "blog.html", "noticia.html"]);
@@ -245,6 +246,96 @@
     const safeReason = String(reason || "").trim();
     if (!safeReason) return "login.html";
     return `login.html?reason=${encodeURIComponent(safeReason)}`;
+  }
+
+  function normalizeRoutePage(page = "") {
+    const raw = String(page || "").trim();
+    if (!raw) return "";
+    return raw.split("?")[0].split("#")[0].split("/").pop().toLowerCase();
+  }
+
+  function getRouteContextKey(page = "") {
+    const normalized = normalizeRoutePage(page);
+    return normalized ? `${ROUTE_CONTEXT_PREFIX}${normalized}` : "";
+  }
+
+  function saveRouteContext(page = "", data = {}) {
+    const key = getRouteContextKey(page);
+    if (!key) return;
+    try {
+      sessionStorage.setItem(
+        key,
+        JSON.stringify({
+          ...(typeof data === "object" && data ? data : {}),
+          _saved_at: Date.now(),
+        })
+      );
+    } catch (_) {
+      // no-op
+    }
+  }
+
+  function loadRouteContext(page = "") {
+    const key = getRouteContextKey(page);
+    if (!key) return null;
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function clearRouteContext(page = "") {
+    const key = getRouteContextKey(page);
+    if (!key) return;
+    try {
+      sessionStorage.removeItem(key);
+    } catch (_) {
+      // no-op
+    }
+  }
+
+  function cleanCurrentRouteQuery() {
+    if (!window.location.search) return;
+    try {
+      const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash || ""}`;
+      window.history.replaceState(window.history.state, document.title, cleanUrl);
+    } catch (_) {
+      // no-op
+    }
+  }
+
+  function readRouteContext(page = "", paramNames = []) {
+    const params = new URLSearchParams(window.location.search);
+    const urlData = {};
+    let hasUrlData = false;
+
+    (Array.isArray(paramNames) ? paramNames : []).forEach((name) => {
+      const value = params.get(name);
+      if (value !== null && String(value).trim() !== "") {
+        urlData[name] = value;
+        hasUrlData = true;
+      }
+    });
+
+    if (hasUrlData) {
+      const merged = { ...(loadRouteContext(page) || {}), ...urlData };
+      saveRouteContext(page, merged);
+      cleanCurrentRouteQuery();
+      return merged;
+    }
+
+    return loadRouteContext(page) || {};
+  }
+
+  function navigateWithRouteContext(page = "", data = {}) {
+    const target = String(page || "").trim();
+    if (!target) return;
+    saveRouteContext(target, data);
+    window.location.href = normalizeRoutePage(target) || target;
   }
 
   function cancelAuthIdleTimer() {
@@ -565,6 +656,15 @@
     promptChangePassword(opciones = {}) {
       return solicitarCambioPassword(opciones);
     },
+  };
+
+  window.RouteContext = window.RouteContext || {
+    save: saveRouteContext,
+    load: loadRouteContext,
+    clear: clearRouteContext,
+    read: readRouteContext,
+    navigate: navigateWithRouteContext,
+    cleanUrl: cleanCurrentRouteQuery,
   };
 
   async function solicitarCambioPassword(opciones = {}) {

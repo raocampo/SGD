@@ -515,8 +515,8 @@ async function cargarCampeonatos() {
       selectCamp.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
     });
 
-    const params = new URLSearchParams(window.location.search);
-    const campURL = Number.parseInt(params.get("campeonato") || "", 10);
+    const routeContext = window.RouteContext?.read?.("partidos.html", ["campeonato", "evento"]) || {};
+    const campURL = Number.parseInt(routeContext.campeonato || "", 10);
     const campCache = Number.parseInt(localStorage.getItem("sgd_partidos_camp") || "", 10);
     const idsDisponibles = new Set(lista.map((c) => Number(c.id)));
 
@@ -532,6 +532,10 @@ async function cargarCampeonatos() {
       selectCamp.value = String(inicial);
       campeonatoSeleccionado = inicial;
       localStorage.setItem("sgd_partidos_camp", String(inicial));
+      window.RouteContext?.save?.("partidos.html", {
+        campeonato: campeonatoSeleccionado,
+        evento: eventoSeleccionado,
+      });
       await cargarEventos(campeonatoSeleccionado);
     } else {
       limpiarSelectEventos();
@@ -544,6 +548,10 @@ async function cargarCampeonatos() {
       } else {
         localStorage.removeItem("sgd_partidos_camp");
       }
+      window.RouteContext?.save?.("partidos.html", {
+        campeonato: campeonatoSeleccionado,
+        evento: null,
+      });
 
       limpiarFiltrosPartidosPorCambioContexto();
       await cargarGruposPorEvento(null);
@@ -593,6 +601,10 @@ async function cargarEventos(campeonatoId = campeonatoSeleccionado) {
 
     select.onchange = async () => {
       eventoSeleccionado = select.value ? Number(select.value) : null;
+      window.RouteContext?.save?.("partidos.html", {
+        campeonato: campeonatoSeleccionado,
+        evento: eventoSeleccionado,
+      });
       const evento = obtenerEventoSeleccionadoObj();
       metodoCompetenciaActivo = normalizarMetodoCompetencia(evento?.metodo_competencia);
       actualizarUIPorMetodoCompetencia();
@@ -752,7 +764,8 @@ async function cargarPartidos() {
 }
 
 async function aplicarEventoInicialDesdeURL() {
-  const queryCamp = new URLSearchParams(window.location.search).get("campeonato");
+  const routeContext = window.RouteContext?.read?.("partidos.html", ["campeonato", "evento"]) || {};
+  const queryCamp = routeContext.campeonato;
   const campId = Number.parseInt(queryCamp || "", 10);
   if (Number.isFinite(campId)) {
     const selectCamp = document.getElementById("select-campeonato");
@@ -764,7 +777,7 @@ async function aplicarEventoInicialDesdeURL() {
     }
   }
 
-  const queryEvento = new URLSearchParams(window.location.search).get("evento");
+  const queryEvento = routeContext.evento;
   const id = Number.parseInt(queryEvento || "", 10);
   if (!Number.isFinite(id)) return;
 
@@ -1390,6 +1403,14 @@ function renderTablaPartidos(partidos) {
 }
 
 function abrirPlanillaPartido(partidoId) {
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("planilla.html", {
+      partido: Number(partidoId) || null,
+      evento: Number(eventoSeleccionado) || null,
+      campeonato: Number(campeonatoSeleccionado) || null,
+    });
+    return;
+  }
   const params = new URLSearchParams();
   params.set("partido", String(partidoId));
   if (eventoSeleccionado) params.set("evento", String(eventoSeleccionado));
@@ -1884,12 +1905,26 @@ function abrirPlantillaFixturePantallaCompleta() {
   if (jornadaSeleccionada) params.set("jornada", String(jornadaSeleccionada));
   if (fechaSeleccionada) params.set("fecha", String(fechaSeleccionada));
 
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("fixtureplantilla.html", {
+      evento: Number(eventoSeleccionado) || null,
+      grupo: Number(grupoSeleccionado) || null,
+      jornada: jornadaSeleccionada || "",
+      fecha: fechaSeleccionada || "",
+      vista: vistaFixture || "todos",
+    });
+    return;
+  }
   window.location.href = `fixtureplantilla.html?${params.toString()}`;
 }
 
 function abrirVistaEliminatoria() {
   if (!eventoSeleccionado) {
     mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return;
+  }
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("eliminatorias.html", { evento: Number(eventoSeleccionado) || null });
     return;
   }
   window.location.href = `eliminatorias.html?evento=${encodeURIComponent(eventoSeleccionado)}`;
@@ -1995,5 +2030,3 @@ window.abrirPlanillaPartido = abrirPlanillaPartido;
 window.cambiarVistaPartidos = cambiarVistaPartidos;
 window.editarResultadoEliminatoria = editarResultadoEliminatoria;
 window.abrirVistaEliminatoria = abrirVistaEliminatoria;
-
-

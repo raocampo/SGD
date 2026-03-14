@@ -17,11 +17,6 @@ let gruposUiState = {
 };
 let gruposEventosCache = [];
 
-function getQueryParam(name) {
-  const params = new URLSearchParams(window.location.search);
-  return params.get(name);
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("gruposgen.html")) return;
 
@@ -41,8 +36,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await cargarCampeonatosEnSelect(select);
 
-  const campeonatoParam = Number.parseInt(getQueryParam("campeonato") || "", 10);
-  const eventoParam = Number.parseInt(getQueryParam("evento") || "", 10);
+  const routeContext = window.RouteContext?.read?.("gruposgen.html", ["campeonato", "evento"]) || {};
+  const campeonatoParam = Number.parseInt(routeContext.campeonato || "", 10);
+  const eventoParam = Number.parseInt(routeContext.evento || "", 10);
 
   if (Number.isFinite(eventoParam) && eventoParam > 0) {
     await aplicarContextoEventoDesdeURL(eventoParam, select, campeonatoParam);
@@ -73,6 +69,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       eventoNombre: "",
       auspiciantes: [],
     };
+    window.RouteContext?.save?.("gruposgen.html", {
+      campeonato: campeonatoId,
+      evento: null,
+    });
 
     await cargarEventosEnSelectGrupos(campeonatoId, null);
     await cargarYMostrarGrupos({ campeonatoId, eventoId: null });
@@ -96,6 +96,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       eventoNombre,
       auspiciantes: [],
     };
+    window.RouteContext?.save?.("gruposgen.html", {
+      campeonato: campeonatoId,
+      evento: contextoGrupos.eventoId,
+    });
 
     await cargarYMostrarGrupos({
       campeonatoId,
@@ -218,10 +222,12 @@ function getEventoPlayoffSeleccionado() {
 function construirUrlPlayoff({ embed }) {
   const eventoId = getEventoPlayoffSeleccionado() || Number.parseInt(getEventoIdActual() || "", 10);
   if (!Number.isFinite(eventoId) || eventoId <= 0) return null;
+  if (window.RouteContext?.save) {
+    window.RouteContext.save("eliminatorias.html", { evento: eventoId });
+  }
   const params = new URLSearchParams();
-  params.set("evento", String(eventoId));
   if (embed) params.set("embed", "1");
-  return `eliminatorias.html?${params.toString()}`;
+  return params.toString() ? `eliminatorias.html?${params.toString()}` : "eliminatorias.html";
 }
 
 function limpiarIframePlayoff() {
@@ -563,6 +569,13 @@ async function inlineImagesAsBase64(zona) {
 function volverInicio() {
   const campeonatoId = getCampeonatoIdActual();
   const eventoId = getEventoIdActual();
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("sorteo.html", {
+      campeonato: Number.parseInt(campeonatoId || "", 10) || null,
+      evento: Number.parseInt(eventoId || "", 10) || null,
+    });
+    return;
+  }
   const params = new URLSearchParams();
   if (campeonatoId) params.set("campeonato", String(campeonatoId));
   if (eventoId) params.set("evento", String(eventoId));
@@ -799,6 +812,10 @@ function irAClasificacionPlayoff() {
     mostrarNotificacion("Selecciona una categoría para abrir playoff.", "warning");
     return;
   }
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("eliminatorias.html", { evento: Number(eventoId) || null });
+    return;
+  }
   window.location.href = `eliminatorias.html?evento=${encodeURIComponent(eventoId)}`;
 }
 
@@ -808,8 +825,8 @@ function getCampeonatoIdActual() {
   const select = document.getElementById("select-campeonato-grupos");
   if (select && select.value) return select.value;
 
-  const params = new URLSearchParams(window.location.search);
-  return params.get("campeonato");
+  const stored = window.RouteContext?.load?.("gruposgen.html");
+  return stored?.campeonato ? String(stored.campeonato) : null;
 }
 
 function getEventoIdActual() {
@@ -818,8 +835,8 @@ function getEventoIdActual() {
 
   if (contextoGrupos.eventoId) return String(contextoGrupos.eventoId);
 
-  const params = new URLSearchParams(window.location.search);
-  return params.get("evento");
+  const stored = window.RouteContext?.load?.("gruposgen.html");
+  return stored?.evento ? String(stored.evento) : null;
 }
 
 window.exportarGruposPNG = exportarGruposPNG;

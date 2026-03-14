@@ -14,6 +14,37 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-14
+- Navegacion interna / UX:
+  - se implemento `RouteContext` en `frontend/js/core.js` para guardar contexto de navegacion interna en `sessionStorage`.
+  - las pantallas internas ya no dependen de `?campeonato=...&evento=...&equipo=...&partido=...` visibles en la barra del navegador.
+  - el sistema ahora limpia la URL al cargar y mantiene el contexto entre:
+    - `campeonatos -> eventos`
+    - `eventos -> equipos`
+    - `equipos -> jugadores`
+    - `equipos -> sorteo`
+    - `sorteo -> grupos`
+    - `grupos -> playoff`
+    - `partidos -> planilla`
+    - `partidos -> fixture plantilla`
+    - `partidos -> eliminatorias`
+    - `planilla -> partidos`
+    - `tablas`
+  - se mantiene soporte de compatibilidad para enlaces antiguos con query string: el modulo toma el contexto una vez y luego limpia la barra.
+  - validacion tecnica:
+    - `node --check frontend/js/core.js`
+    - `node --check frontend/js/campeonatos.js`
+    - `node --check frontend/js/eventos.js`
+    - `node --check frontend/js/equipos.js`
+    - `node --check frontend/js/jugadores.js`
+    - `node --check frontend/js/sorteo.js`
+    - `node --check frontend/js/gruposgen.js`
+    - `node --check frontend/js/eliminatorias.js`
+    - `node --check frontend/js/partidos.js`
+    - `node --check frontend/js/planilla.js`
+    - `node --check frontend/js/fixtureplantilla.js`
+    - `node --check frontend/js/tablas.js`
+  - pendiente de prueba manual:
+    - verificar visualmente todos los flujos internos despues de `Ctrl + F5` para confirmar que la barra quede limpia en cada modulo.
 - Jugadores / carnés:
   - se agregó soporte de recorte estable para `foto carné`.
   - el ajuste visual ahora se previsualiza con `canvas` para representar el recorte real.
