@@ -92,24 +92,30 @@ class Jugador {
     }
 
     /**
-     * Validación: un jugador no puede estar en dos equipos del mismo torneo/campeonato.
-     * Usa cédula como identificador único.
+     * Validación: un jugador no puede estar en dos equipos de la misma categoría/evento.
+     * Puede repetirse en otras categorías del mismo campeonato.
      * @param {string} cedula
      * @param {number} equipo_destino_id - equipo al que se asigna
      * @param {number} [excluir_jugador_id] - al actualizar, excluir este jugador del chequeo
      */
-    static async verificarJugadorUnicoPorCampeonato(cedula, equipo_destino_id, excluir_jugador_id = null) {
+    static async verificarJugadorUnicoPorEvento(cedula, equipo_destino_id, excluir_jugador_id = null) {
         if (!cedula || !equipo_destino_id) return;
 
         let q = `
-            SELECT j.id, j.nombre, j.apellido, e.nombre as equipo_nombre
+            SELECT
+              j.id,
+              j.nombre,
+              j.apellido,
+              e.nombre as equipo_nombre,
+              ev.nombre as evento_nombre
             FROM jugadores j
             JOIN equipos e ON e.id = j.equipo_id
+            LEFT JOIN eventos ev ON ev.id = e.evento_id
             WHERE j.cedidentidad = $1
               AND j.equipo_id != $2
-              AND e.campeonato_id = (
-                SELECT campeonato_id FROM equipos WHERE id = $2
-              )
+              AND COALESCE(e.evento_id, 0) = COALESCE((
+                SELECT evento_id FROM equipos WHERE id = $2
+              ), 0)
         `;
         const params = [cedula, equipo_destino_id];
         if (excluir_jugador_id) {
@@ -122,8 +128,9 @@ class Jugador {
         if (r.rows.length > 0) {
             const otro = r.rows[0];
             throw new Error(
-                `Un jugador no puede estar en dos equipos del mismo torneo. ` +
-                `La cédula ya está registrada en el equipo "${otro.equipo_nombre}".`
+                `Un jugador no puede estar en dos equipos de la misma categoría. ` +
+                `La cédula ya está registrada en el equipo "${otro.equipo_nombre}"` +
+                `${otro.evento_nombre ? ` de la categoría "${otro.evento_nombre}"` : ""}.`
             );
         }
     }
@@ -176,8 +183,8 @@ class Jugador {
             throw new Error(`Límite de ${maxJugadoresPermitido} jugadores alcanzado en este equipo`);
         }
 
-        // Verificar si la cédula ya existe en otro equipo del mismo campeonato
-        await this.verificarJugadorUnicoPorCampeonato(cedulaNormalizada, equipo_id);
+        // Verificar si la cédula ya existe en otro equipo de la misma categoría/evento
+        await this.verificarJugadorUnicoPorEvento(cedulaNormalizada, equipo_id);
 
         // Verificar cédula duplicada en el mismo equipo (fallback)
         if (cedulaNormalizada) {
@@ -293,7 +300,7 @@ class Jugador {
         if (Object.prototype.hasOwnProperty.call(datos, "foto_carnet_zoom")) {
             datos.foto_carnet_zoom = this.normalizarZoomFoto(datos.foto_carnet_zoom, 1);
         }
-        // Si cambia equipo_id o cedidentidad, validar jugador único por campeonato
+        // Si cambia equipo_id o cedidentidad, validar jugador único por categoría/evento
         if (datos.equipo_id) {
             const jugadorActual = await pool.query(
                 'SELECT cedidentidad FROM jugadores WHERE id = $1',
@@ -301,7 +308,7 @@ class Jugador {
             );
             const cedula = datos.cedidentidad ?? jugadorActual.rows[0]?.cedidentidad;
             if (cedula) {
-                await this.verificarJugadorUnicoPorCampeonato(cedula, datos.equipo_id, parseInt(id, 10));
+                await this.verificarJugadorUnicoPorEvento(cedula, datos.equipo_id, parseInt(id, 10));
             }
 
             const equipoLimites = await this.obtenerEquipoConLimites(datos.equipo_id);

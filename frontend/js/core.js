@@ -25,7 +25,12 @@
   window.API_BASE_URL = window.resolveApiBaseUrl();
 
   const AUTH_TOKEN_KEY = "sgd_auth_token";
+  const AUTH_REFRESH_TOKEN_KEY = "sgd_auth_refresh_token";
   const AUTH_USER_KEY = "sgd_auth_user";
+  const AUTH_LAST_ACTIVITY_KEY = "sgd_auth_last_activity_at";
+  const AUTH_LOGOUT_REASON_KEY = "sgd_auth_logout_reason";
+  const AUTH_IDLE_TIMEOUT_MS = 60 * 60 * 1000;
+  const AUTH_ACTIVITY_DEBOUNCE_MS = 15000;
   const BRAND_FAVICON_SVG = "favicon.svg";
   const BRAND_FAVICON_FALLBACK = "assets/ltc/Logo.jpeg";
   const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html", "register.html", "blog.html", "noticia.html"]);
@@ -78,6 +83,11 @@
   }
 
   const CURRENT_PAGE = getCurrentPage();
+  let authIdleTimer = null;
+  let authActivityListenersBound = false;
+  let authStorageListenerBound = false;
+  let lastActivityWriteAt = 0;
+  let authLogoutInProgress = false;
 
   function ensureAuthPendingStyle() {
     if (!document?.head || document.getElementById("sgd-auth-pending-style")) return;
@@ -183,6 +193,154 @@
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
   }
 
+  function getStoredRefreshToken() {
+    return localStorage.getItem(AUTH_REFRESH_TOKEN_KEY) || "";
+  }
+
+  function setStoredRefreshToken(token) {
+    const safe = String(token || "").trim();
+    if (!safe) {
+      localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
+      return;
+    }
+    localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, safe);
+  }
+
+  function getStoredLastActivity() {
+    const raw = Number.parseInt(localStorage.getItem(AUTH_LAST_ACTIVITY_KEY) || "", 10);
+    return Number.isFinite(raw) && raw > 0 ? raw : 0;
+  }
+
+  function setStoredLastActivity(timestamp = Date.now()) {
+    const safe = Number.isFinite(Number(timestamp)) ? Number(timestamp) : Date.now();
+    lastActivityWriteAt = safe;
+    localStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(safe));
+  }
+
+  function clearStoredLastActivity() {
+    lastActivityWriteAt = 0;
+    localStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
+  }
+
+  function rememberLogoutReason(reason = "") {
+    const safe = String(reason || "").trim();
+    if (!safe) {
+      sessionStorage.removeItem(AUTH_LOGOUT_REASON_KEY);
+      return;
+    }
+    sessionStorage.setItem(AUTH_LOGOUT_REASON_KEY, safe);
+  }
+
+  function consumeLogoutReason() {
+    const reason = String(sessionStorage.getItem(AUTH_LOGOUT_REASON_KEY) || "").trim();
+    if (reason) sessionStorage.removeItem(AUTH_LOGOUT_REASON_KEY);
+    return reason;
+  }
+
+  function buildLoginUrl(reason = "") {
+    const safeReason = String(reason || "").trim();
+    if (!safeReason) return "login.html";
+    return `login.html?reason=${encodeURIComponent(safeReason)}`;
+  }
+
+  function cancelAuthIdleTimer() {
+    if (authIdleTimer) {
+      clearTimeout(authIdleTimer);
+      authIdleTimer = null;
+    }
+  }
+
+  function isIdleExpired() {
+    const lastActivity = getStoredLastActivity();
+    if (!lastActivity) return false;
+    return Date.now() - lastActivity >= AUTH_IDLE_TIMEOUT_MS;
+  }
+
+  function scheduleAuthIdleTimer() {
+    cancelAuthIdleTimer();
+    if (PUBLIC_PAGES.has(getCurrentPage())) return;
+    if (!(window.Auth?.isAuthenticated?.() || false)) return;
+
+    const lastActivity = getStoredLastActivity() || Date.now();
+    const restante = AUTH_IDLE_TIMEOUT_MS - (Date.now() - lastActivity);
+    if (restante <= 0) {
+      window.Auth?.logout?.({ reason: "idle" });
+      return;
+    }
+
+    authIdleTimer = window.setTimeout(() => {
+      window.Auth?.logout?.({ reason: "idle" });
+    }, restante + 250);
+  }
+
+  function touchAuthActivity(force = false) {
+    if (!(window.Auth?.isAuthenticated?.() || false)) return;
+    const now = Date.now();
+    if (!force && lastActivityWriteAt && now - lastActivityWriteAt < AUTH_ACTIVITY_DEBOUNCE_MS) {
+      return;
+    }
+    setStoredLastActivity(now);
+    scheduleAuthIdleTimer();
+  }
+
+  function bindAuthActivityListeners() {
+    if (authActivityListenersBound) return;
+    authActivityListenersBound = true;
+
+    const handler = () => touchAuthActivity(false);
+    ["pointerdown", "keydown", "touchstart", "scroll", "focus"].forEach((eventName) => {
+      window.addEventListener(eventName, handler, { passive: true });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      if (isIdleExpired()) {
+        window.Auth?.logout?.({ reason: "idle" });
+        return;
+      }
+      touchAuthActivity(true);
+    });
+  }
+
+  function bindAuthStorageSync() {
+    if (authStorageListenerBound) return;
+    authStorageListenerBound = true;
+
+    window.addEventListener("storage", (event) => {
+      if (event.key === AUTH_LAST_ACTIVITY_KEY) {
+        if (window.Auth?.isAuthenticated?.()) {
+          if (isIdleExpired()) {
+            window.Auth?.logout?.({ reason: "idle" });
+            return;
+          }
+          scheduleAuthIdleTimer();
+        }
+        return;
+      }
+
+      if (event.key === AUTH_TOKEN_KEY && !event.newValue && !PUBLIC_PAGES.has(getCurrentPage())) {
+        window.location.href = buildLoginUrl();
+      }
+    });
+  }
+
+  async function revokeRefreshTokenIfNeeded(refreshToken) {
+    const token = String(refreshToken || "").trim();
+    if (!token) return;
+    try {
+      await fetch(`${window.API_BASE_URL}/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshToken: token }),
+        keepalive: true,
+      });
+    } catch (_) {
+      // Evita bloquear el cierre de sesión si el backend no responde.
+    }
+  }
+
   async function validarSesionActual() {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!token) return null;
@@ -206,20 +364,30 @@
     getToken() {
       return localStorage.getItem(AUTH_TOKEN_KEY) || "";
     },
+    getRefreshToken() {
+      return getStoredRefreshToken();
+    },
     getUser() {
       return getStoredUser();
     },
-    setSession(token, user) {
+    setSession(token, user, refreshToken = "") {
       if (token) localStorage.setItem(AUTH_TOKEN_KEY, token);
+      setStoredRefreshToken(refreshToken);
       setStoredUser(user || null);
+      touchAuthActivity(true);
+      bindAuthActivityListeners();
+      bindAuthStorageSync();
     },
     updateUser(userPatch) {
       const current = this.getUser() || {};
       setStoredUser({ ...current, ...(userPatch || {}) });
     },
     clearSession() {
+      cancelAuthIdleTimer();
       localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
       localStorage.removeItem(AUTH_USER_KEY);
+      clearStoredLastActivity();
     },
     isAuthenticated() {
       return !!this.getToken();
@@ -241,12 +409,30 @@
     requiresPasswordChange() {
       return this.getUser()?.debe_cambiar_password === true;
     },
+    hasIdleExpired() {
+      return isIdleExpired();
+    },
+    touchSession(force = false) {
+      touchAuthActivity(force);
+    },
     getDefaultPage() {
       return getDefaultPageByRole(this.getUser());
     },
-    logout() {
+    async logout(options = {}) {
+      if (authLogoutInProgress) return;
+      authLogoutInProgress = true;
+      const reason = String(options?.reason || "").trim();
+      const redirect = options?.redirect !== false;
+      const refreshToken = this.getRefreshToken();
+      if (reason) rememberLogoutReason(reason);
       this.clearSession();
-      window.location.href = "login.html";
+      if (options?.revoke !== false) {
+        void revokeRefreshTokenIfNeeded(refreshToken);
+      }
+      authLogoutInProgress = false;
+      if (redirect) {
+        window.location.href = buildLoginUrl(reason);
+      }
     },
     handleUnauthorized() {
       const page = getCurrentPage();
@@ -255,6 +441,9 @@
         const next = encodeURIComponent(window.location.pathname + window.location.search);
         window.location.href = `login.html?next=${next}`;
       }
+    },
+    consumeLogoutReason() {
+      return consumeLogoutReason();
     },
     promptChangePassword(opciones = {}) {
       return solicitarCambioPassword(opciones);
@@ -366,6 +555,10 @@
 
       const token = window.Auth?.getToken?.();
       if (!token) return nativeFetch(input, init);
+
+      if (!String(requestUrl).includes("/auth/logout")) {
+        window.Auth?.touchSession?.(false);
+      }
 
       const headers = new Headers(init?.headers || (typeof input !== "string" ? input?.headers : undefined) || {});
       if (!headers.has("Authorization")) {
@@ -1207,6 +1400,15 @@
       return true;
     }
 
+    if (window.Auth.hasIdleExpired()) {
+      await window.Auth.logout({
+        reason: "idle",
+        redirect: !PUBLIC_PAGES.has(page),
+        revoke: true,
+      });
+      return PUBLIC_PAGES.has(page);
+    }
+
     const user = (await validarSesionActual()) || null;
     if (!user) {
       window.Auth.clearSession();
@@ -1236,6 +1438,9 @@
     if (!autorizado) return;
 
     const user = window.Auth.getUser();
+    if (window.Auth.isAuthenticated()) {
+      window.Auth.touchSession(true);
+    }
     aplicarSidebarPorRol(user);
     inyectarUsuarioTopbar(user);
     setAuthPendingState(false);

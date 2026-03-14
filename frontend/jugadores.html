@@ -355,35 +355,40 @@
               </div>
             </div>
             <div class="jugador-foto-ajuste-controles">
-              <label for="jugador-foto-carnet-pos-x">Horizontal</label>
-              <input type="range" id="jugador-foto-carnet-pos-x" min="0" max="100" step="1" value="50" />
-              <label for="jugador-foto-carnet-pos-y">Vertical</label>
-              <input type="range" id="jugador-foto-carnet-pos-y" min="0" max="100" step="1" value="35" />
-              <label for="jugador-foto-carnet-zoom">Zoom</label>
-              <div class="jugador-foto-ajuste-zoom-row">
-                <button type="button" class="btn btn-outline btn-icon-square" id="btn-jugador-zoom-out" title="Alejar">
-                  <i class="fas fa-search-minus"></i>
-                </button>
-                <input type="range" id="jugador-foto-carnet-zoom" min="0.6" max="2.5" step="0.05" value="1" />
-                <button type="button" class="btn btn-outline btn-icon-square" id="btn-jugador-zoom-in" title="Acercar">
-                  <i class="fas fa-search-plus"></i>
-                </button>
-              </div>
-              <div class="jugador-foto-ajuste-direccional" aria-label="Mover foto">
-                <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="up" title="Mover arriba">
-                  <i class="fas fa-arrow-up"></i>
-                </button>
-                <div class="jugador-foto-ajuste-direccional-middle">
-                  <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="left" title="Mover izquierda">
-                    <i class="fas fa-arrow-left"></i>
-                  </button>
-                  <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="right" title="Mover derecha">
-                    <i class="fas fa-arrow-right"></i>
-                  </button>
+              <input type="hidden" id="jugador-foto-carnet-pos-x" value="50" />
+              <input type="hidden" id="jugador-foto-carnet-pos-y" value="35" />
+              <input type="hidden" id="jugador-foto-carnet-zoom" value="1" />
+              <div class="jugador-foto-ajuste-toolbar">
+                <div class="jugador-foto-ajuste-panel">
+                  <label>Ajuste de zoom</label>
+                  <div class="jugador-foto-ajuste-zoom-row">
+                    <button type="button" class="btn btn-outline btn-icon-square" id="btn-jugador-zoom-out" title="Alejar">
+                      <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline btn-icon-square" id="btn-jugador-zoom-in" title="Acercar">
+                      <i class="fas fa-search-plus"></i>
+                    </button>
+                  </div>
                 </div>
-                <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="down" title="Mover abajo">
-                  <i class="fas fa-arrow-down"></i>
-                </button>
+                <div class="jugador-foto-ajuste-panel">
+                  <label>Ajuste de posición</label>
+                  <div class="jugador-foto-ajuste-direccional" aria-label="Mover foto">
+                    <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="up" title="Mover arriba">
+                      <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <div class="jugador-foto-ajuste-direccional-middle">
+                      <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="left" title="Mover izquierda">
+                        <i class="fas fa-arrow-left"></i>
+                      </button>
+                      <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="right" title="Mover derecha">
+                        <i class="fas fa-arrow-right"></i>
+                      </button>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-icon-square" data-preview-move="down" title="Mover abajo">
+                      <i class="fas fa-arrow-down"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
               <small class="form-hint">Ajusta la foto para centrar el rostro en el carné sin recortarlo mal.</small>
               <div id="preview-foto-carnet-actual" class="form-hint jugador-foto-ajuste-status"></div>

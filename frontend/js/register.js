@@ -152,7 +152,7 @@
       const usuario = data?.usuario || null;
       if (!token || !usuario) throw new Error("No se pudo crear la cuenta");
 
-      window.Auth.setSession(token, usuario);
+      window.Auth.setSession(token, usuario, data?.refreshToken || "");
       mostrarNotificacion(`Cuenta creada en plan ${PLANES_LABEL[planSeleccionado] || "Demo"}`, "success");
       redirigirPostLogin();
     } catch (error) {

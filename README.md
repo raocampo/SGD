@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-11): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas.
+Estado del proyecto (2026-03-13): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,23 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-03-11)
+## Novedades Recientes (2026-03-13)
+- Seguridad / sesion web:
+  - `frontend/js/core.js` implementa cierre automatico de sesion tras `1 hora` de inactividad en escritorio y movil.
+  - la actividad se sincroniza entre pestañas del navegador y, al expirar, `login.html` muestra el aviso de cierre por inactividad.
+  - `frontend/js/api.js`, `frontend/js/login.js` y `frontend/js/register.js` ya trabajan con `refreshToken` para acompanar ese flujo.
+- Jugadores:
+  - `backend/models/Jugador.js` ya no restringe la misma cedula a nivel campeonato completo; ahora solo bloquea duplicados dentro de la misma categoria/evento.
+  - un mismo jugador puede participar en distintas categorias del mismo campeonato, incluso en equipos distintos, mientras cambie la categoria.
+  - `frontend/jugadores.html`, `frontend/js/jugadores.js` y `frontend/css/style.css` ajustan la ficha/tarjeta con:
+    - hero visual en cabecera,
+    - uso de `foto carné` cuando existe,
+    - fallback al logo del equipo o placeholder cuando falta la foto,
+    - controles de ajuste de foto solo con botones de zoom y posicion, sin barras visibles.
+- UX del sistema:
+  - el boton visible `Salir` queda consolidado junto al badge del usuario en la topbar.
+
+## Novedades Anteriores (2026-03-11)
 - Carnés:
   - nueva migracion `database/migrations/035_campeonato_fondo_carnet.sql`,
   - los campeonatos ahora pueden subir un `fondo de carné / marca de agua` opcional,

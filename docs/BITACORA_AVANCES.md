@@ -25,6 +25,19 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - UX del sistema deportivo:
   - `frontend/js/core.js` y `frontend/css/style.css` ahora muestran un boton visible `Salir` junto al badge del usuario en la topbar.
   - en movil el bloque de usuario hace wrap y el boton baja debajo del nombre cuando no entra en una sola fila.
+- Seguridad / sesion:
+  - `frontend/js/core.js` ya fuerza cierre de sesion automatico tras `1 hora` de inactividad en cualquier dispositivo.
+  - la ultima actividad se sincroniza entre pestañas con `localStorage` y `login.html` muestra aviso cuando la sesion fue cerrada por timeout.
+  - `frontend/js/api.js`, `frontend/js/login.js` y `frontend/js/register.js` ya consumen `refreshToken` para acompañar el cierre de sesion y el control de actividad.
+- Jugadores:
+  - `backend/models/Jugador.js` ya permite reutilizar la misma cedula en distintas categorias del mismo campeonato; el bloqueo solo aplica si el jugador intenta quedar en dos equipos de la misma categoria/evento.
+  - `frontend/jugadores.html`, `frontend/js/jugadores.js` y `frontend/css/style.css` ajustaron la experiencia de fichas/tarjetas:
+    - hero visual con `foto carné`,
+    - fallback al logo del equipo o placeholder,
+    - reubicacion de `Planilla` en la franja de acciones,
+    - controles de ajuste de foto sin barras visibles, solo con botones de zoom y posicion.
+  - pendiente de UX:
+    - validar con datos reales si el layout final de cards de jugadores debe quedarse en `4/3/2/1` o endurecer un minimo mayor por card.
 
 ### 2026-03-12
 - Usuarios / organizadores:

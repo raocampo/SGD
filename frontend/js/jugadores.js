@@ -86,6 +86,40 @@ function normalizarArchivoUrl(valor) {
   return `${BACKEND_BASE}/${s}`;
 }
 
+function construirHeroJugador({ fotoJugador, logoEquipo, nombreCompleto }) {
+  const foto = normalizarArchivoUrl(fotoJugador);
+  const logo = normalizarArchivoUrl(logoEquipo);
+  const nombreSeguro = escapeHtml(nombreCompleto || "Jugador");
+  const fallbackLogo = logo ? ` data-fallback-src="${escapeHtml(logo)}"` : "";
+
+  if (foto) {
+    return `<img src="${escapeHtml(foto)}" alt="${nombreSeguro}" class="jugador-card-hero-media" onerror="fallbackHeroJugador(this)"${fallbackLogo} />`;
+  }
+
+  if (logo) {
+    return `<img src="${escapeHtml(logo)}" alt="Logo del equipo" class="jugador-card-hero-media jugador-card-hero-logo" onerror="fallbackHeroJugador(this)" />`;
+  }
+
+  return `<div class="jugador-card-hero-placeholder"><i class="fas fa-user"></i></div>`;
+}
+
+function fallbackHeroJugador(img) {
+  if (!img) return;
+  const fallbackSrc = String(img.dataset?.fallbackSrc || "").trim();
+
+  if (fallbackSrc && img.src !== fallbackSrc) {
+    img.src = fallbackSrc;
+    img.classList.add("jugador-card-hero-logo");
+    img.removeAttribute("data-fallback-src");
+    return;
+  }
+
+  const parent = img.parentElement;
+  if (parent) {
+    parent.innerHTML = `<div class="jugador-card-hero-placeholder"><i class="fas fa-user"></i></div>`;
+  }
+}
+
 function normalizarColorHex(valor, fallback) {
   const raw = String(valor || "").trim();
   if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) {
@@ -1120,9 +1154,13 @@ function renderTarjetasJugadores(jugadores) {
               <span class="item-index">${index + 1}.</span>
               ${escapeHtml(nombreCompleto)}
             </h3>
-            <button class="btn btn-outline" type="button" onclick="abrirPlanillaJugadorDesdeLista(${jugador.id})">
-              <i class="fas fa-id-card"></i> Planilla
-            </button>
+            <div class="jugador-card-hero">
+              ${construirHeroJugador({
+                fotoJugador: jugador.foto_carnet_url,
+                logoEquipo: equipoActual?.logo_url,
+                nombreCompleto,
+              })}
+            </div>
           </div>
           <div class="jugador-card-meta-grid">
             <p><strong>Número:</strong> ${escapeHtml(jugador.numero_camiseta || "-")}</p>
@@ -1141,7 +1179,11 @@ function renderTarjetasJugadores(jugadores) {
           </div>
           ${
             soloLectura
-              ? ""
+              ? `<div class="jugador-actions">
+            <button class="btn btn-outline" type="button" onclick="abrirPlanillaJugadorDesdeLista(${jugador.id})">
+              <i class="fas fa-id-card"></i> Planilla
+            </button>
+          </div>`
               : `<div class="jugador-actions">
             <button class="btn btn-outline" type="button" onclick="abrirPlanillaJugadorDesdeLista(${jugador.id})">
               <i class="fas fa-id-card"></i> Planilla
@@ -3374,3 +3416,4 @@ window.mostrarPlanillaJugador = mostrarPlanillaJugador;
 window.imprimirPlanillaJugador = imprimirPlanillaJugador;
 window.exportarPlanillaJugadorPDF = exportarPlanillaJugadorPDF;
 window.abrirPlanillaJugadorDesdeLista = abrirPlanillaJugadorDesdeLista;
+window.fallbackHeroJugador = fallbackHeroJugador;

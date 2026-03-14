@@ -117,6 +117,9 @@
     login(payload) {
       return window.ApiClient.post("/auth/login", payload);
     },
+    logout(payload) {
+      return window.ApiClient.post("/auth/logout", payload);
+    },
     forgotPassword(payload) {
       return window.ApiClient.post("/auth/password/forgot", payload);
     },

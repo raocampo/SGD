@@ -51,6 +51,18 @@
     wrap.style.display = "block";
   }
 
+  function mostrarAvisoSalidaSesion() {
+    const params = getParams();
+    const reasonParam = String(params.get("reason") || "").trim().toLowerCase();
+    const reasonStored = String(window.Auth?.consumeLogoutReason?.() || "").trim().toLowerCase();
+    const reason = reasonStored || reasonParam;
+    if (!reason) return;
+
+    if (reason === "idle") {
+      mostrarNotificacion("La sesión se cerró por inactividad después de 1 hora.", "warning");
+    }
+  }
+
   async function onSubmitLogin(e) {
     e.preventDefault();
 
@@ -70,7 +82,7 @@
       const usuario = data?.usuario || null;
       if (!token || !usuario) throw new Error("Respuesta de login inválida");
 
-      window.Auth.setSession(token, usuario);
+      window.Auth.setSession(token, usuario, data?.refreshToken || "");
       if (usuario?.debe_cambiar_password === true) {
         mostrarNotificacion(
           "Debes cambiar tu contraseña antes de continuar.",
@@ -183,7 +195,7 @@
       const usuario = data?.usuario || null;
       if (!token || !usuario) throw new Error("No se pudo crear el usuario inicial");
 
-      window.Auth.setSession(token, usuario);
+      window.Auth.setSession(token, usuario, data?.refreshToken || "");
       mostrarNotificacion("Administrador inicial creado", "success");
       redirigirPostLogin();
     } catch (error) {
@@ -217,7 +229,7 @@
     document.getElementById("btn-toggle-forgot")?.addEventListener("click", toggleForgot);
 
     mostrarResetSiExisteToken();
+    mostrarAvisoSalidaSesion();
     await verificarRegistroInicial();
   });
 })();
-

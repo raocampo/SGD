@@ -20,6 +20,23 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
   - `frontend/js/core.js` ahora agrega un boton visible `Salir` junto al badge del usuario en la topbar.
   - `frontend/css/style.css` hace que ese bloque sea responsivo, permitiendo que el boton baje debajo del nombre del usuario en pantallas pequenas sin romper el header.
 
+## 2026-03-13 - Inactividad web y jugadores por categoria
+- Seguridad / autenticacion:
+  - `frontend/js/core.js` implementa timeout de sesion por inactividad de `1 hora`.
+  - la ultima actividad queda sincronizada entre pestañas y, si expira, la aplicacion redirige a `login.html` con motivo `idle`.
+  - `frontend/js/api.js` agrega `AuthAPI.logout(...)`.
+  - `frontend/js/login.js` y `frontend/js/register.js` ahora guardan tambien `refreshToken` en `window.Auth.setSession(...)` y muestran aviso claro cuando la sesion se cerro por inactividad.
+- Jugadores:
+  - `backend/models/Jugador.js` reemplaza la validacion `verificarJugadorUnicoPorCampeonato(...)` por una validacion por `evento/categoria`, permitiendo que la misma cedula participe en varias categorias del mismo campeonato.
+  - la restriccion sigue vigente para evitar que un jugador quede en dos equipos de la misma categoria.
+  - `frontend/jugadores.html` oculta sliders visibles de posicion/zoom de la foto de carné y deja una herramienta de ajuste solo con botones.
+  - `frontend/js/jugadores.js` agrega hero visual a la card del jugador:
+    - usa `foto_carnet_url` si existe,
+    - cae al logo del equipo si no hay foto,
+    - y finalmente usa placeholder si falta todo.
+  - `Planilla` deja de ocupar la cabecera de la card y queda en la franja de acciones.
+  - `frontend/css/style.css` agrega el layout `4/3/2/1` para cards de jugadores y estilos del nuevo hero.
+
 ---
 
 ## 2026-03-12 - Usuarios organizadores alineados con Mi Landing
