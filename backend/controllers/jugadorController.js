@@ -122,6 +122,9 @@ const jugadorController = {
             const fotoCarnet =
                 construirUrlArchivoJugador(req, req.files?.foto_carnet?.[0]) ||
                 normalizarUrlInternaJugador(req.body?.foto_carnet_url);
+            const fotoCarnetRecorte =
+                construirUrlArchivoJugador(req, req.files?.foto_carnet_recorte?.[0]) ||
+                normalizarUrlInternaJugador(req.body?.foto_carnet_recorte_url);
             const fotoCarnetPosX = parsePhotoPosition(foto_carnet_pos_x, 50);
             const fotoCarnetPosY = parsePhotoPosition(foto_carnet_pos_y, 35);
             const fotoCarnetZoom = parsePhotoZoom(foto_carnet_zoom, 1);
@@ -164,6 +167,7 @@ const jugadorController = {
                 es_capitan,
                 fotoCedula,
                 fotoCarnet,
+                fotoCarnetRecorte,
                 fotoCarnetPosX,
                 fotoCarnetPosY,
                 fotoCarnetZoom
@@ -284,6 +288,7 @@ const jugadorController = {
                         es_capitan,
                         foto_cedula_url,
                         foto_carnet_url,
+                        foto_carnet_recorte_url,
                         50,
                         35,
                         1
@@ -445,11 +450,13 @@ const jugadorController = {
             }
             const fotoCedula = construirUrlArchivoJugador(req, req.files?.foto_cedula?.[0]);
             const fotoCarnet = construirUrlArchivoJugador(req, req.files?.foto_carnet?.[0]);
+            const fotoCarnetRecorte = construirUrlArchivoJugador(req, req.files?.foto_carnet_recorte?.[0]);
             const eliminarFotoCedula = parseBooleanFlag(datos.eliminar_foto_cedula);
             const eliminarFotoCarnet = parseBooleanFlag(datos.eliminar_foto_carnet);
 
             if (fotoCedula) datos.foto_cedula_url = fotoCedula;
             if (fotoCarnet) datos.foto_carnet_url = fotoCarnet;
+            if (fotoCarnetRecorte) datos.foto_carnet_recorte_url = fotoCarnetRecorte;
             if (datos.foto_carnet_pos_x !== undefined) {
                 datos.foto_carnet_pos_x = parsePhotoPosition(datos.foto_carnet_pos_x, 50);
             }
@@ -460,7 +467,10 @@ const jugadorController = {
                 datos.foto_carnet_zoom = parsePhotoZoom(datos.foto_carnet_zoom, 1);
             }
             if (eliminarFotoCedula && !fotoCedula) datos.foto_cedula_url = null;
-            if (eliminarFotoCarnet && !fotoCarnet) datos.foto_carnet_url = null;
+            if (eliminarFotoCarnet && !fotoCarnet) {
+                datos.foto_carnet_url = null;
+                datos.foto_carnet_recorte_url = null;
+            }
             delete datos.eliminar_foto_cedula;
             delete datos.eliminar_foto_carnet;
 
@@ -519,6 +529,12 @@ const jugadorController = {
             }
             if (jugadorActual.foto_carnet_url && jugadorActual.foto_carnet_url !== (jugadorActualizado.foto_carnet_url || null)) {
                 eliminarArchivoJugador(jugadorActual.foto_carnet_url);
+            }
+            if (
+                jugadorActual.foto_carnet_recorte_url &&
+                jugadorActual.foto_carnet_recorte_url !== (jugadorActualizado.foto_carnet_recorte_url || null)
+            ) {
+                eliminarArchivoJugador(jugadorActual.foto_carnet_recorte_url);
             }
 
             res.json({

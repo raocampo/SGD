@@ -8,6 +8,7 @@ function setJugadoresFolder(req, res, next) {
   req.uploadFolderByField = {
     foto_cedula: "jugadores/cedulas",
     foto_carnet: "jugadores/fotos",
+    foto_carnet_recorte: "jugadores/fotos",
   };
   next();
 }
@@ -27,6 +28,7 @@ router.post(
   upload.fields([
     { name: "foto_cedula", maxCount: 1 },
     { name: "foto_carnet", maxCount: 1 },
+    { name: "foto_carnet_recorte", maxCount: 1 },
   ]),
   jugadorController.crearJugador
 );                         // CREATE
@@ -62,6 +64,7 @@ router.put(
   upload.fields([
     { name: "foto_cedula", maxCount: 1 },
     { name: "foto_carnet", maxCount: 1 },
+    { name: "foto_carnet_recorte", maxCount: 1 },
   ]),
   jugadorController.actualizarJugador
 );                  // UPDATE

@@ -7,6 +7,24 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-14 - Recorte estable de foto para carné
+- Jugadores / carnés:
+  - `frontend/jugadores.html` reemplaza la previsualización de ajuste por un `canvas` que muestra el encuadre real del carné.
+  - `frontend/js/jugadores.js` genera una imagen recortada específica al guardar (`foto_carnet_recorte`) usando el mismo algoritmo que la vista previa.
+  - `backend/routes/jugadorRoutes.js` y `backend/controllers/jugadorController.js` aceptan y persisten ese recorte como archivo propio.
+  - `backend/models/Jugador.js` incorpora `foto_carnet_recorte_url` para conservar la foto original y un derivado estable para PDF/impresión.
+  - `renderPlantillaCarnets()` ahora prioriza `foto_carnet_recorte_url`, evitando desfases cuando el navegador exporta a PDF.
+- Base de datos:
+  - nueva migración `database/migrations/039_jugadores_foto_carnet_recorte.sql`.
+- Verificación:
+  - `node --check backend/models/Jugador.js`
+  - `node --check backend/controllers/jugadorController.js`
+  - `node --check backend/routes/jugadorRoutes.js`
+  - `node --check frontend/js/jugadores.js`
+  - `npm --prefix backend run smoke` => `PASS 9/9`
+
+---
+
 ## 2026-03-14 - Advertencia previa al cierre por inactividad
 - Seguridad / autenticacion:
   - `frontend/js/core.js` agrega una advertencia visual antes del cierre de sesion por inactividad.

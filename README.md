@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-13): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento.
+Estado del proyecto (2026-03-14): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,12 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-03-13)
+## Novedades Recientes (2026-03-14)
+- Jugadores / carnés:
+  - se agrega `foto_carnet_recorte_url` con la migración `database/migrations/039_jugadores_foto_carnet_recorte.sql`.
+  - el modal de jugador ahora previsualiza el encuadre real del carné usando `canvas`.
+  - al guardar, se genera una versión recortada específica para el carné sin perder la foto original.
+  - la exportación PDF y la impresión ahora priorizan esa imagen recortada, evitando desfases de zoom/posición.
 - Seguridad / sesion web:
   - `frontend/js/core.js` implementa cierre automatico de sesion tras `1 hora` de inactividad en escritorio y movil.
   - antes del cierre automatico, el sistema ahora muestra una advertencia con cuenta regresiva para permitir extender la sesion.

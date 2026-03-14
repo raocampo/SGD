@@ -41,6 +41,7 @@ class Jugador {
             ALTER TABLE jugadores
             ADD COLUMN IF NOT EXISTS foto_cedula_url TEXT,
             ADD COLUMN IF NOT EXISTS foto_carnet_url TEXT,
+            ADD COLUMN IF NOT EXISTS foto_carnet_recorte_url TEXT,
             ADD COLUMN IF NOT EXISTS foto_carnet_pos_x NUMERIC(5,2) DEFAULT 50,
             ADD COLUMN IF NOT EXISTS foto_carnet_pos_y NUMERIC(5,2) DEFAULT 35,
             ADD COLUMN IF NOT EXISTS foto_carnet_zoom NUMERIC(5,2) DEFAULT 1.00
@@ -154,6 +155,7 @@ class Jugador {
         es_capitan = false,
         foto_cedula_url = null,
         foto_carnet_url = null,
+        foto_carnet_recorte_url = null,
         foto_carnet_pos_x = 50,
         foto_carnet_pos_y = 35,
         foto_carnet_zoom = 1
@@ -219,8 +221,8 @@ class Jugador {
         // Crear jugador
         const insertQuery = `
             INSERT INTO jugadores 
-            (equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan, foto_cedula_url, foto_carnet_url, foto_carnet_pos_x, foto_carnet_pos_y, foto_carnet_zoom) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+            (equipo_id, nombre, apellido, cedidentidad, fecha_nacimiento, posicion, numero_camiseta, es_capitan, foto_cedula_url, foto_carnet_url, foto_carnet_recorte_url, foto_carnet_pos_x, foto_carnet_pos_y, foto_carnet_zoom) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
             RETURNING *
         `;
         const values = [
@@ -234,6 +236,7 @@ class Jugador {
             es_capitan,
             foto_cedula_url,
             foto_carnet_url,
+            foto_carnet_recorte_url,
             fotoCarnetPosX,
             fotoCarnetPosY,
             fotoCarnetZoom,
@@ -347,6 +350,7 @@ class Jugador {
         const allowed = new Set([
             'equipo_id', 'nombre', 'apellido', 'cedidentidad', 'fecha_nacimiento',
             'posicion', 'numero_camiseta', 'es_capitan', 'foto_cedula_url', 'foto_carnet_url',
+            'foto_carnet_recorte_url',
             'foto_carnet_pos_x', 'foto_carnet_pos_y', 'foto_carnet_zoom'
         ]);
 
@@ -408,8 +412,10 @@ class Jugador {
               j.numero_camiseta,
               j.foto_cedula_url,
               j.foto_carnet_url,
+              j.foto_carnet_recorte_url,
               j.foto_carnet_pos_x,
               j.foto_carnet_pos_y,
+              j.foto_carnet_zoom,
               e.id AS equipo_id,
               e.nombre AS equipo_nombre,
               c.id AS campeonato_id,

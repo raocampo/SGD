@@ -602,26 +602,130 @@ function obtenerUrlFotoCarnetPreview() {
   return normalizarArchivoUrl(jugadorActualEnEdicion?.foto_carnet_url || jugadorEncontradoPorCedula?.foto_carnet_url || "");
 }
 
-function actualizarPreviewFotoCarnet() {
+function obtenerNombreArchivoFotoCarnet() {
+  const archivo = obtenerArchivoActivo("jugador-foto-carnet", "jugador-foto-carnet-camara");
+  if (archivo?.name) return archivo.name;
+  const nombreBase = `${String(document.getElementById("jugador-nombre")?.value || "jugador").trim()}-${String(
+    document.getElementById("jugador-apellido")?.value || "carnet"
+  )
+    .trim()
+    .replace(/\s+/g, "-")
+    .toLowerCase()}`;
+  return `${nombreBase || "jugador-carnet"}.png`;
+}
+
+function limpiarCanvasPreviewFotoCarnet(canvas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function cargarImagenParaRecorte(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    if (/^https?:\/\//i.test(String(url || ""))) {
+      img.crossOrigin = "anonymous";
+    }
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("No se pudo cargar la imagen para recorte"));
+    img.decoding = "async";
+    img.src = url;
+  });
+}
+
+function dibujarFotoCarnetEnCanvas(canvas, img, posX, posY, zoom) {
+  if (!canvas || !img) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const frameW = canvas.width;
+  const frameH = canvas.height;
+  const sourceW = img.naturalWidth || img.width;
+  const sourceH = img.naturalHeight || img.height;
+  if (!sourceW || !sourceH) {
+    ctx.clearRect(0, 0, frameW, frameH);
+    return;
+  }
+
+  ctx.clearRect(0, 0, frameW, frameH);
+  const escalaBase = Math.max(frameW / sourceW, frameH / sourceH);
+  const escalaFinal = escalaBase * normalizarZoomFotoCarnet(zoom, 1);
+  const drawW = sourceW * escalaFinal;
+  const drawH = sourceH * escalaFinal;
+  const safePosX = normalizarPosicionPorcentaje(posX, 50) / 100;
+  const safePosY = normalizarPosicionPorcentaje(posY, 35) / 100;
+  const offsetX = (frameW - drawW) * safePosX;
+  const offsetY = (frameH - drawH) * safePosY;
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+}
+
+function canvasToBlob(canvas, type = "image/png", quality = 0.92) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) return resolve(blob);
+      reject(new Error("No se pudo generar el recorte de la foto del carné"));
+    }, type, quality);
+  });
+}
+
+async function generarBlobRecorteFotoCarnet() {
+  const url = obtenerUrlFotoCarnetPreview();
+  if (!url || fotoCarnetMarcadaParaEliminar()) return null;
+
+  const img = await cargarImagenParaRecorte(url);
+  const posX = normalizarPosicionPorcentaje(
+    document.getElementById("jugador-foto-carnet-pos-x")?.value,
+    50
+  );
+  const posY = normalizarPosicionPorcentaje(
+    document.getElementById("jugador-foto-carnet-pos-y")?.value,
+    35
+  );
+  const zoom = normalizarZoomFotoCarnet(
+    document.getElementById("jugador-foto-carnet-zoom")?.value,
+    1
+  );
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 860;
+  canvas.height = 960;
+  dibujarFotoCarnetEnCanvas(canvas, img, posX, posY, zoom);
+  return canvasToBlob(canvas, "image/png", 0.95);
+}
+
+async function actualizarPreviewFotoCarnet() {
   const bloque = document.getElementById("bloque-jugador-foto-carnet-posicion");
-  const img = document.getElementById("jugador-foto-carnet-preview-img");
+  const canvas = document.getElementById("jugador-foto-carnet-preview-canvas");
   const sliderX = document.getElementById("jugador-foto-carnet-pos-x");
   const sliderY = document.getElementById("jugador-foto-carnet-pos-y");
   const sliderZoom = document.getElementById("jugador-foto-carnet-zoom");
-  if (!bloque || !img || !sliderX || !sliderY || !sliderZoom) return;
+  if (!bloque || !canvas || !sliderX || !sliderY || !sliderZoom) return;
 
   const url = obtenerUrlFotoCarnetPreview();
   if (!url) {
     bloque.style.display = "none";
-    img.removeAttribute("src");
+    limpiarCanvasPreviewFotoCarnet(canvas);
     return;
   }
 
   bloque.style.display = "";
-  img.src = url;
-  img.style.setProperty("--preview-foto-pos-x", `${normalizarPosicionPorcentaje(sliderX.value, 50)}%`);
-  img.style.setProperty("--preview-foto-pos-y", `${normalizarPosicionPorcentaje(sliderY.value, 35)}%`);
-  img.style.setProperty("--preview-foto-scale", String(normalizarZoomFotoCarnet(sliderZoom.value, 1)));
+  try {
+    const img = await cargarImagenParaRecorte(url);
+    dibujarFotoCarnetEnCanvas(
+      canvas,
+      img,
+      normalizarPosicionPorcentaje(sliderX.value, 50),
+      normalizarPosicionPorcentaje(sliderY.value, 35),
+      normalizarZoomFotoCarnet(sliderZoom.value, 1)
+    );
+  } catch (error) {
+    console.error("Error actualizando preview de foto carné:", error);
+    limpiarCanvasPreviewFotoCarnet(canvas);
+  }
 }
 
 function desplazarPreviewFotoCarnet(direccion = "") {
@@ -1314,12 +1418,13 @@ function obtenerModoFotoAnversoCarnet() {
 
 function obtenerFotoAnversoCarnet(jugador) {
   const modo = obtenerModoFotoAnversoCarnet();
+  const fotoCarnetRecorte = normalizarArchivoUrl(jugador?.foto_carnet_recorte_url);
   const fotoCarnet = normalizarArchivoUrl(jugador?.foto_carnet_url);
   const fotoCedula = normalizarArchivoUrl(jugador?.foto_cedula_url);
 
-  if (modo === "carnet") return fotoCarnet || fotoCedula;
-  if (modo === "cedula") return fotoCedula || fotoCarnet;
-  return fotoCarnet || fotoCedula;
+  if (modo === "carnet") return fotoCarnetRecorte || fotoCarnet || fotoCedula;
+  if (modo === "cedula") return fotoCedula || fotoCarnetRecorte || fotoCarnet;
+  return fotoCarnetRecorte || fotoCarnet || fotoCedula;
 }
 
 function construirUrlPortalParticipacion() {
@@ -1822,8 +1927,10 @@ function renderPlantillaCarnets() {
       const foto = obtenerFotoAnversoCarnet(j);
       const estiloCarnet = construirEstiloCarnet(metaCarnet);
       const claseEstilo = obtenerClaseEstiloCarnet(metaCarnet);
+      const fotoCarnetRecorteJugador = normalizarArchivoUrl(j?.foto_carnet_recorte_url);
       const fotoCarnetJugador = normalizarArchivoUrl(j?.foto_carnet_url);
-      const usaPosicionCarnet = foto && fotoCarnetJugador && foto === fotoCarnetJugador;
+      const usaPosicionCarnet =
+        foto && !fotoCarnetRecorteJugador && fotoCarnetJugador && foto === fotoCarnetJugador;
       const fotoPosX = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_x, 50) : 50;
       const fotoPosY = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_y, 35) : 35;
       const fotoZoom = usaPosicionCarnet ? normalizarZoomFotoCarnet(j.foto_carnet_zoom, 1) : 1;
@@ -2669,15 +2776,15 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   const fotoCedulaFile = obtenerArchivoActivo("jugador-foto-cedula", "jugador-foto-cedula-camara");
   const fotoCarnetFile = obtenerArchivoActivo("jugador-foto-carnet", "jugador-foto-carnet-camara");
   const eliminarFotoCarnet = fotoCarnetMarcadaParaEliminar();
-  const fotoCarnetPosX = normalizarPosicionPorcentaje(
+  let fotoCarnetPosX = normalizarPosicionPorcentaje(
     document.getElementById("jugador-foto-carnet-pos-x")?.value,
     50
   );
-  const fotoCarnetPosY = normalizarPosicionPorcentaje(
+  let fotoCarnetPosY = normalizarPosicionPorcentaje(
     document.getElementById("jugador-foto-carnet-pos-y")?.value,
     35
   );
-  const fotoCarnetZoom = normalizarZoomFotoCarnet(
+  let fotoCarnetZoom = normalizarZoomFotoCarnet(
     document.getElementById("jugador-foto-carnet-zoom")?.value,
     1
   );
@@ -2719,9 +2826,6 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   if (posicion) fd.append("posicion", posicion);
   if (numeroRaw) fd.append("numero_camiseta", String(Number.parseInt(numeroRaw, 10)));
   fd.append("es_capitan", esCapitan ? "true" : "false");
-  fd.append("foto_carnet_pos_x", String(fotoCarnetPosX));
-  fd.append("foto_carnet_pos_y", String(fotoCarnetPosY));
-  fd.append("foto_carnet_zoom", String(fotoCarnetZoom));
 
   if (fotoCedulaFile) fd.append("foto_cedula", fotoCedulaFile);
   if (fotoCarnetFile) fd.append("foto_carnet", fotoCarnetFile);
@@ -2734,6 +2838,26 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   if (eliminarFotoCarnet) fd.append("eliminar_foto_carnet", "true");
 
   try {
+    if (!eliminarFotoCarnet) {
+      const recorteBlob = await generarBlobRecorteFotoCarnet();
+      if (recorteBlob) {
+        const nombreRecorteBase = obtenerNombreArchivoFotoCarnet().replace(/\.[^.]+$/, "") || "jugador-carnet";
+        const archivoRecorte = new File([recorteBlob], `${nombreRecorteBase}-recorte.png`, {
+          type: "image/png",
+        });
+        fd.append("foto_carnet_recorte", archivoRecorte);
+        fotoCarnetPosX = 50;
+        fotoCarnetPosY = 50;
+        fotoCarnetZoom = 1;
+      } else if (!id && jugadorEncontradoPorCedula?.foto_carnet_recorte_url) {
+        fd.append("foto_carnet_recorte_url", jugadorEncontradoPorCedula.foto_carnet_recorte_url);
+      }
+    }
+
+    fd.append("foto_carnet_pos_x", String(fotoCarnetPosX));
+    fd.append("foto_carnet_pos_y", String(fotoCarnetPosY));
+    fd.append("foto_carnet_zoom", String(fotoCarnetZoom));
+
     await guardarJugadorConFormData({ id, fd });
     mostrarNotificacion(id ? "Jugador actualizado correctamente" : "Jugador creado correctamente", "success");
     cerrarModal("modal-jugador");

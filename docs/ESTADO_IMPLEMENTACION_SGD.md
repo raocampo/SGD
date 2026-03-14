@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-03-13
+Ultima actualizacion: 2026-03-14
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -10,7 +10,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.1 Gestion de Torneos/Campeonatos | Parcial-Alto | CRUD y estados operativos, organizador/logo/colores; tipos de futbol ampliados (`futbol_11`, `futbol_9`, `futbol_8`, `futbol_7`, `futbol_6`, `futbol_5`, `futsala`, `indor`) y fondo de carné configurable por campeonato; pendiente reglamento PDF/bases y sedes multiples. |
 | 3.2 Categorias por torneo | Alto | Eventos/categorias por campeonato funcionales con asignacion de equipos y parametro `clasificados_por_grupo`. |
 | 3.3 Gestion de Equipos | Alto | Registro completo con logo/contacto/colores, asignacion por evento, flujo hacia sorteo y vista Tarjetas/Tabla. |
-| 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por categoria/evento (ya no por campeonato completo), permitiendo la misma cedula en distintas categorias; documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Uploads reorganizados por tipo (`jugadores/cedulas`, `jugadores/fotos`) sin romper carnés ni reporteria; fecha de nacimiento ya no sufre desfase por zona horaria, la `foto carné` puede borrarse desde el perfil del jugador y las cards/fichas ya usan hero con foto o logo de equipo como fallback. El guardado multipart ya usa cliente autenticado, el backend responde errores amigables de subida y el limite de imagenes se amplio a `8MB`. Los carnés ya soportan fondo configurable por campeonato mezclando imagen, logo y colores institucionales. Modulo de pases con UI operativa, sincronizacion contable integrada (cargo/abono por pase) e historial visual por jugador/equipo. |
+| 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por categoria/evento (ya no por campeonato completo), permitiendo la misma cedula en distintas categorias; documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Uploads reorganizados por tipo (`jugadores/cedulas`, `jugadores/fotos`) sin romper carnés ni reporteria; fecha de nacimiento ya no sufre desfase por zona horaria, la `foto carné` puede borrarse desde el perfil del jugador y las cards/fichas ya usan hero con foto o logo de equipo como fallback. El guardado multipart ya usa cliente autenticado, el backend responde errores amigables de subida y el limite de imagenes se amplio a `8MB`. Los carnés ya soportan fondo configurable por campeonato mezclando imagen, logo y colores institucionales, y ahora guardan un recorte estable (`foto_carnet_recorte_url`) para evitar desfases entre preview y PDF. Modulo de pases con UI operativa, sincronizacion contable integrada (cargo/abono por pase) e historial visual por jugador/equipo. |
 | 3.5 Creacion de Grupos | Alto | Modo aleatorio, cabezas de serie y manual con ruleta funcionando. |
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
 | 3.7 Resultados/Tablas/Clasificados | Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play) con selector de campeonato en UI y guardado explícito del formato de clasificación (`metodo_competencia` + `clasificados_por_grupo`). Planillaje ya alimenta resultado + estadisticas. Clasificacion por grupo parametrizable; equipos eliminados ya bajan al final aunque tengan mayor puntaje y los fuera de cupo quedan diferenciados visualmente en naranja. Pendiente refinamiento de desempates avanzados. |
@@ -61,9 +61,10 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - `uploads/jugadores/fotos`.
 - La `fecha_nacimiento` ya se renderiza sin desplazar el dia por zona horaria del navegador.
 - La `foto carné` puede eliminarse desde el perfil del jugador.
+- La `foto carné` ahora puede generar y guardar una version recortada especifica para el carné (`foto_carnet_recorte_url`) sin perder la foto original.
 - La misma cedula puede registrarse en distintas categorias del mismo campeonato; el bloqueo solo se aplica cuando intenta quedar en dos equipos de la misma categoria/evento.
 - Las cards de jugadores ya muestran hero con `foto carné` o logo del equipo como fallback.
-- El ajuste de foto para el carné ya se opera con controles visuales de zoom/posicion sin sliders visibles.
+- El ajuste de foto para el carné ya se opera con controles visuales de zoom/posicion sin sliders visibles y la vista previa ahora representa el recorte real mediante `canvas`.
 - Los formularios ya permiten apertura directa de camara en celular cuando el navegador soporta `capture`.
 - Los carnets se reimprimen regenerando el PDF desde BD + foto/documentos del jugador; no se persiste una imagen final del carnet.
 - Los carnets ahora pueden usar un fondo configurable por campeonato como marca de agua, manteniendo el mismo diseño en preview, impresion y PDF.

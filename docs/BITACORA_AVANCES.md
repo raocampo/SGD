@@ -14,6 +14,18 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-14
+- Jugadores / carnés:
+  - se agregó soporte de recorte estable para `foto carné`.
+  - el ajuste visual ahora se previsualiza con `canvas` para representar el recorte real.
+  - al guardar, el sistema genera y sube una imagen recortada específica del carné (`foto_carnet_recorte_url`) sin perder la foto original.
+  - el PDF y la impresión del carné ahora priorizan esa imagen recortada, evitando desfases entre preview y exportación.
+  - se agregó la migración `database/migrations/039_jugadores_foto_carnet_recorte.sql`.
+  - validación técnica:
+    - `node --check backend/models/Jugador.js`
+    - `node --check backend/controllers/jugadorController.js`
+    - `node --check backend/routes/jugadorRoutes.js`
+    - `node --check frontend/js/jugadores.js`
+    - `npm --prefix backend run smoke` => `PASS 9/9`.
 - Seguridad / sesion:
   - `frontend/js/core.js` ahora muestra una advertencia previa con cuenta regresiva antes del cierre automatico por inactividad.
   - el usuario puede elegir `Seguir conectado` para renovar la sesion o `Cerrar sesión ahora` si quiere salir manualmente.
