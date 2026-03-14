@@ -15,6 +15,21 @@ let eventoCarnetMeta = {
 };
 let jugadorEncontradoPorCedula = null;
 let fotoCarnetPreviewTempUrl = "";
+let fotoCarnetPreviewTempFile = null;
+let fotoCarnetPreviewCache = {
+  url: "",
+  image: null,
+  frameWidth: 0,
+  frameHeight: 0,
+  drawWidth: 0,
+  drawHeight: 0,
+};
+let fotoCarnetDragState = {
+  active: false,
+  pointerId: null,
+  lastX: 0,
+  lastY: 0,
+};
 
 let minJugadoresPorEquipo = null;
 let maxJugadoresPorEquipo = null;
@@ -588,17 +603,36 @@ function obtenerUrlFotoCarnetPreview() {
   const archivo =
     obtenerArchivoActivo("jugador-foto-carnet", "jugador-foto-carnet-camara") || null;
   if (archivo) {
-    if (fotoCarnetPreviewTempUrl) {
-      URL.revokeObjectURL(fotoCarnetPreviewTempUrl);
-      fotoCarnetPreviewTempUrl = "";
+    if (!fotoCarnetPreviewTempUrl || fotoCarnetPreviewTempFile !== archivo) {
+      if (fotoCarnetPreviewTempUrl) {
+        URL.revokeObjectURL(fotoCarnetPreviewTempUrl);
+      }
+      fotoCarnetPreviewTempUrl = URL.createObjectURL(archivo);
+      fotoCarnetPreviewTempFile = archivo;
+      fotoCarnetPreviewCache = {
+        url: "",
+        image: null,
+        frameWidth: 0,
+        frameHeight: 0,
+        drawWidth: 0,
+        drawHeight: 0,
+      };
     }
-    fotoCarnetPreviewTempUrl = URL.createObjectURL(archivo);
     return fotoCarnetPreviewTempUrl;
   }
   if (fotoCarnetPreviewTempUrl) {
     URL.revokeObjectURL(fotoCarnetPreviewTempUrl);
     fotoCarnetPreviewTempUrl = "";
+    fotoCarnetPreviewTempFile = null;
   }
+  fotoCarnetPreviewCache = {
+    url: "",
+    image: null,
+    frameWidth: 0,
+    frameHeight: 0,
+    drawWidth: 0,
+    drawHeight: 0,
+  };
   return normalizarArchivoUrl(jugadorActualEnEdicion?.foto_carnet_url || jugadorEncontradoPorCedula?.foto_carnet_url || "");
 }
 
@@ -612,6 +646,25 @@ function obtenerNombreArchivoFotoCarnet() {
     .replace(/\s+/g, "-")
     .toLowerCase()}`;
   return `${nombreBase || "jugador-carnet"}.png`;
+}
+
+function obtenerCanvasPreviewFotoCarnet() {
+  return document.getElementById("jugador-foto-carnet-preview-canvas");
+}
+
+function obtenerBloquePreviewFotoCarnet() {
+  return document.querySelector(".jugador-foto-ajuste-preview");
+}
+
+function limpiarCacheRecorteFotoCarnet() {
+  fotoCarnetPreviewCache = {
+    url: "",
+    image: null,
+    frameWidth: 0,
+    frameHeight: 0,
+    drawWidth: 0,
+    drawHeight: 0,
+  };
 }
 
 function limpiarCanvasPreviewFotoCarnet(canvas) {
@@ -632,6 +685,18 @@ function cargarImagenParaRecorte(url) {
     img.decoding = "async";
     img.src = url;
   });
+}
+
+async function obtenerImagenPreviewCarnet() {
+  const url = obtenerUrlFotoCarnetPreview();
+  if (!url) return { url: "", image: null };
+  if (fotoCarnetPreviewCache.url === url && fotoCarnetPreviewCache.image) {
+    return { url, image: fotoCarnetPreviewCache.image };
+  }
+  const image = await cargarImagenParaRecorte(url);
+  fotoCarnetPreviewCache.url = url;
+  fotoCarnetPreviewCache.image = image;
+  return { url, image };
 }
 
 function dibujarFotoCarnetEnCanvas(canvas, img, posX, posY, zoom) {
@@ -673,10 +738,8 @@ function canvasToBlob(canvas, type = "image/png", quality = 0.92) {
 }
 
 async function generarBlobRecorteFotoCarnet() {
-  const url = obtenerUrlFotoCarnetPreview();
-  if (!url || fotoCarnetMarcadaParaEliminar()) return null;
-
-  const img = await cargarImagenParaRecorte(url);
+  const { url, image: img } = await obtenerImagenPreviewCarnet();
+  if (!url || !img || fotoCarnetMarcadaParaEliminar()) return null;
   const posX = normalizarPosicionPorcentaje(
     document.getElementById("jugador-foto-carnet-pos-x")?.value,
     50
@@ -699,22 +762,33 @@ async function generarBlobRecorteFotoCarnet() {
 
 async function actualizarPreviewFotoCarnet() {
   const bloque = document.getElementById("bloque-jugador-foto-carnet-posicion");
-  const canvas = document.getElementById("jugador-foto-carnet-preview-canvas");
+  const canvas = obtenerCanvasPreviewFotoCarnet();
   const sliderX = document.getElementById("jugador-foto-carnet-pos-x");
   const sliderY = document.getElementById("jugador-foto-carnet-pos-y");
   const sliderZoom = document.getElementById("jugador-foto-carnet-zoom");
   if (!bloque || !canvas || !sliderX || !sliderY || !sliderZoom) return;
 
-  const url = obtenerUrlFotoCarnetPreview();
-  if (!url) {
+  const { url, image } = await obtenerImagenPreviewCarnet();
+  if (!url || !image) {
     bloque.style.display = "none";
     limpiarCanvasPreviewFotoCarnet(canvas);
+    limpiarCacheRecorteFotoCarnet();
     return;
   }
 
   bloque.style.display = "";
   try {
-    const img = await cargarImagenParaRecorte(url);
+    const img = image;
+    const frameW = canvas.width;
+    const frameH = canvas.height;
+    const sourceW = img.naturalWidth || img.width;
+    const sourceH = img.naturalHeight || img.height;
+    const escalaBase = Math.max(frameW / sourceW, frameH / sourceH);
+    const escalaFinal = escalaBase * normalizarZoomFotoCarnet(sliderZoom.value, 1);
+    fotoCarnetPreviewCache.frameWidth = frameW;
+    fotoCarnetPreviewCache.frameHeight = frameH;
+    fotoCarnetPreviewCache.drawWidth = sourceW * escalaFinal;
+    fotoCarnetPreviewCache.drawHeight = sourceH * escalaFinal;
     dibujarFotoCarnetEnCanvas(
       canvas,
       img,
@@ -749,6 +823,110 @@ function ajustarZoomPreviewFotoCarnet(delta = 0) {
   const actual = normalizarZoomFotoCarnet(sliderZoom.value, 1);
   sliderZoom.value = String(normalizarZoomFotoCarnet(actual + delta, 1));
   actualizarPreviewFotoCarnet();
+}
+
+function restablecerAjusteFotoCarnet() {
+  const sliderX = document.getElementById("jugador-foto-carnet-pos-x");
+  const sliderY = document.getElementById("jugador-foto-carnet-pos-y");
+  const sliderZoom = document.getElementById("jugador-foto-carnet-zoom");
+  if (sliderX) sliderX.value = "50";
+  if (sliderY) sliderY.value = "35";
+  if (sliderZoom) sliderZoom.value = "1";
+  actualizarPreviewFotoCarnet();
+}
+
+function actualizarPosicionPreviewPorDelta(deltaClientX, deltaClientY, rect = null) {
+  const canvas = obtenerCanvasPreviewFotoCarnet();
+  const sliderX = document.getElementById("jugador-foto-carnet-pos-x");
+  const sliderY = document.getElementById("jugador-foto-carnet-pos-y");
+  if (!canvas || !sliderX || !sliderY) return;
+
+  const frameW = fotoCarnetPreviewCache.frameWidth || canvas.width;
+  const frameH = fotoCarnetPreviewCache.frameHeight || canvas.height;
+  const drawW = fotoCarnetPreviewCache.drawWidth;
+  const drawH = fotoCarnetPreviewCache.drawHeight;
+  if (!drawW || !drawH) return;
+
+  const bounds = rect || canvas.getBoundingClientRect();
+  const scaleX = bounds.width ? frameW / bounds.width : 1;
+  const scaleY = bounds.height ? frameH / bounds.height : 1;
+  const deltaX = deltaClientX * scaleX;
+  const deltaY = deltaClientY * scaleY;
+
+  const rangoX = frameW - drawW;
+  const rangoY = frameH - drawH;
+  let posX = normalizarPosicionPorcentaje(sliderX.value, 50) / 100;
+  let posY = normalizarPosicionPorcentaje(sliderY.value, 35) / 100;
+  let offsetX = rangoX * posX;
+  let offsetY = rangoY * posY;
+
+  const minX = Math.min(0, rangoX);
+  const maxX = Math.max(0, rangoX);
+  const minY = Math.min(0, rangoY);
+  const maxY = Math.max(0, rangoY);
+
+  offsetX = Math.max(minX, Math.min(maxX, offsetX + deltaX));
+  offsetY = Math.max(minY, Math.min(maxY, offsetY + deltaY));
+
+  posX = Math.abs(rangoX) < 0.001 ? 0.5 : offsetX / rangoX;
+  posY = Math.abs(rangoY) < 0.001 ? 0.5 : offsetY / rangoY;
+
+  sliderX.value = String(normalizarPosicionPorcentaje(posX * 100, 50));
+  sliderY.value = String(normalizarPosicionPorcentaje(posY * 100, 35));
+  actualizarPreviewFotoCarnet();
+}
+
+function iniciarArrastrePreviewFotoCarnet(event) {
+  const canvas = obtenerCanvasPreviewFotoCarnet();
+  const wrap = obtenerBloquePreviewFotoCarnet();
+  if (!canvas || !wrap || !fotoCarnetPreviewCache.image) return;
+  fotoCarnetDragState.active = true;
+  fotoCarnetDragState.pointerId = event.pointerId;
+  fotoCarnetDragState.lastX = event.clientX;
+  fotoCarnetDragState.lastY = event.clientY;
+  wrap.classList.add("is-dragging");
+  canvas.setPointerCapture?.(event.pointerId);
+  event.preventDefault();
+}
+
+function moverArrastrePreviewFotoCarnet(event) {
+  if (!fotoCarnetDragState.active) return;
+  if (
+    fotoCarnetDragState.pointerId !== null &&
+    event.pointerId !== fotoCarnetDragState.pointerId
+  ) {
+    return;
+  }
+  const canvas = obtenerCanvasPreviewFotoCarnet();
+  if (!canvas) return;
+  const deltaX = event.clientX - fotoCarnetDragState.lastX;
+  const deltaY = event.clientY - fotoCarnetDragState.lastY;
+  fotoCarnetDragState.lastX = event.clientX;
+  fotoCarnetDragState.lastY = event.clientY;
+  actualizarPosicionPreviewPorDelta(deltaX, deltaY, canvas.getBoundingClientRect());
+  event.preventDefault();
+}
+
+function terminarArrastrePreviewFotoCarnet(event) {
+  if (
+    fotoCarnetDragState.pointerId !== null &&
+    event?.pointerId !== undefined &&
+    event.pointerId !== fotoCarnetDragState.pointerId
+  ) {
+    return;
+  }
+  const canvas = obtenerCanvasPreviewFotoCarnet();
+  const wrap = obtenerBloquePreviewFotoCarnet();
+  if (canvas && fotoCarnetDragState.pointerId !== null) {
+    try {
+      canvas.releasePointerCapture?.(fotoCarnetDragState.pointerId);
+    } catch (_) {
+      // no-op
+    }
+  }
+  fotoCarnetDragState.active = false;
+  fotoCarnetDragState.pointerId = null;
+  if (wrap) wrap.classList.remove("is-dragging");
 }
 
 function actualizarResultadoBusquedaCedula(html = "", tipo = "") {
@@ -2878,6 +3056,7 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
       const alterno = document.getElementById(idAlterno);
       if (alterno) alterno.value = "";
       marcarEliminacionFotoCarnet(false);
+      limpiarCacheRecorteFotoCarnet();
     } else {
       actualizarEstadoRequisitosEnModal(jugadorActualEnEdicion);
     }
@@ -2903,9 +3082,14 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
 });
 document.getElementById("btn-jugador-zoom-in")?.addEventListener("click", () => ajustarZoomPreviewFotoCarnet(0.05));
 document.getElementById("btn-jugador-zoom-out")?.addEventListener("click", () => ajustarZoomPreviewFotoCarnet(-0.05));
+document.getElementById("btn-jugador-reset-crop")?.addEventListener("click", restablecerAjusteFotoCarnet);
 document.querySelectorAll("[data-preview-move]").forEach((btn) => {
   btn.addEventListener("click", () => desplazarPreviewFotoCarnet(btn.getAttribute("data-preview-move")));
 });
+obtenerCanvasPreviewFotoCarnet()?.addEventListener("pointerdown", iniciarArrastrePreviewFotoCarnet);
+obtenerCanvasPreviewFotoCarnet()?.addEventListener("pointermove", moverArrastrePreviewFotoCarnet);
+obtenerCanvasPreviewFotoCarnet()?.addEventListener("pointerup", terminarArrastrePreviewFotoCarnet);
+obtenerCanvasPreviewFotoCarnet()?.addEventListener("pointercancel", terminarArrastrePreviewFotoCarnet);
 
 document.getElementById("btn-jugador-buscar-cedula")?.addEventListener("click", buscarJugadorPorCedulaEnBaseLocal);
 document.getElementById("jugador-ced")?.addEventListener("input", () => {

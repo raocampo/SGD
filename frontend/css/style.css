@@ -4643,6 +4643,7 @@ body.modal-open {
   height: 112px;
   border-radius: 12px;
   overflow: hidden;
+  position: relative;
   border: 1px solid #d5deeb;
   background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
@@ -4653,6 +4654,40 @@ body.modal-open {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.jugador-foto-ajuste-preview canvas {
+  cursor: grab;
+  touch-action: none;
+}
+
+.jugador-foto-ajuste-preview.is-dragging canvas {
+  cursor: grabbing;
+}
+
+.jugador-foto-ajuste-guia {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
+}
+
+.jugador-foto-ajuste-guia::before {
+  content: "";
+  position: absolute;
+  inset: 10px 8px;
+  border: 1px dashed rgba(30, 41, 59, 0.28);
+  border-radius: 10px;
+}
+
+.jugador-foto-ajuste-guia-rostro {
+  position: absolute;
+  inset: 20px 18px 22px;
+  border: 1px dashed rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06);
 }
 
 .jugador-foto-ajuste-preview img {

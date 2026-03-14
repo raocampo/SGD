@@ -11,6 +11,7 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 - Jugadores / carnés:
   - `frontend/jugadores.html` reemplaza la previsualización de ajuste por un `canvas` que muestra el encuadre real del carné.
   - `frontend/js/jugadores.js` genera una imagen recortada específica al guardar (`foto_carnet_recorte`) usando el mismo algoritmo que la vista previa.
+  - el mismo flujo de ajuste ahora permite arrastrar la imagen con mouse o dedo dentro del marco, muestra una guía visual de rostro y agrega el botón `Restablecer` para volver al encuadre base.
   - `backend/routes/jugadorRoutes.js` y `backend/controllers/jugadorController.js` aceptan y persisten ese recorte como archivo propio.
   - `backend/models/Jugador.js` incorpora `foto_carnet_recorte_url` para conservar la foto original y un derivado estable para PDF/impresión.
   - `renderPlantillaCarnets()` ahora prioriza `foto_carnet_recorte_url`, evitando desfases cuando el navegador exporta a PDF.

@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-14): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan.
+Estado del proyecto (2026-03-14): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -36,6 +36,7 @@ Flujo principal operativo:
   - el modal de jugador ahora previsualiza el encuadre real del carné usando `canvas`.
   - al guardar, se genera una versión recortada específica para el carné sin perder la foto original.
   - la exportación PDF y la impresión ahora priorizan esa imagen recortada, evitando desfases de zoom/posición.
+  - el ajuste visual del recorte ahora soporta arrastrar la imagen con mouse o dedo, incluye guía visual del rostro y botón `Restablecer` para volver al encuadre base.
 - Seguridad / sesion web:
   - `frontend/js/core.js` implementa cierre automatico de sesion tras `1 hora` de inactividad en escritorio y movil.
   - antes del cierre automatico, el sistema ahora muestra una advertencia con cuenta regresiva para permitir extender la sesion.

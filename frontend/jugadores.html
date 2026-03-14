@@ -352,6 +352,9 @@
             <div class="jugador-foto-ajuste-preview-wrap">
               <div class="jugador-foto-ajuste-preview">
                 <canvas id="jugador-foto-carnet-preview-canvas" width="172" height="192" aria-label="Previsualización del recorte de foto carné"></canvas>
+                <div class="jugador-foto-ajuste-guia" aria-hidden="true">
+                  <span class="jugador-foto-ajuste-guia-rostro"></span>
+                </div>
               </div>
             </div>
             <div class="jugador-foto-ajuste-controles">
@@ -389,8 +392,16 @@
                     </button>
                   </div>
                 </div>
+                <div class="jugador-foto-ajuste-panel">
+                  <label>Acciones</label>
+                  <div class="jugador-foto-ajuste-zoom-row">
+                    <button type="button" class="btn btn-outline" id="btn-jugador-reset-crop">
+                      <i class="fas fa-rotate-left"></i> Restablecer
+                    </button>
+                  </div>
+                </div>
               </div>
-              <small class="form-hint">Ajusta la foto para centrar el rostro. El recorte del carné se aplicará al guardar y será el mismo que use el PDF.</small>
+              <small class="form-hint">Puedes arrastrar la foto con mouse o dedo. El recorte del carné se aplicará al guardar y será el mismo que use el PDF.</small>
               <div id="preview-foto-carnet-actual" class="form-hint jugador-foto-ajuste-status"></div>
             </div>
           </div>

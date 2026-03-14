@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-13
+Ultima actualizacion: 2026-03-14
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -19,6 +19,7 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - el ajuste visual ahora se previsualiza con `canvas` para representar el recorte real.
   - al guardar, el sistema genera y sube una imagen recortada específica del carné (`foto_carnet_recorte_url`) sin perder la foto original.
   - el PDF y la impresión del carné ahora priorizan esa imagen recortada, evitando desfases entre preview y exportación.
+  - el ajuste ahora permite arrastrar la imagen con mouse o dedo, incluye guía visual para el rostro y añade botón `Restablecer` para volver al encuadre base.
   - se agregó la migración `database/migrations/039_jugadores_foto_carnet_recorte.sql`.
   - validación técnica:
     - `node --check backend/models/Jugador.js`
