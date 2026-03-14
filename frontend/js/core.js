@@ -30,6 +30,7 @@
   const AUTH_LAST_ACTIVITY_KEY = "sgd_auth_last_activity_at";
   const AUTH_LOGOUT_REASON_KEY = "sgd_auth_logout_reason";
   const AUTH_IDLE_TIMEOUT_MS = 60 * 60 * 1000;
+  const AUTH_IDLE_WARNING_MS = 5 * 60 * 1000;
   const AUTH_ACTIVITY_DEBOUNCE_MS = 15000;
   const BRAND_FAVICON_SVG = "favicon.svg";
   const BRAND_FAVICON_FALLBACK = "assets/ltc/Logo.jpeg";
@@ -84,10 +85,13 @@
 
   const CURRENT_PAGE = getCurrentPage();
   let authIdleTimer = null;
+  let authIdleWarningTimer = null;
+  let authIdleWarningCountdownTimer = null;
   let authActivityListenersBound = false;
   let authStorageListenerBound = false;
   let lastActivityWriteAt = 0;
   let authLogoutInProgress = false;
+  let authIdleWarningVisible = false;
 
   function ensureAuthPendingStyle() {
     if (!document?.head || document.getElementById("sgd-auth-pending-style")) return;
@@ -250,6 +254,97 @@
     }
   }
 
+  function cancelAuthIdleWarningTimer() {
+    if (authIdleWarningTimer) {
+      clearTimeout(authIdleWarningTimer);
+      authIdleWarningTimer = null;
+    }
+    if (authIdleWarningCountdownTimer) {
+      clearInterval(authIdleWarningCountdownTimer);
+      authIdleWarningCountdownTimer = null;
+    }
+  }
+
+  function formatIdleRemaining(ms) {
+    const totalSegundos = Math.max(0, Math.ceil(Number(ms || 0) / 1000));
+    const minutos = Math.floor(totalSegundos / 60);
+    const segundos = totalSegundos % 60;
+    return `${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
+  }
+
+  function closeIdleWarning() {
+    const backdrop = document.getElementById("sgd-idle-warning-backdrop");
+    if (backdrop) backdrop.remove();
+    authIdleWarningVisible = false;
+    cancelAuthIdleWarningTimer();
+    sincronizarEstadoModalBody();
+  }
+
+  function showIdleWarning(restanteMs = AUTH_IDLE_WARNING_MS) {
+    if (authIdleWarningVisible || PUBLIC_PAGES.has(getCurrentPage())) return;
+    if (!(window.Auth?.isAuthenticated?.() || false)) return;
+
+    authIdleWarningVisible = true;
+    const root = document.body || document.documentElement;
+    if (!root) return;
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "sgd-idle-warning-backdrop";
+    backdrop.className = "sgd-dialog-backdrop is-open";
+    backdrop.innerHTML = `
+      <div class="sgd-dialog sgd-dialog-sm" role="alertdialog" aria-modal="true" aria-labelledby="sgd-idle-warning-title">
+        <div class="sgd-dialog-header is-warning">
+          <span class="sgd-dialog-badge"><i class="fas fa-hourglass-half"></i></span>
+          <div>
+            <h3 id="sgd-idle-warning-title">Sesión por inactividad</h3>
+            <p>Si no haces nada, el sistema cerrará tu sesión automáticamente.</p>
+          </div>
+        </div>
+        <div class="sgd-dialog-body">
+          <p>Tiempo restante estimado: <strong class="sgd-idle-warning-time">${formatIdleRemaining(restanteMs)}</strong></p>
+        </div>
+        <div class="sgd-dialog-actions">
+          <button type="button" class="btn btn-outline sgd-idle-warning-logout">Cerrar sesión ahora</button>
+          <button type="button" class="btn btn-primary sgd-idle-warning-continue">Seguir conectado</button>
+        </div>
+      </div>
+    `;
+
+    const continueButton = backdrop.querySelector(".sgd-idle-warning-continue");
+    const logoutButton = backdrop.querySelector(".sgd-idle-warning-logout");
+    const timeNode = backdrop.querySelector(".sgd-idle-warning-time");
+    const updateTime = () => {
+      const restante = AUTH_IDLE_TIMEOUT_MS - (Date.now() - (getStoredLastActivity() || Date.now()));
+      if (timeNode) timeNode.textContent = formatIdleRemaining(restante);
+      if (restante <= 0) {
+        closeIdleWarning();
+      }
+    };
+
+    continueButton?.addEventListener("click", () => {
+      closeIdleWarning();
+      touchAuthActivity(true);
+      window.mostrarNotificacion("Sesión extendida correctamente.", "success", { duration: 2200 });
+    });
+
+    logoutButton?.addEventListener("click", async () => {
+      closeIdleWarning();
+      await window.Auth?.logout?.({ reason: "idle", revoke: true });
+    });
+
+    backdrop.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+      }
+    });
+
+    root.appendChild(backdrop);
+    sincronizarEstadoModalBody();
+    continueButton?.focus();
+    updateTime();
+    authIdleWarningCountdownTimer = window.setInterval(updateTime, 1000);
+  }
+
   function isIdleExpired() {
     const lastActivity = getStoredLastActivity();
     if (!lastActivity) return false;
@@ -258,17 +353,31 @@
 
   function scheduleAuthIdleTimer() {
     cancelAuthIdleTimer();
+    cancelAuthIdleWarningTimer();
     if (PUBLIC_PAGES.has(getCurrentPage())) return;
-    if (!(window.Auth?.isAuthenticated?.() || false)) return;
+    if (!(window.Auth?.isAuthenticated?.() || false)) {
+      closeIdleWarning();
+      return;
+    }
 
     const lastActivity = getStoredLastActivity() || Date.now();
     const restante = AUTH_IDLE_TIMEOUT_MS - (Date.now() - lastActivity);
     if (restante <= 0) {
+      closeIdleWarning();
       window.Auth?.logout?.({ reason: "idle" });
       return;
     }
 
+    if (restante <= AUTH_IDLE_WARNING_MS) {
+      showIdleWarning(restante);
+    } else {
+      authIdleWarningTimer = window.setTimeout(() => {
+        showIdleWarning(AUTH_IDLE_WARNING_MS);
+      }, Math.max(0, restante - AUTH_IDLE_WARNING_MS));
+    }
+
     authIdleTimer = window.setTimeout(() => {
+      closeIdleWarning();
       window.Auth?.logout?.({ reason: "idle" });
     }, restante + 250);
   }
@@ -280,6 +389,9 @@
       return;
     }
     setStoredLastActivity(now);
+    if (authIdleWarningVisible) {
+      closeIdleWarning();
+    }
     scheduleAuthIdleTimer();
   }
 
@@ -310,8 +422,12 @@
       if (event.key === AUTH_LAST_ACTIVITY_KEY) {
         if (window.Auth?.isAuthenticated?.()) {
           if (isIdleExpired()) {
+            closeIdleWarning();
             window.Auth?.logout?.({ reason: "idle" });
             return;
+          }
+          if (authIdleWarningVisible) {
+            closeIdleWarning();
           }
           scheduleAuthIdleTimer();
         }
@@ -384,6 +500,7 @@
     },
     clearSession() {
       cancelAuthIdleTimer();
+      closeIdleWarning();
       localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
       localStorage.removeItem(AUTH_USER_KEY);

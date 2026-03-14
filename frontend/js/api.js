@@ -45,7 +45,11 @@
   function extractErrorMessage(payload) {
     if (!payload) return "Error HTTP";
     if (typeof payload === "string") return payload;
+    if (payload.detalle && (!payload.error || /interno/i.test(String(payload.error)))) {
+      return payload.detalle;
+    }
     if (payload.error) return payload.error;
+    if (payload.detalle) return payload.detalle;
     if (payload.message) return payload.message;
     return "Error HTTP";
   }

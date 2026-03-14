@@ -33,11 +33,18 @@ Flujo principal operativo:
 ## Novedades Recientes (2026-03-13)
 - Seguridad / sesion web:
   - `frontend/js/core.js` implementa cierre automatico de sesion tras `1 hora` de inactividad en escritorio y movil.
+  - antes del cierre automatico, el sistema ahora muestra una advertencia con cuenta regresiva para permitir extender la sesion.
   - la actividad se sincroniza entre pestañas del navegador y, al expirar, `login.html` muestra el aviso de cierre por inactividad.
   - `frontend/js/api.js`, `frontend/js/login.js` y `frontend/js/register.js` ya trabajan con `refreshToken` para acompanar ese flujo.
 - Jugadores:
   - `backend/models/Jugador.js` ya no restringe la misma cedula a nivel campeonato completo; ahora solo bloquea duplicados dentro de la misma categoria/evento.
   - un mismo jugador puede participar en distintas categorias del mismo campeonato, incluso en equipos distintos, mientras cambie la categoria.
+  - el guardado de jugadores con `FormData` ya usa `ApiClient.requestForm(...)`, por lo que hereda correctamente el token de autenticacion tambien cuando se suben fotos/documentos.
+  - el backend ya devuelve errores amigables de subida:
+    - validacion de tipo de imagen,
+    - limite de tamano de archivo,
+    - mensajes `detalle` visibles en frontend.
+  - el limite de imagenes se amplio a `8MB` para soportar mejor fotos reales tomadas desde movil.
   - `frontend/jugadores.html`, `frontend/js/jugadores.js` y `frontend/css/style.css` ajustan la ficha/tarjeta con:
     - hero visual en cabecera,
     - uso de `foto carné` cuando existe,

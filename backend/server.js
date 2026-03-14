@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const multer = require("multer");
 const pool = require("./config/database");
 const { uploadsDir, ensureUploadsRoot } = require("./config/uploads");
 
@@ -93,6 +94,21 @@ app.use("/api/portal-contenido", portalContenidoRoutes);
 app.use("/api/organizador-portal", organizadorPortalRoutes);
 app.use("/api/contacto", contactoRoutes);
 app.use("/api/public", publicRoutes);
+
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        error: "La imagen excede el tamaño permitido de 8MB.",
+      });
+    }
+    return res.status(400).json({
+      error: error.message || "Error validando archivo adjunto.",
+    });
+  }
+
+  return next(error);
+});
 
 // =====================
 // Frontend (opcional)

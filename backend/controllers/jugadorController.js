@@ -100,6 +100,9 @@ const jugadorController = {
     // CREAR - Nuevo jugador
     crearJugador: async (req, res) => {
         try {
+            if (req.fileValidationError) {
+                return res.status(400).json({ error: req.fileValidationError });
+            }
             const {
                 equipo_id,
                 nombre,
@@ -437,6 +440,9 @@ const jugadorController = {
         try {
             const { id } = req.params;
             const datos = req.body;
+            if (req.fileValidationError) {
+                return res.status(400).json({ error: req.fileValidationError });
+            }
             const fotoCedula = construirUrlArchivoJugador(req, req.files?.foto_cedula?.[0]);
             const fotoCarnet = construirUrlArchivoJugador(req, req.files?.foto_carnet?.[0]);
             const eliminarFotoCedula = parseBooleanFlag(datos.eliminar_foto_cedula);

@@ -2640,19 +2640,7 @@ async function editarJugador(id) {
 }
 
 async function guardarJugadorConFormData({ id, fd }) {
-  const url = id ? `${window.API_BASE_URL}/jugadores/${id}` : `${window.API_BASE_URL}/jugadores`;
-
-  const resp = await fetch(url, {
-    method: id ? "PUT" : "POST",
-    body: fd,
-  });
-
-  const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
-    throw new Error(data.error || data.detalle || "Error guardando jugador");
-  }
-
-  return data;
+  return ApiClient.requestForm(id ? "PUT" : "POST", id ? `/jugadores/${id}` : "/jugadores", fd);
 }
 
 document.getElementById("form-jugador").addEventListener("submit", async (e) => {

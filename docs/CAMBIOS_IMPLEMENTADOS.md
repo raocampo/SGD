@@ -7,6 +7,41 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-14 - Advertencia previa al cierre por inactividad
+- Seguridad / autenticacion:
+  - `frontend/js/core.js` agrega una advertencia visual antes del cierre de sesion por inactividad.
+  - el modal muestra cuenta regresiva y ofrece dos acciones:
+    - `Seguir conectado`,
+    - `Cerrar sesión ahora`.
+  - si el usuario renueva la sesion, la actividad se vuelve a registrar y el temporizador se rearma.
+  - la advertencia se cierra tambien si otra pestaña registra actividad y actualiza `AUTH_LAST_ACTIVITY_KEY`.
+- Verificacion:
+  - `node --check frontend/js/core.js`
+  - `npm --prefix backend run smoke` => `PASS 9/9`
+
+---
+
+## 2026-03-14 - Correccion de guardado de jugadores con fotos
+- Frontend:
+  - `frontend/js/jugadores.js` deja de usar `fetch(...)` directo para multipart y ahora usa `ApiClient.requestForm(...)`, heredando el header `Authorization`.
+  - `frontend/js/api.js` ya prioriza `detalle` cuando el backend devuelve `error interno` con mensaje tecnico util.
+- Backend:
+  - `backend/config/multerConfig.js` aumenta el limite de archivos a `8MB`.
+  - `backend/controllers/jugadorController.js` valida `req.fileValidationError` tanto en crear como en actualizar.
+  - `backend/server.js` agrega manejo global de `multer.MulterError` para devolver `400` en vez de `500` cuando falla la subida por tamaño o parsing del adjunto.
+- Resultado:
+  - la subida de fotos de jugador en web ya no depende de un `fetch` sin token,
+  - si una imagen falla por peso/tipo, el usuario recibe mensaje claro en vez de `Error interno del servidor`.
+- Verificacion:
+  - `node --check frontend/js/api.js`
+  - `node --check frontend/js/jugadores.js`
+  - `node --check backend/config/multerConfig.js`
+  - `node --check backend/controllers/jugadorController.js`
+  - `node --check backend/server.js`
+  - `npm --prefix backend run smoke` => `PASS 9/9`
+
+---
+
 ## 2026-03-13 - Consolidacion local y salida visible en topbar
 - Repositorio:
   - se auditaron y consolidaron cambios locales antes de sincronizar con `origin/main`.

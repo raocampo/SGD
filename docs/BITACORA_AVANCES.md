@@ -13,6 +13,28 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 
 ## Avances Recientes
 
+### 2026-03-14
+- Seguridad / sesion:
+  - `frontend/js/core.js` ahora muestra una advertencia previa con cuenta regresiva antes del cierre automatico por inactividad.
+  - el usuario puede elegir `Seguir conectado` para renovar la sesion o `Cerrar sesión ahora` si quiere salir manualmente.
+  - la advertencia tambien se sincroniza correctamente con la actividad de otras pestañas.
+  - validacion tecnica:
+    - `node --check frontend/js/core.js`,
+    - `npm --prefix backend run smoke` => `PASS 9/9`.
+- Jugadores / uploads:
+  - se corrigio el guardado de jugadores con foto/documentos para que use `ApiClient.requestForm(...)` y herede el token de autenticacion.
+  - `frontend/js/api.js` ahora expone mejor el `detalle` de errores HTTP cuando el backend devuelve un mensaje tecnico controlado.
+  - `backend/config/multerConfig.js` amplia el limite de imagenes a `8MB`.
+  - `backend/server.js` transforma errores de `multer` (por ejemplo `LIMIT_FILE_SIZE`) en respuestas `400` con mensaje claro.
+  - `backend/controllers/jugadorController.js` ya responde `400` cuando el archivo no pasa la validacion de tipo (`req.fileValidationError`), evitando que llegue como error interno generico.
+  - validacion tecnica:
+    - `node --check frontend/js/api.js`
+    - `node --check frontend/js/jugadores.js`
+    - `node --check backend/config/multerConfig.js`
+    - `node --check backend/controllers/jugadorController.js`
+    - `node --check backend/server.js`
+    - `npm --prefix backend run smoke` => `PASS 9/9`.
+
 ### 2026-03-13
 - Repositorio:
   - se auditaron y consolidaron cambios locales pendientes antes de sincronizar con remoto.
