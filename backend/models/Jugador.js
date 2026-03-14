@@ -102,27 +102,34 @@ class Jugador {
         if (!cedula || !equipo_destino_id) return;
 
         let q = `
+            WITH eventos_destino AS (
+              SELECT ee.evento_id
+              FROM evento_equipos ee
+              WHERE ee.equipo_id = $2
+            )
             SELECT
               j.id,
               j.nombre,
               j.apellido,
               e.nombre as equipo_nombre,
-              ev.nombre as evento_nombre
+              STRING_AGG(DISTINCT ev.nombre, ', ' ORDER BY ev.nombre) AS evento_nombre
             FROM jugadores j
             JOIN equipos e ON e.id = j.equipo_id
-            LEFT JOIN eventos ev ON ev.id = e.evento_id
+            JOIN evento_equipos ee_jugador ON ee_jugador.equipo_id = j.equipo_id
+            JOIN eventos_destino ed ON ed.evento_id = ee_jugador.evento_id
+            LEFT JOIN eventos ev ON ev.id = ee_jugador.evento_id
             WHERE j.cedidentidad = $1
               AND j.equipo_id != $2
-              AND COALESCE(e.evento_id, 0) = COALESCE((
-                SELECT evento_id FROM equipos WHERE id = $2
-              ), 0)
         `;
         const params = [cedula, equipo_destino_id];
         if (excluir_jugador_id) {
             q += ` AND j.id != $3`;
             params.push(excluir_jugador_id);
         }
-        q += ` LIMIT 1`;
+        q += `
+            GROUP BY j.id, j.nombre, j.apellido, e.nombre
+            LIMIT 1
+        `;
 
         const r = await pool.query(q, params);
         if (r.rows.length > 0) {
