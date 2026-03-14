@@ -84,6 +84,84 @@ function chooseByIdOrFirst(list, requestedId, label) {
   return list[0];
 }
 
+async function findPublicCampeonato(campeonatos) {
+  const candidatos = requestedTournamentId
+    ? campeonatos.filter((item) => String(item?.id || "") === requestedTournamentId)
+    : campeonatos;
+
+  assert(candidatos.length > 0, "campeonatos: no hay candidatos para validar portal publico");
+
+  for (const campeonato of candidatos) {
+    const campeonatoId = String(campeonato?.id || "");
+    const publico = await request(`/api/public/campeonatos/${campeonatoId}`);
+    if (publico.status === 200) {
+      return campeonato;
+    }
+  }
+
+  throw new Error(
+    requestedTournamentId
+      ? `campeonato ${requestedTournamentId} no es visible en portal publico`
+      : "no se encontro un campeonato visible en portal publico para la validacion"
+  );
+}
+
+async function findOperationalDataset(token, campeonatoId) {
+  const eventosResp = await expectJson(
+    `/api/eventos/campeonato/${campeonatoId}`,
+    { token },
+    200,
+    "eventos-por-campeonato"
+  );
+  const eventos = normalizeList(eventosResp, "eventos");
+  const candidatosEvento = requestedEventId
+    ? eventos.filter((item) => String(item?.id || "") === requestedEventId)
+    : eventos;
+
+  assert(candidatosEvento.length > 0, "eventos: no hay candidatos para el campeonato publico seleccionado");
+
+  for (const evento of candidatosEvento) {
+    const eventoId = String(evento?.id || "");
+    const publicPartidos = await request(`/api/public/eventos/${eventoId}/partidos`);
+    const publicTablas = await request(`/api/public/eventos/${eventoId}/tablas`);
+    if (publicPartidos.status !== 200 || publicTablas.status !== 200) continue;
+
+    const equiposResp = await expectJson(
+      `/api/eventos/${eventoId}/equipos`,
+      { token },
+      200,
+      "equipos-por-evento"
+    );
+    const equipos = normalizeList(equiposResp, "equipos");
+
+    const partidosResp = await expectJson(
+      `/api/partidos/evento/${eventoId}`,
+      { token },
+      200,
+      "partidos-por-evento"
+    );
+    const partidos = normalizeList(partidosResp, "partidos");
+
+    if (equipos.length === 0 || partidos.length === 0) continue;
+
+    const equipo = chooseByIdOrFirst(equipos, requestedTeamId, "equipos-evento");
+    const partido = chooseByIdOrFirst(partidos, requestedMatchId, "partidos-evento");
+    return {
+      evento,
+      equipos,
+      partidos,
+      equipo,
+      partido,
+    };
+  }
+
+  throw new Error(
+    requestedEventId
+      ? `evento ${requestedEventId} no tiene dataset operativo/publico valido`
+      : `campeonato ${campeonatoId} no tiene un evento operativo visible en portal publico`
+  );
+}
+
 async function main() {
   if (!adminEmail || !adminPassword) {
     throw new Error("Define E2E_OPS_ADMIN_EMAIL y E2E_OPS_ADMIN_PASSWORD antes de ejecutar.");
@@ -112,17 +190,10 @@ async function main() {
 
   const campeonatosResp = await expectJson("/api/campeonatos", { token }, 200, "campeonatos-listar");
   const campeonatos = normalizeList(campeonatosResp, "campeonatos");
-  const campeonato = chooseByIdOrFirst(campeonatos, requestedTournamentId, "campeonatos");
+  const campeonato = await findPublicCampeonato(campeonatos);
   const campeonatoId = String(campeonato.id);
 
-  const eventosResp = await expectJson(
-    `/api/eventos/campeonato/${campeonatoId}`,
-    { token },
-    200,
-    "eventos-por-campeonato"
-  );
-  const eventos = normalizeList(eventosResp, "eventos");
-  const evento = chooseByIdOrFirst(eventos, requestedEventId, "eventos");
+  const { evento, equipo, partido } = await findOperationalDataset(token, campeonatoId);
   const eventoId = String(evento.id);
 
   await expectJson(
@@ -135,14 +206,6 @@ async function main() {
     }
   );
 
-  const equiposResp = await expectJson(
-    `/api/eventos/${eventoId}/equipos`,
-    { token },
-    200,
-    "equipos-por-evento"
-  );
-  const equipos = normalizeList(equiposResp, "equipos");
-  const equipo = chooseByIdOrFirst(equipos, requestedTeamId, "equipos-evento");
   const equipoId = String(equipo.id);
 
   await expectJson(`/api/grupos/evento/${eventoId}`, { token }, 200, "grupos-por-evento", (json) => {
@@ -150,15 +213,6 @@ async function main() {
     assert(grupos.length > 0, "evento sin grupos; revisa sorteo");
   });
 
-  const partidosResp = await expectJson(
-    `/api/partidos/evento/${eventoId}`,
-    { token },
-    200,
-    "partidos-por-evento"
-  );
-  const partidos = normalizeList(partidosResp, "partidos");
-  assert(partidos.length > 0, "evento sin partidos; revisa fixture");
-  const partido = chooseByIdOrFirst(partidos, requestedMatchId, "partidos-evento");
   const partidoId = String(partido.id);
 
   await expectJson(
@@ -209,4 +263,3 @@ main().catch((error) => {
   console.error(`[e2e-ops] FAIL: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
 });
-

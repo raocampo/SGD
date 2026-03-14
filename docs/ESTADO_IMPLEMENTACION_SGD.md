@@ -50,6 +50,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - la migracion `033_campeonatos_tipos_futbol_ampliados.sql` ya fue aplicada en Render para alinear el `CHECK` de `campeonatos.tipo_futbol` con las nuevas modalidades.
   - la migracion `034_organizador_portal_branding.sql` ya fue aplicada en Render para habilitar branding/media/auspiciantes propios por organizador.
   - la migracion `035_campeonato_fondo_carnet.sql` ya fue aplicada en Render para habilitar fondo de carné configurable por campeonato.
+  - la migracion `039_jugadores_foto_carnet_recorte.sql` ya fue aplicada en Render para persistir el recorte estable de foto de carné.
   - pendiente operativo: copiar el contenido historico de `backend/uploads/` al disco persistente antes de validar carga completa de imagenes/documentos en produccion.
 
 ## Estado Detallado del Alcance Actual
@@ -211,6 +212,8 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 2. Pruebas E2E con datos reales (prioridad alta):
 - Flujo completo: campeonato -> evento -> equipos -> sorteo -> grupos -> fixture -> planilla -> tablas.
 - Script operativo disponible (solo lectura): `npm run e2e:ops-flow` para validar rapidamente el dataset real sin modificar datos.
+- `npm run qa:ui-dataset` tambien queda operativo para validar dataset mobile/web/publico sobre un campeonato visible.
+- Ambos scripts ya autodetectan un campeonato/evento publico valido cuando el primer campeonato del administrador corresponde a QA o entorno interno.
 
 3. Modulo financiero completo (prioridad alta):
 - Reglas base ya incorporadas desde planilla para:

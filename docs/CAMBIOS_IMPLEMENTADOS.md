@@ -33,6 +33,28 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-14 - E2E y dataset publico auto-descubierto
+- QA operativa:
+  - `backend/scripts/e2eOperationalFlowCheck.js` deja de depender del "primer campeonato" visible para administrador.
+  - el script ahora busca automaticamente un campeonato visible en portal publico y dentro de el selecciona un evento con:
+    - equipos,
+    - partidos,
+    - tablas y partidos publicos disponibles.
+  - `backend/scripts/qaUiDatasetCheck.js` deja de usar IDs fijos legacy (`6/13/194/91`) y tambien descubre un dataset publico/operativo valido antes de validar:
+    - mobile,
+    - portal publico,
+    - pantallas web clave.
+- Base de datos:
+  - `database/migrations/039_jugadores_foto_carnet_recorte.sql` aplicada y verificada en local y Render.
+- Verificacion:
+  - `npm --prefix backend run smoke:roles` => `PASS 18/18`
+  - `npm --prefix backend run smoke:frontend` => `PASS 38/38`
+  - `npm --prefix backend run smoke:matrix` => `PASS 48/48`
+  - `npm --prefix backend run e2e:ops-flow` => `OK dataset campeonato=2 evento=8 partido=65 equipo=42`
+  - `npm --prefix backend run qa:ui-dataset` => `OK dataset campeonato=2 evento=8 partido=65 equipo=42`
+
+---
+
 ## 2026-03-14 - Recorte estable de foto para carné
 - Jugadores / carnés:
   - `frontend/jugadores.html` reemplaza la previsualización de ajuste por un `canvas` que muestra el encuadre real del carné.

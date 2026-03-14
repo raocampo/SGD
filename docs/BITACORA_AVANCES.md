@@ -14,6 +14,18 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-14
+- QA / despliegue / migraciones:
+  - se sincronizo `main` con remoto y se aplico la migracion `039_jugadores_foto_carnet_recorte.sql` en:
+    - BD local,
+    - PostgreSQL de Render.
+  - se detecto que los scripts de validacion con dataset real tomaban por defecto un campeonato QA/admin no publico y fallaban al llegar a `/api/public/...`.
+  - `backend/scripts/e2eOperationalFlowCheck.js` y `backend/scripts/qaUiDatasetCheck.js` ahora descubren automaticamente un campeonato/evento/partido/equipo visibles en portal publico antes de ejecutar las comprobaciones deportivas/publicas.
+  - validacion tecnica ejecutada:
+    - `npm --prefix backend run smoke:roles` => `PASS 18/18`,
+    - `npm --prefix backend run smoke:frontend` => `PASS 38/38`,
+    - `npm --prefix backend run smoke:matrix` => `PASS 48/48`,
+    - `npm --prefix backend run e2e:ops-flow` => `OK dataset campeonato=2 evento=8 partido=65 equipo=42`,
+    - `npm --prefix backend run qa:ui-dataset` => `OK dataset campeonato=2 evento=8 partido=65 equipo=42`.
 - Navegacion interna / UX:
   - se implemento `RouteContext` en `frontend/js/core.js` para guardar contexto de navegacion interna en `sessionStorage`.
   - las pantallas internas ya no dependen de `?campeonato=...&evento=...&equipo=...&partido=...` visibles en la barra del navegador.

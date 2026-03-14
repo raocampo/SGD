@@ -5,10 +5,10 @@ const baseUrl = String(process.env.QA_UI_BASE_URL || "http://localhost:5000").re
 const adminEmail = String(process.env.QA_UI_ADMIN_EMAIL || "").trim();
 const adminPassword = String(process.env.QA_UI_ADMIN_PASSWORD || "").trim();
 
-const tournamentId = String(process.env.QA_UI_CAMPEONATO_ID || "6").trim();
-const eventId = String(process.env.QA_UI_EVENTO_ID || "13").trim();
-const matchId = String(process.env.QA_UI_PARTIDO_ID || "194").trim();
-const teamId = String(process.env.QA_UI_TEAM_ID || "91").trim();
+const requestedTournamentId = String(process.env.QA_UI_CAMPEONATO_ID || "").trim();
+const requestedEventId = String(process.env.QA_UI_EVENTO_ID || "").trim();
+const requestedMatchId = String(process.env.QA_UI_PARTIDO_ID || "").trim();
+const requestedTeamId = String(process.env.QA_UI_TEAM_ID || "").trim();
 
 function compact(text, max = 220) {
   const value = String(text == null ? "" : text).replace(/\s+/g, " ").trim();
@@ -79,15 +79,101 @@ async function expectHtml(path, label, marker) {
   console.log(`PASS | ${label} | GET ${path} | status=200 marker="${marker}"`);
 }
 
+function normalizeList(payload, key = null) {
+  if (Array.isArray(payload)) return payload;
+  if (key && Array.isArray(payload?.[key])) return payload[key];
+  return [];
+}
+
+function chooseByIdOrFirst(list, requestedId, label) {
+  assert(Array.isArray(list) && list.length > 0, `${label}: lista vacia`);
+  if (requestedId) {
+    const found = list.find((item) => String(item?.id || "") === String(requestedId));
+    assert(found, `${label}: no existe id=${requestedId} en el dataset actual`);
+    return found;
+  }
+  return list[0];
+}
+
+async function findPublicCampeonato(token) {
+  const campeonatos = await expectJson("/api/campeonatos", { token }, 200, "admin-campeonatos-listar");
+  const list = normalizeList(campeonatos, "campeonatos");
+  const candidatos = requestedTournamentId
+    ? list.filter((item) => String(item?.id || "") === requestedTournamentId)
+    : list;
+
+  assert(candidatos.length > 0, "campeonatos: no hay candidatos para QA UI");
+
+  for (const campeonato of candidatos) {
+    const campeonatoId = String(campeonato?.id || "");
+    const publico = await request(`/api/public/campeonatos/${campeonatoId}`);
+    if (publico.status === 200) return campeonato;
+  }
+
+  throw new Error(
+    requestedTournamentId
+      ? `campeonato ${requestedTournamentId} no es visible en portal publico`
+      : "no se encontro un campeonato visible en portal publico para QA UI"
+  );
+}
+
+async function findOperationalDataset(token, tournamentId) {
+  const eventosResp = await expectJson(
+    `/api/mobile/v1/campeonatos/${tournamentId}/eventos`,
+    { token },
+    200,
+    "mobile-campeonato-eventos"
+  );
+  const eventos = normalizeList(eventosResp, "eventos");
+  const candidatosEvento = requestedEventId
+    ? eventos.filter((item) => String(item?.id || "") === requestedEventId)
+    : eventos;
+
+  assert(candidatosEvento.length > 0, "eventos: no hay candidatos para QA UI");
+
+  for (const evento of candidatosEvento) {
+    const eventId = String(evento?.id || "");
+    const publicDetail = await request(`/api/public/campeonatos/${tournamentId}/eventos`);
+    const publicPartidos = await request(`/api/public/eventos/${eventId}/partidos`);
+    const publicTablas = await request(`/api/public/eventos/${eventId}/tablas`);
+    if (publicDetail.status !== 200 || publicPartidos.status !== 200 || publicTablas.status !== 200) continue;
+
+    const partidosResp = await expectJson(
+      `/api/mobile/v1/eventos/${eventId}/partidos`,
+      { token },
+      200,
+      "mobile-evento-partidos"
+    );
+    const partidos = normalizeList(partidosResp, "matches");
+
+    const equiposResp = await expectJson(
+      `/api/eventos/${eventId}/equipos`,
+      { token },
+      200,
+      "equipos-por-evento"
+    );
+    const equipos = normalizeList(equiposResp, "equipos");
+
+    if (partidos.length === 0 || equipos.length === 0) continue;
+
+    const match = chooseByIdOrFirst(partidos, requestedMatchId, "partidos-evento");
+    const team = chooseByIdOrFirst(equipos, requestedTeamId, "equipos-evento");
+    return { evento, match, team };
+  }
+
+  throw new Error(
+    requestedEventId
+      ? `evento ${requestedEventId} no tiene dataset operativo/publico valido`
+      : `campeonato ${tournamentId} no tiene un evento operativo visible en portal publico`
+  );
+}
+
 async function main() {
   if (!adminEmail || !adminPassword) {
     throw new Error("Define QA_UI_ADMIN_EMAIL y QA_UI_ADMIN_PASSWORD antes de ejecutar.");
   }
 
   console.log(`[qa-ui] baseUrl=${baseUrl}`);
-  console.log(
-    `[qa-ui] dataset campeonato=${tournamentId} evento=${eventId} partido=${matchId} equipo=${teamId}`
-  );
 
   const login = await expectJson(
     "/api/auth/login",
@@ -108,6 +194,17 @@ async function main() {
 
   const token = String(login.accessToken);
 
+  const campeonato = await findPublicCampeonato(token);
+  const tournamentId = String(campeonato?.id || "");
+  const { evento, match, team } = await findOperationalDataset(token, tournamentId);
+  const eventId = String(evento?.id || "");
+  const matchId = String(match?.id || "");
+  const teamId = String(team?.id || "");
+
+  console.log(
+    `[qa-ui] dataset campeonato=${tournamentId} evento=${eventId} partido=${matchId} equipo=${teamId}`
+  );
+
   await expectJson(
     `/api/mobile/v1/campeonatos/${tournamentId}`,
     { token },
@@ -118,16 +215,7 @@ async function main() {
     }
   );
 
-  await expectJson(
-    `/api/mobile/v1/campeonatos/${tournamentId}/eventos`,
-    { token },
-    200,
-    "mobile-campeonato-eventos",
-    (json) => {
-      const eventos = Array.isArray(json?.eventos) ? json.eventos : [];
-      assert(eventos.some((item) => String(item?.id || "") === eventId), "evento no encontrado en campeonato");
-    }
-  );
+  await expectJson(`/api/mobile/v1/campeonatos/${tournamentId}/eventos`, { token }, 200, "mobile-campeonato-eventos");
 
   await expectJson(
     `/api/mobile/v1/eventos/${eventId}`,
@@ -150,16 +238,7 @@ async function main() {
     }
   );
 
-  await expectJson(
-    `/api/mobile/v1/eventos/${eventId}/partidos`,
-    { token },
-    200,
-    "mobile-evento-partidos",
-    (json) => {
-      const matches = Array.isArray(json?.matches) ? json.matches : [];
-      assert(matches.some((item) => String(item?.id || "") === matchId), "partido no encontrado en evento");
-    }
-  );
+  await expectJson(`/api/mobile/v1/eventos/${eventId}/partidos`, { token }, 200, "mobile-evento-partidos");
 
   await expectJson(
     `/api/mobile/v1/partidos/${matchId}/planilla`,
