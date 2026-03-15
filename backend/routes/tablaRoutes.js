@@ -42,5 +42,17 @@ router.get(
   requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   tablaController.obtenerFairPlayEvento
 );
+router.put(
+  '/evento/:evento_id/posiciones/manual',
+  requireAuth,
+  requireRoles("administrador"),
+  tablaController.guardarTablaManual
+);
+router.post(
+  '/evento/:evento_id/posiciones/manual/reset',
+  requireAuth,
+  requireRoles("administrador"),
+  tablaController.resetearTablaManual
+);
 
 module.exports = router;

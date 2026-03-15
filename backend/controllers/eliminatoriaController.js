@@ -280,6 +280,37 @@ const eliminatoriaController = {
       });
     }
   },
+
+  resolverReclasificacion: async (req, res) => {
+    try {
+      const evento_id = parseInt(req.params.evento_id, 10);
+      const reclasificacion_id = parseInt(req.params.reclasificacion_id, 10);
+      if (!Number.isFinite(evento_id) || !Number.isFinite(reclasificacion_id)) {
+        return res.status(400).json({ error: "Identificadores inválidos" });
+      }
+      const evento = await validarAccesoEventoGestion(req, res, evento_id);
+      if (!evento) return;
+
+      const ganador_id = Number.parseInt(req.body?.ganador_id, 10);
+      if (!Number.isFinite(ganador_id)) {
+        return res.status(400).json({ error: "Debes seleccionar el ganador de la reclasificación." });
+      }
+
+      const actualizado = await Eliminatoria.resolverReclasificacion(
+        evento_id,
+        reclasificacion_id,
+        ganador_id,
+        req.body?.detalle || null,
+        req.user?.id || null
+      );
+      res.json({ ok: true, ...actualizado });
+    } catch (error) {
+      console.error("Error resolviendo reclasificación:", error);
+      res.status(500).json({
+        error: error.message || "No se pudo resolver la reclasificación",
+      });
+    }
+  },
 };
 
 module.exports = eliminatoriaController;

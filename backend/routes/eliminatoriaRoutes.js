@@ -41,6 +41,12 @@ router.put(
   eliminatoriaController.guardarClasificacionManual
 );
 router.put(
+  "/evento/:evento_id/reclasificaciones/:reclasificacion_id",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  eliminatoriaController.resolverReclasificacion
+);
+router.put(
   "/:id/resultado",
   requireAuth,
   requireRoles("administrador", "organizador"),

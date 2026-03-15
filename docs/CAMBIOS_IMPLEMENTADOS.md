@@ -33,6 +33,48 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-14 - Tablas manuales con auditoria y reclasificacion playoff
+- Tablas de posiciones:
+  - `backend/controllers/tablaController.js` incorpora persistencia de correcciones manuales por evento/grupo en:
+    - `tabla_posiciones_manuales`,
+    - `tabla_posiciones_auditoria`.
+  - solo `administrador` puede guardar o restablecer una tabla manual.
+  - cada correccion exige `comentario` y deja auditoria con snapshot anterior/nuevo y usuario responsable.
+  - la tabla manual ya no conserva un orden fijo ciego: si el administrador corrige `PTS`, `GF`, `GC` u otros datos base, la posicion se recalcula automaticamente segun las reglas de desempate y la posicion manual queda como desempate final.
+  - `backend/routes/tablaRoutes.js` expone:
+    - `PUT /api/tablas/evento/:evento_id/posiciones/manual`
+    - `POST /api/tablas/evento/:evento_id/posiciones/manual/reset`
+  - `frontend/js/tablas.js` agrega modo de edicion inline por grupo para administradores:
+    - editar orden/estadisticas visibles,
+    - guardar con comentario,
+    - restablecer tabla calculada.
+- Eliminatorias / playoff:
+  - `backend/models/Eliminatoria.js` deja de clasificar equipos eliminados y ahora consume la misma tabla ya ajustada que genera `tablaController`, incluyendo correcciones manuales.
+  - se modela el caso `partido_extra_reclasificacion` cuando existe una vacante real de clasificacion:
+    - se crea un registro en `evento_reclasificaciones_playoff`,
+    - se proponen automaticamente los mejores opcionados externos,
+    - el sistema reserva esos equipos para no duplicarlos en otros cupos,
+    - no permite generar la llave final mientras exista una reclasificacion pendiente.
+  - `frontend/js/eliminatorias.js` muestra esas reclasificaciones por grupo y permite registrar el ganador para cerrar el cupo.
+  - `backend/controllers/eliminatoriaController.js` y `backend/routes/eliminatoriaRoutes.js` agregan el endpoint de resolucion:
+    - `PUT /api/eliminatorias/evento/:evento_id/reclasificaciones/:reclasificacion_id`
+- Base de datos:
+  - nuevas migraciones:
+    - `database/migrations/040_tablas_posiciones_manual_y_auditoria.sql`
+    - `database/migrations/041_reclasificacion_playoff_vacantes.sql`
+  - aplicadas y verificadas en:
+    - local,
+    - Render.
+- Verificacion:
+  - `node --check backend/controllers/tablaController.js`
+  - `node --check backend/models/Eliminatoria.js`
+  - `node --check backend/controllers/eliminatoriaController.js`
+  - `node --check frontend/js/tablas.js`
+  - `node --check frontend/js/eliminatorias.js`
+  - `npm --prefix backend run smoke` => `PASS 9/9`
+
+---
+
 ## 2026-03-14 - E2E y dataset publico auto-descubierto
 - QA operativa:
   - `backend/scripts/e2eOperationalFlowCheck.js` deja de depender del "primer campeonato" visible para administrador.

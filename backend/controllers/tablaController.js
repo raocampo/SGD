@@ -20,6 +20,7 @@ const schemaCache = {
   tablas: new Map(),
   columnas: new Map(),
 };
+let tablasManualesSchemaAsegurado = false;
 
 function aEntero(valor, fallback = 0) {
   const n = Number.parseInt(valor, 10);
@@ -151,6 +152,298 @@ async function obtenerEquiposEvento(eventoId) {
   `;
   const r = await pool.query(q, [eventoId]);
   return r.rows;
+}
+
+function claveTablaManual(grupoId = null) {
+  const grupo = aEntero(grupoId, 0);
+  return grupo > 0 ? `grupo:${grupo}` : "grupo:0";
+}
+
+async function asegurarEsquemaTablasManuales(db = pool) {
+  if (tablasManualesSchemaAsegurado && db === pool) return;
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS tabla_posiciones_manuales (
+      id SERIAL PRIMARY KEY,
+      evento_id INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+      grupo_id INTEGER REFERENCES grupos(id) ON DELETE CASCADE,
+      payload JSONB NOT NULL DEFAULT '[]'::jsonb,
+      updated_by_usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_tabla_posiciones_manuales_scope
+    ON tabla_posiciones_manuales(evento_id, COALESCE(grupo_id, 0))
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS tabla_posiciones_auditoria (
+      id SERIAL PRIMARY KEY,
+      evento_id INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+      grupo_id INTEGER REFERENCES grupos(id) ON DELETE CASCADE,
+      comentario TEXT NOT NULL,
+      usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+      snapshot_anterior JSONB,
+      snapshot_nuevo JSONB,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_tabla_posiciones_auditoria_evento
+    ON tabla_posiciones_auditoria(evento_id, created_at DESC)
+  `);
+
+  if (db === pool) tablasManualesSchemaAsegurado = true;
+}
+
+function serializarTablaManual(tabla = []) {
+  return (Array.isArray(tabla) ? tabla : []).map((row, idx) => {
+    const equipoId = aEntero(row?.equipo?.id ?? row?.equipo_id, 0);
+    const est = row?.estadisticas || {};
+    const golesFavor = aEntero(est.goles_favor ?? row?.goles_favor, 0);
+    const golesContra = aEntero(est.goles_contra ?? row?.goles_contra, 0);
+    return {
+      equipo_id: equipoId,
+      posicion_deportiva: aEntero(
+        row?.posicion_deportiva ?? row?.posicion_competitiva ?? row?.posicion ?? idx + 1,
+        idx + 1
+      ),
+      partidos_jugados: aEntero(est.partidos_jugados, 0),
+      partidos_ganados: aEntero(est.partidos_ganados, 0),
+      partidos_empatados: aEntero(est.partidos_empatados, 0),
+      partidos_perdidos: aEntero(est.partidos_perdidos, 0),
+      goles_favor: golesFavor,
+      goles_contra: golesContra,
+      puntos: aEntero(row?.puntos, 0),
+    };
+  });
+}
+
+function construirFilaTablaDesdePayload(baseRow = {}, payloadRow = {}, fallbackPos = 1) {
+  const baseStats = baseRow?.estadisticas || {};
+  const golesFavor = aEntero(payloadRow?.goles_favor, aEntero(baseStats.goles_favor, 0));
+  const golesContra = aEntero(payloadRow?.goles_contra, aEntero(baseStats.goles_contra, 0));
+  const posicionDeportiva = aEntero(payloadRow?.posicion_deportiva, fallbackPos);
+  const merged = {
+    ...baseRow,
+    posicion_deportiva: posicionDeportiva,
+    equipo: { ...(baseRow?.equipo || {}) },
+    estadisticas: {
+      ...baseStats,
+      partidos_jugados: aEntero(payloadRow?.partidos_jugados, aEntero(baseStats.partidos_jugados, 0)),
+      partidos_ganados: aEntero(payloadRow?.partidos_ganados, aEntero(baseStats.partidos_ganados, 0)),
+      partidos_empatados: aEntero(payloadRow?.partidos_empatados, aEntero(baseStats.partidos_empatados, 0)),
+      partidos_perdidos: aEntero(payloadRow?.partidos_perdidos, aEntero(baseStats.partidos_perdidos, 0)),
+      goles_favor: golesFavor,
+      goles_contra: golesContra,
+      diferencia_goles: golesFavor - golesContra,
+    },
+    puntos: aEntero(payloadRow?.puntos, aEntero(baseRow?.puntos, 0)),
+    diferencia_goles: golesFavor - golesContra,
+  };
+  return merged;
+}
+
+function compararFilasPorReglas(a = {}, b = {}, reglas = REGLAS_DEFAULT, opciones = {}) {
+  const reglasAplicadas = Array.isArray(reglas) && reglas.length ? reglas : [...REGLAS_DEFAULT];
+  for (const r of reglasAplicadas) {
+    if (r === "puntos" && b.puntos !== a.puntos) return b.puntos - a.puntos;
+    if (r === "diferencia_goles" && b.diferencia_goles !== a.diferencia_goles) {
+      return b.diferencia_goles - a.diferencia_goles;
+    }
+    if (r === "goles_favor" && (b.estadisticas?.goles_favor || 0) !== (a.estadisticas?.goles_favor || 0)) {
+      return (b.estadisticas?.goles_favor || 0) - (a.estadisticas?.goles_favor || 0);
+    }
+    if (r === "goles_contra" && (a.estadisticas?.goles_contra || 0) !== (b.estadisticas?.goles_contra || 0)) {
+      return (a.estadisticas?.goles_contra || 0) - (b.estadisticas?.goles_contra || 0);
+    }
+    if (r === "menos_perdidos" && (a.estadisticas?.partidos_perdidos || 0) !== (b.estadisticas?.partidos_perdidos || 0)) {
+      return (a.estadisticas?.partidos_perdidos || 0) - (b.estadisticas?.partidos_perdidos || 0);
+    }
+  }
+
+  if (opciones.usarPosicionDeportivaComoDesempate) {
+    const posA = aEntero(a?.posicion_deportiva, 9999);
+    const posB = aEntero(b?.posicion_deportiva, 9999);
+    if (posA !== posB) return posA - posB;
+  }
+
+  return String(a?.equipo?.nombre || "").localeCompare(String(b?.equipo?.nombre || ""));
+}
+
+function aplicarTablaManual(
+  tablaBase = [],
+  manualRow = null,
+  clasificadosPorGrupo = null,
+  reglas = REGLAS_DEFAULT
+) {
+  if (!manualRow || !Array.isArray(manualRow?.payload) || !manualRow.payload.length) {
+    return {
+      tabla: tablaBase,
+      manual_activa: false,
+      manual_meta: null,
+    };
+  }
+
+  const baseMap = new Map(
+    (Array.isArray(tablaBase) ? tablaBase : []).map((row) => [aEntero(row?.equipo?.id, 0), row])
+  );
+  const usadas = new Set();
+  const tabla = [];
+
+  for (const payloadRow of manualRow.payload) {
+    const equipoId = aEntero(payloadRow?.equipo_id, 0);
+    if (!equipoId || usadas.has(equipoId) || !baseMap.has(equipoId)) continue;
+    usadas.add(equipoId);
+    tabla.push(construirFilaTablaDesdePayload(baseMap.get(equipoId), payloadRow, tabla.length + 1));
+  }
+
+  for (const row of tablaBase) {
+    const equipoId = aEntero(row?.equipo?.id, 0);
+    if (!equipoId || usadas.has(equipoId)) continue;
+    usadas.add(equipoId);
+    tabla.push(
+      construirFilaTablaDesdePayload(
+        row,
+        {
+          equipo_id: equipoId,
+          posicion_deportiva: tabla.length + 1,
+        },
+        tabla.length + 1
+      )
+    );
+  }
+
+  tabla.sort((a, b) =>
+    compararFilasPorReglas(a, b, reglas, {
+      usarPosicionDeportivaComoDesempate: true,
+    })
+  );
+
+  tabla.forEach((row, idx) => {
+    row.posicion_deportiva = idx + 1;
+  });
+  aplicarEstadoClasificacionTabla(tabla, clasificadosPorGrupo);
+
+  return {
+    tabla,
+    manual_activa: true,
+    manual_meta: {
+      updated_at: manualRow.updated_at || null,
+      updated_by_usuario_id: aEntero(manualRow.updated_by_usuario_id, 0) || null,
+    },
+  };
+}
+
+async function obtenerMapTablasManualesEvento(eventoId, db = pool) {
+  await asegurarEsquemaTablasManuales(db);
+  const r = await db.query(
+    `
+      SELECT id, evento_id, grupo_id, payload, updated_by_usuario_id, updated_at
+      FROM tabla_posiciones_manuales
+      WHERE evento_id = $1
+    `,
+    [eventoId]
+  );
+  const map = new Map();
+  for (const row of r.rows) {
+    map.set(claveTablaManual(row.grupo_id), {
+      ...row,
+      payload: Array.isArray(row.payload) ? row.payload : [],
+    });
+  }
+  return map;
+}
+
+async function obtenerTablaManualScope(eventoId, grupoId = null, db = pool) {
+  await asegurarEsquemaTablasManuales(db);
+  const r = await db.query(
+    `
+      SELECT id, evento_id, grupo_id, payload, updated_by_usuario_id, updated_at
+      FROM tabla_posiciones_manuales
+      WHERE evento_id = $1
+        AND (
+          ($2::int IS NULL AND grupo_id IS NULL)
+          OR grupo_id = $2
+        )
+      LIMIT 1
+    `,
+    [eventoId, Number.isFinite(Number(grupoId)) ? Number(grupoId) : null]
+  );
+  const row = r.rows[0] || null;
+  if (!row) return null;
+  return {
+    ...row,
+    payload: Array.isArray(row.payload) ? row.payload : [],
+  };
+}
+
+function normalizarPayloadTablaManual(filas = [], tablaBase = [], reglas = REGLAS_DEFAULT) {
+  const baseMap = new Map(
+    (Array.isArray(tablaBase) ? tablaBase : []).map((row, idx) => {
+      const equipoId = aEntero(row?.equipo?.id, 0);
+      return [equipoId, { row, idx }];
+    })
+  );
+  const usadas = new Set();
+  const normalizadas = [];
+
+  for (const item of Array.isArray(filas) ? filas : []) {
+    const equipoId = aEntero(item?.equipo_id, 0);
+    if (!equipoId || usadas.has(equipoId) || !baseMap.has(equipoId)) continue;
+    usadas.add(equipoId);
+    const { row, idx } = baseMap.get(equipoId);
+    const basePayload = serializarTablaManual([row])[0] || {};
+    normalizadas.push({
+      ...basePayload,
+      equipo_id: equipoId,
+      posicion_deportiva: aEntero(item?.posicion_deportiva ?? item?.posicion, idx + 1),
+      partidos_jugados: aEntero(item?.partidos_jugados, basePayload.partidos_jugados),
+      partidos_ganados: aEntero(item?.partidos_ganados, basePayload.partidos_ganados),
+      partidos_empatados: aEntero(item?.partidos_empatados, basePayload.partidos_empatados),
+      partidos_perdidos: aEntero(item?.partidos_perdidos, basePayload.partidos_perdidos),
+      goles_favor: aEntero(item?.goles_favor, basePayload.goles_favor),
+      goles_contra: aEntero(item?.goles_contra, basePayload.goles_contra),
+      puntos: aEntero(item?.puntos, basePayload.puntos),
+    });
+  }
+
+  for (const row of tablaBase) {
+    const equipoId = aEntero(row?.equipo?.id, 0);
+    if (!equipoId || usadas.has(equipoId)) continue;
+    usadas.add(equipoId);
+    normalizadas.push(serializarTablaManual([row])[0]);
+  }
+
+  const comparables = normalizadas.map((row, idx) =>
+    construirFilaTablaDesdePayload(
+      baseMap.get(aEntero(row?.equipo_id, 0))?.row || {},
+      row,
+      idx + 1
+    )
+  );
+
+  comparables.sort((a, b) =>
+    compararFilasPorReglas(a, b, reglas, {
+      usarPosicionDeportivaComoDesempate: true,
+    })
+  );
+
+  return comparables.map((row, idx) => ({
+    equipo_id: aEntero(row?.equipo?.id, 0),
+    posicion_deportiva: idx + 1,
+    partidos_jugados: aEntero(row?.estadisticas?.partidos_jugados, 0),
+    partidos_ganados: aEntero(row?.estadisticas?.partidos_ganados, 0),
+    partidos_empatados: aEntero(row?.estadisticas?.partidos_empatados, 0),
+    partidos_perdidos: aEntero(row?.estadisticas?.partidos_perdidos, 0),
+    goles_favor: aEntero(row?.estadisticas?.goles_favor, 0),
+    goles_contra: aEntero(row?.estadisticas?.goles_contra, 0),
+    puntos: aEntero(row?.puntos, 0),
+  }));
 }
 
 function aplicarEstadoClasificacionTabla(tabla, clasificadosPorGrupo = null) {
@@ -314,31 +607,14 @@ async function calcularResumenEvento(equipoId, eventoId, sistema) {
 }
 
 function ordenarTablaPorReglas(tabla, reglas) {
-  tabla.sort((a, b) => {
-    for (const r of reglas) {
-      if (r === "puntos" && b.puntos !== a.puntos) return b.puntos - a.puntos;
-      if (r === "diferencia_goles" && b.diferencia_goles !== a.diferencia_goles) {
-        return b.diferencia_goles - a.diferencia_goles;
-      }
-      if (r === "goles_favor" && (b.estadisticas.goles_favor || 0) !== (a.estadisticas.goles_favor || 0)) {
-        return (b.estadisticas.goles_favor || 0) - (a.estadisticas.goles_favor || 0);
-      }
-      if (r === "goles_contra" && (a.estadisticas.goles_contra || 0) !== (b.estadisticas.goles_contra || 0)) {
-        return (a.estadisticas.goles_contra || 0) - (b.estadisticas.goles_contra || 0);
-      }
-      if (r === "menos_perdidos" && (a.estadisticas.partidos_perdidos || 0) !== (b.estadisticas.partidos_perdidos || 0)) {
-        return (a.estadisticas.partidos_perdidos || 0) - (b.estadisticas.partidos_perdidos || 0);
-      }
-    }
-    return String(a.equipo?.nombre || "").localeCompare(String(b.equipo?.nombre || ""));
-  });
+  tabla.sort((a, b) => compararFilasPorReglas(a, b, reglas));
 
   tabla.forEach((item, idx) => {
     item.posicion = idx + 1;
   });
 }
 
-async function generarTablaGrupoInterna(grupoId) {
+async function generarTablaGrupoInterna(grupoId, options = {}) {
   const qGrupo = `
     SELECT g.id, g.nombre_grupo, g.letra_grupo, g.evento_id,
            e.nombre AS evento_nombre,
@@ -420,6 +696,15 @@ async function generarTablaGrupoInterna(grupoId) {
 
   ordenarTablaPorReglas(tabla, reglas);
   aplicarEstadoClasificacionTabla(tabla, grupo.clasificados_por_grupo);
+  const manualMap = options.ignoreManual
+    ? new Map()
+    : options.tablasManualesMap || (await obtenerMapTablasManualesEvento(grupo.evento_id));
+  const manualAplicada = aplicarTablaManual(
+    tabla,
+    manualMap.get(claveTablaManual(grupo.id)) || null,
+    grupo.clasificados_por_grupo,
+    reglas
+  );
 
   return {
     grupo: {
@@ -431,15 +716,17 @@ async function generarTablaGrupoInterna(grupoId) {
       clasificados_por_grupo: aEntero(grupo.clasificados_por_grupo, 0) || null,
       campeonato_id: grupo.campeonato_id,
       campeonato_nombre: grupo.campeonato_nombre,
+      edicion_manual_activa: manualAplicada.manual_activa === true,
+      edicion_manual_meta: manualAplicada.manual_meta,
     },
     sistema_puntuacion: sistema,
     tipo_futbol: grupo.tipo_futbol || null,
     reglas_desempate: reglas,
-    tabla,
+    tabla: manualAplicada.tabla,
   };
 }
 
-async function generarTablaEventoSinGrupos(evento) {
+async function generarTablaEventoSinGrupos(evento, options = {}) {
   const equipos = await obtenerEquiposEvento(evento.id);
   const sistema = evento.sistema_puntuacion || "tradicional";
   const reglas = parsearReglas(evento.reglas_desempate);
@@ -493,6 +780,15 @@ async function generarTablaEventoSinGrupos(evento) {
 
   ordenarTablaPorReglas(tabla, reglas);
   aplicarEstadoClasificacionTabla(tabla, evento.clasificados_por_grupo);
+  const manualMap = options.ignoreManual
+    ? new Map()
+    : options.tablasManualesMap || (await obtenerMapTablasManualesEvento(evento.id));
+  const manualAplicada = aplicarTablaManual(
+    tabla,
+    manualMap.get(claveTablaManual(null)) || null,
+    evento.clasificados_por_grupo,
+    reglas
+  );
 
   return {
     grupo: {
@@ -504,26 +800,31 @@ async function generarTablaEventoSinGrupos(evento) {
       clasificados_por_grupo: aEntero(evento.clasificados_por_grupo, 0) || null,
       campeonato_id: evento.campeonato_id,
       campeonato_nombre: evento.campeonato_nombre,
+      edicion_manual_activa: manualAplicada.manual_activa === true,
+      edicion_manual_meta: manualAplicada.manual_meta,
     },
     sistema_puntuacion: sistema,
     tipo_futbol: evento.tipo_futbol || null,
     reglas_desempate: reglas,
-    tabla,
+    tabla: manualAplicada.tabla,
   };
 }
 
-async function generarTablasEventoInterna(eventoId) {
+async function generarTablasEventoInterna(eventoId, options = {}) {
   const evento = await obtenerEventoConCampeonato(eventoId);
   if (!evento) throw new Error("Evento no encontrado");
 
   const grupos = await obtenerGruposPorEvento(eventoId);
   const tablas = [];
+  const tablasManualesMap = options.ignoreManual
+    ? new Map()
+    : await obtenerMapTablasManualesEvento(eventoId);
 
   if (!grupos.length) {
-    tablas.push(await generarTablaEventoSinGrupos(evento));
+    tablas.push(await generarTablaEventoSinGrupos(evento, { ...options, tablasManualesMap }));
   } else {
     for (const g of grupos) {
-      tablas.push(await generarTablaGrupoInterna(g.id));
+      tablas.push(await generarTablaGrupoInterna(g.id, { ...options, tablasManualesMap }));
     }
   }
 
@@ -1016,6 +1317,197 @@ async function obtenerFairPlayEventoInterno(eventoId, query = {}) {
 }
 
 const tablaController = {
+  async guardarTablaManual(req, res) {
+    const client = await pool.connect();
+    try {
+      const eventoId = aEntero(req.params.evento_id, NaN);
+      if (!Number.isFinite(eventoId)) {
+        return res.status(400).json({ error: "evento_id invalido" });
+      }
+      const comentario = String(req.body?.comentario || "").trim();
+      if (comentario.length < 5) {
+        return res.status(400).json({
+          error: "Debes registrar un comentario de auditoría (mínimo 5 caracteres).",
+        });
+      }
+
+      const tablasBase = await generarTablasEventoInterna(eventoId, { ignoreManual: true });
+      const grupoId = Number.isFinite(Number(req.body?.grupo_id)) ? Number(req.body.grupo_id) : null;
+      const objetivo =
+        grupoId !== null
+          ? tablasBase.grupos.find((item) => Number(item?.grupo?.id) === Number(grupoId))
+          : tablasBase.grupos.length === 1
+            ? tablasBase.grupos[0]
+            : null;
+
+      if (!objetivo) {
+        return res.status(404).json({
+          error: "No se encontró la tabla objetivo para guardar la edición manual.",
+        });
+      }
+
+      const filas = Array.isArray(req.body?.filas) ? req.body.filas : [];
+      if (!filas.length) {
+        return res.status(400).json({ error: "No se recibieron filas para guardar la tabla." });
+      }
+
+      const payloadNormalizado = normalizarPayloadTablaManual(
+        filas,
+        objetivo.tabla || [],
+        Array.isArray(objetivo?.reglas_desempate) ? objetivo.reglas_desempate : REGLAS_DEFAULT
+      );
+      const snapshotBase = serializarTablaManual(objetivo.tabla || []);
+
+      await client.query("BEGIN");
+      await asegurarEsquemaTablasManuales(client);
+
+      const anterior = await obtenerTablaManualScope(eventoId, grupoId, client);
+      const snapshotAnterior =
+        Array.isArray(anterior?.payload) && anterior.payload.length ? anterior.payload : snapshotBase;
+
+      await client.query(
+        `
+          DELETE FROM tabla_posiciones_manuales
+          WHERE evento_id = $1
+            AND (($2::int IS NULL AND grupo_id IS NULL) OR grupo_id = $2)
+        `,
+        [eventoId, grupoId]
+      );
+
+      await client.query(
+        `
+          INSERT INTO tabla_posiciones_manuales (
+            evento_id,
+            grupo_id,
+            payload,
+            updated_by_usuario_id,
+            updated_at
+          )
+          VALUES ($1, $2, $3::jsonb, $4, CURRENT_TIMESTAMP)
+        `,
+        [
+          eventoId,
+          grupoId,
+          JSON.stringify(payloadNormalizado),
+          aEntero(req.user?.id, 0) || null,
+        ]
+      );
+
+      await client.query(
+        `
+          INSERT INTO tabla_posiciones_auditoria (
+            evento_id,
+            grupo_id,
+            comentario,
+            usuario_id,
+            snapshot_anterior,
+            snapshot_nuevo
+          )
+          VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)
+        `,
+        [
+          eventoId,
+          grupoId,
+          comentario,
+          aEntero(req.user?.id, 0) || null,
+          JSON.stringify(snapshotAnterior),
+          JSON.stringify(payloadNormalizado),
+        ]
+      );
+
+      await client.query("COMMIT");
+      const data = await generarTablasEventoInterna(eventoId);
+      return res.json({
+        ok: true,
+        mensaje: "Tabla manual guardada con auditoría.",
+        ...data,
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Error guardando tabla manual:", error);
+      return res.status(500).json({
+        error: "No se pudo guardar la edición manual de la tabla.",
+        detalle: error.message,
+      });
+    } finally {
+      client.release();
+    }
+  },
+
+  async resetearTablaManual(req, res) {
+    const client = await pool.connect();
+    try {
+      const eventoId = aEntero(req.params.evento_id, NaN);
+      if (!Number.isFinite(eventoId)) {
+        return res.status(400).json({ error: "evento_id invalido" });
+      }
+      const comentario = String(req.body?.comentario || "").trim();
+      if (comentario.length < 5) {
+        return res.status(400).json({
+          error: "Debes registrar un comentario de auditoría (mínimo 5 caracteres).",
+        });
+      }
+      const grupoId = Number.isFinite(Number(req.body?.grupo_id)) ? Number(req.body.grupo_id) : null;
+
+      await client.query("BEGIN");
+      await asegurarEsquemaTablasManuales(client);
+
+      const anterior = await obtenerTablaManualScope(eventoId, grupoId, client);
+      if (!anterior) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "No existe edición manual para restablecer." });
+      }
+
+      await client.query(
+        `
+          DELETE FROM tabla_posiciones_manuales
+          WHERE evento_id = $1
+            AND (($2::int IS NULL AND grupo_id IS NULL) OR grupo_id = $2)
+        `,
+        [eventoId, grupoId]
+      );
+
+      await client.query(
+        `
+          INSERT INTO tabla_posiciones_auditoria (
+            evento_id,
+            grupo_id,
+            comentario,
+            usuario_id,
+            snapshot_anterior,
+            snapshot_nuevo
+          )
+          VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)
+        `,
+        [
+          eventoId,
+          grupoId,
+          comentario,
+          aEntero(req.user?.id, 0) || null,
+          JSON.stringify(anterior.payload || []),
+          JSON.stringify([]),
+        ]
+      );
+
+      await client.query("COMMIT");
+      const data = await generarTablasEventoInterna(eventoId);
+      return res.json({
+        ok: true,
+        mensaje: "Edición manual restablecida.",
+        ...data,
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Error restableciendo tabla manual:", error);
+      return res.status(500).json({
+        error: "No se pudo restablecer la edición manual de la tabla.",
+        detalle: error.message,
+      });
+    } finally {
+      client.release();
+    }
+  },
+
   async generarTablaGrupo(req, res) {
     try {
       const grupoId = aEntero(req.params.grupo_id, NaN);

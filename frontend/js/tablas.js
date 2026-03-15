@@ -3,6 +3,8 @@ let tablasEventosCache = [];
 let tablasCampeonatosCache = [];
 let tablasCampeonatoSeleccionado = null;
 let tablasConfigPlayoff = null;
+let tablasUltimoPayloadPosiciones = null;
+let tablasGrupoEditando = null;
 
 const TABLAS_TAB_IDS = ["tab-posiciones", "tab-goleadores", "tab-tarjetas", "tab-fair-play"];
 const TABLAS_STORAGE_CAMPEONATO = "sgd_tablas_camp";
@@ -136,6 +138,7 @@ function inicializarAcciones() {
   const selectMetodo = document.getElementById("tablas-metodo-competencia");
   const selectOrigen = document.getElementById("tablas-origen-playoff");
   const selectMetodoPlayoff = document.getElementById("tablas-metodo-playoff");
+  const contPosiciones = document.getElementById("tablas-posiciones");
 
   if (btnBuscar) btnBuscar.addEventListener("click", buscarTablasEvento);
   if (btnRecargar) {
@@ -196,10 +199,43 @@ function inicializarAcciones() {
   if (btnReiniciarFormato) {
     btnReiniciarFormato.addEventListener("click", reiniciarFormatoClasificacion);
   }
+  if (contPosiciones) {
+    contPosiciones.addEventListener("click", manejarAccionesTablaManual);
+    contPosiciones.addEventListener("input", (event) => {
+      const input = event.target.closest(".tabla-manual-input");
+      if (!input) return;
+      const grupoKey = String(input.getAttribute("data-manual-key") || "").trim();
+      if (!grupoKey) return;
+      reordenarTablaManualGrupo(grupoKey);
+    });
+  }
 }
 
 function puedeEditarFormato() {
   return window.Auth?.isAdminLike?.() === true;
+}
+
+function esAdministradorTablas() {
+  return window.Auth?.isAdministrador?.() === true;
+}
+
+function numeroManual(value, fallback = 0) {
+  const parsed = Number.parseInt(String(value ?? "").trim(), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function obtenerReglasGrupoManual(grupo = {}) {
+  const reglasGrupo = Array.isArray(grupo?.reglas_desempate) ? grupo.reglas_desempate : [];
+  if (reglasGrupo.length) return reglasGrupo;
+  const reglasEvento = Array.isArray(tablasUltimoPayloadPosiciones?.evento?.reglas_desempate)
+    ? tablasUltimoPayloadPosiciones.evento.reglas_desempate
+    : [];
+  return reglasEvento.length ? reglasEvento : ["puntos", "diferencia_goles", "goles_favor"];
+}
+
+function claveGrupoTablaManual(grupo = {}) {
+  const grupoId = parsePositiveInt(grupo?.id);
+  return grupoId ? `grupo:${grupoId}` : "grupo:0";
 }
 
 function obtenerCrucesConfiguradosDesdeContenedor(cont) {
@@ -592,6 +628,7 @@ async function buscarTablasEvento() {
     return;
   }
 
+  tablasGrupoEditando = null;
   setCargandoPaneles();
 
   try {
@@ -642,6 +679,8 @@ function setCargandoPaneles() {
 }
 
 function limpiarPaneles(mensaje = "Selecciona una categoría y presiona Buscar para ver tablas.") {
+  tablasUltimoPayloadPosiciones = null;
+  tablasGrupoEditando = null;
   const html = `
     <div class="empty-state">
       <i class="fas fa-table"></i>
@@ -660,9 +699,337 @@ function limpiarPaneles(mensaje = "Selecciona una categoría y presiona Buscar p
   if (fairPlay) fairPlay.innerHTML = html;
 }
 
+function construirResumenGrupoEditable(grupo = {}, idx = 0) {
+  const grupoMeta = grupo?.grupo || {};
+  const grupoId = parsePositiveInt(grupoMeta?.id);
+  return {
+    key: claveGrupoTablaManual(grupoMeta),
+    grupo_id: grupoId,
+    titulo:
+      grupoMeta?.letra_grupo && grupoMeta.letra_grupo !== "-"
+        ? `Grupo ${grupoMeta.letra_grupo}`
+        : grupoMeta?.nombre_grupo || "Tabla general",
+    clasificados_por_grupo: parsePositiveInt(
+      grupoMeta?.clasificados_por_grupo ?? tablasUltimoPayloadPosiciones?.evento?.clasificados_por_grupo
+    ),
+    index: idx,
+  };
+}
+
+function renderAccionesGrupoTabla(grupo = {}) {
+  if (!esAdministradorTablas()) return "";
+  const info = construirResumenGrupoEditable(grupo);
+  const metaManual = grupo?.grupo?.edicion_manual_meta || {};
+  const fechaManual = metaManual?.updated_at
+    ? new Date(metaManual.updated_at).toLocaleString("es-EC")
+    : "";
+  return `
+    <div class="tablas-admin-actions">
+      <div class="tablas-admin-copy">
+        ${
+          grupo?.grupo?.edicion_manual_activa
+            ? `<span class="tabla-posicion-chip is-neutral">Edición manual activa${fechaManual ? ` · ${escaparHtml(fechaManual)}` : ""}</span>`
+            : `<span class="tabla-posicion-chip is-neutral">Tabla automática</span>`
+        }
+      </div>
+      <div class="tablas-admin-btns">
+        <button class="btn btn-secondary btn-sm" type="button" data-tabla-action="editar" data-tabla-grupo="${escaparHtml(info.key)}">
+          <i class="fas fa-pen"></i> Editar tabla
+        </button>
+        ${
+          grupo?.grupo?.edicion_manual_activa
+            ? `<button class="btn btn-warning btn-sm" type="button" data-tabla-action="reset" data-tabla-grupo="${escaparHtml(info.key)}">
+                <i class="fas fa-rotate-left"></i> Restablecer
+              </button>`
+            : ""
+        }
+      </div>
+    </div>
+  `;
+}
+
+function renderTablaPosicionesEditable(grupo = {}) {
+  const info = construirResumenGrupoEditable(grupo);
+  const tabla = Array.isArray(grupo?.tabla) ? grupo.tabla : [];
+  const rows = tabla
+    .map((row, idx) => {
+      const est = row?.estadisticas || {};
+      const equipoId = Number(row?.equipo?.id || 0);
+      const eliminado = row?.eliminado_competencia === true || row?.eliminado_manual === true;
+      return `
+        <tr class="${eliminado ? "tabla-posicion-eliminado" : ""}">
+          <td>
+            <input type="number" min="1" step="1" class="tabla-manual-input"
+              data-manual-key="${escaparHtml(info.key)}"
+              data-manual-equipo="${equipoId}"
+              data-manual-field="posicion_deportiva"
+              title="La posición se usa como desempate manual cuando los equipos quedan igualados."
+              value="${Number(row?.posicion_deportiva || row?.posicion || idx + 1)}" />
+          </td>
+          <td>
+            <div class="tabla-posicion-equipo">
+              <span>${escaparHtml(row?.equipo?.nombre || "-")}</span>
+              ${renderEstadoPosicion(row)}
+            </div>
+          </td>
+          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_jugados" value="${Number(est.partidos_jugados || 0)}" /></td>
+          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_ganados" value="${Number(est.partidos_ganados || 0)}" /></td>
+          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_empatados" value="${Number(est.partidos_empatados || 0)}" /></td>
+          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_perdidos" value="${Number(est.partidos_perdidos || 0)}" /></td>
+          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="goles_favor" value="${Number(est.goles_favor || 0)}" /></td>
+          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="goles_contra" value="${Number(est.goles_contra || 0)}" /></td>
+          <td><strong data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-dg="1">${Number(est.diferencia_goles || row?.diferencia_goles || 0)}</strong></td>
+          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="puntos" value="${Number(row?.puntos || 0)}" /></td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="tablas-manual-wrap">
+      <p class="tablas-clasificacion-help">
+        Solo administrador puede corregir esta tabla. La posición se recalcula automáticamente según puntos y estadísticas; si dos equipos quedan idénticos, la posición manual sirve como desempate. Los equipos eliminados seguirán fuera de clasificación.
+      </p>
+      <div class="tabla-scroll">
+        <table class="tabla-estadistica tabla-estadistica-posiciones">
+          <thead>
+            <tr>
+              <th>Pos.</th>
+              <th>Equipo</th>
+              <th>PJ</th>
+              <th>PG</th>
+              <th>PE</th>
+              <th>PP</th>
+              <th>GF</th>
+              <th>GC</th>
+              <th>DG</th>
+              <th>PTS</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="form-group" style="margin-top:1rem;">
+        <label for="tablas-manual-comment-${escaparHtml(info.key)}">Comentario de auditoría</label>
+        <textarea id="tablas-manual-comment-${escaparHtml(info.key)}" rows="3" placeholder="Explica la corrección aplicada por el administrador."></textarea>
+      </div>
+      <div class="tablas-admin-btns">
+        <button class="btn btn-success btn-sm" type="button" data-tabla-action="save" data-tabla-grupo="${escaparHtml(info.key)}">
+          <i class="fas fa-save"></i> Guardar corrección
+        </button>
+        <button class="btn btn-secondary btn-sm" type="button" data-tabla-action="cancel" data-tabla-grupo="${escaparHtml(info.key)}">
+          <i class="fas fa-xmark"></i> Cancelar
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+async function manejarAccionesTablaManual(event) {
+  const btn = event.target.closest("[data-tabla-action]");
+  if (!btn) return;
+  const accion = String(btn.getAttribute("data-tabla-action") || "").trim();
+  const grupoKey = String(btn.getAttribute("data-tabla-grupo") || "").trim();
+  if (!accion || !grupoKey || !esAdministradorTablas()) return;
+
+  if (accion === "editar") {
+    tablasGrupoEditando = grupoKey;
+    renderPosiciones(tablasUltimoPayloadPosiciones || {});
+    return;
+  }
+  if (accion === "cancel") {
+    tablasGrupoEditando = null;
+    renderPosiciones(tablasUltimoPayloadPosiciones || {});
+    return;
+  }
+  if (accion === "save") {
+    await guardarTablaManualGrupo(grupoKey);
+    return;
+  }
+  if (accion === "reset") {
+    await restablecerTablaManualGrupo(grupoKey);
+  }
+}
+
+function recolectarFilasTablaManual(grupoKey) {
+  const inputs = Array.from(document.querySelectorAll(`.tabla-manual-input[data-manual-key="${grupoKey}"]`));
+  const filasMap = new Map();
+  inputs.forEach((input) => {
+    const equipoId = parsePositiveInt(input.getAttribute("data-manual-equipo"));
+    const field = String(input.getAttribute("data-manual-field") || "").trim();
+    if (!equipoId || !field) return;
+    if (!filasMap.has(equipoId)) filasMap.set(equipoId, { equipo_id: equipoId });
+    filasMap.get(equipoId)[field] = Number.parseInt(input.value || "0", 10) || 0;
+  });
+  return Array.from(filasMap.values());
+}
+
+function compararFilasTablaManual(a = {}, b = {}, reglas = []) {
+  const reglasAplicadas = Array.isArray(reglas) && reglas.length
+    ? reglas
+    : ["puntos", "diferencia_goles", "goles_favor"];
+  for (const regla of reglasAplicadas) {
+    if (regla === "puntos" && Number(b.puntos || 0) !== Number(a.puntos || 0)) {
+      return Number(b.puntos || 0) - Number(a.puntos || 0);
+    }
+    if (
+      regla === "diferencia_goles" &&
+      Number(b.diferencia_goles || 0) !== Number(a.diferencia_goles || 0)
+    ) {
+      return Number(b.diferencia_goles || 0) - Number(a.diferencia_goles || 0);
+    }
+    if (regla === "goles_favor" && Number(b.goles_favor || 0) !== Number(a.goles_favor || 0)) {
+      return Number(b.goles_favor || 0) - Number(a.goles_favor || 0);
+    }
+    if (regla === "goles_contra" && Number(a.goles_contra || 0) !== Number(b.goles_contra || 0)) {
+      return Number(a.goles_contra || 0) - Number(b.goles_contra || 0);
+    }
+    if (
+      regla === "menos_perdidos" &&
+      Number(a.partidos_perdidos || 0) !== Number(b.partidos_perdidos || 0)
+    ) {
+      return Number(a.partidos_perdidos || 0) - Number(b.partidos_perdidos || 0);
+    }
+  }
+
+  if (Number(a.posicion_deportiva || 0) !== Number(b.posicion_deportiva || 0)) {
+    return Number(a.posicion_deportiva || 9999) - Number(b.posicion_deportiva || 9999);
+  }
+
+  return String(a.nombre || "").localeCompare(String(b.nombre || ""));
+}
+
+function reordenarTablaManualGrupo(grupoKey) {
+  const data = tablasUltimoPayloadPosiciones || {};
+  const grupos = Array.isArray(data?.grupos) ? data.grupos : [];
+  const grupo = grupos.find((item) => claveGrupoTablaManual(item?.grupo || {}) === grupoKey);
+  const tbody = document.querySelector(`.tabla-manual-input[data-manual-key="${grupoKey}"]`)?.closest("tbody");
+  if (!grupo || !tbody) return;
+
+  const filas = Array.from(tbody.querySelectorAll("tr"));
+  const resumen = filas.map((tr, idx) => {
+    const equipoId = parsePositiveInt(
+      tr.querySelector('[data-manual-field="puntos"]')?.getAttribute("data-manual-equipo")
+    );
+    const nombre = tr.querySelector(".tabla-posicion-equipo span")?.textContent?.trim() || "";
+    const golesFavor = numeroManual(
+      tr.querySelector('[data-manual-field="goles_favor"]')?.value,
+      0
+    );
+    const golesContra = numeroManual(
+      tr.querySelector('[data-manual-field="goles_contra"]')?.value,
+      0
+    );
+    const dg = golesFavor - golesContra;
+    const dgNode = tr.querySelector(`[data-manual-dg="1"][data-manual-equipo="${equipoId}"]`);
+    if (dgNode) dgNode.textContent = String(dg);
+
+    return {
+      tr,
+      equipo_id: equipoId,
+      nombre,
+      posicion_deportiva: numeroManual(
+        tr.querySelector('[data-manual-field="posicion_deportiva"]')?.value,
+        idx + 1
+      ),
+      partidos_jugados: numeroManual(tr.querySelector('[data-manual-field="partidos_jugados"]')?.value, 0),
+      partidos_ganados: numeroManual(tr.querySelector('[data-manual-field="partidos_ganados"]')?.value, 0),
+      partidos_empatados: numeroManual(tr.querySelector('[data-manual-field="partidos_empatados"]')?.value, 0),
+      partidos_perdidos: numeroManual(tr.querySelector('[data-manual-field="partidos_perdidos"]')?.value, 0),
+      goles_favor: golesFavor,
+      goles_contra: golesContra,
+      diferencia_goles: dg,
+      puntos: numeroManual(tr.querySelector('[data-manual-field="puntos"]')?.value, 0),
+    };
+  });
+
+  resumen.sort((a, b) => compararFilasTablaManual(a, b, obtenerReglasGrupoManual(grupo)));
+  resumen.forEach((fila, idx) => {
+    const posInput = fila.tr.querySelector('[data-manual-field="posicion_deportiva"]');
+    if (posInput) posInput.value = String(idx + 1);
+    tbody.appendChild(fila.tr);
+  });
+}
+
+async function guardarTablaManualGrupo(grupoKey) {
+  const data = tablasUltimoPayloadPosiciones || {};
+  const grupos = Array.isArray(data?.grupos) ? data.grupos : [];
+  const grupo = grupos.find((item) => claveGrupoTablaManual(item?.grupo || {}) === grupoKey);
+  if (!grupo || !tablasEventoSeleccionado) return;
+
+  const comentario = String(
+    document.getElementById(`tablas-manual-comment-${grupoKey}`)?.value || ""
+  ).trim();
+  if (comentario.length < 5) {
+    mostrarNotificacion("Debes registrar un comentario de auditoría claro.", "warning");
+    return;
+  }
+
+  const filas = recolectarFilasTablaManual(grupoKey);
+  if (!filas.length) {
+    mostrarNotificacion("No se pudieron leer los datos editados de la tabla.", "warning");
+    return;
+  }
+
+  try {
+    const resp = await ApiClient.put(`/tablas/evento/${tablasEventoSeleccionado}/posiciones/manual`, {
+      grupo_id: parsePositiveInt(grupo?.grupo?.id),
+      comentario,
+      filas,
+    });
+    tablasGrupoEditando = null;
+    tablasUltimoPayloadPosiciones = resp || null;
+    sincronizarFormatoConPosiciones(resp || {});
+    renderPosiciones(resp || {});
+    mostrarNotificacion("Corrección manual aplicada con auditoría.", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo guardar la corrección manual.", "error");
+  }
+}
+
+async function restablecerTablaManualGrupo(grupoKey) {
+  const data = tablasUltimoPayloadPosiciones || {};
+  const grupos = Array.isArray(data?.grupos) ? data.grupos : [];
+  const grupo = grupos.find((item) => claveGrupoTablaManual(item?.grupo || {}) === grupoKey);
+  if (!grupo || !tablasEventoSeleccionado) return;
+
+  const comentario = await window.mostrarPrompt({
+    titulo: "Restablecer tabla manual",
+    mensaje: "Registra el motivo de auditoría para volver a la tabla automática.",
+    label: "Comentario",
+    placeholder: "Motivo del restablecimiento",
+    required: true,
+    rows: 3,
+    inputType: "textarea",
+    textoConfirmar: "Restablecer",
+    claseConfirmar: "btn-warning",
+  });
+  if (!comentario || String(comentario).trim().length < 5) {
+    mostrarNotificacion("El comentario de auditoría es obligatorio.", "warning");
+    return;
+  }
+
+  try {
+    const resp = await ApiClient.post(`/tablas/evento/${tablasEventoSeleccionado}/posiciones/manual/reset`, {
+      grupo_id: parsePositiveInt(grupo?.grupo?.id),
+      comentario: String(comentario).trim(),
+    });
+    tablasGrupoEditando = null;
+    tablasUltimoPayloadPosiciones = resp || null;
+    sincronizarFormatoConPosiciones(resp || {});
+    renderPosiciones(resp || {});
+    mostrarNotificacion("La tabla volvió al cálculo automático.", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo restablecer la tabla.", "error");
+  }
+}
+
 function renderPosiciones(data) {
   const cont = document.getElementById("tablas-posiciones");
   if (!cont) return;
+  tablasUltimoPayloadPosiciones = data || null;
 
   const grupos = data?.grupos || [];
   if (!grupos.length) {
@@ -687,7 +1054,7 @@ function renderPosiciones(data) {
   `;
 
   const gruposHtml = grupos
-    .map((g) => {
+    .map((g, idx) => {
       const tabla = Array.isArray(g.tabla) ? g.tabla : [];
       const tituloGrupo = g?.grupo?.letra_grupo && g.grupo.letra_grupo !== "-"
         ? `Grupo ${g.grupo.letra_grupo}`
@@ -696,11 +1063,16 @@ function renderPosiciones(data) {
         g?.grupo?.clasificados_por_grupo ?? data?.evento?.clasificados_por_grupo,
         10
       );
+      const grupoKey = claveGrupoTablaManual(g?.grupo || {});
+      const enEdicion = esAdministradorTablas() && tablasGrupoEditando === grupoKey;
 
       return `
         <div class="card tablas-grupo-card">
-          <h3>${escaparHtml(tituloGrupo)}</h3>
-          ${renderTablaPosiciones(tabla, cuposGrupo)}
+          <div class="section-head-inline">
+            <h3>${escaparHtml(tituloGrupo)}</h3>
+          </div>
+          ${renderAccionesGrupoTabla(g)}
+          ${enEdicion ? renderTablaPosicionesEditable(g, idx) : renderTablaPosiciones(tabla, cuposGrupo)}
         </div>
       `;
     })

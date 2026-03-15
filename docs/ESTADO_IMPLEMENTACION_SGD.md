@@ -13,8 +13,8 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por categoria/evento (ya no por campeonato completo), permitiendo la misma cedula en distintas categorias; documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Uploads reorganizados por tipo (`jugadores/cedulas`, `jugadores/fotos`) sin romper carnés ni reporteria; fecha de nacimiento ya no sufre desfase por zona horaria, la `foto carné` puede borrarse desde el perfil del jugador y las cards/fichas ya usan hero con foto o logo de equipo como fallback. El guardado multipart ya usa cliente autenticado, el backend responde errores amigables de subida y el limite de imagenes se amplio a `8MB`. Los carnés ya soportan fondo configurable por campeonato mezclando imagen, logo y colores institucionales, y ahora guardan un recorte estable (`foto_carnet_recorte_url`) para evitar desfases entre preview y PDF; el ajuste de encuadre ya soporta arrastre directo, guía visual y restablecimiento rapido. Modulo de pases con UI operativa, sincronizacion contable integrada (cargo/abono por pase) e historial visual por jugador/equipo. |
 | 3.5 Creacion de Grupos | Alto | Modo aleatorio, cabezas de serie y manual con ruleta funcionando. |
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. |
-| 3.7 Resultados/Tablas/Clasificados | Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play) con selector de campeonato en UI y guardado explícito del formato de clasificación (`metodo_competencia` + `clasificados_por_grupo`). Planillaje ya alimenta resultado + estadisticas. Clasificacion por grupo parametrizable; equipos eliminados ya bajan al final aunque tengan mayor puntaje y los fuera de cupo quedan diferenciados visualmente en naranja. Pendiente refinamiento de desempates avanzados. |
-| 3.8 Eliminatorias | Alto | Configuracion por categoria (`metodo_competencia`) y generacion automatica de llave integrada en `partidos`; soporte de siembra/byes/progresion de ganador; UI dedicada de llaves en `eliminatorias.html`; playoff desde grupos con `clasificados por grupo`, `cruces de grupos` o `tabla unica`; configuracion compartida con `tablas.html`; nueva clasificacion manual sugerida por grupo con candidatos externos del evento cuando el grupo queda incompleto, y exclusion de equipos eliminados manualmente. Pendiente validacion operativa real y reglas avanzadas de desempate. |
+| 3.7 Resultados/Tablas/Clasificados | Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play) con selector de campeonato en UI y guardado explícito del formato de clasificación (`metodo_competencia` + `clasificados_por_grupo`). Planillaje ya alimenta resultado + estadisticas. Clasificacion por grupo parametrizable; equipos eliminados ya bajan al final aunque tengan mayor puntaje y los fuera de cupo quedan diferenciados visualmente en naranja. El administrador ya puede corregir manualmente la tabla con comentario obligatorio y auditoria persistente; si cambia puntos/estadisticas, la posicion se recalcula automaticamente y la posicion manual queda como desempate final. Pendiente refinamiento de desempates avanzados. |
+| 3.8 Eliminatorias | Alto | Configuracion por categoria (`metodo_competencia`) y generacion automatica de llave integrada en `partidos`; soporte de siembra/byes/progresion de ganador; UI dedicada de llaves en `eliminatorias.html`; playoff desde grupos con `clasificados por grupo`, `cruces de grupos` o `tabla unica`; configuracion compartida con `tablas.html`; nueva clasificacion manual sugerida por grupo con candidatos externos del evento cuando el grupo queda incompleto, exclusion de equipos eliminados manualmente y reclasificacion por vacante real antes de cerrar la llave. Pendiente validacion operativa real y reglas avanzadas de desempate. |
 | 4 Portal publico | Alto | Portal operativo con vistas publicas deportivas e institucionales; el listado general expone campeonatos de organizadores reales y tambien registros legacy con `organizador` informado, manteniendo fuera `administrador`/QA. La landing publica de organizador ya no mezcla torneos por alias de texto y ya muestra todas las cards reales visibles del organizador, incluidos torneos proximos/inscripcion. El detalle del campeonato muestra tabs por categoria con subtabs de `tabla de posiciones`, `goleadores`, `fair play`, `tarjetas amarillas`, `tarjetas rojas` y `playoff`. Las tablas de posiciones publicas ya salen en grid `2 columnas` desktop / `1 columna` movil, replican estados competitivos (fuera de clasificacion / eliminado) y excluyen eliminados del ranking de `Fair Play`. Ademas queda operativa la base de branding/publicidad por organizador (`Mi Landing`) con auspiciantes y media publica separados de LT&C. |
 | 5 Roles y permisos (RBAC) | Medio-Alto | Autenticacion operativa; fase 1 de separacion de dominios iniciada con rol `operador` para CMS publico; rol `jugador` agregado para consulta de equipo en modo solo lectura; noticias, galeria, contenido y contacto institucional fuera del alcance de organizadores; smokes RBAC (`npm run smoke:roles`, `npm run smoke:matrix`, `npm run smoke:frontend`) operativos para validacion rapida por rol. Se agrega bandera `debe_cambiar_password`, cambio obligatorio de clave al primer ingreso para cuentas creadas por admin/organizador y accion de cambio de contraseña propio desde UI. Las cuentas internas ya pueden autenticarse con `correo o username`; la recuperacion de contraseña sigue limitada a cuentas con correo. `usuarios.html` ya quedo alineado con la base de `Mi Landing` para organizadores (organizacion, lema, contacto publico y logo). La web ya fuerza cierre de sesion por inactividad tras 1 hora, sincroniza ese timeout entre pestañas del navegador y ahora avisa antes de expulsar la sesion. |
 | 6 Extras profesionales | Parcial | Exportaciones (PNG/PDF/XLSX) en modulos clave; pendiente notificaciones, auditoria completa y reportes ejecutivos. |
@@ -50,8 +50,11 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - la migracion `033_campeonatos_tipos_futbol_ampliados.sql` ya fue aplicada en Render para alinear el `CHECK` de `campeonatos.tipo_futbol` con las nuevas modalidades.
   - la migracion `034_organizador_portal_branding.sql` ya fue aplicada en Render para habilitar branding/media/auspiciantes propios por organizador.
   - la migracion `035_campeonato_fondo_carnet.sql` ya fue aplicada en Render para habilitar fondo de carné configurable por campeonato.
-  - la migracion `039_jugadores_foto_carnet_recorte.sql` ya fue aplicada en Render para persistir el recorte estable de foto de carné.
-  - pendiente operativo: copiar el contenido historico de `backend/uploads/` al disco persistente antes de validar carga completa de imagenes/documentos en produccion.
+- la migracion `039_jugadores_foto_carnet_recorte.sql` ya fue aplicada en Render para persistir el recorte estable de foto de carné.
+- las migraciones `040_tablas_posiciones_manual_y_auditoria.sql` y `041_reclasificacion_playoff_vacantes.sql` ya fueron aplicadas en Render para alinear:
+  - edicion manual de tablas con auditoria,
+  - reclasificaciones playoff por vacante real.
+- pendiente operativo: copiar el contenido historico de `backend/uploads/` al disco persistente antes de validar carga completa de imagenes/documentos en produccion.
 
 ## Estado Detallado del Alcance Actual
 
@@ -97,6 +100,9 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Generacion de fixture por evento y filtros de consulta.
 - Generacion eliminatoria por categoria segun metodo configurado.
 - Tablas/estadisticas por evento consumiendo resultados reales.
+- Correccion manual de tabla de posiciones solo para `administrador`, con comentario obligatorio y auditoria por snapshot en:
+  - `tabla_posiciones_manuales`,
+  - `tabla_posiciones_auditoria`.
 - Parametro `clasificados_por_grupo` operativo en categoria/evento y reflejado visualmente en tablas.
 - Eliminacion automatica por `3` no presentaciones dentro de la categoria (`evento_equipos.no_presentaciones` / `eliminado_automatico`).
 - Eliminacion manual por categoria con causales:
@@ -106,6 +112,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Clasificacion manual sugerida por grupo para definir playoff cuando el organizador necesita resolver cupos manualmente.
 - Si un clasificado deportivo queda eliminado, el sistema promueve automaticamente al siguiente elegible del grupo.
 - Si el grupo no alcanza cupos con sus propios elegibles, el sistema propone mejores no clasificados del evento y permite guardar el criterio del organizador (`decision`, `mejor no clasificado`, `partido extra/reclasificacion`).
+- Si el criterio elegido es `partido extra/reclasificacion` y existe una vacante real, el sistema crea una reclasificacion formal por cupo en `evento_reclasificaciones_playoff`, exige resolver su ganador y bloquea la generacion de la llave hasta cerrar ese cupo.
 - Nuevo reporte operativo de sanciones en `partidos.html` por categoria:
   - suspendidos,
   - acumulacion de amarillas,
@@ -255,7 +262,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 5. Eliminatorias:
 - Validar con datos reales la nueva clasificacion manual sugerida, la promocion automatica de elegibles y el reemplazo manual de clasificados antes de cierre definitivo del modulo.
-- Definir si el criterio `partido_extra_reclasificacion` generara un partido automaticamente en fixture o si quedara como solo trazabilidad de decision.
+- Validar con usuarios reales si la reclasificacion por vacante debe seguir resolviendose desde `eliminatorias.html` o si conviene dar el siguiente paso y generar un partido operativo programable en fixture/planilla.
 - Consolidar reglas avanzadas de desempate y cierre visual final del bracket.
 - `tabla acumulada` ya quedo disponible como metodo visible para eventos:
   - pendiente validar con dataset real el flujo completo `grupos -> ranking global -> llaves`.

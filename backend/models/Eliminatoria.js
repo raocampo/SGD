@@ -75,6 +75,28 @@ class Eliminatoria {
     `);
 
     await db.query(`
+      CREATE TABLE IF NOT EXISTS evento_reclasificaciones_playoff (
+        id SERIAL PRIMARY KEY,
+        evento_id INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+        grupo_id INTEGER NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
+        slot_posicion INTEGER NOT NULL,
+        equipo_a_id INTEGER NOT NULL REFERENCES equipos(id) ON DELETE CASCADE,
+        equipo_b_id INTEGER NOT NULL REFERENCES equipos(id) ON DELETE CASCADE,
+        ganador_id INTEGER REFERENCES equipos(id) ON DELETE SET NULL,
+        estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+        detalle TEXT,
+        usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await db.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS ux_evento_reclasificaciones_playoff_slot
+      ON evento_reclasificaciones_playoff(evento_id, grupo_id, slot_posicion)
+    `);
+
+    await db.query(`
       ALTER TABLE evento_equipos
       ADD COLUMN IF NOT EXISTS orden_sorteo INTEGER
     `);
@@ -462,6 +484,59 @@ class Eliminatoria {
     return map;
   }
 
+  static async obtenerReclasificacionesEvento(evento_id, db = pool) {
+    await this.asegurarEsquema(db);
+    const r = await db.query(
+      `
+        SELECT
+          erp.*,
+          ga.nombre AS equipo_a_nombre,
+          ga.logo_url AS equipo_a_logo_url,
+          gb.nombre AS equipo_b_nombre,
+          gb.logo_url AS equipo_b_logo_url,
+          gw.nombre AS ganador_nombre,
+          g.letra_grupo
+        FROM evento_reclasificaciones_playoff erp
+        JOIN grupos g ON g.id = erp.grupo_id
+        JOIN equipos ga ON ga.id = erp.equipo_a_id
+        JOIN equipos gb ON gb.id = erp.equipo_b_id
+        LEFT JOIN equipos gw ON gw.id = erp.ganador_id
+        WHERE erp.evento_id = $1
+        ORDER BY g.letra_grupo ASC, erp.slot_posicion ASC, erp.id ASC
+      `,
+      [evento_id]
+    );
+    return r.rows.map((row) => ({
+      id: Number(row.id),
+      evento_id: Number(row.evento_id),
+      grupo_id: Number(row.grupo_id),
+      grupo_letra: String(row.letra_grupo || "").toUpperCase(),
+      slot_posicion: Number(row.slot_posicion),
+      equipo_a_id: Number(row.equipo_a_id),
+      equipo_a_nombre: row.equipo_a_nombre || "",
+      equipo_a_logo_url: row.equipo_a_logo_url || null,
+      equipo_b_id: Number(row.equipo_b_id),
+      equipo_b_nombre: row.equipo_b_nombre || "",
+      equipo_b_logo_url: row.equipo_b_logo_url || null,
+      ganador_id: Number(row.ganador_id || 0) || null,
+      ganador_nombre: row.ganador_nombre || null,
+      estado: String(row.estado || "pendiente").toLowerCase(),
+      detalle: row.detalle || null,
+      usuario_id: Number(row.usuario_id || 0) || null,
+      created_at: row.created_at || null,
+      updated_at: row.updated_at || null,
+    }));
+  }
+
+  static async obtenerMapaReclasificacionesEvento(evento_id, db = pool) {
+    const rows = await this.obtenerReclasificacionesEvento(evento_id, db);
+    const map = new Map();
+    rows.forEach((row) => {
+      map.set(construirClaveManual(row.grupo_id, row.slot_posicion), row);
+    });
+    return map;
+  }
+
   static async obtenerGruposEvento(evento_id, db = pool) {
     const q = `
       SELECT id, nombre_grupo, letra_grupo
@@ -778,6 +853,7 @@ class Eliminatoria {
       await this.asegurarEsquema(client);
       await client.query(`DELETE FROM evento_playoff_config WHERE evento_id = $1`, [evento_id]);
       await client.query(`DELETE FROM evento_clasificados_manuales WHERE evento_id = $1`, [evento_id]);
+      await client.query(`DELETE FROM evento_reclasificaciones_playoff WHERE evento_id = $1`, [evento_id]);
       await client.query("COMMIT");
       return this.obtenerConfiguracionPlayoff(evento_id);
     } catch (error) {
@@ -804,73 +880,143 @@ class Eliminatoria {
     const estadosEquipos = await obtenerEstadosEquiposEvento(evento_id, db);
     const manualMap = await this.obtenerMapaClasificadosManuales(evento_id, db);
     const fairPlayMap = await this.obtenerMapaFairPlayEvento(evento_id);
+    const reclasificacionMap = await this.obtenerMapaReclasificacionesEvento(evento_id, db);
+    const tablasEvento =
+      typeof tablaInternals?.generarTablasEventoInterna === "function"
+        ? await tablaInternals.generarTablasEventoInterna(evento_id)
+        : null;
+    const tablasGrupoMap = new Map(
+      (Array.isArray(tablasEvento?.grupos) ? tablasEvento.grupos : []).map((item) => [
+        Number(item?.grupo?.id),
+        item,
+      ])
+    );
     const baseGrupos = [];
 
     for (const g of grupos) {
       const grupoId = Number(g.id);
       const grupoLetra = String(g.letra_grupo || "").toUpperCase();
-      const equipos = await this.obtenerEquiposGrupo(grupoId, db);
-      const tabla = [];
-      for (const e of equipos) {
-        const resumen = await this.calcularResumenEquipoGrupo(
-          e.equipo_id,
-          grupoId,
-          evento.sistema_puntuacion || "tradicional",
-          db
-        );
-        tabla.push({
-          equipo_id: Number(e.equipo_id),
-          equipo_nombre: e.equipo_nombre,
-          grupo_id: grupoId,
-          grupo_letra: grupoLetra,
-          grupo_origen_id: grupoId,
-          grupo_origen_letra: grupoLetra,
-          puntos: resumen.puntos,
-          diferencia_goles: resumen.diferencia_goles,
-          goles_favor: resumen.goles_favor,
-          goles_contra: resumen.goles_contra,
-          partidos_jugados: resumen.partidos_jugados,
-          partidos_perdidos: resumen.partidos_perdidos,
-          porcentaje_rendimiento: resumen.porcentaje_rendimiento,
-          posicion: 0,
-          puntaje_fair_play:
-            Number(fairPlayMap.get(Number(e.equipo_id))?.puntaje_fair_play || 0),
-          fair_play_posicion:
-            Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.posicion, 10) || null,
-          tarjetas_amarillas:
-            Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.amarillas, 10) || 0,
-          tarjetas_rojas:
-            Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.rojas, 10) || 0,
-          faltas_fair_play:
-            Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.faltas, 10) || 0,
-          ...(estadosEquipos.get(Number(e.equipo_id)) || {
-            no_presentaciones: 0,
-            eliminado_automatico: false,
-            eliminado_manual: false,
-            motivo_eliminacion: null,
-            motivo_eliminacion_label: null,
-            detalle_eliminacion: null,
-          }),
+      const tablaCompartida = tablasGrupoMap.get(grupoId);
+      let tablaDeportiva = [];
+      let tablaVisual = [];
+
+      if (tablaCompartida?.tabla?.length) {
+        const rowsCompartidos = tablaCompartida.tabla;
+        const mapearFila = (row, idx) => {
+          const estadoRow = {
+            ...(estadosEquipos.get(Number(row?.equipo?.id)) || {}),
+            no_presentaciones: Number(row?.no_presentaciones || 0),
+            eliminado_automatico: row?.eliminado_automatico === true,
+            eliminado_manual: row?.eliminado_manual === true,
+            motivo_eliminacion: row?.motivo_eliminacion || null,
+            motivo_eliminacion_label: row?.motivo_eliminacion_label || null,
+            detalle_eliminacion: row?.detalle_eliminacion || null,
+          };
+          const est = row?.estadisticas || {};
+          const puntosMaximos = this.getPuntosMaximosPorPartido(evento.sistema_puntuacion || "tradicional");
+          const pj = Number(est.partidos_jugados || 0);
+          return {
+            equipo_id: Number(row?.equipo?.id || 0),
+            equipo_nombre: row?.equipo?.nombre || "-",
+            grupo_id: grupoId,
+            grupo_letra: grupoLetra,
+            grupo_origen_id: grupoId,
+            grupo_origen_letra: grupoLetra,
+            puntos: Number(row?.puntos || 0),
+            diferencia_goles: Number(row?.diferencia_goles ?? est?.diferencia_goles ?? 0),
+            goles_favor: Number(est?.goles_favor || 0),
+            goles_contra: Number(est?.goles_contra || 0),
+            partidos_jugados: pj,
+            partidos_perdidos: Number(est?.partidos_perdidos || 0),
+            porcentaje_rendimiento:
+              pj > 0 ? Number(((Number(row?.puntos || 0) / (pj * puntosMaximos)) * 100).toFixed(2)) : 0,
+            posicion: Number(row?.posicion || idx + 1),
+            posicion_deportiva: Number(row?.posicion_deportiva || row?.posicion_competitiva || row?.posicion || idx + 1),
+            puntaje_fair_play:
+              Number(fairPlayMap.get(Number(row?.equipo?.id))?.puntaje_fair_play || 0),
+            fair_play_posicion:
+              Number.parseInt(fairPlayMap.get(Number(row?.equipo?.id))?.posicion, 10) || null,
+            tarjetas_amarillas:
+              Number.parseInt(fairPlayMap.get(Number(row?.equipo?.id))?.amarillas, 10) || 0,
+            tarjetas_rojas:
+              Number.parseInt(fairPlayMap.get(Number(row?.equipo?.id))?.rojas, 10) || 0,
+            faltas_fair_play:
+              Number.parseInt(fairPlayMap.get(Number(row?.equipo?.id))?.faltas, 10) || 0,
+            ...estadoRow,
+          };
+        };
+
+        tablaVisual = rowsCompartidos.map(mapearFila);
+        tablaDeportiva = [...tablaVisual].sort((a, b) => {
+          const posA = Number(a?.posicion_deportiva || 9999);
+          const posB = Number(b?.posicion_deportiva || 9999);
+          if (posA !== posB) return posA - posB;
+          return String(a?.equipo_nombre || "").localeCompare(String(b?.equipo_nombre || ""));
+        });
+      } else {
+        const equipos = await this.obtenerEquiposGrupo(grupoId, db);
+        const tabla = [];
+        for (const e of equipos) {
+          const resumen = await this.calcularResumenEquipoGrupo(
+            e.equipo_id,
+            grupoId,
+            evento.sistema_puntuacion || "tradicional",
+            db
+          );
+          tabla.push({
+            equipo_id: Number(e.equipo_id),
+            equipo_nombre: e.equipo_nombre,
+            grupo_id: grupoId,
+            grupo_letra: grupoLetra,
+            grupo_origen_id: grupoId,
+            grupo_origen_letra: grupoLetra,
+            puntos: resumen.puntos,
+            diferencia_goles: resumen.diferencia_goles,
+            goles_favor: resumen.goles_favor,
+            goles_contra: resumen.goles_contra,
+            partidos_jugados: resumen.partidos_jugados,
+            partidos_perdidos: resumen.partidos_perdidos,
+            porcentaje_rendimiento: resumen.porcentaje_rendimiento,
+            posicion: 0,
+            puntaje_fair_play:
+              Number(fairPlayMap.get(Number(e.equipo_id))?.puntaje_fair_play || 0),
+            fair_play_posicion:
+              Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.posicion, 10) || null,
+            tarjetas_amarillas:
+              Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.amarillas, 10) || 0,
+            tarjetas_rojas:
+              Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.rojas, 10) || 0,
+            faltas_fair_play:
+              Number.parseInt(fairPlayMap.get(Number(e.equipo_id))?.faltas, 10) || 0,
+            ...(estadosEquipos.get(Number(e.equipo_id)) || {
+              no_presentaciones: 0,
+              eliminado_automatico: false,
+              eliminado_manual: false,
+              motivo_eliminacion: null,
+              motivo_eliminacion_label: null,
+              detalle_eliminacion: null,
+            }),
+          });
+        }
+
+        this.ordenarTablaPorReglas(tabla, reglas);
+        tabla.forEach((row, idx) => {
+          row.posicion_deportiva = idx + 1;
+        });
+        tablaDeportiva = [...tabla];
+        tablaVisual = [...tabla].sort((a, b) => {
+          const aEliminado = estaEliminadoCompetencia(a);
+          const bEliminado = estaEliminadoCompetencia(b);
+          if (aEliminado !== bEliminado) return aEliminado ? 1 : -1;
+          return Number(a.posicion_deportiva || 9999) - Number(b.posicion_deportiva || 9999);
+        });
+        tablaVisual.forEach((row, idx) => {
+          row.posicion = idx + 1;
         });
       }
 
-      this.ordenarTablaPorReglas(tabla, reglas);
-      tabla.forEach((row, idx) => {
-        row.posicion_deportiva = idx + 1;
-      });
-      const tablaDeportiva = [...tabla];
-      const tablaVisual = [...tabla].sort((a, b) => {
-        const aEliminado = estaEliminadoCompetencia(a);
-        const bEliminado = estaEliminadoCompetencia(b);
-        if (aEliminado !== bEliminado) return aEliminado ? 1 : -1;
-        return Number(a.posicion_deportiva || 9999) - Number(b.posicion_deportiva || 9999);
-      });
-      tablaVisual.forEach((row, idx) => {
-        row.posicion = idx + 1;
-      });
-
-      const elegiblesRanking = [...tablaVisual.filter((row) => !estaEliminadoCompetencia(row))].sort(
-        (a, b) => this.compararCandidatoClasificacion(a, b)
+      const elegiblesRanking = [...tablaDeportiva.filter((row) => !estaEliminadoCompetencia(row))].sort(
+        (a, b) => Number(a?.posicion_deportiva || 9999) - Number(b?.posicion_deportiva || 9999)
       );
       const sugeridosLocales = [];
       const clasifLocales = [];
@@ -924,6 +1070,7 @@ class Eliminatoria {
 
     for (const grupo of baseGrupos) {
       const manualesGrupo = [];
+      const reclasificacionesGrupo = [];
       const sugeridosGrupo = [];
       const clasifGrupo = [];
       const usadosGrupo = new Set();
@@ -949,6 +1096,8 @@ class Eliminatoria {
           : null;
         const sugeridoBase = sugeridoLocalRow || sugeridoExterno || null;
         const manual = manualMap.get(construirClaveManual(grupo.grupo_id, slot)) || null;
+        const reclasificacion =
+          reclasificacionMap.get(construirClaveManual(grupo.grupo_id, slot)) || null;
         const manualCandidato = manual
           ? grupo.elegibles_ranking.find(
               (row) => Number(row.equipo_id) === Number(manual.equipo_id)
@@ -956,11 +1105,35 @@ class Eliminatoria {
             candidatosAdicionales.find((row) => Number(row.equipo_id) === Number(manual.equipo_id)) ||
             null
           : null;
+        const ganadorReclasificacion =
+          reclasificacion && Number(reclasificacion.ganador_id || 0) > 0
+            ? grupo.elegibles_ranking.find(
+                (row) => Number(row.equipo_id) === Number(reclasificacion.ganador_id)
+              ) ||
+              candidatosAdicionales.find(
+                (row) => Number(row.equipo_id) === Number(reclasificacion.ganador_id)
+              ) ||
+              null
+            : null;
 
         let elegido = null;
         let seleccionManual = false;
 
+        if (reclasificacion) {
+          reclasificacionesGrupo.push(reclasificacion);
+        }
+
         if (
+          ganadorReclasificacion &&
+          !estaEliminadoCompetencia(ganadorReclasificacion) &&
+          !usadosGrupo.has(Number(ganadorReclasificacion.equipo_id)) &&
+          !usadosExternosEvento.has(Number(ganadorReclasificacion.equipo_id))
+        ) {
+          elegido = ganadorReclasificacion;
+          seleccionManual = true;
+        } else if (reclasificacion && String(reclasificacion.estado || "pendiente") !== "resuelto") {
+          elegido = null;
+        } else if (
           manualCandidato &&
           !usadosGrupo.has(Number(manualCandidato.equipo_id)) &&
           (!manualCandidato.grupo_origen_id ||
@@ -1088,6 +1261,7 @@ class Eliminatoria {
         clasificados: clasifGrupo,
         clasificados_sugeridos: sugeridosGrupo,
         clasificados_manuales: manualesGrupo,
+        reclasificaciones: reclasificacionesGrupo,
         candidatos_adicionales: candidatosAdicionales,
         incompleto: clasifGrupo.length < nClasificados,
         tabla: grupo.tabla,
@@ -1099,6 +1273,7 @@ class Eliminatoria {
       reglas_desempate: reglas,
       clasificados_por_grupo: nClasificados,
       clasificados_manuales: await obtenerClasificadosManualesEvento(evento_id, db),
+      reclasificaciones: await this.obtenerReclasificacionesEvento(evento_id, db),
       grupos: detalleGrupos,
       clasificados,
     };
@@ -1136,9 +1311,11 @@ class Eliminatoria {
         tabla: grupo.tabla,
         sugeridos: grupo.clasificados_sugeridos || [],
         manuales: grupo.clasificados_manuales || [],
+        reclasificaciones: grupo.reclasificaciones || [],
         clasificados_finales: grupo.clasificados || [],
         candidatos_adicionales: grupo.candidatos_adicionales || [],
       })),
+      reclasificaciones: data.reclasificaciones || [],
     };
   }
 
@@ -1156,8 +1333,13 @@ class Eliminatoria {
       const cupos = Number.parseInt(resumen?.clasificados_por_grupo, 10) || 1;
       const gruposPayload = Array.isArray(payload?.grupos) ? payload.grupos : [];
       const usadosEvento = new Map();
+      const reservadosEvento = new Set();
+      const reclasificacionesPrevias = await this.obtenerMapaReclasificacionesEvento(evento_id, client);
 
       await client.query(`DELETE FROM evento_clasificados_manuales WHERE evento_id = $1`, [
+        evento_id,
+      ]);
+      await client.query(`DELETE FROM evento_reclasificaciones_playoff WHERE evento_id = $1`, [
         evento_id,
       ]);
 
@@ -1187,14 +1369,87 @@ class Eliminatoria {
             item,
           ])
         );
+        const elegiblesLocales = (Array.isArray(grupoResumen.tabla) ? grupoResumen.tabla : []).filter(
+          (row) => !estaEliminadoCompetencia(row)
+        );
         const usados = new Set();
         const slotsInsert = [];
 
         for (let slot = 1; slot <= cupos; slot += 1) {
           const seleccion =
             selecciones.find((item) => Number(item?.slot_posicion) === Number(slot)) || null;
+          const criterio =
+            String(seleccion?.criterio || "decision_organizador").trim() || "decision_organizador";
+          const detalle = String(seleccion?.detalle || "").trim() || null;
           const sugeridoBase = sugeridosPorSlot.get(slot) || elegibles[slot - 1] || null;
           const equipoId = Number.parseInt(seleccion?.equipo_id, 10);
+          const cupoVacanteExterno = slot > elegiblesLocales.length;
+          const claveSlot = construirClaveManual(grupoResumen.grupo_id, slot);
+          const candidatosReclasificacion = candidatosAdicionales.filter((row) => {
+            const candidatoId = Number(row?.equipo_id || 0);
+            return (
+              candidatoId > 0 &&
+              !usados.has(candidatoId) &&
+              !usadosEvento.has(candidatoId) &&
+              !reservadosEvento.has(candidatoId)
+            );
+          });
+
+          if (
+            criterio === "partido_extra_reclasificacion" &&
+            cupoVacanteExterno &&
+            candidatosReclasificacion.length >= 2
+          ) {
+            const [equipoA, equipoB] = candidatosReclasificacion;
+            const previa = reclasificacionesPrevias.get(claveSlot) || null;
+            const ganadorPrevio = Number.parseInt(previa?.ganador_id, 10);
+            const candidatosIds = new Set([
+              Number(equipoA.equipo_id),
+              Number(equipoB.equipo_id),
+            ]);
+            const ganadorValido = candidatosIds.has(ganadorPrevio) ? ganadorPrevio : null;
+
+            await client.query(
+              `
+                INSERT INTO evento_reclasificaciones_playoff (
+                  evento_id,
+                  grupo_id,
+                  slot_posicion,
+                  equipo_a_id,
+                  equipo_b_id,
+                  ganador_id,
+                  estado,
+                  detalle,
+                  usuario_id,
+                  updated_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+              `,
+              [
+                evento_id,
+                grupoResumen.grupo_id,
+                slot,
+                Number(equipoA.equipo_id),
+                Number(equipoB.equipo_id),
+                ganadorValido,
+                ganadorValido ? "resuelto" : "pendiente",
+                detalle,
+                Number.isFinite(Number(userId)) ? Number(userId) : null,
+              ]
+            );
+
+            reservadosEvento.add(Number(equipoA.equipo_id));
+            reservadosEvento.add(Number(equipoB.equipo_id));
+            if (ganadorValido) {
+              usados.add(ganadorValido);
+              usadosEvento.set(ganadorValido, {
+                grupo_id: Number(grupoResumen.grupo_id),
+                grupo_letra: grupoResumen.grupo_letra,
+                slot,
+              });
+            }
+            continue;
+          }
 
           if (Number.isFinite(equipoId) && equipoId > 0) {
             const candidato = candidatosElegibles.get(equipoId) || null;
@@ -1223,10 +1478,8 @@ class Eliminatoria {
             slotsInsert.push({
               slot,
               equipo_id: equipoId,
-              criterio:
-                String(seleccion?.criterio || "decision_organizador").trim() ||
-                "decision_organizador",
-              detalle: String(seleccion?.detalle || "").trim() || null,
+              criterio,
+              detalle,
             });
             continue;
           }
@@ -1664,6 +1917,59 @@ class Eliminatoria {
     }
   }
 
+  static async resolverReclasificacion(evento_id, reclasificacionId, ganador_id, detalle = null, userId = null) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await this.asegurarEsquema(client);
+
+      const r = await client.query(
+        `
+          SELECT *
+          FROM evento_reclasificaciones_playoff
+          WHERE id = $1 AND evento_id = $2
+          LIMIT 1
+        `,
+        [reclasificacionId, evento_id]
+      );
+      const actual = r.rows[0] || null;
+      if (!actual) throw new Error("Reclasificación no encontrada.");
+
+      const ganadorId = Number.parseInt(ganador_id, 10);
+      const equipoA = Number.parseInt(actual.equipo_a_id, 10);
+      const equipoB = Number.parseInt(actual.equipo_b_id, 10);
+      if (![equipoA, equipoB].includes(ganadorId)) {
+        throw new Error("El ganador debe ser uno de los equipos del partido extra.");
+      }
+
+      await client.query(
+        `
+          UPDATE evento_reclasificaciones_playoff
+          SET ganador_id = $1,
+              estado = 'resuelto',
+              detalle = $2,
+              usuario_id = $3,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $4
+        `,
+        [
+          ganadorId,
+          String(detalle || "").trim() || actual.detalle || null,
+          Number.isFinite(Number(userId)) ? Number(userId) : null,
+          reclasificacionId,
+        ]
+      );
+
+      await client.query("COMMIT");
+      return this.obtenerResumenClasificacionManual(evento_id, null, pool);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   static async generarBracketConSembrado(
     evento_id,
     entradasSembrado = [],
@@ -1824,6 +2130,16 @@ class Eliminatoria {
         clasificadosPorGrupo,
         client
       );
+      const reclasPendientes = Array.isArray(clasificadosData?.reclasificaciones)
+        ? clasificadosData.reclasificaciones.filter(
+            (row) => String(row?.estado || "pendiente").toLowerCase() !== "resuelto"
+          )
+        : [];
+      if (reclasPendientes.length) {
+        throw new Error(
+          `Existe ${reclasPendientes.length === 1 ? "una reclasificación pendiente" : `${reclasPendientes.length} reclasificaciones pendientes`} para completar los cupos playoff. Registra el ganador antes de generar la llave.`
+        );
+      }
       const enfrentamientosDirectos = await this.obtenerMapaEnfrentamientosDirectosEvento(
         evento_id,
         evento.sistema_puntuacion || "tradicional",

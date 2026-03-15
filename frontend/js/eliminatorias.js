@@ -264,6 +264,14 @@ function bindEventosEliminatoria() {
   document
     .getElementById("btn-eli-guardar-clasificacion")
     ?.addEventListener("click", guardarClasificacionManual);
+  document.getElementById("eli-clasificacion-manual")?.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-reclasif-id][data-reclasif-ganador]");
+    if (!btn || !eliminatoriaState.eventoSeleccionado) return;
+    const reclasificacionId = Number.parseInt(btn.getAttribute("data-reclasif-id") || "", 10);
+    const ganadorId = Number.parseInt(btn.getAttribute("data-reclasif-ganador") || "", 10);
+    if (!Number.isFinite(reclasificacionId) || !Number.isFinite(ganadorId)) return;
+    await resolverReclasificacion(eliminatoriaState.eventoSeleccionado, reclasificacionId, ganadorId);
+  });
   document.getElementById("btn-eli-exportar")?.addEventListener("click", abrirEnPartidos);
   document.getElementById("btn-eli-export-png")?.addEventListener("click", exportarEliminatoriaPNG);
   document.getElementById("btn-eli-export-pdf")?.addEventListener("click", exportarEliminatoriaPDF);
@@ -608,6 +616,95 @@ function construirEtiquetaCandidatoClasificacion(row = {}, includeGrupo = false)
   return `${nombre}${extras ? ` (${extras})` : ""}`;
 }
 
+function renderReclasificacionesGrupo(reclasificaciones = []) {
+  const lista = Array.isArray(reclasificaciones) ? reclasificaciones : [];
+  if (!lista.length) return "";
+
+  return `
+    <div class="eli-reclasificaciones-block">
+      <h5>Partidos extra por vacante</h5>
+      <div class="eli-reclasificaciones-grid">
+        ${lista
+          .map((item) => {
+            const resuelta = String(item?.estado || "").toLowerCase() === "resuelto";
+            return `
+              <article class="eli-reclasificacion-card ${resuelta ? "is-resolved" : "is-pending"}">
+                <div class="eli-admin-badges">
+                  <span class="eli-badge ${resuelta ? "is-success" : "is-warning"}">
+                    ${resuelta ? "Resuelta" : "Pendiente"}
+                  </span>
+                  <span class="eli-badge is-neutral">Cupo ${Number(item?.slot_posicion || 0)}</span>
+                </div>
+                <div class="eli-reclasificacion-match">
+                  <button
+                    type="button"
+                    class="btn btn-outline btn-sm"
+                    data-reclasif-id="${Number(item.id)}"
+                    data-reclasif-ganador="${Number(item.equipo_a_id)}"
+                  >
+                    ${escapeHtml(item.equipo_a_nombre || "Equipo A")}
+                  </button>
+                  <span>vs</span>
+                  <button
+                    type="button"
+                    class="btn btn-outline btn-sm"
+                    data-reclasif-id="${Number(item.id)}"
+                    data-reclasif-ganador="${Number(item.equipo_b_id)}"
+                  >
+                    ${escapeHtml(item.equipo_b_nombre || "Equipo B")}
+                  </button>
+                </div>
+                <p class="form-hint">
+                  ${
+                    resuelta
+                      ? `Ganador: ${escapeHtml(item.ganador_nombre || "Por definir")}`
+                      : "Selecciona el ganador cuando se dispute el partido extra."
+                  }
+                </p>
+                ${
+                  item?.detalle
+                    ? `<p class="form-hint" style="color:#7a4b00;">${escapeHtml(item.detalle)}</p>`
+                    : ""
+                }
+              </article>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+async function resolverReclasificacion(eventoId, reclasificacionId, ganadorId) {
+  const detalle = await window.mostrarPrompt({
+    titulo: "Registrar ganador de reclasificación",
+    mensaje: "Puedes registrar una observación opcional para auditoría de este partido extra.",
+    label: "Observación",
+    inputType: "textarea",
+    rows: 3,
+    value: "",
+    textoConfirmar: "Guardar ganador",
+    textoCancelar: "Cancelar",
+  });
+  if (detalle === null) return;
+
+  try {
+    const resp = await ApiClient.put(
+      `/eliminatorias/evento/${eventoId}/reclasificaciones/${reclasificacionId}`,
+      {
+        ganador_id: ganadorId,
+        detalle: String(detalle || "").trim() || null,
+      }
+    );
+    eliminatoriaState.resumenClasificacion = resp || null;
+    renderResumenClasificacionManual();
+    mostrarNotificacion("Ganador de reclasificación registrado.", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo registrar la reclasificación.", "error");
+  }
+}
+
 function renderResumenClasificacionManual() {
   const cont = document.getElementById("eli-clasificacion-manual");
   if (!cont) return;
@@ -648,6 +745,12 @@ function renderResumenClasificacionManual() {
           item,
         ])
       );
+      const reclasMap = new Map(
+        (Array.isArray(grupo?.reclasificaciones) ? grupo.reclasificaciones : []).map((item) => [
+          Number(item.slot_posicion),
+          item,
+        ])
+      );
 
       const filasTabla = (grupo.tabla || [])
         .map((row) => {
@@ -666,11 +769,15 @@ function renderResumenClasificacionManual() {
       const slotsHtml = Array.from({ length: cupos }, (_, idx) => {
         const slot = idx + 1;
         const manual = manualMap.get(slot) || null;
+        const reclasificacion = reclasMap.get(slot) || null;
         const sugerido =
           (Array.isArray(grupo?.sugeridos) ? grupo.sugeridos : []).find(
             (item) => Number(item.slot_posicion) === slot
           ) || null;
-        const criterioManual = String(manual?.criterio || "decision_organizador").trim();
+        const criterioManual = String(
+          manual?.criterio ||
+            (reclasificacion ? "partido_extra_reclasificacion" : "decision_organizador")
+        ).trim();
 
         return `
           <div class="eli-slot-card">
@@ -734,6 +841,21 @@ function renderResumenClasificacionManual() {
                 ? `<small class="form-hint" style="display:block;color:#b42318;">La selección manual anterior quedó invalidada porque ese equipo ya no es elegible.</small>`
                 : ""
             }
+            ${
+              reclasificacion
+                ? `<small class="form-hint" style="display:block;color:#155eef;">
+                    ${
+                      String(reclasificacion.estado || "").toLowerCase() === "resuelto"
+                        ? `El cupo ${slot} quedó definido por reclasificación. Ganador: ${escapeHtml(
+                            reclasificacion.ganador_nombre || "Por definir"
+                          )}.`
+                        : `El cupo ${slot} tiene una reclasificación pendiente entre ${escapeHtml(
+                            reclasificacion.equipo_a_nombre || "Equipo A"
+                          )} y ${escapeHtml(reclasificacion.equipo_b_nombre || "Equipo B")}.`
+                    }
+                  </small>`
+                : ""
+            }
             <select data-clasif-criterio="${Number(grupo.grupo_id)}:${slot}">
               <option value="decision_organizador" ${
                 criterioManual === "decision_organizador" ? "selected" : ""
@@ -789,6 +911,7 @@ function renderResumenClasificacionManual() {
               </table>
             </div>
             <div class="eli-slot-grid">${slotsHtml}</div>
+            ${renderReclasificacionesGrupo(grupo?.reclasificaciones || [])}
           </div>
         </article>
       `;
@@ -827,7 +950,7 @@ async function guardarClasificacionManual() {
         criterio: String(criterio?.value || "decision_organizador").trim() || "decision_organizador",
         detalle: String(detalle?.value || "").trim() || null,
       };
-    }).filter((item) => Number.isFinite(Number(item.equipo_id)) && Number(item.equipo_id) > 0);
+    });
 
     return {
       grupo_id: Number(grupo.grupo_id),

@@ -14,6 +14,32 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-14
+- Tablas / auditoria / playoff:
+  - se habilito edicion manual de tablas de posiciones solo para `administrador`.
+  - la correccion manual exige comentario de auditoria y guarda:
+    - snapshot anterior,
+    - snapshot nuevo,
+    - usuario responsable,
+    - fecha de cambio.
+  - nuevas migraciones:
+    - `database/migrations/040_tablas_posiciones_manual_y_auditoria.sql`
+    - `database/migrations/041_reclasificacion_playoff_vacantes.sql`
+  - ambas migraciones quedaron aplicadas y verificadas en:
+    - BD local,
+    - PostgreSQL de Render.
+  - la clasificacion a playoff ahora consume la misma tabla ajustada que ve el modulo `tablas`, por lo que:
+    - los equipos eliminados no entran a los cupos playoff,
+    - una correccion manual de posiciones hecha por administrador se refleja al calcular clasificados.
+  - la tabla manual ahora se reordena automaticamente cuando el administrador cambia puntos o estadisticas; la `posicion manual` queda solo como desempate final si los equipos terminan igualados.
+  - cuando un grupo queda con vacante real de clasificacion, el sistema ya puede abrir una `reclasificación playoff` entre los mejores opcionados externos al grupo.
+  - la reclasificacion queda registrada por cupo, evita reutilizar equipos en varios cupos y exige resolver ganador antes de generar la llave definitiva.
+  - validacion tecnica:
+    - `node --check backend/controllers/tablaController.js`
+    - `node --check backend/models/Eliminatoria.js`
+    - `node --check backend/controllers/eliminatoriaController.js`
+    - `node --check frontend/js/tablas.js`
+    - `node --check frontend/js/eliminatorias.js`
+    - `npm --prefix backend run smoke` => `PASS 9/9`.
 - QA / despliegue / migraciones:
   - se sincronizo `main` con remoto y se aplico la migracion `039_jugadores_foto_carnet_recorte.sql` en:
     - BD local,
