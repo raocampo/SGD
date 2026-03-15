@@ -278,7 +278,13 @@ function bindEventosEliminatoria() {
       const partidoId = Number.parseInt(btnPlanilla.getAttribute("data-reclasif-planilla") || "", 10);
       if (Number.isFinite(partidoId) && partidoId > 0) {
         if (window.RouteContext?.navigate) {
-          window.RouteContext.navigate("planilla.html", { partido: partidoId });
+          window.RouteContext.navigate("planilla.html", {
+            partido: partidoId,
+            evento: Number(eliminatoriaState.eventoSeleccionado) || null,
+            regreso_pagina: "eliminatorias.html",
+            regreso_evento: Number(eliminatoriaState.eventoSeleccionado) || null,
+            regreso_fuente: "reclasificacion_playoff",
+          });
         } else {
           window.location.href = `planilla.html?partido=${encodeURIComponent(partidoId)}`;
         }

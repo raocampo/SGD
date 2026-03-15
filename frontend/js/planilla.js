@@ -18,6 +18,11 @@ let partidosSelectorCache = [];
 let grupoSelectorActual = "";
 let jornadaSelectorActual = "";
 let modoVistaPreviaPlanilla = "oficial";
+let contextoRetornoPlanilla = {
+  pagina: null,
+  evento: null,
+  fuente: null,
+};
 const IDS_PAGOS_PLANILLA = [
   "pago-local",
   "pago-visitante",
@@ -55,7 +60,65 @@ function guardarContextoRutaPlanilla() {
     campeonato: Number.isFinite(Number(campeonatoIdContexto)) ? Number(campeonatoIdContexto) : null,
     evento: Number.isFinite(Number(eventoId)) ? Number(eventoId) : null,
     partido: Number.isFinite(Number(partidoId)) ? Number(partidoId) : null,
+    regreso_pagina: contextoRetornoPlanilla.pagina || null,
+    regreso_evento: Number.isFinite(Number(contextoRetornoPlanilla.evento))
+      ? Number(contextoRetornoPlanilla.evento)
+      : null,
+    regreso_fuente: contextoRetornoPlanilla.fuente || null,
   });
+}
+
+function leerContextoRetornoPlanilla() {
+  const routeContext =
+    window.RouteContext?.read?.("planilla.html", [
+      "partido",
+      "evento",
+      "campeonato",
+      "regreso_pagina",
+      "regreso_evento",
+      "regreso_fuente",
+    ]) || {};
+  contextoRetornoPlanilla = {
+    pagina: String(routeContext.regreso_pagina || "").trim() || null,
+    evento: aEntero(routeContext.regreso_evento, NaN),
+    fuente: String(routeContext.regreso_fuente || "").trim() || null,
+  };
+  if (!Number.isFinite(Number(contextoRetornoPlanilla.evento))) {
+    contextoRetornoPlanilla.evento = null;
+  }
+  return routeContext;
+}
+
+function debeRegresarAPlayoffTrasGuardar() {
+  return (
+    String(contextoRetornoPlanilla.pagina || "").toLowerCase() === "eliminatorias.html" &&
+    String(contextoRetornoPlanilla.fuente || "").toLowerCase() === "reclasificacion_playoff"
+  );
+}
+
+function regresarAContextoPlanilla() {
+  if (debeRegresarAPlayoffTrasGuardar()) {
+    const data = {
+      evento: Number.isFinite(Number(contextoRetornoPlanilla.evento))
+        ? Number(contextoRetornoPlanilla.evento)
+        : Number.isFinite(Number(eventoId))
+          ? Number(eventoId)
+          : null,
+    };
+    if (window.RouteContext?.navigate) {
+      window.RouteContext.navigate("eliminatorias.html", data);
+      return;
+    }
+    const params = new URLSearchParams();
+    if (Number.isFinite(Number(data.evento)) && Number(data.evento) > 0) {
+      params.set("evento", String(data.evento));
+    }
+    window.location.href = params.toString()
+      ? `eliminatorias.html?${params.toString()}`
+      : "eliminatorias.html";
+    return;
+  }
+  volverAPartidos();
 }
 
 function aEntero(valor, fallback = 0) {
@@ -3696,6 +3759,11 @@ async function guardarPlanilla(e) {
       mostrarNotificacion(aviso, "warning");
     }
     await cargarPlanilla();
+    if (debeRegresarAPlayoffTrasGuardar()) {
+      setTimeout(() => {
+        regresarAContextoPlanilla();
+      }, 350);
+    }
   } catch (error) {
     console.error("Error guardando planilla:", error);
     mostrarNotificacion(error.message || "Error guardando planilla", "error");
@@ -3858,6 +3926,10 @@ async function exportarPlanillaXLSX() {
 }
 
 function volverAPartidos() {
+  if (debeRegresarAPlayoffTrasGuardar()) {
+    regresarAContextoPlanilla();
+    return;
+  }
   if (window.RouteContext?.navigate) {
     window.RouteContext.navigate("partidos.html", {
       campeonato: Number.isFinite(Number(campeonatoIdContexto)) ? Number(campeonatoIdContexto) : null,
@@ -3886,7 +3958,7 @@ function recargarPlanilla() {
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("planilla.html")) return;
 
-  const routeContext = window.RouteContext?.read?.("planilla.html", ["partido", "evento", "campeonato"]) || {};
+  const routeContext = leerContextoRetornoPlanilla();
   partidoId = aEntero(routeContext.partido, NaN);
   eventoId = aEntero(routeContext.evento, NaN);
   if (!Number.isFinite(Number(eventoId))) eventoId = null;
