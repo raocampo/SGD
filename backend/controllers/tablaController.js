@@ -160,7 +160,30 @@ function claveTablaManual(grupoId = null) {
 }
 
 async function asegurarEsquemaTablasManuales(db = pool) {
-  if (tablasManualesSchemaAsegurado && db === pool) return;
+  if (tablasManualesSchemaAsegurado) return;
+
+  try {
+    const schemaR = await db.query(`
+      SELECT
+        EXISTS (
+          SELECT 1
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+            AND table_name = 'tabla_posiciones_manuales'
+        ) AS tiene_tabla_manual,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+            AND table_name = 'tabla_posiciones_auditoria'
+        ) AS tiene_tabla_auditoria
+    `);
+    const schema = schemaR.rows[0] || {};
+    if (schema.tiene_tabla_manual === true && schema.tiene_tabla_auditoria === true) {
+      tablasManualesSchemaAsegurado = true;
+      return;
+    }
+  } catch (_) {}
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS tabla_posiciones_manuales (
@@ -197,7 +220,7 @@ async function asegurarEsquemaTablasManuales(db = pool) {
     ON tabla_posiciones_auditoria(evento_id, created_at DESC)
   `);
 
-  if (db === pool) tablasManualesSchemaAsegurado = true;
+  tablasManualesSchemaAsegurado = true;
 }
 
 function serializarTablaManual(tabla = []) {

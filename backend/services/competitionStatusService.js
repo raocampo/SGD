@@ -5,6 +5,7 @@ const MOTIVOS_ELIMINACION = [
   "deudas",
   "sin_justificativo_segunda_no_presentacion",
 ];
+let competitionStatusSchemaAsegurado = false;
 
 function normalizarMotivoEliminacion(value, fallback = null) {
   if (value === undefined || value === null || value === "") return fallback;
@@ -47,6 +48,41 @@ function construirClaveManual(grupoId, slotPosicion) {
 }
 
 async function asegurarEsquemaEstadoCompeticion(db = pool) {
+  if (competitionStatusSchemaAsegurado) return;
+
+  try {
+    const schemaR = await db.query(`
+      SELECT
+        EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'evento_equipos'
+            AND column_name = 'eliminado_por_usuario_id'
+        ) AS tiene_columnas_estado,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+            AND table_name = 'evento_clasificados_manuales'
+        ) AS tiene_tabla_manuales,
+        EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'fk_evento_equipos_eliminado_por_usuario'
+        ) AS tiene_fk_estado
+    `);
+    const schema = schemaR.rows[0] || {};
+    if (
+      schema.tiene_columnas_estado === true &&
+      schema.tiene_tabla_manuales === true &&
+      schema.tiene_fk_estado === true
+    ) {
+      competitionStatusSchemaAsegurado = true;
+      return;
+    }
+  } catch (_) {}
+
   await db.query(`
     ALTER TABLE evento_equipos
     ADD COLUMN IF NOT EXISTS no_presentaciones INTEGER NOT NULL DEFAULT 0,
@@ -113,6 +149,8 @@ async function asegurarEsquemaEstadoCompeticion(db = pool) {
         OR eliminado_por_usuario_id IS NOT NULL
       )
   `);
+
+  competitionStatusSchemaAsegurado = true;
 }
 
 async function obtenerEstadosEquiposEvento(eventoId, db = pool) {

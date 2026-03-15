@@ -24,8 +24,56 @@ const obtenerFairPlayEventoInterno = tablaInternals?.obtenerFairPlayEventoIntern
 class Eliminatoria {
   static _schemaAsegurado = false;
 
+  static async verificarEsquemaExistente(db = pool) {
+    const r = await db.query(`
+      SELECT
+        EXISTS (
+          SELECT 1
+          FROM information_schema.tables
+          WHERE table_name = 'partidos_eliminatoria'
+        ) AS tiene_partidos_eliminatoria,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.tables
+          WHERE table_name = 'evento_playoff_config'
+        ) AS tiene_evento_playoff_config,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.tables
+          WHERE table_name = 'evento_reclasificaciones_playoff'
+        ) AS tiene_evento_reclasificaciones,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_name = 'evento_reclasificaciones_playoff'
+            AND column_name = 'partido_id'
+        ) AS tiene_reclasificacion_partido,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_name = 'evento_equipos'
+            AND column_name = 'orden_sorteo'
+        ) AS tiene_orden_sorteo
+    `);
+    const row = r.rows[0] || {};
+    return (
+      row.tiene_partidos_eliminatoria === true &&
+      row.tiene_evento_playoff_config === true &&
+      row.tiene_evento_reclasificaciones === true &&
+      row.tiene_reclasificacion_partido === true &&
+      row.tiene_orden_sorteo === true
+    );
+  }
+
   static async asegurarEsquema(db = pool) {
-    if (this._schemaAsegurado && db === pool) return;
+    if (this._schemaAsegurado) return;
+    try {
+      const existe = await this.verificarEsquemaExistente(db);
+      if (existe) {
+        this._schemaAsegurado = true;
+        return;
+      }
+    } catch (_) {}
 
     await db.query(`
       CREATE TABLE IF NOT EXISTS partidos_eliminatoria (
@@ -107,7 +155,7 @@ class Eliminatoria {
     `);
     await asegurarEsquemaEstadoCompeticion(db);
 
-    if (db === pool) this._schemaAsegurado = true;
+    this._schemaAsegurado = true;
   }
 
   static parsearReglas(raw) {
