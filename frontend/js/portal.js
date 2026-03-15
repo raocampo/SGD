@@ -1375,7 +1375,7 @@ async function cargarAuspiciantesCampeonatoPublico(campeonatoId, campeonatoNombr
         })();
     const auspiciantes = Array.isArray(data?.auspiciantes) ? data.auspiciantes : [];
     if (!auspiciantes.length) return;
-    const html = renderTrackAuspiciantesPortal(auspiciantes, { repeat: !detailSection });
+    const html = renderTrackAuspiciantesPortal(auspiciantes, { repeat: true });
     if (!html) return;
     if (detailTrack) detailTrack.innerHTML = html;
     if (detailSection) detailSection.hidden = false;

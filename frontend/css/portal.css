@@ -1357,8 +1357,11 @@ body.ltc-landing {
 .ltc-sponsors-track {
   display: flex;
   align-items: center;
+  justify-content: space-around;
   gap: 2.4rem;
   width: max-content;
+  min-width: 100%;
+  padding-inline: 2rem;
   animation: ltcSponsorsMove 11s linear infinite;
 }
 
