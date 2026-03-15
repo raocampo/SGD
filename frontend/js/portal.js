@@ -51,7 +51,14 @@ function obtenerUrlInicioPortalCompartible() {
 }
 
 function abrirTorneoEnNuevaPestana(href, contexto = null) {
-  if (!href) return;
+  let targetHref = String(href || "").trim();
+  if (!targetHref && contexto?.campeonatoId) {
+    targetHref = construirUrlPortalCampeonato(contexto.campeonatoId, {
+      eventoId: contexto?.eventoId,
+      organizadorId: contexto?.organizadorId,
+    });
+  }
+  if (!targetHref) return;
   if (contexto && typeof contexto === "object") {
     window.RouteContext?.save?.("portal.html", {
       campeonato: Number.isFinite(Number.parseInt(contexto.campeonatoId, 10))
@@ -65,7 +72,7 @@ function abrirTorneoEnNuevaPestana(href, contexto = null) {
         : null,
     });
   }
-  window.open(href, "_blank", "noopener");
+  window.open(targetHref, "_blank", "noopener");
 }
 
 function abrirDetallePortalCampeonato(campeonatoId, organizadorId = null) {
@@ -74,7 +81,12 @@ function abrirDetallePortalCampeonato(campeonatoId, organizadorId = null) {
     organizadorId: Number.parseInt(organizadorId, 10) || null,
   };
   guardarContextoPortalCompartible(contexto);
-  abrirTorneoEnNuevaPestana("portal.html", contexto);
+  abrirTorneoEnNuevaPestana(
+    construirUrlPortalCampeonato(contexto.campeonatoId, {
+      organizadorId: contexto.organizadorId,
+    }),
+    contexto
+  );
 }
 
 function obtenerImagenCardPortal(torneo) {
@@ -301,7 +313,9 @@ function renderCardTorneoPrincipal(torneo) {
   const fechaFin = formatearFechaPortal(torneo?.fecha_fin);
   const campeonatoId = Number.parseInt(torneo?.id, 10) || 0;
   const organizadorId = Number.parseInt(portalContextoActual?.organizadorId, 10) || 0;
-  const hrefPortal = "portal.html";
+  const hrefPortal = construirUrlPortalCampeonato(campeonatoId, {
+    organizadorId: organizadorId || null,
+  });
   const textoFecha =
     fechaInicio && fechaFin ? `Fecha: ${fechaInicio} - ${fechaFin}` : fechaInicio ? `Fecha: ${fechaInicio}` : "Fecha por confirmar";
 
