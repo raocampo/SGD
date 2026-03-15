@@ -987,10 +987,14 @@ function renderJornadasPortal(jornadas = [], partidos = []) {
   `;
 }
 
-function renderEliminatoriasPortal(rondas = []) {
-  const rondasValidas = Array.isArray(rondas) ? rondas.filter((item) => Array.isArray(item?.partidos) && item.partidos.length) : [];
+function renderEliminatoriasPortal(payload = []) {
+  const data = Array.isArray(payload) ? { rondas: payload } : (payload || {});
+  const rondasValidas = Array.isArray(data?.rondas)
+    ? data.rondas.filter((item) => Array.isArray(item?.partidos) && item.partidos.length)
+    : [];
   if (!rondasValidas.length) {
-    return '<p class="empty-msg">No hay llave eliminatoria generada.</p>';
+    const mensaje = data?.detalle || data?.mensaje || "No hay llave eliminatoria generada.";
+    return `<p class="empty-msg">${escPortal(mensaje)}</p>`;
   }
 
   return `
@@ -1488,7 +1492,7 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
           goleadores: goleadoresRes.goleadores || [],
           tarjetas: tarjetasRes.tarjetas || [],
           fairPlay: fairPlayRes.fair_play || [],
-          eliminatorias: eliminatoriasRes.rondas || [],
+          eliminatorias: eliminatoriasRes || { rondas: [] },
         };
       })
     );

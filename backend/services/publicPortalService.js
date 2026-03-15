@@ -424,25 +424,38 @@ async function obtenerEliminatoriasPublicasPorEvento(eventoId) {
   const evento = await obtenerEventoPublico(eventoId);
   if (!evento) return null;
 
-  const partidos = await Eliminatoria.obtenerPorEvento(eventoId);
-  const rondasMap = new Map();
-  for (const partido of partidos) {
-    const ronda = String(partido.ronda || "sin_ronda");
-    if (!rondasMap.has(ronda)) {
-      rondasMap.set(ronda, {
-        ronda,
-        partidos: [],
-      });
-    }
-    rondasMap.get(ronda).partidos.push(partido);
+  const diagnostico = await Eliminatoria.obtenerDiagnosticoBracketActual(eventoId);
+  const partidos = Array.isArray(diagnostico?.partidos) ? diagnostico.partidos : [];
+  const rondas = Array.isArray(diagnostico?.rondas) ? diagnostico.rondas : [];
+
+  if (diagnostico?.consistente === false) {
+    return {
+      ok: true,
+      evento: resumirEvento(evento),
+      total: 0,
+      rondas: [],
+      partidos: [],
+      inconsistente: true,
+      codigo: diagnostico?.codigo || "bracket_desactualizado",
+      mensaje:
+        diagnostico?.mensaje ||
+        "La llave eliminatoria publicada ya no coincide con la clasificación vigente.",
+      detalle:
+        diagnostico?.detalle ||
+        "Regenera el playoff para publicar una llave consistente con la clasificación actual.",
+      reclasificaciones: Array.isArray(diagnostico?.reclasificaciones)
+        ? diagnostico.reclasificaciones
+        : [],
+    };
   }
 
   return {
     ok: true,
     evento: resumirEvento(evento),
     total: partidos.length,
-    rondas: Array.from(rondasMap.values()),
+    rondas,
     partidos,
+    inconsistente: false,
   };
 }
 

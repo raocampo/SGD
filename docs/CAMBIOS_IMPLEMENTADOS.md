@@ -7,6 +7,21 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-15 - Portal público: playoff consistente con clasificación vigente
+- `backend/models/Eliminatoria.js` incorpora un diagnóstico de consistencia para la llave publicada:
+  - toma la clasificación vigente por grupos o tabla acumulada,
+  - detecta reclasificaciones pendientes,
+  - detecta vacantes playoff,
+  - compara los equipos publicados en primera ronda contra los clasificados vigentes.
+- `backend/services/publicPortalService.js` ya no publica una llave stale:
+  - si la llave no coincide con la clasificación actual, responde sin rondas y con mensaje explicativo.
+- `frontend/js/portal.js` muestra ese mensaje en la pestaña `Playoff` en vez de dibujar cruces incorrectos.
+- impacto funcional:
+  - equipos eliminados ya no deben verse en el playoff público,
+  - si falta un cupo y la clasificación exige reclasificación o regeneración, el portal deja de publicar la llave hasta resolverlo.
+
+---
+
 ## 2026-03-14 - Recorte estable de foto para carné
 - Navegacion interna limpia:
   - `frontend/js/core.js` incorpora `RouteContext` para guardar contexto por pagina en `sessionStorage`.

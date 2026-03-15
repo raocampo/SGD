@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-14
+Ultima actualizacion: 2026-03-15
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,20 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-15
+- Portal publico / playoff:
+  - se corrigio la publicacion del bloque `Playoff` en `portal.html` para que ya no muestre llaves desactualizadas.
+  - el backend ahora compara la llave guardada en `partidos_eliminatoria` contra la clasificacion vigente del evento antes de publicarla.
+  - si detecta equipos eliminados dentro de la llave, cambios de sembrado o cupos pendientes, el portal deja de renderizar la ronda y muestra un mensaje claro de regeneracion.
+  - para eventos con cupo vacante, el portal tambien bloquea la publicacion hasta que se resuelva la reclasificacion o se regenere la llave.
+  - validacion real ejecutada sobre el evento publico donde aparecian `Inter FC` y `San Rafael`:
+    - resultado esperado: `inconsistente=true`, `codigo=bracket_desactualizado`,
+    - detalle: `Equipos fuera de clasificación detectados: Inter FC, San Rafael. Regenera el playoff.`
+  - archivos clave:
+    - `backend/models/Eliminatoria.js`
+    - `backend/services/publicPortalService.js`
+    - `frontend/js/portal.js`
 
 ### 2026-03-14
 - Tablas / auditoria / playoff:

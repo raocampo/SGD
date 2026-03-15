@@ -1679,6 +1679,228 @@ class Eliminatoria {
     };
   }
 
+  static agruparPartidosPorRonda(partidos = []) {
+    const rondasMap = new Map();
+    for (const partido of Array.isArray(partidos) ? partidos : []) {
+      const ronda = String(partido?.ronda || "sin_ronda");
+      if (!rondasMap.has(ronda)) {
+        rondasMap.set(ronda, { ronda, partidos: [] });
+      }
+      rondasMap.get(ronda).partidos.push(partido);
+    }
+    return Array.from(rondasMap.values());
+  }
+
+  static obtenerPrimeraRondaPartidos(partidos = []) {
+    const rows = Array.isArray(partidos) ? partidos : [];
+    if (!rows.length) return [];
+    const rondaActual =
+      RONDAS_ORDEN.find((ronda) => rows.some((partido) => String(partido?.ronda || "") === ronda)) ||
+      String(rows[0]?.ronda || "sin_ronda");
+    return rows
+      .filter((partido) => String(partido?.ronda || "sin_ronda") === rondaActual)
+      .sort((a, b) => Number(a?.partido_numero || 0) - Number(b?.partido_numero || 0));
+  }
+
+  static normalizarEntradasSembrado(entradas = []) {
+    return (Array.isArray(entradas) ? entradas : []).map((entry) => ({
+      equipo_id: Number.isFinite(Number(entry?.equipo_id)) ? Number(entry.equipo_id) : null,
+      seed_ref: entry?.seed_ref || null,
+    }));
+  }
+
+  static construirDiagnosticoInconsistenciaBracket({
+    partidos = [],
+    esperado = [],
+    config = null,
+    mensajeBase = "La llave publicada ya no coincide con la clasificación vigente.",
+  } = {}) {
+    const primeraRonda = this.obtenerPrimeraRondaPartidos(partidos);
+    const actuales = primeraRonda.flatMap((partido) => [
+      {
+        equipo_id: Number.isFinite(Number(partido?.equipo_local_id)) ? Number(partido.equipo_local_id) : null,
+        equipo_nombre: partido?.equipo_local_nombre || "Por definir",
+        seed_ref: partido?.seed_local_ref || null,
+      },
+      {
+        equipo_id: Number.isFinite(Number(partido?.equipo_visitante_id)) ? Number(partido.equipo_visitante_id) : null,
+        equipo_nombre: partido?.equipo_visitante_nombre || "Por definir",
+        seed_ref: partido?.seed_visitante_ref || null,
+      },
+    ]);
+    const esperados = this.normalizarEntradasSembrado(esperado);
+    const actualesIds = actuales
+      .map((row) => (Number.isFinite(row?.equipo_id) ? Number(row.equipo_id) : null))
+      .filter((id) => Number.isFinite(id));
+    const esperadosIds = esperados
+      .map((row) => (Number.isFinite(row?.equipo_id) ? Number(row.equipo_id) : null))
+      .filter((id) => Number.isFinite(id));
+
+    const fueraDeClasificacion = actuales
+      .filter((row) => Number.isFinite(row?.equipo_id) && !esperadosIds.includes(Number(row.equipo_id)))
+      .map((row) => row?.equipo_nombre || `Equipo ${row?.equipo_id}`);
+    const faltantes = esperados
+      .filter((row) => Number.isFinite(row?.equipo_id) && !actualesIds.includes(Number(row.equipo_id)))
+      .map((row) => row?.equipo_id);
+
+    const ordenActual = actuales.map((row) => row?.equipo_id ?? null);
+    const ordenEsperado = esperados.slice(0, ordenActual.length).map((row) => row?.equipo_id ?? null);
+    const ordenDistinto =
+      ordenActual.length !== ordenEsperado.length ||
+      ordenActual.some((value, index) => Number(value ?? -1) !== Number(ordenEsperado[index] ?? -1));
+
+    const inconsistente = fueraDeClasificacion.length > 0 || faltantes.length > 0 || ordenDistinto;
+    if (!inconsistente) {
+      return {
+        consistente: true,
+        codigo: "ok",
+        mensaje: null,
+        detalle: null,
+      };
+    }
+
+    let detalle = "Regenera el playoff para reflejar la clasificación vigente.";
+    if (fueraDeClasificacion.length) {
+      detalle = `Equipos fuera de clasificación detectados: ${fueraDeClasificacion.join(", ")}. Regenera el playoff.`;
+    } else if (faltantes.length) {
+      detalle = "La llave publicada no incluye todos los clasificados vigentes. Regenera el playoff.";
+    } else if (ordenDistinto) {
+      detalle = "La llave publicada ya no respeta el orden de clasificación vigente. Regenera el playoff.";
+    }
+
+    return {
+      consistente: false,
+      codigo: "bracket_desactualizado",
+      mensaje: mensajeBase,
+      detalle,
+      fuera_de_clasificacion: fueraDeClasificacion,
+      faltantes,
+      configuracion: config?.configuracion || null,
+    };
+  }
+
+  static async obtenerDiagnosticoBracketActual(evento_id, db = pool) {
+    await this.asegurarEsquema(db);
+    const partidos = await this.obtenerPorEvento(evento_id, db);
+    if (!partidos.length) {
+      return {
+        consistente: true,
+        codigo: "sin_llave",
+        mensaje: null,
+        detalle: null,
+        partidos: [],
+        rondas: [],
+      };
+    }
+
+    const config = await this.obtenerConfiguracionPlayoff(evento_id, db);
+    const origen = String(config?.configuracion?.origen || "evento").toLowerCase();
+    if (origen !== "grupos") {
+      return {
+        consistente: true,
+        codigo: "origen_evento",
+        mensaje: null,
+        detalle: null,
+        partidos,
+        rondas: this.agruparPartidosPorRonda(partidos),
+        configuracion: config?.configuracion || null,
+      };
+    }
+
+    const clasificadosPorGrupo = Math.max(
+      1,
+      Number.parseInt(config?.evento?.clasificados_por_grupo, 10) || 1
+    );
+    const clasificadosData = await this.obtenerClasificadosPorGrupo(evento_id, clasificadosPorGrupo, db);
+    const reclasPendientes = Array.isArray(clasificadosData?.reclasificaciones)
+      ? clasificadosData.reclasificaciones.filter(
+          (row) => String(row?.estado || "pendiente").toLowerCase() !== "resuelto"
+        )
+      : [];
+
+    if (reclasPendientes.length) {
+      return {
+        consistente: false,
+        codigo: "reclasificacion_pendiente",
+        mensaje: "Hay cupos playoff pendientes de reclasificación.",
+        detalle:
+          "Resuelve la reclasificación entre los mejores equipos aún en competencia antes de publicar la llave.",
+        partidos,
+        rondas: [],
+        configuracion: config?.configuracion || null,
+        reclasificaciones: reclasPendientes,
+      };
+    }
+
+    const metodo = String(config?.configuracion?.metodo_clasificacion || "cruces_grupos").toLowerCase();
+    const primeraRonda = this.obtenerPrimeraRondaPartidos(partidos);
+    const capacidadPrimeraRonda = primeraRonda.length > 0 ? primeraRonda.length * 2 : null;
+    const cantidadObjetivo =
+      Number.parseInt(config?.evento?.eliminatoria_equipos, 10) || capacidadPrimeraRonda || null;
+
+    let esperado = [];
+    if (metodo === "tabla_unica") {
+      const enfrentamientosDirectos = await this.obtenerMapaEnfrentamientosDirectosEvento(
+        evento_id,
+        config?.evento?.sistema_puntuacion || "tradicional",
+        db
+      );
+      const tabla = this.construirSembradoTablaUnica(clasificadosData, {
+        cantidad_objetivo: cantidadObjetivo,
+        enfrentamientosDirectos,
+      });
+      if (Number(tabla?.faltantes_para_objetivo || 0) > 0) {
+        return {
+          consistente: false,
+          codigo: "cupos_incompletos",
+          mensaje: "La clasificación vigente todavía no completa todos los cupos playoff.",
+          detalle:
+            "Debes completar la vacante con reclasificación o ajustar la llave antes de publicarla.",
+          partidos,
+          rondas: [],
+          configuracion: config?.configuracion || null,
+        };
+      }
+      esperado = tabla.sembrados || [];
+    } else {
+      esperado = this.construirSembradoCrucesGrupos(
+        clasificadosData,
+        config?.configuracion?.cruces_grupos || []
+      );
+    }
+
+    const esperadosNormalizados = this.normalizarEntradasSembrado(esperado).slice(
+      0,
+      capacidadPrimeraRonda || undefined
+    );
+    const hayVacantesVigentes =
+      esperadosNormalizados.length > 0 &&
+      esperadosNormalizados.some((entry) => !Number.isFinite(Number(entry?.equipo_id)));
+    if (hayVacantesVigentes) {
+      return {
+        consistente: false,
+        codigo: "cupos_incompletos",
+        mensaje: "La clasificación vigente todavía no completa todos los cupos playoff.",
+        detalle:
+          "Hay una vacante playoff pendiente. Completa la reclasificación o ajusta la clasificación antes de publicar la llave.",
+        partidos,
+        rondas: [],
+        configuracion: config?.configuracion || null,
+      };
+    }
+
+    const diagnostico = this.construirDiagnosticoInconsistenciaBracket({
+      partidos,
+      esperado: esperadosNormalizados,
+      config,
+    });
+    return {
+      ...diagnostico,
+      partidos,
+      rondas: diagnostico?.consistente ? this.agruparPartidosPorRonda(partidos) : [],
+    };
+  }
+
   static async crearSlot(
     evento_id,
     ronda,
