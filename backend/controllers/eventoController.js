@@ -89,6 +89,28 @@ function normalizarClasificadosPorGrupo(value, fallback = null) {
   return n;
 }
 
+function normalizarPlayoffPlantilla(value, fallback = "estandar") {
+  const raw = String(value || fallback || "estandar").trim().toLowerCase();
+  const map = {
+    estandar: "estandar",
+    standard: "estandar",
+    balanceada: "balanceada_8vos",
+    balanceada_8vos: "balanceada_8vos",
+    octavos_balanceados: "balanceada_8vos",
+    finish_balanceado: "balanceada_8vos",
+  };
+  return map[raw] || null;
+}
+
+function normalizarBooleanFlexible(value, fallback = null) {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value;
+  const raw = String(value).trim().toLowerCase();
+  if (["1", "true", "si", "sí", "yes", "on"].includes(raw)) return true;
+  if (["0", "false", "no", "off"].includes(raw)) return false;
+  return fallback;
+}
+
 function normalizarColorHex(value, fallback = null) {
   const raw = String(value ?? "").trim();
   if (!raw) return fallback;
@@ -209,6 +231,11 @@ async function asegurarEsquemaEventos() {
   `);
   await pool.query(`
     ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS playoff_plantilla VARCHAR(40) DEFAULT 'estandar',
+    ADD COLUMN IF NOT EXISTS playoff_tercer_puesto BOOLEAN DEFAULT FALSE
+  `);
+  await pool.query(`
+    ALTER TABLE eventos
     ADD COLUMN IF NOT EXISTS bloquear_morosos BOOLEAN
   `);
   await pool.query(`
@@ -249,6 +276,16 @@ async function asegurarEsquemaEventos() {
     UPDATE eventos
     SET clasificacion_tabla_acumulada = COALESCE(clasificacion_tabla_acumulada, false)
     WHERE clasificacion_tabla_acumulada IS NULL
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET playoff_plantilla = 'estandar'
+    WHERE playoff_plantilla IS NULL OR TRIM(COALESCE(playoff_plantilla, '')) = ''
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET playoff_tercer_puesto = COALESCE(playoff_tercer_puesto, FALSE)
+    WHERE playoff_tercer_puesto IS NULL
   `);
   await pool.query(`
     UPDATE eventos
@@ -307,6 +344,8 @@ const eventoController = {
         clasificados_por_grupo,
         metodo_competencia,
         eliminatoria_equipos,
+        playoff_plantilla,
+        playoff_tercer_puesto,
         bloquear_morosos,
         bloqueo_morosidad_monto,
         carnet_estilo,
@@ -372,9 +411,31 @@ const eventoController = {
       const clasificacionTablaAcumulada = metodoCompetenciaVisible === "tabla_acumulada";
       const metodoCompetencia = clasificacionTablaAcumulada ? "mixto" : metodoCompetenciaVisible;
       const eliminatoriaEquipos = normalizarEliminatoriaEquipos(eliminatoria_equipos, null);
+      const playoffPlantilla = normalizarPlayoffPlantilla(playoff_plantilla, "estandar");
+      const playoffTercerPuesto = normalizarBooleanFlexible(playoff_tercer_puesto, null);
       if (eliminatoria_equipos !== undefined && eliminatoria_equipos !== null && eliminatoriaEquipos === null) {
         return res.status(400).json({
           error: "eliminatoria_equipos invalido. Valores permitidos: 4, 8, 16, 32.",
+        });
+      }
+      if (
+        playoff_plantilla !== undefined &&
+        playoff_plantilla !== null &&
+        playoff_plantilla !== "" &&
+        !playoffPlantilla
+      ) {
+        return res.status(400).json({
+          error: "playoff_plantilla invalida. Usa: estandar o balanceada_8vos.",
+        });
+      }
+      if (
+        playoff_tercer_puesto !== undefined &&
+        playoff_tercer_puesto !== null &&
+        playoff_tercer_puesto !== "" &&
+        playoffTercerPuesto === null
+      ) {
+        return res.status(400).json({
+          error: "playoff_tercer_puesto inválido. Usa true o false.",
         });
       }
       if (
@@ -408,6 +469,7 @@ const eventoController = {
           campeonato_id, nombre, organizador, fecha_inicio, fecha_fin, estado,
           modalidad,
           metodo_competencia, eliminatoria_equipos,
+          playoff_plantilla, playoff_tercer_puesto,
           costo_inscripcion, clasificados_por_grupo, clasificacion_tabla_acumulada,
           bloquear_morosos, bloqueo_morosidad_monto,
           carnet_estilo, carnet_color_primario, carnet_color_secundario, carnet_color_acento,
@@ -417,7 +479,7 @@ const eventoController = {
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -431,6 +493,8 @@ const eventoController = {
         mod,
         metodoCompetencia,
         eliminatoriaEquipos,
+        playoffPlantilla || "estandar",
+        playoffTercerPuesto === true,
         costoInscripcion,
         clasificadosFinal,
         clasificacionTablaAcumulada,
@@ -609,6 +673,30 @@ const eventoController = {
           }
           campos.push(`${k} = $${i}`);
           valores.push(v === null || v === "" ? null : n);
+          i++;
+          continue;
+        }
+        if (k === "playoff_plantilla") {
+          const plantilla = normalizarPlayoffPlantilla(v, null);
+          if (v !== null && v !== "" && !plantilla) {
+            return res.status(400).json({
+              error: "playoff_plantilla invalida. Usa: estandar o balanceada_8vos.",
+            });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(v === null || v === "" ? "estandar" : plantilla);
+          i++;
+          continue;
+        }
+        if (k === "playoff_tercer_puesto") {
+          const valorBool = normalizarBooleanFlexible(v, null);
+          if (v !== null && v !== "" && valorBool === null) {
+            return res.status(400).json({
+              error: "playoff_tercer_puesto inválido. Usa true o false.",
+            });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(valorBool === true);
           i++;
           continue;
         }

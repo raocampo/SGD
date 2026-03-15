@@ -49,6 +49,12 @@ function formatearMetodoCompetencia(valor) {
   return "Grupos";
 }
 
+function formatearPlantillaPlayoff(valor) {
+  const key = String(valor || "estandar").toLowerCase();
+  if (key === "balanceada_8vos") return "Balanceada 8vos";
+  return "Estándar";
+}
+
 function esTablaAcumuladaEvento(evento = null) {
   if (!evento) return false;
   if (typeof evento === "string") return String(evento).toLowerCase() === "tabla_acumulada";
@@ -123,10 +129,18 @@ function actualizarVisibilidadConfigEliminatoria() {
   const metodo = document.getElementById("evt-metodo-competencia")?.value || "grupos";
   const wrap = document.getElementById("evt-wrap-eliminatoria-equipos");
   const wrapClasificados = document.getElementById("evt-wrap-clasificados-por-grupo");
+  const wrapPlantilla = document.getElementById("evt-wrap-playoff-plantilla");
+  const wrapTercer = document.getElementById("evt-wrap-playoff-tercer-puesto");
   if (!wrap) return;
   wrap.style.display = ["eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
   if (wrapClasificados) {
     wrapClasificados.style.display = ["grupos", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
+  }
+  if (wrapPlantilla) {
+    wrapPlantilla.style.display = ["eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
+  }
+  if (wrapTercer) {
+    wrapTercer.style.display = ["eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
   }
 }
 
@@ -320,6 +334,8 @@ function renderEventoCard(e) {
         <p><strong>Método:</strong> ${escapeHtml(formatearMetodoCompetencia(obtenerMetodoCompetenciaVisibleEvento(e)))}</p>
         <p><strong>Clasifican/grupo:</strong> ${escapeHtml(formatearClasificadosPorGrupo(e))}</p>
         <p><strong>Llave elim.:</strong> ${escapeHtml(e.eliminatoria_equipos || "Automática")}</p>
+        <p><strong>Armado playoff:</strong> ${escapeHtml(formatearPlantillaPlayoff(e.playoff_plantilla))}</p>
+        <p><strong>Tercer puesto:</strong> ${e.playoff_tercer_puesto === true ? "Sí" : "No"}</p>
         <p><strong>Costo inscripción:</strong> ${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</p>
         <p><strong>Bloqueo morosos:</strong> ${escapeHtml(formatearBloqueoMorososEvento(e))}</p>
         <p><strong>Diseño carné:</strong> ${escapeHtml(formatearCarnetEstilo(e.carnet_estilo))}</p>
@@ -352,6 +368,8 @@ function renderTablaEventos(eventos) {
           <td>${escapeHtml(formatearMetodoCompetencia(obtenerMetodoCompetenciaVisibleEvento(e)))}</td>
           <td>${escapeHtml(formatearClasificadosPorGrupo(e))}</td>
           <td>${escapeHtml(e.eliminatoria_equipos || "Auto")}</td>
+          <td>${escapeHtml(formatearPlantillaPlayoff(e.playoff_plantilla))}</td>
+          <td>${e.playoff_tercer_puesto === true ? "Sí" : "No"}</td>
           <td>${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</td>
           <td>${escapeHtml(formatearBloqueoMorososEvento(e))}</td>
           <td>${escapeHtml(formatearCarnetEstilo(e.carnet_estilo))}</td>
@@ -384,6 +402,8 @@ function renderTablaEventos(eventos) {
             <th>Método</th>
             <th>Clasif./grupo</th>
             <th>Llave elim.</th>
+            <th>Armado</th>
+            <th>3er puesto</th>
             <th>Costo inscripción</th>
             <th>Bloqueo morosos</th>
             <th>Diseño carné</th>
@@ -422,6 +442,8 @@ async function crearEvento() {
   const metodoCompetencia = document.getElementById("evt-metodo-competencia")?.value || "grupos";
   const clasificadosRaw = document.getElementById("evt-clasificados-por-grupo")?.value || "";
   const eliminatoriaEquiposRaw = document.getElementById("evt-eliminatoria-equipos")?.value || "";
+  const playoffPlantilla = document.getElementById("evt-playoff-plantilla")?.value || "estandar";
+  const playoffTercerPuesto = document.getElementById("evt-playoff-tercer-puesto")?.value === "true";
   const fecha_inicio = document.getElementById("evt-fecha-inicio").value;
   const fecha_fin = document.getElementById("evt-fecha-fin").value;
   const costo_inscripcion = normalizarCostoInscripcion(
@@ -481,6 +503,8 @@ async function crearEvento() {
       metodo_competencia,
       clasificados_por_grupo,
       eliminatoria_equipos,
+      playoff_plantilla: playoffPlantilla,
+      playoff_tercer_puesto: playoffTercerPuesto,
       fecha_inicio,
       fecha_fin,
       costo_inscripcion,
@@ -497,9 +521,13 @@ async function crearEvento() {
     const inputClasificados = document.getElementById("evt-clasificados-por-grupo");
     const selectMetodo = document.getElementById("evt-metodo-competencia");
     const selectElim = document.getElementById("evt-eliminatoria-equipos");
+    const selectPlantilla = document.getElementById("evt-playoff-plantilla");
+    const selectTercer = document.getElementById("evt-playoff-tercer-puesto");
     if (inputClasificados) inputClasificados.value = "2";
     if (selectMetodo) selectMetodo.value = "grupos";
     if (selectElim) selectElim.value = "";
+    if (selectPlantilla) selectPlantilla.value = "estandar";
+    if (selectTercer) selectTercer.value = "false";
     const selectBloqMorosos = document.getElementById("evt-bloquear-morosos");
     const inputBloqMonto = document.getElementById("evt-bloqueo-morosidad-monto");
     if (selectBloqMorosos) selectBloqMorosos.value = "";
@@ -629,6 +657,26 @@ async function editarEvento(id) {
         },
       },
       {
+        name: "playoff_plantilla",
+        label: "Armado de llaves / finish",
+        type: "select",
+        value: String(evento?.playoff_plantilla || "estandar"),
+        options: [
+          { value: "estandar", label: "Estándar automático" },
+          { value: "balanceada_8vos", label: "Balanceada 8vos (P1 a P8)" },
+        ],
+      },
+      {
+        name: "playoff_tercer_puesto",
+        label: "Partido tercer y cuarto puesto",
+        type: "select",
+        value: evento?.playoff_tercer_puesto === true ? "true" : "false",
+        options: [
+          { value: "false", label: "No" },
+          { value: "true", label: "Sí" },
+        ],
+      },
+      {
         name: "bloquear_morosos",
         label: "Bloqueo morosos",
         type: "select",
@@ -696,6 +744,12 @@ async function editarEvento(id) {
   const nuevaLlave = ["eliminatoria", "mixto", "tabla_acumulada"].includes(nuevoMetodo)
     ? String(form.eliminatoria_equipos || "").trim()
     : "";
+  const nuevaPlantillaPlayoff = ["eliminatoria", "mixto", "tabla_acumulada"].includes(nuevoMetodo)
+    ? String(form.playoff_plantilla || "estandar").trim()
+    : "estandar";
+  const nuevoTercerPuesto = ["eliminatoria", "mixto", "tabla_acumulada"].includes(nuevoMetodo)
+    ? String(form.playoff_tercer_puesto || "false").trim().toLowerCase() === "true"
+    : false;
   const costo_inscripcion = normalizarCostoInscripcion(form.costo_inscripcion, null);
   const nuevoBloqueo = String(form.bloquear_morosos || bloqueoActual).trim().toLowerCase();
   const nuevoMontoBloqueoRaw = String(form.bloqueo_morosidad_monto || "").trim();
@@ -734,6 +788,8 @@ async function editarEvento(id) {
         ? normalizarClasificadosPorGrupo(clasificadosPrompt, 2)
         : null;
     payload.eliminatoria_equipos = nuevaLlave ? Number(nuevaLlave) : null;
+    payload.playoff_plantilla = nuevaPlantillaPlayoff || "estandar";
+    payload.playoff_tercer_puesto = nuevoTercerPuesto;
     if (costo_inscripcion !== null) payload.costo_inscripcion = costo_inscripcion;
     payload.bloquear_morosos =
       nuevoBloqueo === "heredar" ? null : nuevoBloqueo === "activar";

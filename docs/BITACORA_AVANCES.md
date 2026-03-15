@@ -14,6 +14,42 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-15
+- Eliminatorias / llaves configurables desde categoria:
+  - se agrego configuracion inicial de playoff directamente en la categoria/evento para definir:
+    - `playoff_plantilla`,
+    - `playoff_tercer_puesto`.
+  - nuevas opciones visibles:
+    - `Estandar`,
+    - `Balanceada 8vos`.
+  - la opcion `Balanceada 8vos` implementa el armado solicitado para 16 clasificados desde cruces de grupos, generando:
+    - `8VO P1: 1A vs 4C`,
+    - `8VO P2: 2B vs 3D`,
+    - `8VO P3: 1D vs 4B`,
+    - `8VO P4: 2C vs 3A`,
+    - `8VO P5: 1B vs 4D`,
+    - `8VO P6: 2A vs 3C`,
+    - `8VO P7: 1C vs 4A`,
+    - `8VO P8: 2D vs 3B`.
+  - la configuracion tambien permite incluir `Tercer y cuarto puesto`, creando un cruce extra entre perdedores de semifinal.
+  - se ajusto la rotulacion de llaves/exportaciones para mostrar:
+    - `8VO P#`,
+    - `4TO G#`,
+    - `SEM G#`,
+    - `FINAL`,
+    - `TERCER Y CUARTO`.
+  - nuevas migraciones:
+    - `database/migrations/043_evento_playoff_templates_y_tercer_puesto.sql`
+    - `database/migrations/044_partidos_eliminatoria_fuente_ganador_perdedor.sql`
+  - migraciones `043` y `044` aplicadas y verificadas en:
+    - BD local,
+    - PostgreSQL de Render.
+  - validacion tecnica:
+    - `node --check backend/models/Eliminatoria.js`
+    - `node --check backend/controllers/eventoController.js`
+    - `node --check frontend/js/eliminatorias.js`
+    - `node --check frontend/js/eventos.js`
+    - `node --check frontend/js/portal.js`
+    - `npm --prefix backend run smoke` => `PASS 9/9`.
 - Eliminatorias / reclasificación operativa:
   - se corrigio el flujo de `partido_extra_reclasificacion` para que, al guardar la clasificacion manual, la reclasificacion ya no quede solo como registro logico.
   - ahora cada reclasificacion genera y enlaza un `partido` real mediante `evento_reclasificaciones_playoff.partido_id`.
@@ -1396,6 +1432,7 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Continuidad del hardening de despliegue Render:
   - carga historica de `uploads`,
   - verificacion real de logos, fotos y documentos.
+- Validar en operacion real la nueva `plantilla balanceada 8vos` y la opcion `tercer y cuarto puesto` con datos de campeonato activo.
 
 ## Actualizacion 2026-03-12 (Tabla acumulada, foto carné y planilla del jugador)
 - Se incorporo el tipo visible de competencia `tabla acumulada` para categorias/eventos:

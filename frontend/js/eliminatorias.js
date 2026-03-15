@@ -1,4 +1,4 @@
-const RONDAS_ORDEN_ELI = ["32vos", "16vos", "8vos", "4tos", "semifinal", "final"];
+const RONDAS_ORDEN_ELI = ["32vos", "16vos", "8vos", "4tos", "semifinal", "final", "tercer_puesto"];
 const BACKEND_BASE = (window.resolveBackendBaseUrl
   ? window.resolveBackendBaseUrl()
   : `${window.location.origin}`).replace(/\/$/, "");
@@ -45,6 +45,12 @@ function actualizarEventoCache(eventoId, cambios = {}) {
 function obtenerMetodoCompetenciaVisibleEliminatoria(evento = {}) {
   if (evento?.clasificacion_tabla_acumulada === true) return "tabla_acumulada";
   return String(evento?.metodo_competencia || "grupos").toLowerCase();
+}
+
+function formatearPlantillaLlaveEliminatoria(valor) {
+  const key = String(valor || "estandar").toLowerCase();
+  if (key === "balanceada_8vos") return "Balanceada 8vos";
+  return "Estándar";
 }
 
 function obtenerCrucesConfiguradosDesdeWrap(wrap) {
@@ -146,6 +152,11 @@ async function guardarConfiguracionPlayoffCompartida({ silencioso = false } = {}
     : String(
         document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos"
       ).toLowerCase();
+  const plantillaLlave = String(
+    document.getElementById("eli-plantilla-llave")?.value || "estandar"
+  ).toLowerCase();
+  const incluirTercerPuesto =
+    String(document.getElementById("eli-tercer-puesto")?.value || "false").toLowerCase() === "true";
   const crucesGrupos =
     origen === "grupos" && metodoClasificacion === "cruces_grupos"
       ? obtenerCrucesConfigurados()
@@ -157,6 +168,8 @@ async function guardarConfiguracionPlayoffCompartida({ silencioso = false } = {}
       clasificados_por_grupo: clasificados,
       origen,
       metodo_clasificacion: metodoClasificacion,
+      plantilla_llave: plantillaLlave,
+      incluir_tercer_puesto: incluirTercerPuesto,
       cruces_grupos: crucesGrupos,
     });
     eliminatoriaState.configuracionPlayoff = resp || null;
@@ -1217,18 +1230,27 @@ function actualizarMetaEvento() {
   const metodoGrupos = String(
     metodo === "tabla_acumulada" ? "tabla_unica" : (config?.metodo_clasificacion || "cruces_grupos")
   ).toLowerCase();
+  const plantillaLlave = String(
+    config?.plantilla_llave || evento?.playoff_plantilla || "estandar"
+  ).toLowerCase();
+  const incluirTercerPuesto =
+    config?.incluir_tercer_puesto === true || evento?.playoff_tercer_puesto === true;
 
   if (metodoEl) metodoEl.value = formatearMetodo(metodo);
   if (llaveEl) llaveEl.value = Number.isFinite(llave) ? String(llave) : "Automática";
   if (clasificadosSel) clasificadosSel.value = String(clasificados);
   if (metodoGruposSel) metodoGruposSel.value = metodoGrupos;
+  const plantillaSel = document.getElementById("eli-plantilla-llave");
+  const tercerSel = document.getElementById("eli-tercer-puesto");
+  if (plantillaSel) plantillaSel.value = plantillaLlave;
+  if (tercerSel) tercerSel.value = incluirTercerPuesto ? "true" : "false";
   if (avisoEl) {
     avisoEl.textContent =
       metodo === "tabla_acumulada"
-        ? "Esta categoría clasifica por tabla acumulada: ranking global de clasificados por rendimiento."
+        ? `Esta categoría clasifica por tabla acumulada: ranking global de clasificados por rendimiento. Plantilla: ${formatearPlantillaLlaveEliminatoria(plantillaLlave)}${incluirTercerPuesto ? " + tercer puesto" : ""}.`
         : metodo === "eliminatoria" || metodo === "mixto"
-          ? "Esta categoría soporta eliminación directa. También puedes generar playoff desde grupos."
-          : "Modo sugerido: playoff desde grupos (clasificados por grupo).";
+          ? `Esta categoría soporta eliminación directa. Plantilla actual: ${formatearPlantillaLlaveEliminatoria(plantillaLlave)}${incluirTercerPuesto ? " + tercer puesto" : ""}.`
+          : `Modo sugerido: playoff desde grupos (clasificados por grupo). Plantilla: ${formatearPlantillaLlaveEliminatoria(plantillaLlave)}${incluirTercerPuesto ? " + tercer puesto" : ""}.`;
   }
   if (origenSel) {
     origenSel.value = origen;
@@ -1251,13 +1273,21 @@ function actualizarUIPlayoffPorOrigen() {
   const wrapClasificados = document.getElementById("eli-wrap-clasificados");
   const wrapMetodo = document.getElementById("eli-wrap-metodo-grupos");
   const wrapCruces = document.getElementById("eli-wrap-cruces");
+  const wrapPlantilla = document.getElementById("eli-wrap-plantilla-llave");
+  const wrapTercer = document.getElementById("eli-wrap-tercer-puesto");
 
   const usaGrupos = origen === "grupos";
   if (wrapClasificados) wrapClasificados.style.display = usaGrupos ? "" : "none";
   if (wrapMetodo) wrapMetodo.style.display = usaGrupos ? "" : "none";
   if (wrapCruces) wrapCruces.style.display = usaGrupos && metodoGrupos === "cruces_grupos" ? "" : "none";
+  if (wrapPlantilla) wrapPlantilla.style.display = usaGrupos ? "" : "none";
+  if (wrapTercer) wrapTercer.style.display = ["eliminatoria", "mixto", "tabla_acumulada"].includes(metodoCompetencia) ? "" : "none";
   if (origenEl) origenEl.disabled = metodoCompetencia === "tabla_acumulada" || eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
   if (metodoGruposEl) metodoGruposEl.disabled = metodoCompetencia === "tabla_acumulada" || eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
+  const plantillaSel = document.getElementById("eli-plantilla-llave");
+  const tercerSel = document.getElementById("eli-tercer-puesto");
+  if (plantillaSel) plantillaSel.disabled = eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
+  if (tercerSel) tercerSel.disabled = eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
 
   if (usaGrupos && metodoGrupos === "cruces_grupos") {
     renderConfiguracionCruces();
@@ -1386,6 +1416,9 @@ async function generarLlaveEliminatoria() {
   const metodoGrupos = metodoEvento === "tabla_acumulada"
     ? "tabla_unica"
     : (document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos");
+  const plantillaLlave = String(document.getElementById("eli-plantilla-llave")?.value || "estandar").toLowerCase();
+  const incluirTercerPuesto =
+    String(document.getElementById("eli-tercer-puesto")?.value || "false").toLowerCase() === "true";
   const cruces = metodoGrupos === "cruces_grupos" ? obtenerCrucesConfigurados() : [];
 
   const configOk = await guardarConfiguracionPlayoffCompartida({ silencioso: true });
@@ -1410,6 +1443,8 @@ async function generarLlaveEliminatoria() {
       origen,
       metodo_clasificacion: metodoGrupos,
       clasificados_por_grupo: clasificadosPorGrupo,
+      plantilla_llave: plantillaLlave,
+      incluir_tercer_puesto: incluirTercerPuesto,
     };
     if (origen !== "grupos" && Number.isFinite(cantidadObjetivo)) {
       payload.cantidad_equipos = cantidadObjetivo;
@@ -1477,7 +1512,7 @@ function renderBracket() {
           return `
             <article class="eli-match-card">
               <div class="eli-match-head">
-                <strong>Partido ${escapeHtml(c.partido_numero || "-")}</strong>
+                <strong>${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}</strong>
               </div>
               <div class="eli-team-row">
                 <span class="eli-team-meta">
@@ -1558,7 +1593,7 @@ function renderPosterPublicacion(columnas = []) {
           const seedV = c.seed_visitante_ref ? `<small>${escapeHtml(c.seed_visitante_ref)}</small>` : "";
           return `
             <article class="eli-export-match" data-round-idx="${idx}" data-match-idx="${matchIdx}">
-              <header>P${escapeHtml(c.partido_numero || "-")}</header>
+              <header>${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}</header>
               <div class="eli-export-team">
                 <span class="eli-export-team-meta">
                   ${renderEquipoLogo(localLogo, local, "eli-export-team-logo")}
@@ -2050,7 +2085,22 @@ function formatearRonda(ronda) {
   if (key === "4tos") return "Cuartos";
   if (key === "semifinal") return "Semifinal";
   if (key === "final") return "Final";
+  if (key === "tercer_puesto") return "Tercer y cuarto";
   return key || "-";
+}
+
+function formatearEtiquetaPartidoEliminatoria(ronda, numero) {
+  const n = Number.parseInt(numero, 10);
+  const key = String(ronda || "").toLowerCase();
+  if (!Number.isFinite(n) || n <= 0) return formatearRonda(ronda);
+  if (key === "8vos") return `8VO P${n}`;
+  if (key === "4tos") return `4TO G${n}`;
+  if (key === "semifinal") return `SEM G${n}`;
+  if (key === "final") return n === 1 ? "FINAL" : `FINAL ${n}`;
+  if (key === "tercer_puesto") return "TERCER Y CUARTO";
+  if (key === "16vos") return `16VO P${n}`;
+  if (key === "32vos") return `32VO P${n}`;
+  return `P${n}`;
 }
 
 function formatearMetodo(metodo) {
@@ -2058,6 +2108,7 @@ function formatearMetodo(metodo) {
   if (key === "liga") return "Liga";
   if (key === "eliminatoria") return "Eliminatoria";
   if (key === "mixto") return "Mixto";
+  if (key === "tabla_acumulada") return "Tabla acumulada";
   return "Grupos";
 }
 

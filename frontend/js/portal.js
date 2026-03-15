@@ -1018,6 +1018,18 @@ function renderEliminatoriasPortal(payload = []) {
     return `<p class="empty-msg">${escPortal(mensaje)}</p>`;
   }
 
+  const formatearRondaPortal = (ronda) => {
+    const key = String(ronda || "").toLowerCase();
+    if (key === "32vos") return "32vos de final";
+    if (key === "16vos") return "16vos de final";
+    if (key === "8vos") return "Octavos";
+    if (key === "4tos") return "Cuartos";
+    if (key === "semifinal") return "Semifinal";
+    if (key === "final") return "Final";
+    if (key === "tercer_puesto") return "Tercer y cuarto";
+    return ronda || "Ronda";
+  };
+
   return `
     <div class="portal-eliminatoria-grid">
       ${rondasValidas
@@ -1041,7 +1053,7 @@ function renderEliminatoriasPortal(payload = []) {
           return `
             <section class="portal-eliminatoria-ronda">
               <div class="portal-eliminatoria-ronda-head">
-                <h4>${escPortal(ronda.ronda || "Ronda")}</h4>
+                <h4>${escPortal(formatearRondaPortal(ronda.ronda))}</h4>
                 <span>${Array.isArray(ronda.partidos) ? ronda.partidos.length : 0} partido(s)</span>
               </div>
               <div class="portal-eliminatoria-ronda-body">

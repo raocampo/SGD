@@ -11,7 +11,16 @@ const {
 const { _internals: tablaInternals = {} } = require("../controllers/tablaController");
 
 const REGLAS_DEFAULT = ["puntos", "diferencia_goles", "goles_favor"];
-const RONDAS_ORDEN = ["64vos", "32vos", "16vos", "8vos", "4tos", "semifinal", "final"];
+const RONDAS_ORDEN = [
+  "64vos",
+  "32vos",
+  "16vos",
+  "8vos",
+  "4tos",
+  "semifinal",
+  "final",
+  "tercer_puesto",
+];
 const RONDAS_POR_EQUIPOS = {
   2: ["final"],
   4: ["semifinal", "final"],
@@ -51,6 +60,42 @@ class Eliminatoria {
         EXISTS (
           SELECT 1
           FROM information_schema.columns
+          WHERE table_name = 'evento_playoff_config'
+            AND column_name = 'plantilla_llave'
+        ) AS tiene_plantilla_llave,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_name = 'evento_playoff_config'
+            AND column_name = 'incluir_tercer_puesto'
+        ) AS tiene_tercer_puesto_config,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_name = 'partidos_eliminatoria'
+            AND column_name = 'slot_local_fuente_tipo'
+        ) AS tiene_fuente_tipo_local,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_name = 'partidos_eliminatoria'
+            AND column_name = 'slot_visitante_fuente_tipo'
+        ) AS tiene_fuente_tipo_visitante,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_name = 'eventos'
+            AND column_name = 'playoff_plantilla'
+        ) AS tiene_evento_playoff_plantilla,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_name = 'eventos'
+            AND column_name = 'playoff_tercer_puesto'
+        ) AS tiene_evento_tercer_puesto,
+        EXISTS (
+          SELECT 1
+          FROM information_schema.columns
           WHERE table_name = 'evento_equipos'
             AND column_name = 'orden_sorteo'
         ) AS tiene_orden_sorteo
@@ -61,6 +106,12 @@ class Eliminatoria {
       row.tiene_evento_playoff_config === true &&
       row.tiene_evento_reclasificaciones === true &&
       row.tiene_reclasificacion_partido === true &&
+      row.tiene_plantilla_llave === true &&
+      row.tiene_tercer_puesto_config === true &&
+      row.tiene_fuente_tipo_local === true &&
+      row.tiene_fuente_tipo_visitante === true &&
+      row.tiene_evento_playoff_plantilla === true &&
+      row.tiene_evento_tercer_puesto === true &&
       row.tiene_orden_sorteo === true
     );
   }
@@ -89,6 +140,8 @@ class Eliminatoria {
           partido_id INTEGER REFERENCES partidos(id),
           slot_local_id INTEGER REFERENCES partidos_eliminatoria(id),
           slot_visitante_id INTEGER REFERENCES partidos_eliminatoria(id),
+          slot_local_fuente_tipo VARCHAR(20) NOT NULL DEFAULT 'ganador',
+          slot_visitante_fuente_tipo VARCHAR(20) NOT NULL DEFAULT 'ganador',
           seed_local_ref VARCHAR(20),
           seed_visitante_ref VARCHAR(20),
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -100,7 +153,9 @@ class Eliminatoria {
     await db.query(`
       ALTER TABLE partidos_eliminatoria
       ADD COLUMN IF NOT EXISTS seed_local_ref VARCHAR(20),
-      ADD COLUMN IF NOT EXISTS seed_visitante_ref VARCHAR(20)
+      ADD COLUMN IF NOT EXISTS seed_visitante_ref VARCHAR(20),
+      ADD COLUMN IF NOT EXISTS slot_local_fuente_tipo VARCHAR(20) NOT NULL DEFAULT 'ganador',
+      ADD COLUMN IF NOT EXISTS slot_visitante_fuente_tipo VARCHAR(20) NOT NULL DEFAULT 'ganador'
     `);
 
     await db.query(`
@@ -109,10 +164,18 @@ class Eliminatoria {
           origen VARCHAR(20) NOT NULL DEFAULT 'grupos',
           metodo_clasificacion VARCHAR(30) NOT NULL DEFAULT 'cruces_grupos',
           cruces_grupos JSONB,
+          plantilla_llave VARCHAR(40) NOT NULL DEFAULT 'estandar',
+          incluir_tercer_puesto BOOLEAN NOT NULL DEFAULT FALSE,
           guardado_por_usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    await db.query(`
+      ALTER TABLE evento_playoff_config
+      ADD COLUMN IF NOT EXISTS plantilla_llave VARCHAR(40) NOT NULL DEFAULT 'estandar',
+      ADD COLUMN IF NOT EXISTS incluir_tercer_puesto BOOLEAN NOT NULL DEFAULT FALSE
     `);
 
     await db.query(`
@@ -152,6 +215,11 @@ class Eliminatoria {
     await db.query(`
       ALTER TABLE evento_equipos
       ADD COLUMN IF NOT EXISTS orden_sorteo INTEGER
+    `);
+    await db.query(`
+      ALTER TABLE eventos
+      ADD COLUMN IF NOT EXISTS playoff_plantilla VARCHAR(40) NOT NULL DEFAULT 'estandar',
+      ADD COLUMN IF NOT EXISTS playoff_tercer_puesto BOOLEAN NOT NULL DEFAULT FALSE
     `);
     await asegurarEsquemaEstadoCompeticion(db);
 
@@ -502,7 +570,7 @@ class Eliminatoria {
     const q = `
       SELECT
         e.id, e.nombre, e.campeonato_id, e.metodo_competencia, e.eliminatoria_equipos,
-        e.clasificados_por_grupo,
+        e.clasificados_por_grupo, e.playoff_plantilla, e.playoff_tercer_puesto,
         c.sistema_puntuacion,
         COALESCE(c.reglas_desempate::text, '["puntos","diferencia_goles","goles_favor"]') AS reglas_desempate
       FROM eventos e
@@ -929,6 +997,28 @@ class Eliminatoria {
     return ["cruces_grupos", "tabla_unica"].includes(metodo) ? metodo : fallback;
   }
 
+  static normalizarPlantillaLlaveInput(value, fallback = "estandar") {
+    const plantilla = String(value || fallback || "estandar").toLowerCase().trim();
+    const map = {
+      estandar: "estandar",
+      standard: "estandar",
+      balanceada: "balanceada_8vos",
+      balanceada_8vos: "balanceada_8vos",
+      octavos_balanceados: "balanceada_8vos",
+      finish_balanceado: "balanceada_8vos",
+    };
+    return map[plantilla] || fallback;
+  }
+
+  static normalizarBooleanInput(value, fallback = false) {
+    if (value === undefined || value === null || value === "") return fallback;
+    if (typeof value === "boolean") return value;
+    const raw = String(value).trim().toLowerCase();
+    if (["1", "true", "si", "sí", "yes", "on"].includes(raw)) return true;
+    if (["0", "false", "no", "off"].includes(raw)) return false;
+    return fallback;
+  }
+
   static async obtenerConfiguracionPlayoff(evento_id, db = pool) {
     await this.asegurarEsquema(db);
     const evento = await this.obtenerEventoConfig(evento_id, db);
@@ -946,6 +1036,8 @@ class Eliminatoria {
           origen,
           metodo_clasificacion,
           cruces_grupos,
+          plantilla_llave,
+          incluir_tercer_puesto,
           guardado_por_usuario_id,
           created_at,
           updated_at
@@ -970,6 +1062,14 @@ class Eliminatoria {
       config?.metodo_clasificacion,
       origen === "grupos" ? "cruces_grupos" : "tabla_unica"
     );
+    const plantillaLlave = this.normalizarPlantillaLlaveInput(
+      config?.plantilla_llave,
+      evento?.playoff_plantilla || "estandar"
+    );
+    const incluirTercerPuesto = this.normalizarBooleanInput(
+      config?.incluir_tercer_puesto,
+      this.normalizarBooleanInput(evento?.playoff_tercer_puesto, false)
+    );
     const crucesGrupos =
       origen === "grupos" && metodoClasificacion === "cruces_grupos"
         ? this.normalizarCrucesGruposInput(config?.cruces_grupos, letras)
@@ -983,12 +1083,16 @@ class Eliminatoria {
         metodo_competencia: metodoCompetencia,
         clasificados_por_grupo: clasificadosPorGrupo,
         eliminatoria_equipos: Number.parseInt(evento?.eliminatoria_equipos, 10) || null,
+        playoff_plantilla: this.normalizarPlantillaLlaveInput(evento?.playoff_plantilla, "estandar"),
+        playoff_tercer_puesto: this.normalizarBooleanInput(evento?.playoff_tercer_puesto, false),
       },
       configuracion: {
         guardada: !!config,
         origen,
         metodo_clasificacion: metodoClasificacion,
         cruces_grupos: crucesGrupos,
+        plantilla_llave: plantillaLlave,
+        incluir_tercer_puesto: incluirTercerPuesto,
         grupos: grupos.map((grupo) => ({
           id: Number(grupo.id),
           letra_grupo: String(grupo?.letra_grupo || "").toUpperCase().trim(),
@@ -1023,6 +1127,20 @@ class Eliminatoria {
         payload?.metodo_clasificacion,
         origen === "grupos" ? "cruces_grupos" : "tabla_unica"
       );
+      const plantillaLlave = this.normalizarPlantillaLlaveInput(
+        payload?.plantilla_llave,
+        this.normalizarPlantillaLlaveInput(
+          payload?.playoff_plantilla,
+          actual?.playoff_plantilla || "estandar"
+        )
+      );
+      const incluirTercerPuesto = this.normalizarBooleanInput(
+        payload?.incluir_tercer_puesto,
+        this.normalizarBooleanInput(
+          payload?.playoff_tercer_puesto,
+          this.normalizarBooleanInput(actual?.playoff_tercer_puesto, false)
+        )
+      );
       const grupos = await this.obtenerGruposEvento(evento_id, client);
       const letras = grupos
         .map((grupo) => String(grupo?.letra_grupo || "").toUpperCase().trim())
@@ -1036,10 +1154,12 @@ class Eliminatoria {
         `
           UPDATE eventos
           SET metodo_competencia = $2,
-              clasificados_por_grupo = $3
+              clasificados_por_grupo = $3,
+              playoff_plantilla = $4,
+              playoff_tercer_puesto = $5
           WHERE id = $1
         `,
-        [evento_id, metodoCompetencia, clasificadosPorGrupo]
+        [evento_id, metodoCompetencia, clasificadosPorGrupo, plantillaLlave, incluirTercerPuesto]
       );
 
       await client.query(
@@ -1049,15 +1169,19 @@ class Eliminatoria {
             origen,
             metodo_clasificacion,
             cruces_grupos,
+            plantilla_llave,
+            incluir_tercer_puesto,
             guardado_por_usuario_id,
             updated_at
           )
-          VALUES ($1, $2, $3, $4::jsonb, $5, CURRENT_TIMESTAMP)
+          VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, CURRENT_TIMESTAMP)
           ON CONFLICT (evento_id)
           DO UPDATE SET
             origen = EXCLUDED.origen,
             metodo_clasificacion = EXCLUDED.metodo_clasificacion,
             cruces_grupos = EXCLUDED.cruces_grupos,
+            plantilla_llave = EXCLUDED.plantilla_llave,
+            incluir_tercer_puesto = EXCLUDED.incluir_tercer_puesto,
             guardado_por_usuario_id = EXCLUDED.guardado_por_usuario_id,
             updated_at = CURRENT_TIMESTAMP
         `,
@@ -1066,6 +1190,8 @@ class Eliminatoria {
           origen,
           metodoClasificacion,
           JSON.stringify(crucesGrupos || []),
+          plantillaLlave,
+          incluirTercerPuesto,
           Number.isFinite(Number.parseInt(userId, 10)) ? Number.parseInt(userId, 10) : null,
         ]
       );
@@ -1786,10 +1912,53 @@ class Eliminatoria {
     }
   }
 
-  static construirSembradoCrucesGrupos(clasificadosData, crucesGrupos = []) {
+  static construirEntradaGrupo(grupoMap, letraGrupo, posicion) {
+    const grupo = grupoMap.get(String(letraGrupo || "").toUpperCase()) || [];
+    const row = grupo[Number(posicion) - 1] || null;
+    return {
+      equipo_id: row ? Number(row.equipo_id) : null,
+      seed_ref: row?.seed_ref || null,
+    };
+  }
+
+  static construirSembradoCrucesGruposBalanceado16(grupoMap, crucesGrupos = []) {
+    if (!Array.isArray(crucesGrupos) || crucesGrupos.length !== 2) return null;
+    const [parA, parB] = crucesGrupos;
+    if (!Array.isArray(parA) || !Array.isArray(parB) || parA.length < 2 || parB.length < 2) return null;
+    const [g1, g2] = parA;
+    const [g3, g4] = parB;
+    const grupos = [g1, g2, g3, g4].map((letra) => grupoMap.get(String(letra || "").toUpperCase()) || []);
+    if (grupos.some((grupo) => grupo.length < 4)) return null;
+
+    const partidos = [
+      [[g1, 1], [g2, 4]],
+      [[g3, 2], [g4, 3]],
+      [[g4, 1], [g3, 4]],
+      [[g2, 2], [g1, 3]],
+      [[g3, 1], [g4, 4]],
+      [[g1, 2], [g2, 3]],
+      [[g2, 1], [g1, 4]],
+      [[g4, 2], [g3, 3]],
+    ];
+
+    return partidos.flatMap(([localRef, visitaRef]) => [
+      this.construirEntradaGrupo(grupoMap, localRef[0], localRef[1]),
+      this.construirEntradaGrupo(grupoMap, visitaRef[0], visitaRef[1]),
+    ]);
+  }
+
+  static construirSembradoCrucesGrupos(clasificadosData, crucesGrupos = [], plantillaLlave = "estandar") {
     const mapGrupo = new Map();
     for (const g of clasificadosData.grupos) {
       mapGrupo.set(String(g.grupo_letra || "").toUpperCase(), g.clasificados || []);
+    }
+
+    const plantilla = this.normalizarPlantillaLlaveInput(plantillaLlave, "estandar");
+    if (plantilla === "balanceada_8vos") {
+      const balanceado = this.construirSembradoCrucesGruposBalanceado16(mapGrupo, crucesGrupos);
+      if (Array.isArray(balanceado) && balanceado.length) {
+        return balanceado;
+      }
     }
 
     const sembrados = [];
@@ -2076,6 +2245,10 @@ class Eliminatoria {
     }
 
     const metodo = String(config?.configuracion?.metodo_clasificacion || "cruces_grupos").toLowerCase();
+    const plantillaLlave = this.normalizarPlantillaLlaveInput(
+      config?.configuracion?.plantilla_llave,
+      config?.evento?.playoff_plantilla || "estandar"
+    );
     const primeraRonda = this.obtenerPrimeraRondaPartidos(partidos);
     const capacidadPrimeraRonda = primeraRonda.length > 0 ? primeraRonda.length * 2 : null;
     const cantidadObjetivo =
@@ -2108,7 +2281,8 @@ class Eliminatoria {
     } else {
       esperado = this.construirSembradoCrucesGrupos(
         clasificadosData,
-        config?.configuracion?.cruces_grupos || []
+        config?.configuracion?.cruces_grupos || [],
+        plantillaLlave
       );
     }
 
@@ -2152,12 +2326,17 @@ class Eliminatoria {
     equipo_visitante_id,
     slot_local_id,
     slot_visitante_id,
+    slot_local_fuente_tipo = "ganador",
+    slot_visitante_fuente_tipo = "ganador",
     db = pool
   ) {
     const q = `
       INSERT INTO partidos_eliminatoria
-        (evento_id, ronda, partido_numero, equipo_local_id, equipo_visitante_id, slot_local_id, slot_visitante_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+        (
+          evento_id, ronda, partido_numero, equipo_local_id, equipo_visitante_id,
+          slot_local_id, slot_visitante_id, slot_local_fuente_tipo, slot_visitante_fuente_tipo
+        )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
     const r = await db.query(q, [
@@ -2168,6 +2347,8 @@ class Eliminatoria {
       equipo_visitante_id ?? null,
       slot_local_id ?? null,
       slot_visitante_id ?? null,
+      String(slot_local_fuente_tipo || "ganador").toLowerCase() === "perdedor" ? "perdedor" : "ganador",
+      String(slot_visitante_fuente_tipo || "ganador").toLowerCase() === "perdedor" ? "perdedor" : "ganador",
     ]);
     return r.rows[0];
   }
@@ -2215,43 +2396,59 @@ class Eliminatoria {
     return r.rows;
   }
 
-  static async propagarGanador(slotId, ganadorId, db = pool) {
-    if (!Number.isFinite(Number(slotId)) || !Number.isFinite(Number(ganadorId))) return;
+  static async propagarResultadoSlot(slotId, { ganadorId = null, perdedorId = null } = {}, db = pool) {
+    if (!Number.isFinite(Number(slotId))) return;
+    const ganador = Number.isFinite(Number(ganadorId)) ? Number(ganadorId) : null;
+    const perdedor = Number.isFinite(Number(perdedorId)) ? Number(perdedorId) : null;
+    if (!Number.isFinite(ganador) && !Number.isFinite(perdedor)) return;
 
     const siguienteR = await db.query(
       `
       SELECT *
       FROM partidos_eliminatoria
       WHERE slot_local_id = $1 OR slot_visitante_id = $1
-      ORDER BY id ASC
-      LIMIT 1
+      ORDER BY array_position($2::varchar[], ronda), partido_numero ASC, id ASC
     `,
-      [slotId]
+      [slotId, RONDAS_ORDEN]
     );
-    const siguiente = siguienteR.rows[0];
-    if (!siguiente) return;
+    if (!siguienteR.rows.length) return;
 
-    if (Number(siguiente.slot_local_id) === Number(slotId)) {
+    for (const siguiente of siguienteR.rows) {
+      const cambios = [];
+      const valores = [];
+      let index = 1;
+
+      if (Number(siguiente.slot_local_id) === Number(slotId)) {
+        const tipoLocal = String(siguiente.slot_local_fuente_tipo || "ganador").toLowerCase();
+        const valorLocal = tipoLocal === "perdedor" ? perdedor : ganador;
+        if (Number.isFinite(valorLocal)) {
+          cambios.push(`equipo_local_id = $${index++}`);
+          valores.push(valorLocal);
+        }
+      }
+
+      if (Number(siguiente.slot_visitante_id) === Number(slotId)) {
+        const tipoVisitante = String(siguiente.slot_visitante_fuente_tipo || "ganador").toLowerCase();
+        const valorVisitante = tipoVisitante === "perdedor" ? perdedor : ganador;
+        if (Number.isFinite(valorVisitante)) {
+          cambios.push(`equipo_visitante_id = $${index++}`);
+          valores.push(valorVisitante);
+        }
+      }
+
+      if (!cambios.length) continue;
+      cambios.push(`updated_at = CURRENT_TIMESTAMP`);
+      valores.push(siguiente.id);
       await db.query(
         `
-        UPDATE partidos_eliminatoria
-        SET equipo_local_id = $1, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
-      `,
-        [ganadorId, siguiente.id]
+          UPDATE partidos_eliminatoria
+          SET ${cambios.join(", ")}
+          WHERE id = $${index}
+        `,
+        valores
       );
-    } else if (Number(siguiente.slot_visitante_id) === Number(slotId)) {
-      await db.query(
-        `
-        UPDATE partidos_eliminatoria
-        SET equipo_visitante_id = $1, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
-      `,
-        [ganadorId, siguiente.id]
-      );
+      await this.intentarResolverByeEnSlot(siguiente.id, db);
     }
-
-    await this.intentarResolverByeEnSlot(siguiente.id, db);
   }
 
   static async intentarResolverByeEnSlot(slotId, db = pool) {
@@ -2293,7 +2490,7 @@ class Eliminatoria {
       [ganadorId, resultadoLocal, resultadoVisitante, slot.id]
     );
 
-    await this.propagarGanador(slot.id, ganadorId, db);
+    await this.propagarResultadoSlot(slot.id, { ganadorId, perdedorId: null }, db);
   }
 
   static async actualizarResultado(id, resultado_local, resultado_visitante, ganador_id) {
@@ -2337,7 +2534,13 @@ class Eliminatoria {
       const actualizado = r.rows[0] || null;
 
       if (actualizado) {
-        await this.propagarGanador(actualizado.id, ganador, client);
+        const localId = Number.parseInt(slotActual?.equipo_local_id, 10);
+        const visitanteId = Number.parseInt(slotActual?.equipo_visitante_id, 10);
+        let perdedor = null;
+        if (Number.isFinite(localId) && Number.isFinite(visitanteId)) {
+          perdedor = Number(ganador) === Number(localId) ? visitanteId : localId;
+        }
+        await this.propagarResultadoSlot(actualizado.id, { ganadorId: ganador, perdedorId: perdedor }, client);
       }
 
       await client.query("COMMIT");
@@ -2444,6 +2647,7 @@ class Eliminatoria {
     await this.asegurarEsquema(db);
     const cantidadSolicitada = opciones?.cantidad_equipos ?? null;
     const mezclar = opciones?.mezclar === true;
+    const incluirTercerPuesto = this.normalizarBooleanInput(opciones?.incluir_tercer_puesto, false);
 
     let sembrados = Array.isArray(entradasSembrado) ? [...entradasSembrado] : [];
     if (!sembrados.length) {
@@ -2467,6 +2671,7 @@ class Eliminatoria {
 
     let slotsAnteriores = [];
     const slotsPrimeraRonda = [];
+    const slotsPorRonda = new Map();
 
     for (let r = 0; r < rondas.length; r++) {
       const ronda = rondas[r];
@@ -2489,6 +2694,8 @@ class Eliminatoria {
           null,
           slotLocal,
           slotVisit,
+          "ganador",
+          "ganador",
           db
         );
 
@@ -2496,7 +2703,26 @@ class Eliminatoria {
         if (r === 0) slotsPrimeraRonda.push(slot);
       }
 
+      slotsPorRonda.set(ronda, slotsRonda);
       slotsAnteriores = slotsRonda;
+    }
+
+    if (incluirTercerPuesto && slotsPorRonda.has("semifinal")) {
+      const semifinales = slotsPorRonda.get("semifinal") || [];
+      if (semifinales.length >= 2) {
+        await this.crearSlot(
+          evento_id,
+          "tercer_puesto",
+          1,
+          null,
+          null,
+          semifinales[0].id,
+          semifinales[1].id,
+          "perdedor",
+          "perdedor",
+          db
+        );
+      }
     }
 
     while (sembrados.length < totalEquiposBracket) {
@@ -2551,10 +2777,15 @@ class Eliminatoria {
       }
 
       const entradas = equiposEvento.map((id) => ({ equipo_id: Number(id), seed_ref: null }));
+      const evento = await this.obtenerEventoConfig(evento_id, client);
       const bracket = await this.generarBracketConSembrado(
         evento_id,
         entradas,
-        { cantidad_equipos, mezclar: true },
+        {
+          cantidad_equipos,
+          mezclar: true,
+          incluir_tercer_puesto: this.normalizarBooleanInput(evento?.playoff_tercer_puesto, false),
+        },
         client
       );
 
@@ -2589,6 +2820,14 @@ class Eliminatoria {
         Number.parseInt(opciones.clasificados_por_grupo, 10) || 1
       );
       const metodo = String(opciones.metodo_clasificacion || "cruces_grupos").toLowerCase();
+      const plantillaLlave = this.normalizarPlantillaLlaveInput(
+        opciones?.plantilla_llave,
+        evento?.playoff_plantilla || "estandar"
+      );
+      const incluirTercerPuesto = this.normalizarBooleanInput(
+        opciones?.incluir_tercer_puesto,
+        this.normalizarBooleanInput(evento?.playoff_tercer_puesto, false)
+      );
 
       const clasificadosData = await this.obtenerClasificadosPorGrupo(
         evento_id,
@@ -2636,7 +2875,7 @@ class Eliminatoria {
         if (!cruces.length) {
           throw new Error("No se pudieron definir cruces de grupos válidos");
         }
-        entradas = this.construirSembradoCrucesGrupos(clasificadosData, cruces);
+        entradas = this.construirSembradoCrucesGrupos(clasificadosData, cruces, plantillaLlave);
         meta.cruces_grupos = cruces;
       }
 
@@ -2651,7 +2890,11 @@ class Eliminatoria {
       const bracket = await this.generarBracketConSembrado(
         evento_id,
         entradas,
-        { cantidad_equipos: cantidadSolicitada, mezclar: false },
+        {
+          cantidad_equipos: cantidadSolicitada,
+          mezclar: false,
+          incluir_tercer_puesto: incluirTercerPuesto,
+        },
         client
       );
 
@@ -2662,6 +2905,8 @@ class Eliminatoria {
           ...meta,
           total_clasificados: entradasValidas.length,
           grupos: clasificadosData.grupos,
+          plantilla_llave: plantillaLlave,
+          incluir_tercer_puesto: incluirTercerPuesto,
         },
       };
     } catch (error) {

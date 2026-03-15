@@ -38,6 +38,38 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-15 - Plantillas configurables de playoff y tercer puesto
+- `backend/controllers/eventoController.js` extiende el alta/edicion de categorias/eventos para guardar:
+  - `playoff_plantilla`
+  - `playoff_tercer_puesto`
+- `frontend/eventos.html` y `frontend/js/eventos.js` agregan la configuracion inicial visible del armado de playoff:
+  - `Estandar`
+  - `Balanceada 8vos`
+  - `Tercer y cuarto puesto`
+- `backend/models/Eliminatoria.js` incorpora plantillas de llave configurables:
+  - la plantilla `balanceada_8vos` arma 8vos para 16 clasificados con el orden solicitado:
+    - `1A vs 4C`
+    - `2B vs 3D`
+    - `1D vs 4B`
+    - `2C vs 3A`
+    - `1B vs 4D`
+    - `2A vs 3C`
+    - `1C vs 4A`
+    - `2D vs 3B`
+  - mantiene fallback al armado estandar cuando el dataset no corresponde al caso balanceado de 16 clasificados.
+- `backend/models/Eliminatoria.js` y `frontend/js/eliminatorias.js` agregan soporte para:
+  - partido de `tercer_puesto`,
+  - propagacion de `ganador` y `perdedor` hacia slots posteriores,
+  - etiquetas operativas `8VO P#`, `4TO G#`, `SEM G#`, `FINAL`, `TERCER Y CUARTO`.
+- `frontend/eliminatorias.html` expone la misma configuracion dentro del modulo de playoff para regenerar o ajustar la llave con esos criterios.
+- `frontend/js/portal.js` traduce esas rondas a etiquetas legibles en el portal publico.
+- base de datos:
+  - nueva migración `database/migrations/043_evento_playoff_templates_y_tercer_puesto.sql`
+  - nueva migración `database/migrations/044_partidos_eliminatoria_fuente_ganador_perdedor.sql`
+  - ambas aplicadas en BD local y PostgreSQL de Render.
+
+---
+
 ## 2026-03-14 - Recorte estable de foto para carné
 - Navegacion interna limpia:
   - `frontend/js/core.js` incorpora `RouteContext` para guardar contexto por pagina en `sessionStorage`.
