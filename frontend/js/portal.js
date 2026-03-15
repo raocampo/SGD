@@ -301,6 +301,7 @@ function renderCardTorneoPrincipal(torneo) {
   const fechaFin = formatearFechaPortal(torneo?.fecha_fin);
   const campeonatoId = Number.parseInt(torneo?.id, 10) || 0;
   const organizadorId = Number.parseInt(portalContextoActual?.organizadorId, 10) || 0;
+  const hrefPortal = "portal.html";
   const textoFecha =
     fechaInicio && fechaFin ? `Fecha: ${fechaInicio} - ${fechaFin}` : fechaInicio ? `Fecha: ${fechaInicio}` : "Fecha por confirmar";
 
@@ -323,7 +324,13 @@ function renderCardTorneoPrincipal(torneo) {
         ${renderMetaCardPortal(torneo)}
         ${renderCategoriasResumenCard(torneo)}
         <div class="portal-card-actions">
-          <a class="portal-card-btn" href="${escPortal(href)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">Ver torneo</a>
+          <a
+            class="portal-card-btn"
+            href="${escPortal(hrefPortal)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            onclick="event.stopPropagation(); abrirDetallePortalCampeonato(${campeonatoId}, ${organizadorId || "null"}); return false;"
+          >Ver torneo</a>
         </div>
       </div>
     </article>
