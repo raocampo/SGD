@@ -1,6 +1,7 @@
 const fs = require("fs");
-const path = require("path");
+const pool = require("../config/database");
 const Auspiciante = require("../models/Auspiciante");
+const OrganizadorPortal = require("../models/OrganizadorPortal");
 const { resolveUploadPath } = require("../config/uploads");
 
 function safeUnlinkLogo(urlPath) {
@@ -9,40 +10,41 @@ function safeUnlinkLogo(urlPath) {
   fs.unlink(filePath, () => {});
 }
 
-function extraerNombreDesdeArchivo(filename = "", idx = 0) {
-  const base = String(filename || "")
-    .replace(/\.[a-z0-9]+$/i, "")
-    .replace(/^\d+-\d+-?/, "")
-    .replace(/[_-]+/g, " ")
-    .trim();
-  if (!base) return `Auspiciante ${idx + 1}`;
-  return base
-    .split(/\s+/)
-    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ""))
-    .join(" ");
+function deduplicarAuspiciantes(items = []) {
+  const vistos = new Set();
+  return (Array.isArray(items) ? items : []).filter((item) => {
+    const nombre = String(item?.nombre || "")
+      .trim()
+      .toLowerCase();
+    const logo = String(item?.logo_url || "")
+      .trim()
+      .toLowerCase();
+    const clave = `${nombre}|${logo}`;
+    if (!nombre && !logo) return false;
+    if (vistos.has(clave)) return false;
+    vistos.add(clave);
+    return true;
+  });
 }
 
-function obtenerFallbackAuspiciantesDesdeArchivos(campeonatoId) {
-  const carpeta = resolveUploadPath("/uploads/auspiciantes");
-  if (!fs.existsSync(carpeta)) return [];
+async function obtenerAuspiciantesAcotados(campeonatoId, soloActivos = false) {
+  let auspiciantes = await Auspiciante.listarPorCampeonato(campeonatoId, soloActivos);
+  if (Array.isArray(auspiciantes) && auspiciantes.length) {
+    return deduplicarAuspiciantes(auspiciantes);
+  }
 
-  const validExt = new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]);
-  const archivos = fs
-    .readdirSync(carpeta, { withFileTypes: true })
-    .filter((ent) => ent.isFile())
-    .map((ent) => ent.name)
-    .filter((name) => validExt.has(path.extname(name).toLowerCase()))
-    .sort((a, b) => a.localeCompare(b));
+  const result = await pool.query(
+    `SELECT creador_usuario_id FROM campeonatos WHERE id = $1 LIMIT 1`,
+    [Number.parseInt(campeonatoId, 10)]
+  );
+  const organizadorId = Number.parseInt(result.rows?.[0]?.creador_usuario_id, 10);
+  if (!Number.isFinite(organizadorId) || organizadorId <= 0) {
+    return [];
+  }
 
-  return archivos.map((name, idx) => ({
-    id: `fs-${idx + 1}`,
-    campeonato_id: Number.parseInt(campeonatoId, 10) || null,
-    nombre: extraerNombreDesdeArchivo(name, idx),
-    logo_url: `/uploads/auspiciantes/${name}`,
-    orden: idx + 1,
-    activo: true,
-    origen: "filesystem",
-  }));
+  return deduplicarAuspiciantes(
+    await OrganizadorPortal.listarAuspiciantesConFallback(organizadorId)
+  );
 }
 
 const auspicianteController = {
@@ -79,16 +81,7 @@ const auspicianteController = {
         req.query.activo === "true" ||
         req.query.activo === "si";
 
-      let auspiciantes = await Auspiciante.listarPorCampeonato(
-        campeonato_id,
-        soloActivos
-      );
-
-      // Fallback: si no hay registros en BD pero sí existen logos cargados en /uploads/auspiciantes
-      // devolvemos esa lista para mantener la plantilla operativa.
-      if (!Array.isArray(auspiciantes) || !auspiciantes.length) {
-        auspiciantes = obtenerFallbackAuspiciantesDesdeArchivos(campeonato_id);
-      }
+      const auspiciantes = await obtenerAuspiciantesAcotados(campeonato_id, soloActivos);
 
       return res.json({ auspiciantes });
     } catch (error) {

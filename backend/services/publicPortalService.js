@@ -1,12 +1,9 @@
-const fs = require("fs");
-const path = require("path");
 const pool = require("../config/database");
 const Partido = require("../models/Partido");
 const Eliminatoria = require("../models/Eliminatoria");
 const Auspiciante = require("../models/Auspiciante");
 const OrganizadorPortal = require("../models/OrganizadorPortal");
 const tablaController = require("../controllers/tablaController");
-const { resolveUploadPath } = require("../config/uploads");
 
 const ESTADOS_PUBLICOS = new Set([
   "planificacion",
@@ -146,41 +143,36 @@ function normalizarCategoriasResumen(resumen) {
     .filter((item) => item.id !== null && item.nombre);
 }
 
-function extraerNombreAuspicianteDesdeArchivo(filename = "", idx = 0) {
-  const base = String(filename || "")
-    .replace(/\.[a-z0-9]+$/i, "")
-    .replace(/^\d+-\d+-?/, "")
-    .replace(/[_-]+/g, " ")
-    .trim();
-
-  if (!base) return `Auspiciante ${idx + 1}`;
-  return base
-    .split(/\s+/)
-    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : ""))
-    .join(" ");
+function deduplicarAuspiciantes(items = []) {
+  const vistos = new Set();
+  return (Array.isArray(items) ? items : []).filter((item) => {
+    const nombre = String(item?.nombre || "")
+      .trim()
+      .toLowerCase();
+    const logo = String(item?.logo_url || "")
+      .trim()
+      .toLowerCase();
+    const clave = `${nombre}|${logo}`;
+    if (!nombre && !logo) return false;
+    if (vistos.has(clave)) return false;
+    vistos.add(clave);
+    return true;
+  });
 }
 
-function obtenerFallbackAuspiciantesDesdeArchivos(campeonatoId) {
-  const carpeta = resolveUploadPath("/uploads/auspiciantes");
-  if (!fs.existsSync(carpeta)) return [];
+async function listarAuspiciantesAcotadosCampeonato(campeonato = null) {
+  const campeonatoId = normalizarEntero(campeonato?.id);
+  if (!campeonatoId) return [];
 
-  const extensionesValidas = new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]);
-  const archivos = fs
-    .readdirSync(carpeta, { withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => entry.name)
-    .filter((name) => extensionesValidas.has(path.extname(name).toLowerCase()))
-    .sort((a, b) => a.localeCompare(b));
+  let auspiciantes = await Auspiciante.listarPorCampeonato(campeonatoId, true);
+  if (Array.isArray(auspiciantes) && auspiciantes.length) {
+    return deduplicarAuspiciantes(auspiciantes);
+  }
 
-  return archivos.map((name, idx) => ({
-    id: `fs-${idx + 1}`,
-    campeonato_id: Number.parseInt(campeonatoId, 10) || null,
-    nombre: extraerNombreAuspicianteDesdeArchivo(name, idx),
-    logo_url: `/uploads/auspiciantes/${name}`,
-    orden: idx + 1,
-    activo: true,
-    origen: "filesystem",
-  }));
+  const organizadorId = normalizarEntero(campeonato?.creador_usuario_id);
+  if (!organizadorId) return [];
+
+  return deduplicarAuspiciantes(await OrganizadorPortal.listarAuspiciantesConFallback(organizadorId));
 }
 
 async function obtenerTotalesCampeonato(ids = []) {
@@ -493,17 +485,14 @@ async function listarAuspiciantesPublicosPorCampeonato(campeonatoId) {
   const campeonato = await obtenerCampeonatoVisible(campeonatoId);
   if (!campeonato) return null;
 
-  let auspiciantes = await Auspiciante.listarPorCampeonato(campeonatoId, true);
-  if (!Array.isArray(auspiciantes) || !auspiciantes.length) {
-    auspiciantes = obtenerFallbackAuspiciantesDesdeArchivos(campeonatoId);
-  }
+  const auspiciantes = await listarAuspiciantesAcotadosCampeonato(campeonato);
   return {
     ok: true,
     campeonato: resumirCampeonato(campeonato),
     total: auspiciantes.length,
     auspiciantes: auspiciantes.map((item) => ({
-      id: Number(item.id),
-      campeonato_id: Number(item.campeonato_id),
+      id: normalizarEntero(item.id),
+      campeonato_id: normalizarEntero(item.campeonato_id ?? campeonatoId),
       nombre: item.nombre,
       logo_url: item.logo_url || null,
       orden: normalizarEntero(item.orden) || 1,

@@ -11,10 +11,15 @@ const ES_PORTAL_PAGE = /\/portal\.html$/i.test(window.location.pathname);
 let portalContextoActual = null;
 
 function leerContextoPortalDesdeUrl() {
-  const params = new URLSearchParams(window.location.search);
-  const campeonato = Number.parseInt(params.get("campeonato") || "", 10);
-  const evento = Number.parseInt(params.get("evento") || "", 10);
-  const organizador = Number.parseInt(params.get("organizador") || "", 10);
+  const pageKey = ES_PORTAL_PAGE ? "portal.html" : "index.html";
+  const routeContext = window.RouteContext?.read?.(pageKey, [
+    "campeonato",
+    "evento",
+    "organizador",
+  ]) || {};
+  const campeonato = Number.parseInt(routeContext.campeonato || "", 10);
+  const evento = Number.parseInt(routeContext.evento || "", 10);
+  const organizador = Number.parseInt(routeContext.organizador || "", 10);
   return {
     campeonatoId: Number.isFinite(campeonato) && campeonato > 0 ? campeonato : null,
     eventoId: Number.isFinite(evento) && evento > 0 ? evento : null,
@@ -38,15 +43,38 @@ function normalizarMediaPortal(url) {
 }
 
 function obtenerUrlInicioPortalCompartible() {
-  if (Number.isFinite(Number.parseInt(portalContextoActual?.organizadorId, 10))) {
-    return `index.html?organizador=${Number.parseInt(portalContextoActual.organizadorId, 10)}#torneos`;
+  const organizadorId = Number.parseInt(portalContextoActual?.organizadorId, 10);
+  if (Number.isFinite(organizadorId) && organizadorId > 0) {
+    window.RouteContext?.save?.("index.html", { organizador: organizadorId });
   }
   return "index.html#torneos";
 }
 
-function abrirTorneoEnNuevaPestana(href) {
+function abrirTorneoEnNuevaPestana(href, contexto = null) {
   if (!href) return;
+  if (contexto && typeof contexto === "object") {
+    window.RouteContext?.save?.("portal.html", {
+      campeonato: Number.isFinite(Number.parseInt(contexto.campeonatoId, 10))
+        ? Number.parseInt(contexto.campeonatoId, 10)
+        : null,
+      evento: Number.isFinite(Number.parseInt(contexto.eventoId, 10))
+        ? Number.parseInt(contexto.eventoId, 10)
+        : null,
+      organizador: Number.isFinite(Number.parseInt(contexto.organizadorId, 10))
+        ? Number.parseInt(contexto.organizadorId, 10)
+        : null,
+    });
+  }
   window.open(href, "_blank", "noopener");
+}
+
+function abrirDetallePortalCampeonato(campeonatoId, organizadorId = null) {
+  const contexto = {
+    campeonatoId: Number.parseInt(campeonatoId, 10) || null,
+    organizadorId: Number.parseInt(organizadorId, 10) || null,
+  };
+  guardarContextoPortalCompartible(contexto);
+  abrirTorneoEnNuevaPestana("portal.html", contexto);
 }
 
 function obtenerImagenCardPortal(torneo) {
@@ -221,6 +249,24 @@ function construirUrlPortalCampeonato(campeonatoId, options = {}) {
   return `portal.html?${params.toString()}`;
 }
 
+function guardarContextoPortalCompartible(contexto = {}) {
+  const payload = {
+    campeonato: Number.isFinite(Number.parseInt(contexto?.campeonatoId, 10))
+      ? Number.parseInt(contexto.campeonatoId, 10)
+      : null,
+    evento: Number.isFinite(Number.parseInt(contexto?.eventoId, 10))
+      ? Number.parseInt(contexto.eventoId, 10)
+      : null,
+    organizador: Number.isFinite(Number.parseInt(contexto?.organizadorId, 10))
+      ? Number.parseInt(contexto.organizadorId, 10)
+      : null,
+  };
+  window.RouteContext?.save?.("portal.html", payload);
+  if (!ES_PORTAL_PAGE) {
+    window.RouteContext?.save?.("index.html", payload);
+  }
+}
+
 function renderCategoriasResumenCard(torneo) {
   const categorias = normalizarCategoriasResumenPortal(torneo?.categorias_resumen);
   if (!categorias.length) return "";
@@ -253,17 +299,16 @@ function renderCardTorneoPrincipal(torneo) {
   const imagenCard = obtenerImagenCardPortal(torneo);
   const fechaInicio = formatearFechaPortal(torneo?.fecha_inicio);
   const fechaFin = formatearFechaPortal(torneo?.fecha_fin);
-  const href = construirUrlPortalCampeonato(torneo?.id, {
-    organizadorId: portalContextoActual?.organizadorId,
-  });
+  const campeonatoId = Number.parseInt(torneo?.id, 10) || 0;
+  const organizadorId = Number.parseInt(portalContextoActual?.organizadorId, 10) || 0;
   const textoFecha =
     fechaInicio && fechaFin ? `Fecha: ${fechaInicio} - ${fechaFin}` : fechaInicio ? `Fecha: ${fechaInicio}` : "Fecha por confirmar";
 
   return `
     <article
       class="portal-campeonato-card"
-      onclick="abrirTorneoEnNuevaPestana('${escPortal(href)}')"
-      onkeypress="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirTorneoEnNuevaPestana('${escPortal(href)}');}"
+      onclick="abrirDetallePortalCampeonato(${campeonatoId}, ${organizadorId || "null"})"
+      onkeypress="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDetallePortalCampeonato(${campeonatoId}, ${organizadorId || "null"});}"
       role="button"
       tabindex="0"
     >
@@ -1237,10 +1282,25 @@ async function cargarMediaCampeonatoPublica(campeonatoId, campeonatoNombre = "")
   }
 }
 
-function renderTrackAuspiciantesPortal(auspiciantes = []) {
-  const items = Array.isArray(auspiciantes) ? auspiciantes.filter((item) => item?.logo_url || item?.nombre) : [];
+function renderTrackAuspiciantesPortal(auspiciantes = [], options = {}) {
+  const unicos = [];
+  const vistos = new Set();
+  (Array.isArray(auspiciantes) ? auspiciantes : []).forEach((item) => {
+    const nombre = String(item?.nombre || "")
+      .trim()
+      .toLowerCase();
+    const logo = String(item?.logo_url || "")
+      .trim()
+      .toLowerCase();
+    const clave = `${nombre}|${logo}`;
+    if ((!nombre && !logo) || vistos.has(clave)) return;
+    vistos.add(clave);
+    unicos.push(item);
+  });
+  const items = unicos.filter((item) => item?.logo_url || item?.nombre);
   if (!items.length) return "";
-  const repetidos = items.length > 1 ? [...items, ...items] : items;
+  const repetir = options?.repeat === true;
+  const repetidos = repetir && items.length > 1 ? [...items, ...items] : items;
   return repetidos
     .map(
       (item, index) => `
@@ -1315,7 +1375,7 @@ async function cargarAuspiciantesCampeonatoPublico(campeonatoId, campeonatoNombr
         })();
     const auspiciantes = Array.isArray(data?.auspiciantes) ? data.auspiciantes : [];
     if (!auspiciantes.length) return;
-    const html = renderTrackAuspiciantesPortal(auspiciantes);
+    const html = renderTrackAuspiciantesPortal(auspiciantes, { repeat: !detailSection });
     if (!html) return;
     if (detailTrack) detailTrack.innerHTML = html;
     if (detailSection) detailSection.hidden = false;
@@ -1462,6 +1522,7 @@ function portalVolver() {
 }
 
 window.abrirTorneoEnNuevaPestana = abrirTorneoEnNuevaPestana;
+window.abrirDetallePortalCampeonato = abrirDetallePortalCampeonato;
 window.portalVerCampeonato = portalVerCampeonato;
 window.portalVolver = portalVolver;
 
@@ -1483,6 +1544,7 @@ document.addEventListener("click", (event) => {
 document.addEventListener("DOMContentLoaded", async () => {
   const contexto = leerContextoPortalDesdeUrl();
   portalContextoActual = contexto;
+  guardarContextoPortalCompartible(contexto);
 
   if (ES_PORTAL_PAGE) {
     const cargarListado = async () => {
