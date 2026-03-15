@@ -82,6 +82,7 @@ class Eliminatoria {
         slot_posicion INTEGER NOT NULL,
         equipo_a_id INTEGER NOT NULL REFERENCES equipos(id) ON DELETE CASCADE,
         equipo_b_id INTEGER NOT NULL REFERENCES equipos(id) ON DELETE CASCADE,
+        partido_id INTEGER REFERENCES partidos(id) ON DELETE SET NULL,
         ganador_id INTEGER REFERENCES equipos(id) ON DELETE SET NULL,
         estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
         detalle TEXT,
@@ -94,6 +95,10 @@ class Eliminatoria {
     await db.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS ux_evento_reclasificaciones_playoff_slot
       ON evento_reclasificaciones_playoff(evento_id, grupo_id, slot_posicion)
+    `);
+    await db.query(`
+      ALTER TABLE evento_reclasificaciones_playoff
+      ADD COLUMN IF NOT EXISTS partido_id INTEGER REFERENCES partidos(id) ON DELETE SET NULL
     `);
 
     await db.query(`
@@ -486,6 +491,7 @@ class Eliminatoria {
 
   static async obtenerReclasificacionesEvento(evento_id, db = pool) {
     await this.asegurarEsquema(db);
+    await this.sincronizarReclasificacionesResueltasDesdePartidos(evento_id, db);
     const r = await db.query(
       `
         SELECT
@@ -495,12 +501,21 @@ class Eliminatoria {
           gb.nombre AS equipo_b_nombre,
           gb.logo_url AS equipo_b_logo_url,
           gw.nombre AS ganador_nombre,
-          g.letra_grupo
+          g.letra_grupo,
+          p.estado AS partido_estado,
+          p.fecha_partido,
+          p.hora_partido,
+          p.cancha,
+          p.jornada,
+          p.numero_campeonato,
+          p.resultado_local,
+          p.resultado_visitante
         FROM evento_reclasificaciones_playoff erp
         JOIN grupos g ON g.id = erp.grupo_id
         JOIN equipos ga ON ga.id = erp.equipo_a_id
         JOIN equipos gb ON gb.id = erp.equipo_b_id
         LEFT JOIN equipos gw ON gw.id = erp.ganador_id
+        LEFT JOIN partidos p ON p.id = erp.partido_id
         WHERE erp.evento_id = $1
         ORDER BY g.letra_grupo ASC, erp.slot_posicion ASC, erp.id ASC
       `,
@@ -512,6 +527,15 @@ class Eliminatoria {
       grupo_id: Number(row.grupo_id),
       grupo_letra: String(row.letra_grupo || "").toUpperCase(),
       slot_posicion: Number(row.slot_posicion),
+      partido_id: Number(row.partido_id || 0) || null,
+      partido_estado: row.partido_estado || null,
+      fecha_partido: row.fecha_partido || null,
+      hora_partido: row.hora_partido || null,
+      cancha: row.cancha || null,
+      jornada: Number.isFinite(Number(row.jornada)) ? Number(row.jornada) : null,
+      numero_campeonato: Number.isFinite(Number(row.numero_campeonato)) ? Number(row.numero_campeonato) : null,
+      resultado_local: Number.isFinite(Number(row.resultado_local)) ? Number(row.resultado_local) : null,
+      resultado_visitante: Number.isFinite(Number(row.resultado_visitante)) ? Number(row.resultado_visitante) : null,
       equipo_a_id: Number(row.equipo_a_id),
       equipo_a_nombre: row.equipo_a_nombre || "",
       equipo_a_logo_url: row.equipo_a_logo_url || null,
@@ -535,6 +559,168 @@ class Eliminatoria {
       map.set(construirClaveManual(row.grupo_id, row.slot_posicion), row);
     });
     return map;
+  }
+
+  static async eliminarPartidosReclasificacionEvento(evento_id, db = pool) {
+    const rows = await db.query(
+      `
+        SELECT DISTINCT partido_id
+        FROM evento_reclasificaciones_playoff
+        WHERE evento_id = $1
+          AND partido_id IS NOT NULL
+      `,
+      [evento_id]
+    );
+    const ids = rows.rows
+      .map((row) => Number.parseInt(row?.partido_id, 10))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    if (!ids.length) return;
+    await db.query(`DELETE FROM partidos WHERE id = ANY($1::int[])`, [ids]);
+  }
+
+  static async crearPartidoReclasificacion(evento, reclasificacion, db = pool) {
+    const query = `
+      WITH next_num AS (
+        SELECT COALESCE(MAX(numero_campeonato), 0) + 1 AS next_num
+        FROM partidos
+        WHERE campeonato_id = $1
+      )
+      INSERT INTO partidos (
+        campeonato_id,
+        evento_id,
+        grupo_id,
+        equipo_local_id,
+        equipo_visitante_id,
+        fecha_partido,
+        hora_partido,
+        cancha,
+        jornada,
+        numero_campeonato
+      )
+      SELECT
+        $1, $2, NULL, $3, $4, NULL, NULL, $5, NULL, next_num.next_num
+      FROM next_num
+      RETURNING *
+    `;
+    const result = await db.query(query, [
+      Number(evento.campeonato_id),
+      Number(evento.id),
+      Number(reclasificacion.equipo_a_id),
+      Number(reclasificacion.equipo_b_id),
+      `Partido extra playoff - Cupo ${Number(reclasificacion.slot_posicion)} Grupo ${String(
+        reclasificacion.grupo_letra || ""
+      ).toUpperCase()}`,
+    ]);
+    return result.rows[0] || null;
+  }
+
+  static async sincronizarPartidoReclasificacion(reclasificacion, db = pool) {
+    const reclasificacionId = Number.parseInt(reclasificacion?.id, 10);
+    const eventoId = Number.parseInt(reclasificacion?.evento_id, 10);
+    if (!Number.isFinite(reclasificacionId) || !Number.isFinite(eventoId)) return null;
+
+    const evento = await this.obtenerEventoConfig(eventoId, db);
+    if (!evento) return null;
+
+    let partidoId = Number.parseInt(reclasificacion?.partido_id, 10);
+    if (!Number.isFinite(partidoId) || partidoId <= 0) {
+      const partido = await this.crearPartidoReclasificacion(evento, reclasificacion, db);
+      partidoId = Number.parseInt(partido?.id, 10);
+      if (!Number.isFinite(partidoId) || partidoId <= 0) return null;
+    } else {
+      await db.query(
+        `
+          UPDATE partidos
+          SET campeonato_id = $2,
+              evento_id = $3,
+              grupo_id = NULL,
+              equipo_local_id = $4,
+              equipo_visitante_id = $5,
+              cancha = $6
+          WHERE id = $1
+        `,
+        [
+          partidoId,
+          Number(evento.campeonato_id),
+          Number(evento.id),
+          Number(reclasificacion.equipo_a_id),
+          Number(reclasificacion.equipo_b_id),
+          `Partido extra playoff - Cupo ${Number(reclasificacion.slot_posicion)} Grupo ${String(
+            reclasificacion.grupo_letra || ""
+          ).toUpperCase()}`,
+        ]
+      );
+    }
+
+    await db.query(
+      `
+        UPDATE evento_reclasificaciones_playoff
+        SET partido_id = $2,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+      `,
+      [reclasificacionId, partidoId]
+    );
+
+    return partidoId;
+  }
+
+  static async sincronizarReclasificacionesResueltasDesdePartidos(evento_id, db = pool) {
+    await this.asegurarEsquema(db);
+    const rows = await db.query(
+      `
+        SELECT
+          erp.id,
+          erp.equipo_a_id,
+          erp.equipo_b_id,
+          erp.ganador_id,
+          erp.estado,
+          erp.partido_id,
+          p.estado AS partido_estado,
+          p.equipo_local_id,
+          p.equipo_visitante_id,
+          p.resultado_local,
+          p.resultado_visitante
+        FROM evento_reclasificaciones_playoff erp
+        JOIN partidos p ON p.id = erp.partido_id
+        WHERE erp.evento_id = $1
+      `,
+      [evento_id]
+    );
+
+    for (const row of rows.rows) {
+      const estadoPartido = String(row?.partido_estado || "").toLowerCase();
+      const rl = Number.parseInt(row?.resultado_local, 10);
+      const rv = Number.parseInt(row?.resultado_visitante, 10);
+      if (estadoPartido !== "finalizado" || !Number.isFinite(rl) || !Number.isFinite(rv) || rl === rv) {
+        continue;
+      }
+
+      const ganadorId =
+        rl > rv
+          ? Number.parseInt(row?.equipo_local_id, 10)
+          : Number.parseInt(row?.equipo_visitante_id, 10);
+      const candidatos = [
+        Number.parseInt(row?.equipo_a_id, 10),
+        Number.parseInt(row?.equipo_b_id, 10),
+      ];
+      if (!Number.isFinite(ganadorId) || !candidatos.includes(ganadorId)) continue;
+
+      const ganadorActual = Number.parseInt(row?.ganador_id, 10);
+      const estadoActual = String(row?.estado || "pendiente").toLowerCase();
+      if (ganadorActual === ganadorId && estadoActual === "resuelto") continue;
+
+      await db.query(
+        `
+          UPDATE evento_reclasificaciones_playoff
+          SET ganador_id = $2,
+              estado = 'resuelto',
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1
+        `,
+        [Number(row.id), ganadorId]
+      );
+    }
   }
 
   static async obtenerGruposEvento(evento_id, db = pool) {
@@ -871,6 +1057,7 @@ class Eliminatoria {
   ) {
     const evento = await this.obtenerEventoConfig(evento_id, db);
     if (!evento) throw new Error("Evento no encontrado");
+    await this.sincronizarReclasificacionesResueltasDesdePartidos(evento_id, db);
 
     const reglas = this.parsearReglas(evento.reglas_desempate);
     const grupos = await this.obtenerGruposEvento(evento_id, db);
@@ -1336,6 +1523,7 @@ class Eliminatoria {
       const reservadosEvento = new Set();
       const reclasificacionesPrevias = await this.obtenerMapaReclasificacionesEvento(evento_id, client);
 
+      await this.eliminarPartidosReclasificacionEvento(evento_id, client);
       await client.query(`DELETE FROM evento_clasificados_manuales WHERE evento_id = $1`, [
         evento_id,
       ]);
@@ -1409,7 +1597,7 @@ class Eliminatoria {
             ]);
             const ganadorValido = candidatosIds.has(ganadorPrevio) ? ganadorPrevio : null;
 
-            await client.query(
+            const insertReclasificacion = await client.query(
               `
                 INSERT INTO evento_reclasificaciones_playoff (
                   evento_id,
@@ -1424,6 +1612,7 @@ class Eliminatoria {
                   updated_at
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+                RETURNING *
               `,
               [
                 evento_id,
@@ -1434,9 +1623,15 @@ class Eliminatoria {
                 ganadorValido,
                 ganadorValido ? "resuelto" : "pendiente",
                 detalle,
-                Number.isFinite(Number(userId)) ? Number(userId) : null,
-              ]
-            );
+                  Number.isFinite(Number(userId)) ? Number(userId) : null,
+                ]
+              );
+
+            const reclasificacionCreada = {
+              ...(insertReclasificacion.rows[0] || {}),
+              grupo_letra: grupoResumen.grupo_letra,
+            };
+            await this.sincronizarPartidoReclasificacion(reclasificacionCreada, client);
 
             reservadosEvento.add(Number(equipoA.equipo_id));
             reservadosEvento.add(Number(equipoB.equipo_id));

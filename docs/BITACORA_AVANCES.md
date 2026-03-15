@@ -14,6 +14,25 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-15
+- Eliminatorias / reclasificación operativa:
+  - se corrigio el flujo de `partido_extra_reclasificacion` para que, al guardar la clasificacion manual, la reclasificacion ya no quede solo como registro logico.
+  - ahora cada reclasificacion genera y enlaza un `partido` real mediante `evento_reclasificaciones_playoff.partido_id`.
+  - desde `eliminatorias.html` ya queda visible:
+    - `Ver en partidos`,
+    - `Abrir planilla`,
+    - numero de partido y estado operativo.
+  - ese partido extra tambien aparece en `partidos.html` con badge `Partido extra playoff`, permitiendo registrar planilla y resultado como cualquier otro partido del evento.
+  - cuando la planilla deja el partido `finalizado`, el backend sincroniza automaticamente el ganador hacia la reclasificacion y libera el cupo playoff correspondiente.
+  - nueva migracion:
+    - `database/migrations/042_reclasificacion_playoff_partido_operativo.sql`
+  - migracion `042` aplicada y verificada en:
+    - BD local,
+    - PostgreSQL de Render.
+  - validacion tecnica:
+    - `node --check backend/models/Eliminatoria.js`
+    - `node --check frontend/js/eliminatorias.js`
+    - `node --check frontend/js/partidos.js`
+    - `npm --prefix backend run smoke` => `PASS 9/9`.
 - Portal publico / playoff:
   - se corrigio la publicacion del bloque `Playoff` en `portal.html` para que ya no muestre llaves desactualizadas.
   - el backend ahora compara la llave guardada en `partidos_eliminatoria` contra la clasificacion vigente del evento antes de publicarla.

@@ -272,6 +272,34 @@ function bindEventosEliminatoria() {
     if (!Number.isFinite(reclasificacionId) || !Number.isFinite(ganadorId)) return;
     await resolverReclasificacion(eliminatoriaState.eventoSeleccionado, reclasificacionId, ganadorId);
   });
+  document.getElementById("eli-clasificacion-manual")?.addEventListener("click", (event) => {
+    const btnPlanilla = event.target.closest("[data-reclasif-planilla]");
+    if (btnPlanilla) {
+      const partidoId = Number.parseInt(btnPlanilla.getAttribute("data-reclasif-planilla") || "", 10);
+      if (Number.isFinite(partidoId) && partidoId > 0) {
+        if (window.RouteContext?.navigate) {
+          window.RouteContext.navigate("planilla.html", { partido: partidoId });
+        } else {
+          window.location.href = `planilla.html?partido=${encodeURIComponent(partidoId)}`;
+        }
+      }
+      return;
+    }
+    const btnPartidos = event.target.closest("[data-reclasif-partidos]");
+    if (btnPartidos) {
+      const partidoId = Number.parseInt(btnPartidos.getAttribute("data-reclasif-partidos") || "", 10);
+      if (window.RouteContext?.navigate) {
+        window.RouteContext.navigate("partidos.html", {
+          evento: Number(eliminatoriaState.eventoSeleccionado) || null,
+          partido: Number.isFinite(partidoId) ? partidoId : null,
+        });
+      } else {
+        window.location.href = `partidos.html?evento=${encodeURIComponent(
+          eliminatoriaState.eventoSeleccionado
+        )}`;
+      }
+    }
+  });
   document.getElementById("btn-eli-exportar")?.addEventListener("click", abrirEnPartidos);
   document.getElementById("btn-eli-export-png")?.addEventListener("click", exportarEliminatoriaPNG);
   document.getElementById("btn-eli-export-pdf")?.addEventListener("click", exportarEliminatoriaPDF);
@@ -661,6 +689,37 @@ function renderReclasificacionesGrupo(reclasificaciones = []) {
                       : "Selecciona el ganador cuando se dispute el partido extra."
                   }
                 </p>
+                ${
+                  Number(item?.partido_id || 0) > 0
+                    ? `
+                      <div class="eli-admin-actions">
+                        <button
+                          type="button"
+                          class="btn btn-outline btn-sm"
+                          data-reclasif-partidos="${Number(item.partido_id)}"
+                        >
+                          <i class="fas fa-futbol"></i> Ver en partidos
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-primary btn-sm"
+                          data-reclasif-planilla="${Number(item.partido_id)}"
+                        >
+                          <i class="fas fa-clipboard-list"></i> Abrir planilla
+                        </button>
+                      </div>
+                      <p class="form-hint">
+                        Partido #${escapeHtml(item.numero_campeonato || "-")} · Estado: ${escapeHtml(
+                          item.partido_estado || "pendiente"
+                        )}${item.cancha ? ` · ${escapeHtml(item.cancha)}` : ""}
+                      </p>
+                    `
+                    : `
+                      <p class="form-hint">
+                        El partido extra se crea al guardar la selección manual. Luego aparecerá aquí para abrirlo en Partidos o registrar su planilla.
+                      </p>
+                    `
+                }
                 ${
                   item?.detalle
                     ? `<p class="form-hint" style="color:#7a4b00;">${escapeHtml(item.detalle)}</p>`

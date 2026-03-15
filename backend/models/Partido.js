@@ -1079,11 +1079,17 @@ class Partido {
              el.logo_url AS equipo_local_logo_url,
              ev.logo_url AS equipo_visitante_logo_url,
              g.nombre_grupo,
-             g.letra_grupo
+             g.letra_grupo,
+             (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
+             erp.id AS reclasificacion_playoff_id,
+             erp.slot_posicion AS reclasificacion_slot_posicion,
+             rg.letra_grupo AS reclasificacion_grupo_letra
       FROM partidos p
       JOIN equipos el ON p.equipo_local_id = el.id
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
+      LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
+      LEFT JOIN grupos rg ON rg.id = erp.grupo_id
       WHERE p.evento_id = $1
       ORDER BY p.jornada, g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
@@ -1101,11 +1107,17 @@ class Partido {
              el.logo_url AS equipo_local_logo_url,
              ev.logo_url AS equipo_visitante_logo_url,
              g.nombre_grupo,
-             g.letra_grupo
+             g.letra_grupo,
+             (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
+             erp.id AS reclasificacion_playoff_id,
+             erp.slot_posicion AS reclasificacion_slot_posicion,
+             rg.letra_grupo AS reclasificacion_grupo_letra
       FROM partidos p
       JOIN equipos el ON p.equipo_local_id = el.id
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
+      LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
+      LEFT JOIN grupos rg ON rg.id = erp.grupo_id
       WHERE p.evento_id = $1 AND p.jornada = $2
       ORDER BY g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
@@ -1123,11 +1135,17 @@ class Partido {
              el.logo_url AS equipo_local_logo_url,
              ev.logo_url AS equipo_visitante_logo_url,
              g.nombre_grupo,
-             g.letra_grupo
+             g.letra_grupo,
+             (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
+             erp.id AS reclasificacion_playoff_id,
+             erp.slot_posicion AS reclasificacion_slot_posicion,
+             rg.letra_grupo AS reclasificacion_grupo_letra
       FROM partidos p
       JOIN equipos el ON p.equipo_local_id = el.id
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
+      LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
+      LEFT JOIN grupos rg ON rg.id = erp.grupo_id
       WHERE p.campeonato_id = $1
       ORDER BY p.jornada, g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
@@ -1145,11 +1163,17 @@ class Partido {
              el.logo_url AS equipo_local_logo_url,
              ev.logo_url AS equipo_visitante_logo_url,
              g.nombre_grupo,
-             g.letra_grupo
+             g.letra_grupo,
+             (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
+             erp.id AS reclasificacion_playoff_id,
+             erp.slot_posicion AS reclasificacion_slot_posicion,
+             rg.letra_grupo AS reclasificacion_grupo_letra
       FROM partidos p
       JOIN equipos el ON p.equipo_local_id = el.id
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
+      LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
+      LEFT JOIN grupos rg ON rg.id = erp.grupo_id
       WHERE p.campeonato_id = $1 AND p.jornada = $2
       ORDER BY g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
@@ -1163,10 +1187,16 @@ class Partido {
     const q = `
       SELECT p.*,
              el.nombre as equipo_local_nombre,
-             ev.nombre as equipo_visitante_nombre
+             ev.nombre as equipo_visitante_nombre,
+             (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
+             erp.id AS reclasificacion_playoff_id,
+             erp.slot_posicion AS reclasificacion_slot_posicion,
+             rg.letra_grupo AS reclasificacion_grupo_letra
       FROM partidos p
       JOIN equipos el ON p.equipo_local_id = el.id
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
+      LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
+      LEFT JOIN grupos rg ON rg.id = erp.grupo_id
       WHERE p.id = $1
     `;
     const r = await pool.query(q, [id]);

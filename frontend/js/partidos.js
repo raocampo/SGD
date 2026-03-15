@@ -1300,17 +1300,39 @@ function actualizarTabsVistaFixture() {
   });
 }
 
+function obtenerEtiquetaCompetitivaPartido(p = {}) {
+  if (p?.es_reclasificacion_playoff === true) {
+    const grupo = p?.reclasificacion_grupo_letra
+      ? `Grupo ${p.reclasificacion_grupo_letra}`
+      : "Evento";
+    const cupo = Number.parseInt(p?.reclasificacion_slot_posicion, 10);
+    return {
+      titulo: "Partido extra playoff",
+      detalle: `${grupo}${Number.isFinite(cupo) && cupo > 0 ? ` • Cupo ${cupo}` : ""}`,
+      badge: `<span class="badge-estado estado-borrador">Partido extra playoff</span>`,
+    };
+  }
+  return { titulo: null, detalle: null, badge: "" };
+}
+
 function renderPartidoCard(p) {
   const numero = obtenerNumeroPartidoVisible(p);
+  const competitivo = obtenerEtiquetaCompetitivaPartido(p);
   return `
     <div class="campeonato-card">
       <div class="campeonato-header">
         <h3>${escapeHtml(p.equipo_local_nombre || "Equipo local")} vs ${escapeHtml(p.equipo_visitante_nombre || "Equipo visitante")}</h3>
+        ${competitivo.badge}
       </div>
 
       <div class="campeonato-info">
         <p><strong>N° Partido:</strong> ${escapeHtml(numero || "-")}</p>
         <p><strong>Grupo:</strong> ${escapeHtml(p.letra_grupo ? `Grupo ${p.letra_grupo}` : "-")}</p>
+        ${
+          competitivo.titulo
+            ? `<p><strong>${escapeHtml(competitivo.titulo)}:</strong> ${escapeHtml(competitivo.detalle || "-")}</p>`
+            : ""
+        }
         <p><strong>Jornada:</strong> ${escapeHtml(p.jornada || "-")}</p>
         <p><strong>Fecha:</strong> ${escapeHtml(formatearFechaPartido(p.fecha_partido))}</p>
         <p><strong>Hora:</strong> ${escapeHtml((p.hora_partido || "--:--").toString().substring(0, 5))}</p>
@@ -1343,6 +1365,7 @@ function renderTablaPartidos(partidos) {
       const local = escapeHtml(p.equipo_local_nombre || "Local");
       const visita = escapeHtml(p.equipo_visitante_nombre || "Visitante");
       const grupo = escapeHtml(p.letra_grupo ? `Grupo ${p.letra_grupo}` : "-");
+      const competitivo = obtenerEtiquetaCompetitivaPartido(p);
       const jornada = escapeHtml(p.jornada || "-");
       const fecha = escapeHtml(formatearFechaPartido(p.fecha_partido));
       const hora = escapeHtml((p.hora_partido || "--:--").toString().substring(0, 5));
@@ -1357,7 +1380,15 @@ function renderTablaPartidos(partidos) {
       return `
         <tr>
           <td>${numero}</td>
-          <td>${local} vs ${visita}</td>
+          <td>
+            <div>${local} vs ${visita}</div>
+            ${competitivo.badge}
+            ${
+              competitivo.titulo
+                ? `<div class="form-hint">${escapeHtml(competitivo.detalle || "")}</div>`
+                : ""
+            }
+          </td>
           <td>${grupo}</td>
           <td>${jornada}</td>
           <td>${fecha}</td>

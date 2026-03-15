@@ -22,6 +22,22 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-15 - Reclasificación playoff con partido y planilla operativa
+- `backend/models/Eliminatoria.js` ya no deja la reclasificación solo en estado lógico:
+  - al guardar `partido_extra_reclasificacion`, el `INSERT` devuelve la fila creada,
+  - se sincroniza un `partido` real y se guarda en `evento_reclasificaciones_playoff.partido_id`.
+- `frontend/js/eliminatorias.js` muestra ese enlace operativo en la tarjeta de reclasificación:
+  - `Ver en partidos`
+  - `Abrir planilla`
+  - número de partido y estado
+- `frontend/js/partidos.js` identifica estos cruces con badge `Partido extra playoff` y detalle `Grupo X • Cupo Y`.
+- cuando el partido extra termina y queda `finalizado`, el backend ya sincroniza el ganador hacia la reclasificación para que el cupo playoff quede resuelto desde la planilla.
+- base de datos:
+  - nueva migración `database/migrations/042_reclasificacion_playoff_partido_operativo.sql`
+  - aplicada en BD local y PostgreSQL de Render.
+
+---
+
 ## 2026-03-14 - Recorte estable de foto para carné
 - Navegacion interna limpia:
   - `frontend/js/core.js` incorpora `RouteContext` para guardar contexto por pagina en `sessionStorage`.
