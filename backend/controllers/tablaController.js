@@ -405,6 +405,26 @@ async function obtenerTablaManualScope(eventoId, grupoId = null, db = pool) {
   };
 }
 
+async function invalidarPlayoffPorCambioTabla(eventoId, db = pool) {
+  const eventoIdNumerico = aEntero(eventoId, NaN);
+  if (!Number.isFinite(eventoIdNumerico)) return;
+
+  const Eliminatoria = require("../models/Eliminatoria");
+  await Eliminatoria.asegurarEsquema(db);
+
+  if (typeof Eliminatoria.eliminarPartidosReclasificacionEvento === "function") {
+    await Eliminatoria.eliminarPartidosReclasificacionEvento(eventoIdNumerico, db);
+  }
+
+  await db.query(`DELETE FROM evento_reclasificaciones_playoff WHERE evento_id = $1`, [
+    eventoIdNumerico,
+  ]);
+  await db.query(`DELETE FROM evento_clasificados_manuales WHERE evento_id = $1`, [
+    eventoIdNumerico,
+  ]);
+  await db.query(`DELETE FROM partidos_eliminatoria WHERE evento_id = $1`, [eventoIdNumerico]);
+}
+
 function normalizarPayloadTablaManual(filas = [], tablaBase = [], reglas = REGLAS_DEFAULT) {
   const baseMap = new Map(
     (Array.isArray(tablaBase) ? tablaBase : []).map((row, idx) => {
@@ -1438,11 +1458,15 @@ const tablaController = {
         ]
       );
 
+      await invalidarPlayoffPorCambioTabla(eventoId, client);
+
       await client.query("COMMIT");
       const data = await generarTablasEventoInterna(eventoId);
       return res.json({
         ok: true,
-        mensaje: "Tabla manual guardada con auditoría.",
+        mensaje:
+          "Tabla manual guardada con auditoría. El playoff anterior fue invalidado y debe regenerarse con la nueva clasificación.",
+        playoff_requiere_regeneracion: true,
         ...data,
       });
     } catch (error) {
@@ -1512,11 +1536,15 @@ const tablaController = {
         ]
       );
 
+      await invalidarPlayoffPorCambioTabla(eventoId, client);
+
       await client.query("COMMIT");
       const data = await generarTablasEventoInterna(eventoId);
       return res.json({
         ok: true,
-        mensaje: "Edición manual restablecida.",
+        mensaje:
+          "Edición manual restablecida. El playoff anterior fue invalidado y debe regenerarse con la clasificación actual.",
+        playoff_requiere_regeneracion: true,
         ...data,
       });
     } catch (error) {
