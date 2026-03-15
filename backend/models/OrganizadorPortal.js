@@ -486,6 +486,61 @@ class OrganizadorPortal {
     return result.rows.map((row) => this.limpiarAuspiciante(row));
   }
 
+  static async listarAuspiciantesRelacionados(filters = {}, client = pool) {
+    await this.asegurarEsquema(client);
+    const usuarioId = this.normalizarId(filters?.usuarioId);
+    const organizadorNombre = String(filters?.organizadorNombre || "").trim();
+
+    const where = ["ca.activo = TRUE", "NULLIF(TRIM(COALESCE(ca.logo_url, '')), '') IS NOT NULL"];
+    const params = [];
+    const grupos = [];
+    let idx = 1;
+
+    if (usuarioId) {
+      grupos.push(`c.creador_usuario_id = $${idx}`);
+      params.push(usuarioId);
+      idx += 1;
+    }
+
+    if (organizadorNombre) {
+      grupos.push(`LOWER(TRIM(COALESCE(c.organizador, ''))) = LOWER(TRIM($${idx}))`);
+      params.push(organizadorNombre);
+      idx += 1;
+    }
+
+    if (!grupos.length) return [];
+    where.push(`(${grupos.join(" OR ")})`);
+
+    const result = await client.query(
+      `
+        SELECT DISTINCT ON (
+          LOWER(TRIM(COALESCE(ca.nombre, ''))),
+          LOWER(TRIM(COALESCE(ca.logo_url, '')))
+        )
+          ca.id,
+          c.creador_usuario_id AS usuario_id,
+          ca.nombre,
+          ca.logo_url,
+          NULL::text AS enlace_url,
+          ca.orden,
+          ca.activo,
+          ca.created_at,
+          ca.updated_at
+        FROM campeonato_auspiciantes ca
+        INNER JOIN campeonatos c ON c.id = ca.campeonato_id
+        WHERE ${where.join(" AND ")}
+        ORDER BY
+          LOWER(TRIM(COALESCE(ca.nombre, ''))),
+          LOWER(TRIM(COALESCE(ca.logo_url, ''))),
+          ca.orden ASC,
+          ca.id ASC
+      `,
+      params
+    );
+
+    return result.rows.map((row) => this.limpiarAuspiciante(row));
+  }
+
   static async obtenerMediaCardCampeonato(usuarioId, campeonatoId, client = pool) {
     await this.asegurarEsquema(client);
     const uId = this.normalizarId(usuarioId);

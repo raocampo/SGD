@@ -170,8 +170,17 @@ async function listarAuspiciantesAcotadosCampeonato(campeonato = null) {
   }
 
   const organizadorId = normalizarEntero(campeonato?.creador_usuario_id);
-  if (!organizadorId) return [];
+  const organizadorNombre = String(campeonato?.organizador || "").trim();
 
+  auspiciantes = await OrganizadorPortal.listarAuspiciantesRelacionados({
+    usuarioId: organizadorId,
+    organizadorNombre,
+  });
+  if (Array.isArray(auspiciantes) && auspiciantes.length) {
+    return deduplicarAuspiciantes(auspiciantes);
+  }
+
+  if (!organizadorId) return [];
   return deduplicarAuspiciantes(await OrganizadorPortal.listarAuspiciantesConFallback(organizadorId));
 }
 

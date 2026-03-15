@@ -34,14 +34,21 @@ async function obtenerAuspiciantesAcotados(campeonatoId, soloActivos = false) {
   }
 
   const result = await pool.query(
-    `SELECT creador_usuario_id FROM campeonatos WHERE id = $1 LIMIT 1`,
+    `SELECT creador_usuario_id, organizador FROM campeonatos WHERE id = $1 LIMIT 1`,
     [Number.parseInt(campeonatoId, 10)]
   );
   const organizadorId = Number.parseInt(result.rows?.[0]?.creador_usuario_id, 10);
-  if (!Number.isFinite(organizadorId) || organizadorId <= 0) {
-    return [];
+  const organizadorNombre = String(result.rows?.[0]?.organizador || "").trim();
+
+  auspiciantes = await OrganizadorPortal.listarAuspiciantesRelacionados({
+    usuarioId: Number.isFinite(organizadorId) && organizadorId > 0 ? organizadorId : null,
+    organizadorNombre,
+  });
+  if (Array.isArray(auspiciantes) && auspiciantes.length) {
+    return deduplicarAuspiciantes(auspiciantes);
   }
 
+  if (!Number.isFinite(organizadorId) || organizadorId <= 0) return [];
   return deduplicarAuspiciantes(
     await OrganizadorPortal.listarAuspiciantesConFallback(organizadorId)
   );
