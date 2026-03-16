@@ -1961,6 +1961,48 @@ class Eliminatoria {
     ]);
   }
 
+  static construirOrdenSemillasBracket(total = 0) {
+    const cantidad = Number.parseInt(total, 10);
+    if (!Number.isFinite(cantidad) || cantidad < 2) return [];
+    let orden = [1, 2];
+    while (orden.length < cantidad) {
+      const siguienteTotal = orden.length * 2;
+      const siguiente = [];
+      for (const seed of orden) {
+        siguiente.push(seed);
+        siguiente.push(siguienteTotal + 1 - seed);
+      }
+      orden = siguiente;
+    }
+    return orden.slice(0, cantidad);
+  }
+
+  static construirSembradoCrucesGruposBalanceadoDosGrupos(grupoMap, crucesGrupos = []) {
+    if (!Array.isArray(crucesGrupos) || crucesGrupos.length !== 1) return null;
+    const [par] = crucesGrupos;
+    if (!Array.isArray(par) || par.length < 2) return null;
+    const [g1, g2] = par;
+    const grupoA = grupoMap.get(String(g1 || "").toUpperCase()) || [];
+    const grupoB = grupoMap.get(String(g2 || "").toUpperCase()) || [];
+    if (!grupoA.length || !grupoB.length) return null;
+
+    const maxSlots = Math.max(grupoA.length, grupoB.length);
+    if (maxSlots < 2) return null;
+
+    const semillasBase = [];
+    for (let idx = 1; idx <= maxSlots; idx += 1) {
+      semillasBase.push(this.construirEntradaGrupo(grupoMap, g1, idx));
+      semillasBase.push(this.construirEntradaGrupo(grupoMap, g2, idx));
+    }
+
+    const equiposValidos = semillasBase.filter((row) => Number.isFinite(Number(row?.equipo_id))).length;
+    if (equiposValidos < 2) return null;
+
+    const totalBracket = this.calcularTamanoBracket(null, equiposValidos);
+    const ordenSemillas = this.construirOrdenSemillasBracket(totalBracket);
+    return ordenSemillas.map((seed) => semillasBase[seed - 1] || { equipo_id: null, seed_ref: null });
+  }
+
   static construirSembradoCrucesGrupos(clasificadosData, crucesGrupos = [], plantillaLlave = "estandar") {
     const mapGrupo = new Map();
     for (const g of clasificadosData.grupos) {
@@ -1972,6 +2014,10 @@ class Eliminatoria {
       const balanceado = this.construirSembradoCrucesGruposBalanceado16(mapGrupo, crucesGrupos);
       if (Array.isArray(balanceado) && balanceado.length) {
         return balanceado;
+      }
+      const balanceadoDosGrupos = this.construirSembradoCrucesGruposBalanceadoDosGrupos(mapGrupo, crucesGrupos);
+      if (Array.isArray(balanceadoDosGrupos) && balanceadoDosGrupos.length) {
+        return balanceadoDosGrupos;
       }
     }
 

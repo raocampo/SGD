@@ -38,10 +38,11 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
-## 2026-03-16 - Preset visual para llaves balanceadas de 8vos
-- la plantilla `balanceada_8vos` se renombra en UI como `Evitar mismo grupo hasta semifinal (8vos balanceados)` para reflejar mejor su objetivo deportivo.
-- `frontend/eliminatorias.html` y `frontend/js/eliminatorias.js` ahora muestran una vista previa `P1..P8` cuando la categoria usa `4 grupos x 4 clasificados`.
-- en ese escenario el sistema ya sugiere por defecto los cruces `A vs C` y `B vs D`, que producen el orden:
+## 2026-03-16 - Plantilla balanceada para playoff por grupos
+- la plantilla `balanceada_8vos` se renombra en UI como `Evitar reencuentros tempranos de grupo (balanceada)` para reflejar mejor su objetivo deportivo.
+- `frontend/eliminatorias.html` y `frontend/js/eliminatorias.js` ahora muestran una vista previa del orden real de partidos cuando la categoria usa una llave balanceada desde grupos.
+- escenario `4 grupos x 4 clasificados`:
+  - el sistema sugiere por defecto los cruces `A vs C` y `B vs D`, que producen el orden:
   - `P1 1A vs 4C`
   - `P2 2B vs 3D`
   - `P3 1D vs 4B`
@@ -50,7 +51,10 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
   - `P6 2A vs 3C`
   - `P7 1C vs 4A`
   - `P8 2D vs 3B`
-- con esto el organizador puede confirmar visualmente el armado antes de generar la llave y reducir el riesgo de cruces tempranos entre equipos del mismo grupo.
+- escenario `2 grupos x N clasificados`:
+  - el backend ahora usa un sembrado balanceado `A/B` basado en orden de seeds de bracket estándar para minimizar reencuentros tempranos entre equipos del mismo grupo.
+  - la vista previa en UI muestra el orden `P1..Pn` correspondiente a `semifinal`, `4tos`, `8vos` o `16vos`, según el total de clasificados.
+- con esto el organizador puede confirmar visualmente el armado antes de generar la llave y reducir el riesgo de cruces tempranos entre equipos del mismo grupo tanto en formatos `A/B` como `A/B/C/D`.
 
 ---
 
@@ -122,10 +126,10 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
   - `playoff_tercer_puesto`
 - `frontend/eventos.html` y `frontend/js/eventos.js` agregan la configuracion inicial visible del armado de playoff:
   - `Estandar`
-  - `Balanceada 8vos`
+  - `Evitar reencuentros tempranos de grupo (balanceada)`
   - `Tercer y cuarto puesto`
 - `backend/models/Eliminatoria.js` incorpora plantillas de llave configurables:
-  - la plantilla `balanceada_8vos` arma 8vos para 16 clasificados con el orden solicitado:
+  - la plantilla `balanceada_8vos` arma 8vos para `16 clasificados / 4 grupos` con el orden solicitado:
     - `1A vs 4C`
     - `2B vs 3D`
     - `1D vs 4B`
@@ -134,6 +138,7 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
     - `2A vs 3C`
     - `1C vs 4A`
     - `2D vs 3B`
+  - tambien arma playoff balanceado para `2 grupos x N clasificados` usando orden de seeds de bracket para retrasar reencuentros del mismo grupo.
   - mantiene fallback al armado estandar cuando el dataset no corresponde al caso balanceado de 16 clasificados.
 - `backend/models/Eliminatoria.js` y `frontend/js/eliminatorias.js` agregan soporte para:
   - partido de `tercer_puesto`,

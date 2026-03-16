@@ -77,7 +77,7 @@ function obtenerMetodoCompetenciaVisibleEliminatoria(evento = {}) {
 
 function formatearPlantillaLlaveEliminatoria(valor) {
   const key = String(valor || "estandar").toLowerCase();
-  if (key === "balanceada_8vos") return "Evitar mismo grupo hasta semifinal (8vos balanceados)";
+  if (key === "balanceada_8vos") return "Evitar reencuentros tempranos de grupo (balanceada)";
   if (key === "mejores_perdedores_12vos") return "Mejores perdedores (24 -> 12vos -> 8vos)";
   return "Estándar";
 }
@@ -127,7 +127,40 @@ function obtenerCrucesPorDefecto(letras = [], plantillaLlave = "estandar", clasi
   return Array.from({ length: pares }, (_, i) => [grupos[i], grupos[grupos.length - 1 - i]]);
 }
 
-function construirPreviewBalanceada8vos(cruces = []) {
+function calcularPotenciaDosSiguiente(total = 0) {
+  let n = 1;
+  const base = Math.max(2, Number.parseInt(total, 10) || 0);
+  while (n < base) n *= 2;
+  return n;
+}
+
+function construirOrdenSemillasBracket(total = 0) {
+  const cantidad = Number.parseInt(total, 10);
+  if (!Number.isFinite(cantidad) || cantidad < 2) return [];
+  let orden = [1, 2];
+  while (orden.length < cantidad) {
+    const siguienteTotal = orden.length * 2;
+    const siguiente = [];
+    for (const seed of orden) {
+      siguiente.push(seed);
+      siguiente.push(siguienteTotal + 1 - seed);
+    }
+    orden = siguiente;
+  }
+  return orden.slice(0, cantidad);
+}
+
+function obtenerEtiquetaRondaInicial(totalEquipos = 0) {
+  const mapa = {
+    4: "SEM",
+    8: "4TO",
+    16: "8VO",
+    32: "16VO",
+  };
+  return mapa[Number(totalEquipos)] || "P";
+}
+
+function construirPreviewBalanceadaCuatroGrupos(cruces = []) {
   if (!Array.isArray(cruces) || cruces.length !== 2) return [];
   const [parA, parB] = cruces;
   if (!Array.isArray(parA) || !Array.isArray(parB) || parA.length < 2 || parB.length < 2) return [];
@@ -145,24 +178,57 @@ function construirPreviewBalanceada8vos(cruces = []) {
   ];
 }
 
+function construirPreviewBalanceadaDosGrupos(cruces = [], clasificados = 2) {
+  if (!Array.isArray(cruces) || cruces.length !== 1) return [];
+  const [par] = cruces;
+  if (!Array.isArray(par) || par.length < 2) return [];
+  const [g1, g2] = par.map((item) => String(item || "").toUpperCase().trim());
+  const cupos = Math.max(2, Number.parseInt(clasificados, 10) || 0);
+  const semillasBase = [];
+  for (let idx = 1; idx <= cupos; idx += 1) {
+    semillasBase.push(`${idx}${g1}`);
+    semillasBase.push(`${idx}${g2}`);
+  }
+  const totalBracket = calcularPotenciaDosSiguiente(semillasBase.length);
+  const ordenSemillas = construirOrdenSemillasBracket(totalBracket);
+  const etiqueta = obtenerEtiquetaRondaInicial(totalBracket);
+  const ordenado = ordenSemillas.map((seed) => semillasBase[seed - 1] || "BYE");
+  const preview = [];
+  for (let idx = 0; idx < ordenado.length; idx += 2) {
+    preview.push(`${etiqueta} P${idx / 2 + 1}: ${ordenado[idx]} vs ${ordenado[idx + 1]}`);
+  }
+  return preview;
+}
+
+function construirVistaPreviaBalanceada(cruces = [], clasificados = 2) {
+  if (!Array.isArray(cruces) || !cruces.length) return [];
+  if (cruces.length === 2 && Number(clasificados || 0) >= 4) {
+    return construirPreviewBalanceadaCuatroGrupos(cruces);
+  }
+  if (cruces.length === 1 && Number(clasificados || 0) >= 2) {
+    return construirPreviewBalanceadaDosGrupos(cruces, clasificados);
+  }
+  return [];
+}
+
 function renderVistaPreviaCruces(cruces = []) {
   const cont = document.getElementById("eli-cruces-preview");
   if (!cont) return;
   const plantilla = String(document.getElementById("eli-plantilla-llave")?.value || "estandar").toLowerCase();
   const clasificados = obtenerClasificadosPorGrupoActual();
-  if (plantilla !== "balanceada_8vos" || clasificados < 4 || cruces.length !== 2) {
+  if (plantilla !== "balanceada_8vos") {
     cont.innerHTML = "";
     return;
   }
-  const preview = construirPreviewBalanceada8vos(cruces);
+  const preview = construirVistaPreviaBalanceada(cruces, clasificados);
   if (!preview.length) {
     cont.innerHTML = "";
     return;
   }
   cont.innerHTML = `
     <div class="eli-cruces-preview-card">
-      <strong>Vista previa sugerida de 8vos</strong>
-      <p>Con esta plantilla se evita que equipos del mismo grupo se crucen antes de semifinales.</p>
+      <strong>Vista previa sugerida de playoff balanceado</strong>
+      <p>Con esta plantilla se minimizan reencuentros tempranos entre equipos del mismo grupo.</p>
       <div class="eli-cruces-preview-grid">
         ${preview.map((item) => `<span class="eli-cruces-preview-chip">${escapeHtml(item)}</span>`).join("")}
       </div>
