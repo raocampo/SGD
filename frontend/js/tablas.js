@@ -803,7 +803,7 @@ function renderTablaPosicionesEditable(grupo = {}) {
               ${renderEstadoPosicion(row)}
             </div>
           </td>
-          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_jugados" value="${Number(est.partidos_jugados || 0)}" readonly title="PJ se calcula automáticamente desde PG + PE + PP." /></td>
+          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_jugados" value="${Number(est.partidos_jugados || 0)}" title="PJ es editable manualmente para correcciones administrativas." /></td>
           <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_ganados" value="${Number(est.partidos_ganados || 0)}" /></td>
           <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_empatados" value="${Number(est.partidos_empatados || 0)}" /></td>
           <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_perdidos" value="${Number(est.partidos_perdidos || 0)}" /></td>
@@ -819,7 +819,7 @@ function renderTablaPosicionesEditable(grupo = {}) {
   return `
     <div class="tablas-manual-wrap">
       <p class="tablas-clasificacion-help">
-        Solo administrador puede corregir esta tabla. PJ, DG y PTS se recalculan automáticamente según los valores editados; si dos equipos quedan idénticos, la posición manual sirve como desempate. Los equipos eliminados seguirán fuera de clasificación.
+        Solo administrador puede corregir esta tabla. PJ es editable manualmente; DG y PTS se recalculan automáticamente según los valores editados. Si dos equipos quedan idénticos, la posición manual sirve como desempate. Los equipos eliminados seguirán fuera de clasificación.
       </p>
       <div class="tabla-scroll">
         <table class="tabla-estadistica tabla-estadistica-posiciones">
@@ -967,9 +967,8 @@ function reordenarTablaManualGrupo(grupoKey) {
       tr.querySelector('[data-manual-field="partidos_perdidos"]')?.value,
       0
     );
-    const partidosJugados = partidosGanados + partidosEmpatados + partidosPerdidos;
     const pjInput = tr.querySelector('[data-manual-field="partidos_jugados"]');
-    if (pjInput) pjInput.value = String(partidosJugados);
+    const partidosJugados = numeroManual(pjInput?.value, 0);
     const puntosCalculados = calcularPuntosFilaManual(
       {
         partidos_ganados: partidosGanados,

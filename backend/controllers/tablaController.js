@@ -278,7 +278,13 @@ function construirFilaTablaDesdePayload(baseRow = {}, payloadRow = {}, fallbackP
   const partidosGanados = aEntero(payloadRow?.partidos_ganados, aEntero(baseStats.partidos_ganados, 0));
   const partidosEmpatados = aEntero(payloadRow?.partidos_empatados, aEntero(baseStats.partidos_empatados, 0));
   const partidosPerdidos = aEntero(payloadRow?.partidos_perdidos, aEntero(baseStats.partidos_perdidos, 0));
-  const partidosJugados = partidosGanados + partidosEmpatados + partidosPerdidos;
+  const partidosJugados = aEntero(
+    payloadRow?.partidos_jugados,
+    aEntero(
+      baseStats.partidos_jugados,
+      partidosGanados + partidosEmpatados + partidosPerdidos
+    )
+  );
   const puntosCalculados = calcularPuntosTablaManual(
     {
       partidos_ganados: partidosGanados,
@@ -491,6 +497,7 @@ function normalizarPayloadTablaManual(
       ...basePayload,
       equipo_id: equipoId,
       posicion_deportiva: aEntero(item?.posicion_deportiva ?? item?.posicion, idx + 1),
+      partidos_jugados: aEntero(item?.partidos_jugados, basePayload.partidos_jugados),
       partidos_ganados: aEntero(item?.partidos_ganados, basePayload.partidos_ganados),
       partidos_empatados: aEntero(item?.partidos_empatados, basePayload.partidos_empatados),
       partidos_perdidos: aEntero(item?.partidos_perdidos, basePayload.partidos_perdidos),
