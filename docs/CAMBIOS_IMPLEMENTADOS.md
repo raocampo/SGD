@@ -30,6 +30,14 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-16 - Playoff respeta valores altos de clasificados por grupo
+- `frontend/eliminatorias.html` amplia el selector visible de `Clasifican por grupo` para soportar cupos mayores a `6`.
+- `frontend/js/eliminatorias.js` incorpora una lectura centralizada del valor actual de `clasificados_por_grupo`, usando como fallback el valor persistido en la categoria/configuracion cuando la UI llega sin opcion visible.
+- esto corrige el caso de categorias como `Master (Sub +40)` donde la card mostraba `8 por grupo`, pero la pantalla de playoff quedaba vacia y terminaba bloqueando la generacion con el aviso `Clasifican por grupo debe ser mayor a 0`.
+- al quedar alineado el valor real de cupos, la logica de clasificacion existente vuelve a sugerir correctamente al siguiente equipo elegible del mismo grupo y, si ya no alcanza, al mejor no clasificado del evento.
+
+---
+
 ## 2026-03-16 - Plantilla de playoff con mejores perdedores
 - `backend/models/Eliminatoria.js` incorpora una nueva plantilla formal:
   - `mejores_perdedores_12vos`

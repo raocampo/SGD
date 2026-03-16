@@ -30,6 +30,34 @@ function parsePositiveInt(value) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function asegurarOpcionesClasificadosPorGrupo(valorActual = null) {
+  const select = document.getElementById("eli-clasificados");
+  if (!select) return;
+  const valorNormalizado = parsePositiveInt(valorActual) || parsePositiveInt(select.value) || 2;
+  const maximo = Math.max(16, valorNormalizado);
+  const valorPrevio = parsePositiveInt(select.value) || valorNormalizado;
+  select.innerHTML = Array.from({ length: maximo }, (_, idx) => {
+    const cupo = idx + 1;
+    return `<option value="${cupo}">${cupo} por grupo</option>`;
+  }).join("");
+  select.value = String(valorPrevio);
+}
+
+function obtenerClasificadosPorGrupoActual() {
+  const evento = obtenerEventoActual();
+  const select = document.getElementById("eli-clasificados");
+  const valorUI = parsePositiveInt(select?.value || "");
+  const valorEvento = parsePositiveInt(
+    evento?.clasificados_por_grupo ||
+      eliminatoriaState.configuracionPlayoff?.evento?.clasificados_por_grupo ||
+      eliminatoriaState.resumenClasificacion?.clasificados_por_grupo
+  );
+  const clasificados = valorUI || valorEvento || 2;
+  asegurarOpcionesClasificadosPorGrupo(clasificados);
+  if (select) select.value = String(clasificados);
+  return clasificados;
+}
+
 function actualizarEventoCache(eventoId, cambios = {}) {
   const id = Number.parseInt(eventoId, 10);
   if (!Number.isFinite(id)) return null;
@@ -150,7 +178,7 @@ async function guardarConfiguracionPlayoffCompartida({ silencioso = false } = {}
   }
 
   const metodoCompetencia = obtenerMetodoCompetenciaVisibleEliminatoria(evento);
-  const clasificados = parsePositiveInt(document.getElementById("eli-clasificados")?.value || "");
+  const clasificados = obtenerClasificadosPorGrupoActual();
   if (["grupos", "mixto", "liga", "tabla_acumulada"].includes(metodoCompetencia) && !clasificados) {
     mostrarNotificacion("Clasifican por grupo debe ser mayor a 0.", "warning");
     return false;
@@ -619,7 +647,7 @@ async function guardarEstadoCompetitivoEquipo(equipoId, desdeFormulario = true) 
 async function cargarResumenClasificacionManual() {
   const cont = document.getElementById("eli-clasificacion-manual");
   const eventoId = eliminatoriaState.eventoSeleccionado;
-  const cupos = Number.parseInt(document.getElementById("eli-clasificados")?.value || "2", 10);
+  const cupos = obtenerClasificadosPorGrupoActual();
   if (!cont) return;
 
   if (!eventoId) {
@@ -1233,7 +1261,10 @@ function actualizarMetaEvento() {
 
   const metodo = obtenerMetodoCompetenciaVisibleEliminatoria(evento);
   const llave = Number.parseInt(evento?.eliminatoria_equipos, 10);
-  const clasificados = parsePositiveInt(evento?.clasificados_por_grupo) || 2;
+  const clasificados =
+    parsePositiveInt(evento?.clasificados_por_grupo) ||
+    parsePositiveInt(eliminatoriaState.configuracionPlayoff?.evento?.clasificados_por_grupo) ||
+    2;
   const origen = String(
     metodo === "tabla_acumulada"
       ? "grupos"
@@ -1250,6 +1281,7 @@ function actualizarMetaEvento() {
 
   if (metodoEl) metodoEl.value = formatearMetodo(metodo);
   if (llaveEl) llaveEl.value = Number.isFinite(llave) ? String(llave) : "Automática";
+  asegurarOpcionesClasificadosPorGrupo(clasificados);
   if (clasificadosSel) clasificadosSel.value = String(clasificados);
   if (metodoGruposSel) metodoGruposSel.value = metodoGrupos;
   const plantillaSel = document.getElementById("eli-plantilla-llave");
@@ -1425,10 +1457,7 @@ async function generarLlaveEliminatoria() {
   const origen = metodoEvento === "tabla_acumulada"
     ? "grupos"
     : (document.getElementById("eli-origen")?.value || "evento");
-  const clasificadosPorGrupo = Number.parseInt(
-    document.getElementById("eli-clasificados")?.value || "2",
-    10
-  );
+  const clasificadosPorGrupo = obtenerClasificadosPorGrupoActual();
   const metodoGrupos = metodoEvento === "tabla_acumulada"
     ? "tabla_unica"
     : (document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos");
