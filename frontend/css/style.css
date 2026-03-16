@@ -5747,6 +5747,47 @@ body.page-finanzas {
   font-size: 0.85rem;
 }
 
+.page-eliminatorias .eli-cruces-preview {
+  margin-top: 0.8rem;
+}
+
+.page-eliminatorias .eli-cruces-preview-card {
+  border: 1px dashed #bfd4ff;
+  background: linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%);
+  border-radius: 0.85rem;
+  padding: 0.85rem 0.95rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.page-eliminatorias .eli-cruces-preview-card strong {
+  color: #1e3a8a;
+}
+
+.page-eliminatorias .eli-cruces-preview-card p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.page-eliminatorias .eli-cruces-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.45rem;
+}
+
+.page-eliminatorias .eli-cruces-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .page-eliminatorias .eli-round-col {
   border: 1px solid #dbe3f1;
   border-radius: 0.9rem;

@@ -77,7 +77,7 @@ function obtenerMetodoCompetenciaVisibleEliminatoria(evento = {}) {
 
 function formatearPlantillaLlaveEliminatoria(valor) {
   const key = String(valor || "estandar").toLowerCase();
-  if (key === "balanceada_8vos") return "Balanceada 8vos";
+  if (key === "balanceada_8vos") return "Evitar mismo grupo hasta semifinal (8vos balanceados)";
   if (key === "mejores_perdedores_12vos") return "Mejores perdedores (24 -> 12vos -> 8vos)";
   return "Estándar";
 }
@@ -106,6 +106,68 @@ function obtenerCrucesConfiguradosDesdeWrap(wrap) {
     cruces.push([a, b]);
   }
   return cruces;
+}
+
+function obtenerCrucesPorDefecto(letras = [], plantillaLlave = "estandar", clasificados = 2) {
+  const grupos = Array.isArray(letras)
+    ? letras.map((letra) => String(letra || "").toUpperCase().trim()).filter(Boolean)
+    : [];
+  if (
+    String(plantillaLlave || "estandar").toLowerCase() === "balanceada_8vos" &&
+    grupos.length === 4 &&
+    Number(clasificados || 0) >= 4
+  ) {
+    return [
+      [grupos[0], grupos[2]],
+      [grupos[1], grupos[3]],
+    ];
+  }
+
+  const pares = Math.floor(grupos.length / 2);
+  return Array.from({ length: pares }, (_, i) => [grupos[i], grupos[grupos.length - 1 - i]]);
+}
+
+function construirPreviewBalanceada8vos(cruces = []) {
+  if (!Array.isArray(cruces) || cruces.length !== 2) return [];
+  const [parA, parB] = cruces;
+  if (!Array.isArray(parA) || !Array.isArray(parB) || parA.length < 2 || parB.length < 2) return [];
+  const [g1, g2] = parA;
+  const [g3, g4] = parB;
+  return [
+    `8VO P1: 1${g1} vs 4${g2}`,
+    `8VO P2: 2${g3} vs 3${g4}`,
+    `8VO P3: 1${g4} vs 4${g3}`,
+    `8VO P4: 2${g2} vs 3${g1}`,
+    `8VO P5: 1${g3} vs 4${g4}`,
+    `8VO P6: 2${g1} vs 3${g2}`,
+    `8VO P7: 1${g2} vs 4${g1}`,
+    `8VO P8: 2${g4} vs 3${g3}`,
+  ];
+}
+
+function renderVistaPreviaCruces(cruces = []) {
+  const cont = document.getElementById("eli-cruces-preview");
+  if (!cont) return;
+  const plantilla = String(document.getElementById("eli-plantilla-llave")?.value || "estandar").toLowerCase();
+  const clasificados = obtenerClasificadosPorGrupoActual();
+  if (plantilla !== "balanceada_8vos" || clasificados < 4 || cruces.length !== 2) {
+    cont.innerHTML = "";
+    return;
+  }
+  const preview = construirPreviewBalanceada8vos(cruces);
+  if (!preview.length) {
+    cont.innerHTML = "";
+    return;
+  }
+  cont.innerHTML = `
+    <div class="eli-cruces-preview-card">
+      <strong>Vista previa sugerida de 8vos</strong>
+      <p>Con esta plantilla se evita que equipos del mismo grupo se crucen antes de semifinales.</p>
+      <div class="eli-cruces-preview-grid">
+        ${preview.map((item) => `<span class="eli-cruces-preview-chip">${escapeHtml(item)}</span>`).join("")}
+      </div>
+    </div>
+  `;
 }
 
 function aplicarBloqueoConfiguracionPlayoff(guardada = false) {
@@ -304,7 +366,11 @@ function bindEventosEliminatoria() {
     actualizarUIPlayoffPorOrigen();
   });
   document.getElementById("eli-clasificados")?.addEventListener("change", async () => {
+    actualizarUIPlayoffPorOrigen();
     await cargarResumenClasificacionManual();
+  });
+  document.getElementById("eli-plantilla-llave")?.addEventListener("change", () => {
+    actualizarUIPlayoffPorOrigen();
   });
   document
     .getElementById("btn-eli-guardar-config")
@@ -1339,6 +1405,8 @@ function actualizarUIPlayoffPorOrigen() {
 
   if (usaGrupos && metodoGrupos === "cruces_grupos") {
     renderConfiguracionCruces();
+  } else {
+    renderVistaPreviaCruces([]);
   }
 }
 
@@ -1351,6 +1419,8 @@ function renderConfiguracionCruces() {
     ? eliminatoriaState.configuracionPlayoff.configuracion.cruces_grupos
     : [];
   const letras = [...eliminatoriaState.gruposEvento];
+  const plantillaLlave = String(document.getElementById("eli-plantilla-llave")?.value || "estandar").toLowerCase();
+  const clasificados = obtenerClasificadosPorGrupoActual();
   if (letras.length < 2) {
     cont.innerHTML = `
       <div class="empty-state">
@@ -1361,11 +1431,12 @@ function renderConfiguracionCruces() {
   }
 
   const pares = Math.floor(letras.length / 2);
+  const crucesDefault = obtenerCrucesPorDefecto(letras, plantillaLlave, clasificados);
   const rows = [];
   for (let i = 0; i < pares; i++) {
     const parBase = crucesActuales[i] || crucesGuardados[i] || [
-      letras[i],
-      letras[letras.length - 1 - i],
+      crucesDefault[i]?.[0] || letras[i],
+      crucesDefault[i]?.[1] || letras[letras.length - 1 - i],
     ];
     const a = parBase[0];
     const b = parBase[1];
@@ -1389,7 +1460,11 @@ function renderConfiguracionCruces() {
   cont.innerHTML = rows.join("");
   cont.querySelectorAll("select").forEach((select) => {
     select.disabled = eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
+    select.addEventListener("change", () => {
+      renderVistaPreviaCruces(obtenerCrucesConfigurados());
+    });
   });
+  renderVistaPreviaCruces(obtenerCrucesConfigurados());
 }
 
 function obtenerCrucesConfigurados() {

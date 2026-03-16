@@ -38,6 +38,22 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-16 - Preset visual para llaves balanceadas de 8vos
+- la plantilla `balanceada_8vos` se renombra en UI como `Evitar mismo grupo hasta semifinal (8vos balanceados)` para reflejar mejor su objetivo deportivo.
+- `frontend/eliminatorias.html` y `frontend/js/eliminatorias.js` ahora muestran una vista previa `P1..P8` cuando la categoria usa `4 grupos x 4 clasificados`.
+- en ese escenario el sistema ya sugiere por defecto los cruces `A vs C` y `B vs D`, que producen el orden:
+  - `P1 1A vs 4C`
+  - `P2 2B vs 3D`
+  - `P3 1D vs 4B`
+  - `P4 2C vs 3A`
+  - `P5 1B vs 4D`
+  - `P6 2A vs 3C`
+  - `P7 1C vs 4A`
+  - `P8 2D vs 3B`
+- con esto el organizador puede confirmar visualmente el armado antes de generar la llave y reducir el riesgo de cruces tempranos entre equipos del mismo grupo.
+
+---
+
 ## 2026-03-16 - Plantilla de playoff con mejores perdedores
 - `backend/models/Eliminatoria.js` incorpora una nueva plantilla formal:
   - `mejores_perdedores_12vos`

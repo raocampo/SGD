@@ -19,6 +19,8 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - se corrigio la herencia del valor guardado en la categoria para que el selector no quede vacio cuando una categoria clasifica `8` o mas por grupo.
   - `frontend/js/eliminatorias.js` ahora usa el valor persistido del evento/configuracion como fallback operativo antes de cargar clasificacion manual o generar la llave.
   - con esto la logica existente de reemplazo por equipos eliminados vuelve a aplicarse correctamente en categorias distintas a Abierta, porque el flujo deja de degradarse a `0`/`2` cupos por un problema visual del selector.
+  - se hizo explicita la plantilla `balanceada_8vos` para el caso de `4 grupos x 4 clasificados`, renombrándola en UI como `Evitar mismo grupo hasta semifinal (8vos balanceados)`.
+  - cuando aplica esa plantilla, la configuracion de cruces ya sugiere `A vs C` y `B vs D`, y la pantalla muestra una vista previa `P1..P8` para que el organizador confirme el orden real de los partidos antes de generar la llave.
 - Jugadores / roster por categoria:
   - se incorporo la migracion `045_jugadores_evento_categoria.sql`.
   - se agrego la migracion `046_jugadores_cedula_por_evento.sql` para eliminar la restriccion global `jugadores_dni_key`.
