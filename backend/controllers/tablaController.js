@@ -246,26 +246,63 @@ function serializarTablaManual(tabla = []) {
   });
 }
 
-function construirFilaTablaDesdePayload(baseRow = {}, payloadRow = {}, fallbackPos = 1) {
+function normalizarSistemaPuntuacion(sistema = "tradicional") {
+  return String(sistema || "tradicional").trim().toLowerCase() === "shootouts"
+    ? "shootouts"
+    : "tradicional";
+}
+
+function calcularPuntosTablaManual(stats = {}, baseStats = {}, sistema = "tradicional") {
+  const partidosGanados = aEntero(stats?.partidos_ganados, 0);
+  const partidosEmpatados = aEntero(stats?.partidos_empatados, 0);
+  const partidosPerdidos = aEntero(stats?.partidos_perdidos, 0);
+
+  if (normalizarSistemaPuntuacion(sistema) !== "shootouts") {
+    return partidosGanados * 3 + partidosEmpatados;
+  }
+
+  const victoriasShootoutsBase = aEntero(baseStats?.victorias_shootouts, 0);
+  const derrotasShootoutsBase = aEntero(baseStats?.derrotas_shootouts, 0);
+  const victoriasShootouts = Math.min(victoriasShootoutsBase, partidosGanados);
+  const derrotasShootouts = Math.min(derrotasShootoutsBase, partidosPerdidos);
+  const victoriasTiempo = Math.max(partidosGanados - victoriasShootouts, 0);
+
+  return victoriasTiempo * 3 + victoriasShootouts * 2 + derrotasShootouts + partidosEmpatados;
+}
+
+function construirFilaTablaDesdePayload(baseRow = {}, payloadRow = {}, fallbackPos = 1, sistema = "tradicional") {
   const baseStats = baseRow?.estadisticas || {};
   const golesFavor = aEntero(payloadRow?.goles_favor, aEntero(baseStats.goles_favor, 0));
   const golesContra = aEntero(payloadRow?.goles_contra, aEntero(baseStats.goles_contra, 0));
   const posicionDeportiva = aEntero(payloadRow?.posicion_deportiva, fallbackPos);
+  const partidosGanados = aEntero(payloadRow?.partidos_ganados, aEntero(baseStats.partidos_ganados, 0));
+  const partidosEmpatados = aEntero(payloadRow?.partidos_empatados, aEntero(baseStats.partidos_empatados, 0));
+  const partidosPerdidos = aEntero(payloadRow?.partidos_perdidos, aEntero(baseStats.partidos_perdidos, 0));
+  const partidosJugados = partidosGanados + partidosEmpatados + partidosPerdidos;
+  const puntosCalculados = calcularPuntosTablaManual(
+    {
+      partidos_ganados: partidosGanados,
+      partidos_empatados: partidosEmpatados,
+      partidos_perdidos: partidosPerdidos,
+    },
+    baseStats,
+    sistema
+  );
   const merged = {
     ...baseRow,
     posicion_deportiva: posicionDeportiva,
     equipo: { ...(baseRow?.equipo || {}) },
     estadisticas: {
       ...baseStats,
-      partidos_jugados: aEntero(payloadRow?.partidos_jugados, aEntero(baseStats.partidos_jugados, 0)),
-      partidos_ganados: aEntero(payloadRow?.partidos_ganados, aEntero(baseStats.partidos_ganados, 0)),
-      partidos_empatados: aEntero(payloadRow?.partidos_empatados, aEntero(baseStats.partidos_empatados, 0)),
-      partidos_perdidos: aEntero(payloadRow?.partidos_perdidos, aEntero(baseStats.partidos_perdidos, 0)),
+      partidos_jugados: partidosJugados,
+      partidos_ganados: partidosGanados,
+      partidos_empatados: partidosEmpatados,
+      partidos_perdidos: partidosPerdidos,
       goles_favor: golesFavor,
       goles_contra: golesContra,
       diferencia_goles: golesFavor - golesContra,
     },
-    puntos: aEntero(payloadRow?.puntos, aEntero(baseRow?.puntos, 0)),
+    puntos: puntosCalculados,
     diferencia_goles: golesFavor - golesContra,
   };
   return merged;
@@ -302,7 +339,8 @@ function aplicarTablaManual(
   tablaBase = [],
   manualRow = null,
   clasificadosPorGrupo = null,
-  reglas = REGLAS_DEFAULT
+  reglas = REGLAS_DEFAULT,
+  sistema = "tradicional"
 ) {
   if (!manualRow || !Array.isArray(manualRow?.payload) || !manualRow.payload.length) {
     return {
@@ -322,7 +360,9 @@ function aplicarTablaManual(
     const equipoId = aEntero(payloadRow?.equipo_id, 0);
     if (!equipoId || usadas.has(equipoId) || !baseMap.has(equipoId)) continue;
     usadas.add(equipoId);
-    tabla.push(construirFilaTablaDesdePayload(baseMap.get(equipoId), payloadRow, tabla.length + 1));
+    tabla.push(
+      construirFilaTablaDesdePayload(baseMap.get(equipoId), payloadRow, tabla.length + 1, sistema)
+    );
   }
 
   for (const row of tablaBase) {
@@ -336,7 +376,8 @@ function aplicarTablaManual(
           equipo_id: equipoId,
           posicion_deportiva: tabla.length + 1,
         },
-        tabla.length + 1
+        tabla.length + 1,
+        sistema
       )
     );
   }
@@ -425,7 +466,12 @@ async function invalidarPlayoffPorCambioTabla(eventoId, db = pool) {
   await db.query(`DELETE FROM partidos_eliminatoria WHERE evento_id = $1`, [eventoIdNumerico]);
 }
 
-function normalizarPayloadTablaManual(filas = [], tablaBase = [], reglas = REGLAS_DEFAULT) {
+function normalizarPayloadTablaManual(
+  filas = [],
+  tablaBase = [],
+  reglas = REGLAS_DEFAULT,
+  sistema = "tradicional"
+) {
   const baseMap = new Map(
     (Array.isArray(tablaBase) ? tablaBase : []).map((row, idx) => {
       const equipoId = aEntero(row?.equipo?.id, 0);
@@ -445,13 +491,11 @@ function normalizarPayloadTablaManual(filas = [], tablaBase = [], reglas = REGLA
       ...basePayload,
       equipo_id: equipoId,
       posicion_deportiva: aEntero(item?.posicion_deportiva ?? item?.posicion, idx + 1),
-      partidos_jugados: aEntero(item?.partidos_jugados, basePayload.partidos_jugados),
       partidos_ganados: aEntero(item?.partidos_ganados, basePayload.partidos_ganados),
       partidos_empatados: aEntero(item?.partidos_empatados, basePayload.partidos_empatados),
       partidos_perdidos: aEntero(item?.partidos_perdidos, basePayload.partidos_perdidos),
       goles_favor: aEntero(item?.goles_favor, basePayload.goles_favor),
       goles_contra: aEntero(item?.goles_contra, basePayload.goles_contra),
-      puntos: aEntero(item?.puntos, basePayload.puntos),
     });
   }
 
@@ -466,7 +510,8 @@ function normalizarPayloadTablaManual(filas = [], tablaBase = [], reglas = REGLA
     construirFilaTablaDesdePayload(
       baseMap.get(aEntero(row?.equipo_id, 0))?.row || {},
       row,
-      idx + 1
+      idx + 1,
+      sistema
     )
   );
 
@@ -746,7 +791,8 @@ async function generarTablaGrupoInterna(grupoId, options = {}) {
     tabla,
     manualMap.get(claveTablaManual(grupo.id)) || null,
     grupo.clasificados_por_grupo,
-    reglas
+    reglas,
+    sistema
   );
 
   return {
@@ -830,7 +876,8 @@ async function generarTablaEventoSinGrupos(evento, options = {}) {
     tabla,
     manualMap.get(claveTablaManual(null)) || null,
     evento.clasificados_por_grupo,
-    reglas
+    reglas,
+    sistema
   );
 
   return {
@@ -880,6 +927,7 @@ async function generarTablasEventoInterna(eventoId, options = {}) {
       clasificados_por_grupo: aEntero(evento.clasificados_por_grupo, 0) || null,
       campeonato_id: evento.campeonato_id,
       campeonato_nombre: evento.campeonato_nombre,
+      sistema_puntuacion: sistema,
     },
     total_grupos: tablas.length,
     total_equipos: totalEquipos,
@@ -1397,7 +1445,8 @@ const tablaController = {
       const payloadNormalizado = normalizarPayloadTablaManual(
         filas,
         objetivo.tabla || [],
-        Array.isArray(objetivo?.reglas_desempate) ? objetivo.reglas_desempate : REGLAS_DEFAULT
+        Array.isArray(objetivo?.reglas_desempate) ? objetivo.reglas_desempate : REGLAS_DEFAULT,
+        objetivo?.sistema_puntuacion || tablasBase?.evento?.sistema_puntuacion || "tradicional"
       );
       const snapshotBase = serializarTablaManual(objetivo.tabla || []);
 

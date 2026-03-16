@@ -224,6 +224,35 @@ function numeroManual(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function normalizarSistemaPuntuacionManual(sistema = "tradicional") {
+  return String(sistema || "tradicional").trim().toLowerCase() === "shootouts"
+    ? "shootouts"
+    : "tradicional";
+}
+
+function obtenerSistemaPuntuacionGrupo(grupo = {}) {
+  return normalizarSistemaPuntuacionManual(
+    grupo?.sistema_puntuacion || tablasUltimoPayloadPosiciones?.evento?.sistema_puntuacion || "tradicional"
+  );
+}
+
+function calcularPuntosFilaManual(stats = {}, tr = null, sistema = "tradicional") {
+  const partidosGanados = numeroManual(stats?.partidos_ganados, 0);
+  const partidosEmpatados = numeroManual(stats?.partidos_empatados, 0);
+  const partidosPerdidos = numeroManual(stats?.partidos_perdidos, 0);
+  if (normalizarSistemaPuntuacionManual(sistema) !== "shootouts") {
+    return partidosGanados * 3 + partidosEmpatados;
+  }
+
+  const victoriasShootoutsBase = numeroManual(tr?.dataset?.baseVictoriasShootouts, 0);
+  const derrotasShootoutsBase = numeroManual(tr?.dataset?.baseDerrotasShootouts, 0);
+  const victoriasShootouts = Math.min(victoriasShootoutsBase, partidosGanados);
+  const derrotasShootouts = Math.min(derrotasShootoutsBase, partidosPerdidos);
+  const victoriasTiempo = Math.max(partidosGanados - victoriasShootouts, 0);
+
+  return victoriasTiempo * 3 + victoriasShootouts * 2 + derrotasShootouts + partidosEmpatados;
+}
+
 function obtenerReglasGrupoManual(grupo = {}) {
   const reglasGrupo = Array.isArray(grupo?.reglas_desempate) ? grupo.reglas_desempate : [];
   if (reglasGrupo.length) return reglasGrupo;
@@ -757,7 +786,9 @@ function renderTablaPosicionesEditable(grupo = {}) {
       const equipoId = Number(row?.equipo?.id || 0);
       const eliminado = row?.eliminado_competencia === true || row?.eliminado_manual === true;
       return `
-        <tr class="${eliminado ? "tabla-posicion-eliminado" : ""}">
+        <tr class="${eliminado ? "tabla-posicion-eliminado" : ""}"
+            data-base-victorias-shootouts="${Number(est.victorias_shootouts || 0)}"
+            data-base-derrotas-shootouts="${Number(est.derrotas_shootouts || 0)}">
           <td>
             <input type="number" min="1" step="1" class="tabla-manual-input"
               data-manual-key="${escaparHtml(info.key)}"
@@ -772,14 +803,14 @@ function renderTablaPosicionesEditable(grupo = {}) {
               ${renderEstadoPosicion(row)}
             </div>
           </td>
-          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_jugados" value="${Number(est.partidos_jugados || 0)}" /></td>
+          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_jugados" value="${Number(est.partidos_jugados || 0)}" readonly title="PJ se calcula automáticamente desde PG + PE + PP." /></td>
           <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_ganados" value="${Number(est.partidos_ganados || 0)}" /></td>
           <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_empatados" value="${Number(est.partidos_empatados || 0)}" /></td>
           <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="partidos_perdidos" value="${Number(est.partidos_perdidos || 0)}" /></td>
           <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="goles_favor" value="${Number(est.goles_favor || 0)}" /></td>
           <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="goles_contra" value="${Number(est.goles_contra || 0)}" /></td>
           <td><strong data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-dg="1">${Number(est.diferencia_goles || row?.diferencia_goles || 0)}</strong></td>
-          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="puntos" value="${Number(row?.puntos || 0)}" /></td>
+          <td><input type="number" min="0" step="1" class="tabla-manual-input" data-manual-key="${escaparHtml(info.key)}" data-manual-equipo="${equipoId}" data-manual-field="puntos" value="${Number(row?.puntos || 0)}" readonly title="PTS se calcula automáticamente según PG, PE y PP." /></td>
         </tr>
       `;
     })
@@ -788,7 +819,7 @@ function renderTablaPosicionesEditable(grupo = {}) {
   return `
     <div class="tablas-manual-wrap">
       <p class="tablas-clasificacion-help">
-        Solo administrador puede corregir esta tabla. La posición se recalcula automáticamente según puntos y estadísticas; si dos equipos quedan idénticos, la posición manual sirve como desempate. Los equipos eliminados seguirán fuera de clasificación.
+        Solo administrador puede corregir esta tabla. PJ, DG y PTS se recalculan automáticamente según los valores editados; si dos equipos quedan idénticos, la posición manual sirve como desempate. Los equipos eliminados seguirán fuera de clasificación.
       </p>
       <div class="tabla-scroll">
         <table class="tabla-estadistica tabla-estadistica-posiciones">
@@ -903,6 +934,7 @@ function reordenarTablaManualGrupo(grupoKey) {
   const data = tablasUltimoPayloadPosiciones || {};
   const grupos = Array.isArray(data?.grupos) ? data.grupos : [];
   const grupo = grupos.find((item) => claveGrupoTablaManual(item?.grupo || {}) === grupoKey);
+  const sistema = obtenerSistemaPuntuacionGrupo(grupo || {});
   const tbody = document.querySelector(`.tabla-manual-input[data-manual-key="${grupoKey}"]`)?.closest("tbody");
   if (!grupo || !tbody) return;
 
@@ -923,6 +955,32 @@ function reordenarTablaManualGrupo(grupoKey) {
     const dg = golesFavor - golesContra;
     const dgNode = tr.querySelector(`[data-manual-dg="1"][data-manual-equipo="${equipoId}"]`);
     if (dgNode) dgNode.textContent = String(dg);
+    const partidosGanados = numeroManual(
+      tr.querySelector('[data-manual-field="partidos_ganados"]')?.value,
+      0
+    );
+    const partidosEmpatados = numeroManual(
+      tr.querySelector('[data-manual-field="partidos_empatados"]')?.value,
+      0
+    );
+    const partidosPerdidos = numeroManual(
+      tr.querySelector('[data-manual-field="partidos_perdidos"]')?.value,
+      0
+    );
+    const partidosJugados = partidosGanados + partidosEmpatados + partidosPerdidos;
+    const pjInput = tr.querySelector('[data-manual-field="partidos_jugados"]');
+    if (pjInput) pjInput.value = String(partidosJugados);
+    const puntosCalculados = calcularPuntosFilaManual(
+      {
+        partidos_ganados: partidosGanados,
+        partidos_empatados: partidosEmpatados,
+        partidos_perdidos: partidosPerdidos,
+      },
+      tr,
+      sistema
+    );
+    const puntosInput = tr.querySelector('[data-manual-field="puntos"]');
+    if (puntosInput) puntosInput.value = String(puntosCalculados);
 
     return {
       tr,
@@ -932,14 +990,14 @@ function reordenarTablaManualGrupo(grupoKey) {
         tr.querySelector('[data-manual-field="posicion_deportiva"]')?.value,
         idx + 1
       ),
-      partidos_jugados: numeroManual(tr.querySelector('[data-manual-field="partidos_jugados"]')?.value, 0),
-      partidos_ganados: numeroManual(tr.querySelector('[data-manual-field="partidos_ganados"]')?.value, 0),
-      partidos_empatados: numeroManual(tr.querySelector('[data-manual-field="partidos_empatados"]')?.value, 0),
-      partidos_perdidos: numeroManual(tr.querySelector('[data-manual-field="partidos_perdidos"]')?.value, 0),
+      partidos_jugados: partidosJugados,
+      partidos_ganados: partidosGanados,
+      partidos_empatados: partidosEmpatados,
+      partidos_perdidos: partidosPerdidos,
       goles_favor: golesFavor,
       goles_contra: golesContra,
       diferencia_goles: dg,
-      puntos: numeroManual(tr.querySelector('[data-manual-field="puntos"]')?.value, 0),
+      puntos: puntosCalculados,
     };
   });
 

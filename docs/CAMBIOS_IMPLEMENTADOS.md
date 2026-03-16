@@ -1080,3 +1080,18 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - marca `ELIMINADO` reducida visualmente en tablas internas y portal.
 - Posiciones:
   - se agrego `Polifuncional` en formularios de jugadores y planilla manual.
+
+---
+
+## 20. Recalculo automatico de tabla manual
+- **Ubicacion backend:** `backend/controllers/tablaController.js`
+- **Ubicacion frontend:** `frontend/js/tablas.js`
+- La edicion manual de tablas ahora recalcula automaticamente:
+  - `PJ = PG + PE + PP`
+  - `DG = GF - GC`
+  - `PTS` segun el sistema de puntuacion del campeonato/evento
+- El backend ya no confia en `PTS` enviado por el navegador:
+  - vuelve a derivarlo al guardar,
+  - reordena con ese valor recalculado,
+  - y mantiene el mismo resultado en local y Render.
+- En la UI, `PJ` y `PTS` quedan como campos derivados para reducir errores del administrador al corregir la tabla.

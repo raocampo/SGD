@@ -1496,3 +1496,12 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - actualizar fecha de "Ultima actualizacion",
   - agregar bloque con cambios del dia,
   - marcar estado en "En Curso" y "Pendientes".
+
+## 2026-03-15 - Ajuste de tabla manual derivada
+- Se corrigio la edicion manual de `tablas.html` para que:
+  - `PTS` ya no quede congelado ni dependa de un valor escrito manualmente,
+  - `PJ` se derive automaticamente de `PG + PE + PP`,
+  - `DG` siga derivandose de `GF - GC`,
+  - la posicion se reordene en vivo con esos valores recalculados.
+- El backend (`backend/controllers/tablaController.js`) ahora recalcula nuevamente `PTS` y `PJ` al guardar, para mantener consistencia entre local y Render aunque el navegador envie datos viejos.
+- El frontend (`frontend/js/tablas.js`) marca `PJ` y `PTS` como campos derivados para evitar inconsistencias durante la correccion manual de la tabla.

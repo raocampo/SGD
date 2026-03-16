@@ -321,6 +321,14 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - versionadas en repo para despliegue,
   - `043` y `044` ya aplicadas formalmente tambien en PostgreSQL de Render.
 
+12. Tablas manuales:
+- La correccion manual de posiciones ya recalcula automaticamente:
+  - `PJ`
+  - `DG`
+  - `PTS`
+- Esto evita que una tabla manual quede con `PG/PE/PP` actualizados pero `PTS` viejo.
+- El recalculo vive tanto en frontend como en backend para mantener consistencia entre entorno local y Render.
+
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`
 - Historial de cambios implementados: `docs/CAMBIOS_IMPLEMENTADOS.md`
