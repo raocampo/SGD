@@ -483,7 +483,12 @@ async function crearJugadorMovil(user, body = {}) {
     numeroCamiseta,
     esCapitan,
     null,
-    null
+    null,
+    null,
+    50,
+    35,
+    1,
+    eventoId
   );
 
   const detalle = await Jugador.obtenerPorId(Number(jugador.id));

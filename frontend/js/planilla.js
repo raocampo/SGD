@@ -1706,6 +1706,9 @@ async function guardarJugadorDesdePlanilla(event) {
 
   const formData = new FormData();
   formData.append("equipo_id", String(equipoId));
+  if (Number.isFinite(Number(eventoId)) && Number(eventoId) > 0) {
+    formData.append("evento_id", String(Number(eventoId)));
+  }
   formData.append("nombre", document.getElementById("planilla-jugador-nombre")?.value?.trim() || "");
   formData.append("apellido", document.getElementById("planilla-jugador-apellido")?.value?.trim() || "");
   formData.append("cedidentidad", document.getElementById("planilla-jugador-ced")?.value?.trim() || "");

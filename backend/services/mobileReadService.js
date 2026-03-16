@@ -196,7 +196,7 @@ async function listarJugadores(user, filters = {}) {
 
   if (equipoId) {
     await assertEquipoAccess(user, equipoId);
-    const jugadores = await Jugador.obtenerPorEquipo(equipoId);
+    const jugadores = await Jugador.obtenerPorEquipo(equipoId, eventoId);
     return jugadores.map(mapPlayer);
   }
 
@@ -206,43 +206,34 @@ async function listarJugadores(user, filters = {}) {
       throw new Error("El evento no pertenece al campeonato seleccionado");
     }
 
-    const where = [
-      `EXISTS (
-        SELECT 1
+    const equiposR = await pool.query(
+      `
+        SELECT ee.equipo_id
         FROM evento_equipos ee
         WHERE ee.evento_id = $1
-          AND ee.equipo_id = e.id
-      )`,
-    ];
-    const values = [evento.id];
-    let i = 2;
-
-    if (visibles !== null) {
-      if (!visibles.length) return [];
-      where.push(`e.id = ANY($${i++}::int[])`);
-      values.push(visibles);
-    }
-
-    const jugadoresR = await pool.query(
-      `
-        SELECT
-          j.*,
-          e.nombre AS nombre_equipo,
-          e.numero_campeonato AS equipo_numero_campeonato,
-          c.nombre AS nombre_campeonato
-        FROM jugadores j
-        JOIN equipos e ON e.id = j.equipo_id
-        JOIN campeonatos c ON c.id = e.campeonato_id
-        WHERE ${where.join(" AND ")}
-        ORDER BY
-          equipo_numero_campeonato ASC NULLS LAST,
-          nombre_equipo ASC,
-          j.apellido ASC,
-          j.nombre ASC
+          ${visibles !== null ? "AND ee.equipo_id = ANY($2::int[])" : ""}
+        ORDER BY ee.equipo_id ASC
       `,
-      values
+      visibles !== null ? [evento.id, visibles] : [evento.id]
     );
-    return jugadoresR.rows.map(mapPlayer);
+    const jugadoresPorEquipo = await Promise.all(
+      equiposR.rows.map((row) => Jugador.obtenerPorEquipo(Number(row.equipo_id), evento.id))
+    );
+    return jugadoresPorEquipo
+      .flat()
+      .sort((a, b) => {
+        const numeroA = Number(a.equipo_numero_campeonato ?? Number.MAX_SAFE_INTEGER);
+        const numeroB = Number(b.equipo_numero_campeonato ?? Number.MAX_SAFE_INTEGER);
+        if (numeroA !== numeroB) return numeroA - numeroB;
+        const equipoA = String(a.nombre_equipo || "");
+        const equipoB = String(b.nombre_equipo || "");
+        if (equipoA !== equipoB) return equipoA.localeCompare(equipoB, "es");
+        const apellidoA = String(a.apellido || "");
+        const apellidoB = String(b.apellido || "");
+        if (apellidoA !== apellidoB) return apellidoA.localeCompare(apellidoB, "es");
+        return String(a.nombre || "").localeCompare(String(b.nombre || ""), "es");
+      })
+      .map(mapPlayer);
   }
 
   if (campeonatoId) {

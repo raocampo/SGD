@@ -1,6 +1,7 @@
 // backend/models/Partido.js
 const pool = require("../config/database");
 const Finanza = require("./Finanza");
+const Jugador = require("./Jugador");
 
 // ===============================
 // Helpers (NO se redeclaran)
@@ -1773,6 +1774,7 @@ class Partido {
 
   static async obtenerPlanilla(partido_id) {
     await this.asegurarEsquemaPlanilla();
+    await Jugador.asegurarColumnasDocumentos();
 
     const partidoQ = `
       SELECT p.*,
@@ -1840,33 +1842,21 @@ class Partido {
     `;
     const tarjetasR = await pool.query(tarjetasQ, [partido_id]);
 
-    const plantelLocalQ = `
-      SELECT id, nombre, apellido, cedidentidad, numero_camiseta, posicion, equipo_id, foto_cedula_url, foto_carnet_url
-      FROM jugadores
-      WHERE equipo_id = $1
-      ORDER BY numero_camiseta NULLS LAST, apellido, nombre
-    `;
-    const plantelVisitanteQ = `
-      SELECT id, nombre, apellido, cedidentidad, numero_camiseta, posicion, equipo_id, foto_cedula_url, foto_carnet_url
-      FROM jugadores
-      WHERE equipo_id = $1
-      ORDER BY numero_camiseta NULLS LAST, apellido, nombre
-    `;
-    const [localR, visitaR] = await Promise.all([
-      pool.query(plantelLocalQ, [partido.equipo_local_id]),
-      pool.query(plantelVisitanteQ, [partido.equipo_visitante_id]),
+    const [plantelLocal, plantelVisitante] = await Promise.all([
+      Jugador.obtenerPorEquipo(partido.equipo_local_id, partido.evento_id),
+      Jugador.obtenerPorEquipo(partido.equipo_visitante_id, partido.evento_id),
     ]);
 
     const [suspensionesLocal, suspensionesVisitante] = await Promise.all([
-      this.calcularSuspensionesEquipoParaPartido(partido, localR.rows, partido.equipo_local_id),
-      this.calcularSuspensionesEquipoParaPartido(partido, visitaR.rows, partido.equipo_visitante_id),
+      this.calcularSuspensionesEquipoParaPartido(partido, plantelLocal, partido.equipo_local_id),
+      this.calcularSuspensionesEquipoParaPartido(partido, plantelVisitante, partido.equipo_visitante_id),
     ]);
 
-    const plantelLocal = localR.rows.map((jugador) => ({
+    const plantelLocalConSuspension = plantelLocal.map((jugador) => ({
       ...jugador,
       suspension: suspensionesLocal.get(Number(jugador.id)) || null,
     }));
-    const plantelVisitante = visitaR.rows.map((jugador) => ({
+    const plantelVisitanteConSuspension = plantelVisitante.map((jugador) => ({
       ...jugador,
       suspension: suspensionesVisitante.get(Number(jugador.id)) || null,
     }));
@@ -1913,8 +1903,8 @@ class Partido {
       },
       goleadores: goleadoresR.rows,
       tarjetas: tarjetasR.rows,
-      plantel_local: plantelLocal,
-      plantel_visitante: plantelVisitante,
+      plantel_local: plantelLocalConSuspension,
+      plantel_visitante: plantelVisitanteConSuspension,
     };
   }
 

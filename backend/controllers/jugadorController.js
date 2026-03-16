@@ -334,7 +334,10 @@ const jugadorController = {
                 return;
             }
             
-            let jugadores = await Jugador.obtenerPorEquipo(equipo_id);
+            let jugadores = await Jugador.obtenerPorEquipo(
+                equipo_id,
+                Number.isFinite(eventoId) && eventoId > 0 ? eventoId : null
+            );
 
             if (Number.isFinite(eventoId) && eventoId > 0 && jugadores.length) {
                 const estadoDisciplinario = await Partido.obtenerEstadoDisciplinarioEquipoEnEvento(
@@ -522,7 +525,11 @@ const jugadorController = {
             }
 
             datos.evento_id_contexto = Number.isFinite(eventoIdContexto) ? eventoIdContexto : null;
-            delete datos.evento_id;
+            if (datos.evento_id_contexto) {
+                datos.evento_id = datos.evento_id_contexto;
+            } else {
+                delete datos.evento_id;
+            }
 
             const jugadorActualizado = await Jugador.actualizar(id, datos);
 
@@ -620,7 +627,12 @@ const jugadorController = {
                 });
             }
 
-            const capitan = await Jugador.designarCapitan(jugador_id, equipo_id);
+            const eventoId = Number.parseInt(req.body?.evento_id, 10);
+            const capitan = await Jugador.designarCapitan(
+                jugador_id,
+                equipo_id,
+                Number.isFinite(eventoId) ? eventoId : null
+            );
 
             if (!capitan) {
                 return res.status(404).json({

@@ -7,6 +7,29 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-16 - Nómina de jugadores separada por categoría/evento
+- nueva migracion `database/migrations/045_jugadores_evento_categoria.sql`.
+- nueva migracion `database/migrations/046_jugadores_cedula_por_evento.sql`.
+- `jugadores` incorpora `evento_id` para asociar la ficha operativa a la categoria/evento donde realmente participa.
+- `backend/models/Jugador.js` ya usa ese contexto para:
+  - crear jugadores por categoria,
+  - leer planteles por `equipo + evento`,
+  - validar cédula en la misma categoria,
+  - validar numero de camiseta por categoria,
+  - contar el maximo de jugadores por categoria,
+  - designar/limpiar capitan por categoria.
+- `backend/models/Partido.js` deja de consultar `jugadores` solo por `equipo_id` y ahora arma la planilla con el plantel del `evento_id` del partido.
+- `backend/controllers/jugadorController.js`, `frontend/js/planilla.js`, `backend/services/mobileReadService.js` y `backend/services/mobileOperationsService.js` propagan `evento_id` para que las altas/lecturas queden alineadas.
+- compatibilidad transitoria:
+  - si un equipo participa en una sola categoria, el sistema aun puede leer filas legacy (`evento_id IS NULL`) mientras termina de migrarse el historial.
+  - si un equipo participa en multiples categorias, la lectura se fuerza al `evento_id` actual para impedir compartir nomina entre categorias.
+- la restriccion vieja `jugadores_dni_key UNIQUE (cedidentidad)` se reemplazo por un indice unico parcial sobre `(cedidentidad, evento_id)` para permitir la misma cédula en distintas categorías sin perder el bloqueo dentro de la misma categoría.
+- despliegue:
+  - `045` aplicada en BD local y Render.
+  - `046` aplicada en BD local y Render.
+
+---
+
 ## 2026-03-16 - Plantilla de playoff con mejores perdedores
 - `backend/models/Eliminatoria.js` incorpora una nueva plantilla formal:
   - `mejores_perdedores_12vos`

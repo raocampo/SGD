@@ -14,6 +14,31 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-16
+- Jugadores / roster por categoria:
+  - se incorporo la migracion `045_jugadores_evento_categoria.sql`.
+  - se agrego la migracion `046_jugadores_cedula_por_evento.sql` para eliminar la restriccion global `jugadores_dni_key`.
+  - `jugadores` ahora soporta `evento_id` para que la nomina quede asociada a la categoria/evento y no solo al `equipo_id`.
+  - `backend/models/Jugador.js` ya separa por categoria:
+    - lectura de plantel,
+    - conteo maximo de jugadores,
+    - validacion de cédula,
+    - validacion de numero de camiseta,
+    - capitan por categoria.
+  - `backend/models/Partido.js` arma la planilla usando `Jugador.obtenerPorEquipo(equipo_id, partido.evento_id)`, por lo que el plantel visible del partido ya queda acotado a la categoria real.
+  - `frontend/js/planilla.js` y el flujo mobile ya envian `evento_id` en el alta de jugadores para que las inscripciones hechas desde planilla/app tambien queden en la categoria correcta.
+  - compatibilidad:
+    - equipos de una sola categoria siguen leyendo filas legacy `evento_id IS NULL` hasta completar migracion.
+    - equipos de multiples categorias ya se leen solo por `evento_id` para cortar el problema de nomina compartida.
+  - validacion local:
+    - migracion `045` aplicada en BD local: `OK`
+    - migracion `046` aplicada en BD local: `OK`
+    - verificacion posterior: `733/733` jugadores con `evento_id` cargado.
+    - verificacion posterior: la unicidad vieja por `cedidentidad` fue reemplazada por `jugadores_cedidentidad_evento_uidx`.
+  - despliegue:
+    - migraciones `045` y `046` aplicadas en Render: `OK`
+    - verificacion remota:
+      - restriccion vieja `jugadores_dni_key` ausente,
+      - indice `jugadores_cedidentidad_evento_uidx` presente.
 - Jugadores / categorías activas:
   - se corrigió la validación de cédula al crear/editar/importar jugadores para que use el `evento_id` actual enviado por la UI.
   - el bloqueo ya no se calcula con todas las categorías donde esté inscrito el equipo destino, sino con la categoría concreta desde la que se registra el jugador.

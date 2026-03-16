@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-16): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer. En eliminatorias ya se soporta la plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con cupos `MP1..MP4` calculados segun ranking deportivo.
+Estado del proyecto (2026-03-16): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. La nomina de jugadores ya puede quedar asociada directamente al `evento_id`, de modo que un mismo equipo reutilizado en varias categorias deje de compartir plantel por accidente. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer. En eliminatorias ya se soporta la plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con cupos `MP1..MP4` calculados segun ranking deportivo.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -31,6 +31,26 @@ Flujo principal operativo:
 7. Consultar tablas y portal publico.
 
 ## Novedades Recientes (2026-03-16)
+- Jugadores por categoria real:
+  - nueva migracion `database/migrations/045_jugadores_evento_categoria.sql`.
+  - nueva migracion complementaria `database/migrations/046_jugadores_cedula_por_evento.sql`.
+  - `jugadores` ahora admite `evento_id` para separar la nomina por categoria/evento.
+  - `backend/models/Jugador.js` ya usa ese `evento_id` para:
+    - crear jugadores,
+    - leer planteles por equipo + categoria,
+    - validar cedula en la misma categoria,
+    - validar numero de camiseta por categoria,
+    - contar el maximo de jugadores por categoria,
+    - limpiar/designar capitan por categoria.
+  - `backend/models/Partido.js` ya arma `planilla` con el plantel de la categoria del partido, no con todos los jugadores historicos del equipo.
+  - `backend/controllers/jugadorController.js`, `frontend/js/planilla.js`, `backend/services/mobileReadService.js` y `backend/services/mobileOperationsService.js` ya propagan `evento_id` en las altas/lecturas donde corresponde.
+  - compatibilidad:
+    - para equipos que participan en una sola categoria, el sistema sigue leyendo tambien filas legacy (`evento_id IS NULL`) mientras terminan de migrarse.
+    - para equipos que participan en varias categorias, la lectura se fuerza al `evento_id` actual para evitar compartir nomina.
+  - en la base local y en Render la migracion `045` ya quedo aplicada.
+  - en la base local actual todos los jugadores quedaron asociados a categoria (`733/733` con `evento_id`).
+  - la restriccion antigua `jugadores_dni_key UNIQUE (cedidentidad)` fue reemplazada por un indice unico parcial sobre `cedidentidad + evento_id`, permitiendo la misma cédula en distintas categorías y manteniendo el bloqueo dentro de la misma categoría.
+  - la migracion `046` ya quedo aplicada tambien en Render, por lo que la produccion deja de bloquear la misma cédula entre categorias distintas.
 - Jugadores / categorías:
   - el alta y edición de jugadores ahora envían el `evento_id` actual al backend.
   - la validación de cédula ya no toma todas las categorías del equipo destino; se limita a la categoría/evento desde el que se está inscribiendo.
