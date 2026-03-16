@@ -1095,3 +1095,19 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - reordena con ese valor recalculado,
   - y mantiene el mismo resultado en local y Render.
 - En la UI, `PJ` y `PTS` quedan como campos derivados para reducir errores del administrador al corregir la tabla.
+
+---
+
+## 21. Restauracion de tablas publicas y playoff tras el ajuste de puntos
+- **Ubicacion backend:** `backend/controllers/tablaController.js`
+- Se corrigio una regresion introducida al recalcular `PTS` en tablas manuales:
+  - el backend publico estaba fallando con `ReferenceError: sistema is not defined`
+  - esto afectaba:
+    - `portal.html`
+    - tablas publicas por evento
+    - calculo de clasificados para eliminatorias
+    - resumen de clasificacion manual.
+- Se normalizo nuevamente el acceso a `evento.sistema_puntuacion` dentro del generador interno de tablas.
+- Resultado:
+  - las tablas publicas vuelven a cargar correctamente en local y Render,
+  - el playoff publico vuelve a recibir la clasificacion correcta desde el backend.

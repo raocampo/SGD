@@ -328,6 +328,22 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - `PTS`
 - Esto evita que una tabla manual quede con `PG/PE/PP` actualizados pero `PTS` viejo.
 - El recalculo vive tanto en frontend como en backend para mantener consistencia entre entorno local y Render.
+- Quedo corregida ademas la regresion publica posterior al ajuste:
+  - `portal.html`, tablas publicas y calculo de clasificados vuelven a responder correctamente,
+  - tanto en local como en Render.
+
+13. Eliminatorias - siguiente ampliacion ya definida:
+- Pendiente incorporar `mejores perdedores` como opcion formal de configuracion.
+- Caso funcional prioritario:
+  - 24 equipos clasifican a `12vos`,
+  - luego avanzan 12 ganadores + 4 mejores perdedores,
+  - para completar `8vos` con 16 equipos.
+- La seleccion de esos mejores perdedores debe respetar las directrices de clasificacion ya vigentes:
+  - rendimiento/porcentaje,
+  - diferencia de goles,
+  - goles a favor,
+  - enfrentamiento directo cuando corresponda,
+  - fair play como desempate final.
 
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`

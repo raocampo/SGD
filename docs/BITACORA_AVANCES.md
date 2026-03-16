@@ -1505,3 +1505,29 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - la posicion se reordene en vivo con esos valores recalculados.
 - El backend (`backend/controllers/tablaController.js`) ahora recalcula nuevamente `PTS` y `PJ` al guardar, para mantener consistencia entre local y Render aunque el navegador envie datos viejos.
 - El frontend (`frontend/js/tablas.js`) marca `PJ` y `PTS` como campos derivados para evitar inconsistencias durante la correccion manual de la tabla.
+
+## 2026-03-15 - Cierre de estabilidad tablas publicas / portal
+- Se corrigio la regresion que rompia `tablas` y `playoff` publicos con el error:
+  - `ReferenceError: sistema is not defined`
+- La funcion `generarTablasEventoInterna()` del backend ya devuelve nuevamente:
+  - tablas publicas por evento,
+  - clasificacion usada por eliminatorias,
+  - resumen de clasificacion manual para playoff.
+- Se verifico localmente que vuelven a responder correctamente:
+  - `GET /api/public/eventos/:id/tablas`
+  - `GET /api/public/eventos/:id/eliminatorias`
+- Render quedo alineado con el fix publicado en `origin/main`.
+
+## Pendiente inmediato siguiente sesion
+- Incorporar en configuracion de eliminatorias la opcion `mejores perdedores`.
+- Caso objetivo inicial:
+  - 24 equipos -> `12vos`
+  - clasifican 12 ganadores
+  - se agregan 4 mejores perdedores
+  - se completa `8vos` con 16 equipos.
+- La implementacion debe respetar las directrices de clasificacion ya existentes:
+  - porcentaje/rendimiento,
+  - diferencia de goles,
+  - goles a favor,
+  - enfrentamiento directo cuando aplique,
+  - fair play como criterio final.
