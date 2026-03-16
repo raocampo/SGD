@@ -20,10 +20,127 @@ const formatYMD = (d) => d.toISOString().split("T")[0];
 const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante", "ambos"]);
 const GOLES_WALKOVER = 3;
 const MAX_FALTAS_PLANILLA = 6;
+let _schemaOverrideCompeticion = null;
 
 function normalizarInasistenciaEquipoPlanilla(valor) {
   const raw = String(valor || "ninguno").trim().toLowerCase();
   return INASISTENCIAS_PLANILLA_VALIDAS.has(raw) ? raw : "ninguno";
+}
+
+function resultadosImpactanTabla(previo = {}, siguiente = {}) {
+  const normalizar = (valor) => {
+    if (valor === null || valor === undefined || valor === "") return null;
+    const n = Number.parseInt(valor, 10);
+    return Number.isFinite(n) ? n : null;
+  };
+  return (
+    String(previo?.estado || "") !== String(siguiente?.estado || "") ||
+    normalizar(previo?.resultado_local) !== normalizar(siguiente?.resultado_local) ||
+    normalizar(previo?.resultado_visitante) !== normalizar(siguiente?.resultado_visitante) ||
+    normalizar(previo?.resultado_local_shootouts) !== normalizar(siguiente?.resultado_local_shootouts) ||
+    normalizar(previo?.resultado_visitante_shootouts) !== normalizar(siguiente?.resultado_visitante_shootouts) ||
+    Boolean(previo?.shootouts) !== Boolean(siguiente?.shootouts)
+  );
+}
+
+async function detectarSchemaOverrideCompeticion(client = pool) {
+  if (_schemaOverrideCompeticion) return _schemaOverrideCompeticion;
+  const r = await client.query(`
+    SELECT
+      EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'tabla_posiciones_manuales'
+      ) AS tiene_tabla_manual,
+      EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'tabla_posiciones_auditoria'
+      ) AS tiene_tabla_auditoria,
+      EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'evento_clasificados_manuales'
+      ) AS tiene_clasificados_manuales,
+      EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'evento_reclasificaciones_playoff'
+      ) AS tiene_reclasificaciones,
+      EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'partidos_eliminatoria'
+      ) AS tiene_partidos_eliminatoria
+  `);
+  _schemaOverrideCompeticion = r.rows[0] || {};
+  return _schemaOverrideCompeticion;
+}
+
+async function invalidarOverridesCompeticionPorResultado(
+  partido = {},
+  { usuarioId = null, motivo = "" } = {},
+  client = pool
+) {
+  const eventoId = Number.parseInt(partido?.evento_id, 10);
+  if (!Number.isFinite(eventoId) || eventoId <= 0) return false;
+
+  const schema = await detectarSchemaOverrideCompeticion(client);
+  const comentario =
+    String(motivo || "").trim() ||
+    `Invalidación automática por actualización de resultado en partido #${Number.parseInt(partido?.id, 10) || "?"}.`;
+
+  if (schema.tiene_tabla_manual === true) {
+    const manualesR = await client.query(
+      `
+        SELECT evento_id, grupo_id, payload
+        FROM tabla_posiciones_manuales
+        WHERE evento_id = $1
+      `,
+      [eventoId]
+    );
+    const manuales = manualesR.rows || [];
+
+    if (manuales.length && schema.tiene_tabla_auditoria === true) {
+      for (const row of manuales) {
+        await client.query(
+          `
+            INSERT INTO tabla_posiciones_auditoria (
+              evento_id,
+              grupo_id,
+              comentario,
+              usuario_id,
+              snapshot_anterior,
+              snapshot_nuevo
+            )
+            VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)
+          `,
+          [
+            eventoId,
+            row.grupo_id ?? null,
+            comentario,
+            Number.isFinite(Number.parseInt(usuarioId, 10)) ? Number.parseInt(usuarioId, 10) : null,
+            JSON.stringify(Array.isArray(row.payload) ? row.payload : []),
+            JSON.stringify([]),
+          ]
+        );
+      }
+    }
+
+    await client.query(`DELETE FROM tabla_posiciones_manuales WHERE evento_id = $1`, [eventoId]);
+  }
+
+  if (schema.tiene_clasificados_manuales === true) {
+    await client.query(`DELETE FROM evento_clasificados_manuales WHERE evento_id = $1`, [eventoId]);
+  }
+  if (schema.tiene_reclasificaciones === true) {
+    await client.query(`DELETE FROM evento_reclasificaciones_playoff WHERE evento_id = $1`, [eventoId]);
+  }
+  if (schema.tiene_partidos_eliminatoria === true) {
+    await client.query(`DELETE FROM partidos_eliminatoria WHERE evento_id = $1`, [eventoId]);
+  }
+
+  return true;
 }
 
 function obtenerResultadoPorInasistenciaEquipo(tipo = "ninguno") {
@@ -1207,6 +1324,7 @@ class Partido {
   // UPDATE / DELETE
   // ===============================
   static async actualizarResultado(id, resultado_local, resultado_visitante, estado = "finalizado") {
+    const previo = await this.obtenerPorId(id);
     const columnaTs = await this.obtenerColumnaTimestampActualizacion();
     const setTs = columnaTs ? `,\n          ${columnaTs} = CURRENT_TIMESTAMP` : "";
 
@@ -1220,7 +1338,13 @@ class Partido {
       RETURNING *
     `;
     const r = await pool.query(q, [resultado_local, resultado_visitante, estado, id]);
-    return r.rows[0];
+    const actualizado = r.rows[0] || null;
+    if (actualizado && resultadosImpactanTabla(previo, actualizado)) {
+      await invalidarOverridesCompeticionPorResultado(actualizado, {
+        motivo: `Invalidación automática por actualización de resultado en partido #${id}.`,
+      });
+    }
+    return actualizado;
   }
 
   static async actualizarResultadoConShootouts(
@@ -1231,6 +1355,7 @@ class Partido {
     shootouts_visitante,
     estado = "finalizado"
   ) {
+    const previo = await this.obtenerPorId(id);
     const columnaTs = await this.obtenerColumnaTimestampActualizacion();
     const setTs = columnaTs ? `,\n          ${columnaTs} = CURRENT_TIMESTAMP` : "";
 
@@ -1254,7 +1379,13 @@ class Partido {
       estado,
       id,
     ]);
-    return r.rows[0];
+    const actualizado = r.rows[0] || null;
+    if (actualizado && resultadosImpactanTabla(previo, actualizado)) {
+      await invalidarOverridesCompeticionPorResultado(actualizado, {
+        motivo: `Invalidación automática por actualización de resultado con shootouts en partido #${id}.`,
+      });
+    }
+    return actualizado;
   }
 
   static async actualizar(id, datos) {
@@ -2229,6 +2360,23 @@ class Partido {
           estadoAnterior: snapshotAuditoriaAntes,
           estadoNuevo: snapshotAuditoriaDespues,
         });
+      }
+
+      const cambioDeportivo = resultadosImpactanTabla(partido, {
+        ...partido,
+        resultado_local: resultadoLocal,
+        resultado_visitante: resultadoVisitante,
+        estado,
+      });
+      if (cambioDeportivo) {
+        await invalidarOverridesCompeticionPorResultado(
+          { ...partido, resultado_local: resultadoLocal, resultado_visitante: resultadoVisitante, estado },
+          {
+            usuarioId: usuarioEdicionId,
+            motivo: `Invalidación automática por actualización de planilla en partido #${partido_id}.`,
+          },
+          client
+        );
       }
 
       await client.query("COMMIT");

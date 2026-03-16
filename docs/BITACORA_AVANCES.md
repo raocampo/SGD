@@ -14,6 +14,18 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 ## Avances Recientes
 
 ### 2026-03-15
+- Tablas manuales vs resultados reales:
+  - se corrigio el desfase donde una `edicion manual activa` podia congelar puntos/posiciones antiguas despues de registrar nuevos partidos o guardar una planilla finalizada.
+  - ahora, cuando cambia el resultado deportivo real de un partido (`resultado`, `estado`, `shootouts`), el sistema invalida automaticamente:
+    - `tabla_posiciones_manuales`,
+    - `evento_clasificados_manuales`,
+    - `evento_reclasificaciones_playoff`,
+    - `partidos_eliminatoria`
+    del evento afectado.
+  - ademas se registra auditoria automatica sobre la tabla manual removida con comentario de invalidacion por nuevo resultado real.
+  - impacto funcional:
+    - la tabla vuelve a calcularse con los datos reales del partido,
+    - el playoff debe regenerarse despues de ese cambio para no quedar desfasado.
 - Eliminatorias / llaves configurables desde categoria:
   - se agrego configuracion inicial de playoff directamente en la categoria/evento para definir:
     - `playoff_plantilla`,
