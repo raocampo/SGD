@@ -903,6 +903,7 @@ async function generarTablaEventoSinGrupos(evento, options = {}) {
 async function generarTablasEventoInterna(eventoId, options = {}) {
   const evento = await obtenerEventoConCampeonato(eventoId);
   if (!evento) throw new Error("Evento no encontrado");
+  const sistema = evento.sistema_puntuacion || "tradicional";
 
   const grupos = await obtenerGruposPorEvento(eventoId);
   const tablas = [];
