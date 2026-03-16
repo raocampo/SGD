@@ -98,6 +98,9 @@ function normalizarPlayoffPlantilla(value, fallback = "estandar") {
     balanceada_8vos: "balanceada_8vos",
     octavos_balanceados: "balanceada_8vos",
     finish_balanceado: "balanceada_8vos",
+    mejores_perdedores: "mejores_perdedores_12vos",
+    mejores_perdedores_12vos: "mejores_perdedores_12vos",
+    mejores_perdedores_24: "mejores_perdedores_12vos",
   };
   return map[raw] || null;
 }
@@ -425,7 +428,7 @@ const eventoController = {
         !playoffPlantilla
       ) {
         return res.status(400).json({
-          error: "playoff_plantilla invalida. Usa: estandar o balanceada_8vos.",
+          error: "playoff_plantilla invalida. Usa: estandar, balanceada_8vos o mejores_perdedores_12vos.",
         });
       }
       if (
@@ -680,7 +683,7 @@ const eventoController = {
           const plantilla = normalizarPlayoffPlantilla(v, null);
           if (v !== null && v !== "" && !plantilla) {
             return res.status(400).json({
-              error: "playoff_plantilla invalida. Usa: estandar o balanceada_8vos.",
+              error: "playoff_plantilla invalida. Usa: estandar, balanceada_8vos o mejores_perdedores_12vos.",
             });
           }
           campos.push(`${k} = $${i}`);

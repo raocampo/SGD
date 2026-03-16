@@ -52,6 +52,7 @@ function formatearMetodoCompetencia(valor) {
 function formatearPlantillaPlayoff(valor) {
   const key = String(valor || "estandar").toLowerCase();
   if (key === "balanceada_8vos") return "Balanceada 8vos";
+  if (key === "mejores_perdedores_12vos") return "Mejores perdedores (24 -> 12vos -> 8vos)";
   return "Estándar";
 }
 
@@ -137,10 +138,10 @@ function actualizarVisibilidadConfigEliminatoria() {
     wrapClasificados.style.display = ["grupos", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
   }
   if (wrapPlantilla) {
-    wrapPlantilla.style.display = ["eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
+    wrapPlantilla.style.display = ["grupos", "eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
   }
   if (wrapTercer) {
-    wrapTercer.style.display = ["eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
+    wrapTercer.style.display = ["grupos", "eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
   }
 }
 
@@ -664,6 +665,7 @@ async function editarEvento(id) {
         options: [
           { value: "estandar", label: "Estándar automático" },
           { value: "balanceada_8vos", label: "Balanceada 8vos (P1 a P8)" },
+          { value: "mejores_perdedores_12vos", label: "Mejores perdedores (24 -> 12vos -> 8vos)" },
         ],
       },
       {

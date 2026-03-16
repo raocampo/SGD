@@ -1018,10 +1018,22 @@ function renderEliminatoriasPortal(payload = []) {
     return `<p class="empty-msg">${escPortal(mensaje)}</p>`;
   }
 
+  const resolverNombreSeedPortal = (partido, lado = "local") => {
+    const sideKey = lado === "visitante" ? "visitante" : "local";
+    const nombre = partido?.[`equipo_${sideKey}_nombre`] || null;
+    if (nombre) return nombre;
+    const seedRef = String(partido?.[`seed_${sideKey}_ref`] || "").trim().toUpperCase();
+    if (/^MP\d+$/.test(seedRef)) {
+      return `Mejor perdedor ${seedRef.replace("MP", "")}`;
+    }
+    return "Por definir";
+  };
+
   const formatearRondaPortal = (ronda) => {
     const key = String(ronda || "").toLowerCase();
     if (key === "32vos") return "32vos de final";
     if (key === "16vos") return "16vos de final";
+    if (key === "12vos") return "12vos de final";
     if (key === "8vos") return "Octavos";
     if (key === "4tos") return "Cuartos";
     if (key === "semifinal") return "Semifinal";
@@ -1042,9 +1054,9 @@ function renderEliminatoriasPortal(payload = []) {
                   : "vs";
               return `
                 <div class="partido-publico">
-                  <div class="equipo-nombre">${escPortal(partido.equipo_local_nombre || "Por definir")}</div>
+                  <div class="equipo-nombre">${escPortal(resolverNombreSeedPortal(partido, "local"))}</div>
                   <div class="marcador">${escPortal(marcador)}</div>
-                  <div class="equipo-nombre">${escPortal(partido.equipo_visitante_nombre || "Por definir")}</div>
+                  <div class="equipo-nombre">${escPortal(resolverNombreSeedPortal(partido, "visitante"))}</div>
                 </div>
               `;
             })

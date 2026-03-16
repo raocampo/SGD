@@ -15,6 +15,7 @@ const RONDAS_ORDEN = [
   "64vos",
   "32vos",
   "16vos",
+  "12vos",
   "8vos",
   "4tos",
   "semifinal",
@@ -28,6 +29,7 @@ const RONDAS_POR_EQUIPOS = {
   16: ["8vos", "4tos", "semifinal", "final"],
   32: ["16vos", "8vos", "4tos", "semifinal", "final"],
 };
+const PLANTILLA_MEJORES_PERDEDORES_12VOS = "mejores_perdedores_12vos";
 const obtenerFairPlayEventoInterno = tablaInternals?.obtenerFairPlayEventoInterno;
 
 class Eliminatoria {
@@ -1006,8 +1008,20 @@ class Eliminatoria {
       balanceada_8vos: "balanceada_8vos",
       octavos_balanceados: "balanceada_8vos",
       finish_balanceado: "balanceada_8vos",
+      mejores_perdedores: PLANTILLA_MEJORES_PERDEDORES_12VOS,
+      mejores_perdedores_12vos: PLANTILLA_MEJORES_PERDEDORES_12VOS,
+      mejores_perdedores_24: PLANTILLA_MEJORES_PERDEDORES_12VOS,
     };
     return map[plantilla] || fallback;
+  }
+
+  static usaPlantillaMejoresPerdedores12vos(value) {
+    return this.normalizarPlantillaLlaveInput(value, "estandar") === PLANTILLA_MEJORES_PERDEDORES_12VOS;
+  }
+
+  static normalizarFuenteSlotInput(value, fallback = "ganador") {
+    const raw = String(value || fallback || "ganador").toLowerCase().trim();
+    return ["ganador", "perdedor", "mejor_perdedor"].includes(raw) ? raw : fallback;
   }
 
   static normalizarBooleanInput(value, fallback = false) {
@@ -2091,6 +2105,17 @@ class Eliminatoria {
     };
   }
 
+  static construirRankingGlobalClasificados(clasificadosData, opciones = {}) {
+    const totalClasificados = Array.isArray(clasificadosData?.clasificados)
+      ? clasificadosData.clasificados.filter((row) => Number.isFinite(Number(row?.equipo_id))).length
+      : 0;
+    const tabla = this.construirSembradoTablaUnica(clasificadosData, {
+      ...opciones,
+      cantidad_objetivo: totalClasificados > 0 ? totalClasificados : null,
+    });
+    return Array.isArray(tabla?.ranking) ? tabla.ranking : [];
+  }
+
   static agruparPartidosPorRonda(partidos = []) {
     const rondasMap = new Map();
     for (const partido of Array.isArray(partidos) ? partidos : []) {
@@ -2347,8 +2372,8 @@ class Eliminatoria {
       equipo_visitante_id ?? null,
       slot_local_id ?? null,
       slot_visitante_id ?? null,
-      String(slot_local_fuente_tipo || "ganador").toLowerCase() === "perdedor" ? "perdedor" : "ganador",
-      String(slot_visitante_fuente_tipo || "ganador").toLowerCase() === "perdedor" ? "perdedor" : "ganador",
+      this.normalizarFuenteSlotInput(slot_local_fuente_tipo, "ganador"),
+      this.normalizarFuenteSlotInput(slot_visitante_fuente_tipo, "ganador"),
     ]);
     return r.rows[0];
   }
@@ -2419,7 +2444,7 @@ class Eliminatoria {
       let index = 1;
 
       if (Number(siguiente.slot_local_id) === Number(slotId)) {
-        const tipoLocal = String(siguiente.slot_local_fuente_tipo || "ganador").toLowerCase();
+        const tipoLocal = this.normalizarFuenteSlotInput(siguiente.slot_local_fuente_tipo, "ganador");
         const valorLocal = tipoLocal === "perdedor" ? perdedor : ganador;
         if (Number.isFinite(valorLocal)) {
           cambios.push(`equipo_local_id = $${index++}`);
@@ -2428,7 +2453,7 @@ class Eliminatoria {
       }
 
       if (Number(siguiente.slot_visitante_id) === Number(slotId)) {
-        const tipoVisitante = String(siguiente.slot_visitante_fuente_tipo || "ganador").toLowerCase();
+        const tipoVisitante = this.normalizarFuenteSlotInput(siguiente.slot_visitante_fuente_tipo, "ganador");
         const valorVisitante = tipoVisitante === "perdedor" ? perdedor : ganador;
         if (Number.isFinite(valorVisitante)) {
           cambios.push(`equipo_visitante_id = $${index++}`);
@@ -2464,6 +2489,11 @@ class Eliminatoria {
     if (tieneLocal && tieneVisitante) return;
 
     const ladoVacio = tieneLocal ? "visitante" : "local";
+    const fuenteLadoVacio =
+      ladoVacio === "local"
+        ? this.normalizarFuenteSlotInput(slot.slot_local_fuente_tipo, "ganador")
+        : this.normalizarFuenteSlotInput(slot.slot_visitante_fuente_tipo, "ganador");
+    if (fuenteLadoVacio === "mejor_perdedor") return;
     const slotPrevioId =
       ladoVacio === "local"
         ? Number.parseInt(slot.slot_local_id, 10)
@@ -2541,6 +2571,9 @@ class Eliminatoria {
           perdedor = Number(ganador) === Number(localId) ? visitanteId : localId;
         }
         await this.propagarResultadoSlot(actualizado.id, { ganadorId: ganador, perdedorId: perdedor }, client);
+        if (String(slotActual?.ronda || "").toLowerCase() === "12vos") {
+          await this.sincronizarMejoresPerdedores12vos(slotActual.evento_id, client);
+        }
       }
 
       await client.query("COMMIT");
@@ -2761,6 +2794,317 @@ class Eliminatoria {
     return this.obtenerPorEvento(evento_id, db);
   }
 
+  static async crearRondasDesdeSlotsPrevios(
+    evento_id,
+    rondas = [],
+    slotsAnteriores = [],
+    incluirTercerPuesto = false,
+    db = pool
+  ) {
+    const slotsPorRonda = new Map();
+    let previos = Array.isArray(slotsAnteriores) ? [...slotsAnteriores] : [];
+    for (const ronda of Array.isArray(rondas) ? rondas : []) {
+      const partidosEnRonda = Math.floor(previos.length / 2);
+      const slotsRonda = [];
+      for (let p = 0; p < partidosEnRonda; p += 1) {
+        const slot = await this.crearSlot(
+          evento_id,
+          ronda,
+          p + 1,
+          null,
+          null,
+          previos[p * 2]?.id || null,
+          previos[p * 2 + 1]?.id || null,
+          "ganador",
+          "ganador",
+          db
+        );
+        slotsRonda.push(slot);
+      }
+      slotsPorRonda.set(ronda, slotsRonda);
+      previos = slotsRonda;
+    }
+
+    if (incluirTercerPuesto && slotsPorRonda.has("semifinal")) {
+      const semifinales = slotsPorRonda.get("semifinal") || [];
+      if (semifinales.length >= 2) {
+        const slot = await this.crearSlot(
+          evento_id,
+          "tercer_puesto",
+          1,
+          null,
+          null,
+          semifinales[0].id,
+          semifinales[1].id,
+          "perdedor",
+          "perdedor",
+          db
+        );
+        slotsPorRonda.set("tercer_puesto", [slot]);
+      }
+    }
+
+    return slotsPorRonda;
+  }
+
+  static async generarBracketPlantillaMejoresPerdedores12vos(
+    evento_id,
+    entradasSembrado = [],
+    opciones = {},
+    db = pool
+  ) {
+    await this.asegurarEsquema(db);
+    const incluirTercerPuesto = this.normalizarBooleanInput(opciones?.incluir_tercer_puesto, false);
+    const sembrados = this.normalizarEntradasSembrado(entradasSembrado).filter((entry) =>
+      Number.isFinite(Number(entry?.equipo_id))
+    );
+    if (sembrados.length !== 24) {
+      throw new Error(
+        "La plantilla 'Mejores perdedores (24 -> 12vos -> 8vos)' requiere exactamente 24 clasificados."
+      );
+    }
+
+    await db.query("DELETE FROM partidos_eliminatoria WHERE evento_id = $1", [evento_id]);
+
+    const slots12vos = [];
+    for (let i = 0; i < 12; i += 1) {
+      const slot = await this.crearSlot(
+        evento_id,
+        "12vos",
+        i + 1,
+        null,
+        null,
+        null,
+        null,
+        "ganador",
+        "ganador",
+        db
+      );
+      slots12vos.push(slot);
+    }
+
+    for (let i = 0; i < slots12vos.length; i += 1) {
+      const local = sembrados[i * 2] || { equipo_id: null, seed_ref: null };
+      const visitante = sembrados[i * 2 + 1] || { equipo_id: null, seed_ref: null };
+      await db.query(
+        `
+          UPDATE partidos_eliminatoria
+          SET equipo_local_id = $1,
+              equipo_visitante_id = $2,
+              seed_local_ref = $3,
+              seed_visitante_ref = $4,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $5
+        `,
+        [
+          local.equipo_id ? Number(local.equipo_id) : null,
+          visitante.equipo_id ? Number(visitante.equipo_id) : null,
+          local.seed_ref || null,
+          visitante.seed_ref || null,
+          slots12vos[i].id,
+        ]
+      );
+    }
+
+    const octavosPairings = [
+      { partido: 1, winnerA: 1, mp: 4 },
+      { partido: 2, winnerA: 2, mp: 3 },
+      { partido: 3, winnerA: 3, mp: 2 },
+      { partido: 4, winnerA: 4, mp: 1 },
+      { partido: 5, winnerA: 5, winnerB: 12 },
+      { partido: 6, winnerA: 6, winnerB: 11 },
+      { partido: 7, winnerA: 7, winnerB: 10 },
+      { partido: 8, winnerA: 8, winnerB: 9 },
+    ];
+    const slots8vos = [];
+    for (const pairing of octavosPairings) {
+      const slot = await this.crearSlot(
+        evento_id,
+        "8vos",
+        pairing.partido,
+        null,
+        null,
+        slots12vos[pairing.winnerA - 1]?.id || null,
+        pairing.winnerB ? slots12vos[pairing.winnerB - 1]?.id || null : null,
+        "ganador",
+        pairing.winnerB ? "ganador" : "mejor_perdedor",
+        db
+      );
+      slots8vos.push(slot);
+      await db.query(
+        `
+          UPDATE partidos_eliminatoria
+          SET seed_local_ref = $1,
+              seed_visitante_ref = $2,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $3
+        `,
+        [
+          `W12-${pairing.winnerA}`,
+          pairing.winnerB ? `W12-${pairing.winnerB}` : `MP${pairing.mp}`,
+          slot.id,
+        ]
+      );
+    }
+
+    await this.crearRondasDesdeSlotsPrevios(
+      evento_id,
+      ["4tos", "semifinal", "final"],
+      slots8vos,
+      incluirTercerPuesto,
+      db
+    );
+
+    return this.obtenerPorEvento(evento_id, db);
+  }
+
+  static async sincronizarMejoresPerdedores12vos(evento_id, db = pool) {
+    await this.asegurarEsquema(db);
+    const config = await this.obtenerConfiguracionPlayoff(evento_id, db);
+    if (!this.usaPlantillaMejoresPerdedores12vos(config?.configuracion?.plantilla_llave)) {
+      return { aplicado: false, motivo: "plantilla_no_aplica" };
+    }
+
+    const partidos = await this.obtenerPorEvento(evento_id, db);
+    const doceavos = partidos
+      .filter((row) => String(row?.ronda || "").toLowerCase() === "12vos")
+      .sort((a, b) => Number(a?.partido_numero || 0) - Number(b?.partido_numero || 0));
+    const octavos = partidos
+      .filter((row) => String(row?.ronda || "").toLowerCase() === "8vos")
+      .sort((a, b) => Number(a?.partido_numero || 0) - Number(b?.partido_numero || 0));
+    if (!doceavos.length || !octavos.length) {
+      return { aplicado: false, motivo: "llave_incompleta" };
+    }
+
+    const mpSlots = [];
+    for (const slot of octavos) {
+      const seedLocal = String(slot?.seed_local_ref || "").toUpperCase();
+      const seedVisitante = String(slot?.seed_visitante_ref || "").toUpperCase();
+      if (String(slot?.slot_local_fuente_tipo || "").toLowerCase() === "mejor_perdedor" || /^MP\d+$/.test(seedLocal)) {
+        mpSlots.push({
+          slot_id: Number(slot.id),
+          side: "local",
+          orden: Number.parseInt(seedLocal.replace("MP", ""), 10) || 1,
+          slot,
+        });
+      }
+      if (String(slot?.slot_visitante_fuente_tipo || "").toLowerCase() === "mejor_perdedor" || /^MP\d+$/.test(seedVisitante)) {
+        mpSlots.push({
+          slot_id: Number(slot.id),
+          side: "visitante",
+          orden: Number.parseInt(seedVisitante.replace("MP", ""), 10) || 1,
+          slot,
+        });
+      }
+    }
+    if (!mpSlots.length) {
+      return { aplicado: false, motivo: "sin_slots_mejor_perdedor" };
+    }
+
+    const rondaSiguienteIniciada = octavos.some((slot) => {
+      const rl = Number.parseInt(slot?.resultado_local, 10);
+      const rv = Number.parseInt(slot?.resultado_visitante, 10);
+      return Number.isFinite(rl) || Number.isFinite(rv) || Number.isFinite(Number.parseInt(slot?.ganador_id, 10));
+    });
+    if (rondaSiguienteIniciada) {
+      return { aplicado: false, motivo: "ronda_siguiente_iniciada" };
+    }
+
+    const todasResueltas = doceavos.every((slot) => Number.isFinite(Number.parseInt(slot?.ganador_id, 10)));
+    if (!todasResueltas) {
+      for (const item of mpSlots) {
+        const field = item.side === "local" ? "equipo_local_id" : "equipo_visitante_id";
+        await db.query(
+          `
+            UPDATE partidos_eliminatoria
+            SET ${field} = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+          `,
+          [item.slot_id]
+        );
+      }
+      return { aplicado: false, motivo: "doceavos_pendientes" };
+    }
+
+    const clasificadosPorGrupo = Math.max(
+      1,
+      Number.parseInt(config?.evento?.clasificados_por_grupo, 10) || 1
+    );
+    const clasificadosData = await this.obtenerClasificadosPorGrupo(evento_id, clasificadosPorGrupo, db);
+    const enfrentamientosDirectos = await this.obtenerMapaEnfrentamientosDirectosEvento(
+      evento_id,
+      config?.evento?.sistema_puntuacion || "tradicional",
+      db
+    );
+    const rankingGlobal = this.construirRankingGlobalClasificados(clasificadosData, {
+      enfrentamientosDirectos,
+    });
+    const rankingMap = new Map(
+      rankingGlobal.map((row, idx) => [
+        Number(row?.equipo_id),
+        {
+          ...row,
+          posicion_general: idx + 1,
+        },
+      ])
+    );
+
+    const perdedores = doceavos
+      .map((slot) => {
+        const localId = Number.parseInt(slot?.equipo_local_id, 10);
+        const visitanteId = Number.parseInt(slot?.equipo_visitante_id, 10);
+        const ganadorId = Number.parseInt(slot?.ganador_id, 10);
+        if (!Number.isFinite(localId) || !Number.isFinite(visitanteId) || !Number.isFinite(ganadorId)) {
+          return null;
+        }
+        const perdedorId = ganadorId === localId ? visitanteId : localId;
+        const ranking = rankingMap.get(perdedorId) || null;
+        if (!ranking) return null;
+        return {
+          ...ranking,
+          equipo_id: perdedorId,
+          partido_numero: Number(slot?.partido_numero || 0),
+          perdedor_de_partido: Number(slot?.partido_numero || 0),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const posA = Number(a?.posicion_general || 9999);
+        const posB = Number(b?.posicion_general || 9999);
+        if (posA !== posB) return posA - posB;
+        return this.compararTablaAcumulada(a, b, { enfrentamientosDirectos });
+      });
+
+    const mejoresPerdedores = perdedores.slice(0, mpSlots.length);
+    const mpOrdenados = [...mpSlots].sort((a, b) => Number(a.orden || 99) - Number(b.orden || 99));
+
+    for (let i = 0; i < mpOrdenados.length; i += 1) {
+      const item = mpOrdenados[i];
+      const equipo = mejoresPerdedores[i] || null;
+      const field = item.side === "local" ? "equipo_local_id" : "equipo_visitante_id";
+      await db.query(
+        `
+          UPDATE partidos_eliminatoria
+          SET ${field} = $1,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2
+        `,
+        [equipo ? Number(equipo.equipo_id) : null, item.slot_id]
+      );
+    }
+
+    return {
+      aplicado: true,
+      mejores_perdedores: mejoresPerdedores.map((row, idx) => ({
+        slot: idx + 1,
+        equipo_id: Number(row?.equipo_id),
+        equipo_nombre: row?.equipo_nombre || `Equipo ${row?.equipo_id}`,
+        posicion_general: Number(row?.posicion_general || idx + 1),
+      })),
+    };
+  }
+
   /**
    * Genera estructura eliminatoria con equipos inscritos al evento.
    * Modo directo: aleatorio.
@@ -2887,16 +3231,26 @@ class Eliminatoria {
       const cantidadBody = Number.parseInt(opciones.cantidad_equipos, 10);
       const cantidadSolicitada = Number.isFinite(cantidadBody) ? cantidadBody : null;
 
-      const bracket = await this.generarBracketConSembrado(
-        evento_id,
-        entradas,
-        {
-          cantidad_equipos: cantidadSolicitada,
-          mezclar: false,
-          incluir_tercer_puesto: incluirTercerPuesto,
-        },
-        client
-      );
+      const usaMejoresPerdedores12vos = this.usaPlantillaMejoresPerdedores12vos(plantillaLlave);
+      const bracket = usaMejoresPerdedores12vos
+        ? await this.generarBracketPlantillaMejoresPerdedores12vos(
+            evento_id,
+            entradas,
+            {
+              incluir_tercer_puesto: incluirTercerPuesto,
+            },
+            client
+          )
+        : await this.generarBracketConSembrado(
+            evento_id,
+            entradas,
+            {
+              cantidad_equipos: cantidadSolicitada,
+              mezclar: false,
+              incluir_tercer_puesto: incluirTercerPuesto,
+            },
+            client
+          );
 
       await client.query("COMMIT");
       return {
@@ -2907,6 +3261,7 @@ class Eliminatoria {
           grupos: clasificadosData.grupos,
           plantilla_llave: plantillaLlave,
           incluir_tercer_puesto: incluirTercerPuesto,
+          mejores_perdedores_habilitado: usaMejoresPerdedores12vos,
         },
       };
     } catch (error) {

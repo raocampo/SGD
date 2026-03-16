@@ -84,6 +84,33 @@ async function invalidarOverridesCompeticionPorResultado(
 ) {
   const eventoId = Number.parseInt(partido?.evento_id, 10);
   if (!Number.isFinite(eventoId) || eventoId <= 0) return false;
+  const grupoIdPartido = Number.parseInt(partido?.grupo_id, 10);
+
+  let scopeGrupoId = null;
+  try {
+    const eventoR = await client.query(
+      `
+        SELECT
+          LOWER(COALESCE(metodo_competencia, 'grupos')) AS metodo_competencia,
+          COALESCE(clasificacion_tabla_acumulada, FALSE) AS clasificacion_tabla_acumulada
+        FROM eventos
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [eventoId]
+    );
+    const evento = eventoR.rows[0] || {};
+    const esTablaAcumulada =
+      evento.clasificacion_tabla_acumulada === true ||
+      String(evento.metodo_competencia || "").trim().toLowerCase() === "tabla_acumulada";
+    if (!esTablaAcumulada && Number.isFinite(grupoIdPartido) && grupoIdPartido > 0) {
+      scopeGrupoId = grupoIdPartido;
+    }
+  } catch (_) {
+    if (Number.isFinite(grupoIdPartido) && grupoIdPartido > 0) {
+      scopeGrupoId = grupoIdPartido;
+    }
+  }
 
   const schema = await detectarSchemaOverrideCompeticion(client);
   const comentario =
@@ -96,8 +123,9 @@ async function invalidarOverridesCompeticionPorResultado(
         SELECT evento_id, grupo_id, payload
         FROM tabla_posiciones_manuales
         WHERE evento_id = $1
+          AND (($2::int IS NULL AND grupo_id IS NULL) OR grupo_id = $2)
       `,
-      [eventoId]
+      [eventoId, scopeGrupoId]
     );
     const manuales = manualesR.rows || [];
 
@@ -127,14 +155,35 @@ async function invalidarOverridesCompeticionPorResultado(
       }
     }
 
-    await client.query(`DELETE FROM tabla_posiciones_manuales WHERE evento_id = $1`, [eventoId]);
+    await client.query(
+      `
+        DELETE FROM tabla_posiciones_manuales
+        WHERE evento_id = $1
+          AND (($2::int IS NULL AND grupo_id IS NULL) OR grupo_id = $2)
+      `,
+      [eventoId, scopeGrupoId]
+    );
   }
 
   if (schema.tiene_clasificados_manuales === true) {
-    await client.query(`DELETE FROM evento_clasificados_manuales WHERE evento_id = $1`, [eventoId]);
+    if (scopeGrupoId === null) {
+      await client.query(`DELETE FROM evento_clasificados_manuales WHERE evento_id = $1`, [eventoId]);
+    } else {
+      await client.query(
+        `DELETE FROM evento_clasificados_manuales WHERE evento_id = $1 AND grupo_id = $2`,
+        [eventoId, scopeGrupoId]
+      );
+    }
   }
   if (schema.tiene_reclasificaciones === true) {
-    await client.query(`DELETE FROM evento_reclasificaciones_playoff WHERE evento_id = $1`, [eventoId]);
+    if (scopeGrupoId === null) {
+      await client.query(`DELETE FROM evento_reclasificaciones_playoff WHERE evento_id = $1`, [eventoId]);
+    } else {
+      await client.query(
+        `DELETE FROM evento_reclasificaciones_playoff WHERE evento_id = $1 AND grupo_id = $2`,
+        [eventoId, scopeGrupoId]
+      );
+    }
   }
   if (schema.tiene_partidos_eliminatoria === true) {
     await client.query(`DELETE FROM partidos_eliminatoria WHERE evento_id = $1`, [eventoId]);

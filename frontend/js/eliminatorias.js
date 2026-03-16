@@ -1,4 +1,4 @@
-const RONDAS_ORDEN_ELI = ["32vos", "16vos", "8vos", "4tos", "semifinal", "final", "tercer_puesto"];
+const RONDAS_ORDEN_ELI = ["32vos", "16vos", "12vos", "8vos", "4tos", "semifinal", "final", "tercer_puesto"];
 const BACKEND_BASE = (window.resolveBackendBaseUrl
   ? window.resolveBackendBaseUrl()
   : `${window.location.origin}`).replace(/\/$/, "");
@@ -50,7 +50,19 @@ function obtenerMetodoCompetenciaVisibleEliminatoria(evento = {}) {
 function formatearPlantillaLlaveEliminatoria(valor) {
   const key = String(valor || "estandar").toLowerCase();
   if (key === "balanceada_8vos") return "Balanceada 8vos";
+  if (key === "mejores_perdedores_12vos") return "Mejores perdedores (24 -> 12vos -> 8vos)";
   return "Estándar";
+}
+
+function nombrePlaceholderEliminatoria(partido = {}, lado = "local") {
+  const sideKey = lado === "visitante" ? "visitante" : "local";
+  const equipoNombre = partido?.[`equipo_${sideKey}_nombre`] || null;
+  if (equipoNombre) return equipoNombre;
+  const seedRef = String(partido?.[`seed_${sideKey}_ref`] || "").trim().toUpperCase();
+  if (/^MP\d+$/.test(seedRef)) {
+    return `Mejor perdedor ${seedRef.replace("MP", "")}`;
+  }
+  return "Por definir";
 }
 
 function obtenerCrucesConfiguradosDesdeWrap(wrap) {
@@ -1281,7 +1293,11 @@ function actualizarUIPlayoffPorOrigen() {
   if (wrapMetodo) wrapMetodo.style.display = usaGrupos ? "" : "none";
   if (wrapCruces) wrapCruces.style.display = usaGrupos && metodoGrupos === "cruces_grupos" ? "" : "none";
   if (wrapPlantilla) wrapPlantilla.style.display = usaGrupos ? "" : "none";
-  if (wrapTercer) wrapTercer.style.display = ["eliminatoria", "mixto", "tabla_acumulada"].includes(metodoCompetencia) ? "" : "none";
+  if (wrapTercer) {
+    wrapTercer.style.display = ["grupos", "eliminatoria", "mixto", "tabla_acumulada"].includes(metodoCompetencia)
+      ? ""
+      : "none";
+  }
   if (origenEl) origenEl.disabled = metodoCompetencia === "tabla_acumulada" || eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
   if (metodoGruposEl) metodoGruposEl.disabled = metodoCompetencia === "tabla_acumulada" || eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
   const plantillaSel = document.getElementById("eli-plantilla-llave");
@@ -1453,7 +1469,9 @@ async function generarLlaveEliminatoria() {
 
     const resp = await ApiClient.post(`/eliminatorias/evento/${eventoId}/generar`, payload);
     const meta = resp?.meta || null;
-    if (meta?.metodo_clasificacion === "tabla_unica") {
+    if (meta?.mejores_perdedores_habilitado === true) {
+      mostrarNotificacion("Playoff generado con plantilla de mejores perdedores", "success");
+    } else if (meta?.metodo_clasificacion === "tabla_unica") {
       mostrarNotificacion("Playoff generado por tabla única", "success");
     } else if (meta?.metodo_clasificacion === "cruces_grupos") {
       mostrarNotificacion("Playoff generado por cruces de grupos", "success");
@@ -1500,8 +1518,8 @@ function renderBracket() {
     .map((col) => {
       const cards = col.cruces
         .map((c) => {
-          const local = c.equipo_local_nombre || "Por definir";
-          const visita = c.equipo_visitante_nombre || "Por definir";
+          const local = nombrePlaceholderEliminatoria(c, "local");
+          const visita = nombrePlaceholderEliminatoria(c, "visitante");
           const localLogo = normalizarLogoUrl(c.equipo_local_logo || null);
           const visitaLogo = normalizarLogoUrl(c.equipo_visitante_logo || null);
           const rl = Number.isFinite(Number(c.resultado_local)) ? Number(c.resultado_local) : "-";
@@ -2081,6 +2099,7 @@ function formatearRonda(ronda) {
   const key = String(ronda || "").toLowerCase();
   if (key === "32vos") return "32vos de final";
   if (key === "16vos") return "16vos de final";
+  if (key === "12vos") return "12vos de final";
   if (key === "8vos") return "Octavos";
   if (key === "4tos") return "Cuartos";
   if (key === "semifinal") return "Semifinal";
@@ -2098,6 +2117,7 @@ function formatearEtiquetaPartidoEliminatoria(ronda, numero) {
   if (key === "semifinal") return `SEM G${n}`;
   if (key === "final") return n === 1 ? "FINAL" : `FINAL ${n}`;
   if (key === "tercer_puesto") return "TERCER Y CUARTO";
+  if (key === "12vos") return `12VO P${n}`;
   if (key === "16vos") return `16VO P${n}`;
   if (key === "32vos") return `32VO P${n}`;
   return `P${n}`;

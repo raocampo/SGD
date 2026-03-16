@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-14): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer.
+Estado del proyecto (2026-03-16): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer. En eliminatorias ya se soporta la plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con cupos `MP1..MP4` calculados segun ranking deportivo.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -30,7 +30,19 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
-## Novedades Recientes (2026-03-14)
+## Novedades Recientes (2026-03-16)
+- Jugadores / categorías:
+  - el alta y edición de jugadores ahora envían el `evento_id` actual al backend.
+  - la validación de cédula ya no toma todas las categorías del equipo destino; se limita a la categoría/evento desde el que se está inscribiendo.
+  - esto corrige el caso operativo donde un mismo jugador puede actuar en distintas categorías del mismo campeonato, incluso en equipos distintos.
+- Tablas manuales:
+  - cuando se registra o corrige un resultado real, la invalidación automática ya no borra todas las tablas manuales del evento.
+  - si la categoría trabaja por grupos, solo se invalida la tabla manual, la clasificación manual y la reclasificación del grupo afectado.
+  - la llave de playoff del evento sí se limpia completa, para obligar a regenerarla con la información deportiva vigente.
+- Eliminatorias:
+  - nueva plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` disponible en configuracion de categoria y en `eliminatorias.html`.
+  - la llave genera `12vos`, reserva `MP1..MP4` en `8vos` y completa esos cupos automaticamente cuando se cierra la primera ronda.
+  - la seleccion de mejores perdedores usa rendimiento, DG, GF, enfrentamiento directo y fair play.
 - Navegacion interna:
   - el sistema deportivo ahora usa `RouteContext` en `sessionStorage` para conservar el contexto entre pantallas internas sin exponer IDs operativos en la barra del navegador.
   - ya queda cubierto el flujo interno principal:

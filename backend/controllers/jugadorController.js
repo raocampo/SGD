@@ -105,6 +105,7 @@ const jugadorController = {
             }
             const {
                 equipo_id,
+                evento_id,
                 nombre,
                 apellido,
                 cedidentidad,
@@ -170,7 +171,8 @@ const jugadorController = {
                 fotoCarnetRecorte,
                 fotoCarnetPosX,
                 fotoCarnetPosY,
-                fotoCarnetZoom
+                fotoCarnetZoom,
+                evento_id
             );
 
             res.status(201).json({
@@ -204,6 +206,7 @@ const jugadorController = {
     importarJugadoresMasivo: async (req, res) => {
         try {
             const equipo_id = Number(req.body?.equipo_id);
+            const evento_id = Number(req.body?.evento_id);
             const filas = Array.isArray(req.body?.jugadores) ? req.body.jugadores : [];
 
             if (!Number.isFinite(equipo_id) || equipo_id <= 0) {
@@ -288,10 +291,11 @@ const jugadorController = {
                         es_capitan,
                         foto_cedula_url,
                         foto_carnet_url,
-                        foto_carnet_recorte_url,
+                        null,
                         50,
                         35,
-                        1
+                        1,
+                        Number.isFinite(evento_id) ? evento_id : null
                     );
                     creados.push(jugador);
                 } catch (errorFila) {
@@ -445,6 +449,7 @@ const jugadorController = {
         try {
             const { id } = req.params;
             const datos = req.body;
+            const eventoIdContexto = Number.parseInt(datos?.evento_id, 10);
             if (req.fileValidationError) {
                 return res.status(400).json({ error: req.fileValidationError });
             }
@@ -515,6 +520,9 @@ const jugadorController = {
                     error: "Este campeonato exige foto carné para el jugador"
                 });
             }
+
+            datos.evento_id_contexto = Number.isFinite(eventoIdContexto) ? eventoIdContexto : null;
+            delete datos.evento_id;
 
             const jugadorActualizado = await Jugador.actualizar(id, datos);
 

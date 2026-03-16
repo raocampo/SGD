@@ -7,6 +7,37 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-16 - Plantilla de playoff con mejores perdedores
+- `backend/models/Eliminatoria.js` incorpora una nueva plantilla formal:
+  - `mejores_perdedores_12vos`
+  - caso operativo soportado: `24 clasificados -> 12vos -> 12 ganadores + 4 mejores perdedores -> 8vos`.
+- la plantilla:
+  - genera la ronda `12vos`,
+  - reserva `MP1..MP4` como placeholders de mejores perdedores en `8vos`,
+  - y completa automaticamente esos cupos cuando termina la ronda `12vos`.
+- la seleccion de mejores perdedores se resuelve usando el mismo ranking deportivo ya vigente:
+  - rendimiento/porcentaje,
+  - diferencia de goles,
+  - goles a favor,
+  - enfrentamiento directo cuando aplica,
+  - fair play final.
+- se blindo la logica de byes para que un ganador de `12vos` no avance automaticamente si el cupo rival todavia depende de `MP1..MP4`.
+- `frontend/eliminatorias.html`, `frontend/js/eliminatorias.js`, `frontend/eventos.html` y `frontend/js/eventos.js` ya muestran la nueva opcion de plantilla.
+- `frontend/js/portal.js` traduce la nueva ronda `12vos` y placeholders `Mejor perdedor #` en el portal publico.
+
+---
+
+## 2026-03-16 - Jugadores por categoria e invalidacion selectiva de tablas manuales
+- `frontend/js/jugadores.js` ahora envia `evento_id` en alta/importacion de jugadores para que el backend valide la cédula contra la categoría real en contexto.
+- `backend/controllers/jugadorController.js` y `backend/models/Jugador.js` usan ese `evento_id` como alcance de validación, evitando bloquear al mismo jugador en categorías distintas del mismo campeonato.
+- `backend/models/Partido.js` deja de invalidar todas las tablas manuales del evento cuando se modifica un resultado.
+- nuevo comportamiento:
+  - si el evento trabaja por grupos, solo se elimina la edición manual del grupo afectado,
+  - también se limpian únicamente la clasificación manual y la reclasificación del grupo afectado,
+  - la llave de playoff del evento se elimina completa para regenerarse con la clasificación actual.
+
+---
+
 ## 2026-03-15 - Portal público: playoff consistente con clasificación vigente
 - `backend/models/Eliminatoria.js` incorpora un diagnóstico de consistencia para la llave publicada:
   - toma la clasificación vigente por grupos o tabla acumulada,

@@ -3053,6 +3053,7 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
 
   const fd = new FormData();
   fd.append("equipo_id", String(equipoJugador));
+  if (eventoId) fd.append("evento_id", String(eventoId));
   fd.append("nombre", nombre);
   fd.append("apellido", apellido);
   if (cedidentidad) {
@@ -3476,6 +3477,7 @@ function inicializarImportadorJugadores() {
 
       const resultado = await ApiClient.post("/jugadores/importar-masivo", {
         equipo_id: equipoId,
+        evento_id: eventoId,
         jugadores,
       });
 

@@ -99,14 +99,21 @@ class Jugador {
      * @param {number} equipo_destino_id - equipo al que se asigna
      * @param {number} [excluir_jugador_id] - al actualizar, excluir este jugador del chequeo
      */
-    static async verificarJugadorUnicoPorEvento(cedula, equipo_destino_id, excluir_jugador_id = null) {
+    static async verificarJugadorUnicoPorEvento(
+        cedula,
+        equipo_destino_id,
+        excluir_jugador_id = null,
+        evento_contexto_id = null
+    ) {
         if (!cedula || !equipo_destino_id) return;
 
+        const eventoContextoId = Number.parseInt(evento_contexto_id, 10);
         let q = `
             WITH eventos_destino AS (
               SELECT ee.evento_id
               FROM evento_equipos ee
               WHERE ee.equipo_id = $2
+                AND ($3::int IS NULL OR ee.evento_id = $3)
             )
             SELECT
               j.id,
@@ -122,9 +129,9 @@ class Jugador {
             WHERE j.cedidentidad = $1
               AND j.equipo_id != $2
         `;
-        const params = [cedula, equipo_destino_id];
+        const params = [cedula, equipo_destino_id, Number.isFinite(eventoContextoId) ? eventoContextoId : null];
         if (excluir_jugador_id) {
-            q += ` AND j.id != $3`;
+            q += ` AND j.id != $4`;
             params.push(excluir_jugador_id);
         }
         q += `
@@ -158,7 +165,8 @@ class Jugador {
         foto_carnet_recorte_url = null,
         foto_carnet_pos_x = 50,
         foto_carnet_pos_y = 35,
-        foto_carnet_zoom = 1
+        foto_carnet_zoom = 1,
+        evento_id_contexto = null
     ) {
         await this.asegurarColumnasDocumentos();
         const cedulaNormalizada = this.normalizarCedidentidad(cedidentidad);
@@ -193,7 +201,13 @@ class Jugador {
         }
 
         // Verificar si la cédula ya existe en otro equipo de la misma categoría/evento
-        await this.verificarJugadorUnicoPorEvento(cedulaNormalizada, equipo_id);
+        const eventoContextoId = Number.parseInt(evento_id_contexto, 10);
+        await this.verificarJugadorUnicoPorEvento(
+            cedulaNormalizada,
+            equipo_id,
+            null,
+            Number.isFinite(eventoContextoId) ? eventoContextoId : null
+        );
 
         // Verificar cédula duplicada en el mismo equipo (fallback)
         if (cedulaNormalizada) {
@@ -311,17 +325,23 @@ class Jugador {
             datos.foto_carnet_zoom = this.normalizarZoomFoto(datos.foto_carnet_zoom, 1);
         }
         // Si cambia equipo_id o cedidentidad, validar jugador único por categoría/evento
-        if (datos.equipo_id) {
+        if (datos.equipo_id || Object.prototype.hasOwnProperty.call(datos, "cedidentidad")) {
             const jugadorActual = await pool.query(
-                'SELECT cedidentidad FROM jugadores WHERE id = $1',
+                'SELECT cedidentidad, equipo_id FROM jugadores WHERE id = $1',
                 [id]
             );
             const cedula = datos.cedidentidad ?? jugadorActual.rows[0]?.cedidentidad;
+            const equipoDestinoId = datos.equipo_id ?? jugadorActual.rows[0]?.equipo_id;
             if (cedula) {
-                await this.verificarJugadorUnicoPorEvento(cedula, datos.equipo_id, parseInt(id, 10));
+                await this.verificarJugadorUnicoPorEvento(
+                    cedula,
+                    equipoDestinoId,
+                    parseInt(id, 10),
+                    datos.evento_id_contexto
+                );
             }
 
-            const equipoLimites = await this.obtenerEquipoConLimites(datos.equipo_id);
+            const equipoLimites = await this.obtenerEquipoConLimites(equipoDestinoId);
             if (!equipoLimites) {
                 throw new Error("Equipo no encontrado");
             }
@@ -332,7 +352,7 @@ class Jugador {
             if (maxJugadoresPermitido != null) {
                 const countResult = await pool.query(
                     `SELECT COUNT(*)::int AS total FROM jugadores WHERE equipo_id = $1 AND id <> $2`,
-                    [datos.equipo_id, id]
+                    [equipoDestinoId, id]
                 );
                 const jugadoresActuales = Number(countResult.rows[0]?.total || 0);
                 if (jugadoresActuales >= maxJugadoresPermitido) {

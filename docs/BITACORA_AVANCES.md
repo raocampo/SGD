@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-15
+Ultima actualizacion: 2026-03-16
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,40 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-16
+- Jugadores / categorías activas:
+  - se corrigió la validación de cédula al crear/editar/importar jugadores para que use el `evento_id` actual enviado por la UI.
+  - el bloqueo ya no se calcula con todas las categorías donde esté inscrito el equipo destino, sino con la categoría concreta desde la que se registra el jugador.
+  - impacto: un jugador vuelve a poder inscribirse en distintas categorías del mismo campeonato, incluso con equipos diferentes, siempre que no repita en la misma categoría.
+- Tablas manuales vs resultados reales:
+  - se ajustó la invalidación automática al cargar resultados/planillas.
+  - antes, un resultado nuevo en un grupo eliminaba las tablas manuales de todo el evento.
+  - ahora:
+    - en formato por grupos, solo se invalida la tabla manual, la clasificación manual y la reclasificación del grupo afectado,
+    - la llave eliminatoria del evento se limpia completa para obligar regeneración coherente.
+  - esto evita perder correcciones manuales de otros grupos no afectados.
+- Eliminatorias / plantilla mejores perdedores:
+  - se incorporo la nueva plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` dentro de la configuracion de playoff.
+  - la opcion ya queda visible en:
+    - `eventos.html`,
+    - `eliminatorias.html`.
+  - comportamiento implementado:
+    - genera una ronda inicial `12vos` con 24 clasificados,
+    - clasifica automaticamente a los 12 ganadores,
+    - reserva `4` cupos `MP1..MP4` para mejores perdedores,
+    - al cerrarse los `12vos`, el backend calcula los mejores perdedores con las mismas reglas deportivas vigentes:
+      - rendimiento/porcentaje,
+      - diferencia de goles,
+      - goles a favor,
+      - enfrentamiento directo cuando aplique,
+      - fair play final.
+  - los cupos `MP` se completan automaticamente antes de `8vos` siempre que la ronda siguiente no haya empezado.
+  - se agregaron etiquetas y soporte visual para la nueva ronda `12vos` en:
+    - backend de eliminatorias,
+    - `frontend/js/eliminatorias.js`,
+    - `frontend/js/portal.js`.
+  - tambien se blindo la logica de byes para que un ganador de `12vos` no avance solo mientras el slot del mejor perdedor siga pendiente.
 
 ### 2026-03-15
 - Tablas manuales vs resultados reales:
@@ -1519,15 +1553,11 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Render quedo alineado con el fix publicado en `origin/main`.
 
 ## Pendiente inmediato siguiente sesion
-- Incorporar en configuracion de eliminatorias la opcion `mejores perdedores`.
-- Caso objetivo inicial:
-  - 24 equipos -> `12vos`
-  - clasifican 12 ganadores
-  - se agregan 4 mejores perdedores
-  - se completa `8vos` con 16 equipos.
-- La implementacion debe respetar las directrices de clasificacion ya existentes:
-  - porcentaje/rendimiento,
-  - diferencia de goles,
-  - goles a favor,
-  - enfrentamiento directo cuando aplique,
-  - fair play como criterio final.
+- Validar con un campeonato real de 24 clasificados la nueva plantilla `Mejores perdedores (24 -> 12vos -> 8vos)`.
+- Confirmar con operacion real si el criterio de emparejamiento en `8vos` queda aprobado asi:
+  - `W12-1 vs MP4`
+  - `W12-2 vs MP3`
+  - `W12-3 vs MP2`
+  - `W12-4 vs MP1`
+  - resto de cruces entre ganadores de `12vos`.
+- Si el cliente pide un formato adicional para `20`, `12` u otros cupos no potencia de 2, ampliar esta misma plantilla a un modo mas general.
