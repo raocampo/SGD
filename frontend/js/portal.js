@@ -981,29 +981,100 @@ function renderPartidoJornadaPortal(partido = {}) {
   `;
 }
 
+function extraerFechasJornada(partidos = []) {
+  const fechas = partidos
+    .map((p) => p.fecha_partido || p.fecha || p.fecha_programada)
+    .filter(Boolean)
+    .map((f) => new Date(f))
+    .filter((d) => !Number.isNaN(d.getTime()))
+    .sort((a, b) => a - b);
+  return fechas;
+}
+
+function renderBadgeJornadaPortal(partidos = []) {
+  const total = partidos.length;
+  if (!total) return "";
+  const finalizados = partidos.filter((p) => String(p.estado || "").toLowerCase() === "finalizado").length;
+  const noPresentaron = partidos.filter((p) => String(p.estado || "").toLowerCase() === "no_presentaron_ambos").length;
+  const jugados = finalizados + noPresentaron;
+  const enCurso = partidos.some((p) => String(p.estado || "").toLowerCase() === "en_curso");
+  if (enCurso) return '<span class="portal-jornada-badge badge-en-curso">En curso</span>';
+  if (jugados === total) return '<span class="portal-jornada-badge badge-finalizada">Finalizada</span>';
+  if (jugados > 0) return '<span class="portal-jornada-badge badge-parcial">En curso</span>';
+  return '<span class="portal-jornada-badge badge-proxima">Próxima</span>';
+}
+
 function renderJornadasPortal(jornadas = [], partidos = []) {
   const bloques = normalizarJornadasPortal(jornadas, partidos);
   if (!bloques.length) {
     return '<p class="empty-msg">No hay jornadas publicadas para esta categoría.</p>';
   }
 
-  return `
-    <div class="portal-jornadas-grid">
-      ${bloques
-        .map((jornada) => `
-          <section class="portal-jornada-card">
-            <div class="portal-jornada-card-head">
+  // Detectar la jornada activa: primera con al menos un partido pendiente/programado
+  // o la última jugada si todo está finalizado
+  let jornadaActivaIndex = -1;
+  for (let i = 0; i < bloques.length; i++) {
+    const ps = Array.isArray(bloques[i].partidos) ? bloques[i].partidos : [];
+    const tieneNoJugado = ps.some((p) => {
+      const st = String(p.estado || "").toLowerCase();
+      return st !== "finalizado" && st !== "no_presentaron_ambos";
+    });
+    if (tieneNoJugado) { jornadaActivaIndex = i; break; }
+  }
+  if (jornadaActivaIndex < 0) jornadaActivaIndex = bloques.length - 1;
+
+  const selectorHtml = bloques.length > 1
+    ? `<div class="portal-jornadas-selector" role="tablist" aria-label="Seleccionar jornada">
+        ${bloques.map((j, i) => `
+          <button
+            class="portal-jornada-selector-btn${i === jornadaActivaIndex ? " active" : ""}"
+            type="button"
+            data-jornada-btn="${i}"
+            aria-selected="${i === jornadaActivaIndex ? "true" : "false"}"
+          >J${escPortal(j.numero)}</button>
+        `).join("")}
+      </div>`
+    : "";
+
+  const tarjetasHtml = bloques
+    .map((jornada, i) => {
+      const ps = Array.isArray(jornada.partidos) ? jornada.partidos : [];
+      const fechas = extraerFechasJornada(ps);
+      let subtituloFecha = "";
+      if (fechas.length === 1) {
+        subtituloFecha = fechas[0].toLocaleDateString("es-EC", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      } else if (fechas.length > 1) {
+        const primera = fechas[0].toLocaleDateString("es-EC", { day: "2-digit", month: "short" });
+        const ultima = fechas[fechas.length - 1].toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" });
+        subtituloFecha = `${primera} – ${ultima}`;
+      }
+      const badge = renderBadgeJornadaPortal(ps);
+      return `
+        <section class="portal-jornada-card${i === jornadaActivaIndex ? " portal-jornada-activa" : ""}" data-jornada-card="${i}" ${i !== jornadaActivaIndex ? 'hidden' : ''}>
+          <div class="portal-jornada-card-head">
+            <div class="portal-jornada-card-title">
               <h4>Jornada ${escPortal(jornada.numero)}</h4>
-              <span>${Array.isArray(jornada.partidos) ? jornada.partidos.length : 0} partido(s)</span>
+              ${subtituloFecha ? `<span class="portal-jornada-fecha">${escPortal(subtituloFecha)}</span>` : ""}
             </div>
-            <div class="portal-jornada-card-body">
-              ${(Array.isArray(jornada.partidos) ? jornada.partidos : [])
-                .map((partido) => renderPartidoJornadaPortal(partido))
-                .join("")}
+            <div class="portal-jornada-card-meta">
+              ${badge}
+              <span class="portal-jornada-count">${ps.length} partido${ps.length !== 1 ? "s" : ""}</span>
             </div>
-          </section>
-        `)
-        .join("")}
+          </div>
+          <div class="portal-jornada-card-body">
+            ${ps.map((partido) => renderPartidoJornadaPortal(partido)).join("") || '<p class="empty-msg">Sin partidos en esta jornada.</p>'}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="portal-jornadas-wrap">
+      ${selectorHtml}
+      <div class="portal-jornadas-cards" data-jornadas-cards>
+        ${tarjetasHtml}
+      </div>
     </div>
   `;
 }
@@ -1198,6 +1269,7 @@ function renderCategoriaPanelPortal(data, index = 0) {
   const evento = data?.evento || {};
   const panelId = `portal-category-panel-${evento.id}`;
   const subtabs = [
+    { key: "jornadas", label: "Jornadas", html: renderJornadasPortal(data?.jornadas || [], data?.partidos || []) },
     { key: "posiciones", label: "Tabla de posiciones", html: renderTablasPortal(data?.tablas || []) },
     { key: "goleadores", label: "Goleadores", html: renderGoleadoresPortal(data?.goleadores || []) },
     { key: "fair-play", label: "Fair play", html: renderFairPlayPortal(data?.fairPlay || []) },
@@ -1503,7 +1575,7 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
 
     const eventosData = await Promise.all(
       eventosFiltrados.map(async (ev) => {
-        const [tablasRes, goleadoresRes, tarjetasRes, fairPlayRes, eliminatoriasRes] = await Promise.all([
+        const [tablasRes, goleadoresRes, tarjetasRes, fairPlayRes, eliminatoriasRes, partidosRes] = await Promise.all([
           (
             window.PortalPublicAPI
               ? window.PortalPublicAPI.obtenerTablasPorEvento(ev.id)
@@ -1529,6 +1601,7 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
               ? window.PortalPublicAPI.obtenerEliminatoriasPorEvento(ev.id)
               : fetch(`${API}/public/eventos/${ev.id}/eliminatorias`).then((r) => r.json())
           ).catch(() => ({ rondas: [] })),
+          fetch(`${API}/public/eventos/${ev.id}/partidos`).then((r) => r.json()).catch(() => ({ jornadas: [], partidos: [] })),
         ]);
 
         return {
@@ -1538,6 +1611,8 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
           tarjetas: tarjetasRes.tarjetas || [],
           fairPlay: fairPlayRes.fair_play || [],
           eliminatorias: eliminatoriasRes || { rondas: [] },
+          jornadas: partidosRes.jornadas || [],
+          partidos: partidosRes.partidos || [],
         };
       })
     );
@@ -1587,6 +1662,25 @@ document.addEventListener("click", (event) => {
   if (subtabButton) {
     const scope = subtabButton.closest(".portal-category-panel");
     activarPortalTab(scope, ".portal-subtab", ".portal-subtab-panel", subtabButton.dataset.target);
+    return;
+  }
+
+  // Selector de jornada dentro del tab Jornadas
+  const jornadaBtn = event.target.closest("[data-jornada-btn]");
+  if (jornadaBtn) {
+    const wrap = jornadaBtn.closest(".portal-jornadas-wrap");
+    if (!wrap) return;
+    const targetIdx = Number(jornadaBtn.dataset.jornadaBtn);
+    wrap.querySelectorAll("[data-jornada-btn]").forEach((btn) => {
+      const activo = Number(btn.dataset.jornadaBtn) === targetIdx;
+      btn.classList.toggle("active", activo);
+      btn.setAttribute("aria-selected", activo ? "true" : "false");
+    });
+    wrap.querySelectorAll("[data-jornada-card]").forEach((card) => {
+      const activo = Number(card.dataset.jornadaCard) === targetIdx;
+      card.hidden = !activo;
+      card.classList.toggle("portal-jornada-activa", activo);
+    });
   }
 });
 

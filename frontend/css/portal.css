@@ -913,6 +913,123 @@ body.ltc-landing {
   color: #9a3030;
 }
 
+/* === JORNADAS: selector + estructura mejorada === */
+.portal-jornadas-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.portal-jornadas-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-bottom: 0.25rem;
+}
+
+.portal-jornada-selector-btn {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--ltc-soft-border);
+  background: #fff;
+  color: var(--ltc-navy);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.portal-jornada-selector-btn:hover {
+  background: #eaf2ff;
+  border-color: #a0bde0;
+}
+
+.portal-jornada-selector-btn.active {
+  background: var(--ltc-navy);
+  color: #fff;
+  border-color: var(--ltc-navy);
+}
+
+.portal-jornadas-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* card ocupa todo el ancho cuando se muestra sola */
+.portal-jornada-card {
+  width: 100%;
+}
+
+.portal-jornada-card-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.portal-jornada-card-title h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: #fff;
+}
+
+.portal-jornada-fecha {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.portal-jornada-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.portal-jornada-count {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* Badges de estado de jornada */
+.portal-jornada-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.badge-finalizada {
+  background: #d0f4e4;
+  color: #1b7245;
+}
+
+.badge-proxima {
+  background: #d9edff;
+  color: #1c4f95;
+}
+
+.badge-en-curso {
+  background: #fff0c8;
+  color: #7a4f00;
+}
+
+.badge-parcial {
+  background: #fff0c8;
+  color: #7a4f00;
+}
+
+/* Jornada activa: leve resaltado de la card */
+.portal-jornada-activa .portal-jornada-card-head {
+  background: linear-gradient(135deg, #1a3060 0%, #2a5498 100%);
+}
+
 .ltc-team-figure {
   width: 68px;
   height: 68px;

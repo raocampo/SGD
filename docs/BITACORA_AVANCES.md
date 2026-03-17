@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-16
+Ultima actualizacion: 2026-03-17
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,55 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-17 (sesión 2)
+- Portal publico / tab Jornadas:
+  - nueva subtab `Jornadas` agregada como primera pestaña en el panel de cada categoria del portal.
+  - `portalVerCampeonato()` ahora fetcha `GET /api/public/eventos/:id/partidos` en paralelo con el resto de datos del evento.
+  - `renderJornadasPortal()` mejorado:
+    - selector de jornada con botones numerados (`J1`, `J2`, ...) para navegar entre fechas sin scrollear.
+    - la jornada activa se determina automaticamente: primera con partidos pendientes, o ultima si todo esta finalizado.
+    - cada card de jornada muestra la fecha/rango de fechas extraída de `fecha_partido` de los partidos.
+    - badge de estado por jornada: `Próxima` (azul), `En curso` (amarillo), `Finalizada` (verde).
+    - solo se muestra una jornada a la vez (toggled por selector), sin scroll lateral.
+  - el filtro de `portal_jornadas_habilitadas` del organizador se aplica correctamente: el backend ya filtra, el frontend renderiza solo las jornadas recibidas.
+  - nuevos estilos en `portal.css`:
+    - `.portal-jornadas-wrap`, `.portal-jornadas-selector`, `.portal-jornada-selector-btn`
+    - `.portal-jornada-badge` con variantes `badge-proxima`, `badge-en-curso`, `badge-finalizada`
+    - `.portal-jornada-card-title`, `.portal-jornada-fecha`, `.portal-jornada-card-meta`
+  - validacion tecnica:
+    - `node --check frontend/js/portal.js` => OK
+
+### 2026-03-17
+- Fixture / gestion avanzada:
+  - nuevo endpoint `DELETE /partidos/evento/:evento_id/fixture` para eliminar el fixture completo de un evento.
+    - detecta partidos finalizados y exige confirmacion (`force=true`) antes de borrarlos.
+    - boton `Eliminar Fixture` (rojo) en `partidos.html` > seccion Generacion de Fixture.
+  - nuevo endpoint `POST /partidos/evento/:evento_id/regenerar-preservando` para regenerar el fixture conservando partidos ya jugados.
+    - conserva partidos en estado `finalizado` / `no_presentaron_ambos`.
+    - elimina solo partidos pendientes y regenera round-robin completo para los equipos actuales.
+    - soporta modo con grupos (`grupo_equipos`) y sin grupos (`evento_equipos`).
+    - continua numeracion de jornadas desde la ultima jugada + 1.
+    - boton `Regenerar (preservar jugados)` (amarillo) en `partidos.html`.
+  - ambos botones se muestran solo cuando existe fixture generado en el evento.
+- Portal publico / control de jornadas visibles:
+  - nueva columna `portal_jornadas_habilitadas JSONB` en tabla `eventos` (agregada via `ALTER TABLE IF NOT EXISTS`, sin migracion separada).
+    - `null` = mostrar todas las jornadas (backward compatible).
+    - `[1,2]` = solo esas jornadas visibles en el portal.
+    - `[]` = ninguna jornada visible.
+  - filtro aplicado en `publicPortalService` al servir partidos publicos por categoria.
+  - nuevos endpoints:
+    - `GET /organizador-portal/eventos/:id/jornadas-portal`
+    - `PUT /organizador-portal/eventos/:id/jornadas-portal`
+    - `GET /organizador-portal/campeonatos/:id/eventos`
+  - UI en `organizador-portal.html`: seccion con checkboxes por jornada, botones `marcar todas`, `desmarcar todas` y `sin filtro (todas)`.
+  - validacion tecnica:
+    - `node --check backend/controllers/organizadorPortalController.js`
+    - `node --check backend/controllers/partidoController.js`
+    - `node --check backend/models/Partido.js`
+    - `node --check backend/services/publicPortalService.js`
+    - `node --check frontend/js/organizador-portal.js`
+    - `node --check frontend/js/partidos.js`
 
 ### 2026-03-16
 - Playoff / eliminatorias:
