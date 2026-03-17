@@ -1473,6 +1473,246 @@ class Partido {
     return r.rows[0];
   }
 
+  // ===============================
+  // ELIMINAR FIXTURE COMPLETO DEL EVENTO
+  // ===============================
+  static async eliminarFixtureEvento(evento_id, { force = false } = {}) {
+    const jugadosR = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM partidos WHERE evento_id = $1 AND estado = 'finalizado'`,
+      [evento_id]
+    );
+    const jugados = jugadosR.rows[0]?.total || 0;
+
+    if (jugados > 0 && !force) {
+      const err = new Error(`Hay ${jugados} partido(s) ya jugado(s). Confirma con force=true para eliminar de todas formas.`);
+      err.jugados = jugados;
+      err.statusCode = 409;
+      throw err;
+    }
+
+    const r = await pool.query(
+      `DELETE FROM partidos WHERE evento_id = $1 RETURNING id`,
+      [evento_id]
+    );
+    return { eliminados: r.rowCount, jugados_eliminados: jugados };
+  }
+
+  // ===============================
+  // REGENERAR FIXTURE PRESERVANDO PARTIDOS JUGADOS
+  // ===============================
+  static async regenerarFixturePreservandoJugados({
+    evento_id,
+    ida_y_vuelta = false,
+    duracion_min = 90,
+    descanso_min = 10,
+    programacion_manual = false,
+  }) {
+    await this.asegurarEsquemaEventoEquiposOrden();
+
+    const evento = await this.obtenerEventoPorId(evento_id);
+    if (!evento) throw new Error("Evento no encontrado");
+
+    const campeonato_id = evento.campeonato_id;
+    const totalGrupos = await this.contarGruposPorEvento(evento_id);
+    const tieneGrupos = totalGrupos > 0;
+
+    // Jornada máxima de partidos ya jugados (para continuar la numeración)
+    const maxJornadaR = await pool.query(
+      `SELECT COALESCE(MAX(jornada), 0)::int AS max_j FROM partidos WHERE evento_id = $1 AND estado = 'finalizado'`,
+      [evento_id]
+    );
+    const maxJornadaJugada = maxJornadaR.rows[0]?.max_j || 0;
+
+    // Eliminar solo partidos NO finalizados
+    await pool.query(
+      `DELETE FROM partidos WHERE evento_id = $1 AND (estado IS NULL OR estado NOT IN ('finalizado', 'no_presentaron_ambos'))`,
+      [evento_id]
+    );
+
+    const dur = Math.max(1, parseInt(duracion_min || 90));
+    const desc = Math.max(0, parseInt(descanso_min || 10));
+    const slotMin = dur + desc;
+
+    const canchasRes = await pool.query(
+      `SELECT c.nombre FROM evento_canchas ec JOIN canchas c ON c.id = ec.cancha_id WHERE ec.evento_id = $1 ORDER BY c.id`,
+      [evento_id]
+    );
+    let canchas = canchasRes.rows.map((r) => r.nombre);
+    if (!canchas.length) canchas = ["Cancha 1"];
+
+    const windows = buildWindowsFromEvento(evento);
+
+    // Cursor de fecha: si el evento tiene fecha_fin y ya pasó, usamos hoy
+    const hoy = new Date();
+    let cursorDate = new Date(hoy);
+    let cursorTimeMin = 0;
+
+    const creados = [];
+
+    if (tieneGrupos) {
+      // ---- MODO CON GRUPOS ----
+      const gruposRes = await pool.query(
+        `SELECT id, letra_grupo, nombre_grupo FROM grupos WHERE evento_id = $1 ORDER BY letra_grupo`,
+        [evento_id]
+      );
+      const grupos = gruposRes.rows;
+      if (!grupos.length) throw new Error("El evento no tiene grupos configurados.");
+
+      const jornadasPorGrupo = [];
+
+      for (const g of grupos) {
+        // Equipos del grupo
+        const eqRes = await pool.query(
+          `SELECT equipo_id FROM grupo_equipos WHERE grupo_id = $1 ORDER BY equipo_id`,
+          [g.id]
+        );
+        const equipos = eqRes.rows.map((r) => r.equipo_id);
+        if (equipos.length < 2) continue;
+
+        // Pares ya jugados en este grupo
+        const finalizadosR = await pool.query(
+          `SELECT equipo_local_id, equipo_visitante_id FROM partidos WHERE evento_id = $1 AND grupo_id = $2 AND estado IN ('finalizado', 'no_presentaron_ambos')`,
+          [evento_id, g.id]
+        );
+        const pairsJugados = new Set(
+          finalizadosR.rows.map((r) => `${r.equipo_local_id}:${r.equipo_visitante_id}`)
+        );
+
+        const ida = generarRoundRobin(equipos);
+        const todasJornadas = ida_y_vuelta
+          ? [
+              ...ida.map((j) => j.map(([a, b]) => [a, b])),
+              ...ida.map((j) => j.map(([a, b]) => [b, a])),
+            ]
+          : ida;
+
+        const jornadasPendientes = [];
+        for (const jornada of todasJornadas) {
+          const pendientes = jornada.filter(([local, visitante]) => {
+            if (pairsJugados.has(`${local}:${visitante}`)) return false;
+            if (!ida_y_vuelta && pairsJugados.has(`${visitante}:${local}`)) return false;
+            return true;
+          });
+          if (pendientes.length) jornadasPendientes.push(pendientes);
+        }
+
+        jornadasPorGrupo.push({ grupo: g, jornadas: jornadasPendientes });
+      }
+
+      if (!jornadasPorGrupo.some((g) => g.jornadas.length > 0)) return [];
+
+      const maxNuevasJornadas = Math.max(...jornadasPorGrupo.map((g) => g.jornadas.length));
+
+      if (programacion_manual) {
+        for (let jIdx = 0; jIdx < maxNuevasJornadas; jIdx++) {
+          const numJornada = maxJornadaJugada + jIdx + 1;
+          for (const item of jornadasPorGrupo) {
+            const partidosJ = item.jornadas[jIdx];
+            if (!partidosJ) continue;
+            for (const [local, visitante] of partidosJ) {
+              const p = await this.crear(campeonato_id, item.grupo.id, local, visitante, null, null, null, numJornada, evento_id);
+              creados.push(p);
+            }
+          }
+        }
+      } else {
+        for (let jIdx = 0; jIdx < maxNuevasJornadas; jIdx++) {
+          const numJornada = maxJornadaJugada + jIdx + 1;
+          const partidosJornada = [];
+          for (const item of jornadasPorGrupo) {
+            const pJ = item.jornadas[jIdx];
+            if (!pJ) continue;
+            for (const [local, visitante] of pJ) {
+              partidosJornada.push({ grupo_id: item.grupo.id, grupo_letra: item.grupo.letra_grupo || "", local, visitante });
+            }
+          }
+          partidosJornada.sort((a, b) => String(a.grupo_letra).localeCompare(String(b.grupo_letra)));
+
+          let idx = 0;
+          while (idx < partidosJornada.length) {
+            const slot = nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin);
+            for (let c = 0; c < canchas.length && idx < partidosJornada.length; c++) {
+              const p = partidosJornada[idx++];
+              const creado = await this.crear(campeonato_id, p.grupo_id, p.local, p.visitante, formatYMD(slot.dateObj), fromMinutesSQL(slot.timeMin), canchas[c], numJornada, evento_id);
+              creados.push(creado);
+            }
+            cursorDate = new Date(slot.dateObj);
+            cursorTimeMin = slot.timeMin + slotMin;
+          }
+          cursorDate.setDate(cursorDate.getDate() + 1);
+          cursorTimeMin = 0;
+        }
+      }
+    } else {
+      // ---- MODO SIN GRUPOS (todos contra todos) ----
+      const eqRes = await pool.query(
+        `SELECT ee.equipo_id FROM evento_equipos ee WHERE ee.evento_id = $1 ORDER BY COALESCE(ee.orden_sorteo, 2147483647), ee.equipo_id`,
+        [evento_id]
+      );
+      const equipos = eqRes.rows.map((r) => r.equipo_id);
+      if (equipos.length < 2) throw new Error("El evento debe tener al menos 2 equipos.");
+
+      // Pares ya jugados
+      const finalizadosR = await pool.query(
+        `SELECT equipo_local_id, equipo_visitante_id FROM partidos WHERE evento_id = $1 AND estado IN ('finalizado', 'no_presentaron_ambos')`,
+        [evento_id]
+      );
+      const pairsJugados = new Set(
+        finalizadosR.rows.map((r) => `${r.equipo_local_id}:${r.equipo_visitante_id}`)
+      );
+
+      const ida = generarRoundRobin(equipos);
+      const todasJornadas = ida_y_vuelta
+        ? [
+            ...ida.map((j) => j.map(([a, b]) => [a, b])),
+            ...ida.map((j) => j.map(([a, b]) => [b, a])),
+          ]
+        : ida;
+
+      const jornadasPendientes = [];
+      for (const jornada of todasJornadas) {
+        const pendientes = jornada.filter(([local, visitante]) => {
+          if (pairsJugados.has(`${local}:${visitante}`)) return false;
+          if (!ida_y_vuelta && pairsJugados.has(`${visitante}:${local}`)) return false;
+          return true;
+        });
+        if (pendientes.length) jornadasPendientes.push(pendientes);
+      }
+
+      if (!jornadasPendientes.length) return [];
+
+      if (programacion_manual) {
+        for (let jIdx = 0; jIdx < jornadasPendientes.length; jIdx++) {
+          const numJornada = maxJornadaJugada + jIdx + 1;
+          for (const [local, visitante] of jornadasPendientes[jIdx]) {
+            const p = await this.crear(campeonato_id, null, local, visitante, null, null, null, numJornada, evento_id);
+            creados.push(p);
+          }
+        }
+      } else {
+        for (let jIdx = 0; jIdx < jornadasPendientes.length; jIdx++) {
+          const numJornada = maxJornadaJugada + jIdx + 1;
+          const jornada = jornadasPendientes[jIdx];
+          let idx = 0;
+          while (idx < jornada.length) {
+            const slot = nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin);
+            for (let c = 0; c < canchas.length && idx < jornada.length; c++) {
+              const [local, visitante] = jornada[idx++];
+              const creado = await this.crear(campeonato_id, null, local, visitante, formatYMD(slot.dateObj), fromMinutesSQL(slot.timeMin), canchas[c], numJornada, evento_id);
+              creados.push(creado);
+            }
+            cursorDate = new Date(slot.dateObj);
+            cursorTimeMin = slot.timeMin + slotMin;
+          }
+          cursorDate.setDate(cursorDate.getDate() + 1);
+          cursorTimeMin = 0;
+        }
+      }
+    }
+
+    return creados;
+  }
+
   // Calcular puntos por partido (tradicional 3-1-0 o shootouts)
   static calcularPuntos(sistema_puntuacion, resultado_local, resultado_visitante, resultado_local_shootouts, resultado_visitante_shootouts, shootouts) {
     const rL = parseInt(resultado_local, 10) || 0;

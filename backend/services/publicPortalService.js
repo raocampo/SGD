@@ -380,11 +380,21 @@ async function obtenerPartidosPublicosPorEvento(eventoId) {
   const evento = await obtenerEventoPublico(eventoId);
   if (!evento) return null;
 
+  // Jornadas habilitadas: null = todas, array = solo las indicadas
+  const jornadasHabilitadas = Array.isArray(evento.portal_jornadas_habilitadas)
+    ? new Set(evento.portal_jornadas_habilitadas.map(Number))
+    : null;
+
   const partidos = await Partido.obtenerPorEvento(eventoId);
   const jornadasMap = new Map();
 
   for (const partido of partidos) {
     const numero = partido.jornada ?? "Sin jornada";
+    // Si hay filtro activo, saltar jornadas no habilitadas
+    if (jornadasHabilitadas !== null) {
+      const numParsed = normalizarEntero(numero);
+      if (numParsed === null || !jornadasHabilitadas.has(numParsed)) continue;
+    }
     const clave = String(numero);
     if (!jornadasMap.has(clave)) {
       jornadasMap.set(clave, {
@@ -395,11 +405,14 @@ async function obtenerPartidosPublicosPorEvento(eventoId) {
     jornadasMap.get(clave).partidos.push(partido);
   }
 
+  const jornadasFiltradas = Array.from(jornadasMap.values()).sort(ordenarJornadas);
+  const partidosFiltrados = jornadasFiltradas.flatMap((j) => j.partidos);
+
   return {
     evento: resumirEvento(evento),
-    total: partidos.length,
-    jornadas: Array.from(jornadasMap.values()).sort(ordenarJornadas),
-    partidos,
+    total: partidosFiltrados.length,
+    jornadas: jornadasFiltradas,
+    partidos: partidosFiltrados,
   };
 }
 

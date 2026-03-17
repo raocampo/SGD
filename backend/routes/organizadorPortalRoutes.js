@@ -100,4 +100,24 @@ router.delete(
   organizadorPortalController.eliminarMedia
 );
 
+// Jornadas visibles en el portal
+router.get(
+  "/campeonatos/:campeonato_id/eventos",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  organizadorPortalController.listarEventosCampeonato
+);
+router.get(
+  "/eventos/:evento_id/jornadas-portal",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  organizadorPortalController.obtenerJornadasPortal
+);
+router.put(
+  "/eventos/:evento_id/jornadas-portal",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  organizadorPortalController.guardarJornadasPortal
+);
+
 module.exports = router;

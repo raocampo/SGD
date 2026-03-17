@@ -6422,3 +6422,66 @@ body.page-finanzas {
 .page-organizador-portal .welcome-card p {
   max-width: 75ch;
 }
+
+
+/* ========================
+   Jornadas Portal (organizador)
+   ======================== */
+.jornadas-portal-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0.5rem;
+}
+
+.jornada-portal-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #f8fafc;
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+  min-width: 130px;
+}
+
+.jornada-portal-item:hover {
+  border-color: #6366f1;
+  background: #f0f0ff;
+}
+
+.jornada-portal-item--activa {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.jornada-portal-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #22c55e;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.jornada-portal-num {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.93rem;
+}
+
+.jornada-portal-estado {
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #e2e8f0;
+  color: #64748b;
+  margin-left: auto;
+}
+
+.jornada-portal-item--activa .jornada-portal-estado {
+  background: #bbf7d0;
+  color: #15803d;
+}

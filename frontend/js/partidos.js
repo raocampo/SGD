@@ -2045,6 +2045,82 @@ function formatearFecha(fechaISO) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+async function eliminarFixtureEvento() {
+  if (!eventoSeleccionado) {
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return;
+  }
+
+  // Primera confirmación
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Eliminar fixture",
+    mensaje: "Se eliminarán TODOS los partidos de la categoría seleccionada. Esta acción no se puede deshacer. ¿Continuar?",
+    tipo: "danger",
+    textoConfirmar: "Eliminar fixture",
+    claseConfirmar: "btn-danger",
+  });
+  if (!ok) return;
+
+  try {
+    await ApiClient.delete(`/partidos/evento/${eventoSeleccionado}/fixture`);
+    mostrarNotificacion("Fixture eliminado correctamente.", "success");
+    await cargarPartidos();
+  } catch (error) {
+    // Si hay partidos jugados, preguntar si forzar
+    if (error?.message && error.message.includes("jugado")) {
+      const match = error.message.match(/Hay (\d+)/);
+      const jugados = match ? match[1] : "algunos";
+      const forzar = await window.mostrarConfirmacion({
+        titulo: "Hay partidos ya jugados",
+        mensaje: `Hay ${jugados} partido(s) con resultado registrado. ¿Deseas eliminar el fixture completo incluyendo esos resultados?`,
+        tipo: "danger",
+        textoConfirmar: "Sí, eliminar todo",
+        claseConfirmar: "btn-danger",
+      });
+      if (!forzar) return;
+      try {
+        await ApiClient.delete(`/partidos/evento/${eventoSeleccionado}/fixture?force=true`);
+        mostrarNotificacion("Fixture eliminado (incluyendo resultados).", "success");
+        await cargarPartidos();
+      } catch (err2) {
+        mostrarNotificacion(err2.message || "Error al eliminar el fixture.", "error");
+      }
+    } else {
+      mostrarNotificacion(error.message || "Error al eliminar el fixture.", "error");
+    }
+  }
+}
+
+async function regenerarFixturePreservando() {
+  if (!eventoSeleccionado) {
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return;
+  }
+
+  const idaYVuelta = document.getElementById("chk-ida-vuelta")?.checked === true;
+  const programacionManual = document.getElementById("chk-programacion-manual")?.checked === true;
+
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Regenerar fixture (preservar jugados)",
+    mensaje: "Se eliminarán los partidos pendientes y se generarán los enfrentamientos faltantes para todos los equipos actuales (incluyendo nuevos). Los partidos ya jugados se conservan. ¿Continuar?",
+    tipo: "warning",
+    textoConfirmar: "Regenerar",
+    claseConfirmar: "btn-warning",
+  });
+  if (!ok) return;
+
+  try {
+    const resp = await ApiClient.post(`/partidos/evento/${eventoSeleccionado}/regenerar-preservando`, {
+      ida_y_vuelta: idaYVuelta,
+      programacion_manual: programacionManual,
+    });
+    mostrarNotificacion(resp?.mensaje || "Fixture regenerado correctamente.", "success");
+    await cargarPartidos();
+  } catch (error) {
+    mostrarNotificacion(error.message || "Error al regenerar el fixture.", "error");
+  }
+}
+
 window.cargarPartidos = cargarPartidos;
 window.cambiarPestanaPartidos = cambiarPestanaPartidos;
 window.cambiarVistaFixture = cambiarVistaFixture;
@@ -2061,3 +2137,5 @@ window.abrirPlanillaPartido = abrirPlanillaPartido;
 window.cambiarVistaPartidos = cambiarVistaPartidos;
 window.editarResultadoEliminatoria = editarResultadoEliminatoria;
 window.abrirVistaEliminatoria = abrirVistaEliminatoria;
+window.eliminarFixtureEvento = eliminarFixtureEvento;
+window.regenerarFixturePreservando = regenerarFixturePreservando;

@@ -26,6 +26,22 @@ router.post(
   partidoController.generarFixtureEventoTodos
 );
 
+// Eliminar fixture completo de un evento
+router.delete(
+  "/evento/:evento_id/fixture",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  partidoController.eliminarFixtureEvento
+);
+
+// Regenerar fixture preservando partidos ya jugados
+router.post(
+  "/evento/:evento_id/regenerar-preservando",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  partidoController.regenerarFixturePreservando
+);
+
 // ===============================
 // 📋 CONSULTAS (LECTURA)
 // ===============================

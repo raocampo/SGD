@@ -351,6 +351,128 @@ const organizadorPortalController = {
       });
     }
   },
+
+  // ==========================================
+  // 📅 JORNADAS VISIBLES EN EL PORTAL PÚBLICO
+  // ==========================================
+
+  async listarEventosCampeonato(req, res) {
+    try {
+      const organizador = await obtenerOrganizadorObjetivo(req);
+      const campeonatoId = normalizarId(req.params.campeonato_id);
+      if (!campeonatoId) return res.status(400).json({ error: "campeonato_id inválido" });
+
+      const campeonato = await validarCampeonatoOrganizador(organizador.id, campeonatoId);
+      if (!campeonato) return res.status(404).json({ error: "Campeonato no encontrado o no autorizado" });
+
+      const result = await pool.query(
+        `SELECT id, nombre FROM eventos WHERE campeonato_id = $1 ORDER BY COALESCE(numero_campeonato, 999999), id`,
+        [campeonatoId]
+      );
+      return res.json({ ok: true, campeonato_id: campeonatoId, eventos: result.rows });
+    } catch (error) {
+      console.error("Error listarEventosCampeonato:", error);
+      return res.status(error.status || 500).json({ error: error.message });
+    }
+  },
+
+  async obtenerJornadasPortal(req, res) {
+    try {
+      const organizador = await obtenerOrganizadorObjetivo(req);
+      const eventoId = normalizarId(req.params.evento_id);
+      if (!eventoId) return res.status(400).json({ error: "evento_id inválido" });
+
+      // Asegurar columna
+      await pool.query(
+        `ALTER TABLE eventos ADD COLUMN IF NOT EXISTS portal_jornadas_habilitadas JSONB DEFAULT NULL`
+      );
+
+      // Validar que el evento pertenece a un campeonato del organizador
+      const eventoR = await pool.query(
+        `SELECT e.id, e.nombre, e.portal_jornadas_habilitadas
+         FROM eventos e
+         JOIN campeonatos c ON c.id = e.campeonato_id
+         WHERE e.id = $1 AND c.creador_usuario_id = $2
+         LIMIT 1`,
+        [eventoId, organizador.id]
+      );
+      if (!eventoR.rows.length) return res.status(404).json({ error: "Evento no encontrado o no autorizado" });
+
+      const evento = eventoR.rows[0];
+
+      // Jornadas disponibles desde partidos
+      const jornadasR = await pool.query(
+        `SELECT DISTINCT jornada FROM partidos WHERE evento_id = $1 AND jornada IS NOT NULL ORDER BY jornada`,
+        [eventoId]
+      );
+      const jornadasDisponibles = jornadasR.rows.map((r) => Number(r.jornada));
+
+      const habilitadas = Array.isArray(evento.portal_jornadas_habilitadas)
+        ? evento.portal_jornadas_habilitadas.map(Number)
+        : null;
+
+      return res.json({
+        ok: true,
+        evento_id: eventoId,
+        evento_nombre: evento.nombre,
+        jornadas_disponibles: jornadasDisponibles,
+        jornadas_habilitadas: habilitadas,
+      });
+    } catch (error) {
+      console.error("Error obtenerJornadasPortal:", error);
+      return res.status(error.status || 500).json({ error: error.message });
+    }
+  },
+
+  async guardarJornadasPortal(req, res) {
+    try {
+      const organizador = await obtenerOrganizadorObjetivo(req);
+      const eventoId = normalizarId(req.params.evento_id);
+      if (!eventoId) return res.status(400).json({ error: "evento_id inválido" });
+
+      // Asegurar columna
+      await pool.query(
+        `ALTER TABLE eventos ADD COLUMN IF NOT EXISTS portal_jornadas_habilitadas JSONB DEFAULT NULL`
+      );
+
+      // Validar evento del organizador
+      const eventoR = await pool.query(
+        `SELECT e.id FROM eventos e
+         JOIN campeonatos c ON c.id = e.campeonato_id
+         WHERE e.id = $1 AND c.creador_usuario_id = $2 LIMIT 1`,
+        [eventoId, organizador.id]
+      );
+      if (!eventoR.rows.length) return res.status(404).json({ error: "Evento no encontrado o no autorizado" });
+
+      const { jornadas_habilitadas } = req.body || {};
+
+      // null = mostrar todas; [] = ninguna; [1,2] = específicas
+      let valorGuardar = null;
+      if (Array.isArray(jornadas_habilitadas)) {
+        valorGuardar = jornadas_habilitadas.map(Number).filter((n) => Number.isFinite(n));
+      }
+
+      await pool.query(
+        `UPDATE eventos SET portal_jornadas_habilitadas = $1::jsonb WHERE id = $2`,
+        [valorGuardar === null ? null : JSON.stringify(valorGuardar), eventoId]
+      );
+
+      return res.json({
+        ok: true,
+        evento_id: eventoId,
+        jornadas_habilitadas: valorGuardar,
+        mensaje:
+          valorGuardar === null
+            ? "Se mostrarán todas las jornadas en el portal."
+            : valorGuardar.length === 0
+            ? "No se mostrará ninguna jornada en el portal."
+            : `Se habilitaron ${valorGuardar.length} jornada(s) para el portal.`,
+      });
+    } catch (error) {
+      console.error("Error guardarJornadasPortal:", error);
+      return res.status(error.status || 500).json({ error: error.message });
+    }
+  },
 };
 
 module.exports = organizadorPortalController;

@@ -5,6 +5,11 @@
     campeonatos: [],
     auspiciantes: [],
     media: [],
+    jornadasEvento: {
+      eventoId: null,
+      jornadasDisponibles: [],
+      jornadasHabilitadas: null, // null = todas; array = específicas
+    },
   };
 
   function backendBase() {
@@ -209,6 +214,154 @@
     `;
   }
 
+  function poblarCampeonatosJornadas() {
+    const select = document.getElementById("op-jornadas-campeonato");
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '<option value="">— Selecciona un campeonato —</option>';
+    state.campeonatos.forEach((c) => {
+      const opt = document.createElement("option");
+      opt.value = String(c.id);
+      opt.textContent = `${c.nombre} (${c.estado || "borrador"})`;
+      select.appendChild(opt);
+    });
+    if (current) select.value = current;
+  }
+
+  function renderJornadasLista() {
+    const panel = document.getElementById("op-jornadas-panel");
+    const empty = document.getElementById("op-jornadas-empty");
+    const lista = document.getElementById("op-jornadas-lista");
+    const hint = document.getElementById("op-jornadas-hint");
+    if (!panel || !empty || !lista) return;
+
+    const { jornadasDisponibles, jornadasHabilitadas } = state.jornadasEvento;
+
+    if (!jornadasDisponibles.length) {
+      panel.style.display = "none";
+      empty.style.display = "";
+      return;
+    }
+
+    empty.style.display = "none";
+    panel.style.display = "";
+
+    const habSet = jornadasHabilitadas === null ? null : new Set(jornadasHabilitadas.map(Number));
+
+    if (hint) {
+      hint.textContent = jornadasHabilitadas === null
+        ? "Sin filtro activo: se muestran todas las jornadas en el portal."
+        : jornadasHabilitadas.length === 0
+        ? "Ninguna jornada visible en el portal."
+        : `Jornadas habilitadas: ${jornadasHabilitadas.sort((a, b) => a - b).join(", ")}`;
+    }
+
+    lista.innerHTML = jornadasDisponibles
+      .map((j) => {
+        const checked = habSet === null ? false : habSet.has(Number(j));
+        return `
+          <label class="jornada-portal-item${checked ? " jornada-portal-item--activa" : ""}">
+            <input type="checkbox" class="op-jornada-chk" value="${j}" ${checked ? "checked" : ""} />
+            <span class="jornada-portal-num">Jornada ${j}</span>
+            <span class="jornada-portal-estado">${checked ? "Visible" : "Oculta"}</span>
+          </label>
+        `;
+      })
+      .join("");
+
+    // Update labels on change
+    lista.querySelectorAll(".op-jornada-chk").forEach((chk) => {
+      chk.addEventListener("change", () => {
+        const lbl = chk.closest(".jornada-portal-item");
+        const estado = lbl.querySelector(".jornada-portal-estado");
+        if (chk.checked) {
+          lbl.classList.add("jornada-portal-item--activa");
+          if (estado) estado.textContent = "Visible";
+        } else {
+          lbl.classList.remove("jornada-portal-item--activa");
+          if (estado) estado.textContent = "Oculta";
+        }
+      });
+    });
+  }
+
+  async function cargarJornadasEvento(eventoId) {
+    const panel = document.getElementById("op-jornadas-panel");
+    const empty = document.getElementById("op-jornadas-empty");
+    const lista = document.getElementById("op-jornadas-lista");
+    if (panel) panel.style.display = "none";
+    if (empty) empty.style.display = "none";
+    if (lista) lista.innerHTML = '<p style="color:#94a3b8;">Cargando jornadas...</p>';
+    if (empty) empty.style.display = "";
+
+    if (!eventoId) {
+      state.jornadasEvento = { eventoId: null, jornadasDisponibles: [], jornadasHabilitadas: null };
+      return;
+    }
+
+    try {
+      const data = await window.OrganizadorPortalAPI.obtenerJornadasPortal(eventoId);
+      state.jornadasEvento = {
+        eventoId: Number(eventoId),
+        jornadasDisponibles: Array.isArray(data.jornadas_disponibles) ? data.jornadas_disponibles.map(Number) : [],
+        jornadasHabilitadas: Array.isArray(data.jornadas_habilitadas) ? data.jornadas_habilitadas.map(Number) : null,
+      };
+      renderJornadasLista();
+    } catch (error) {
+      console.error("Error cargando jornadas portal:", error);
+      window.mostrarNotificacion(error.message || "No se pudieron cargar las jornadas", "error");
+    }
+  }
+
+  async function guardarJornadasPortal() {
+    const { eventoId, jornadasHabilitadas } = state.jornadasEvento;
+    if (!eventoId) {
+      window.mostrarNotificacion("Selecciona una categoría primero.", "warning");
+      return;
+    }
+
+    // Leer estado actual de los checkboxes
+    const checkboxes = document.querySelectorAll(".op-jornada-chk");
+    // Si no hay checkboxes visibles, significa "sin filtro" (null)
+    if (!checkboxes.length) {
+      window.mostrarNotificacion("No hay jornadas para configurar.", "warning");
+      return;
+    }
+
+    const seleccionadas = [];
+    checkboxes.forEach((chk) => {
+      if (chk.checked) seleccionadas.push(Number(chk.value));
+    });
+
+    try {
+      const resp = await window.OrganizadorPortalAPI.guardarJornadasPortal(eventoId, seleccionadas);
+      state.jornadasEvento.jornadasHabilitadas = Array.isArray(resp.jornadas_habilitadas)
+        ? resp.jornadas_habilitadas
+        : null;
+      renderJornadasLista();
+      window.mostrarNotificacion(resp.mensaje || "Configuración guardada.", "success");
+    } catch (error) {
+      console.error("Error guardando jornadas portal:", error);
+      window.mostrarNotificacion(error.message || "No se pudo guardar la configuración.", "error");
+    }
+  }
+
+  async function quitarFiltroJornadas() {
+    const { eventoId } = state.jornadasEvento;
+    if (!eventoId) {
+      window.mostrarNotificacion("Selecciona una categoría primero.", "warning");
+      return;
+    }
+    try {
+      const resp = await window.OrganizadorPortalAPI.guardarJornadasPortal(eventoId, null);
+      state.jornadasEvento.jornadasHabilitadas = null;
+      renderJornadasLista();
+      window.mostrarNotificacion(resp.mensaje || "Filtro eliminado: se muestran todas.", "success");
+    } catch (error) {
+      window.mostrarNotificacion(error.message || "No se pudo quitar el filtro.", "error");
+    }
+  }
+
   async function cargarContexto() {
     const payload = await window.OrganizadorPortalAPI.obtenerContexto();
     state.organizador = payload.organizador || null;
@@ -218,6 +371,7 @@
     state.media = Array.isArray(payload.media) ? payload.media : [];
     poblarConfig();
     poblarCampeonatos();
+    poblarCampeonatosJornadas();
     renderResumen();
     renderAuspiciantes();
     renderMedia();
@@ -408,6 +562,74 @@
     document.getElementById("op-media-cancelar")?.addEventListener("click", resetMediaForm);
     document.getElementById("op-media-tipo")?.addEventListener("change", toggleMediaCampeonato);
     document.getElementById("op-copy-landing")?.addEventListener("click", copiarLanding);
+
+    // Jornadas portal
+    document.getElementById("op-jornadas-campeonato")?.addEventListener("change", async (e) => {
+      const campeonatoId = e.target.value;
+      const selectEvento = document.getElementById("op-jornadas-evento");
+      if (!selectEvento) return;
+      selectEvento.innerHTML = '<option value="">— Cargando... —</option>';
+      selectEvento.disabled = true;
+      if (!campeonatoId) {
+        selectEvento.innerHTML = '<option value="">— Selecciona una categoría —</option>';
+        state.jornadasEvento = { eventoId: null, jornadasDisponibles: [], jornadasHabilitadas: null };
+        const panel = document.getElementById("op-jornadas-panel");
+        const empty = document.getElementById("op-jornadas-empty");
+        if (panel) panel.style.display = "none";
+        if (empty) empty.style.display = "none";
+        return;
+      }
+      try {
+        const data = await window.OrganizadorPortalAPI.listarEventosCampeonato(campeonatoId);
+        selectEvento.innerHTML = '<option value="">— Selecciona una categoría —</option>';
+        (Array.isArray(data.eventos) ? data.eventos : []).forEach((ev) => {
+          const opt = document.createElement("option");
+          opt.value = String(ev.id);
+          opt.textContent = ev.nombre;
+          selectEvento.appendChild(opt);
+        });
+        selectEvento.disabled = false;
+      } catch (error) {
+        selectEvento.innerHTML = '<option value="">— Error cargando categorías —</option>';
+        window.mostrarNotificacion("No se pudieron cargar las categorías.", "error");
+      }
+    });
+
+    document.getElementById("op-jornadas-evento")?.addEventListener("change", async (e) => {
+      await cargarJornadasEvento(e.target.value);
+    });
+
+    document.getElementById("op-jornadas-guardar")?.addEventListener("click", async () => {
+      try {
+        await guardarJornadasPortal();
+      } catch (error) {
+        window.mostrarNotificacion(error.message || "Error al guardar.", "error");
+      }
+    });
+
+    document.getElementById("op-jornadas-marcar-todas")?.addEventListener("click", () => {
+      document.querySelectorAll(".op-jornada-chk").forEach((chk) => {
+        chk.checked = true;
+        const lbl = chk.closest(".jornada-portal-item");
+        const estado = lbl?.querySelector(".jornada-portal-estado");
+        lbl?.classList.add("jornada-portal-item--activa");
+        if (estado) estado.textContent = "Visible";
+      });
+    });
+
+    document.getElementById("op-jornadas-desmarcar-todas")?.addEventListener("click", () => {
+      document.querySelectorAll(".op-jornada-chk").forEach((chk) => {
+        chk.checked = false;
+        const lbl = chk.closest(".jornada-portal-item");
+        const estado = lbl?.querySelector(".jornada-portal-estado");
+        lbl?.classList.remove("jornada-portal-item--activa");
+        if (estado) estado.textContent = "Oculta";
+      });
+    });
+
+    document.getElementById("op-jornadas-mostrar-todas")?.addEventListener("click", async () => {
+      await quitarFiltroJornadas();
+    });
 
     document.addEventListener("click", async (event) => {
       const auspicianteEdit = event.target.closest("[data-auspiciante-edit]");

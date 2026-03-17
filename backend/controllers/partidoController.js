@@ -89,6 +89,73 @@ exports.generarFixtureEventoTodos = async (req, res) => {
 };
 
 // ===============================
+// 🗑️ ELIMINAR FIXTURE COMPLETO DEL EVENTO
+// ===============================
+exports.eliminarFixtureEvento = async (req, res) => {
+  try {
+    const evento_id = parseInt(req.params.evento_id, 10);
+    if (!Number.isFinite(evento_id)) {
+      return res.status(400).json({ error: "evento_id inválido" });
+    }
+
+    const force = req.query.force === "true" || req.body?.force === true;
+
+    const resultado = await Partido.eliminarFixtureEvento(evento_id, { force });
+    return res.json({
+      ok: true,
+      mensaje: `Fixture eliminado: ${resultado.eliminados} partido(s) borrados.`,
+      ...resultado,
+    });
+  } catch (error) {
+    console.error("Error eliminando fixture evento:", error);
+    const status = Number.isFinite(Number(error?.statusCode)) ? Number(error.statusCode) : 500;
+    return res.status(status).json({
+      error: error.message,
+      jugados: error.jugados ?? undefined,
+    });
+  }
+};
+
+// ===============================
+// 🔄 REGENERAR FIXTURE PRESERVANDO PARTIDOS JUGADOS
+// ===============================
+exports.regenerarFixturePreservando = async (req, res) => {
+  try {
+    const evento_id = parseInt(req.params.evento_id, 10);
+    if (!Number.isFinite(evento_id)) {
+      return res.status(400).json({ error: "evento_id inválido" });
+    }
+
+    const {
+      ida_y_vuelta = false,
+      duracion_min = 90,
+      descanso_min = 10,
+      programacion_manual = false,
+    } = req.body || {};
+
+    const partidos = await Partido.regenerarFixturePreservandoJugados({
+      evento_id,
+      ida_y_vuelta: ida_y_vuelta === true,
+      duracion_min: parseInt(duracion_min, 10) || 90,
+      descanso_min: parseInt(descanso_min, 10) || 10,
+      programacion_manual: programacion_manual === true,
+    });
+
+    return res.json({
+      ok: true,
+      mensaje: partidos.length
+        ? `Fixture regenerado: ${partidos.length} partido(s) nuevo(s) creado(s).`
+        : "No hay partidos pendientes que regenerar. Todos los enfrentamientos posibles ya fueron jugados.",
+      total: partidos.length,
+      partidos,
+    });
+  } catch (error) {
+    console.error("Error regenerando fixture preservando:", error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// ===============================
 // 📋 CONSULTAS (LECTURA)
 // ===============================
 exports.obtenerPartidosPorEvento = async (req, res) => {

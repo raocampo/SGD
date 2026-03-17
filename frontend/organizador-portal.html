@@ -160,6 +160,56 @@
         </div>
 
         <div class="config-card">
+          <h3><i class="fas fa-calendar-check"></i> Jornadas visibles en el portal</h3>
+          <p class="form-hint">Selecciona qué jornadas se muestran públicamente. Si no activas ningún filtro, se muestran todas.</p>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="op-jornadas-campeonato">Campeonato</label>
+              <select id="op-jornadas-campeonato">
+                <option value="">— Selecciona un campeonato —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="op-jornadas-evento">Categoría</label>
+              <select id="op-jornadas-evento" disabled>
+                <option value="">— Selecciona una categoría —</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="op-jornadas-panel" style="display:none;">
+            <div class="form-hint" id="op-jornadas-hint" style="margin-bottom:0.75rem;"></div>
+
+            <div style="display:flex; gap:8px; margin-bottom:0.75rem; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="op-jornadas-marcar-todas">
+                <i class="fas fa-check-double"></i> Marcar todas
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="op-jornadas-desmarcar-todas">
+                <i class="fas fa-xmark"></i> Desmarcar todas
+              </button>
+              <button type="button" class="btn btn-warning btn-sm" id="op-jornadas-mostrar-todas">
+                <i class="fas fa-globe"></i> Sin filtro (mostrar todas)
+              </button>
+            </div>
+
+            <div id="op-jornadas-lista" class="jornadas-portal-lista"></div>
+
+            <div class="actions" style="margin-top:1rem;">
+              <button type="button" class="btn btn-success" id="op-jornadas-guardar">
+                <i class="fas fa-floppy-disk"></i> Guardar configuración de jornadas
+              </button>
+            </div>
+          </div>
+
+          <div id="op-jornadas-empty" style="display:none;">
+            <p class="empty-state" style="color:#94a3b8;font-size:0.92rem;">
+              <i class="fas fa-futbol"></i> Esta categoría no tiene partidos con jornada asignada.
+            </p>
+          </div>
+        </div>
+
+        <div class="config-card">
           <h3><i class="fas fa-images"></i> Media pública de landing y campeonatos</h3>
           <form id="op-media-form">
             <input id="op-media-id" type="hidden" />

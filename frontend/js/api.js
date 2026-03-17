@@ -275,6 +275,17 @@
     eliminarMedia(id) {
       return window.ApiClient.delete(`/organizador-portal/media/${id}`);
     },
+    listarEventosCampeonato(campeonatoId) {
+      return window.ApiClient.get(`/organizador-portal/campeonatos/${campeonatoId}/eventos`);
+    },
+    obtenerJornadasPortal(eventoId) {
+      return window.ApiClient.get(`/organizador-portal/eventos/${eventoId}/jornadas-portal`);
+    },
+    guardarJornadasPortal(eventoId, jornadasHabilitadas) {
+      return window.ApiClient.put(`/organizador-portal/eventos/${eventoId}/jornadas-portal`, {
+        jornadas_habilitadas: jornadasHabilitadas,
+      });
+    },
   };
 
   window.ContactoAPI = window.ContactoAPI || {
