@@ -111,10 +111,25 @@ function limpiarCodigoTorneo(texto) {
     .trim();
 }
 
+// Parsea una fecha evitando el desfase UTC: "YYYY-MM-DD" se trata como hora local,
+// no como UTC medianoche (que en UTC-5 retrocedería 1 día al formatearse).
+function parseFechaLocalPortal(valor) {
+  if (!valor) return null;
+  const s = String(valor).trim();
+  // Solo fecha: YYYY-MM-DD → construir como local, no UTC
+  const soloFecha = /^\d{4}-\d{2}-\d{2}$/.test(s);
+  if (soloFecha) {
+    const [anio, mes, dia] = s.split("-").map(Number);
+    return new Date(anio, mes - 1, dia);
+  }
+  // Fecha con hora (ISO o timestamp): new Date() es correcto
+  return new Date(s);
+}
+
 function formatearFechaPortal(fecha) {
   if (!fecha) return "Por definir";
-  const d = new Date(fecha);
-  if (Number.isNaN(d.getTime())) return String(fecha);
+  const d = parseFechaLocalPortal(fecha);
+  if (!d || Number.isNaN(d.getTime())) return String(fecha);
   return d.toLocaleDateString("es-EC", {
     year: "numeric",
     month: "2-digit",
@@ -985,8 +1000,8 @@ function extraerFechasJornada(partidos = []) {
   const fechas = partidos
     .map((p) => p.fecha_partido || p.fecha || p.fecha_programada)
     .filter(Boolean)
-    .map((f) => new Date(f))
-    .filter((d) => !Number.isNaN(d.getTime()))
+    .map((f) => parseFechaLocalPortal(f))
+    .filter((d) => d && !Number.isNaN(d.getTime()))
     .sort((a, b) => a - b);
   return fechas;
 }
