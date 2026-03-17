@@ -1694,29 +1694,42 @@ function renderBracket() {
           const visitaLogo = normalizarLogoUrl(c.equipo_visitante_logo || null);
           const rl = Number.isFinite(Number(c.resultado_local)) ? Number(c.resultado_local) : "-";
           const rv = Number.isFinite(Number(c.resultado_visitante)) ? Number(c.resultado_visitante) : "-";
-          const ganador = c.ganador_nombre || "Pendiente";
+          const ganadorId = c.ganador_id ? Number(c.resultado_local >= c.resultado_visitante ? "local" : "visitante") : null;
+          const localEsGanador = c.ganador_id && Number(c.equipo_local_id) === Number(c.ganador_id);
+          const visitaEsGanador = c.ganador_id && Number(c.equipo_visitante_id) === Number(c.ganador_id);
+          const finalizado = String(c.estado || "").toLowerCase() === "finalizado";
           const seedL = c.seed_local_ref ? `<small>${escapeHtml(c.seed_local_ref)}</small>` : "";
           const seedV = c.seed_visitante_ref ? `<small>${escapeHtml(c.seed_visitante_ref)}</small>` : "";
+          const estadoBadge = finalizado
+            ? '<span class="eli-match-badge eli-badge-finalizado">Finalizado</span>'
+            : '<span class="eli-match-badge eli-badge-pendiente">Pendiente</span>';
           return `
-            <article class="eli-match-card">
+            <article class="eli-match-card${finalizado ? " eli-match-finalizado" : ""}">
               <div class="eli-match-head">
                 <strong>${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}</strong>
+                ${estadoBadge}
               </div>
-              <div class="eli-team-row">
+              <div class="eli-team-row${localEsGanador ? " eli-team-ganador" : ""}">
                 <span class="eli-team-meta">
                   ${renderEquipoLogo(localLogo, local, "eli-team-logo")}
                   <span>${seedL} ${escapeHtml(local)}</span>
                 </span>
-                <span class="eli-score">${escapeHtml(rl)}</span>
+                <span class="eli-score${localEsGanador ? " eli-score-ganador" : ""}">${escapeHtml(String(rl))}</span>
               </div>
-              <div class="eli-team-row">
+              <div class="eli-team-row${visitaEsGanador ? " eli-team-ganador" : ""}">
                 <span class="eli-team-meta">
                   ${renderEquipoLogo(visitaLogo, visita, "eli-team-logo")}
                   <span>${seedV} ${escapeHtml(visita)}</span>
                 </span>
-                <span class="eli-score">${escapeHtml(rv)}</span>
+                <span class="eli-score${visitaEsGanador ? " eli-score-ganador" : ""}">${escapeHtml(String(rv))}</span>
               </div>
-              <div class="eli-winner">Ganador: ${escapeHtml(ganador)}</div>
+              ${
+                !finalizado
+                  ? '<div class="eli-winner eli-winner-pendiente"><i class="fas fa-clock"></i> Partido pendiente</div>'
+                  : c.ganador_nombre
+                    ? `<div class="eli-winner eli-winner-ok"><i class="fas fa-trophy"></i> ${escapeHtml(c.ganador_nombre)}</div>`
+                    : ""
+              }
               ${
                 eliminatoriaState.esAdminLike
                   ? `<button class="btn btn-warning" onclick="registrarResultadoEliminatoria(${Number(

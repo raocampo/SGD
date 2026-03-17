@@ -316,14 +316,15 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - ejecutar la migracion formal `038_jugadores_foto_carnet_zoom.sql` sobre la BD de Render si se requiere dejarla sincronizada sin depender del endurecimiento de esquema por uso.
 
 11. Migraciones recientes:
-- `037_eventos_clasificacion_tabla_acumulada.sql`
-- `038_jugadores_foto_carnet_zoom.sql`
+- `037_eventos_clasificacion_tabla_acumulada.sql` — columna `clasificacion_tabla_acumulada` manejada via `ALTER TABLE IF NOT EXISTS` inline en `eventoController.js`; aplicada automaticamente en Render al primer uso.
+- `038_jugadores_foto_carnet_zoom.sql` — columna `foto_carnet_zoom` manejada via `ALTER TABLE IF NOT EXISTS` inline en `Jugador.js`; aplicada automaticamente en Render al primer uso.
 - `043_evento_playoff_templates_y_tercer_puesto.sql`
 - `044_partidos_eliminatoria_fuente_ganador_perdedor.sql`
 - Estado:
-  - aplicadas y verificadas en BD local,
-  - versionadas en repo para despliegue,
-  - `043` y `044` ya aplicadas formalmente tambien en PostgreSQL de Render.
+  - `037` y `038`: aplicadas en BD local y en Render (via inline ALTER TABLE IF NOT EXISTS; no requieren ejecucion manual).
+  - `043` y `044`: aplicadas formalmente en BD local y en PostgreSQL de Render.
+  - `045` y `046`: aplicadas formalmente en BD local y en Render.
+  - `portal_jornadas_habilitadas` (sin numero de migracion): inline en `organizadorPortalController.js`; aplicada automaticamente en Render.
 
 12. Tablas manuales:
 - La correccion manual de posiciones ya recalcula automaticamente:

@@ -1339,6 +1339,21 @@
         '<i class="fas fa-rss"></i> Noticias',
         window.location.pathname.endsWith("noticias.html")
       );
+      ensureNavLink(
+        "galeria-admin.html",
+        '<i class="fas fa-images"></i> Galería',
+        window.location.pathname.endsWith("galeria-admin.html")
+      );
+      ensureNavLink(
+        "contenido-portal.html",
+        '<i class="fas fa-id-card"></i> Contenido',
+        window.location.pathname.endsWith("contenido-portal.html")
+      );
+      ensureNavLink(
+        "contacto-admin.html",
+        '<i class="fas fa-envelope-open-text"></i> Contacto',
+        window.location.pathname.endsWith("contacto-admin.html")
+      );
     } else if (esTecnicoOdirigente(user)) {
       tecnicoRestricted.forEach((href) => {
         const link = sidebarNav.querySelector(`a[href="${href}"]`);
