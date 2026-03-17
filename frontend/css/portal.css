@@ -917,6 +917,9 @@ body.ltc-landing {
 .portal-jornadas-wrap {
   display: flex;
   flex-direction: column;
+  max-width: 680px;
+  margin: 0 auto;
+  width: 100%;
   gap: 0.85rem;
 }
 
@@ -1052,18 +1055,64 @@ body.ltc-landing {
   border-bottom: none;
 }
 
+/* columna de cada equipo: logo centrado + nombre debajo */
+.equipo-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.equipo-local { align-items: flex-end; text-align: right; }
+.equipo-visitante { align-items: flex-start; text-align: left; }
+
+/* logo del equipo en la card de partido */
+.portal-match-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #f0f5fb;
+  border: 1px solid #dae4f2;
+  padding: 2px;
+}
+
+.portal-match-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #e2eaf5;
+  border: 1px solid #c5d6ec;
+  color: #3d6b9e;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
 .equipo-nombre {
   text-align: center;
   font-weight: 600;
   color: #27486f;
+  font-size: 0.82rem;
+}
+
+.marcador-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .marcador {
   font-weight: 700;
   border-radius: 8px;
   background: #eef4fd;
-  padding: 0.14rem 0.42rem;
+  padding: 0.14rem 0.52rem;
   color: #102f56;
+  font-size: 1.05rem;
+  min-width: 52px;
+  text-align: center;
 }
 
 .tabla-posicion {

@@ -967,6 +967,14 @@ function obtenerEstadoPartidoPortal(partido) {
   return mapa[estado] || (estado ? estado.replace(/_/g, " ") : "Programado");
 }
 
+function renderLogoEquipoPortal(logoUrl, nombre) {
+  if (logoUrl) {
+    return `<img src="${escPortal(logoUrl)}" alt="${escPortal(nombre || "")}" class="portal-match-logo" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'portal-match-logo-placeholder',textContent:'${escPortal((nombre || "?")[0].toUpperCase())}'}))">`;
+  }
+  const inicial = (nombre || "?")[0].toUpperCase();
+  return `<span class="portal-match-logo-placeholder">${escPortal(inicial)}</span>`;
+}
+
 function renderPartidoJornadaPortal(partido = {}) {
   const fecha = formatearFechaPortal(partido.fecha_partido || partido.fecha || partido.fecha_programada);
   const hora = formatearHoraPortal(partido.hora_partido || partido.hora || partido.hora_programada);
@@ -988,9 +996,17 @@ function renderPartidoJornadaPortal(partido = {}) {
         ${meta ? `<span class="portal-jornada-match-meta">${escPortal(meta)}</span>` : ""}
       </div>
       <div class="partido-publico">
-        <div class="equipo-nombre">${escPortal(partido.equipo_local_nombre || "-")}</div>
-        <div class="marcador">${escPortal(marcador)}</div>
-        <div class="equipo-nombre">${escPortal(partido.equipo_visitante_nombre || "-")}</div>
+        <div class="equipo-col equipo-local">
+          ${renderLogoEquipoPortal(partido.equipo_local_logo_url, partido.equipo_local_nombre)}
+          <div class="equipo-nombre">${escPortal(partido.equipo_local_nombre || "-")}</div>
+        </div>
+        <div class="marcador-col">
+          <div class="marcador">${escPortal(marcador)}</div>
+        </div>
+        <div class="equipo-col equipo-visitante">
+          ${renderLogoEquipoPortal(partido.equipo_visitante_logo_url, partido.equipo_visitante_nombre)}
+          <div class="equipo-nombre">${escPortal(partido.equipo_visitante_nombre || "-")}</div>
+        </div>
       </div>
     </article>
   `;
@@ -1006,6 +1022,14 @@ function extraerFechasJornada(partidos = []) {
   return fechas;
 }
 
+function esJornadaFinalizada(partidos = []) {
+  if (!partidos.length) return false;
+  return partidos.every((p) => {
+    const st = String(p.estado || "").toLowerCase();
+    return st === "finalizado" || st === "no_presentaron_ambos";
+  });
+}
+
 function renderBadgeJornadaPortal(partidos = []) {
   const total = partidos.length;
   if (!total) return "";
@@ -1019,28 +1043,43 @@ function renderBadgeJornadaPortal(partidos = []) {
   return '<span class="portal-jornada-badge badge-proxima">Próxima</span>';
 }
 
-function renderJornadasPortal(jornadas = [], partidos = []) {
+// modo: "proximas" muestra jornadas con partidos pendientes; "finalizadas" muestra las completadas
+function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
   const bloques = normalizarJornadasPortal(jornadas, partidos);
-  if (!bloques.length) {
-    return '<p class="empty-msg">No hay jornadas publicadas para esta categoría.</p>';
+
+  const bloquesVista = modo === "finalizadas"
+    ? bloques.filter((b) => esJornadaFinalizada(b.partidos))
+    : bloques.filter((b) => !esJornadaFinalizada(b.partidos));
+
+  if (!bloquesVista.length) {
+    const msg = modo === "finalizadas"
+      ? "No hay resultados registrados aún para esta categoría."
+      : "No hay jornadas programadas para esta categoría.";
+    return `<p class="empty-msg">${msg}</p>`;
   }
 
-  // Detectar la jornada activa: primera con al menos un partido pendiente/programado
-  // o la última jugada si todo está finalizado
+  // Para proximas: primera con partido pendiente. Para finalizadas: la última
   let jornadaActivaIndex = -1;
-  for (let i = 0; i < bloques.length; i++) {
-    const ps = Array.isArray(bloques[i].partidos) ? bloques[i].partidos : [];
-    const tieneNoJugado = ps.some((p) => {
-      const st = String(p.estado || "").toLowerCase();
-      return st !== "finalizado" && st !== "no_presentaron_ambos";
-    });
-    if (tieneNoJugado) { jornadaActivaIndex = i; break; }
+  if (modo === "finalizadas") {
+    jornadaActivaIndex = bloquesVista.length - 1;
+  } else {
+    for (let i = 0; i < bloquesVista.length; i++) {
+      const ps = Array.isArray(bloquesVista[i].partidos) ? bloquesVista[i].partidos : [];
+      const tieneNoJugado = ps.some((p) => {
+        const st = String(p.estado || "").toLowerCase();
+        return st !== "finalizado" && st !== "no_presentaron_ambos";
+      });
+      if (tieneNoJugado) { jornadaActivaIndex = i; break; }
+    }
+    if (jornadaActivaIndex < 0) jornadaActivaIndex = bloquesVista.length - 1;
   }
-  if (jornadaActivaIndex < 0) jornadaActivaIndex = bloques.length - 1;
 
-  const selectorHtml = bloques.length > 1
+  // Alias para el resto del render
+  const bloques_ = bloquesVista;
+
+  const selectorHtml = bloques_.length > 1
     ? `<div class="portal-jornadas-selector" role="tablist" aria-label="Seleccionar jornada">
-        ${bloques.map((j, i) => `
+        ${bloques_.map((j, i) => `
           <button
             class="portal-jornada-selector-btn${i === jornadaActivaIndex ? " active" : ""}"
             type="button"
@@ -1051,7 +1090,7 @@ function renderJornadasPortal(jornadas = [], partidos = []) {
       </div>`
     : "";
 
-  const tarjetasHtml = bloques
+  const tarjetasHtml = bloques_
     .map((jornada, i) => {
       const ps = Array.isArray(jornada.partidos) ? jornada.partidos : [];
       const fechas = extraerFechasJornada(ps);
@@ -1092,6 +1131,10 @@ function renderJornadasPortal(jornadas = [], partidos = []) {
       </div>
     </div>
   `;
+}
+
+function renderResultadosPortal(jornadas = [], partidos = []) {
+  return renderJornadasPortal(jornadas, partidos, "finalizadas");
 }
 
 function renderEliminatoriasPortal(payload = []) {
@@ -1284,7 +1327,8 @@ function renderCategoriaPanelPortal(data, index = 0) {
   const evento = data?.evento || {};
   const panelId = `portal-category-panel-${evento.id}`;
   const subtabs = [
-    { key: "jornadas", label: "Jornadas", html: renderJornadasPortal(data?.jornadas || [], data?.partidos || []) },
+    { key: "jornadas", label: "Jornadas", html: renderJornadasPortal(data?.jornadas || [], data?.partidos || [], "proximas") },
+    { key: "resultados", label: "Resultados", html: renderResultadosPortal(data?.jornadas || [], data?.partidos || []) },
     { key: "posiciones", label: "Tabla de posiciones", html: renderTablasPortal(data?.tablas || []) },
     { key: "goleadores", label: "Goleadores", html: renderGoleadoresPortal(data?.goleadores || []) },
     { key: "fair-play", label: "Fair play", html: renderFairPlayPortal(data?.fairPlay || []) },
