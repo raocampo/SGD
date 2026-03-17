@@ -947,6 +947,13 @@ body.ltc-landing {
   border-color: #a0bde0;
 }
 
+.portal-jornada-selector-btn:disabled,
+.portal-jornada-selector-btn.disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .portal-jornada-selector-btn.active {
   background: var(--ltc-navy);
   color: #fff;

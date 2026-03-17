@@ -111,18 +111,19 @@ function limpiarCodigoTorneo(texto) {
     .trim();
 }
 
-// Parsea una fecha evitando el desfase UTC: "YYYY-MM-DD" se trata como hora local,
-// no como UTC medianoche (que en UTC-5 retrocedería 1 día al formatearse).
+// Parsea una fecha evitando el desfase UTC.
+// PostgreSQL/pg puede devolver DATE como "YYYY-MM-DD" o como "YYYY-MM-DDT00:00:00.000Z".
+// Ambos casos representan solo una fecha sin hora real → se construyen como hora local
+// para evitar que UTC-5 retroceda el display 1 día.
 function parseFechaLocalPortal(valor) {
   if (!valor) return null;
   const s = String(valor).trim();
-  // Solo fecha: YYYY-MM-DD → construir como local, no UTC
-  const soloFecha = /^\d{4}-\d{2}-\d{2}$/.test(s);
-  if (soloFecha) {
-    const [anio, mes, dia] = s.split("-").map(Number);
-    return new Date(anio, mes - 1, dia);
+  // Extraer la parte YYYY-MM-DD si es string de solo fecha o ISO medianoche UTC
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00|$)/);
+  if (m) {
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   }
-  // Fecha con hora (ISO o timestamp): new Date() es correcto
+  // Fecha con hora real → new Date() interpreta correctamente
   return new Date(s);
 }
 
@@ -1043,22 +1044,24 @@ function renderBadgeJornadaPortal(partidos = []) {
   return '<span class="portal-jornada-badge badge-proxima">Próxima</span>';
 }
 
-// modo: "proximas" muestra jornadas con partidos pendientes; "finalizadas" muestra las completadas
+// modo: "proximas" muestra todos los botones (deshabilita finalizadas); "finalizadas" solo las completadas
 function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
   const bloques = normalizarJornadasPortal(jornadas, partidos);
 
+  // Para "finalizadas" solo mostramos las completadas
   const bloquesVista = modo === "finalizadas"
     ? bloques.filter((b) => esJornadaFinalizada(b.partidos))
-    : bloques.filter((b) => !esJornadaFinalizada(b.partidos));
+    : bloques; // "proximas": todos los botones visibles
 
   if (!bloquesVista.length) {
     const msg = modo === "finalizadas"
       ? "No hay resultados registrados aún para esta categoría."
-      : "No hay jornadas programadas para esta categoría.";
+      : "No hay jornadas publicadas para esta categoría.";
     return `<p class="empty-msg">${msg}</p>`;
   }
 
-  // Para proximas: primera con partido pendiente. Para finalizadas: la última
+  // Para proximas: primera jornada con al menos un partido no finalizado (habilitada)
+  // Para finalizadas: la última
   let jornadaActivaIndex = -1;
   if (modo === "finalizadas") {
     jornadaActivaIndex = bloquesVista.length - 1;
@@ -1079,14 +1082,22 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
 
   const selectorHtml = bloques_.length > 1
     ? `<div class="portal-jornadas-selector" role="tablist" aria-label="Seleccionar jornada">
-        ${bloques_.map((j, i) => `
-          <button
-            class="portal-jornada-selector-btn${i === jornadaActivaIndex ? " active" : ""}"
+        ${bloques_.map((j, i) => {
+          const ps = Array.isArray(j.partidos) ? j.partidos : [];
+          const tieneProgr = modo === "finalizadas" ? true : ps.some((p) => {
+            const st = String(p.estado || "").toLowerCase();
+            return st !== "finalizado" && st !== "no_presentaron_ambos";
+          });
+          const isActive = i === jornadaActivaIndex;
+          return `<button
+            class="portal-jornada-selector-btn${isActive ? " active" : ""}${!tieneProgr ? " disabled" : ""}"
             type="button"
             data-jornada-btn="${i}"
-            aria-selected="${i === jornadaActivaIndex ? "true" : "false"}"
-          >J${escPortal(j.numero)}</button>
-        `).join("")}
+            aria-selected="${isActive ? "true" : "false"}"
+            ${!tieneProgr ? "disabled" : ""}
+            title="${!tieneProgr ? "Jornada finalizada" : ""}"
+          >J${escPortal(j.numero)}</button>`;
+        }).join("")}
       </div>`
     : "";
 
