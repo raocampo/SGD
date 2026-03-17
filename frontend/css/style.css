@@ -6485,3 +6485,115 @@ body.page-finanzas {
   background: #bbf7d0;
   color: #15803d;
 }
+
+/* =====================================================
+   MOBILE CIERRE – grupos / eliminatorias / pases
+   Viewport objetivo: ≤ 480px (completar fase 1)
+   ===================================================== */
+
+/* --- Sorteo / Grupos ≤ 480px --- */
+@media (max-width: 480px) {
+  .sorteo-config {
+    padding: 1.1rem;
+    border-radius: 12px;
+  }
+
+  .sorteo-config .config-card {
+    padding: 0.9rem;
+  }
+
+  .page-sorteo .ruleta-controls .btn,
+  .page-sorteo .sorteo-config .config-card > .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .grupos-panel {
+    padding: 0.75rem;
+  }
+
+  .grupo-card {
+    padding: 0.75rem;
+  }
+
+  .equipo-en-grupo {
+    font-size: 0.82rem;
+  }
+}
+
+/* --- Eliminatorias: bracket scroll con indicador visual --- */
+.page-eliminatorias .eliminatoria-bracket-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.5rem;
+  /* indicador sutil de scroll en pantallas pequeñas */
+  background: linear-gradient(to right, #fff 0%, rgba(255,255,255,0) 8%),
+              linear-gradient(to left, #fff 0%, rgba(255,255,255,0) 8%)
+              center right / 100% 100% no-repeat;
+}
+
+/* El bracket real ya tiene auto-fit; al estar dentro del wrapper
+   se desplaza sin romper el layout padre */
+.page-eliminatorias .eliminatoria-bracket-scroll-wrap .eliminatoria-bracket {
+  min-width: 540px; /* evita que las rondas se aplasten en ≤ 480 */
+}
+
+@media (max-width: 480px) {
+  .page-eliminatorias .eli-match-card {
+    padding: 0.55rem;
+  }
+
+  .page-eliminatorias .eli-team-row {
+    font-size: 0.82rem;
+    padding: 0.28rem 0.4rem;
+  }
+
+  .page-eliminatorias .eli-match-head {
+    font-size: 0.78rem;
+  }
+
+  .page-eliminatorias .eli-admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-eliminatorias .eli-admin-card {
+    padding: 0.7rem;
+  }
+
+  .page-eliminatorias .action-bar {
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+}
+
+/* --- Pases ≤ 480px --- */
+@media (max-width: 480px) {
+  /* Tabla de pases: scroll horizontal en lugar de overflow visible */
+  .page-pases .tabla-posicion-wrap,
+  .page-pases .tabla-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .page-pases .pases-hist-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-pases .pases-hist-resumen {
+    grid-template-columns: 1fr;
+  }
+
+  .page-pases .pases-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-pases .action-bar .btn,
+  .page-pases .actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .page-pases .pases-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
