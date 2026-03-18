@@ -1570,6 +1570,7 @@ async function cargarLlaveEliminatoria() {
   try {
     const resp = await ApiClient.get(`/eliminatorias/evento/${eventoId}`);
     eliminatoriaState.cruces = Array.isArray(resp?.partidos) ? resp.partidos : [];
+    actualizarBarraProgPlayoff();
     renderBracket();
   } catch (error) {
     console.error(error);
@@ -1702,13 +1703,33 @@ function renderBracket() {
           const seedV = c.seed_visitante_ref ? `<small>${escapeHtml(c.seed_visitante_ref)}</small>` : "";
           const estadoBadge = finalizado
             ? '<span class="eli-match-badge eli-badge-finalizado">Finalizado</span>'
+            : c.fecha_partido
+            ? '<span class="eli-match-badge eli-badge-programado">Programado</span>'
             : '<span class="eli-match-badge eli-badge-pendiente">Pendiente</span>';
+
+          // Fecha / hora / cancha del partido
+          let scheduleHtml = "";
+          if (c.fecha_partido || c.hora_partido || c.cancha) {
+            let fechaStr = "";
+            if (c.fecha_partido) {
+              const m = String(c.fecha_partido).match(/^(\d{4})-(\d{2})-(\d{2})/);
+              if (m) {
+                const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+                fechaStr = d.toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" });
+              }
+            }
+            const hora = c.hora_partido ? String(c.hora_partido).slice(0, 5) : "";
+            const partes = [fechaStr, hora ? `Hora ${hora}` : "", c.cancha || ""].filter(Boolean);
+            scheduleHtml = `<div class="eli-match-schedule"><i class="fas fa-calendar-alt"></i> ${escapeHtml(partes.join(" • "))}</div>`;
+          }
+
           return `
             <article class="eli-match-card${finalizado ? " eli-match-finalizado" : ""}">
               <div class="eli-match-head">
                 <strong>${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}</strong>
                 ${estadoBadge}
               </div>
+              ${scheduleHtml}
               <div class="eli-team-row${localEsGanador ? " eli-team-ganador" : ""}">
                 <span class="eli-team-meta">
                   ${renderEquipoLogo(localLogo, local, "eli-team-logo")}
@@ -1732,9 +1753,18 @@ function renderBracket() {
               }
               ${
                 eliminatoriaState.esAdminLike
-                  ? `<button class="btn btn-warning" onclick="registrarResultadoEliminatoria(${Number(
-                      c.id
-                    )})"><i class="fas fa-edit"></i> Resultado</button>`
+                  ? `<div class="eli-match-actions">
+                      <button class="btn btn-warning" onclick="registrarResultadoEliminatoria(${Number(c.id)})">
+                        <i class="fas fa-edit"></i> Resultado
+                      </button>
+                      ${
+                        c.partido_id
+                          ? `<button class="btn btn-secondary" onclick="abrirModalProgPartidoEli(${Number(c.partido_id)}, '${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}', '${c.fecha_partido || ""}', '${c.hora_partido ? String(c.hora_partido).slice(0,5) : ""}', '${escapeHtml(c.cancha || "")}')">
+                            <i class="fas fa-calendar-alt"></i> Programar
+                          </button>`
+                          : ""
+                      }
+                    </div>`
                   : ""
               }
             </article>
@@ -2338,3 +2368,156 @@ window.registrarResultadoEliminatoria = registrarResultadoEliminatoria;
 window.exportarEliminatoriaPNG = exportarEliminatoriaPNG;
 window.exportarEliminatoriaPDF = exportarEliminatoriaPDF;
 window.compartirEliminatoria = compartirEliminatoria;
+
+// ══ Programación de partidos de playoff ══
+
+let _eliProgPartidoId = null;
+
+function actualizarBarraProgPlayoff() {
+  const toolbar = document.getElementById("eli-prog-toolbar");
+  if (toolbar) toolbar.style.display = eliminatoriaState.esAdminLike ? "flex" : "none";
+}
+
+// Modal: programar partido individual
+function abrirModalProgPartidoEli(partidoId, titulo, fecha, hora, cancha) {
+  _eliProgPartidoId = partidoId;
+  const tituloEl = document.getElementById("modal-prog-titulo");
+  if (tituloEl) tituloEl.textContent = `Programar: ${titulo}`;
+  const fechaEl = document.getElementById("eli-prog-fecha");
+  const horaEl = document.getElementById("eli-prog-hora");
+  const canchaEl = document.getElementById("eli-prog-cancha");
+  if (fechaEl) fechaEl.value = fecha || "";
+  if (horaEl) horaEl.value = hora || "";
+  if (canchaEl) canchaEl.value = cancha || "";
+  const modal = document.getElementById("modal-prog-partido-eli");
+  if (modal) modal.style.display = "flex";
+}
+
+function cerrarModalProgPartidoEli() {
+  const modal = document.getElementById("modal-prog-partido-eli");
+  if (modal) modal.style.display = "none";
+  _eliProgPartidoId = null;
+}
+
+async function guardarProgPartidoEli() {
+  if (!_eliProgPartidoId) return;
+  const fecha = document.getElementById("eli-prog-fecha")?.value || null;
+  const hora = document.getElementById("eli-prog-hora")?.value || null;
+  const cancha = document.getElementById("eli-prog-cancha")?.value || null;
+  try {
+    await ApiClient.put(`/partidos/${_eliProgPartidoId}`, {
+      fecha_partido: fecha || null,
+      hora_partido: hora || null,
+      cancha: cancha || null,
+    });
+    mostrarNotificacion("Partido programado correctamente", "success");
+    cerrarModalProgPartidoEli();
+    await cargarLlaveEliminatoria();
+    renderBracket();
+  } catch (e) {
+    mostrarNotificacion(e?.message || "No se pudo programar el partido", "error");
+  }
+}
+
+// Modal: auto-programar todos los partidos pendientes
+function abrirModalAutoProgramarPlayoff() {
+  // Prefill fecha con hoy
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm = String(hoy.getMonth() + 1).padStart(2, "0");
+  const dd = String(hoy.getDate()).padStart(2, "0");
+  const fechaEl = document.getElementById("eli-auto-fecha");
+  if (fechaEl && !fechaEl.value) fechaEl.value = `${yyyy}-${mm}-${dd}`;
+  const modal = document.getElementById("modal-auto-prog-eli");
+  if (modal) modal.style.display = "flex";
+}
+
+function cerrarModalAutoProgEli() {
+  const modal = document.getElementById("modal-auto-prog-eli");
+  if (modal) modal.style.display = "none";
+}
+
+async function ejecutarAutoProgEli() {
+  const fecha = document.getElementById("eli-auto-fecha")?.value;
+  const horaInicioStr = document.getElementById("eli-auto-hora-inicio")?.value || "09:00";
+  const horaFinStr = document.getElementById("eli-auto-hora-fin")?.value || "18:00";
+  const duracion = Number(document.getElementById("eli-auto-duracion")?.value) || 90;
+  const cancha = document.getElementById("eli-auto-cancha")?.value || "";
+  const sobrescribir = document.getElementById("eli-auto-sobrescribir")?.checked || false;
+
+  if (!fecha) {
+    mostrarNotificacion("Selecciona una fecha de inicio", "warning");
+    return;
+  }
+
+  // Obtener todos los cruces con partido_id, ordenados por ronda y partido
+  const crucesPendientes = [...eliminatoriaState.cruces]
+    .filter((c) => c.partido_id && (sobrescribir || !c.fecha_partido))
+    .sort((a, b) => Number(a.ronda) - Number(b.ronda) || Number(a.partido_numero) - Number(b.partido_numero));
+
+  if (!crucesPendientes.length) {
+    mostrarNotificacion("No hay partidos pendientes de programar", "info");
+    return;
+  }
+
+  // Convertir hora a minutos desde medianoche
+  const toMinutes = (hStr) => {
+    const [h, m] = hStr.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  const toHoraStr = (min) => {
+    const h = Math.floor(min / 60) % 24;
+    const m = min % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
+
+  let fechaActual = fecha;
+  let minutosActuales = toMinutes(horaInicioStr);
+  const minutosLimite = toMinutes(horaFinStr);
+
+  const avanzarDia = () => {
+    const d = new Date(`${fechaActual}T12:00:00`);
+    d.setDate(d.getDate() + 1);
+    const yy = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, "0");
+    const dy = String(d.getDate()).padStart(2, "0");
+    fechaActual = `${yy}-${mo}-${dy}`;
+    minutosActuales = toMinutes(horaInicioStr);
+  };
+
+  let errores = 0;
+  for (const c of crucesPendientes) {
+    // Si se pasa del horario limite, avanzar al siguiente día
+    if (minutosActuales + duracion > minutosLimite) {
+      avanzarDia();
+    }
+    const horaAsignada = toHoraStr(minutosActuales);
+    try {
+      await ApiClient.put(`/partidos/${c.partido_id}`, {
+        fecha_partido: fechaActual,
+        hora_partido: `${horaAsignada}:00`,
+        cancha: cancha || null,
+      });
+    } catch {
+      errores++;
+    }
+    minutosActuales += duracion;
+  }
+
+  cerrarModalAutoProgEli();
+  await cargarLlaveEliminatoria();
+  renderBracket();
+
+  if (errores) {
+    mostrarNotificacion(`Programados con ${errores} error(es)`, "warning");
+  } else {
+    mostrarNotificacion(`${crucesPendientes.length} partidos programados correctamente`, "success");
+  }
+}
+
+window.abrirModalProgPartidoEli = abrirModalProgPartidoEli;
+window.cerrarModalProgPartidoEli = cerrarModalProgPartidoEli;
+window.guardarProgPartidoEli = guardarProgPartidoEli;
+window.abrirModalAutoProgramarPlayoff = abrirModalAutoProgramarPlayoff;
+window.cerrarModalAutoProgEli = cerrarModalAutoProgEli;
+window.ejecutarAutoProgEli = ejecutarAutoProgEli;

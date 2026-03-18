@@ -566,3 +566,10 @@ body {
   flex-wrap: wrap;
   margin-bottom: .5rem;
 }
+
+/* ══ Modo Liga (todos los equipos en un bloque) ══ */
+.poster-liga-equipos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: clamp(.5rem, 1vw, 1rem);
+}

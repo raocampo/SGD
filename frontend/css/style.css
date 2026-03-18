@@ -6565,6 +6565,48 @@ body.page-finanzas {
   color: #3730a3;
 }
 
+.page-eliminatorias .eli-badge-programado {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+/* Fecha/hora/cancha en match card */
+.page-eliminatorias .eli-match-schedule {
+  font-size: .74rem;
+  color: #64748b;
+  padding: .2rem 0 .3rem;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: .3rem;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+/* Botones de acción en match card */
+.page-eliminatorias .eli-match-actions {
+  display: flex;
+  gap: .4rem;
+  margin-top: .5rem;
+  flex-wrap: wrap;
+}
+.page-eliminatorias .eli-match-actions .btn {
+  flex: 1;
+  font-size: .75rem;
+  padding: .25rem .5rem;
+}
+
+/* Barra de herramientas del bracket */
+.eli-prog-toolbar {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin-bottom: .75rem;
+  padding: .5rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
 /* Card finalizado: borde izquierdo verde */
 .page-eliminatorias .eli-match-card.eli-match-finalizado {
   border-left: 3px solid #22c55e;

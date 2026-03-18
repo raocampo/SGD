@@ -7,6 +7,7 @@ let contextoGrupos = {
   campeonatoId: null,
   eventoId: null,
   eventoNombre: "",
+  metodoCompetencia: "grupos",
   auspiciantes: [],
 };
 
@@ -444,11 +445,51 @@ function aplicarLayoutPorCantidadGrupos(cant) {
   else posterGrupos.classList.add("cols-3"); // 5 o 6 grupos -> 3 columnas se ve mejor
 }
 
+function actualizarModoLiga(metodo) {
+  const esLiga = String(metodo || "").toLowerCase() === "liga";
+  const tabLabel = document.getElementById("tab-grupos-label");
+  if (tabLabel) tabLabel.textContent = esLiga ? "Plantilla Liga" : "Plantilla de Grupos";
+  const posterGrupos = document.getElementById("poster-grupos");
+  const posterLiga = document.getElementById("poster-liga");
+  if (posterGrupos) posterGrupos.style.display = esLiga ? "none" : "";
+  if (posterLiga) posterLiga.style.display = esLiga ? "block" : "none";
+}
+
+async function cargarEquiposLiga(eventoId) {
+  const zona = document.getElementById("poster-liga-equipos");
+  if (!zona) return;
+  try {
+    const resp = await ApiClient.get(`/evento_equipos/${eventoId}`);
+    const equipos = resp.equipos || resp || [];
+    if (!equipos.length) {
+      zona.innerHTML = "<div class='empty-state'><p>No hay equipos inscritos.</p></div>";
+      return;
+    }
+    zona.innerHTML = equipos
+      .map((eq, i) => {
+        const logo = normalizarLogoUrl(eq.logo_url || eq.logo || null);
+        return `
+        <div class="team-row">
+          <span class="team-pos">${i + 1}</span>
+          ${
+            logo
+              ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(eq.nombre || "")}" class="team-logo" crossorigin="anonymous" referrerpolicy="no-referrer">`
+              : `<span class="team-logo placeholder"></span>`
+          }
+          <span class="team-name">${escapeHtml(eq.nombre || "Equipo")}</span>
+        </div>`;
+      })
+      .join("");
+  } catch (e) {
+    console.warn("No se pudieron cargar equipos de liga:", e);
+  }
+}
+
 async function cargarYMostrarGrupos(ctx) {
   const posterGrupos = document.getElementById("poster-grupos");
   if (!posterGrupos) return;
 
-  posterGrupos.innerHTML = "<p style='padding:12px'>Cargando grupos...</p>";
+  posterGrupos.innerHTML = "<p style='padding:12px'>Cargando...</p>";
   const campeonatoId =
     typeof ctx === "object"
       ? Number.parseInt(ctx.campeonatoId, 10)
@@ -464,9 +505,25 @@ async function cargarYMostrarGrupos(ctx) {
     return;
   }
 
+  // Detectar metodo_competencia del evento seleccionado
+  let metodoCompetencia = "grupos";
+  if (Number.isFinite(eventoId) && eventoId > 0) {
+    const eventoCache = gruposEventosCache.find((e) => Number(e.id) === eventoId);
+    metodoCompetencia = String(eventoCache?.metodo_competencia || "grupos").toLowerCase();
+  }
+  contextoGrupos.metodoCompetencia = metodoCompetencia;
+  actualizarModoLiga(metodoCompetencia);
+
   // llenar cabecera arriba
   await cargarCabeceraCampeonato(campeonatoId, eventoNombre);
   await cargarAuspiciantesGrupos(campeonatoId);
+
+  // Modo Liga: mostrar equipos en lista única
+  if (metodoCompetencia === "liga" && Number.isFinite(eventoId) && eventoId > 0) {
+    await cargarEquiposLiga(eventoId);
+    posterGrupos.innerHTML = "";
+    return;
+  }
 
   try {
     const endpoint =

@@ -51,7 +51,7 @@
             role="tab"
             aria-selected="true"
           >
-            Plantilla de Grupos
+            <span id="tab-grupos-label">Plantilla de Grupos</span>
           </button>
           <button
             type="button"
@@ -120,12 +120,17 @@
               </div>
             </div>
 
+            <!-- Modo Grupos -->
             <div id="poster-grupos" class="poster-grids">
-              <!-- aquí se renderizan los grupos en columnas -->
               <div class="empty-state" style="opacity:.9">
                 <i class="fas fa-layer-group"></i>
                 <p>Selecciona un campeonato para ver los grupos</p>
               </div>
+            </div>
+
+            <!-- Modo Liga (visible solo cuando metodo_competencia=liga) -->
+            <div id="poster-liga" style="display:none;">
+              <div id="poster-liga-equipos" class="poster-liga-equipos-grid"></div>
             </div>
 
             <div id="poster-sponsors" class="poster-sponsors" style="display:none;">

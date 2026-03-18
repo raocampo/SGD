@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-18 (sesión 5)
+Ultima actualizacion: 2026-03-18 (sesión 6)
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,23 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-18 (sesión 6)
+- Modo Liga en página de grupos (`gruposgen.html` / `gruposgen.js`):
+  - Cuando `metodo_competencia = 'liga'`, el tab "Plantilla de Grupos" cambia a **"Plantilla Liga"**.
+  - Se oculta el grid de grupos (`poster-grupos`) y se muestra un bloque `poster-liga` con todos los equipos del evento en lista ordenada (con logo y número).
+  - `contextoGrupos` ahora almacena `metodoCompetencia`; se detecta desde `gruposEventosCache` al seleccionar la categoría.
+  - Nueva función `cargarEquiposLiga(eventoId)` carga equipos via `/evento_equipos/:id`.
+  - Nueva función `actualizarModoLiga(metodo)` actualiza visibilidad de elementos y label del tab.
+  - CSS: `.poster-liga-equipos-grid` en `grupos.css`.
+- Programación de partidos de playoff (`eliminatorias.html` / `eliminatorias.js`):
+  - Cada match card del bracket ahora muestra **fecha, hora y cancha** si están asignadas (badge "Programado" en amarillo, badge "Programado" distingue de "Pendiente").
+  - Botón **"Programar"** en cada card (solo admin/organizador) → abre modal con campos fecha, hora, cancha. Guarda via `PUT /partidos/:partido_id`.
+  - Barra de herramientas sobre el bracket (solo admin) con botón **"Auto-programar fechas"**.
+  - Modal **Auto-programar**: fecha inicio, hora inicio, hora límite, duración por partido (min), cancha, opción sobrescribir. Asigna tiempo secuencial a todos los partidos pendientes del bracket; si supera el horario límite, avanza al día siguiente.
+  - CSS nuevos: `.eli-badge-programado` (amarillo), `.eli-match-schedule`, `.eli-match-actions`, `.eli-prog-toolbar`.
+  - Commits de la sesión:
+    - `feat(grupos+eli): modo liga en grupos y programación de partidos playoff`
 
 ### 2026-03-18 (sesión 5)
 - Selección de carnets para imprimir / exportar PDF:

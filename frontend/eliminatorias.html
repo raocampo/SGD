@@ -176,6 +176,12 @@
 
         <section class="card">
           <h3>Bracket</h3>
+          <!-- Programar partidos playoff (solo admin/organizador) -->
+          <div id="eli-prog-toolbar" class="eli-prog-toolbar" style="display:none;">
+            <button type="button" class="btn btn-secondary" onclick="abrirModalAutoProgramarPlayoff()">
+              <i class="fas fa-calendar-plus"></i> Auto-programar fechas
+            </button>
+          </div>
           <div class="eliminatoria-bracket-scroll-wrap">
             <div id="eli-bracket" class="eliminatoria-bracket">
               <div class="empty-state">
@@ -185,6 +191,85 @@
             </div>
           </div>
         </section>
+
+        <!-- Modal: programar partido individual -->
+        <div id="modal-prog-partido-eli" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
+          <div class="modal-box" style="max-width:420px;">
+            <div class="modal-header">
+              <h3 id="modal-prog-titulo">Programar partido</h3>
+              <button class="modal-close" onclick="cerrarModalProgPartidoEli()">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label for="eli-prog-fecha">Fecha</label>
+                <input type="date" id="eli-prog-fecha" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label for="eli-prog-hora">Hora</label>
+                <input type="time" id="eli-prog-hora" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label for="eli-prog-cancha">Cancha / Lugar</label>
+                <input type="text" id="eli-prog-cancha" class="form-control" placeholder="Ej: Estadio Municipal" />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" onclick="cerrarModalProgPartidoEli()">Cancelar</button>
+              <button class="btn btn-primary" onclick="guardarProgPartidoEli()">
+                <i class="fas fa-save"></i> Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal: auto-programar todos los partidos del playoff -->
+        <div id="modal-auto-prog-eli" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
+          <div class="modal-box" style="max-width:500px;">
+            <div class="modal-header">
+              <h3>Auto-programar fechas del playoff</h3>
+              <button class="modal-close" onclick="cerrarModalAutoProgEli()">✕</button>
+            </div>
+            <div class="modal-body">
+              <p style="font-size:.875rem;color:#555;margin-bottom:1rem;">
+                Asigna automáticamente fecha y hora a los partidos pendientes del bracket, empezando desde la fecha y hora indicadas.
+              </p>
+              <div class="form-group">
+                <label for="eli-auto-fecha">Fecha de inicio</label>
+                <input type="date" id="eli-auto-fecha" class="form-control" />
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+                <div class="form-group">
+                  <label for="eli-auto-hora-inicio">Hora inicio</label>
+                  <input type="time" id="eli-auto-hora-inicio" class="form-control" value="09:00" />
+                </div>
+                <div class="form-group">
+                  <label for="eli-auto-hora-fin">Hora límite</label>
+                  <input type="time" id="eli-auto-hora-fin" class="form-control" value="18:00" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="eli-auto-duracion">Duración por partido (min)</label>
+                <input type="number" id="eli-auto-duracion" class="form-control" value="90" min="10" max="300" step="5" />
+              </div>
+              <div class="form-group">
+                <label for="eli-auto-cancha">Cancha / Lugar</label>
+                <input type="text" id="eli-auto-cancha" class="form-control" placeholder="Ej: Estadio Municipal" />
+              </div>
+              <div class="form-group">
+                <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;">
+                  <input type="checkbox" id="eli-auto-sobrescribir" />
+                  Sobrescribir partidos ya programados
+                </label>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" onclick="cerrarModalAutoProgEli()">Cancelar</button>
+              <button class="btn btn-primary" onclick="ejecutarAutoProgEli()">
+                <i class="fas fa-calendar-check"></i> Programar
+              </button>
+            </div>
+          </div>
+        </div>
 
         <section class="card">
           <h3>Plantilla para Publicar</h3>
