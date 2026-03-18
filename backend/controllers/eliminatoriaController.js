@@ -281,6 +281,21 @@ const eliminatoriaController = {
     }
   },
 
+  programarSlot: async (req, res) => {
+    try {
+      const slotId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(slotId)) {
+        return res.status(400).json({ error: "id inválido" });
+      }
+      const { fecha_partido, hora_partido, cancha } = req.body || {};
+      const result = await Eliminatoria.programarSlot(slotId, { fecha_partido, hora_partido, cancha });
+      res.json(result);
+    } catch (error) {
+      console.error("Error programando slot:", error);
+      res.status(500).json({ error: error.message || "No se pudo programar el partido" });
+    }
+  },
+
   resolverReclasificacion: async (req, res) => {
     try {
       const evento_id = parseInt(req.params.evento_id, 10);

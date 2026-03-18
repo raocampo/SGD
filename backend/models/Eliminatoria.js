@@ -598,6 +598,59 @@ class Eliminatoria {
     return r.rows.map((x) => Number(x.id)).filter((x) => Number.isFinite(x));
   }
 
+  static async programarSlot(slotId, { fecha_partido, hora_partido, cancha } = {}, db = pool) {
+    await this.asegurarEsquema(db);
+    // Get the slot
+    const slotR = await db.query(
+      `SELECT pe.*, e.campeonato_id FROM partidos_eliminatoria pe
+       JOIN eventos e ON e.id = pe.evento_id
+       WHERE pe.id = $1 LIMIT 1`,
+      [slotId]
+    );
+    const slot = slotR.rows[0];
+    if (!slot) throw new Error("Slot no encontrado");
+
+    let partidoId = Number.parseInt(slot.partido_id, 10);
+
+    if (!Number.isFinite(partidoId) || partidoId <= 0) {
+      // Create a partido record for this slot (teams may be unknown yet)
+      const insertR = await db.query(
+        `WITH next_num AS (
+           SELECT COALESCE(MAX(numero_campeonato), 0) + 1 AS next_num
+           FROM partidos WHERE campeonato_id = $1
+         )
+         INSERT INTO partidos (campeonato_id, evento_id, equipo_local_id, equipo_visitante_id,
+           fecha_partido, hora_partido, cancha)
+         SELECT $1, $2, $3, $4, $5, $6, $7
+         FROM next_num
+         RETURNING id`,
+        [
+          Number(slot.campeonato_id),
+          Number(slot.evento_id),
+          Number.isFinite(Number(slot.equipo_local_id)) ? Number(slot.equipo_local_id) : null,
+          Number.isFinite(Number(slot.equipo_visitante_id)) ? Number(slot.equipo_visitante_id) : null,
+          fecha_partido || null,
+          hora_partido || null,
+          cancha || null,
+        ]
+      );
+      partidoId = Number(insertR.rows[0].id);
+      // Link back to slot
+      await db.query(
+        `UPDATE partidos_eliminatoria SET partido_id = $1 WHERE id = $2`,
+        [partidoId, slotId]
+      );
+    } else {
+      // Update existing partido
+      await db.query(
+        `UPDATE partidos SET fecha_partido = $1, hora_partido = $2, cancha = $3 WHERE id = $4`,
+        [fecha_partido || null, hora_partido || null, cancha || null, partidoId]
+      );
+    }
+
+    return { ok: true, slot_id: slotId, partido_id: partidoId };
+  }
+
   static async obtenerMapaClasificadosManuales(evento_id, db = pool) {
     const rows = await obtenerClasificadosManualesEvento(evento_id, db);
     const map = new Map();
@@ -2021,22 +2074,28 @@ class Eliminatoria {
       }
     }
 
-    const sembrados = [];
+    // Build matches for each cruce pair, then interleave so each bracket half
+    // gets one match per cruce (avoids same-group teams meeting before the final).
+    const matchesPorCruce = [];
     for (const [ga, gb] of crucesGrupos) {
       const A = mapGrupo.get(String(ga).toUpperCase()) || [];
       const B = mapGrupo.get(String(gb).toUpperCase()) || [];
       const n = Math.max(A.length, B.length);
+      const matches = [];
       for (let i = 0; i < n; i++) {
-        const local = A[i] || null;
-        const visita = B[n - 1 - i] || null;
-        sembrados.push({
-          equipo_id: local ? Number(local.equipo_id) : null,
-          seed_ref: local?.seed_ref || null,
-        });
-        sembrados.push({
-          equipo_id: visita ? Number(visita.equipo_id) : null,
-          seed_ref: visita?.seed_ref || null,
-        });
+        matches.push([A[i] || null, B[n - 1 - i] || null]);
+      }
+      matchesPorCruce.push(matches);
+    }
+    const maxRondas = Math.max(...matchesPorCruce.map((m) => m.length), 0);
+    const sembrados = [];
+    for (let i = 0; i < maxRondas; i++) {
+      for (const matches of matchesPorCruce) {
+        if (i < matches.length) {
+          const [local, visita] = matches[i];
+          sembrados.push({ equipo_id: local ? Number(local.equipo_id) : null, seed_ref: local?.seed_ref || null });
+          sembrados.push({ equipo_id: visita ? Number(visita.equipo_id) : null, seed_ref: visita?.seed_ref || null });
+        }
       }
     }
     return sembrados;

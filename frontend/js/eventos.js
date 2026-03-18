@@ -746,12 +746,8 @@ async function editarEvento(id) {
   const nuevaLlave = ["eliminatoria", "mixto", "tabla_acumulada"].includes(nuevoMetodo)
     ? String(form.eliminatoria_equipos || "").trim()
     : "";
-  const nuevaPlantillaPlayoff = ["eliminatoria", "mixto", "tabla_acumulada"].includes(nuevoMetodo)
-    ? String(form.playoff_plantilla || "estandar").trim()
-    : "estandar";
-  const nuevoTercerPuesto = ["eliminatoria", "mixto", "tabla_acumulada"].includes(nuevoMetodo)
-    ? String(form.playoff_tercer_puesto || "false").trim().toLowerCase() === "true"
-    : false;
+  const nuevaPlantillaPlayoff = String(form.playoff_plantilla || "estandar").trim();
+  const nuevoTercerPuesto = String(form.playoff_tercer_puesto || "false").trim().toLowerCase() === "true";
   const costo_inscripcion = normalizarCostoInscripcion(form.costo_inscripcion, null);
   const nuevoBloqueo = String(form.bloquear_morosos || bloqueoActual).trim().toLowerCase();
   const nuevoMontoBloqueoRaw = String(form.bloqueo_morosidad_monto || "").trim();

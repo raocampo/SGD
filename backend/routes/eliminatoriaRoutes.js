@@ -58,5 +58,11 @@ router.put(
   requireRoles("administrador", "organizador"),
   eliminatoriaController.asignarEquipos
 );
+router.put(
+  "/:id/programar",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  eliminatoriaController.programarSlot
+);
 
 module.exports = router;

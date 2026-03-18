@@ -1757,13 +1757,9 @@ function renderBracket() {
                       <button class="btn btn-warning" onclick="registrarResultadoEliminatoria(${Number(c.id)})">
                         <i class="fas fa-edit"></i> Resultado
                       </button>
-                      ${
-                        c.partido_id
-                          ? `<button class="btn btn-secondary" onclick="abrirModalProgPartidoEli(${Number(c.partido_id)}, '${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}', '${c.fecha_partido || ""}', '${c.hora_partido ? String(c.hora_partido).slice(0,5) : ""}', '${escapeHtml(c.cancha || "")}')">
-                            <i class="fas fa-calendar-alt"></i> Programar
-                          </button>`
-                          : ""
-                      }
+                      <button class="btn btn-secondary" onclick="abrirModalProgPartidoEli(${Number(c.id)}, '${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}', '${c.fecha_partido || ""}', '${c.hora_partido ? String(c.hora_partido).slice(0,5) : ""}', '${escapeHtml(c.cancha || "")}')">
+                        <i class="fas fa-calendar-alt"></i> Programar
+                      </button>
                     </div>`
                   : ""
               }
@@ -2405,7 +2401,7 @@ async function guardarProgPartidoEli() {
   const hora = document.getElementById("eli-prog-hora")?.value || null;
   const cancha = document.getElementById("eli-prog-cancha")?.value || null;
   try {
-    await ApiClient.put(`/partidos/${_eliProgPartidoId}`, {
+    await ApiClient.put(`/eliminatorias/${_eliProgPartidoId}/programar`, {
       fecha_partido: fecha || null,
       hora_partido: hora || null,
       cancha: cancha || null,
@@ -2450,9 +2446,9 @@ async function ejecutarAutoProgEli() {
     return;
   }
 
-  // Obtener todos los cruces con partido_id, ordenados por ronda y partido
+  // Obtener todos los cruces, ordenados por ronda y partido
   const crucesPendientes = [...eliminatoriaState.cruces]
-    .filter((c) => c.partido_id && (sobrescribir || !c.fecha_partido))
+    .filter((c) => c.id && (sobrescribir || !c.fecha_partido))
     .sort((a, b) => Number(a.ronda) - Number(b.ronda) || Number(a.partido_numero) - Number(b.partido_numero));
 
   if (!crucesPendientes.length) {
@@ -2493,7 +2489,7 @@ async function ejecutarAutoProgEli() {
     }
     const horaAsignada = toHoraStr(minutosActuales);
     try {
-      await ApiClient.put(`/partidos/${c.partido_id}`, {
+      await ApiClient.put(`/eliminatorias/${c.id}/programar`, {
         fecha_partido: fechaActual,
         hora_partido: `${horaAsignada}:00`,
         cancha: cancha || null,
