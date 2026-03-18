@@ -1524,16 +1524,16 @@ class Partido {
     const totalGrupos = await this.contarGruposPorEvento(evento_id);
     const tieneGrupos = totalGrupos > 0;
 
-    // Jornada máxima de partidos ya jugados (para continuar la numeración)
+    // Jornada máxima de partidos preservados (finalizados + programados + suspendidos/aplazados)
     const maxJornadaR = await pool.query(
-      `SELECT COALESCE(MAX(jornada), 0)::int AS max_j FROM partidos WHERE evento_id = $1 AND estado = 'finalizado'`,
+      `SELECT COALESCE(MAX(jornada), 0)::int AS max_j FROM partidos WHERE evento_id = $1 AND estado IN ('finalizado', 'no_presentaron_ambos', 'programado', 'suspendido', 'aplazado', 'en_curso')`,
       [evento_id]
     );
     const maxJornadaJugada = maxJornadaR.rows[0]?.max_j || 0;
 
-    // Eliminar solo partidos NO finalizados
+    // Eliminar SOLO partidos pendientes — preservar programados, finalizados y demás estados activos
     await pool.query(
-      `DELETE FROM partidos WHERE evento_id = $1 AND (estado IS NULL OR estado NOT IN ('finalizado', 'no_presentaron_ambos'))`,
+      `DELETE FROM partidos WHERE evento_id = $1 AND (estado IS NULL OR estado = 'pendiente')`,
       [evento_id]
     );
 
@@ -1577,9 +1577,9 @@ class Partido {
         const equipos = eqRes.rows.map((r) => r.equipo_id);
         if (equipos.length < 2) continue;
 
-        // Pares ya jugados en este grupo
+        // Pares ya preservados en este grupo (jugados + programados + suspendidos/aplazados)
         const finalizadosR = await pool.query(
-          `SELECT equipo_local_id, equipo_visitante_id FROM partidos WHERE evento_id = $1 AND grupo_id = $2 AND estado IN ('finalizado', 'no_presentaron_ambos')`,
+          `SELECT equipo_local_id, equipo_visitante_id FROM partidos WHERE evento_id = $1 AND grupo_id = $2 AND estado IN ('finalizado', 'no_presentaron_ambos', 'programado', 'suspendido', 'aplazado', 'en_curso')`,
           [evento_id, g.id]
         );
         const pairsJugados = new Set(
@@ -1660,9 +1660,9 @@ class Partido {
       const equipos = eqRes.rows.map((r) => r.equipo_id);
       if (equipos.length < 2) throw new Error("El evento debe tener al menos 2 equipos.");
 
-      // Pares ya jugados
+      // Pares ya preservados (jugados + programados + suspendidos/aplazados)
       const finalizadosR = await pool.query(
-        `SELECT equipo_local_id, equipo_visitante_id FROM partidos WHERE evento_id = $1 AND estado IN ('finalizado', 'no_presentaron_ambos')`,
+        `SELECT equipo_local_id, equipo_visitante_id FROM partidos WHERE evento_id = $1 AND estado IN ('finalizado', 'no_presentaron_ambos', 'programado', 'suspendido', 'aplazado', 'en_curso')`,
         [evento_id]
       );
       const pairsJugados = new Set(

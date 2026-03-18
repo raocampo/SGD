@@ -287,9 +287,13 @@ exports.actualizarPartido = async (req, res) => {
       grupo_id: req.body.grupo_id ?? undefined,
     };
 
-    // Auto-transición de estado al programar o des-programar un partido.
-    // Estados terminales/manuales no se tocan.
-    if (req.body.fecha_partido !== undefined) {
+    // Estado manual explícito (suspendido, aplazado, pendiente, programado, en_curso)
+    const ESTADOS_EDITABLES = ["pendiente", "programado", "suspendido", "aplazado", "en_curso"];
+    if (req.body.estado !== undefined && ESTADOS_EDITABLES.includes(req.body.estado)) {
+      datos.estado = req.body.estado;
+    } else if (req.body.fecha_partido !== undefined) {
+      // Auto-transición de estado al programar o des-programar un partido.
+      // Estados terminales/manuales no se tocan.
       const actual = await Partido.obtenerPorId(id);
       const estadoActual = String(actual?.estado || "").toLowerCase();
       const protegidos = ["finalizado", "no_presentaron_ambos", "suspendido", "aplazado", "en_curso"];

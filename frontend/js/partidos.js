@@ -1041,7 +1041,23 @@ function aplicarRenderPartidos() {
     cont.innerHTML = renderTablaPartidos(partidos);
   } else {
     cont.classList.remove("list-mode-table");
-    cont.innerHTML = partidos.map((p) => renderPartidoCard(p)).join("");
+    // Agrupar por jornada y mostrar byes si los hay
+    const byesPorJornada = calcularByesPorJornada(partidosActuales);
+    const jornadasGrupo = agruparPartidosPorJornada(partidos);
+    if (jornadasGrupo.length > 1 || byesPorJornada.size > 0) {
+      cont.innerHTML = jornadasGrupo.map(({ jornada, items }) => {
+        const byes = byesPorJornada.get(jornada) || [];
+        const byeHtml = byes.length
+          ? `<div class="fixture-bye-notice"><i class="fas fa-moon"></i> <strong>Descansa:</strong> ${byes.map(e => escapeHtml(e.nombre)).join(", ")}</div>`
+          : "";
+        return `<div class="fixture-jornada-bloque">
+          <div class="fixture-jornada-titulo">Jornada ${jornada}${byeHtml}</div>
+          <div class="campeonato-grid">${items.map((p) => renderPartidoCard(p)).join("")}</div>
+        </div>`;
+      }).join("");
+    } else {
+      cont.innerHTML = partidos.map((p) => renderPartidoCard(p)).join("");
+    }
   }
 
   renderFixtureTemplate(partidos);
@@ -1315,6 +1331,19 @@ function obtenerEtiquetaCompetitivaPartido(p = {}) {
   return { titulo: null, detalle: null, badge: "" };
 }
 
+function renderEstadoPartidoBadge(estado) {
+  const cfg = {
+    finalizado:          { css: "badge-partido-finalizado", texto: "Finalizado" },
+    no_presentaron_ambos:{ css: "badge-partido-np",         texto: "No presentaron" },
+    programado:          { css: "badge-partido-programado", texto: "Programado" },
+    en_curso:            { css: "badge-partido-en-curso",   texto: "En curso" },
+    suspendido:          { css: "badge-partido-suspendido", texto: "Suspendido" },
+    aplazado:            { css: "badge-partido-aplazado",   texto: "Aplazado" },
+    pendiente:           { css: "badge-partido-pendiente",  texto: "Pendiente" },
+  }[estado] || { css: "badge-partido-pendiente", texto: "Pendiente" };
+  return `<span class="badge-estado-partido ${cfg.css}">${cfg.texto}</span>`;
+}
+
 function renderPartidoCard(p) {
   const numero = obtenerNumeroPartidoVisible(p);
   const competitivo = obtenerEtiquetaCompetitivaPartido(p);
@@ -1334,6 +1363,7 @@ function renderPartidoCard(p) {
             : ""
         }
         <p><strong>Jornada:</strong> ${escapeHtml(p.jornada || "-")}</p>
+        <p><strong>Estado:</strong> ${renderEstadoPartidoBadge(p.estado)}</p>
         <p><strong>Fecha:</strong> ${escapeHtml(formatearFechaPartido(p.fecha_partido))}</p>
         <p><strong>Hora:</strong> ${escapeHtml((p.hora_partido || "--:--").toString().substring(0, 5))}</p>
         <p><strong>Cancha:</strong> ${escapeHtml(p.cancha || "Por definir")}</p>
@@ -1507,6 +1537,43 @@ function agruparPartidosPorJornada(partidos) {
     .map(([jornada, items]) => ({ jornada, items }));
 }
 
+/**
+ * Calcula qué equipos descansan (bye) en cada jornada.
+ * Un equipo descansa si aparece en otras jornadas pero no en ésta.
+ * @param {Array} todosPartidos - todos los partidos del evento (sin filtrar)
+ * @returns {Map<number, Array<{id,nombre}>>} jornada -> equipos que descansan
+ */
+function calcularByesPorJornada(todosPartidos) {
+  // Construir mapa: equipo_id -> nombre
+  const equiposMap = new Map();
+  for (const p of todosPartidos) {
+    if (p.equipo_local_id)     equiposMap.set(p.equipo_local_id,     p.equipo_local_nombre || String(p.equipo_local_id));
+    if (p.equipo_visitante_id) equiposMap.set(p.equipo_visitante_id, p.equipo_visitante_nombre || String(p.equipo_visitante_id));
+  }
+  const todosEquipos = new Set(equiposMap.keys());
+
+  // Equipos por jornada
+  const equiposPorJornada = new Map();
+  for (const p of todosPartidos) {
+    const j = Number(p.jornada) || 0;
+    if (!equiposPorJornada.has(j)) equiposPorJornada.set(j, new Set());
+    if (p.equipo_local_id)     equiposPorJornada.get(j).add(p.equipo_local_id);
+    if (p.equipo_visitante_id) equiposPorJornada.get(j).add(p.equipo_visitante_id);
+  }
+
+  const byesPorJornada = new Map();
+  for (const [jornada, enJornada] of equiposPorJornada.entries()) {
+    const descansam = [];
+    for (const eqId of todosEquipos) {
+      if (!enJornada.has(eqId)) {
+        descansam.push({ id: eqId, nombre: equiposMap.get(eqId) || String(eqId) });
+      }
+    }
+    if (descansam.length) byesPorJornada.set(jornada, descansam);
+  }
+  return byesPorJornada;
+}
+
 function renderLineaPartido(p, mostrarGrupo = false) {
   const numero = obtenerNumeroPartidoVisible(p);
   const fecha = formatearFechaPartido(p.fecha_partido);
@@ -1577,23 +1644,34 @@ function renderFixtureTemplate(partidos) {
       .join("");
   } else if (vistaFixture === "jornada") {
     bloques = agruparPartidosPorJornada(partidos);
+    const byesJ = calcularByesPorJornada(partidosActuales);
     html = bloques
-      .map(
-        (b) => `
+      .map((b) => {
+        const byes = byesJ.get(b.jornada) || [];
+        const byeLinea = byes.length
+          ? `<div class="fixture-bye-linea">&#9790; DESCANSA: ${byes.map(e => e.nombre).join(", ")}</div>`
+          : "";
+        return `
         <div class="poster-col fixture-poster-col">
           <div class="col-header">JORNADA ${b.jornada || "-"}</div>
           <div class="col-body">
             ${b.items.map((p) => renderLineaPartido(p, true)).join("")}
+            ${byeLinea}
           </div>
         </div>
-      `
-      )
+      `;
+      })
       .join("");
   } else {
     bloques = agruparPartidosPorJornadaYGrupo(partidos);
+    const byesT = calcularByesPorJornada(partidosActuales);
     html = bloques
-      .map(
-        (b) => `
+      .map((b) => {
+        const byes = byesT.get(b.jornada) || [];
+        const byeLinea = byes.length
+          ? `<div class="fixture-bye-linea">&#9790; DESCANSA: ${byes.map(e => e.nombre).join(", ")}</div>`
+          : "";
+        return `
         <div class="poster-col fixture-poster-col">
           <div class="col-header">JORNADA ${b.jornada || "-"}</div>
           <div class="col-body">
@@ -1605,10 +1683,11 @@ function renderFixtureTemplate(partidos) {
               `
               )
               .join("")}
+            ${byeLinea}
           </div>
         </div>
-      `
-      )
+      `;
+      })
       .join("");
   }
 
@@ -1735,6 +1814,20 @@ async function editarPartido(id) {
             return "";
           },
         },
+        {
+          name: "estado",
+          label: "Estado",
+          type: "select",
+          value: p.estado || "pendiente",
+          options: [
+            { value: "pendiente",   label: "Pendiente" },
+            { value: "programado",  label: "Programado" },
+            { value: "suspendido",  label: "Suspendido" },
+            { value: "aplazado",    label: "Aplazado" },
+            { value: "en_curso",    label: "En curso" },
+          ],
+          span: 2,
+        },
       ],
     });
     if (!form) return;
@@ -1743,6 +1836,7 @@ async function editarPartido(id) {
     const nuevaHora = String(form.hora || "").trim();
     const nuevaCancha = String(form.cancha || "").trim();
     const nuevaJornada = String(form.jornada || "").trim();
+    const nuevoEstado = String(form.estado || "").trim();
 
     await ApiClient.put(`/partidos/${id}`, {
       fecha_partido: nuevaFecha || null,
@@ -1753,6 +1847,7 @@ async function editarPartido(id) {
         : null,
       cancha: nuevaCancha || null,
       jornada: nuevaJornada ? Number(nuevaJornada) : p.jornada,
+      estado: nuevoEstado || undefined,
     });
 
     mostrarNotificacion("Partido actualizado.", "success");
