@@ -1772,14 +1772,58 @@ async function editarPartido(id) {
       return;
     }
 
+    // Verificar si el usuario actual es administrador (puede editar equipos)
+    const esAdmin = String(window.Auth?.getUser?.()?.rol || "").toLowerCase() === "administrador";
+
     const horaActual = (p.hora_partido || "00:00:00").toString().substring(0, 5);
+
+    // Para admin: cargar equipos del evento para permitir cambio de equipos
+    let opcionesEquipos = [];
+    if (esAdmin && eventoSeleccionado) {
+      try {
+        const eqResp = await ApiClient.get(`/eventos/${eventoSeleccionado}/equipos`);
+        const eqList = Array.isArray(eqResp) ? eqResp : (eqResp.equipos || eqResp.data || []);
+        opcionesEquipos = eqList.map((eq) => ({ value: String(eq.id), label: eq.nombre || String(eq.id) }));
+      } catch (_) { /* si falla, no mostramos los dropdowns */ }
+    }
+
+    const camposEquipos = esAdmin && opcionesEquipos.length >= 2 ? [
+      {
+        name: "equipo_local_id",
+        label: "Equipo Local",
+        type: "select",
+        value: String(p.equipo_local_id || ""),
+        options: opcionesEquipos,
+        required: true,
+        span: 2,
+        validate: (v) => (!v ? "Selecciona el equipo local." : ""),
+      },
+      {
+        name: "equipo_visitante_id",
+        label: "Equipo Visitante",
+        type: "select",
+        value: String(p.equipo_visitante_id || ""),
+        options: opcionesEquipos,
+        required: true,
+        span: 2,
+        validate: (v, all) => {
+          if (!v) return "Selecciona el equipo visitante.";
+          if (v === all.equipo_local_id) return "El equipo visitante debe ser diferente al local.";
+          return "";
+        },
+      },
+    ] : [];
+
     const form = await window.mostrarFormularioModal({
-      titulo: "Editar partido",
-      mensaje: "Actualiza la programación del partido.",
+      titulo: esAdmin ? "Editar partido (Administrador)" : "Editar partido",
+      mensaje: esAdmin
+        ? "Puedes cambiar equipos, programación y estado del partido."
+        : "Actualiza la programación del partido.",
       tipo: "info",
       textoConfirmar: "Guardar cambios",
       ancho: "md",
       campos: [
+        ...camposEquipos,
         {
           name: "fecha",
           label: "Fecha",
@@ -1838,7 +1882,7 @@ async function editarPartido(id) {
     const nuevaJornada = String(form.jornada || "").trim();
     const nuevoEstado = String(form.estado || "").trim();
 
-    await ApiClient.put(`/partidos/${id}`, {
+    const payload = {
       fecha_partido: nuevaFecha || null,
       hora_partido: nuevaHora
         ? nuevaHora.length === 5
@@ -1848,7 +1892,13 @@ async function editarPartido(id) {
       cancha: nuevaCancha || null,
       jornada: nuevaJornada ? Number(nuevaJornada) : p.jornada,
       estado: nuevoEstado || undefined,
-    });
+    };
+
+    // Solo admin puede cambiar equipos
+    if (esAdmin && form.equipo_local_id) payload.equipo_local_id = Number(form.equipo_local_id);
+    if (esAdmin && form.equipo_visitante_id) payload.equipo_visitante_id = Number(form.equipo_visitante_id);
+
+    await ApiClient.put(`/partidos/${id}`, payload);
 
     mostrarNotificacion("Partido actualizado.", "success");
     cargarPartidos();
@@ -2138,6 +2188,137 @@ function formatearFecha(fechaISO) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yyyy = d.getFullYear();
   return `${dd}/${mm}/${yyyy}`;
+}
+
+// =============================================
+// CREAR PARTIDO MANUAL
+// =============================================
+async function crearPartidoManual() {
+  if (!eventoSeleccionado) {
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return;
+  }
+
+  // Cargar equipos del evento
+  let equipos = [];
+  try {
+    const resp = await ApiClient.get(`/eventos/${eventoSeleccionado}/equipos`);
+    equipos = Array.isArray(resp) ? resp : (resp.equipos || resp.data || []);
+  } catch (e) {
+    mostrarNotificacion("No se pudieron cargar los equipos del evento.", "error");
+    return;
+  }
+  if (equipos.length < 2) {
+    mostrarNotificacion("Se necesitan al menos 2 equipos en la categoría.", "warning");
+    return;
+  }
+
+  const opcionesEquipos = equipos.map((eq) => ({
+    value: String(eq.id),
+    label: eq.nombre || String(eq.id),
+  }));
+
+  // Calcular siguiente jornada sugerida
+  const maxJ = partidosActuales.length
+    ? Math.max(...partidosActuales.map((p) => Number(p.jornada) || 0))
+    : 1;
+
+  const form = await window.mostrarFormularioModal({
+    titulo: "Crear Partido Manual",
+    mensaje: "Elige los equipos y programa el partido.",
+    tipo: "info",
+    textoConfirmar: "Crear Partido",
+    ancho: "md",
+    campos: [
+      {
+        name: "equipo_local_id",
+        label: "Equipo Local",
+        type: "select",
+        value: "",
+        options: [{ value: "", label: "— Selecciona —" }, ...opcionesEquipos],
+        required: true,
+        span: 2,
+        validate: (v) => (!v ? "Selecciona el equipo local." : ""),
+      },
+      {
+        name: "equipo_visitante_id",
+        label: "Equipo Visitante",
+        type: "select",
+        value: "",
+        options: [{ value: "", label: "— Selecciona —" }, ...opcionesEquipos],
+        required: true,
+        span: 2,
+        validate: (v, all) => {
+          if (!v) return "Selecciona el equipo visitante.";
+          if (v === all.equipo_local_id) return "El equipo visitante debe ser diferente al local.";
+          return "";
+        },
+      },
+      {
+        name: "jornada",
+        label: "Jornada",
+        type: "number",
+        value: String(maxJ),
+        min: 1,
+        step: 1,
+        required: true,
+        validate: (v) => {
+          const n = Number.parseInt(v, 10);
+          if (!Number.isFinite(n) || n <= 0) return "Jornada debe ser entero mayor a 0.";
+          return "";
+        },
+      },
+      {
+        name: "fecha",
+        label: "Fecha",
+        type: "date",
+        value: "",
+      },
+      {
+        name: "hora",
+        label: "Hora",
+        type: "time",
+        value: "",
+      },
+      {
+        name: "cancha",
+        label: "Cancha",
+        type: "text",
+        value: "",
+        placeholder: "Vacío para sin cancha",
+        span: 2,
+      },
+    ],
+  });
+  if (!form) return;
+
+  const localId  = Number(form.equipo_local_id);
+  const visitId  = Number(form.equipo_visitante_id);
+  const jornada  = Number(form.jornada);
+  const fecha    = String(form.fecha || "").trim() || null;
+  const hora     = String(form.hora  || "").trim();
+  const cancha   = String(form.cancha || "").trim() || null;
+
+  const evento = obtenerEventoSeleccionadoObj();
+  const campeonato_id = evento?.campeonato_id || null;
+
+  try {
+    await ApiClient.post("/partidos/", {
+      campeonato_id,
+      evento_id: eventoSeleccionado,
+      equipo_local_id: localId,
+      equipo_visitante_id: visitId,
+      jornada,
+      fecha_partido: fecha,
+      hora_partido: hora ? (hora.length === 5 ? `${hora}:00` : hora) : null,
+      cancha,
+    });
+    mostrarNotificacion("Partido creado correctamente.", "success");
+    cargarPartidos();
+  } catch (err) {
+    console.error(err);
+    mostrarNotificacion(err?.message || "Error al crear el partido.", "error");
+  }
 }
 
 async function eliminarFixtureEvento() {

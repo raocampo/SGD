@@ -278,7 +278,7 @@ exports.actualizarPartido = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
 
-    // Permitimos editar jornada también
+    // Permitimos editar jornada y — solo para administrador — los equipos
     const datos = {
       fecha_partido: req.body.fecha_partido ?? undefined,
       hora_partido: req.body.hora_partido ?? undefined,
@@ -286,6 +286,15 @@ exports.actualizarPartido = async (req, res) => {
       jornada: req.body.jornada ?? undefined,
       grupo_id: req.body.grupo_id ?? undefined,
     };
+
+    // Cambio de equipos: solo el rol administrador puede hacerlo
+    const rolUsuario = String(req.user?.rol || req.user?.role || "").toLowerCase();
+    if (rolUsuario === "administrador") {
+      if (req.body.equipo_local_id !== undefined)
+        datos.equipo_local_id = parseInt(req.body.equipo_local_id, 10) || undefined;
+      if (req.body.equipo_visitante_id !== undefined)
+        datos.equipo_visitante_id = parseInt(req.body.equipo_visitante_id, 10) || undefined;
+    }
 
     // Estado manual explícito (suspendido, aplazado, pendiente, programado, en_curso)
     const ESTADOS_EDITABLES = ["pendiente", "programado", "suspendido", "aplazado", "en_curso"];
