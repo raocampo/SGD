@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-17
+Ultima actualizacion: 2026-03-17 (sesión 3)
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,28 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-17 (sesión 3)
+- Portal público / mejoras visuales y lógica de jornadas:
+  - Cards de partidos en Jornadas ahora muestran **logos de equipos** (`equipo_local_logo_url` / `equipo_visitante_logo_url`) con fallback a inicial del nombre en círculo.
+  - Subtab **Jornadas** separado de nuevo subtab **Resultados**: Jornadas muestra solo partidos pendientes/programados; Resultados muestra jornadas completamente finalizadas.
+  - Card de jornada centrada con `max-width: 680px` para no ocupar todo el ancho del body.
+  - Corrección definitiva del desfase UTC en fechas: `parseFechaLocalPortal()` ahora captura también el formato `"YYYY-MM-DDT00:00:00.000Z"` que devuelve el driver `pg` para columnas `DATE`, extrayendo solo la parte de fecha y construyendo como hora local.
+  - Botones de jornada en selector: habilitado **solo si la jornada tiene partidos con `estado='programado'`**. Deshabilitados con tooltip contextual: `"Por programar"` (sin fecha) o `"Jornada finalizada"` (todas completadas). Opacity 0.38 + `cursor: not-allowed`.
+  - Jornada activa auto-seleccionada: primera con al menos un partido en `estado='programado'`.
+- Auto-estado de partidos (`estado` automático por programación):
+  - `actualizarPartido` (backend): al asignar `fecha_partido` → `estado='programado'` automático; al borrarla → `estado='pendiente'`. Estados terminales (`finalizado`, `no_presentaron_ambos`, `suspendido`, `aplazado`, `en_curso`) no se modifican.
+  - Migración inline en `asegurarEsquemaSecuencia`: al arrancar Render, partidos existentes con `fecha_partido IS NOT NULL AND estado='pendiente'` migran automáticamente a `estado='programado'`.
+  - Resultado del flujo completo de estados:
+    - Fixture generado sin fecha → `pendiente`
+    - Se programa fecha/hora → `programado` (automático)
+    - Se ingresan resultados → `finalizado` (ya existía por defecto)
+    - Se borra la fecha → vuelve a `pendiente`
+- Commits de la sesión:
+  - `ec2727e` fix(portal): corregir desfase UTC en fechas (primera versión parcial)
+  - `372dfda` feat(portal): logos de equipos, separar Jornadas/Resultados y centrar cards
+  - `cfa025f` fix(portal): corregir fecha ISO de pg y deshabilitar botones de jornadas finalizadas
+  - `ad0c58e` feat(partidos): auto-estado programado/pendiente y activación de jornadas por estado
 
 ### 2026-03-17 (sesión 2)
 - Portal publico / tab Jornadas:
