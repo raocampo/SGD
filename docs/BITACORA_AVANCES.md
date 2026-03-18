@@ -1,6 +1,34 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-18 (sesión 6)
+Ultima actualizacion: 2026-03-18 (sesión 7)
+
+## Pendientes (al 2026-03-18)
+
+### Playoff / Eliminatorias
+- [ ] Validación operativa del nuevo sembrado interleaved con datos reales de campeonato activo (confirmar que la semif siempre cruza grupos distintos).
+- [ ] Verificar que `auto-programar` funciona correctamente cuando hay slots sin partido_id en rounds 2+ (endpoint nuevo `/programar` debe crearlos).
+- [ ] Plantilla `balanceada_8vos` con 4 grupos × 2 clasificados: actualmente cae al algoritmo estándar (interleaved). Evaluar si el usuario quiere un sembrado específico distinto para ese caso también.
+- [ ] Cierre de formatos no potencia de 2 adicionales (ej: 6, 10, 12 equipos) si el cliente los confirma.
+
+### Portal público
+- [ ] Revisar subtab **Playoff** en portal: validación de llave contra clasificación vigente (equipos eliminados, vacantes pendientes).
+- [ ] Programación de partidos de playoff visible en portal (fecha/hora/cancha) cuando estén asignados.
+
+### Plantillas de publicación
+- [ ] Aplicar selector de tema visual (`tema-oscuro`, `tema-clasico`, `tema-torneo`) a la nueva página `jornadasplantilla.html` (ya implementado, pendiente verificar integración de colores del campeonato).
+- [ ] Exportación PNG/PDF de llaves eliminatorias en la sección "Plantilla para Publicar" del bracket.
+
+### Módulo Liga
+- [ ] Verificar que la tab **Liga** en `gruposgen.html` carga correctamente los equipos cuando se selecciona una categoría con `metodo_competencia='liga'`.
+- [ ] Exportación de plantilla de liga (poster con equipos inscritos) con temas visuales.
+
+### General / Infraestructura
+- [ ] Pruebas integrales de flujo real con carga de datos de campeonato completo.
+- [ ] Copiar histórico de `backend/uploads/` al disco persistente de Render antes de validar carga completa de imágenes/documentos en producción.
+- [ ] Notificaciones (email/push) para partidos y resultados — pendiente de confirmar alcance.
+- [ ] Auditoría completa y reportes ejecutivos.
+
+---
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +40,39 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-18 (sesión 7)
+- Corrección de 3 bugs en módulo de eliminatorias/playoff:
+
+**Bug 1: `playoff_tercer_puesto` y `playoff_plantilla` no se guardaban para método "grupos" o "liga"**
+  - Causa: `frontend/js/eventos.js` líneas 749-754 tenían condición restrictiva que excluía los métodos `'grupos'` y `'liga'` al leer esos campos del formulario, asignando siempre `"estandar"` y `false`.
+  - Solución: Eliminada la condición — ahora siempre se lee el valor real del formulario sin importar el `metodo_competencia`.
+
+**Bug 2: El bracket playoff no evitaba que equipos del mismo cruce se enfrentaran en semifinal**
+  - Causa: `construirSembradoCrucesGrupos` en `backend/models/Eliminatoria.js` iteraba todos los partidos de [A,C] juntos, luego todos los de [B,D]. Resultado: ambos partidos del cruce A-C quedaban en la misma mitad del bracket → semifinal entre A y C era posible.
+  - Solución: El algoritmo ahora **intercala** los partidos de distintos cruces. Con cruces [[A,C],[B,D]] y 2 clasificados por grupo el resultado es:
+    - QF1: 1A vs 2C | QF2: 1B vs 2D → Semi 1: ganador(A o C) vs ganador(B o D) ✓
+    - QF3: 2A vs 1C | QF4: 2B vs 1D → Semi 2: ganador(A o C) vs ganador(B o D) ✓
+    - Las semifinales siempre son entre cruces distintos; equipos del mismo grupo solo se pueden encontrar en la final.
+
+**Bug 3: Botón "Programar" no visible en partidos de ronda 2+ (cuartos, semis, final)**
+  - Causa: El botón solo se mostraba si `c.partido_id` era truthy. En las rondas 2+ los slots no tienen `partido_id` aún (el registro en `partidos` se crea solo en ronda 1 cuando se conocen los equipos).
+  - Solución completa:
+    - Nuevo endpoint `PUT /eliminatorias/:id/programar` en backend que:
+      - Si el slot no tiene `partido_id`: crea un registro en `partidos` (con equipos null si aún no están definidos) y vincula `partido_id` al slot en `partidos_eliminatoria`.
+      - Si ya tiene `partido_id`: actualiza `fecha_partido`, `hora_partido` y `cancha`.
+    - El botón "Programar" ahora aparece en **todos** los cruces (usa `c.id` del slot, no `c.partido_id`).
+    - `guardarProgPartidoEli()` y `ejecutarAutoProgEli()` llaman al nuevo endpoint `/eliminatorias/:id/programar`.
+    - Auto-programar ahora incluye todos los slots (no solo los que ya tienen partido_id).
+  - Archivos modificados:
+    - `backend/models/Eliminatoria.js`: nuevo método estático `programarSlot()`
+    - `backend/controllers/eliminatoriaController.js`: nuevo handler `programarSlot`
+    - `backend/routes/eliminatoriaRoutes.js`: nueva ruta `PUT /:id/programar`
+    - `frontend/js/eliminatorias.js`: botón, `guardarProgPartidoEli`, `ejecutarAutoProgEli`
+    - `frontend/js/eventos.js`: condición restrictiva eliminada
+  - Commit: `fix(eliminatorias): corregir 3 bugs de playoff`
+
+---
 
 ### 2026-03-18 (sesión 6)
 - Modo Liga en página de grupos (`gruposgen.html` / `gruposgen.js`):
