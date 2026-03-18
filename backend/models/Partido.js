@@ -755,6 +755,14 @@ class Partido {
       WHERE numero_campeonato IS NOT NULL
     `);
 
+    // Normalizar estado: partidos con fecha asignada pero aún en 'pendiente' → 'programado'
+    await pool.query(`
+      UPDATE partidos
+      SET estado = 'programado'
+      WHERE fecha_partido IS NOT NULL
+        AND estado = 'pendiente'
+    `);
+
     this._esquemaSecuenciaAsegurado = true;
   }
 

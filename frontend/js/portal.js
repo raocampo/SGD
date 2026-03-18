@@ -1068,11 +1068,10 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
   } else {
     for (let i = 0; i < bloquesVista.length; i++) {
       const ps = Array.isArray(bloquesVista[i].partidos) ? bloquesVista[i].partidos : [];
-      const tieneNoJugado = ps.some((p) => {
-        const st = String(p.estado || "").toLowerCase();
-        return st !== "finalizado" && st !== "no_presentaron_ambos";
-      });
-      if (tieneNoJugado) { jornadaActivaIndex = i; break; }
+      // Jornada activa = primera con al menos un partido en estado "programado"
+      if (ps.some((p) => String(p.estado || "").toLowerCase() === "programado")) {
+        jornadaActivaIndex = i; break;
+      }
     }
     if (jornadaActivaIndex < 0) jornadaActivaIndex = bloquesVista.length - 1;
   }
@@ -1084,10 +1083,14 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
     ? `<div class="portal-jornadas-selector" role="tablist" aria-label="Seleccionar jornada">
         ${bloques_.map((j, i) => {
           const ps = Array.isArray(j.partidos) ? j.partidos : [];
-          const tieneProgr = modo === "finalizadas" ? true : ps.some((p) => {
-            const st = String(p.estado || "").toLowerCase();
-            return st !== "finalizado" && st !== "no_presentaron_ambos";
-          });
+          // Habilitado solo si la jornada tiene al menos un partido explícitamente "programado"
+          const tieneProgr = modo === "finalizadas"
+            ? true
+            : ps.some((p) => String(p.estado || "").toLowerCase() === "programado");
+          const esFinalizada = esJornadaFinalizada(ps);
+          const tooltip = !tieneProgr
+            ? (esFinalizada ? "Jornada finalizada" : "Jornada por programar")
+            : "";
           const isActive = i === jornadaActivaIndex;
           return `<button
             class="portal-jornada-selector-btn${isActive ? " active" : ""}${!tieneProgr ? " disabled" : ""}"
@@ -1095,7 +1098,7 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
             data-jornada-btn="${i}"
             aria-selected="${isActive ? "true" : "false"}"
             ${!tieneProgr ? "disabled" : ""}
-            title="${!tieneProgr ? "Jornada finalizada" : ""}"
+            title="${escPortal(tooltip)}"
           >J${escPortal(j.numero)}</button>`;
         }).join("")}
       </div>`
