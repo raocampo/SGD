@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-17 (sesión 3)
+Ultima actualizacion: 2026-03-17 (sesión 4)
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -1667,3 +1667,60 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - `W12-4 vs MP1`
   - resto de cruces entre ganadores de `12vos`.
 - Si el cliente pide un formato adicional para `20`, `12` u otros cupos no potencia de 2, ampliar esta misma plantilla a un modo mas general.
+
+### 2026-03-17 (sesión 4)
+- Fixture / gestión avanzada — corrección de regresión y nuevas herramientas:
+
+  **Fix regenerarFixturePreservandoJugados (`backend/models/Partido.js`):**
+  - El bug eliminaba partidos `programado` (con fecha asignada), destruyendo jornadas ya calendarizadas al regenerar tras ingresar un equipo nuevo.
+  - Corrección: el DELETE ahora elimina SOLO partidos con `estado IS NULL OR estado = 'pendiente'`.
+  - Se preservan: `programado`, `finalizado`, `no_presentaron_ambos`, `suspendido`, `aplazado`, `en_curso`.
+  - `maxJornadaJugada` ahora toma el máximo sobre TODOS los estados preservados (no solo finalizado).
+  - Las queries de `pairsJugados` (pares ya existentes) también incluyen los estados preservados para no regenerar enfrentamientos que ya existen en cualquier estado activo.
+  - Efecto: si un equipo nuevo ingresa con Jornada 1 ya programada, esa jornada queda intacta y el nuevo equipo descansa automáticamente.
+
+  **Estado manual de partidos (`backend/controllers/partidoController.js` + `frontend/js/partidos.js`):**
+  - Backend: `actualizarPartido` acepta campo `estado` explícito (pendiente/programado/suspendido/aplazado/en_curso).
+  - Si se envía `estado` explícito tiene precedencia sobre la auto-transición por fecha.
+  - Frontend: formulario "Editar partido" incluye selector de Estado con 5 opciones.
+
+  **Badge de estado en card de partido (`frontend/js/partidos.js`):**
+  - Nueva función `renderEstadoPartidoBadge(estado)`.
+  - Cada card muestra el estado actual con badge de color: azul=programado, gris=pendiente, verde=finalizado, rojo=suspendido, naranja=aplazado, amarillo=en curso.
+
+  **Equipo que descansa (bye) por jornada:**
+  - Nueva función `calcularByesPorJornada(todosPartidos)` en `partidos.js`: compara equipos del universo del evento contra los que aparecen en cada jornada; detecta automáticamente el equipo que no juega.
+  - Vista de cards en `partidos.html`: agrupa por jornada con encabezado y muestra `"Descansa: [equipo]"` en morado cuando aplica.
+  - Fixture exportable (vista jornada y vista todos): muestra `"☾ DESCANSA: [equipo]"` al pie de cada jornada.
+  - Portal público (`frontend/js/portal.js`): nueva función `calcularByesPortal(todosPartidos)`; cada tarjeta de jornada muestra `"🌙 Descansa: [equipo]"` al pie, con estilos en `portal.css`.
+  - Estilos nuevos en `style.css`: `.badge-estado-partido`, `.fixture-jornada-bloque`, `.fixture-jornada-titulo`, `.fixture-bye-notice`, `.fixture-bye-linea`.
+
+  **Crear partido manual (`frontend/partidos.html` + `frontend/js/partidos.js`):**
+  - Nuevo botón "Crear Partido Manual" en la sección de Generación de Fixture.
+  - Modal con: dropdown Equipo Local, dropdown Equipo Visitante (cargados de `/eventos/:id/equipos`), Jornada, Fecha, Hora, Cancha.
+  - Validación: no permite mismo equipo en local y visitante.
+  - POST a `POST /partidos/` con campeonato_id, evento_id y estado automático.
+  - Útil para construir jornadas parciales antes de regenerar, o para partidos especiales fuera del round-robin.
+
+  **Edición de equipos en partido (solo Administrador):**
+  - `editarPartido()` detecta `window.Auth.getUser().rol`.
+  - Si es `administrador`: carga equipos del evento y muestra dropdowns de Equipo Local/Visitante en el formulario "Editar".
+  - Backend `actualizarPartido`: acepta `equipo_local_id` y `equipo_visitante_id` solo si `req.user.rol === 'administrador'`.
+
+  **Commits de la sesión:**
+  - `5bec42c` feat(fixture): preservar jornadas programadas al regenerar, estados de partido y bye por jornada
+  - `20d6bb7` feat(portal): mostrar equipo que descansa (bye) por jornada en portal público
+  - `48b08c1` feat(fixture): crear partido manual y edición de equipos por administrador
+
+## Pendiente inmediato sesion 5 (2026-03-18)
+- Plantillas de exportación (sección 14 del ESTADO_IMPLEMENTACION):
+  - **A)** Carné individual: dropdown "Jugador:" en toolbar de carnés → `jugadores.html`
+  - **B)** Fondo personalizado en export de fixture → `fixtureplantilla.html`
+  - **C)** Plantilla exportable de jornada (`jornadadplantilla.html`) — logo equipos, fecha/hora/cancha, para compartir en redes
+  - **D)** Fondo personalizado en export de grupos → `gruposgen.js`
+- Validar en operación real:
+  - bye/descansa en portal público con campeonato activo real
+  - botón "Crear Partido Manual" con el fixture del campeonato de 11 equipos
+  - edición de equipos en partido (botón Editar como administrador)
+  - regenerar fixture tras crear J1 manualmente → verifica que Academia Pedro Larrea descanse en J1
+- Validar plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con campeonato real de 24 clasificados.
