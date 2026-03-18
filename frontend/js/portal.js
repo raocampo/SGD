@@ -921,6 +921,47 @@ function formatearHoraPortal(hora) {
   return raw;
 }
 
+/**
+ * Calcula qué equipos descansan (bye) en cada jornada del portal.
+ * Un equipo descansa si aparece en otras jornadas pero no en ésta.
+ * @param {Array} todosPartidos - todos los partidos del evento
+ * @returns {Map<string, Array<string>>} jornada (string) -> nombres de equipos que descansan
+ */
+function calcularByesPortal(todosPartidos = []) {
+  const equiposMap = new Map(); // id -> nombre
+  for (const p of todosPartidos) {
+    const lid = p.equipo_local_id   || p.local_id;
+    const vid = p.equipo_visitante_id || p.visitante_id;
+    const ln  = p.equipo_local_nombre   || p.local_nombre   || p.nombre_local   || "";
+    const vn  = p.equipo_visitante_nombre || p.visitante_nombre || p.nombre_visitante || "";
+    if (lid) equiposMap.set(String(lid), ln || String(lid));
+    if (vid) equiposMap.set(String(vid), vn || String(vid));
+  }
+  const todosEquipos = new Set(equiposMap.keys());
+
+  const enJornada = new Map();
+  for (const p of todosPartidos) {
+    const j = String(p.jornada ?? "");
+    if (!enJornada.has(j)) enJornada.set(j, new Set());
+    const lid = p.equipo_local_id   || p.local_id;
+    const vid = p.equipo_visitante_id || p.visitante_id;
+    if (lid) enJornada.get(j).add(String(lid));
+    if (vid) enJornada.get(j).add(String(vid));
+  }
+
+  const byes = new Map();
+  for (const [j, presentes] of enJornada.entries()) {
+    const descansam = [];
+    for (const eqId of todosEquipos) {
+      if (!presentes.has(eqId)) {
+        descansam.push(equiposMap.get(eqId) || eqId);
+      }
+    }
+    if (descansam.length) byes.set(j, descansam);
+  }
+  return byes;
+}
+
 function normalizarJornadasPortal(jornadas = [], partidos = []) {
   if (Array.isArray(jornadas) && jornadas.length) {
     return jornadas
@@ -1046,6 +1087,8 @@ function renderBadgeJornadaPortal(partidos = []) {
 
 // modo: "proximas" muestra todos los botones (deshabilita finalizadas); "finalizadas" solo las completadas
 function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
+  // Calcular byes usando TODOS los partidos del evento (no solo los del modo)
+  const byesPorJornada = calcularByesPortal(partidos);
   const bloques = normalizarJornadasPortal(jornadas, partidos);
 
   // Para "finalizadas" solo mostramos las completadas
@@ -1117,6 +1160,10 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
         subtituloFecha = `${primera} – ${ultima}`;
       }
       const badge = renderBadgeJornadaPortal(ps);
+      const byesJornada = byesPorJornada.get(String(jornada.numero)) || [];
+      const byeHtml = byesJornada.length
+        ? `<div class="portal-jornada-bye"><span class="portal-jornada-bye-icon">🌙</span> <strong>Descansa:</strong> ${byesJornada.map(escPortal).join(", ")}</div>`
+        : "";
       return `
         <section class="portal-jornada-card${i === jornadaActivaIndex ? " portal-jornada-activa" : ""}" data-jornada-card="${i}" ${i !== jornadaActivaIndex ? 'hidden' : ''}>
           <div class="portal-jornada-card-head">
@@ -1131,6 +1178,7 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
           </div>
           <div class="portal-jornada-card-body">
             ${ps.map((partido) => renderPartidoJornadaPortal(partido)).join("") || '<p class="empty-msg">Sin partidos en esta jornada.</p>'}
+            ${byeHtml}
           </div>
         </section>
       `;

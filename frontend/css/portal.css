@@ -1969,3 +1969,22 @@ body.ltc-landing {
     justify-content: center;
   }
 }
+
+/* ===== BYE / DESCANSA EN JORNADA PORTAL ===== */
+.portal-jornada-bye {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.45rem 0.9rem;
+  background: #f5f3ff;
+  border: 1px solid #c4b5fd;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #5b21b6;
+  font-weight: 500;
+}
+.portal-jornada-bye-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
