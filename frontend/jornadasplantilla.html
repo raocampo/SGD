@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plantilla de Jornadas</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/grupos.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  </head>
+
+  <body class="page-fixture">
+    <header class="header">
+      <div class="container">
+        <h1>Plantilla de Jornada</h1>
+        <div class="fixture-top-actions">
+          <button class="btn btn-secondary" onclick="volverPartidos()">
+            <i class="fas fa-arrow-left"></i> Volver
+          </button>
+          <div class="poster-tema-selector" style="margin:0;">
+            <span>Tema:</span>
+            <button type="button" class="btn-poster-tema active" data-tema="oscuro" onclick="aplicarTemaJornada('oscuro')">Oscuro</button>
+            <button type="button" class="btn-poster-tema" data-tema="clasico" onclick="aplicarTemaJornada('clasico')">Clásico</button>
+            <button type="button" class="btn-poster-tema" data-tema="torneo" onclick="aplicarTemaJornada('torneo')">Colores del torneo</button>
+          </div>
+          <button class="btn btn-secondary" onclick="exportarJornadaPNG()">
+            <i class="fas fa-image"></i> Exportar PNG
+          </button>
+          <button class="btn btn-danger" onclick="exportarJornadaPDF()">
+            <i class="fas fa-file-pdf"></i> Exportar PDF
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="section active">
+        <div class="container">
+          <!-- Selector de jornada (fuera del poster) -->
+          <div id="jornadas-nav" class="jornadas-plantilla-nav" style="display:none;margin-bottom:0.75rem;"></div>
+
+          <div id="jornada-export" class="poster fixture-poster tema-oscuro">
+            <div class="poster-titulo">
+              <div class="poster-org">
+                <img
+                  id="jornada-org-logo"
+                  class="poster-org-logo"
+                  crossorigin="anonymous"
+                  referrerpolicy="no-referrer"
+                  alt="Logo"
+                  style="display:none;"
+                />
+              </div>
+              <div class="poster-header">
+                <div class="poster-titles">
+                  <div id="jornada-organizador" class="poster-subtitle">ORGANIZA: —</div>
+                  <div id="jornada-titulo" class="poster-title">JORNADA</div>
+                  <div id="jornada-detalle" class="poster-detail">—</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="jornada-partidos" class="poster-grids" style="grid-template-columns:1fr;">
+              <div class="empty-state">
+                <i class="fas fa-futbol"></i>
+                <p>Cargando jornada...</p>
+              </div>
+            </div>
+
+            <div id="jornada-sponsors" class="poster-sponsors" style="display:none;">
+              <div class="sponsors-title">Auspician</div>
+              <div id="jornada-sponsors-grid" class="sponsors-grid"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="js/core.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/jornadasplantilla.js"></script>
+  </body>
+</html>

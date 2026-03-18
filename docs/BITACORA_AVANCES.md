@@ -1,6 +1,6 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-17 (sesión 4)
+Ultima actualizacion: 2026-03-18 (sesión 5)
 
 ## Objetivo
 Mantener un registro vivo del progreso del proyecto para retomar trabajo sin perder contexto.
@@ -12,6 +12,30 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Pendiente continuar pruebas integrales de flujo real con carga de datos.
 
 ## Avances Recientes
+
+### 2026-03-18 (sesión 5)
+- Selección de carnets para imprimir / exportar PDF:
+  - Cada carnet en `bloque-carnets-jugadores` ahora muestra un **checkbox** en la esquina superior derecha (oculto en impresión via `@media print`).
+  - Barra de selección (`carnets-sel-bar`) con toggle "Seleccionar todos / ninguno" y contador `N de M seleccionados`.
+  - `imprimirCarnetsJugadores()` y `exportarCarnetsPDF()` usan `obtenerIdsCarnetSeleccionados()`: si hay checkboxes marcados, solo se incluyen esos; si ninguno marcado, se imprimen todos (backward compatible).
+  - El PDF lleva sufijo `_selN` en el nombre de archivo cuando hay selección parcial.
+  - CSS: `.carnet-sel-overlay`, `.carnets-sel-bar`, efecto outline azul en carnets seleccionados (`:has()` selector).
+- Temas visuales para posters de exportación:
+  - 3 temas aplicables a todos los posters: **Oscuro** (default, gradiente navy), **Clásico** (gradiente claro), **Colores del torneo** (usa `color_primario`/`color_secundario`/`color_acento` del campeonato via CSS vars `--t-primario`, `--t-secundario`, `--t-acento`).
+  - Selector de tema visible en `gruposgen.html` (poster de grupos) y en `fixtureplantilla.html`.
+  - `cargarCabeceraCampeonato()` en `gruposgen.js` ya carga y aplica los CSS vars del campeonato al poster.
+  - `cargarContexto()` en `fixtureplantilla.js` idem para el poster de fixture.
+  - CSS de temas en `grupos.css` con variables `--poster-bg`, `--poster-color`, `--poster-card-bg`, `--poster-card-border`, `--poster-card-text`.
+- Nueva página de plantilla para jornadas: `jornadasplantilla.html` + `jornadasplantilla.js`:
+  - Accesible desde `partidos.html` > pestaña Plantilla Fixture > botón "Plantilla Jornada".
+  - Carga el evento/campeonato por `RouteContext` (`evento`, `jornada`).
+  - Renderiza un poster con: cabecera (logo, nombre torneo, categoría), selector de jornada (cuando hay más de una), y cards de partidos de la jornada seleccionada con logos, marcador, fecha, hora y cancha.
+  - Auto-selecciona la primera jornada con partidos en estado `programado`.
+  - Soporta exportación PNG y PDF (via `html2canvas` + `jsPDF`).
+  - Soporta los 3 temas visuales.
+  - CSS de cards de partido en poster: `.poster-jornada-partido`, `.poster-partido-row`, `.poster-partido-score`, `.poster-jornada-logo`, etc. (agregado en `grupos.css`).
+- Commits de la sesión:
+  - `feat(plantillas): selección carnets, temas poster, página jornadas`
 
 ### 2026-03-17 (sesión 3)
 - Portal público / mejoras visuales y lógica de jornadas:

@@ -23,6 +23,12 @@
           <button class="btn btn-secondary" onclick="volverPartidos()">
             <i class="fas fa-arrow-left"></i> Volver a Partidos
           </button>
+          <div class="poster-tema-selector" style="margin:0;">
+            <span>Tema:</span>
+            <button type="button" class="btn-poster-tema active" data-tema="oscuro" onclick="aplicarTemaFixture('oscuro')">Oscuro</button>
+            <button type="button" class="btn-poster-tema" data-tema="clasico" onclick="aplicarTemaFixture('clasico')">Clásico</button>
+            <button type="button" class="btn-poster-tema" data-tema="torneo" onclick="aplicarTemaFixture('torneo')">Colores del torneo</button>
+          </div>
           <button class="btn btn-secondary" onclick="exportarFixturePNG()">
             <i class="fas fa-image"></i> Exportar PNG
           </button>
@@ -36,7 +42,7 @@
     <main class="main">
       <section class="section active">
         <div class="container">
-          <div id="fixture-export" class="poster fixture-poster">
+          <div id="fixture-export" class="poster fixture-poster tema-oscuro">
             <div class="poster-titulo">
               <div class="poster-org">
                 <img

@@ -2139,7 +2139,7 @@ async function renderReporteSancionesCategoriaJugadores() {
   `;
 }
 
-function renderPlantillaCarnets() {
+function renderPlantillaCarnets(filtroIds = null) {
   const zona = document.getElementById("carnets-jugadores-export");
   if (!zona) return;
 
@@ -2158,7 +2158,10 @@ function renderPlantillaCarnets() {
   const categoriaActual = obtenerNombreEventoActual();
   const urlPortalParticipacion = construirUrlPortalParticipacion();
   const qrUrlParticipacion = construirQrUrlParticipacion();
-  const cards = jugadoresActuales
+  const jugadoresARender = filtroIds
+    ? jugadoresActuales.filter((j) => filtroIds.includes(j.id))
+    : jugadoresActuales;
+  const cards = jugadoresARender
     .map((j) => {
       const foto = obtenerFotoAnversoCarnet(j);
       const estiloCarnet = construirEstiloCarnet(metaCarnet);
@@ -2170,8 +2173,14 @@ function renderPlantillaCarnets() {
       const fotoPosX = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_x, 50) : 50;
       const fotoPosY = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_y, 35) : 35;
       const fotoZoom = usaPosicionCarnet ? normalizarZoomFotoCarnet(j.foto_carnet_zoom, 1) : 1;
+      const checkboxOverlay = filtroIds
+        ? ""
+        : `<label class="carnet-sel-overlay" title="Seleccionar para imprimir">
+            <input type="checkbox" class="carnet-sel-chk" value="${j.id}" onchange="actualizarConteoSelCarnet()">
+           </label>`;
       return `
-        <article class="carnet-card ${claseEstilo}" style="${escapeHtml(estiloCarnet)}">
+        <article class="carnet-card ${claseEstilo}" data-jid="${j.id}" style="${escapeHtml(estiloCarnet)}">
+          ${checkboxOverlay}
           <div class="carnet-backdrop" aria-hidden="true"></div>
           <header class="carnet-header">
             <div class="carnet-org">${escapeHtml(metaCarnet.organizador || "Organizador")}</div>
@@ -2214,7 +2223,42 @@ function renderPlantillaCarnets() {
     })
     .join("");
 
-  zona.innerHTML = `<div class="carnets-grid">${cards}</div>`;
+  const selBar = filtroIds
+    ? ""
+    : `<div class="carnets-sel-bar" id="carnets-sel-bar">
+        <label class="carnets-sel-todos-label">
+          <input type="checkbox" id="carnets-sel-todos" onchange="toggleSeleccionTodosCarnets(this.checked)">
+          Seleccionar todos
+        </label>
+        <span class="carnets-sel-count" id="carnets-sel-count">Todos</span>
+      </div>`;
+
+  zona.innerHTML = selBar + `<div class="carnets-grid">${cards}</div>`;
+}
+
+function toggleSeleccionTodosCarnets(checked) {
+  document.querySelectorAll("#carnets-jugadores-export .carnet-sel-chk").forEach((chk) => {
+    chk.checked = checked;
+  });
+  actualizarConteoSelCarnet();
+}
+
+function actualizarConteoSelCarnet() {
+  const total = document.querySelectorAll("#carnets-jugadores-export .carnet-sel-chk").length;
+  const sel = document.querySelectorAll("#carnets-jugadores-export .carnet-sel-chk:checked").length;
+  const countEl = document.getElementById("carnets-sel-count");
+  if (countEl) countEl.textContent = sel === 0 ? "Todos" : `${sel} de ${total} seleccionados`;
+  const todosChk = document.getElementById("carnets-sel-todos");
+  if (todosChk) {
+    todosChk.checked = sel === total && total > 0;
+    todosChk.indeterminate = sel > 0 && sel < total;
+  }
+}
+
+function obtenerIdsCarnetSeleccionados() {
+  const checked = document.querySelectorAll("#carnets-jugadores-export .carnet-sel-chk:checked");
+  if (!checked.length) return null;
+  return Array.from(checked).map((chk) => Number(chk.value));
 }
 
 function mostrarBloqueReportesJugador(idBloqueVisible) {
@@ -2692,11 +2736,16 @@ function imprimirCarnetsJugadores() {
     mostrarNotificacion("No hay jugadores para imprimir carnés", "warning");
     return;
   }
-  renderPlantillaCarnets();
+  const ids = obtenerIdsCarnetSeleccionados();
+  renderPlantillaCarnets(ids);
   activarLayoutCarnetsA4(true);
   const zona = document.getElementById("carnets-jugadores-export");
-  imprimirNodoEnVentana(zona, "Carnés de Jugadores");
-  setTimeout(() => activarLayoutCarnetsA4(false), 450);
+  const titulo = ids ? `Carnés Seleccionados (${ids.length})` : "Carnés de Jugadores";
+  imprimirNodoEnVentana(zona, titulo);
+  setTimeout(() => {
+    activarLayoutCarnetsA4(false);
+    renderPlantillaCarnets();
+  }, 450);
 }
 
 function imprimirPlanillaJugador() {
@@ -2732,8 +2781,9 @@ async function exportarCarnetsPDF() {
   const bloqueNomina = document.getElementById("bloque-nomina-jugadores");
   const displayCarnetsPrev = bloqueCarnets ? bloqueCarnets.style.display : null;
   const displayNominaPrev = bloqueNomina ? bloqueNomina.style.display : null;
+  const ids = obtenerIdsCarnetSeleccionados();
   try {
-    renderPlantillaCarnets();
+    renderPlantillaCarnets(ids);
     if (bloqueCarnets) bloqueCarnets.style.display = "block";
     if (bloqueNomina) bloqueNomina.style.display = "none";
     activarLayoutCarnetsA4(true);
@@ -2746,13 +2796,15 @@ async function exportarCarnetsPDF() {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "");
-    await exportarCarnetsEnPDFA4(zona, `carnets_jugadores_${slugEquipo || "equipo"}.pdf`);
-    mostrarNotificacion("Carnés exportados en PDF", "success");
+    const sufijo = ids ? `_sel${ids.length}` : "";
+    await exportarCarnetsEnPDFA4(zona, `carnets_jugadores_${slugEquipo || "equipo"}${sufijo}.pdf`);
+    mostrarNotificacion(ids ? `${ids.length} carnés exportados en PDF` : "Carnés exportados en PDF", "success");
   } catch (error) {
     console.error(error);
     mostrarNotificacion(error.message || "No se pudo exportar carnés", "error");
   } finally {
     activarLayoutCarnetsA4(false);
+    renderPlantillaCarnets();
     if (bloqueCarnets && displayCarnetsPrev !== null) bloqueCarnets.style.display = displayCarnetsPrev;
     if (bloqueNomina && displayNominaPrev !== null) bloqueNomina.style.display = displayNominaPrev;
   }

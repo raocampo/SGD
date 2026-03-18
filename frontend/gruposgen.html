@@ -94,8 +94,16 @@
             </button>
           </div>
 
+          <!-- Selector de tema visual -->
+          <div class=”poster-tema-selector” id=”poster-tema-selector”>
+            <span>Tema:</span>
+            <button type=”button” class=”btn-poster-tema active” data-tema=”oscuro” onclick=”aplicarTemaPoster('oscuro')”>Oscuro</button>
+            <button type=”button” class=”btn-poster-tema” data-tema=”clasico” onclick=”aplicarTemaPoster('clasico')”>Clásico</button>
+            <button type=”button” class=”btn-poster-tema” data-tema=”torneo” onclick=”aplicarTemaPoster('torneo')”>Colores del torneo</button>
+          </div>
+
           <!-- ✅ ZONA EXPORTABLE TIPO “POSTER” -->
-          <div id="zona-grupos-export" class="poster">
+          <div id=”zona-grupos-export” class=”poster tema-oscuro”>
 
             <div class="poster-titulo">
               <div class="poster-org">

@@ -4406,6 +4406,54 @@ body.modal-open {
   gap: 0.9rem;
 }
 
+/* Barra de selección de carnets */
+.carnets-sel-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: #eef3f9;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  flex-wrap: wrap;
+}
+.carnets-sel-todos-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+.carnets-sel-count {
+  color: #555;
+  font-size: 0.82rem;
+}
+/* Overlay de checkbox sobre cada carnet */
+.carnet-sel-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  cursor: pointer;
+  line-height: 1;
+}
+.carnet-sel-overlay input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary, #1e3a5f);
+}
+/* Carnet seleccionado: borde azul */
+.carnet-card:has(.carnet-sel-chk:checked) {
+  outline: 3px solid var(--color-primary, #1e3a5f);
+  outline-offset: 2px;
+}
+@media print {
+  .carnet-sel-overlay,
+  .carnets-sel-bar { display: none !important; }
+}
+
 .carnet-card {
   position: relative;
   isolation: isolate;

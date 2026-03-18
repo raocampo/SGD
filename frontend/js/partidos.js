@@ -2094,6 +2094,24 @@ function abrirPlantillaFixturePantallaCompleta() {
   window.location.href = `fixtureplantilla.html?${params.toString()}`;
 }
 
+function abrirPlantillaJornada() {
+  if (!eventoSeleccionado) {
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return;
+  }
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("jornadasplantilla.html", {
+      evento: Number(eventoSeleccionado) || null,
+      jornada: jornadaSeleccionada || "",
+    });
+    return;
+  }
+  const params = new URLSearchParams();
+  params.set("evento", String(eventoSeleccionado));
+  if (jornadaSeleccionada) params.set("jornada", String(jornadaSeleccionada));
+  window.location.href = `jornadasplantilla.html?${params.toString()}`;
+}
+
 function abrirVistaEliminatoria() {
   if (!eventoSeleccionado) {
     mostrarNotificacion("Selecciona una categoría primero.", "warning");
@@ -2407,6 +2425,7 @@ window.renderReporteSancionesPartidos = renderReporteSancionesPartidos;
 window.imprimirReporteSancionesPartidos = imprimirReporteSancionesPartidos;
 window.exportarReporteSancionesPartidosPDF = exportarReporteSancionesPartidosPDF;
 window.abrirPlantillaFixturePantallaCompleta = abrirPlantillaFixturePantallaCompleta;
+window.abrirPlantillaJornada = abrirPlantillaJornada;
 window.editarPartido = editarPartido;
 window.eliminarPartido = eliminarPartido;
 window.abrirPlanillaPartido = abrirPlanillaPartido;

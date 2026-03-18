@@ -369,10 +369,20 @@ async function cargarCabeceraCampeonato(campeonatoId, eventoNombre = "") {
         : "";
       detalleEl.textContent = `${detalleBase}${detalleEvento}`;
     }
+    // Guardar colores del campeonato para el tema "Torneo"
+    const poster = document.getElementById("zona-grupos-export");
+    if (poster) {
+      const primario = camp.color_primario || "#1e3a5f";
+      const secundario = camp.color_secundario || "#0b1f35";
+      const acento = camp.color_acento || "#facc15";
+      poster.style.setProperty("--t-primario", primario);
+      poster.style.setProperty("--t-secundario", secundario);
+      poster.style.setProperty("--t-acento", acento);
+    }
+
     const orgLogoEl = document.getElementById("poster-org-logo");
 
     if (orgLogoEl && camp.logo_url) {
-      //orgLogoEl.src = normalizarLogoUrl(camp.logo_url);
       const logoOrg = normalizarLogoUrl(camp.logo_url || null);
       if (logoOrg) {
         orgLogoEl.src = logoOrg;
@@ -843,3 +853,14 @@ window.exportarGruposPNG = exportarGruposPNG;
 window.exportarPDF = exportarPDF;
 window.compartirRedes = compartirRedes;
 window.volverInicio = volverInicio;
+
+function aplicarTemaPoster(tema) {
+  const poster = document.getElementById("zona-grupos-export");
+  if (!poster) return;
+  poster.classList.remove("tema-oscuro", "tema-clasico", "tema-torneo");
+  poster.classList.add(`tema-${tema}`);
+  document.querySelectorAll(".btn-poster-tema").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tema === tema);
+  });
+}
+window.aplicarTemaPoster = aplicarTemaPoster;

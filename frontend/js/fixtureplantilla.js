@@ -19,6 +19,9 @@ let contexto = {
   eventoNombre: "",
   logoUrl: null,
   auspiciantes: [],
+  colorPrimario: "#1e3a5f",
+  colorSecundario: "#0b1f35",
+  colorAcento: "#facc15",
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -68,7 +71,17 @@ async function cargarContexto() {
       eventoNombre: contexto.eventoNombre,
       logoUrl: normalizarLogoUrl(camp.logo_url || null),
       auspiciantes: await cargarAuspiciantesFixture(campeonatoId),
+      colorPrimario: camp.color_primario || "#1e3a5f",
+      colorSecundario: camp.color_secundario || "#0b1f35",
+      colorAcento: camp.color_acento || "#facc15",
     };
+    // Aplicar colores del torneo como CSS vars para el tema "torneo"
+    const poster = document.getElementById("fixture-export");
+    if (poster) {
+      poster.style.setProperty("--t-primario", contexto.colorPrimario);
+      poster.style.setProperty("--t-secundario", contexto.colorSecundario);
+      poster.style.setProperty("--t-acento", contexto.colorAcento);
+    }
     renderAuspiciantesFixture(contexto.auspiciantes);
   } catch (error) {
     console.warn("No se pudo cargar contexto de plantilla:", error);
@@ -441,3 +454,14 @@ window.exportarFixturePNG = exportarFixturePNG;
 window.exportarFixturePDF = exportarFixturePDF;
 window.volverPartidos = volverPartidos;
 
+
+function aplicarTemaFixture(tema) {
+  const poster = document.getElementById("fixture-export");
+  if (!poster) return;
+  poster.classList.remove("tema-oscuro", "tema-clasico", "tema-torneo");
+  poster.classList.add(`tema-${tema}`);
+  document.querySelectorAll(".btn-poster-tema").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tema === tema);
+  });
+}
+window.aplicarTemaFixture = aplicarTemaFixture;
