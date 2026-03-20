@@ -2042,18 +2042,41 @@ class Eliminatoria {
     const maxSlots = Math.max(grupoA.length, grupoB.length);
     if (maxSlots < 2) return null;
 
-    const semillasBase = [];
+    const mitad = Math.ceil(maxSlots / 2);
+    const partidos = [];
     for (let idx = 1; idx <= maxSlots; idx += 1) {
-      semillasBase.push(this.construirEntradaGrupo(grupoMap, g1, idx));
-      semillasBase.push(this.construirEntradaGrupo(grupoMap, g2, idx));
+      const indiceLado = idx <= mitad ? idx : idx - mitad;
+      const visitaPosicion = maxSlots - indiceLado + 1;
+      const ladoIzquierdo = idx <= mitad;
+      const impar = indiceLado % 2 === 1;
+
+      let localGrupo = g1;
+      let visitaGrupo = g2;
+      if (ladoIzquierdo) {
+        if (!impar) {
+          localGrupo = g2;
+          visitaGrupo = g1;
+        }
+      } else if (impar) {
+        localGrupo = g2;
+        visitaGrupo = g1;
+      }
+
+      partidos.push([
+        [localGrupo, indiceLado],
+        [visitaGrupo, visitaPosicion],
+      ]);
     }
+
+    const semillasBase = partidos.flatMap(([localRef, visitaRef]) => [
+      this.construirEntradaGrupo(grupoMap, localRef[0], localRef[1]),
+      this.construirEntradaGrupo(grupoMap, visitaRef[0], visitaRef[1]),
+    ]);
 
     const equiposValidos = semillasBase.filter((row) => Number.isFinite(Number(row?.equipo_id))).length;
     if (equiposValidos < 2) return null;
 
-    const totalBracket = this.calcularTamanoBracket(null, equiposValidos);
-    const ordenSemillas = this.construirOrdenSemillasBracket(totalBracket);
-    return ordenSemillas.map((seed) => semillasBase[seed - 1] || { equipo_id: null, seed_ref: null });
+    return semillasBase;
   }
 
   static construirSembradoCrucesGrupos(clasificadosData, crucesGrupos = [], plantillaLlave = "estandar") {

@@ -5836,6 +5836,74 @@ body.page-finanzas {
   font-weight: 700;
 }
 
+.page-eliminatorias .eli-cruces-preview-bracket {
+  overflow-x: auto;
+}
+
+.page-eliminatorias .eli-preview-bracket16 {
+  min-width: 980px;
+  display: grid;
+  grid-template-columns: 1.1fr 0.8fr 0.8fr 0.9fr 0.8fr 1.1fr;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.35rem 0.15rem 0.15rem;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.18) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.18) 1px, transparent 1px);
+  background-size: 24px 24px;
+  border-radius: 0.9rem;
+}
+
+.page-eliminatorias .eli-preview-col {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.page-eliminatorias .eli-preview-col-first {
+  gap: 1rem;
+}
+
+.page-eliminatorias .eli-preview-col-stage {
+  gap: 5.2rem;
+}
+
+.page-eliminatorias .eli-preview-col-center {
+  gap: 4.8rem;
+}
+
+.page-eliminatorias .eli-preview-node {
+  min-height: 3.75rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, #4f86d8 0%, #3b6ec0 100%);
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  box-shadow: 0 12px 28px rgba(30, 58, 138, 0.12);
+}
+
+.page-eliminatorias .eli-preview-node small {
+  display: block;
+  margin-top: 0.2rem;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.page-eliminatorias .eli-preview-node-stage {
+  min-height: 4.4rem;
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 1100px) {
+  .page-eliminatorias .eli-preview-bracket16 {
+    min-width: 860px;
+    gap: 0.75rem;
+  }
+}
+
 .page-eliminatorias .eli-round-col {
   border: 1px solid #dbe3f1;
   border-radius: 0.9rem;

@@ -195,8 +195,8 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - la plantilla `balanceada_8vos` se renombro en UI como `Evitar reencuentros tempranos de grupo (balanceada)`.
   - esa plantilla ahora cubre dos escenarios:
     - `4 grupos x 4 clasificados`: sugiere `A vs C` y `B vs D`, mostrando la vista previa `P1..P8`.
-    - `2 grupos x N clasificados`: arma un sembrado balanceado `A/B` para que el mismo grupo no se reencuentre antes de las rondas finales cuando la llave lo permite.
-  - la vista previa ya refleja ambos casos para que el organizador confirme el orden real de los partidos antes de generar la llave.
+    - `2 grupos x N clasificados`: arma un sembrado espejo `A/B` siguiendo el orden deportivo solicitado por el cliente (ej. para `8` clasificados: `1A-8B`, `2B-7A`, `3A-6B`, `4B-5A`, espejo al lado derecho).
+  - la vista previa ya refleja ambos casos y, cuando el playoff arranca en `8vos`, se dibuja una grilla tipo bracket para que el organizador confirme visualmente el armado antes de generarlo.
 - Jugadores / roster por categoria:
   - se incorporo la migracion `045_jugadores_evento_categoria.sql`.
   - se agrego la migracion `046_jugadores_cedula_por_evento.sql` para eliminar la restriccion global `jugadores_dni_key`.

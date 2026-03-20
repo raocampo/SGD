@@ -52,8 +52,17 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
   - `P7 1C vs 4A`
   - `P8 2D vs 3B`
 - escenario `2 grupos x N clasificados`:
-  - el backend ahora usa un sembrado balanceado `A/B` basado en orden de seeds de bracket estándar para minimizar reencuentros tempranos entre equipos del mismo grupo.
-  - la vista previa en UI muestra el orden `P1..Pn` correspondiente a `semifinal`, `4tos`, `8vos` o `16vos`, según el total de clasificados.
+  - el backend ahora usa un sembrado espejo `A/B` que replica el criterio deportivo solicitado por operación.
+  - ejemplo con `8 clasificados por grupo`:
+    - `P1 1A vs 8B`
+    - `P2 2B vs 7A`
+    - `P3 3A vs 6B`
+    - `P4 4B vs 5A`
+    - `P5 1B vs 8A`
+    - `P6 2A vs 7B`
+    - `P7 3B vs 6A`
+    - `P8 4A vs 5B`
+  - la vista previa en UI ya no sale solo en chips: cuando arranca en `8vos`, muestra una grilla tipo bracket más cercana al diagrama operativo del cliente.
 - con esto el organizador puede confirmar visualmente el armado antes de generar la llave y reducir el riesgo de cruces tempranos entre equipos del mismo grupo tanto en formatos `A/B` como `A/B/C/D`.
 
 ---

@@ -127,29 +127,6 @@ function obtenerCrucesPorDefecto(letras = [], plantillaLlave = "estandar", clasi
   return Array.from({ length: pares }, (_, i) => [grupos[i], grupos[grupos.length - 1 - i]]);
 }
 
-function calcularPotenciaDosSiguiente(total = 0) {
-  let n = 1;
-  const base = Math.max(2, Number.parseInt(total, 10) || 0);
-  while (n < base) n *= 2;
-  return n;
-}
-
-function construirOrdenSemillasBracket(total = 0) {
-  const cantidad = Number.parseInt(total, 10);
-  if (!Number.isFinite(cantidad) || cantidad < 2) return [];
-  let orden = [1, 2];
-  while (orden.length < cantidad) {
-    const siguienteTotal = orden.length * 2;
-    const siguiente = [];
-    for (const seed of orden) {
-      siguiente.push(seed);
-      siguiente.push(siguienteTotal + 1 - seed);
-    }
-    orden = siguiente;
-  }
-  return orden.slice(0, cantidad);
-}
-
 function obtenerEtiquetaRondaInicial(totalEquipos = 0) {
   const mapa = {
     4: "SEM",
@@ -184,20 +161,86 @@ function construirPreviewBalanceadaDosGrupos(cruces = [], clasificados = 2) {
   if (!Array.isArray(par) || par.length < 2) return [];
   const [g1, g2] = par.map((item) => String(item || "").toUpperCase().trim());
   const cupos = Math.max(2, Number.parseInt(clasificados, 10) || 0);
-  const semillasBase = [];
-  for (let idx = 1; idx <= cupos; idx += 1) {
-    semillasBase.push(`${idx}${g1}`);
-    semillasBase.push(`${idx}${g2}`);
-  }
-  const totalBracket = calcularPotenciaDosSiguiente(semillasBase.length);
-  const ordenSemillas = construirOrdenSemillasBracket(totalBracket);
-  const etiqueta = obtenerEtiquetaRondaInicial(totalBracket);
-  const ordenado = ordenSemillas.map((seed) => semillasBase[seed - 1] || "BYE");
+  const mitad = Math.ceil(cupos / 2);
+  const etiqueta = obtenerEtiquetaRondaInicial(cupos * 2);
   const preview = [];
-  for (let idx = 0; idx < ordenado.length; idx += 2) {
-    preview.push(`${etiqueta} P${idx / 2 + 1}: ${ordenado[idx]} vs ${ordenado[idx + 1]}`);
+  for (let idx = 1; idx <= cupos; idx += 1) {
+    const indiceLado = idx <= mitad ? idx : idx - mitad;
+    const visitaPosicion = cupos - indiceLado + 1;
+    const ladoIzquierdo = idx <= mitad;
+    const impar = indiceLado % 2 === 1;
+    let local = `${indiceLado}${g1}`;
+    let visita = `${visitaPosicion}${g2}`;
+    if (ladoIzquierdo) {
+      if (!impar) {
+        local = `${indiceLado}${g2}`;
+        visita = `${visitaPosicion}${g1}`;
+      }
+    } else if (impar) {
+      local = `${indiceLado}${g2}`;
+      visita = `${visitaPosicion}${g1}`;
+    }
+    preview.push(`${etiqueta} P${idx}: ${local} vs ${visita}`);
   }
   return preview;
+}
+
+function renderVistaPreviaBalanceadaBracket16(preview = []) {
+  const izquierda = preview.slice(0, 4);
+  const derecha = preview.slice(4, 8);
+  const renderNode = (item) => {
+    const [head, body] = String(item || "").split(": ");
+    return `${escapeHtml(head || "")}<br>${escapeHtml(body || "")}`;
+  };
+  return `
+    <div class="eli-cruces-preview-card eli-cruces-preview-bracket">
+      <strong>Vista previa sugerida de playoff balanceado</strong>
+      <p>Con esta plantilla se minimizan reencuentros tempranos entre equipos del mismo grupo.</p>
+      <div class="eli-preview-bracket16">
+        <div class="eli-preview-col eli-preview-col-first">
+          ${izquierda.map((item) => `<div class="eli-preview-node">${renderNode(item)}</div>`).join("")}
+        </div>
+        <div class="eli-preview-col eli-preview-col-stage">
+          <div class="eli-preview-node eli-preview-node-stage">4TO G1<br><small>P1 vs P2</small></div>
+          <div class="eli-preview-node eli-preview-node-stage">4TO G2<br><small>P3 vs P4</small></div>
+        </div>
+        <div class="eli-preview-col eli-preview-col-stage">
+          <div class="eli-preview-node eli-preview-node-stage">SEM G1<br><small>G1 vs G2</small></div>
+          <div class="eli-preview-node eli-preview-node-stage">SEM G2<br><small>G3 vs G4</small></div>
+        </div>
+        <div class="eli-preview-col eli-preview-col-center">
+          <div class="eli-preview-node eli-preview-node-stage">FINAL<br><small>G1 vs G2</small></div>
+          <div class="eli-preview-node eli-preview-node-stage">TERCER Y CUARTO<br><small>P1 vs P2</small></div>
+        </div>
+        <div class="eli-preview-col eli-preview-col-stage">
+          <div class="eli-preview-node eli-preview-node-stage">4TO G3<br><small>P5 vs P6</small></div>
+          <div class="eli-preview-node eli-preview-node-stage">4TO G4<br><small>P7 vs P8</small></div>
+        </div>
+        <div class="eli-preview-col eli-preview-col-first">
+          ${derecha.map((item) => `<div class="eli-preview-node">${renderNode(item)}</div>`).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderVistaPreviaBalanceadaChips(preview = []) {
+  return `
+    <div class="eli-cruces-preview-card">
+      <strong>Vista previa sugerida de playoff balanceado</strong>
+      <p>Con esta plantilla se minimizan reencuentros tempranos entre equipos del mismo grupo.</p>
+      <div class="eli-cruces-preview-grid">
+        ${preview.map((item) => `<span class="eli-cruces-preview-chip">${escapeHtml(item)}</span>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderVistaPreviaBalanceada(preview = []) {
+  if (preview.length === 8 && preview.every((item) => String(item || "").startsWith("8VO "))) {
+    return renderVistaPreviaBalanceadaBracket16(preview);
+  }
+  return renderVistaPreviaBalanceadaChips(preview);
 }
 
 function construirVistaPreviaBalanceada(cruces = [], clasificados = 2) {
@@ -225,15 +268,7 @@ function renderVistaPreviaCruces(cruces = []) {
     cont.innerHTML = "";
     return;
   }
-  cont.innerHTML = `
-    <div class="eli-cruces-preview-card">
-      <strong>Vista previa sugerida de playoff balanceado</strong>
-      <p>Con esta plantilla se minimizan reencuentros tempranos entre equipos del mismo grupo.</p>
-      <div class="eli-cruces-preview-grid">
-        ${preview.map((item) => `<span class="eli-cruces-preview-chip">${escapeHtml(item)}</span>`).join("")}
-      </div>
-    </div>
-  `;
+  cont.innerHTML = renderVistaPreviaBalanceada(preview);
 }
 
 function aplicarBloqueoConfiguracionPlayoff(guardada = false) {
