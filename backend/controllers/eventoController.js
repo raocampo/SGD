@@ -16,6 +16,35 @@ const {
 let eventoEsquemaAsegurado = false;
 let eventoColumnaActualizacion = null;
 
+async function sincronizarConfigPlayoffExistente(evento = {}) {
+  const eventoId = Number.parseInt(evento?.id, 10);
+  if (!Number.isFinite(eventoId) || eventoId <= 0) return;
+
+  try {
+    const tablaR = await pool.query(
+      `SELECT to_regclass('public.evento_playoff_config') AS tabla`
+    );
+    if (!tablaR.rows[0]?.tabla) return;
+
+    await pool.query(
+      `
+        UPDATE evento_playoff_config
+        SET plantilla_llave = $2,
+            incluir_tercer_puesto = $3,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE evento_id = $1
+      `,
+      [
+        eventoId,
+        normalizarPlayoffPlantilla(evento?.playoff_plantilla, "estandar") || "estandar",
+        normalizarBooleanFlexible(evento?.playoff_tercer_puesto, false) === true,
+      ]
+    );
+  } catch (error) {
+    console.warn("No se pudo sincronizar la configuración playoff del evento:", error.message);
+  }
+}
+
 function pick(v, fallback = null) {
   return v === undefined ? fallback : v;
 }
@@ -818,6 +847,7 @@ const eventoController = {
       const result = await pool.query(q, valores);
       if (!result.rows.length)
         return res.status(404).json({ error: "Evento no encontrado." });
+      await sincronizarConfigPlayoffExistente(result.rows[0]);
       return res.json({ evento: result.rows[0] });
     } catch (error) {
       console.error("Error actualizarEvento:", error);

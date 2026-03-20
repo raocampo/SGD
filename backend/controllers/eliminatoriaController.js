@@ -218,11 +218,13 @@ const eliminatoriaController = {
   asignarEquipos: async (req, res) => {
     try {
       const { id } = req.params;
-      const { equipo_local_id, equipo_visitante_id } = req.body;
+      const { equipo_local_id, equipo_visitante_id, seed_local_ref, seed_visitante_ref } = req.body;
       const slot = await Eliminatoria.asignarEquipos(
         parseInt(id, 10),
         equipo_local_id,
-        equipo_visitante_id
+        equipo_visitante_id,
+        seed_local_ref,
+        seed_visitante_ref
       );
       if (!slot) {
         return res.status(404).json({ error: "Slot no encontrado" });

@@ -7,6 +7,18 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-20 - Sincronización real de plantilla playoff y edición manual de cruces
+- `backend/models/Eliminatoria.js` ya toma `eventos.playoff_plantilla` y `eventos.playoff_tercer_puesto` como fuente de verdad al cargar la configuración en `eliminatorias.html`, evitando que una fila vieja en `evento_playoff_config` deje la UI en `estandar`.
+- `backend/controllers/eventoController.js` sincroniza una configuración de playoff existente cuando se actualiza la categoría desde `eventos.html`, manteniendo alineadas la card de categoría y la pantalla de eliminatorias.
+- `frontend/js/eliminatorias.js` incorpora edición manual básica de partidos pendientes en el bracket mediante el botón `Editar cruce`.
+- la edición manual usa el endpoint existente `PUT /eliminatorias/:id/equipos`, pero ahora también propaga `seed_local_ref` y `seed_visitante_ref` para que la gráfica quede coherente.
+- validaciones nuevas en backend:
+  - no se permite editar cruces finalizados o con resultado,
+  - no se permite repetir equipos dentro de la misma ronda,
+  - no se permite usar el mismo equipo como local y visitante.
+
+---
+
 ## 2026-03-16 - Nómina de jugadores separada por categoría/evento
 - nueva migracion `database/migrations/045_jugadores_evento_categoria.sql`.
 - nueva migracion `database/migrations/046_jugadores_cedula_por_evento.sql`.

@@ -1,6 +1,19 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-18 (sesión 7)
+Ultima actualizacion: 2026-03-20 (sesión 8)
+
+## Avances recientes (2026-03-20)
+- Playoff / eliminatorias:
+  - se corrige la herencia de `playoff_plantilla` y `playoff_tercer_puesto` desde la categoría hacia `eliminatorias.html`; la categoría pasa a ser la fuente de verdad visual aunque exista una fila previa en `evento_playoff_config`.
+  - `backend/controllers/eventoController.js` ahora sincroniza una configuración `evento_playoff_config` existente cuando el organizador edita la categoría desde `eventos.html`.
+  - `backend/models/Eliminatoria.js` prioriza los valores actuales del evento al leer la configuración de playoff, evitando que una configuración antigua deje la UI en `Estándar automático` cuando la categoría ya está en `balanceada`.
+  - se habilita edición manual básica de cruces pendientes desde la propia llave (`Editar cruce`), reasignando equipos y `seed_ref` de forma segura.
+  - la edición manual valida que:
+    - el partido siga pendiente y sin resultado,
+    - no se repita un equipo dentro de la misma ronda,
+    - el local y visitante sean distintos.
+- Operación:
+  - si el playoff ya estaba generado con una plantilla anterior, ahora puede corregirse desde la llave regenerando con la plantilla heredada correcta o ajustando un cruce puntual manualmente.
 
 ## Pendientes (al 2026-03-18)
 

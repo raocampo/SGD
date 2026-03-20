@@ -1130,12 +1130,12 @@ class Eliminatoria {
       origen === "grupos" ? "cruces_grupos" : "tabla_unica"
     );
     const plantillaLlave = this.normalizarPlantillaLlaveInput(
-      config?.plantilla_llave,
-      evento?.playoff_plantilla || "estandar"
+      evento?.playoff_plantilla,
+      config?.plantilla_llave || "estandar"
     );
     const incluirTercerPuesto = this.normalizarBooleanInput(
-      config?.incluir_tercer_puesto,
-      this.normalizarBooleanInput(evento?.playoff_tercer_puesto, false)
+      evento?.playoff_tercer_puesto,
+      this.normalizarBooleanInput(config?.incluir_tercer_puesto, false)
     );
     const crucesGrupos =
       origen === "grupos" && metodoClasificacion === "cruces_grupos"
@@ -2714,25 +2714,100 @@ class Eliminatoria {
     }
   }
 
-  static async asignarEquipos(id, equipo_local_id, equipo_visitante_id) {
+  static async asignarEquipos(
+    id,
+    equipo_local_id,
+    equipo_visitante_id,
+    seed_local_ref = null,
+    seed_visitante_ref = null
+  ) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       await this.asegurarEsquema(client);
+      const actual = await this.obtenerSlotPorId(id, client);
+      if (!actual) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+
+      const estadoActual = String(actual?.estado || "pendiente").toLowerCase();
+      const tieneResultado =
+        Number.isFinite(Number.parseInt(actual?.resultado_local, 10)) ||
+        Number.isFinite(Number.parseInt(actual?.resultado_visitante, 10)) ||
+        Number.isFinite(Number.parseInt(actual?.ganador_id, 10));
+      if (estadoActual === "finalizado" || tieneResultado) {
+        throw new Error("Solo puedes editar cruces pendientes y sin resultado registrado.");
+      }
+
+      const eventoId = Number.parseInt(actual?.evento_id, 10);
+      const ronda = String(actual?.ronda || "").toLowerCase();
+      const localId = equipo_local_id ? Number(equipo_local_id) : null;
+      const visitanteId = equipo_visitante_id ? Number(equipo_visitante_id) : null;
+
+      if (Number.isFinite(localId) && Number.isFinite(visitanteId) && localId === visitanteId) {
+        throw new Error("El equipo local y visitante no pueden ser el mismo.");
+      }
+
+      const seleccionados = [localId, visitanteId].filter((value) => Number.isFinite(value));
+      if (Number.isFinite(eventoId) && ronda && seleccionados.length) {
+        const duplicadosR = await client.query(
+          `
+            SELECT id, partido_numero
+            FROM partidos_eliminatoria
+            WHERE evento_id = $1
+              AND LOWER(COALESCE(ronda, '')) = $2
+              AND id <> $3
+              AND (
+                equipo_local_id = ANY($4::int[])
+                OR equipo_visitante_id = ANY($4::int[])
+              )
+            LIMIT 1
+          `,
+          [eventoId, ronda, id, seleccionados]
+        );
+        if (duplicadosR.rows.length) {
+          const conflicto = duplicadosR.rows[0];
+          throw new Error(
+            `Uno de los equipos seleccionados ya está asignado en ${String(ronda).toUpperCase()} P${Number(
+              conflicto.partido_numero || 0
+            )}.`
+          );
+        }
+      }
+
       const q = `
         UPDATE partidos_eliminatoria
         SET equipo_local_id = $1,
             equipo_visitante_id = $2,
+            seed_local_ref = $3,
+            seed_visitante_ref = $4,
+            resultado_local = NULL,
+            resultado_visitante = NULL,
+            ganador_id = NULL,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $3
+        WHERE id = $5
         RETURNING *
       `;
       const r = await client.query(q, [
-        equipo_local_id ? Number(equipo_local_id) : null,
-        equipo_visitante_id ? Number(equipo_visitante_id) : null,
+        localId,
+        visitanteId,
+        seed_local_ref ? String(seed_local_ref).toUpperCase().trim() : null,
+        seed_visitante_ref ? String(seed_visitante_ref).toUpperCase().trim() : null,
         id,
       ]);
       const slot = r.rows[0] || null;
+      if (slot?.partido_id) {
+        await client.query(
+          `
+            UPDATE partidos
+            SET equipo_local_id = $2,
+                equipo_visitante_id = $3
+            WHERE id = $1
+          `,
+          [Number(slot.partido_id), localId, visitanteId]
+        );
+      }
       if (slot) {
         await this.intentarResolverByeEnSlot(slot.id, client);
       }

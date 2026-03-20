@@ -1705,6 +1705,148 @@ function agruparPorRonda(cruces = []) {
   }));
 }
 
+function obtenerPrimeraRondaActual() {
+  const columnas = agruparPorRonda(eliminatoriaState.cruces || []);
+  return columnas[0]?.ronda || null;
+}
+
+function obtenerEquiposDisponiblesRonda(rondaActual) {
+  const vistos = new Set();
+  const opciones = [];
+  for (const partido of eliminatoriaState.cruces || []) {
+    if (String(partido?.ronda || "").toLowerCase() !== String(rondaActual || "").toLowerCase()) continue;
+    [
+      {
+        equipo_id: partido?.equipo_local_id,
+        equipo_nombre: partido?.equipo_local_nombre,
+        equipo_logo: partido?.equipo_local_logo,
+        seed_ref: partido?.seed_local_ref,
+      },
+      {
+        equipo_id: partido?.equipo_visitante_id,
+        equipo_nombre: partido?.equipo_visitante_nombre,
+        equipo_logo: partido?.equipo_visitante_logo,
+        seed_ref: partido?.seed_visitante_ref,
+      },
+    ].forEach((entry) => {
+      const equipoId = Number.parseInt(entry?.equipo_id, 10);
+      if (!Number.isFinite(equipoId) || vistos.has(equipoId)) return;
+      vistos.add(equipoId);
+      opciones.push({
+        equipo_id: equipoId,
+        equipo_nombre: entry?.equipo_nombre || `Equipo ${equipoId}`,
+        equipo_logo: entry?.equipo_logo || null,
+        seed_ref: String(entry?.seed_ref || "").toUpperCase().trim() || null,
+      });
+    });
+  }
+  return opciones;
+}
+
+async function editarCruceEliminatoria(id) {
+  const cruce = eliminatoriaState.cruces.find((x) => Number(x.id) === Number(id));
+  if (!cruce) {
+    mostrarNotificacion("Cruce no encontrado", "warning");
+    return;
+  }
+
+  const estado = String(cruce?.estado || "pendiente").toLowerCase();
+  const tieneResultado =
+    Number.isFinite(Number.parseInt(cruce?.resultado_local, 10)) ||
+    Number.isFinite(Number.parseInt(cruce?.resultado_visitante, 10)) ||
+    Number.isFinite(Number.parseInt(cruce?.ganador_id, 10));
+  if (estado === "finalizado" || tieneResultado) {
+    mostrarNotificacion("Solo puedes editar cruces pendientes y sin resultado.", "warning");
+    return;
+  }
+
+  const rondaActual = String(cruce?.ronda || "").toLowerCase() || obtenerPrimeraRondaActual();
+  const opciones = obtenerEquiposDisponiblesRonda(rondaActual);
+  if (opciones.length < 2) {
+    mostrarNotificacion("No hay suficientes equipos disponibles para editar este cruce.", "warning");
+    return;
+  }
+
+  const opcionesSelect = opciones.map((item) => ({
+    value: String(item.equipo_id),
+    label: `${item.seed_ref ? `${item.seed_ref} - ` : ""}${item.equipo_nombre}`,
+  }));
+
+  const form = await window.mostrarFormularioModal({
+    titulo: "Editar cruce manualmente",
+    mensaje: "Reasigna los equipos de este partido pendiente. El sistema validará que no se repitan en la misma ronda.",
+    tipo: "warning",
+    textoConfirmar: "Guardar cruce",
+    claseConfirmar: "btn-primary",
+    ancho: "md",
+    campos: [
+      {
+        name: "equipo_local_id",
+        label: "Equipo local",
+        type: "select",
+        value: String(cruce.equipo_local_id || ""),
+        options: opcionesSelect,
+        required: true,
+      },
+      {
+        name: "equipo_visitante_id",
+        label: "Equipo visitante",
+        type: "select",
+        value: String(cruce.equipo_visitante_id || ""),
+        options: opcionesSelect,
+        required: true,
+        validate: (value, values) =>
+          String(value || "") === String(values.equipo_local_id || "")
+            ? "Local y visitante no pueden ser el mismo equipo."
+            : "",
+      },
+    ],
+  });
+  if (!form) return;
+
+  const localId = Number.parseInt(form.equipo_local_id, 10);
+  const visitanteId = Number.parseInt(form.equipo_visitante_id, 10);
+  if (!Number.isFinite(localId) || !Number.isFinite(visitanteId) || localId === visitanteId) {
+    mostrarNotificacion("Selecciona dos equipos distintos.", "warning");
+    return;
+  }
+
+  const conflicto = (eliminatoriaState.cruces || []).find((partido) => {
+    if (Number(partido.id) === Number(cruce.id)) return false;
+    if (String(partido?.ronda || "").toLowerCase() !== rondaActual) return false;
+    return [partido?.equipo_local_id, partido?.equipo_visitante_id]
+      .map((value) => Number.parseInt(value, 10))
+      .some((value) => value === localId || value === visitanteId);
+  });
+  if (conflicto) {
+    mostrarNotificacion(
+      `Uno de los equipos ya está asignado en ${formatearEtiquetaPartidoEliminatoria(
+        conflicto.ronda,
+        conflicto.partido_numero
+      )}.`,
+      "warning"
+    );
+    return;
+  }
+
+  const local = opciones.find((item) => Number(item.equipo_id) === localId) || null;
+  const visitante = opciones.find((item) => Number(item.equipo_id) === visitanteId) || null;
+
+  try {
+    await ApiClient.put(`/eliminatorias/${id}/equipos`, {
+      equipo_local_id: localId,
+      equipo_visitante_id: visitanteId,
+      seed_local_ref: local?.seed_ref || null,
+      seed_visitante_ref: visitante?.seed_ref || null,
+    });
+    mostrarNotificacion("Cruce actualizado", "success");
+    await cargarLlaveEliminatoria();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo actualizar el cruce", "error");
+  }
+}
+
 function renderBracket() {
   const cont = document.getElementById("eli-bracket");
   if (!cont) return;
@@ -1795,6 +1937,13 @@ function renderBracket() {
                       <button class="btn btn-secondary" onclick="abrirModalProgPartidoEli(${Number(c.id)}, '${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}', '${c.fecha_partido || ""}', '${c.hora_partido ? String(c.hora_partido).slice(0,5) : ""}', '${escapeHtml(c.cancha || "")}')">
                         <i class="fas fa-calendar-alt"></i> Programar
                       </button>
+                      ${
+                        !finalizado
+                          ? `<button class="btn btn-outline" onclick="editarCruceEliminatoria(${Number(c.id)})">
+                               <i class="fas fa-right-left"></i> Editar cruce
+                             </button>`
+                          : ""
+                      }
                     </div>`
                   : ""
               }
@@ -2396,6 +2545,7 @@ function escapeHtml(valor) {
 }
 
 window.registrarResultadoEliminatoria = registrarResultadoEliminatoria;
+window.editarCruceEliminatoria = editarCruceEliminatoria;
 window.exportarEliminatoriaPNG = exportarEliminatoriaPNG;
 window.exportarEliminatoriaPDF = exportarEliminatoriaPDF;
 window.compartirEliminatoria = compartirEliminatoria;
