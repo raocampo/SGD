@@ -22,6 +22,7 @@ let eliminatoriaState = {
     organizador: "",
     logoUrl: null,
     auspiciantes: [],
+    fondoPersonalizado: "",
   },
 };
 let listenersConectoresExportInicializados = false;
@@ -130,6 +131,91 @@ function nombrePlaceholderEliminatoria(partido = {}, lado = "local") {
     return `Mejor perdedor ${seedRef.replace("MP", "")}`;
   }
   return "Por definir";
+}
+
+function obtenerNombreNodoPublicacion(partido = {}, lado = "local") {
+  const sideKey = lado === "visitante" ? "visitante" : "local";
+  const equipoNombre = String(partido?.[`equipo_${sideKey}_nombre`] || "").trim();
+  if (equipoNombre) return equipoNombre;
+  const seedRef = String(partido?.[`seed_${sideKey}_ref`] || "").trim().toUpperCase();
+  if (/^MP\d+$/.test(seedRef)) {
+    return `Mejor perdedor ${seedRef.replace("MP", "")}`;
+  }
+  return "Por definir";
+}
+
+function obtenerClaveFondoPlayoff() {
+  const ctx = eliminatoriaState.contextoPublicacion || {};
+  const eventoId = Number.parseInt(eliminatoriaState.eventoSeleccionado || "", 10) || "na";
+  const campeonatoId = Number.parseInt(ctx.campeonatoId || "", 10) || "na";
+  return `eli-playoff-bg:${campeonatoId}:${eventoId}`;
+}
+
+function aplicarFondoPublicacion(url = "") {
+  const zona = document.getElementById("eli-zona-export");
+  const status = document.getElementById("eli-export-bg-status");
+  const clearBtn = document.getElementById("btn-eli-clear-bg");
+  const limpio = String(url || "").trim();
+
+  if (zona) {
+    if (limpio) {
+      zona.classList.add("has-custom-background");
+      zona.style.setProperty("--eli-export-custom-bg", `url("${limpio.replace(/"/g, "%22")}")`);
+    } else {
+      zona.classList.remove("has-custom-background");
+      zona.style.removeProperty("--eli-export-custom-bg");
+    }
+  }
+
+  if (status) {
+    status.textContent = limpio
+      ? "Fondo personalizado cargado para esta categoría."
+      : "Sin fondo personalizado.";
+  }
+  if (clearBtn) clearBtn.disabled = !limpio;
+  if (eliminatoriaState.contextoPublicacion) {
+    eliminatoriaState.contextoPublicacion.fondoPersonalizado = limpio;
+  }
+}
+
+function restaurarFondoPublicacionGuardado() {
+  try {
+    const valor = window.localStorage?.getItem?.(obtenerClaveFondoPlayoff()) || "";
+    aplicarFondoPublicacion(valor);
+  } catch (error) {
+    console.warn("No se pudo restaurar el fondo del playoff:", error);
+    aplicarFondoPublicacion("");
+  }
+}
+
+async function manejarCambioFondoPublicacion(event) {
+  const archivo = event?.target?.files?.[0];
+  if (!archivo) return;
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
+      reader.readAsDataURL(archivo);
+    });
+    window.localStorage?.setItem?.(obtenerClaveFondoPlayoff(), dataUrl);
+    aplicarFondoPublicacion(dataUrl);
+    mostrarNotificacion("Fondo cargado para la plantilla", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion("No se pudo cargar el fondo", "error");
+  } finally {
+    if (event?.target) event.target.value = "";
+  }
+}
+
+function limpiarFondoPublicacion() {
+  try {
+    window.localStorage?.removeItem?.(obtenerClaveFondoPlayoff());
+  } catch (error) {
+    console.warn("No se pudo limpiar el fondo guardado:", error);
+  }
+  aplicarFondoPublicacion("");
 }
 
 function obtenerCrucesConfiguradosDesdeWrap(wrap) {
@@ -608,6 +694,8 @@ function bindEventosEliminatoria() {
   document.getElementById("btn-eli-export-png")?.addEventListener("click", exportarEliminatoriaPNG);
   document.getElementById("btn-eli-export-pdf")?.addEventListener("click", exportarEliminatoriaPDF);
   document.getElementById("btn-eli-share")?.addEventListener("click", compartirEliminatoria);
+  document.getElementById("eli-export-bg-input")?.addEventListener("change", manejarCambioFondoPublicacion);
+  document.getElementById("btn-eli-clear-bg")?.addEventListener("click", limpiarFondoPublicacion);
   document.querySelectorAll(".modal-overlay").forEach((overlay) => {
     overlay.addEventListener("click", (event) => {
       if (event.target !== overlay) return;
@@ -1437,6 +1525,7 @@ function renderCabeceraPublicacion() {
       logoEl.style.display = "none";
     }
   }
+  restaurarFondoPublicacionGuardado();
 }
 
 async function cargarAuspiciantesPublicacion(campeonatoIdRaw) {
@@ -1924,16 +2013,25 @@ function renderLineaNodoEliminatoria(partido = {}, lado = "local", logoClass = "
   `;
 }
 
+function renderLineaNodoPublicacion(partido = {}, lado = "local", logoClass = "eli-node-logo") {
+  const sideKey = lado === "visitante" ? "visitante" : "local";
+  const nombre = obtenerNombreNodoPublicacion(partido, sideKey);
+  const logo = normalizarLogoUrl(partido?.[`equipo_${sideKey}_logo`] || null);
+  return `
+    <div class="eli-node-team">
+      ${renderEquipoLogo(logo, nombre, logoClass)}
+      <span>${escapeHtml(nombre)}</span>
+    </div>
+  `;
+}
+
 function renderPlantillaNodeEliminatoria(partido, { compact = false } = {}) {
-  const local = formatearNombreNodoEliminatoria(partido, "local");
-  const visita = formatearNombreNodoEliminatoria(partido, "visitante");
   return `
     <article class="eli-plantilla-node${compact ? " is-compact" : ""}">
-      <strong>${escapeHtml(formatearEtiquetaPartidoEliminatoria(partido?.ronda, partido?.partido_numero))}</strong>
       <div class="eli-node-body">
-        ${renderLineaNodoEliminatoria(partido, "local", "eli-node-logo")}
+        ${renderLineaNodoPublicacion(partido, "local", "eli-node-logo")}
         <div class="eli-node-vs">vs</div>
-        ${renderLineaNodoEliminatoria(partido, "visitante", "eli-node-logo")}
+        ${renderLineaNodoPublicacion(partido, "visitante", "eli-node-logo")}
       </div>
     </article>
   `;
@@ -1961,6 +2059,71 @@ function esLayoutEspecial16(columnas = []) {
   );
 }
 
+function medirTextoPublicacion(texto = "") {
+  const valor = String(texto || "Por definir").trim() || "Por definir";
+  if (typeof document === "undefined") {
+    return Math.max(120, valor.length * 8);
+  }
+  if (!medirTextoPublicacion.canvas) {
+    medirTextoPublicacion.canvas = document.createElement("canvas");
+  }
+  const ctx = medirTextoPublicacion.canvas.getContext("2d");
+  if (!ctx) {
+    return Math.max(120, valor.length * 8);
+  }
+  ctx.font = '800 12.5px "Segoe UI", Arial, sans-serif';
+  return Math.ceil(ctx.measureText(valor).width);
+}
+
+function medirAnchoNodoPublicacion(partido, { compact = false } = {}) {
+  const nombres = [
+    obtenerNombreNodoPublicacion(partido, "local"),
+    obtenerNombreNodoPublicacion(partido, "visitante"),
+  ];
+  const maxTexto = Math.max(...nombres.map((item) => medirTextoPublicacion(item)));
+  const base = maxTexto + 26 + 8 + (compact ? 44 : 60);
+  const min = compact ? 180 : 260;
+  const max = compact ? 260 : 390;
+  return Math.min(max, Math.max(min, base));
+}
+
+function construirEstiloBracketEspecial16({
+  izquierda8vos = [],
+  derecha8vos = [],
+  izquierda4tos = [],
+  derecha4tos = [],
+  semiIzquierda = null,
+  semiDerecha = null,
+  final = null,
+  tercer = null,
+} = {}) {
+  const edgeWidth = Math.max(
+    ...izquierda8vos.concat(derecha8vos).map((partido) => medirAnchoNodoPublicacion(partido)),
+    280
+  );
+  const stageWidth = Math.max(
+    ...izquierda4tos.concat(derecha4tos).map((partido) => medirAnchoNodoPublicacion(partido)),
+    240
+  );
+  const semiWidth = Math.max(
+    medirAnchoNodoPublicacion(semiIzquierda),
+    medirAnchoNodoPublicacion(semiDerecha),
+    230
+  );
+  const centerWidth = Math.max(
+    medirAnchoNodoPublicacion(final),
+    tercer ? medirAnchoNodoPublicacion(tercer, { compact: true }) : 0,
+    250
+  );
+
+  return [
+    `--eli-edge-col:${edgeWidth}px`,
+    `--eli-stage-col:${stageWidth}px`,
+    `--eli-semi-col:${semiWidth}px`,
+    `--eli-center-col:${centerWidth}px`,
+  ].join("; ");
+}
+
 function renderPlantillaPreviewEliminatoriaEspecial16(columnas = []) {
   if (!esLayoutEspecial16(columnas)) {
     return "";
@@ -1979,27 +2142,41 @@ function renderPlantillaPreviewEliminatoriaEspecial16(columnas = []) {
   const semiDerecha = rondaSemis.cruces[1];
   const final = rondaFinal.cruces[0];
   const tercer = Array.isArray(rondaFinal.crucesExtra) ? rondaFinal.crucesExtra[0] : null;
+  const estiloBracket = construirEstiloBracketEspecial16({
+    izquierda8vos,
+    derecha8vos,
+    izquierda4tos,
+    derecha4tos,
+    semiIzquierda,
+    semiDerecha,
+    final,
+    tercer,
+  });
 
   return `
     <div class="eli-plantilla-preview-card">
       <strong>Vista previa sugerida del playoff</strong>
       <p>La plantilla resume los cruces activos con el mismo orden que se usará para publicar y compartir.</p>
-      <div class="eli-plantilla-bracket16">
+      <div class="eli-plantilla-bracket16${tercer ? " has-third-place" : ""}" style="${estiloBracket}">
         <div class="eli-plantilla-col is-edge is-left">
+          <h4 class="eli-plantilla-stage-title">Octavos</h4>
           ${izquierda8vos.map((partido) => renderPlantillaNodeEliminatoria(partido)).join("")}
         </div>
         <div class="eli-plantilla-col is-stage is-left">
+          <h4 class="eli-plantilla-stage-title">Cuartos</h4>
           ${izquierda4tos.map((partido) => renderPlantillaNodeEliminatoria(partido)).join("")}
         </div>
         <div class="eli-plantilla-col is-semifinal is-left">
+          <h4 class="eli-plantilla-stage-title">Semifinal</h4>
           ${semiIzquierda ? renderPlantillaNodeEliminatoria(semiIzquierda) : ""}
         </div>
         <div class="eli-plantilla-col is-center">
+          <h4 class="eli-plantilla-stage-title">Final</h4>
           ${renderPlantillaNodeEliminatoria(final)}
           ${
             tercer
               ? `
-            <div class="eli-plantilla-subcolumn">
+            <div class="eli-plantilla-subcolumn is-third-place">
               <h5>Tercer y cuarto</h5>
               ${renderPlantillaNodeEliminatoria(tercer, { compact: true })}
             </div>`
@@ -2007,12 +2184,15 @@ function renderPlantillaPreviewEliminatoriaEspecial16(columnas = []) {
           }
         </div>
         <div class="eli-plantilla-col is-semifinal is-right">
+          <h4 class="eli-plantilla-stage-title">Semifinal</h4>
           ${semiDerecha ? renderPlantillaNodeEliminatoria(semiDerecha) : ""}
         </div>
         <div class="eli-plantilla-col is-stage is-right">
+          <h4 class="eli-plantilla-stage-title">Cuartos</h4>
           ${derecha4tos.map((partido) => renderPlantillaNodeEliminatoria(partido)).join("")}
         </div>
         <div class="eli-plantilla-col is-edge is-right">
+          <h4 class="eli-plantilla-stage-title">Octavos</h4>
           ${derecha8vos.map((partido) => renderPlantillaNodeEliminatoria(partido)).join("")}
         </div>
       </div>
@@ -2023,11 +2203,10 @@ function renderPlantillaPreviewEliminatoriaEspecial16(columnas = []) {
 function renderExportNodeEliminatoria(partido, { compact = false } = {}) {
   return `
     <article class="eli-export-node${compact ? " is-compact" : ""}">
-      <strong>${escapeHtml(formatearEtiquetaPartidoEliminatoria(partido?.ronda, partido?.partido_numero))}</strong>
       <div class="eli-node-body">
-        ${renderLineaNodoEliminatoria(partido, "local", "eli-node-logo")}
+        ${renderLineaNodoPublicacion(partido, "local", "eli-node-logo")}
         <div class="eli-node-vs">vs</div>
-        ${renderLineaNodoEliminatoria(partido, "visitante", "eli-node-logo")}
+        ${renderLineaNodoPublicacion(partido, "visitante", "eli-node-logo")}
       </div>
     </article>
   `;
@@ -2048,25 +2227,39 @@ function renderPosterPublicacionEspecial16(columnas = []) {
   const semiDerecha = rondaSemis.cruces[1];
   const final = rondaFinal.cruces[0];
   const tercer = Array.isArray(rondaFinal.crucesExtra) ? rondaFinal.crucesExtra[0] : null;
+  const estiloBracket = construirEstiloBracketEspecial16({
+    izquierda8vos,
+    derecha8vos,
+    izquierda4tos,
+    derecha4tos,
+    semiIzquierda,
+    semiDerecha,
+    final,
+    tercer,
+  });
 
   return `
     <div class="eli-export-preview-card">
-      <div class="eli-export-bracket16">
+      <div class="eli-export-bracket16${tercer ? " has-third-place" : ""}" style="${estiloBracket}">
         <div class="eli-export-col is-edge is-left">
+          <div class="eli-export-stage-title">Octavos</div>
           ${izquierda8vos.map((partido) => renderExportNodeEliminatoria(partido)).join("")}
         </div>
         <div class="eli-export-col is-stage is-left">
+          <div class="eli-export-stage-title">Cuartos</div>
           ${izquierda4tos.map((partido) => renderExportNodeEliminatoria(partido)).join("")}
         </div>
         <div class="eli-export-col is-semifinal is-left">
+          <div class="eli-export-stage-title">Semifinal</div>
           ${semiIzquierda ? renderExportNodeEliminatoria(semiIzquierda) : ""}
         </div>
         <div class="eli-export-col is-center">
+          <div class="eli-export-stage-title">Final</div>
           ${renderExportNodeEliminatoria(final)}
           ${
             tercer
               ? `
-            <div class="eli-export-subcolumn">
+            <div class="eli-export-subcolumn is-third-place">
               <h5>Tercer y cuarto</h5>
               ${renderExportNodeEliminatoria(tercer, { compact: true })}
             </div>`
@@ -2074,12 +2267,15 @@ function renderPosterPublicacionEspecial16(columnas = []) {
           }
         </div>
         <div class="eli-export-col is-semifinal is-right">
+          <div class="eli-export-stage-title">Semifinal</div>
           ${semiDerecha ? renderExportNodeEliminatoria(semiDerecha) : ""}
         </div>
         <div class="eli-export-col is-stage is-right">
+          <div class="eli-export-stage-title">Cuartos</div>
           ${derecha4tos.map((partido) => renderExportNodeEliminatoria(partido)).join("")}
         </div>
         <div class="eli-export-col is-edge is-right">
+          <div class="eli-export-stage-title">Octavos</div>
           ${derecha8vos.map((partido) => renderExportNodeEliminatoria(partido)).join("")}
         </div>
       </div>
@@ -2341,6 +2537,7 @@ function renderPosterPublicacion(columnas = []) {
     cont.style.removeProperty("--eli-round-count");
     cont.innerHTML = htmlEspecial;
     normalizarVistaPosterPublicacion();
+    programarRenderConectoresExport();
     return;
   }
 
@@ -2455,13 +2652,115 @@ function programarRenderConectoresExport() {
     listenersConectoresExportInicializados = true;
     window.addEventListener("resize", () => {
       renderConectoresExport();
+      renderConectoresEspecialesActivos();
     });
   }
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       renderConectoresExport();
+      renderConectoresEspecialesActivos();
     });
   });
+}
+
+function renderConectoresEspecialesActivos() {
+  renderConectoresBracketEspecial(".eli-plantilla-bracket16", ".eli-plantilla-col", ".eli-plantilla-node", "eli-plantilla-connectors");
+  renderConectoresBracketEspecial(".eli-export-bracket16", ".eli-export-col", ".eli-export-node", "eli-export-special-connectors");
+}
+
+function renderConectoresBracketEspecial(bracketSelector, colSelector, nodeSelector, svgClass) {
+  const bracket = document.querySelector(bracketSelector);
+  if (!bracket) return;
+
+  const previo = bracket.querySelector(`.${svgClass}`);
+  if (previo) previo.remove();
+
+  const cols = Array.from(bracket.querySelectorAll(colSelector));
+  if (cols.length < 7) return;
+
+  const left8 = Array.from(cols[0].querySelectorAll(nodeSelector));
+  const left4 = Array.from(cols[1].querySelectorAll(nodeSelector));
+  const semiLeft = cols[2].querySelector(nodeSelector);
+  const centerNodes = Array.from(cols[3].querySelectorAll(nodeSelector));
+  const finalNode = centerNodes[0] || null;
+  const semiRight = cols[4].querySelector(nodeSelector);
+  const right4 = Array.from(cols[5].querySelectorAll(nodeSelector));
+  const right8 = Array.from(cols[6].querySelectorAll(nodeSelector));
+
+  if (!finalNode || !semiLeft || !semiRight || left4.length < 2 || right4.length < 2 || left8.length < 4 || right8.length < 4) {
+    return;
+  }
+
+  const rect = bracket.getBoundingClientRect();
+  const width = Math.ceil(bracket.scrollWidth || rect.width);
+  const height = Math.ceil(bracket.scrollHeight || rect.height);
+  if (width <= 0 || height <= 0) return;
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", svgClass);
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(height));
+
+  const outline = "rgba(255,255,255,0.78)";
+  const color = "#4f78ba";
+  const strokeWidth = 3.2;
+
+  function appendStyledPath(d) {
+    const base = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    base.setAttribute("d", d);
+    base.setAttribute("fill", "none");
+    base.setAttribute("stroke", outline);
+    base.setAttribute("stroke-width", String(strokeWidth + 1.8));
+    base.setAttribute("stroke-linecap", "round");
+    base.setAttribute("stroke-linejoin", "round");
+    base.setAttribute("opacity", "0.65");
+    svg.appendChild(base);
+
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    line.setAttribute("d", d);
+    line.setAttribute("fill", "none");
+    line.setAttribute("stroke", color);
+    line.setAttribute("stroke-width", String(strokeWidth));
+    line.setAttribute("stroke-linecap", "round");
+    line.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(line);
+  }
+
+  function appendPath(sourceEl, targetEl, direction = "ltr") {
+    if (!sourceEl || !targetEl) return;
+    const sourceRect = sourceEl.getBoundingClientRect();
+    const targetRect = targetEl.getBoundingClientRect();
+    const startX =
+      direction === "rtl" ? sourceRect.left - rect.left : sourceRect.right - rect.left;
+    const endX =
+      direction === "rtl" ? targetRect.right - rect.left : targetRect.left - rect.left;
+    const startY = sourceRect.top - rect.top + sourceRect.height / 2;
+    const endY = targetRect.top - rect.top + targetRect.height / 2;
+    const distance = Math.abs(endX - startX);
+    const offset = Math.max(24, distance * 0.48);
+    const midX = direction === "rtl" ? startX - offset : startX + offset;
+
+    appendStyledPath(`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`);
+  }
+
+  appendPath(left8[0], left4[0], "ltr");
+  appendPath(left8[1], left4[0], "ltr");
+  appendPath(left8[2], left4[1], "ltr");
+  appendPath(left8[3], left4[1], "ltr");
+  appendPath(left4[0], semiLeft, "ltr");
+  appendPath(left4[1], semiLeft, "ltr");
+  appendPath(semiLeft, finalNode, "ltr");
+
+  appendPath(right8[0], right4[0], "rtl");
+  appendPath(right8[1], right4[0], "rtl");
+  appendPath(right8[2], right4[1], "rtl");
+  appendPath(right8[3], right4[1], "rtl");
+  appendPath(right4[0], semiRight, "rtl");
+  appendPath(right4[1], semiRight, "rtl");
+  appendPath(semiRight, finalNode, "rtl");
+
+  bracket.appendChild(svg);
 }
 
 function renderConectoresExport() {
@@ -2558,6 +2857,7 @@ function prepararZonaParaCapturaEliminatoria(zona) {
   zona.style.overflow = "visible";
 
   renderConectoresExport();
+  renderConectoresEspecialesActivos();
 
   return () => {
     zona.style.width = prevZonaWidth;

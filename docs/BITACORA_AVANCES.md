@@ -1882,3 +1882,24 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - tamaño real de logos
   - legibilidad en móvil y escritorio
 - Si el organizador lo solicita, refinar aún más el arte de conectores del playoff para acercarlo al estilo TV/gráfico compartido, manteniendo la estructura ya estabilizada.
+
+## 2026-03-21 - Afinado visual de plantilla publicable del playoff
+- La plantilla publicable `8vos -> 4tos -> semifinal -> final` se afinó para acercarse más al arte de referencia sin perder exportabilidad estable:
+  - los nodos ya muestran solo `logo + nombre local`, `vs`, `nombre visitante + logo`, sin etiquetas internas tipo `8VO P1` ni sembrados `1A/4C`,
+  - los títulos de ronda (`Octavos`, `Cuartos`, `Semifinal`, `Final`) se ubican sobre cada bloque de columnas,
+  - el lado derecho ya alinea logos y texto desde la derecha para espejar el lado izquierdo.
+- Se agregó personalización de fondo en `Plantilla para publicar`:
+  - carga de imagen local,
+  - persistencia por `campeonato + categoría` en `localStorage`,
+  - botón para quitar el fondo,
+  - overlay claro/oscuro compatible con exportación `PNG/PDF`.
+- Los auspiciantes de la plantilla publicable ya no se deforman:
+  - caja fija,
+  - `object-fit: contain`,
+  - padding y fondo estables.
+- Los conectores del layout especial ahora se redibujan también justo antes de capturar/exportar, con doble trazo para ganar legibilidad sobre fondos personalizados.
+- El ancho de columnas del bracket especial ahora se calcula dinámicamente según el string más largo de cada ronda, evitando que los cuadros queden demasiado estrechos o que el texto fuerce cortes innecesarios.
+- `Tercer y cuarto` quedó como subbloque compacto real:
+  - más pequeño,
+  - centrado debajo de `Final`,
+  - con reserva de espacio propia para no salirse del lienzo en la vista previa/exportación.

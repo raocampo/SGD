@@ -7,6 +7,27 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-21 - Ajuste visual final de plantilla publicable del playoff
+- `frontend/js/eliminatorias.js` y `frontend/css/style.css` afinan el bracket publicable especial (`8vos -> 4tos -> semifinal -> final`) para que los nodos muestren solo:
+  - logo local + nombre local,
+  - `vs`,
+  - nombre visitante + logo visitante.
+- Se retiran de los nodos publicables:
+  - etiquetas internas tipo `8VO P1`, `4TO G1`,
+  - referencias de siembra/tabla como `1A`, `4C`, `8B`.
+- Las rondas ahora se titulan por bloque superior:
+  - `Octavos`,
+  - `Cuartos`,
+  - `Semifinal`,
+  - `Final`.
+- Se agrega fondo personalizable para la plantilla desde `eliminatorias.html`, persistido por `campeonato + categoría`, sin alterar la llave base.
+- Los conectores SVG del layout especial ahora se recalculan también al preparar la captura/exportación, con doble trazo para mejorar legibilidad.
+- El layout especial ahora calcula anchos por columna a partir del nombre más largo de los equipos para evitar cuadros demasiado estrechos.
+- El bloque `Tercer y cuarto` queda compacto y reservado debajo de `Final`, evitando que se salga del lienzo.
+- Los auspiciantes se normalizan con cajas estables y `object-fit: contain`, evitando estiramientos.
+
+---
+
 ## 2026-03-20 - Sincronización real de plantilla playoff y edición manual de cruces
 - `backend/models/Eliminatoria.js` ya toma `eventos.playoff_plantilla` y `eventos.playoff_tercer_puesto` como fuente de verdad al cargar la configuración en `eliminatorias.html`, evitando que una fila vieja en `evento_playoff_config` deje la UI en `estandar`.
 - `backend/controllers/eventoController.js` sincroniza una configuración de playoff existente cuando se actualiza la categoría desde `eventos.html`, manteniendo alineadas la card de categoría y la pantalla de eliminatorias.
