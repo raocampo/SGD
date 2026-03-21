@@ -1062,6 +1062,55 @@ body.ltc-landing {
   border-bottom: none;
 }
 
+.portal-playoff-match-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.15rem;
+}
+
+.portal-playoff-match-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #e7eef8;
+  color: #27486f;
+}
+
+.portal-playoff-match-meta {
+  font-size: 0.76rem;
+  color: #607691;
+  text-align: right;
+}
+
+.portal-playoff-match-status.estado-finalizado {
+  background: #daf7e7;
+  color: #1b7245;
+}
+
+.portal-playoff-match-status.estado-programado,
+.portal-playoff-match-status.estado-pendiente {
+  background: #dcecff;
+  color: #1c4f95;
+}
+
+.portal-playoff-match-status.estado-en_curso {
+  background: #fff0c8;
+  color: #906000;
+}
+
+.portal-playoff-match-status.estado-suspendido,
+.portal-playoff-match-status.estado-aplazado,
+.portal-playoff-match-status.estado-no_presentaron_ambos {
+  background: #fde2e2;
+  color: #9a3030;
+}
+
 /* columna de cada equipo: logo centrado + nombre debajo */
 .equipo-col {
   display: flex;

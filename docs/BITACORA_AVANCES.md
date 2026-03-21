@@ -1839,3 +1839,46 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - edición de equipos en partido (botón Editar como administrador)
   - regenerar fixture tras crear J1 manualmente → verifica que Academia Pedro Larrea descanse en J1
 - Validar plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con campeonato real de 24 clasificados.
+
+## 2026-03-20 - Portal playoff y plantilla publicable unificada
+- Se amplió la carga pública de eliminatorias para que cada cruce exponga también su programación enlazada desde `partidos`:
+  - `estado`
+  - `fecha_partido`
+  - `hora_partido`
+  - `cancha`
+  - `jornada`
+  - `numero_campeonato`
+- La pestaña pública `Playoff` del portal ya muestra esa metadata por encuentro cuando el cruce tiene partido operativo asociado.
+- El módulo interno de `eliminatorias.html` se reorganizó en pestañas independientes:
+  - `Configuración de llave`
+  - `Estado competitivo`
+  - `Clasificación manual`
+  - `Playoff / Llave`
+- La programación manual y la auto-programación de playoff ahora se trabajan en overlays reales tipo modal:
+  - fondo oscurecido
+  - cierre por `Esc`
+  - cierre por click fuera
+  - foco automático al abrir
+- Se agregó el botón `Plantilla para publicar` junto a `Auto-programar fechas` para abrir/cerrar la vista exportable del playoff sin perder el contexto de la llave.
+- La vista interna de `Playoff / Llave` ahora presenta:
+  - `Final` en la columna central
+  - `Tercer y cuarto` debajo de `Final`
+  - tarjetas de tercer puesto más compactas
+  - rounds en horizontal, no apilados verticalmente
+- La plantilla exportable/publicable del playoff para el caso principal `8vos -> 4tos -> semifinal -> final` se rediseñó para seguir el mismo lenguaje visual del borrador:
+  - layout horizontal de 7 columnas
+  - fondo claro con grilla
+  - tarjetas azules compactas
+  - local arriba / `vs` / visitante abajo
+  - logos de equipos dentro de cada nodo
+  - `Final` centrada
+  - `Tercer y cuarto` debajo de `Final`
+- Se ajustó también la vista previa para que use el mismo esquema del arte final, evitando que la publicación se vea completamente distinta al borrador.
+
+## Pendiente inmediato siguiente sesión
+- Validar visualmente en Render la exportación `PNG/PDF` de la nueva plantilla de playoff para confirmar:
+  - conectores
+  - anchos finales de tarjetas
+  - tamaño real de logos
+  - legibilidad en móvil y escritorio
+- Si el organizador lo solicita, refinar aún más el arte de conectores del playoff para acercarlo al estilo TV/gráfico compartido, manteniendo la estructura ya estabilizada.

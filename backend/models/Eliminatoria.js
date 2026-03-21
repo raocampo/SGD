@@ -2518,11 +2518,18 @@ class Eliminatoria {
       SELECT pe.*,
              el.nombre AS equipo_local_nombre, ev.nombre AS equipo_visitante_nombre,
              g.nombre AS ganador_nombre,
-             el.logo_url AS equipo_local_logo, ev.logo_url AS equipo_visitante_logo
+             el.logo_url AS equipo_local_logo, ev.logo_url AS equipo_visitante_logo,
+             p.estado,
+             p.fecha_partido,
+             p.hora_partido,
+             p.cancha,
+             p.jornada,
+             p.numero_campeonato
       FROM partidos_eliminatoria pe
       LEFT JOIN equipos el ON pe.equipo_local_id = el.id
       LEFT JOIN equipos ev ON pe.equipo_visitante_id = ev.id
       LEFT JOIN equipos g ON pe.ganador_id = g.id
+      LEFT JOIN partidos p ON pe.partido_id = p.id
       WHERE pe.evento_id = $1
       ORDER BY
         array_position($2::varchar[], pe.ronda),
@@ -2537,11 +2544,18 @@ class Eliminatoria {
     const q = `
       SELECT pe.*,
              el.nombre AS equipo_local_nombre, ev.nombre AS equipo_visitante_nombre,
-             g.nombre AS ganador_nombre
+             g.nombre AS ganador_nombre,
+             p.estado,
+             p.fecha_partido,
+             p.hora_partido,
+             p.cancha,
+             p.jornada,
+             p.numero_campeonato
       FROM partidos_eliminatoria pe
       LEFT JOIN equipos el ON pe.equipo_local_id = el.id
       LEFT JOIN equipos ev ON pe.equipo_visitante_id = ev.id
       LEFT JOIN equipos g ON pe.ganador_id = g.id
+      LEFT JOIN partidos p ON pe.partido_id = p.id
       WHERE pe.evento_id = $1 AND pe.ronda = $2
       ORDER BY pe.partido_numero
     `;

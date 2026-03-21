@@ -3,6 +3,7 @@ const BACKEND_BASE = (window.resolveBackendBaseUrl
   ? window.resolveBackendBaseUrl()
   : `${window.location.origin}`).replace(/\/$/, "");
 const EMBED_MODE = new URLSearchParams(window.location.search).get("embed") === "1";
+const ELI_TAB_DEFAULT = "config";
 
 let eliminatoriaState = {
   eventos: [],
@@ -24,6 +25,44 @@ let eliminatoriaState = {
   },
 };
 let listenersConectoresExportInicializados = false;
+
+function obtenerTabEliminatoriaActual() {
+  return (
+    document.querySelector(".eli-main-tab.active")?.getAttribute("data-eli-tab-target") ||
+    ELI_TAB_DEFAULT
+  );
+}
+
+function activarTabEliminatoria(tabKey = ELI_TAB_DEFAULT) {
+  const tabs = Array.from(document.querySelectorAll(".eli-main-tab"));
+  const visibles = tabs.filter((tab) => tab.style.display !== "none");
+  const destinoExiste = visibles.some((tab) => tab.getAttribute("data-eli-tab-target") === tabKey);
+  const destino = destinoExiste
+    ? tabKey
+    : visibles[0]?.getAttribute("data-eli-tab-target") || ELI_TAB_DEFAULT;
+
+  tabs.forEach((tab) => {
+    const activa = tab.getAttribute("data-eli-tab-target") === destino && tab.style.display !== "none";
+    tab.classList.toggle("active", activa);
+    tab.setAttribute("aria-selected", activa ? "true" : "false");
+    tab.setAttribute("tabindex", activa ? "0" : "-1");
+  });
+
+  document.querySelectorAll("[data-eli-tab-panel]").forEach((panel) => {
+    const activa = panel.getAttribute("data-eli-tab-panel") === destino;
+    panel.classList.toggle("active", activa);
+    panel.hidden = !activa;
+  });
+}
+
+function inicializarTabsEliminatoria() {
+  document.querySelectorAll(".eli-main-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      activarTabEliminatoria(tab.getAttribute("data-eli-tab-target") || ELI_TAB_DEFAULT);
+    });
+  });
+  activarTabEliminatoria(ELI_TAB_DEFAULT);
+}
 
 function parsePositiveInt(value) {
   const n = Number.parseInt(value, 10);
@@ -433,6 +472,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.body.classList.add("embed-mode");
   }
   eliminatoriaState.esAdminLike = !!window.Auth?.isAdminLike?.();
+  inicializarTabsEliminatoria();
   aplicarPermisosEliminatoriaUI();
   bindEventosEliminatoria();
   await cargarEventosEliminatoria();
@@ -442,13 +482,36 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function aplicarPermisosEliminatoriaUI() {
-  if (eliminatoriaState.esAdminLike) return;
+  const adminTabs = document.querySelectorAll('.eli-main-tab[data-admin-only="true"]');
+  const adminPanels = ["estado", "clasificacion"];
+
+  if (eliminatoriaState.esAdminLike) {
+    adminTabs.forEach((tab) => {
+      tab.style.display = "";
+    });
+    adminPanels.forEach((panelKey) => {
+      const panel = document.querySelector(`[data-eli-tab-panel="${panelKey}"]`);
+      if (panel) panel.style.display = "";
+    });
+    return;
+  }
+
   const btn = document.getElementById("btn-eli-generar");
   if (btn) btn.style.display = "none";
   const adminEstado = document.getElementById("eli-admin-estado-section");
   const adminClasif = document.getElementById("eli-admin-clasificacion-section");
   if (adminEstado) adminEstado.style.display = "none";
   if (adminClasif) adminClasif.style.display = "none";
+  adminTabs.forEach((tab) => {
+    tab.style.display = "none";
+  });
+  adminPanels.forEach((panelKey) => {
+    const panel = document.querySelector(`[data-eli-tab-panel="${panelKey}"]`);
+    if (panel) panel.style.display = "none";
+  });
+  if (["estado", "clasificacion"].includes(obtenerTabEliminatoriaActual())) {
+    activarTabEliminatoria(ELI_TAB_DEFAULT);
+  }
 }
 
 function bindEventosEliminatoria() {
@@ -527,9 +590,40 @@ function bindEventosEliminatoria() {
     }
   });
   document.getElementById("btn-eli-exportar")?.addEventListener("click", abrirEnPartidos);
+  document.getElementById("btn-eli-toggle-plantilla")?.addEventListener("click", () => {
+    const section = document.getElementById("eli-publicacion-section");
+    const button = document.getElementById("btn-eli-toggle-plantilla");
+    if (!section || !button) return;
+    const visible = section.style.display !== "none";
+    section.style.display = visible ? "none" : "";
+    button.classList.toggle("is-active", !visible);
+    button.innerHTML = visible
+      ? '<i class="fas fa-file-lines"></i> Plantilla para publicar'
+      : '<i class="fas fa-eye-slash"></i> Ocultar plantilla';
+    if (!visible) {
+      activarTabEliminatoria("bracket");
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
   document.getElementById("btn-eli-export-png")?.addEventListener("click", exportarEliminatoriaPNG);
   document.getElementById("btn-eli-export-pdf")?.addEventListener("click", exportarEliminatoriaPDF);
   document.getElementById("btn-eli-share")?.addEventListener("click", compartirEliminatoria);
+  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+    overlay.addEventListener("click", (event) => {
+      if (event.target !== overlay) return;
+      if (overlay.id === "modal-prog-partido-eli") cerrarModalProgPartidoEli();
+      if (overlay.id === "modal-auto-prog-eli") cerrarModalAutoProgEli();
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (document.getElementById("modal-prog-partido-eli")?.style.display === "flex") {
+      cerrarModalProgPartidoEli();
+    }
+    if (document.getElementById("modal-auto-prog-eli")?.style.display === "flex") {
+      cerrarModalAutoProgEli();
+    }
+  });
 }
 
 async function cargarEventosEliminatoria() {
@@ -1592,6 +1686,7 @@ async function cargarLlaveEliminatoria() {
     renderPosterPublicacion([]);
     return;
   }
+  activarTabEliminatoria("bracket");
 
   const cont = document.getElementById("eli-bracket");
   if (cont) {
@@ -1685,6 +1780,7 @@ async function generarLlaveEliminatoria() {
       mostrarNotificacion("Llave eliminatoria generada", "success");
     }
     await cargarLlaveEliminatoria();
+    activarTabEliminatoria("bracket");
   } catch (error) {
     console.error(error);
     mostrarNotificacion(error.message || "No se pudo generar la llave", "error");
@@ -1703,6 +1799,340 @@ function agruparPorRonda(cruces = []) {
     ronda: r,
     cruces: (map.get(r) || []).sort((a, b) => Number(a.partido_numero || 0) - Number(b.partido_numero || 0)),
   }));
+}
+
+function normalizarColumnasPlayoff(columnas = []) {
+  if (!Array.isArray(columnas) || !columnas.length) return [];
+  const finalCol = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "final");
+  const tercerCol = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "tercer_puesto");
+  return columnas
+    .filter((col) => String(col?.ronda || "").toLowerCase() !== "tercer_puesto")
+    .map((col) => {
+      if (String(col?.ronda || "").toLowerCase() !== "final") return col;
+      return {
+        ...col,
+        crucesExtra: Array.isArray(tercerCol?.cruces) ? tercerCol.cruces : [],
+        tieneTercerPuesto: Array.isArray(tercerCol?.cruces) && tercerCol.cruces.length > 0,
+      };
+    });
+}
+
+function construirScheduleHtmlPartido(c = {}) {
+  if (!c.fecha_partido && !c.hora_partido && !c.cancha) return "";
+  let fechaStr = "";
+  if (c.fecha_partido) {
+    const m = String(c.fecha_partido).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      fechaStr = d.toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" });
+    }
+  }
+  const hora = c.hora_partido ? String(c.hora_partido).slice(0, 5) : "";
+  const partes = [fechaStr, hora ? `Hora ${hora}` : "", c.cancha || ""].filter(Boolean);
+  return `<div class="eli-match-schedule"><i class="fas fa-calendar-alt"></i> ${escapeHtml(partes.join(" • "))}</div>`;
+}
+
+function renderMatchCardEliminatoria(c, { compact = false } = {}) {
+  const local = nombrePlaceholderEliminatoria(c, "local");
+  const visita = nombrePlaceholderEliminatoria(c, "visitante");
+  const localLogo = normalizarLogoUrl(c.equipo_local_logo || null);
+  const visitaLogo = normalizarLogoUrl(c.equipo_visitante_logo || null);
+  const rl = Number.isFinite(Number(c.resultado_local)) ? Number(c.resultado_local) : "-";
+  const rv = Number.isFinite(Number(c.resultado_visitante)) ? Number(c.resultado_visitante) : "-";
+  const localEsGanador = c.ganador_id && Number(c.equipo_local_id) === Number(c.ganador_id);
+  const visitaEsGanador = c.ganador_id && Number(c.equipo_visitante_id) === Number(c.ganador_id);
+  const finalizado = String(c.estado || "").toLowerCase() === "finalizado";
+  const seedL = c.seed_local_ref ? `<small>${escapeHtml(c.seed_local_ref)}</small>` : "";
+  const seedV = c.seed_visitante_ref ? `<small>${escapeHtml(c.seed_visitante_ref)}</small>` : "";
+  const estadoBadge = finalizado
+    ? '<span class="eli-match-badge eli-badge-finalizado">Finalizado</span>'
+    : c.fecha_partido
+    ? '<span class="eli-match-badge eli-badge-programado">Programado</span>'
+    : '<span class="eli-match-badge eli-badge-pendiente">Pendiente</span>';
+  const scheduleHtml = construirScheduleHtmlPartido(c);
+
+  return `
+    <article class="eli-match-card${finalizado ? " eli-match-finalizado" : ""}${compact ? " is-compact" : ""}">
+      <div class="eli-match-head">
+        <strong>${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}</strong>
+        ${estadoBadge}
+      </div>
+      ${scheduleHtml}
+      <div class="eli-team-row${localEsGanador ? " eli-team-ganador" : ""}">
+        <span class="eli-team-meta">
+          ${renderEquipoLogo(localLogo, local, "eli-team-logo")}
+          <span>${seedL} ${escapeHtml(local)}</span>
+        </span>
+        <span class="eli-score${localEsGanador ? " eli-score-ganador" : ""}">${escapeHtml(String(rl))}</span>
+      </div>
+      <div class="eli-team-row${visitaEsGanador ? " eli-team-ganador" : ""}">
+        <span class="eli-team-meta">
+          ${renderEquipoLogo(visitaLogo, visita, "eli-team-logo")}
+          <span>${seedV} ${escapeHtml(visita)}</span>
+        </span>
+        <span class="eli-score${visitaEsGanador ? " eli-score-ganador" : ""}">${escapeHtml(String(rv))}</span>
+      </div>
+      ${
+        !finalizado
+          ? '<div class="eli-winner eli-winner-pendiente"><i class="fas fa-clock"></i> Partido pendiente</div>'
+          : c.ganador_nombre
+            ? `<div class="eli-winner eli-winner-ok"><i class="fas fa-trophy"></i> ${escapeHtml(c.ganador_nombre)}</div>`
+            : ""
+      }
+      ${
+        eliminatoriaState.esAdminLike
+          ? `<div class="eli-match-actions">
+              <button class="btn btn-warning" onclick="registrarResultadoEliminatoria(${Number(c.id)})">
+                <i class="fas fa-edit"></i> Resultado
+              </button>
+              <button class="btn btn-secondary" onclick="abrirModalProgPartidoEli(${Number(c.id)}, '${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}', '${c.fecha_partido || ""}', '${c.hora_partido ? String(c.hora_partido).slice(0,5) : ""}', '${escapeHtml(c.cancha || "")}')">
+                <i class="fas fa-calendar-alt"></i> Programar
+              </button>
+              ${
+                !finalizado
+                  ? `<button class="btn btn-outline" onclick="editarCruceEliminatoria(${Number(c.id)})">
+                       <i class="fas fa-right-left"></i> Editar cruce
+                     </button>`
+                  : ""
+              }
+            </div>`
+          : ""
+      }
+    </article>
+  `;
+}
+
+function formatearNombreNodoEliminatoria(partido = {}, lado = "local") {
+  const sideKey = lado === "visitante" ? "visitante" : "local";
+  const nombreBase = nombrePlaceholderEliminatoria(partido, sideKey);
+  const seedRef = String(partido?.[`seed_${sideKey}_ref`] || "").trim().toUpperCase();
+  if (!seedRef || nombreBase === "Por definir" || /^Mejor perdedor \d+$/i.test(nombreBase)) {
+    return nombreBase;
+  }
+  return `${seedRef} ${nombreBase}`;
+}
+
+function renderLineaNodoEliminatoria(partido = {}, lado = "local", logoClass = "eli-node-logo") {
+  const sideKey = lado === "visitante" ? "visitante" : "local";
+  const nombre = formatearNombreNodoEliminatoria(partido, sideKey);
+  const logo = normalizarLogoUrl(partido?.[`equipo_${sideKey}_logo`] || null);
+  return `
+    <div class="eli-node-team">
+      ${renderEquipoLogo(logo, nombre, logoClass)}
+      <span>${escapeHtml(nombre)}</span>
+    </div>
+  `;
+}
+
+function renderPlantillaNodeEliminatoria(partido, { compact = false } = {}) {
+  const local = formatearNombreNodoEliminatoria(partido, "local");
+  const visita = formatearNombreNodoEliminatoria(partido, "visitante");
+  return `
+    <article class="eli-plantilla-node${compact ? " is-compact" : ""}">
+      <strong>${escapeHtml(formatearEtiquetaPartidoEliminatoria(partido?.ronda, partido?.partido_numero))}</strong>
+      <div class="eli-node-body">
+        ${renderLineaNodoEliminatoria(partido, "local", "eli-node-logo")}
+        <div class="eli-node-vs">vs</div>
+        ${renderLineaNodoEliminatoria(partido, "visitante", "eli-node-logo")}
+      </div>
+    </article>
+  `;
+}
+
+function esLayoutEspecial16(columnas = []) {
+  const ronda8vos = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "8vos");
+  const ronda4tos = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "4tos");
+  const rondaSemis = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "semifinal");
+  const rondaFinal = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "final");
+
+  return !!(
+    ronda8vos &&
+    ronda4tos &&
+    rondaSemis &&
+    rondaFinal &&
+    Array.isArray(ronda8vos.cruces) &&
+    Array.isArray(ronda4tos.cruces) &&
+    Array.isArray(rondaSemis.cruces) &&
+    Array.isArray(rondaFinal.cruces) &&
+    ronda8vos.cruces.length === 8 &&
+    ronda4tos.cruces.length === 4 &&
+    rondaSemis.cruces.length === 2 &&
+    rondaFinal.cruces.length >= 1
+  );
+}
+
+function renderPlantillaPreviewEliminatoriaEspecial16(columnas = []) {
+  if (!esLayoutEspecial16(columnas)) {
+    return "";
+  }
+
+  const ronda8vos = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "8vos");
+  const ronda4tos = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "4tos");
+  const rondaSemis = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "semifinal");
+  const rondaFinal = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "final");
+
+  const izquierda8vos = ronda8vos.cruces.slice(0, 4);
+  const derecha8vos = ronda8vos.cruces.slice(4);
+  const izquierda4tos = ronda4tos.cruces.slice(0, 2);
+  const derecha4tos = ronda4tos.cruces.slice(2);
+  const semiIzquierda = rondaSemis.cruces[0];
+  const semiDerecha = rondaSemis.cruces[1];
+  const final = rondaFinal.cruces[0];
+  const tercer = Array.isArray(rondaFinal.crucesExtra) ? rondaFinal.crucesExtra[0] : null;
+
+  return `
+    <div class="eli-plantilla-preview-card">
+      <strong>Vista previa sugerida del playoff</strong>
+      <p>La plantilla resume los cruces activos con el mismo orden que se usará para publicar y compartir.</p>
+      <div class="eli-plantilla-bracket16">
+        <div class="eli-plantilla-col is-edge is-left">
+          ${izquierda8vos.map((partido) => renderPlantillaNodeEliminatoria(partido)).join("")}
+        </div>
+        <div class="eli-plantilla-col is-stage is-left">
+          ${izquierda4tos.map((partido) => renderPlantillaNodeEliminatoria(partido)).join("")}
+        </div>
+        <div class="eli-plantilla-col is-semifinal is-left">
+          ${semiIzquierda ? renderPlantillaNodeEliminatoria(semiIzquierda) : ""}
+        </div>
+        <div class="eli-plantilla-col is-center">
+          ${renderPlantillaNodeEliminatoria(final)}
+          ${
+            tercer
+              ? `
+            <div class="eli-plantilla-subcolumn">
+              <h5>Tercer y cuarto</h5>
+              ${renderPlantillaNodeEliminatoria(tercer, { compact: true })}
+            </div>`
+              : ""
+          }
+        </div>
+        <div class="eli-plantilla-col is-semifinal is-right">
+          ${semiDerecha ? renderPlantillaNodeEliminatoria(semiDerecha) : ""}
+        </div>
+        <div class="eli-plantilla-col is-stage is-right">
+          ${derecha4tos.map((partido) => renderPlantillaNodeEliminatoria(partido)).join("")}
+        </div>
+        <div class="eli-plantilla-col is-edge is-right">
+          ${derecha8vos.map((partido) => renderPlantillaNodeEliminatoria(partido)).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderExportNodeEliminatoria(partido, { compact = false } = {}) {
+  return `
+    <article class="eli-export-node${compact ? " is-compact" : ""}">
+      <strong>${escapeHtml(formatearEtiquetaPartidoEliminatoria(partido?.ronda, partido?.partido_numero))}</strong>
+      <div class="eli-node-body">
+        ${renderLineaNodoEliminatoria(partido, "local", "eli-node-logo")}
+        <div class="eli-node-vs">vs</div>
+        ${renderLineaNodoEliminatoria(partido, "visitante", "eli-node-logo")}
+      </div>
+    </article>
+  `;
+}
+
+function renderPosterPublicacionEspecial16(columnas = []) {
+  if (!esLayoutEspecial16(columnas)) return "";
+
+  const ronda8vos = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "8vos");
+  const ronda4tos = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "4tos");
+  const rondaSemis = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "semifinal");
+  const rondaFinal = columnas.find((col) => String(col?.ronda || "").toLowerCase() === "final");
+  const izquierda8vos = ronda8vos.cruces.slice(0, 4);
+  const derecha8vos = ronda8vos.cruces.slice(4);
+  const izquierda4tos = ronda4tos.cruces.slice(0, 2);
+  const derecha4tos = ronda4tos.cruces.slice(2);
+  const semiIzquierda = rondaSemis.cruces[0];
+  const semiDerecha = rondaSemis.cruces[1];
+  const final = rondaFinal.cruces[0];
+  const tercer = Array.isArray(rondaFinal.crucesExtra) ? rondaFinal.crucesExtra[0] : null;
+
+  return `
+    <div class="eli-export-preview-card">
+      <div class="eli-export-bracket16">
+        <div class="eli-export-col is-edge is-left">
+          ${izquierda8vos.map((partido) => renderExportNodeEliminatoria(partido)).join("")}
+        </div>
+        <div class="eli-export-col is-stage is-left">
+          ${izquierda4tos.map((partido) => renderExportNodeEliminatoria(partido)).join("")}
+        </div>
+        <div class="eli-export-col is-semifinal is-left">
+          ${semiIzquierda ? renderExportNodeEliminatoria(semiIzquierda) : ""}
+        </div>
+        <div class="eli-export-col is-center">
+          ${renderExportNodeEliminatoria(final)}
+          ${
+            tercer
+              ? `
+            <div class="eli-export-subcolumn">
+              <h5>Tercer y cuarto</h5>
+              ${renderExportNodeEliminatoria(tercer, { compact: true })}
+            </div>`
+              : ""
+          }
+        </div>
+        <div class="eli-export-col is-semifinal is-right">
+          ${semiDerecha ? renderExportNodeEliminatoria(semiDerecha) : ""}
+        </div>
+        <div class="eli-export-col is-stage is-right">
+          ${derecha4tos.map((partido) => renderExportNodeEliminatoria(partido)).join("")}
+        </div>
+        <div class="eli-export-col is-edge is-right">
+          ${derecha8vos.map((partido) => renderExportNodeEliminatoria(partido)).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPlantillaPreviewEliminatoria(columnas = []) {
+  const cont = document.getElementById("eli-plantilla-preview");
+  if (!cont) return;
+
+  if (!Array.isArray(columnas) || !columnas.length) {
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-image"></i>
+        <p>Genera o carga una llave para visualizar la plantilla.</p>
+      </div>`;
+    return;
+  }
+
+  const htmlEspecial = renderPlantillaPreviewEliminatoriaEspecial16(columnas);
+  if (htmlEspecial) {
+    cont.innerHTML = htmlEspecial;
+    return;
+  }
+
+  const html = columnas
+    .map((col) => {
+      const tarjetas = (col.cruces || [])
+        .map((partido) => renderPlantillaNodeEliminatoria(partido))
+        .join("");
+      const extra = Array.isArray(col.crucesExtra) && col.crucesExtra.length
+        ? `
+          <div class="eli-plantilla-subcolumn">
+            <h5>Tercer y cuarto</h5>
+            ${col.crucesExtra
+              .map((partido) => renderPlantillaNodeEliminatoria(partido, { compact: true }))
+              .join("")}
+          </div>`
+        : "";
+      return `
+        <section class="eli-plantilla-col">
+          <h4>${escapeHtml(formatearRonda(col.ronda))}</h4>
+          <div class="eli-plantilla-stack">
+            ${tarjetas}
+          </div>
+          ${extra}
+        </section>
+      `;
+    })
+    .join("");
+
+  cont.innerHTML = `<div class="eli-plantilla-grid">${html}</div>`;
 }
 
 function obtenerPrimeraRondaActual() {
@@ -1857,118 +2287,46 @@ function renderBracket() {
         <i class="fas fa-sitemap"></i>
         <p>No hay llave creada para esta categoría.</p>
       </div>`;
+    renderPlantillaPreviewEliminatoria([]);
     renderPosterPublicacion([]);
     return;
   }
 
-  const columnas = agruparPorRonda(eliminatoriaState.cruces);
+  const columnas = normalizarColumnasPlayoff(agruparPorRonda(eliminatoriaState.cruces));
   const html = columnas
     .map((col) => {
-      const cards = col.cruces
-        .map((c) => {
-          const local = nombrePlaceholderEliminatoria(c, "local");
-          const visita = nombrePlaceholderEliminatoria(c, "visitante");
-          const localLogo = normalizarLogoUrl(c.equipo_local_logo || null);
-          const visitaLogo = normalizarLogoUrl(c.equipo_visitante_logo || null);
-          const rl = Number.isFinite(Number(c.resultado_local)) ? Number(c.resultado_local) : "-";
-          const rv = Number.isFinite(Number(c.resultado_visitante)) ? Number(c.resultado_visitante) : "-";
-          const ganadorId = c.ganador_id ? Number(c.resultado_local >= c.resultado_visitante ? "local" : "visitante") : null;
-          const localEsGanador = c.ganador_id && Number(c.equipo_local_id) === Number(c.ganador_id);
-          const visitaEsGanador = c.ganador_id && Number(c.equipo_visitante_id) === Number(c.ganador_id);
-          const finalizado = String(c.estado || "").toLowerCase() === "finalizado";
-          const seedL = c.seed_local_ref ? `<small>${escapeHtml(c.seed_local_ref)}</small>` : "";
-          const seedV = c.seed_visitante_ref ? `<small>${escapeHtml(c.seed_visitante_ref)}</small>` : "";
-          const estadoBadge = finalizado
-            ? '<span class="eli-match-badge eli-badge-finalizado">Finalizado</span>'
-            : c.fecha_partido
-            ? '<span class="eli-match-badge eli-badge-programado">Programado</span>'
-            : '<span class="eli-match-badge eli-badge-pendiente">Pendiente</span>';
-
-          // Fecha / hora / cancha del partido
-          let scheduleHtml = "";
-          if (c.fecha_partido || c.hora_partido || c.cancha) {
-            let fechaStr = "";
-            if (c.fecha_partido) {
-              const m = String(c.fecha_partido).match(/^(\d{4})-(\d{2})-(\d{2})/);
-              if (m) {
-                const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-                fechaStr = d.toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" });
-              }
-            }
-            const hora = c.hora_partido ? String(c.hora_partido).slice(0, 5) : "";
-            const partes = [fechaStr, hora ? `Hora ${hora}` : "", c.cancha || ""].filter(Boolean);
-            scheduleHtml = `<div class="eli-match-schedule"><i class="fas fa-calendar-alt"></i> ${escapeHtml(partes.join(" • "))}</div>`;
-          }
-
-          return `
-            <article class="eli-match-card${finalizado ? " eli-match-finalizado" : ""}">
-              <div class="eli-match-head">
-                <strong>${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}</strong>
-                ${estadoBadge}
-              </div>
-              ${scheduleHtml}
-              <div class="eli-team-row${localEsGanador ? " eli-team-ganador" : ""}">
-                <span class="eli-team-meta">
-                  ${renderEquipoLogo(localLogo, local, "eli-team-logo")}
-                  <span>${seedL} ${escapeHtml(local)}</span>
-                </span>
-                <span class="eli-score${localEsGanador ? " eli-score-ganador" : ""}">${escapeHtml(String(rl))}</span>
-              </div>
-              <div class="eli-team-row${visitaEsGanador ? " eli-team-ganador" : ""}">
-                <span class="eli-team-meta">
-                  ${renderEquipoLogo(visitaLogo, visita, "eli-team-logo")}
-                  <span>${seedV} ${escapeHtml(visita)}</span>
-                </span>
-                <span class="eli-score${visitaEsGanador ? " eli-score-ganador" : ""}">${escapeHtml(String(rv))}</span>
-              </div>
-              ${
-                !finalizado
-                  ? '<div class="eli-winner eli-winner-pendiente"><i class="fas fa-clock"></i> Partido pendiente</div>'
-                  : c.ganador_nombre
-                    ? `<div class="eli-winner eli-winner-ok"><i class="fas fa-trophy"></i> ${escapeHtml(c.ganador_nombre)}</div>`
-                    : ""
-              }
-              ${
-                eliminatoriaState.esAdminLike
-                  ? `<div class="eli-match-actions">
-                      <button class="btn btn-warning" onclick="registrarResultadoEliminatoria(${Number(c.id)})">
-                        <i class="fas fa-edit"></i> Resultado
-                      </button>
-                      <button class="btn btn-secondary" onclick="abrirModalProgPartidoEli(${Number(c.id)}, '${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}', '${c.fecha_partido || ""}', '${c.hora_partido ? String(c.hora_partido).slice(0,5) : ""}', '${escapeHtml(c.cancha || "")}')">
-                        <i class="fas fa-calendar-alt"></i> Programar
-                      </button>
-                      ${
-                        !finalizado
-                          ? `<button class="btn btn-outline" onclick="editarCruceEliminatoria(${Number(c.id)})">
-                               <i class="fas fa-right-left"></i> Editar cruce
-                             </button>`
-                          : ""
-                      }
-                    </div>`
-                  : ""
-              }
-            </article>
-          `;
-        })
-        .join("");
+      const cards = (col.cruces || []).map((c) => renderMatchCardEliminatoria(c)).join("");
+      const extra = Array.isArray(col.crucesExtra) && col.crucesExtra.length
+        ? `
+          <div class="eli-round-subgroup">
+            <h5>Tercer y cuarto</h5>
+            <div class="eli-round-subgroup-stack">
+              ${col.crucesExtra.map((c) => renderMatchCardEliminatoria(c, { compact: true })).join("")}
+            </div>
+          </div>`
+        : "";
 
       return `
         <section class="eli-round-col">
           <h4>${escapeHtml(formatearRonda(col.ronda))}</h4>
           ${cards}
+          ${extra}
         </section>`;
     })
     .join("");
 
   cont.innerHTML = html;
+  renderPlantillaPreviewEliminatoria(columnas);
   renderPosterPublicacion(columnas);
 }
 
 function renderPosterPublicacion(columnas = []) {
   const cont = document.getElementById("eli-export-rounds");
+  const zona = document.getElementById("eli-zona-export");
   if (!cont) return;
 
   if (!Array.isArray(columnas) || !columnas.length) {
+    zona?.classList.remove("is-preview-style");
     cont.innerHTML = `
       <div class="empty-state">
         <i class="fas fa-image"></i>
@@ -1976,6 +2334,17 @@ function renderPosterPublicacion(columnas = []) {
       </div>`;
     return;
   }
+
+  const htmlEspecial = renderPosterPublicacionEspecial16(columnas);
+  if (htmlEspecial) {
+    zona?.classList.add("is-preview-style");
+    cont.style.removeProperty("--eli-round-count");
+    cont.innerHTML = htmlEspecial;
+    normalizarVistaPosterPublicacion();
+    return;
+  }
+
+  zona?.classList.remove("is-preview-style");
 
   cont.style.setProperty("--eli-round-count", String(columnas.length));
   const baseGapRem = 1.1;
@@ -2023,6 +2392,43 @@ function renderPosterPublicacion(columnas = []) {
           `;
         })
         .join("");
+      const extra = Array.isArray(col.crucesExtra) && col.crucesExtra.length
+        ? `
+          <div class="eli-export-subround">
+            <h5>Tercer y cuarto</h5>
+            <div class="eli-export-submatches">
+              ${col.crucesExtra
+                .map((c) => {
+                  const local = c.equipo_local_nombre || "Por definir";
+                  const visita = c.equipo_visitante_nombre || "Por definir";
+                  const localLogo = normalizarLogoUrl(c.equipo_local_logo || null);
+                  const visitaLogo = normalizarLogoUrl(c.equipo_visitante_logo || null);
+                  const rl = Number.isFinite(Number(c.resultado_local)) ? Number(c.resultado_local) : "-";
+                  const rv = Number.isFinite(Number(c.resultado_visitante)) ? Number(c.resultado_visitante) : "-";
+                  return `
+                    <article class="eli-export-match is-compact">
+                      <header>${escapeHtml(formatearEtiquetaPartidoEliminatoria(c.ronda, c.partido_numero))}</header>
+                      <div class="eli-export-team">
+                        <span class="eli-export-team-meta">
+                          ${renderEquipoLogo(localLogo, local, "eli-export-team-logo")}
+                          <span>${escapeHtml(local)}</span>
+                        </span>
+                        <strong>${escapeHtml(rl)}</strong>
+                      </div>
+                      <div class="eli-export-team">
+                        <span class="eli-export-team-meta">
+                          ${renderEquipoLogo(visitaLogo, visita, "eli-export-team-logo")}
+                          <span>${escapeHtml(visita)}</span>
+                        </span>
+                        <strong>${escapeHtml(rv)}</strong>
+                      </div>
+                    </article>
+                  `;
+                })
+                .join("")}
+            </div>
+          </div>`
+        : "";
 
       return `
         <section
@@ -2034,6 +2440,7 @@ function renderPosterPublicacion(columnas = []) {
           <div class="eli-export-matches">
             ${cards}
           </div>
+          ${extra}
         </section>
       `;
     })
@@ -2571,12 +2978,19 @@ function abrirModalProgPartidoEli(partidoId, titulo, fecha, hora, cancha) {
   if (horaEl) horaEl.value = hora || "";
   if (canchaEl) canchaEl.value = cancha || "";
   const modal = document.getElementById("modal-prog-partido-eli");
-  if (modal) modal.style.display = "flex";
+  if (modal) {
+    modal.style.display = "flex";
+    document.body.classList.add("eli-modal-open");
+  }
+  window.requestAnimationFrame(() => {
+    (fechaEl || horaEl || canchaEl)?.focus?.();
+  });
 }
 
 function cerrarModalProgPartidoEli() {
   const modal = document.getElementById("modal-prog-partido-eli");
   if (modal) modal.style.display = "none";
+  document.body.classList.remove("eli-modal-open");
   _eliProgPartidoId = null;
 }
 
@@ -2610,12 +3024,19 @@ function abrirModalAutoProgramarPlayoff() {
   const fechaEl = document.getElementById("eli-auto-fecha");
   if (fechaEl && !fechaEl.value) fechaEl.value = `${yyyy}-${mm}-${dd}`;
   const modal = document.getElementById("modal-auto-prog-eli");
-  if (modal) modal.style.display = "flex";
+  if (modal) {
+    modal.style.display = "flex";
+    document.body.classList.add("eli-modal-open");
+  }
+  window.requestAnimationFrame(() => {
+    fechaEl?.focus?.();
+  });
 }
 
 function cerrarModalAutoProgEli() {
   const modal = document.getElementById("modal-auto-prog-eli");
   if (modal) modal.style.display = "none";
+  document.body.classList.remove("eli-modal-open");
 }
 
 async function ejecutarAutoProgEli() {

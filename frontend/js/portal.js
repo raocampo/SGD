@@ -1243,8 +1243,26 @@ function renderEliminatoriasPortal(payload = []) {
                 Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante))
                   ? `${partido.resultado_local ?? 0} - ${partido.resultado_visitante ?? 0}`
                   : "vs";
+              const estado = String(partido.estado || "pendiente").replace(/[^a-z_]/gi, "_").toLowerCase();
+              const fecha = formatearFechaPortal(partido.fecha_partido || null);
+              const hora = formatearHoraPortal(partido.hora_partido || null);
+              const cancha = String(partido.cancha || "").trim();
+              const meta = [fecha !== "Por definir" ? fecha : "", hora ? `Hora ${hora}` : "", cancha]
+                .filter(Boolean)
+                .join(" • ");
+              const numeroPartido = Number.isFinite(Number(partido.numero_campeonato))
+                ? `P${Number(partido.numero_campeonato)}`
+                : "";
               return `
                 <div class="partido-publico">
+                  <div class="portal-playoff-match-head">
+                    <span class="portal-playoff-match-status estado-${escPortal(estado)}">${escPortal(
+                      obtenerEstadoPartidoPortal(partido)
+                    )}</span>
+                    <span class="portal-playoff-match-meta">${escPortal(
+                      [numeroPartido, meta].filter(Boolean).join(" • ") || "Por programar"
+                    )}</span>
+                  </div>
                   <div class="equipo-nombre">${escPortal(resolverNombreSeedPortal(partido, "local"))}</div>
                   <div class="marcador">${escPortal(marcador)}</div>
                   <div class="equipo-nombre">${escPortal(resolverNombreSeedPortal(partido, "visitante"))}</div>

@@ -283,6 +283,10 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - pendiente validar con datos reales de campeonato activo si hace falta sumar mas plantillas predefinidas (por ejemplo 32avos balanceados u otros cruces personalizados).
 - `playoff_tercer_puesto` ya puede activarse por categoria:
   - pendiente validar con usuarios reales si siempre debe mostrarse o si conviene condicionarlo por etapa/cantidad de equipos.
+- `eliminatorias.html` ya fue reorganizado en pestañas (`Configuración de llave`, `Estado competitivo`, `Clasificación manual`, `Playoff / Llave`) y la programación abre en modal real:
+  - pendiente QA visual de flujo completo con organizadores reales.
+- La plantilla publicable del playoff ya quedó alineada con el borrador para el caso `8vos -> 4tos -> semifinal -> final`:
+  - pendiente validar en producción la exportación `PNG/PDF` y decidir si hace falta un nivel extra de detalle en conectores estilo broadcast.
 
 6. Modulo de pases (nuevo):
 - Pantalla de gestion (`pases.html`) implementada con filtros, registro y aprobacion/anulacion de pase.
@@ -358,6 +362,18 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Probar botón "Crear Partido Manual" para construir J1 completa.
 - Probar edición de equipos en partido como administrador.
 - Confirmar que "Regenerar (preservar jugados)" respeta J1 programada y genera J2-Jn correctamente.
+
+16. Portal público / playoff:
+- La subtab pública `Playoff` ya muestra la metadata del partido enlazado:
+  - estado,
+  - fecha,
+  - hora,
+  - cancha,
+  - jornada.
+- Pendiente:
+  - confirmar con operación real que todos los cruces relevantes estén efectivamente programados antes de publicar,
+  - validar que la nueva plantilla publicable mantenga legibilidad con logos largos o equipos con nombres extensos,
+  - revisar si conviene incorporar una variante adicional de arte para `12vos` / `32avos`.
 
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`

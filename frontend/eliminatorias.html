@@ -8,10 +8,7 @@
   <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
   <link rel="stylesheet" href="css/style.css" />
-  <link
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-    rel="stylesheet"
-  />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 </head>
 <body class="app-layout page-eliminatorias">
   <aside class="sidebar" id="sidebar">
@@ -39,165 +36,233 @@
 
     <main class="main">
       <div class="container">
-        <section class="config-card">
-          <h3>Configuración de Llave</h3>
-          <div class="form-grid eliminatoria-form-grid">
-            <div class="form-group form-group-full">
-              <label for="eli-evento">Categoría (evento)</label>
-              <select id="eli-evento">
-                <option value="">Selecciona categoría</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="eli-origen">Origen playoff</label>
-              <select id="eli-origen">
-                <option value="evento">Directo por equipos inscritos</option>
-                <option value="grupos">Desde fase de grupos</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="eli-metodo">Método configurado</label>
-              <input id="eli-metodo" type="text" readonly value="-" />
-            </div>
-            <div class="form-group">
-              <label for="eli-llave">Tamaño llave</label>
-              <input id="eli-llave" type="text" readonly value="Automática" />
-            </div>
-            <div class="form-group" id="eli-wrap-clasificados" style="display:none;">
-              <label for="eli-clasificados">Clasifican por grupo</label>
-              <select id="eli-clasificados">
-                <option value="1">1 por grupo</option>
-                <option value="2" selected>2 por grupo</option>
-                <option value="3">3 por grupo</option>
-                <option value="4">4 por grupo</option>
-                <option value="5">5 por grupo</option>
-                <option value="6">6 por grupo</option>
-                <option value="7">7 por grupo</option>
-                <option value="8">8 por grupo</option>
-                <option value="9">9 por grupo</option>
-                <option value="10">10 por grupo</option>
-                <option value="11">11 por grupo</option>
-                <option value="12">12 por grupo</option>
-                <option value="13">13 por grupo</option>
-                <option value="14">14 por grupo</option>
-                <option value="15">15 por grupo</option>
-                <option value="16">16 por grupo</option>
-              </select>
-              <small class="form-hint">Este valor se sincroniza con el formato guardado de la categoría.</small>
-            </div>
-            <div class="form-group" id="eli-wrap-metodo-grupos" style="display:none;">
-              <label for="eli-metodo-grupos">Método playoff desde grupos</label>
-              <select id="eli-metodo-grupos">
-                <option value="cruces_grupos">Cruces entre grupos</option>
-                <option value="tabla_unica">Tabla única (1 vs último)</option>
-              </select>
-            </div>
-            <div class="form-group" id="eli-wrap-plantilla-llave" style="display:none;">
-              <label for="eli-plantilla-llave">Armado de llaves / finish</label>
-              <select id="eli-plantilla-llave">
-                <option value="estandar">Estándar automático</option>
-                <option value="balanceada_8vos">Evitar reencuentros tempranos de grupo (balanceada)</option>
-                <option value="mejores_perdedores_12vos">Mejores perdedores (24 -> 12vos -> 8vos)</option>
-              </select>
-            </div>
-            <div class="form-group" id="eli-wrap-tercer-puesto" style="display:none;">
-              <label for="eli-tercer-puesto">Tercer y cuarto puesto</label>
-              <select id="eli-tercer-puesto">
-                <option value="false">No</option>
-                <option value="true">Sí</option>
-              </select>
-            </div>
-            <div class="form-group form-group-full" id="eli-wrap-cruces" style="display:none;">
-              <label>Cruces de grupos</label>
-              <div id="eli-cruces-grupos" class="eli-cruces-grid"></div>
-              <small class="form-hint">
-                Ejemplo: A vs C y B vs D. Cada cruce genera los enfrentamientos por posición (1° vs último, etc.).
-              </small>
-              <div id="eli-cruces-preview" class="eli-cruces-preview"></div>
-            </div>
-          </div>
-          <div class="action-bar">
-            <button type="button" class="btn btn-success" id="btn-eli-guardar-config">
-              <i class="fas fa-save"></i> Guardar configuración
-            </button>
-            <button type="button" class="btn btn-warning" id="btn-eli-reset-config" style="display:none;">
-              <i class="fas fa-rotate-left"></i> Reiniciar configuración
-            </button>
-            <button type="button" class="btn btn-primary" id="btn-eli-cargar">
-              <i class="fas fa-search"></i> Cargar llave
-            </button>
-            <button type="button" class="btn btn-success" id="btn-eli-generar">
-              <i class="fas fa-magic"></i> Generar / Regenerar llave
-            </button>
-            <button type="button" class="btn btn-outline" id="btn-eli-exportar">
-              <i class="fas fa-up-right-from-square"></i> Abrir en partidos
-            </button>
-          </div>
-          <p class="form-hint" id="eli-aviso-metodo"></p>
-          <p class="form-hint" id="eli-config-status"></p>
-        </section>
+        <div class="eli-main-tabs" id="eli-main-tabs" role="tablist" aria-label="Secciones de eliminatorias">
+          <button type="button" class="eli-main-tab active" id="eli-tab-btn-config" data-eli-tab-target="config" role="tab" aria-selected="true" aria-controls="eli-tab-panel-config">
+            <i class="fas fa-sliders"></i> Configuración de Llave
+          </button>
+          <button type="button" class="eli-main-tab" id="eli-tab-btn-estado" data-eli-tab-target="estado" data-admin-only="true" role="tab" aria-selected="false" aria-controls="eli-tab-panel-estado">
+            <i class="fas fa-shield-heart"></i> Estado competitivo
+          </button>
+          <button type="button" class="eli-main-tab" id="eli-tab-btn-clasificacion" data-eli-tab-target="clasificacion" data-admin-only="true" role="tab" aria-selected="false" aria-controls="eli-tab-panel-clasificacion">
+            <i class="fas fa-list-check"></i> Clasificación manual
+          </button>
+          <button type="button" class="eli-main-tab" id="eli-tab-btn-bracket" data-eli-tab-target="bracket" role="tab" aria-selected="false" aria-controls="eli-tab-panel-bracket">
+            <i class="fas fa-sitemap"></i> Playoff / Llave
+          </button>
+        </div>
 
-        <section class="card" id="eli-admin-estado-section">
-          <div class="section-head-inline">
-            <div>
-              <h3>Estado competitivo de equipos</h3>
-              <p class="form-hint">
-                Marca eliminaciones manuales por indisciplina, deudas o segunda no presentación sin justificativo.
-              </p>
-            </div>
-          </div>
-          <div id="eli-equipo-status-grid" class="eli-admin-grid">
-            <div class="empty-state">
-              <i class="fas fa-users"></i>
-              <p>Selecciona una categoría para gestionar equipos.</p>
-            </div>
-          </div>
-        </section>
-
-        <section class="card" id="eli-admin-clasificacion-section">
-          <div class="section-head-inline">
-            <div>
-              <h3>Clasificación manual con sugerencia</h3>
-              <p class="form-hint">
-                Si la clasificación queda abierta, puedes confirmar o reemplazar el equipo clasificado por grupo.
-              </p>
-            </div>
-            <button type="button" class="btn btn-primary" id="btn-eli-guardar-clasificacion">
-              <i class="fas fa-save"></i> Guardar selección manual
-            </button>
-          </div>
-          <div id="eli-clasificacion-manual" class="eli-admin-grid">
-            <div class="empty-state">
-              <i class="fas fa-list-check"></i>
-              <p>Selecciona una categoría para revisar la clasificación.</p>
-            </div>
-          </div>
-        </section>
-
-        <section class="card">
-          <h3>Bracket</h3>
-          <!-- Programar partidos playoff (solo admin/organizador) -->
-          <div id="eli-prog-toolbar" class="eli-prog-toolbar" style="display:none;">
-            <button type="button" class="btn btn-secondary" onclick="abrirModalAutoProgramarPlayoff()">
-              <i class="fas fa-calendar-plus"></i> Auto-programar fechas
-            </button>
-          </div>
-          <div class="eliminatoria-bracket-scroll-wrap">
-            <div id="eli-bracket" class="eliminatoria-bracket">
-              <div class="empty-state">
-                <i class="fas fa-sitemap"></i>
-                <p>Selecciona una categoría para visualizar la llave eliminatoria.</p>
+        <div class="eli-tab-panel active" id="eli-tab-panel-config" data-eli-tab-panel="config" role="tabpanel" aria-labelledby="eli-tab-btn-config">
+          <section class="config-card">
+            <h3>Configuración de Llave</h3>
+            <div class="form-grid eliminatoria-form-grid">
+              <div class="form-group form-group-full">
+                <label for="eli-evento">Categoría (evento)</label>
+                <select id="eli-evento">
+                  <option value="">Selecciona categoría</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="eli-origen">Origen playoff</label>
+                <select id="eli-origen">
+                  <option value="evento">Directo por equipos inscritos</option>
+                  <option value="grupos">Desde fase de grupos</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="eli-metodo">Método configurado</label>
+                <input id="eli-metodo" type="text" readonly value="-" />
+              </div>
+              <div class="form-group">
+                <label for="eli-llave">Tamaño llave</label>
+                <input id="eli-llave" type="text" readonly value="Automática" />
+              </div>
+              <div class="form-group" id="eli-wrap-clasificados" style="display:none;">
+                <label for="eli-clasificados">Clasifican por grupo</label>
+                <select id="eli-clasificados">
+                  <option value="1">1 por grupo</option>
+                  <option value="2" selected>2 por grupo</option>
+                  <option value="3">3 por grupo</option>
+                  <option value="4">4 por grupo</option>
+                  <option value="5">5 por grupo</option>
+                  <option value="6">6 por grupo</option>
+                  <option value="7">7 por grupo</option>
+                  <option value="8">8 por grupo</option>
+                  <option value="9">9 por grupo</option>
+                  <option value="10">10 por grupo</option>
+                  <option value="11">11 por grupo</option>
+                  <option value="12">12 por grupo</option>
+                  <option value="13">13 por grupo</option>
+                  <option value="14">14 por grupo</option>
+                  <option value="15">15 por grupo</option>
+                  <option value="16">16 por grupo</option>
+                </select>
+                <small class="form-hint">Este valor se sincroniza con el formato guardado de la categoría.</small>
+              </div>
+              <div class="form-group" id="eli-wrap-metodo-grupos" style="display:none;">
+                <label for="eli-metodo-grupos">Método playoff desde grupos</label>
+                <select id="eli-metodo-grupos">
+                  <option value="cruces_grupos">Cruces entre grupos</option>
+                  <option value="tabla_unica">Tabla única (1 vs último)</option>
+                </select>
+              </div>
+              <div class="form-group" id="eli-wrap-plantilla-llave" style="display:none;">
+                <label for="eli-plantilla-llave">Armado de llaves / finish</label>
+                <select id="eli-plantilla-llave">
+                  <option value="estandar">Estándar automático</option>
+                  <option value="balanceada_8vos">Evitar reencuentros tempranos de grupo (balanceada)</option>
+                  <option value="mejores_perdedores_12vos">Mejores perdedores (24 -> 12vos -> 8vos)</option>
+                </select>
+              </div>
+              <div class="form-group" id="eli-wrap-tercer-puesto" style="display:none;">
+                <label for="eli-tercer-puesto">Tercer y cuarto puesto</label>
+                <select id="eli-tercer-puesto">
+                  <option value="false">No</option>
+                  <option value="true">Sí</option>
+                </select>
+              </div>
+              <div class="form-group form-group-full" id="eli-wrap-cruces" style="display:none;">
+                <label>Cruces de grupos</label>
+                <div id="eli-cruces-grupos" class="eli-cruces-grid"></div>
+                <small class="form-hint">
+                  Ejemplo: A vs C y B vs D. Cada cruce genera los enfrentamientos por posición (1° vs último, etc.).
+                </small>
+                <div id="eli-cruces-preview" class="eli-cruces-preview"></div>
               </div>
             </div>
-          </div>
-        </section>
+            <div class="action-bar">
+              <button type="button" class="btn btn-success" id="btn-eli-guardar-config">
+                <i class="fas fa-save"></i> Guardar configuración
+              </button>
+              <button type="button" class="btn btn-warning" id="btn-eli-reset-config" style="display:none;">
+                <i class="fas fa-rotate-left"></i> Reiniciar configuración
+              </button>
+              <button type="button" class="btn btn-primary" id="btn-eli-cargar">
+                <i class="fas fa-search"></i> Cargar llave
+              </button>
+              <button type="button" class="btn btn-success" id="btn-eli-generar">
+                <i class="fas fa-magic"></i> Generar / Regenerar llave
+              </button>
+              <button type="button" class="btn btn-outline" id="btn-eli-exportar">
+                <i class="fas fa-up-right-from-square"></i> Abrir en partidos
+              </button>
+            </div>
+            <p class="form-hint" id="eli-aviso-metodo"></p>
+            <p class="form-hint" id="eli-config-status"></p>
+          </section>
+        </div>
 
-        <!-- Modal: programar partido individual -->
-        <div id="modal-prog-partido-eli" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
+        <div class="eli-tab-panel" id="eli-tab-panel-estado" data-eli-tab-panel="estado" role="tabpanel" aria-labelledby="eli-tab-btn-estado">
+          <section class="card" id="eli-admin-estado-section">
+            <div class="section-head-inline">
+              <div>
+                <h3>Estado competitivo de equipos</h3>
+                <p class="form-hint">
+                  Marca eliminaciones manuales por indisciplina, deudas o segunda no presentación sin justificativo.
+                </p>
+              </div>
+            </div>
+            <div id="eli-equipo-status-grid" class="eli-admin-grid">
+              <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <p>Selecciona una categoría para gestionar equipos.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="eli-tab-panel" id="eli-tab-panel-clasificacion" data-eli-tab-panel="clasificacion" role="tabpanel" aria-labelledby="eli-tab-btn-clasificacion">
+          <section class="card" id="eli-admin-clasificacion-section">
+            <div class="section-head-inline">
+              <div>
+                <h3>Clasificación manual con sugerencia</h3>
+                <p class="form-hint">
+                  Si la clasificación queda abierta, puedes confirmar o reemplazar el equipo clasificado por grupo.
+                </p>
+              </div>
+              <button type="button" class="btn btn-primary" id="btn-eli-guardar-clasificacion">
+                <i class="fas fa-save"></i> Guardar selección manual
+              </button>
+            </div>
+            <div id="eli-clasificacion-manual" class="eli-admin-grid">
+              <div class="empty-state">
+                <i class="fas fa-list-check"></i>
+                <p>Selecciona una categoría para revisar la clasificación.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="eli-tab-panel" id="eli-tab-panel-bracket" data-eli-tab-panel="bracket" role="tabpanel" aria-labelledby="eli-tab-btn-bracket">
+          <section class="card">
+            <h3>Playoff / Llave</h3>
+            <div id="eli-prog-toolbar" class="eli-prog-toolbar" style="display:none;">
+              <button type="button" class="btn btn-secondary" onclick="abrirModalAutoProgramarPlayoff()">
+                <i class="fas fa-calendar-plus"></i> Auto-programar fechas
+              </button>
+              <button type="button" class="btn btn-outline" id="btn-eli-toggle-plantilla">
+                <i class="fas fa-file-lines"></i> Plantilla para publicar
+              </button>
+            </div>
+            <div class="eliminatoria-bracket-scroll-wrap">
+              <div id="eli-bracket" class="eliminatoria-bracket">
+                <div class="empty-state">
+                  <i class="fas fa-sitemap"></i>
+                  <p>Selecciona una categoría para visualizar la llave eliminatoria.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" id="eli-publicacion-section" style="display:none;">
+            <h3>Plantilla para Publicar</h3>
+            <div id="eli-plantilla-preview" class="eli-plantilla-preview">
+              <div class="empty-state">
+                <i class="fas fa-image"></i>
+                <p>Genera o carga una llave para visualizar la plantilla.</p>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-secondary" id="btn-eli-export-png" onclick="exportarEliminatoriaPNG()">
+                <i class="fas fa-image"></i> Exportar imagen
+              </button>
+              <button type="button" class="btn btn-danger" id="btn-eli-export-pdf" onclick="exportarEliminatoriaPDF()">
+                <i class="fas fa-file-pdf"></i> Exportar PDF
+              </button>
+              <button type="button" class="btn btn-primary" id="btn-eli-share" onclick="compartirEliminatoria()">
+                <i class="fas fa-share-nodes"></i> Compartir
+              </button>
+            </div>
+
+            <div id="eli-zona-export" class="eli-export-poster">
+              <div class="eli-export-header">
+                <img id="eli-export-logo" class="eli-export-logo" alt="Logo organizador" crossorigin="anonymous" referrerpolicy="no-referrer" />
+                <div class="eli-export-head-text">
+                  <div id="eli-export-organizador" class="eli-export-organizador">ORGANIZA: -</div>
+                  <div id="eli-export-titulo" class="eli-export-titulo">LLAVE ELIMINATORIA</div>
+                  <div id="eli-export-subtitulo" class="eli-export-subtitulo">Categoría: -</div>
+                </div>
+              </div>
+
+              <div id="eli-export-rounds" class="eli-export-rounds">
+                <div class="empty-state">
+                  <i class="fas fa-image"></i>
+                  <p>Genera o carga una llave para preparar la gráfica.</p>
+                </div>
+              </div>
+
+              <div id="eli-export-sponsors" class="eli-export-sponsors" style="display:none;">
+                <div class="eli-export-sponsors-title">Auspician</div>
+                <div id="eli-export-sponsors-grid" class="eli-export-sponsors-grid"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div id="modal-prog-partido-eli" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modal-prog-titulo">
           <div class="modal-box" style="max-width:420px;">
             <div class="modal-header">
               <h3 id="modal-prog-titulo">Programar partido</h3>
-              <button class="modal-close" onclick="cerrarModalProgPartidoEli()">✕</button>
+              <button class="modal-close" type="button" onclick="cerrarModalProgPartidoEli()">✕</button>
             </div>
             <div class="modal-body">
               <div class="form-group">
@@ -214,20 +279,19 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-secondary" onclick="cerrarModalProgPartidoEli()">Cancelar</button>
-              <button class="btn btn-primary" onclick="guardarProgPartidoEli()">
+              <button class="btn btn-secondary" type="button" onclick="cerrarModalProgPartidoEli()">Cancelar</button>
+              <button class="btn btn-primary" type="button" onclick="guardarProgPartidoEli()">
                 <i class="fas fa-save"></i> Guardar
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Modal: auto-programar todos los partidos del playoff -->
-        <div id="modal-auto-prog-eli" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
+        <div id="modal-auto-prog-eli" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modal-auto-prog-titulo">
           <div class="modal-box" style="max-width:500px;">
             <div class="modal-header">
-              <h3>Auto-programar fechas del playoff</h3>
-              <button class="modal-close" onclick="cerrarModalAutoProgEli()">✕</button>
+              <h3 id="modal-auto-prog-titulo">Auto-programar fechas del playoff</h3>
+              <button class="modal-close" type="button" onclick="cerrarModalAutoProgEli()">✕</button>
             </div>
             <div class="modal-body">
               <p style="font-size:.875rem;color:#555;margin-bottom:1rem;">
@@ -263,57 +327,13 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-secondary" onclick="cerrarModalAutoProgEli()">Cancelar</button>
-              <button class="btn btn-primary" onclick="ejecutarAutoProgEli()">
+              <button class="btn btn-secondary" type="button" onclick="cerrarModalAutoProgEli()">Cancelar</button>
+              <button class="btn btn-primary" type="button" onclick="ejecutarAutoProgEli()">
                 <i class="fas fa-calendar-check"></i> Programar
               </button>
             </div>
           </div>
         </div>
-
-        <section class="card">
-          <h3>Plantilla para Publicar</h3>
-          <div class="action-bar">
-            <button type="button" class="btn btn-secondary" id="btn-eli-export-png" onclick="exportarEliminatoriaPNG()">
-              <i class="fas fa-image"></i> Exportar imagen
-            </button>
-            <button type="button" class="btn btn-danger" id="btn-eli-export-pdf" onclick="exportarEliminatoriaPDF()">
-              <i class="fas fa-file-pdf"></i> Exportar PDF
-            </button>
-            <button type="button" class="btn btn-primary" id="btn-eli-share" onclick="compartirEliminatoria()">
-              <i class="fas fa-share-nodes"></i> Compartir
-            </button>
-          </div>
-
-          <div id="eli-zona-export" class="eli-export-poster">
-            <div class="eli-export-header">
-              <img
-                id="eli-export-logo"
-                class="eli-export-logo"
-                alt="Logo organizador"
-                crossorigin="anonymous"
-                referrerpolicy="no-referrer"
-              />
-              <div class="eli-export-head-text">
-                <div id="eli-export-organizador" class="eli-export-organizador">ORGANIZA: -</div>
-                <div id="eli-export-titulo" class="eli-export-titulo">LLAVE ELIMINATORIA</div>
-                <div id="eli-export-subtitulo" class="eli-export-subtitulo">Categoría: -</div>
-              </div>
-            </div>
-
-            <div id="eli-export-rounds" class="eli-export-rounds">
-              <div class="empty-state">
-                <i class="fas fa-image"></i>
-                <p>Genera o carga una llave para preparar la gráfica.</p>
-              </div>
-            </div>
-
-            <div id="eli-export-sponsors" class="eli-export-sponsors" style="display:none;">
-              <div class="eli-export-sponsors-title">Auspician</div>
-              <div id="eli-export-sponsors-grid" class="eli-export-sponsors-grid"></div>
-            </div>
-          </div>
-        </section>
       </div>
     </main>
   </div>

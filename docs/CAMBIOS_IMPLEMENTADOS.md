@@ -1215,3 +1215,46 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
 - Resultado:
   - las tablas publicas vuelven a cargar correctamente en local y Render,
   - el playoff publico vuelve a recibir la clasificacion correcta desde el backend.
+
+---
+
+## 22. Portal playoff programado y plantilla publicable unificada
+- **Ubicacion backend:** `backend/models/Eliminatoria.js`
+- **Ubicacion frontend:** `frontend/eliminatorias.html`, `frontend/js/eliminatorias.js`, `frontend/js/portal.js`, `frontend/css/style.css`, `frontend/css/portal.css`
+- Portal publico:
+  - el payload de eliminatorias ahora incluye datos del partido operativo enlazado:
+    - `estado`
+    - `fecha_partido`
+    - `hora_partido`
+    - `cancha`
+    - `jornada`
+    - `numero_campeonato`
+  - la pestaña `Playoff` del portal ya muestra esa metadata en cada cruce cuando existe programación real.
+- Módulo interno de eliminatorias:
+  - reorganizado en pestañas:
+    - `Configuración de llave`
+    - `Estado competitivo`
+    - `Clasificación manual`
+    - `Playoff / Llave`
+  - las secciones dejan de apilarse permanentemente y se muestran/ocultan por pestaña.
+- Programación de playoff:
+  - los formularios de `Programar` y `Auto-programar` ahora abren en modal real con overlay, cierre por `Esc` y click fuera.
+- Playoff / Llave:
+  - `Final` queda centrada,
+  - `Tercer y cuarto` se renderiza debajo de `Final`,
+  - las tarjetas del tercer puesto son más compactas,
+  - el bracket interno se presenta horizontalmente.
+- Plantilla para publicar:
+  - nuevo botón `Plantilla para publicar` junto a `Auto-programar fechas`,
+  - la vista previa y la publicación final se alinean visualmente,
+  - para el caso principal `8vos -> 4tos -> semifinal -> final` se usa un layout especial de 7 columnas:
+    - octavos a ambos lados,
+    - cuartos intermedios,
+    - semifinales frente al centro,
+    - final al centro,
+    - tercer puesto debajo del centro.
+  - los nodos ya incluyen:
+    - logo de equipo,
+    - equipo local arriba,
+    - `vs`,
+    - equipo visitante abajo.
