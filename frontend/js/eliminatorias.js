@@ -3042,6 +3042,23 @@ function renderEquipoLogo(logoUrl, nombreEquipo, className = "eli-team-logo") {
   return `<span class="${className} is-fallback">${escapeHtml(obtenerSiglaEquipo(nombreEquipo))}</span>`;
 }
 
+function descargarBlobEliminatoria(blob, filename) {
+  if (!blob) return false;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  window.setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 1000);
+  return true;
+}
+
 async function exportarEliminatoriaPNG() {
   let restaurarCaptura = () => {};
   try {
@@ -3069,11 +3086,10 @@ async function exportarEliminatoriaPNG() {
       windowWidth: zona.scrollWidth,
       windowHeight: zona.scrollHeight,
     });
-
-    const a = document.createElement("a");
-    a.href = canvas.toDataURL("image/png");
-    a.download = `${getNombreArchivoBase()}.png`;
-    a.click();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob || !descargarBlobEliminatoria(blob, `${getNombreArchivoBase()}.png`)) {
+      throw new Error("No se pudo preparar la descarga de la imagen.");
+    }
     mostrarNotificacion("Imagen exportada", "success");
   } catch (error) {
     console.error(error);
@@ -3122,7 +3138,10 @@ async function exportarEliminatoriaPDF() {
     const finalH = Math.min(renderH, pageH - 12);
     const y = (pageH - finalH) / 2;
     pdf.addImage(imgData, "PNG", 5, y, renderW, finalH);
-    pdf.save(`${getNombreArchivoBase()}.pdf`);
+    const blob = pdf.output("blob");
+    if (!blob || !descargarBlobEliminatoria(blob, `${getNombreArchivoBase()}.pdf`)) {
+      throw new Error("No se pudo preparar la descarga del PDF.");
+    }
     mostrarNotificacion("PDF exportado", "success");
   } catch (error) {
     console.error(error);
@@ -3182,11 +3201,9 @@ async function compartirEliminatoria() {
     }
 
     mostrarNotificacion("Tu navegador no soporta compartir directo. Se descargará la imagen.", "warning");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = file.name;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    if (!descargarBlobEliminatoria(blob, file.name)) {
+      throw new Error("No se pudo preparar la descarga de la imagen compartible.");
+    }
   } catch (error) {
     console.error(error);
     mostrarNotificacion("No se pudo compartir/exportar la imagen", "error");
