@@ -3,6 +3,25 @@
 Ultima actualizacion: 2026-03-21 (sesión 9)
 
 ## Avances recientes (2026-03-22)
+- Playoff / publicación:
+  - la plantilla publicable del playoff ahora muestra también la programación del cruce (`fecha`, `hora`, `cancha`) cuando el partido ya fue agendado, reutilizando el mismo fondo del bracket.
+  - se compacta el layout especial `8vos -> 4tos -> semis -> final`:
+    - tarjetas más angostas,
+    - conectores más cortos,
+    - nombres con quiebre controlado,
+    - fondo personalizado más contenido en la exportación.
+- Jugadores / reportes:
+  - se agrega el nuevo tipo `Nómina simple de jugadores`.
+  - esta variante solo muestra:
+    - nombres y apellidos,
+    - cédula,
+    - fecha de nacimiento.
+  - `jugadores.html` incorpora botón `Exportar Excel` para:
+    - nómina oficial,
+    - nómina simple,
+    - reporte de sanciones,
+    - consolidado disciplinario por categoría,
+    - ficha individual del jugador.
 - Planillaje:
   - la planilla oficial ya separa observaciones por actor:
     - `observacion local`,

@@ -145,6 +145,7 @@
                 <label for="reporte-jugadores-tipo">Tipo de reporte:</label>
                 <select id="reporte-jugadores-tipo">
                   <option value="nomina">Nómina de jugadores</option>
+                  <option value="nomina_simple">Nómina simple de jugadores</option>
                   <option value="ficha">Planilla del jugador</option>
                   <option value="sanciones">Reporte de sanciones</option>
                   <option value="sanciones_categoria">Consolidado sanciones categoría</option>
@@ -166,6 +167,9 @@
                 </button>
                 <button class="btn btn-danger" id="btn-pdf-reporte-jugadores" type="button" onclick="exportarReporteJugadoresPDF()">
                   <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+                <button class="btn btn-success" id="btn-excel-reporte-jugadores" type="button" onclick="exportarReporteJugadoresExcel()">
+                  <i class="fas fa-file-excel"></i> Exportar Excel
                 </button>
               </div>
             </div>

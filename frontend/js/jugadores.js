@@ -424,6 +424,7 @@ function actualizarEstadoPanelReportes() {
     "btn-ver-reporte-jugadores",
     "btn-imprimir-reporte-jugadores",
     "btn-pdf-reporte-jugadores",
+    "btn-excel-reporte-jugadores",
     "reporte-jugadores-tipo",
   ].forEach((id) => {
     const el = document.getElementById(id);
@@ -439,6 +440,8 @@ function actualizarEstadoPanelReportes() {
       hint.textContent = "Tu rol puede gestionar jugadores, pero no generar reportes.";
     } else if (tipoReporte === "ficha") {
       hint.textContent = "Selecciona el jugador y genera su planilla individual.";
+    } else if (tipoReporte === "nomina_simple") {
+      hint.textContent = "Genera una nómina básica con datos personales del jugador y exporta también en Excel.";
     } else {
       hint.textContent = "Selecciona el tipo de reporte y ejecuta la acción.";
     }
@@ -1687,11 +1690,23 @@ function renderPlantillaNominaJugadores() {
     return;
   }
 
+  const tipo = obtenerTipoReporteJugadores();
+  const esSimple = tipo === "nomina_simple";
   const logoCampeonato = normalizarArchivoUrl(campeonatoMeta.logo_url);
   const filas = jugadoresActuales
     .map((j, idx) => {
       const estadoCed = j.foto_cedula_url ? "Cargada" : "Pendiente";
       const estadoCarn = j.foto_carnet_url ? "Cargada" : "Pendiente";
+      if (esSimple) {
+        return `
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${escapeHtml(`${j.nombre || ""} ${j.apellido || ""}`.trim())}</td>
+            <td>${escapeHtml(j.cedidentidad || "—")}</td>
+            <td>${escapeHtml(formatearFecha(j.fecha_nacimiento))}</td>
+          </tr>
+        `;
+      }
       return `
         <tr>
           <td>${idx + 1}</td>
@@ -1708,6 +1723,29 @@ function renderPlantillaNominaJugadores() {
       `;
     })
     .join("");
+  const columnas = esSimple
+    ? `
+        <tr>
+          <th>#</th>
+          <th>Jugador</th>
+          <th>Cédula</th>
+          <th>F. Nac.</th>
+        </tr>
+      `
+    : `
+        <tr>
+          <th>#</th>
+          <th>Jugador</th>
+          <th>Cédula</th>
+          <th>F. Nac.</th>
+          <th>Posición</th>
+          <th>N°</th>
+          <th>Cap.</th>
+          <th>Foto Céd.</th>
+          <th>Foto Carné</th>
+          <th>Firma</th>
+        </tr>
+      `;
 
   zona.innerHTML = `
     <div class="nomina-sheet">
@@ -1716,7 +1754,7 @@ function renderPlantillaNominaJugadores() {
           ${logoCampeonato ? `<img src="${logoCampeonato}" alt="Logo campeonato" />` : "<div class='logo-fallback'>LT&C</div>"}
         </div>
         <div class="nomina-head-main">
-          <h3>Nómina Oficial de Jugadores</h3>
+          <h3>${esSimple ? "Nómina Básica de Jugadores" : "Nómina Oficial de Jugadores"}</h3>
           <p><strong>Campeonato:</strong> ${escapeHtml(campeonatoMeta.nombre || "—")}</p>
           <p><strong>Organizador:</strong> ${escapeHtml(campeonatoMeta.organizador || "—")}</p>
           <p><strong>Categoría:</strong> ${escapeHtml(obtenerNombreEventoActual())}</p>
@@ -1730,25 +1768,104 @@ function renderPlantillaNominaJugadores() {
 
       <div class="nomina-table-wrap">
         <table class="nomina-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Jugador</th>
-              <th>Cédula</th>
-              <th>F. Nac.</th>
-              <th>Posición</th>
-              <th>N°</th>
-              <th>Cap.</th>
-              <th>Foto Céd.</th>
-              <th>Foto Carné</th>
-              <th>Firma</th>
-            </tr>
-          </thead>
+          <thead>${columnas}</thead>
           <tbody>${filas}</tbody>
         </table>
       </div>
     </div>
   `;
+}
+
+function obtenerFilasNominaJugadoresExcel({ simple = false } = {}) {
+  return jugadoresActuales.map((jugador, idx) => {
+    const base = {
+      "#": idx + 1,
+      Jugador: `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "—",
+      Cedula: jugador.cedidentidad || "—",
+      FechaNacimiento: formatearFecha(jugador.fecha_nacimiento),
+    };
+    if (simple) return base;
+    return {
+      ...base,
+      Posicion: jugador.posicion || "—",
+      Numero: jugador.numero_camiseta || "—",
+      Capitan: jugador.es_capitan ? "Sí" : "No",
+      FotoCedula: jugador.foto_cedula_url ? "Cargada" : "Pendiente",
+      FotoCarnet: jugador.foto_carnet_url ? "Cargada" : "Pendiente",
+    };
+  });
+}
+
+function obtenerFilasSancionesJugadoresExcel() {
+  return jugadoresActuales.map((jugador, idx) => {
+    const suspension = jugador?.suspension || {};
+    return {
+      "#": idx + 1,
+      Jugador: `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "—",
+      Cedula: jugador.cedidentidad || "—",
+      Numero: jugador.numero_camiseta || "—",
+      Posicion: jugador.posicion || "—",
+      Estado: suspension?.suspendido ? "Suspendido" : "Habilitado",
+      AmarillasAcumuladas: Number(suspension?.amarillas_acumuladas || 0),
+      PartidosPendientes: Number(suspension?.partidos_pendientes || 0),
+      Motivo: suspension?.motivo || "Sin novedad",
+    };
+  });
+}
+
+async function obtenerFilasSancionesCategoriaJugadoresExcel() {
+  const registros = await obtenerDatosSancionesCategoria();
+  return registros.map((jugador, idx) => {
+    const suspension = jugador?.suspension || {};
+    return {
+      "#": idx + 1,
+      Equipo: jugador.equipo_nombre || "—",
+      Jugador: `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "—",
+      Numero: jugador.numero_camiseta || "—",
+      Posicion: jugador.posicion || "—",
+      Estado: suspension?.suspendido ? "Suspendido" : "Habilitado",
+      AmarillasAcumuladas: Number(suspension?.amarillas_acumuladas || 0),
+      PartidosPendientes: Number(suspension?.partidos_pendientes || 0),
+      Motivo: suspension?.motivo || "Sin novedad",
+    };
+  });
+}
+
+function obtenerFilasFichaJugadorExcel() {
+  const jugador = obtenerJugadorSeleccionadoParaFicha();
+  if (!jugador) return [];
+  return [
+    {
+      Jugador: `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "—",
+      Cedula: jugador.cedidentidad || "—",
+      FechaNacimiento: formatearFecha(jugador.fecha_nacimiento),
+      Posicion: jugador.posicion || "—",
+      Numero: jugador.numero_camiseta || "—",
+      Equipo: equipoActual?.nombre || "—",
+      Categoria: obtenerNombreEventoActual() || "—",
+      Campeonato: campeonatoMeta?.nombre || "—",
+      Organizador: campeonatoMeta?.organizador || "—",
+    },
+  ];
+}
+
+function exportarExcelJugadores(nombreBase, filas = [], nombreHoja = "Reporte") {
+  if (!window.XLSX) {
+    mostrarNotificacion("No se cargó la librería XLSX para exportar", "error");
+    return;
+  }
+  if (!Array.isArray(filas) || !filas.length) {
+    mostrarNotificacion("No hay datos para exportar a Excel", "warning");
+    return;
+  }
+  const wb = window.XLSX.utils.book_new();
+  const ws = window.XLSX.utils.json_to_sheet(filas);
+  const primerRegistro = filas[0] || {};
+  ws["!cols"] = Object.keys(primerRegistro).map((key) => ({
+    wch: Math.max(String(key).length + 2, 16),
+  }));
+  window.XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+  window.XLSX.writeFile(wb, nombreBase);
 }
 
 function obtenerJugadorSeleccionadoParaFicha() {
@@ -2622,7 +2739,11 @@ function imprimirNominaJugadores() {
   }
   renderPlantillaNominaJugadores();
   const zona = document.getElementById("nomina-jugadores-export");
-  imprimirNodoEnVentana(zona, "Nómina de Jugadores");
+  const tipo = obtenerTipoReporteJugadores();
+  imprimirNodoEnVentana(
+    zona,
+    tipo === "nomina_simple" ? "Nómina Básica de Jugadores" : "Nómina de Jugadores"
+  );
 }
 
 function imprimirReporteSancionesJugadores() {
@@ -2668,8 +2789,13 @@ async function exportarNominaJugadoresPDF() {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "");
-    await exportarNodoPDF(zona, `nomina_jugadores_${slugEquipo || "equipo"}.pdf`);
-    mostrarNotificacion("Nómina exportada en PDF", "success");
+    const tipo = obtenerTipoReporteJugadores();
+    const esSimple = tipo === "nomina_simple";
+    await exportarNodoPDF(
+      zona,
+      `${esSimple ? "nomina_basica" : "nomina_jugadores"}_${slugEquipo || "equipo"}.pdf`
+    );
+    mostrarNotificacion(esSimple ? "Nómina básica exportada en PDF" : "Nómina exportada en PDF", "success");
   } catch (error) {
     console.error(error);
     mostrarNotificacion(error.message || "No se pudo exportar la nómina", "error");
@@ -2916,6 +3042,85 @@ async function exportarReporteJugadoresPDF() {
     return;
   }
   await exportarNominaJugadoresPDF();
+}
+
+async function exportarReporteJugadoresExcel() {
+  if (!validarPermisoReportesJugadores()) return;
+  const tipo = obtenerTipoReporteJugadores();
+  if (tipo === "carnets") {
+    mostrarNotificacion("Los carnés no se exportan a Excel", "warning");
+    return;
+  }
+  if (tipo === "ficha" && !contextoListoParaReportes("ficha")) {
+    mostrarNotificacion("Selecciona campeonato, categoría, equipo y jugador para exportar", "warning");
+    return;
+  }
+  if (tipo !== "sanciones_categoria" && !contextoListoParaReportes()) {
+    mostrarNotificacion("Selecciona campeonato, categoría y equipo para exportar", "warning");
+    return;
+  }
+  if (tipo === "sanciones_categoria" && !contextoListoParaReportes("sanciones_categoria")) {
+    mostrarNotificacion("Selecciona campeonato y categoría para exportar", "warning");
+    return;
+  }
+
+  const slugEquipo = valorTextoImportacion(equipoActual?.nombre || "equipo")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const slugCategoria = valorTextoImportacion(obtenerNombreEventoActual() || "categoria")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  try {
+    if (tipo === "ficha") {
+      const filas = obtenerFilasFichaJugadorExcel();
+      const jugador = obtenerJugadorSeleccionadoParaFicha();
+      if (!filas.length || !jugador) {
+        mostrarNotificacion("Selecciona un jugador para exportar su ficha", "warning");
+        return;
+      }
+      const slugJugador = valorTextoImportacion(`${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "jugador")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+      exportarExcelJugadores(`ficha_jugador_${slugJugador || "jugador"}.xlsx`, filas, "Ficha");
+      mostrarNotificacion("Ficha del jugador exportada en Excel", "success");
+      return;
+    }
+
+    if (tipo === "sanciones_categoria") {
+      const filas = await obtenerFilasSancionesCategoriaJugadoresExcel();
+      exportarExcelJugadores(`consolidado_sanciones_${slugCategoria || "categoria"}.xlsx`, filas, "Sanciones");
+      mostrarNotificacion("Consolidado disciplinario exportado en Excel", "success");
+      return;
+    }
+
+    if (!jugadoresActuales.length) {
+      mostrarNotificacion("No hay jugadores para exportar", "warning");
+      return;
+    }
+
+    if (tipo === "sanciones") {
+      const filas = obtenerFilasSancionesJugadoresExcel();
+      exportarExcelJugadores(`reporte_sanciones_${slugEquipo || "equipo"}.xlsx`, filas, "Sanciones");
+      mostrarNotificacion("Reporte disciplinario exportado en Excel", "success");
+      return;
+    }
+
+    const esSimple = tipo === "nomina_simple";
+    const filas = obtenerFilasNominaJugadoresExcel({ simple: esSimple });
+    exportarExcelJugadores(
+      `${esSimple ? "nomina_basica" : "nomina_jugadores"}_${slugEquipo || "equipo"}.xlsx`,
+      filas,
+      esSimple ? "NominaBasica" : "Nomina"
+    );
+    mostrarNotificacion(esSimple ? "Nómina básica exportada en Excel" : "Nómina exportada en Excel", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo exportar el reporte en Excel", "error");
+  }
 }
 
 function actualizarResumenJugadores() {
@@ -3808,6 +4013,7 @@ window.descargarPlantillaJugadores = descargarPlantillaJugadores;
 window.verReporteJugadores = verReporteJugadores;
 window.imprimirReporteJugadores = imprimirReporteJugadores;
 window.exportarReporteJugadoresPDF = exportarReporteJugadoresPDF;
+window.exportarReporteJugadoresExcel = exportarReporteJugadoresExcel;
 window.mostrarPlantillaNominaJugadores = mostrarPlantillaNominaJugadores;
 window.mostrarReporteSancionesJugadores = mostrarReporteSancionesJugadores;
 window.mostrarReporteSancionesCategoriaJugadores = mostrarReporteSancionesCategoriaJugadores;

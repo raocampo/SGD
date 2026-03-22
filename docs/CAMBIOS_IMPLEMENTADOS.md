@@ -8,6 +8,27 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 ---
 
 ## 2026-03-22 - Cierre de impresión oficial de planilla
+- `frontend/js/eliminatorias.js` y `frontend/css/style.css` ahora permiten que la plantilla publicable del playoff incluya la programación real del partido (`fecha`, `hora`, `cancha`) dentro del nodo cuando el cruce ya fue agendado.
+- se compacta el layout especial del bracket publicable:
+  - tarjetas más angostas,
+  - wrapping controlado en nombres largos,
+  - conectores más cortos,
+  - fondo personalizado más contenido para evitar que la imagen se abra demasiado al exportar.
+- `frontend/jugadores.html` incorpora el tipo de reporte `Nómina simple de jugadores`.
+- `frontend/js/jugadores.js` añade exportación `Excel` para reportes de jugadores:
+  - nómina oficial,
+  - nómina simple,
+  - sanciones por equipo,
+  - consolidado disciplinario por categoría,
+  - ficha individual.
+- la nómina simple imprime/exporta solo:
+  - nombres y apellidos,
+  - cédula,
+  - fecha de nacimiento.
+
+---
+
+## 2026-03-22 - Cierre de impresión oficial de planilla
 - `frontend/planilla.html` y `frontend/js/planilla.js` separan las observaciones en tres bloques:
   - `Observación local`,
   - `Observación visitante`,

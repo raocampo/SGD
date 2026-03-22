@@ -6337,8 +6337,8 @@ body.page-finanzas {
     linear-gradient(to right, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
     var(--eli-export-custom-bg);
-  background-size: auto, 24px 24px, 24px 24px, cover;
-  background-position: center, 0 0, 0 0, center;
+  background-size: auto, 24px 24px, 24px 24px, 88% auto;
+  background-position: center, 0 0, 0 0, center 52%;
   background-repeat: no-repeat, repeat, repeat, no-repeat;
 }
 
@@ -6558,18 +6558,18 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-export-bracket16 {
-  min-width: 1400px;
+  min-width: 1180px;
   width: max-content;
   display: grid;
   grid-template-columns:
-    var(--eli-edge-col, 18rem)
-    var(--eli-stage-col, 15rem)
-    var(--eli-semi-col, 14.5rem)
-    var(--eli-center-col, 15.5rem)
-    var(--eli-semi-col, 14.5rem)
-    var(--eli-stage-col, 15rem)
-    var(--eli-edge-col, 18rem);
-  gap: 1rem;
+    var(--eli-edge-col, 13.2rem)
+    var(--eli-stage-col, 11.4rem)
+    var(--eli-semi-col, 10.8rem)
+    var(--eli-center-col, 11.2rem)
+    var(--eli-semi-col, 10.8rem)
+    var(--eli-stage-col, 11.4rem)
+    var(--eli-edge-col, 13.2rem);
+  gap: 0.8rem;
   align-items: center;
   justify-content: center;
   padding: 0.6rem 0.2rem 0.2rem;
@@ -6579,6 +6579,7 @@ body.page-finanzas {
 .page-eliminatorias .eli-export-col {
   display: grid;
   gap: 0.9rem;
+  justify-items: center;
 }
 
 .page-eliminatorias .eli-export-stage-title,
@@ -6593,22 +6594,22 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-export-col.is-stage {
-  gap: 3.6rem;
+  gap: 2.8rem;
 }
 
 .page-eliminatorias .eli-export-col.is-center {
-  gap: 2rem;
+  gap: 1.4rem;
   align-content: center;
 }
 
 .page-eliminatorias .eli-export-col.is-semifinal {
-  gap: 9rem;
+  gap: 7rem;
 }
 
 .page-eliminatorias .eli-export-node {
-  min-height: 5rem;
-  width: 100%;
-  padding: 0.7rem 0.85rem;
+  min-height: 3cm;
+  width: min(100%, 5.5cm);
+  padding: 0.5rem 0.58rem;
   border-radius: 0.95rem;
   background: linear-gradient(180deg, #4f86d8 0%, #3b6ec0 100%);
   color: #ffffff;
@@ -6621,10 +6622,10 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-export-node.is-compact {
-  min-height: 4.2rem;
-  max-width: 17rem;
+  min-height: 2.35cm;
+  max-width: 4.6cm;
   margin: 0 auto;
-  padding: 0.65rem 0.8rem;
+  padding: 0.42rem 0.52rem;
 }
 
 .page-eliminatorias .eli-export-subcolumn {
@@ -6689,18 +6690,18 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-plantilla-bracket16 {
-  min-width: 1400px;
+  min-width: 1180px;
   width: max-content;
   display: grid;
   grid-template-columns:
-    var(--eli-edge-col, 18rem)
-    var(--eli-stage-col, 15rem)
-    var(--eli-semi-col, 14.5rem)
-    var(--eli-center-col, 15.5rem)
-    var(--eli-semi-col, 14.5rem)
-    var(--eli-stage-col, 15rem)
-    var(--eli-edge-col, 18rem);
-  gap: 1rem;
+    var(--eli-edge-col, 13.2rem)
+    var(--eli-stage-col, 11.4rem)
+    var(--eli-semi-col, 10.8rem)
+    var(--eli-center-col, 11.2rem)
+    var(--eli-semi-col, 10.8rem)
+    var(--eli-stage-col, 11.4rem)
+    var(--eli-edge-col, 13.2rem);
+  gap: 0.8rem;
   align-items: center;
   justify-content: center;
   padding: 0.6rem 0.35rem 0.35rem;
@@ -6715,6 +6716,7 @@ body.page-finanzas {
 .page-eliminatorias .eli-plantilla-col {
   display: grid;
   gap: 0.85rem;
+  justify-items: center;
 }
 
 .page-eliminatorias .eli-plantilla-col h4 {
@@ -6730,16 +6732,16 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-plantilla-col.is-stage {
-  gap: 3.6rem;
+  gap: 2.8rem;
 }
 
 .page-eliminatorias .eli-plantilla-col.is-center {
-  gap: 2rem;
+  gap: 1.4rem;
   align-content: center;
 }
 
 .page-eliminatorias .eli-plantilla-col.is-semifinal {
-  gap: 9rem;
+  gap: 7rem;
 }
 
 .page-eliminatorias .eli-plantilla-stack {
@@ -6748,9 +6750,9 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-plantilla-node {
-  min-height: 5rem;
-  width: 100%;
-  padding: 0.7rem 0.85rem;
+  min-height: 3cm;
+  width: min(100%, 5.5cm);
+  padding: 0.5rem 0.58rem;
   border-radius: 0.95rem;
   background: linear-gradient(180deg, #4f86d8 0%, #3b6ec0 100%);
   color: #ffffff;
@@ -6763,10 +6765,10 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-plantilla-node.is-compact {
-  min-height: 4.2rem;
-  max-width: 17rem;
+  min-height: 2.35cm;
+  max-width: 4.6cm;
   margin: 0 auto;
-  padding: 0.65rem 0.8rem;
+  padding: 0.42rem 0.52rem;
 }
 
 .page-eliminatorias .eli-plantilla-subcolumn {
@@ -6803,23 +6805,25 @@ body.page-finanzas {
 
 .page-eliminatorias .eli-node-team {
   display: grid;
-  grid-template-columns: 1.45rem 1fr;
+  grid-template-columns: 1.2rem 1fr;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
   text-align: left;
 }
 
 .page-eliminatorias .eli-node-team span {
   color: rgba(255, 255, 255, 0.96);
-  font-size: 0.76rem;
+  font-size: 0.68rem;
   font-weight: 800;
-  line-height: 1.22;
-  white-space: nowrap;
+  line-height: 1.12;
+  white-space: normal;
+  word-break: break-word;
+  display: block;
 }
 
 .page-eliminatorias .eli-plantilla-col.is-right .eli-node-team,
 .page-eliminatorias .eli-export-col.is-right .eli-node-team {
-  grid-template-columns: 1fr 1.45rem;
+  grid-template-columns: 1fr 1.2rem;
   text-align: right;
 }
 
@@ -6836,8 +6840,8 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-node-logo {
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 1.2rem;
+  height: 1.2rem;
   border-radius: 999px;
   object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -6857,10 +6861,21 @@ body.page-finanzas {
 .page-eliminatorias .eli-node-vs {
   text-align: center;
   color: rgba(255, 255, 255, 0.72);
-  font-size: 0.62rem;
+  font-size: 0.56rem;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.page-eliminatorias .eli-node-meta {
+  margin-top: 0.18rem;
+  padding-top: 0.24rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  text-align: center;
+  font-size: 0.52rem;
+  line-height: 1.15;
+  color: rgba(239, 246, 255, 0.86);
+  font-weight: 700;
 }
 
 .page-eliminatorias .eli-export-subcolumn.is-third-place .eli-export-node.is-compact,
@@ -6892,6 +6907,11 @@ body.page-finanzas {
 .page-eliminatorias .eli-plantilla-subcolumn.is-third-place .eli-node-vs {
   font-size: 0.52rem;
   letter-spacing: 0.06em;
+}
+
+.page-eliminatorias .eli-export-subcolumn.is-third-place .eli-node-meta,
+.page-eliminatorias .eli-plantilla-subcolumn.is-third-place .eli-node-meta {
+  font-size: 0.46rem;
 }
 
 .page-eliminatorias .eli-export-bracket16.has-third-place,

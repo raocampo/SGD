@@ -2025,6 +2025,21 @@ function renderLineaNodoPublicacion(partido = {}, lado = "local", logoClass = "e
   `;
 }
 
+function renderMetaNodoPublicacion(partido = {}) {
+  if (!partido?.fecha_partido && !partido?.hora_partido && !partido?.cancha) return "";
+  let fechaStr = "";
+  if (partido.fecha_partido) {
+    const m = String(partido.fecha_partido).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      fechaStr = `${m[3]}/${m[2]}/${m[1]}`;
+    }
+  }
+  const hora = partido.hora_partido ? String(partido.hora_partido).slice(0, 5) : "";
+  const partes = [fechaStr, hora, partido.cancha || ""].filter(Boolean);
+  if (!partes.length) return "";
+  return `<div class="eli-node-meta">${escapeHtml(partes.join(" • "))}</div>`;
+}
+
 function renderPlantillaNodeEliminatoria(partido, { compact = false } = {}) {
   return `
     <article class="eli-plantilla-node${compact ? " is-compact" : ""}">
@@ -2033,6 +2048,7 @@ function renderPlantillaNodeEliminatoria(partido, { compact = false } = {}) {
         <div class="eli-node-vs">vs</div>
         ${renderLineaNodoPublicacion(partido, "visitante", "eli-node-logo")}
       </div>
+      ${renderMetaNodoPublicacion(partido)}
     </article>
   `;
 }
@@ -2071,7 +2087,7 @@ function medirTextoPublicacion(texto = "") {
   if (!ctx) {
     return Math.max(120, valor.length * 8);
   }
-  ctx.font = '800 12.5px "Segoe UI", Arial, sans-serif';
+  ctx.font = '800 11.5px "Segoe UI", Arial, sans-serif';
   return Math.ceil(ctx.measureText(valor).width);
 }
 
@@ -2081,9 +2097,9 @@ function medirAnchoNodoPublicacion(partido, { compact = false } = {}) {
     obtenerNombreNodoPublicacion(partido, "visitante"),
   ];
   const maxTexto = Math.max(...nombres.map((item) => medirTextoPublicacion(item)));
-  const base = maxTexto + 26 + 8 + (compact ? 44 : 60);
-  const min = compact ? 180 : 260;
-  const max = compact ? 260 : 390;
+  const base = Math.round(maxTexto * 0.78) + (compact ? 54 : 64);
+  const min = compact ? 150 : 190;
+  const max = compact ? 176 : 208;
   return Math.min(max, Math.max(min, base));
 }
 
@@ -2208,6 +2224,7 @@ function renderExportNodeEliminatoria(partido, { compact = false } = {}) {
         <div class="eli-node-vs">vs</div>
         ${renderLineaNodoPublicacion(partido, "visitante", "eli-node-logo")}
       </div>
+      ${renderMetaNodoPublicacion(partido)}
     </article>
   `;
 }
@@ -2702,9 +2719,9 @@ function renderConectoresBracketEspecial(bracketSelector, colSelector, nodeSelec
   svg.setAttribute("width", String(width));
   svg.setAttribute("height", String(height));
 
-  const outline = "rgba(255,255,255,0.78)";
+  const outline = "rgba(255,255,255,0.74)";
   const color = "#4f78ba";
-  const strokeWidth = 3.2;
+  const strokeWidth = 2.7;
 
   function appendStyledPath(d) {
     const base = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -2738,7 +2755,7 @@ function renderConectoresBracketEspecial(bracketSelector, colSelector, nodeSelec
     const startY = sourceRect.top - rect.top + sourceRect.height / 2;
     const endY = targetRect.top - rect.top + targetRect.height / 2;
     const distance = Math.abs(endX - startX);
-    const offset = Math.max(24, distance * 0.48);
+    const offset = Math.max(16, distance * 0.36);
     const midX = direction === "rtl" ? startX - offset : startX + offset;
 
     appendStyledPath(`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`);
