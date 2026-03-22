@@ -32,6 +32,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnPlayoffCargarTab = document.getElementById("btn-playoff-cargar-tab");
   const btnPlayoffAbrirFull = document.getElementById("btn-playoff-abrir-full");
   const selectPlayoffEvento = document.getElementById("playoff-evento-select");
+  const bgInput = document.getElementById("grupos-bg-input");
+  const btnClearBg = document.getElementById("btn-grupos-clear-bg");
 
   configurarTabsGrupos();
 
@@ -75,6 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       evento: null,
     });
 
+    restaurarFondoGruposGuardado();
     await cargarEventosEnSelectGrupos(campeonatoId, null);
     await cargarYMostrarGrupos({ campeonatoId, eventoId: null });
     await refrescarSelectEventoPlayoff(campeonatoId, null);
@@ -102,6 +105,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       evento: contextoGrupos.eventoId,
     });
 
+    restaurarFondoGruposGuardado();
     await cargarYMostrarGrupos({
       campeonatoId,
       eventoId: contextoGrupos.eventoId,
@@ -121,6 +125,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    restaurarFondoGruposGuardado();
     await cargarYMostrarGrupos({ campeonatoId, eventoId, eventoNombre: evento?.nombre || "" });
     await refrescarSelectEventoPlayoff(campeonatoId, eventoId);
   });
@@ -132,9 +137,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnVolver?.addEventListener("click", volverInicio);
   btnPlayoffCargarTab?.addEventListener("click", cargarPlayoffEnPestana);
   btnPlayoffAbrirFull?.addEventListener("click", irAClasificacionPlayoff);
+  bgInput?.addEventListener("change", manejarCambioFondoGrupos);
+  btnClearBg?.addEventListener("click", limpiarFondoGrupos);
   selectPlayoffEvento?.addEventListener("change", () => {
     limpiarIframePlayoff();
   });
+  restaurarFondoGruposGuardado();
 });
 
 function configurarTabsGrupos() {
@@ -286,6 +294,7 @@ async function aplicarContextoEventoDesdeURL(
     auspiciantes: [],
   };
 
+  restaurarFondoGruposGuardado();
   await cargarYMostrarGrupos({ campeonatoId, eventoId, eventoNombre });
 }
 
@@ -661,6 +670,76 @@ function getZonaExport() {
   }
   return el;
 }
+
+function obtenerClaveFondoGrupos() {
+  const campeonatoId = Number.parseInt(getCampeonatoIdActual() || "", 10) || "na";
+  const eventoId = Number.parseInt(getEventoIdActual() || "", 10) || "all";
+  return `grupos-bg:${campeonatoId}:${eventoId}`;
+}
+
+function aplicarFondoGrupos(url = "") {
+  const poster = document.getElementById("zona-grupos-export");
+  const status = document.getElementById("grupos-bg-status");
+  const clearBtn = document.getElementById("btn-grupos-clear-bg");
+  const limpio = String(url || "").trim();
+
+  if (poster) {
+    if (limpio) {
+      poster.classList.add("has-custom-background");
+      poster.style.setProperty("--poster-custom-bg", `url("${limpio.replace(/"/g, "%22")}")`);
+    } else {
+      poster.classList.remove("has-custom-background");
+      poster.style.removeProperty("--poster-custom-bg");
+    }
+  }
+
+  if (status) {
+    status.textContent = limpio
+      ? "Fondo personalizado cargado para estos grupos."
+      : "Sin fondo personalizado.";
+  }
+  if (clearBtn) clearBtn.disabled = !limpio;
+}
+
+function restaurarFondoGruposGuardado() {
+  try {
+    const valor = window.localStorage?.getItem?.(obtenerClaveFondoGrupos()) || "";
+    aplicarFondoGrupos(valor);
+  } catch (error) {
+    console.warn("No se pudo restaurar el fondo de grupos:", error);
+    aplicarFondoGrupos("");
+  }
+}
+
+async function manejarCambioFondoGrupos(event) {
+  const archivo = event?.target?.files?.[0];
+  if (!archivo) return;
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
+      reader.readAsDataURL(archivo);
+    });
+    window.localStorage?.setItem?.(obtenerClaveFondoGrupos(), dataUrl);
+    aplicarFondoGrupos(dataUrl);
+    mostrarNotificacion("Fondo de grupos cargado", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion("No se pudo cargar el fondo", "error");
+  } finally {
+    if (event?.target) event.target.value = "";
+  }
+}
+
+function limpiarFondoGrupos() {
+  try {
+    window.localStorage?.removeItem?.(obtenerClaveFondoGrupos());
+  } catch (error) {
+    console.warn("No se pudo limpiar el fondo de grupos:", error);
+  }
+  aplicarFondoGrupos("");
+}
 async function esperarImagenes(zona) {
   const imgs = Array.from(zona.querySelectorAll("img"));
   await Promise.all(
@@ -696,7 +775,7 @@ async function exportarGruposPNG() {
 
     const canvas = await html2canvas(zona, {
       scale: 2,
-      backgroundColor: "#ffffff",
+      backgroundColor: null,
       useCors: true,
     });
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
@@ -767,7 +846,7 @@ async function exportarPDF() {
 
     const canvas = await html2canvas(zona, {
       scale: 2,
-      backgroundColor: "#ffffff",
+      backgroundColor: null,
       useCors: true,
     });
     const imgData = canvas.toDataURL("image/png");
@@ -817,7 +896,7 @@ async function compartirRedes() {
 
     const canvas = await html2canvas(zona, {
       scale: 2,
-      backgroundColor: "#ffffff",
+      backgroundColor: null,
       useCors: true,
     });
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));

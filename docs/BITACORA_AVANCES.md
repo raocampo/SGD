@@ -1,6 +1,35 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-20 (sesión 8)
+Ultima actualizacion: 2026-03-21 (sesión 9)
+
+## Avances recientes (2026-03-22)
+- Planillaje:
+  - la planilla oficial ya separa observaciones por actor:
+    - `observacion local`,
+    - `observacion visitante`,
+    - `observacion arbitro`.
+  - se agrega migracion `database/migrations/048_planilla_observaciones_por_lado.sql` para persistir:
+    - `partido_planillas.observaciones_local`,
+    - `partido_planillas.observaciones_visitante`.
+  - en impresion/PDF:
+    - `Delegado` ya no se repite en la cabecera,
+    - cuando el formato es `liga` se imprime `Liga` en lugar de `Grupo: Sin grupo`,
+    - las observaciones pasan a una segunda hoja y ahora ocupan todo el ancho, una debajo de otra.
+  - la planilla ya toma `max_jugador` como cantidad real de filas por equipo; en `futbol 11` soporta correctamente `25` jugadores cuando así fue configurado por el organizador.
+
+## Avances recientes (2026-03-21)
+- Planillaje:
+  - se extiende la planilla para `futbol 11` con terna arbitral:
+    - `arbitro central`,
+    - `arbitro linea 1`,
+    - `arbitro linea 2`.
+  - se agrega `observaciones del arbitro` como campo separado de las observaciones generales del partido.
+  - el guardado / recarga de planilla ya persiste estos campos en BD:
+    - `partidos.arbitro_linea_1`,
+    - `partidos.arbitro_linea_2`,
+    - `partido_planillas.observaciones_arbitro`.
+  - la vista previa oficial, el resumen y el PDF ya muestran la terna arbitral y el bloque especifico de observaciones del arbitro.
+  - la exportacion XLSX mantiene compatibilidad combinando ambas observaciones en el area de observaciones de la plantilla oficial.
 
 ## Avances recientes (2026-03-20)
 - Playoff / eliminatorias:
@@ -1903,3 +1932,26 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - más pequeño,
   - centrado debajo de `Final`,
   - con reserva de espacio propia para no salirse del lienzo en la vista previa/exportación.
+
+## 2026-03-21 - Fondo personalizado en exportación de fixture y grupos
+- Se cerró el pendiente de publicación visual para `fixtureplantilla.html` y `gruposgen.html`:
+  - ahora ambas vistas permiten cargar una imagen local como fondo del poster,
+  - el fondo queda guardado en `localStorage` por contexto (`campeonato + evento`),
+  - se puede limpiar con botón `Quitar fondo`.
+- La exportación `PNG/PDF` de fixture y grupos ya respeta el fondo personalizado:
+  - se retiró el `backgroundColor` fijo de `html2canvas`,
+  - el poster conserva su propia capa visual durante la captura.
+- La implementación reutiliza el mismo enfoque de playoff:
+  - overlay por tema para mantener legibilidad,
+  - imagen de fondo aplicada vía CSS variable,
+  - persistencia por clave específica del contexto publicado.
+- En grupos también se corrigió el markup del selector de tema/fondo para evitar comillas tipográficas inválidas en el HTML.
+
+## Pendiente inmediato siguiente sesión
+- Completar el bloque restante de plantillas de exportación:
+  - dropdown `Jugador:` para carné individual
+  - plantilla exportable de jornadas (`jornadasplantilla.html`) con arte listo para redes
+- Validar visualmente en producción:
+  - fixture con fondo personalizado
+  - grupos con fondo personalizado
+  - contraste de textos/logos sobre fondos cargados por el usuario

@@ -95,15 +95,23 @@
           </div>
 
           <!-- Selector de tema visual -->
-          <div class=”poster-tema-selector” id=”poster-tema-selector”>
+          <div class="poster-tema-selector" id="poster-tema-selector">
             <span>Tema:</span>
-            <button type=”button” class=”btn-poster-tema active” data-tema=”oscuro” onclick=”aplicarTemaPoster('oscuro')”>Oscuro</button>
-            <button type=”button” class=”btn-poster-tema” data-tema=”clasico” onclick=”aplicarTemaPoster('clasico')”>Clásico</button>
-            <button type=”button” class=”btn-poster-tema” data-tema=”torneo” onclick=”aplicarTemaPoster('torneo')”>Colores del torneo</button>
+            <button type="button" class="btn-poster-tema active" data-tema="oscuro" onclick="aplicarTemaPoster('oscuro')">Oscuro</button>
+            <button type="button" class="btn-poster-tema" data-tema="clasico" onclick="aplicarTemaPoster('clasico')">Clásico</button>
+            <button type="button" class="btn-poster-tema" data-tema="torneo" onclick="aplicarTemaPoster('torneo')">Colores del torneo</button>
+            <label for="grupos-bg-input" class="btn btn-secondary poster-bg-btn">
+              <i class="fas fa-image"></i> Fondo
+            </label>
+            <input id="grupos-bg-input" type="file" accept="image/*" hidden />
+            <button type="button" id="btn-grupos-clear-bg" class="btn btn-light poster-bg-btn" disabled>
+              <i class="fas fa-trash-alt"></i> Quitar fondo
+            </button>
+            <span id="grupos-bg-status" class="poster-bg-status">Sin fondo personalizado.</span>
           </div>
 
           <!-- ✅ ZONA EXPORTABLE TIPO “POSTER” -->
-          <div id=”zona-grupos-export” class=”poster tema-oscuro”>
+          <div id="zona-grupos-export" class="poster tema-oscuro">
 
             <div class="poster-titulo">
               <div class="poster-org">
@@ -190,6 +198,5 @@
 </body>
 
 </html>
-
 
 

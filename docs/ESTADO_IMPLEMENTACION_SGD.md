@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-03-20 (sesión 8)
+Ultima actualizacion: 2026-03-21 (sesión 9)
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -71,6 +71,19 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Captura de faltas por `1ER` y `2DO` tiempo con persistencia por equipo para tablas de fair play.
 - Resultado calculado automaticamente por suma de goles capturados.
 - Registro de pagos y observaciones dentro del mismo formulario.
+- En `futbol 11`, la planilla ya soporta terna arbitral:
+  - `arbitro central`,
+  - `arbitro linea 1`,
+  - `arbitro linea 2`.
+- Las observaciones ya quedan separadas por actor:
+  - `observacion local`,
+  - `observacion visitante`,
+  - `observacion arbitro`.
+- En impresion/PDF oficial:
+  - `Delegado` ya no se repite,
+  - `liga` se imprime como `Liga`,
+  - las observaciones ya salen en una segunda hoja, una debajo de otra y a ancho completo.
+- La cantidad de filas del plantel ya usa `max_jugador` del campeonato/categoria, soportando `25` jugadores en `futbol 11` cuando así fue configurado.
 - Inscripcion rapida de jugadores desde la misma planilla, por equipo y sin perder la captura en curso.
 - Doble amarilla preservada como evento disciplinario explicito al guardar/reabrir la planilla.
 - No presentacion parcial aplicada por lado: solo se bloquea el equipo ausente y el equipo presente mantiene pagos/captura habilitados.
@@ -353,9 +366,9 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 14. Portal público / plantillas de exportación (pendiente sesión 5):
 - **A) Carnet individual**: agregar dropdown "Jugador:" en toolbar de carnets para filtrar e imprimir solo el carnet de un jugador específico (en lugar de todo el equipo). Simple cambio en `jugadores.html` + `jugadores.js`.
-- **B) Tema/fondo para exportación de fixture**: agregar file-picker de imagen de fondo en `fixtureplantilla.html` que se aplique como `background-image` al poster antes de exportar PNG/PDF. `html2canvas` lo captura automáticamente.
+- **B) Tema/fondo para exportación de fixture**: ya implementado con carga local, persistencia por contexto y exportación compatible con `PNG/PDF`.
 - **C) Plantilla exportable de jornadas**: nueva página `jornadadplantilla.html` similar a `fixtureplantilla.html` mostrando partidos de una jornada con logo de equipos, fecha/hora/cancha, lista para compartir en redes.
-- **D) Tema aplicado a grupos**: misma lógica de fondo personalizado para la exportación de grupos desde `gruposgen.js`.
+- **D) Tema aplicado a grupos**: ya implementado con carga local, persistencia por contexto y exportación/compartir con fondo personalizado.
 
 15. Fixture / validación operativa con campeonato real (pendiente sesión 5):
 - Verificar bye/descansa en portal público con campeonato activo real (11 equipos, Academia Pedro Larrea en J1).
@@ -374,6 +387,16 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - confirmar con operación real que todos los cruces relevantes estén efectivamente programados antes de publicar,
   - validar que la nueva plantilla publicable mantenga legibilidad con logos largos o equipos con nombres extensos,
   - revisar si conviene incorporar una variante adicional de arte para `12vos` / `32avos`.
+
+17. Publicación visual de posters:
+- `fixtureplantilla.html` y `gruposgen.html` ya soportan fondo personalizado por imagen local:
+  - guardado en `localStorage`,
+  - aplicado por contexto,
+  - exportable a `PNG/PDF`.
+- Pendiente:
+  - validar contraste con fondos reales cargados por usuarios,
+  - revisar si conviene agregar presets de overlay claro/oscuro además del tema actual,
+  - decidir si este mismo patrón se replica luego a más posters del sistema.
 
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`

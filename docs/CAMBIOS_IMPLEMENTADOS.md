@@ -7,6 +7,48 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-22 - Cierre de impresión oficial de planilla
+- `frontend/planilla.html` y `frontend/js/planilla.js` separan las observaciones en tres bloques:
+  - `Observación local`,
+  - `Observación visitante`,
+  - `Observación árbitro`.
+- La impresión/PDF ya corrige la cabecera:
+  - `Delegado` aparece una sola vez,
+  - si el formato es `liga` se imprime `Liga` en vez de `Grupo: Sin grupo`.
+- Las observaciones de la planilla oficial ahora se imprimen en una segunda hoja:
+  - a ancho completo,
+  - apiladas una debajo de otra.
+- La vista previa y el PDF ya usan `max_jugador` como número real de filas del plantel, permitiendo `25` filas en `futbol 11` cuando así lo definió el organizador.
+- `backend/models/Partido.js` persiste observaciones por lado:
+  - `partido_planillas.observaciones_local`,
+  - `partido_planillas.observaciones_visitante`.
+- Nueva migración:
+  - `database/migrations/048_planilla_observaciones_por_lado.sql`
+
+---
+
+## 2026-03-21 - Planilla arbitral extendida para futbol 11
+- `frontend/planilla.html` agrega:
+  - `Arbitro central`,
+  - `Arbitro linea 1`,
+  - `Arbitro linea 2`,
+  - `Observaciones del arbitro`.
+- `frontend/js/planilla.js` ya:
+  - guarda y recarga esos campos,
+  - oculta `linea 1 / linea 2` fuera de `futbol 11`,
+  - los refleja en la vista previa oficial,
+  - los refleja en el resumen,
+  - los incluye en el PDF,
+  - y combina observaciones generales + observaciones del arbitro al exportar XLSX para mantener compatibilidad con la plantilla base.
+- `backend/models/Partido.js` persiste:
+  - `partidos.arbitro_linea_1`,
+  - `partidos.arbitro_linea_2`,
+  - `partido_planillas.observaciones_arbitro`.
+- nueva migracion:
+  - `database/migrations/047_planilla_arbitros_f11_y_observaciones.sql`
+
+---
+
 ## 2026-03-21 - Ajuste visual final de plantilla publicable del playoff
 - `frontend/js/eliminatorias.js` y `frontend/css/style.css` afinan el bracket publicable especial (`8vos -> 4tos -> semifinal -> final`) para que los nodos muestren solo:
   - logo local + nombre local,
@@ -1279,3 +1321,22 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
     - equipo local arriba,
     - `vs`,
     - equipo visitante abajo.
+
+---
+
+## 23. Fondo personalizado en plantillas de fixture y grupos
+- **Ubicacion frontend:** `frontend/fixtureplantilla.html`, `frontend/gruposgen.html`, `frontend/js/fixtureplantilla.js`, `frontend/js/gruposgen.js`, `frontend/css/grupos.css`
+- Fixture:
+  - nuevo control `Fondo` para cargar imagen local,
+  - botón `Quitar fondo`,
+  - persistencia por `campeonato + evento`,
+  - exportación `PNG/PDF` respetando el fondo personalizado.
+- Grupos:
+  - mismo flujo de carga/limpieza de fondo,
+  - persistencia por `campeonato + evento`,
+  - exportación `PNG/PDF` y compartir usando el fondo cargado.
+- Implementación visual:
+  - posters ahora soportan clase `has-custom-background`,
+  - la imagen de fondo se aplica por CSS variable,
+  - cada tema (`oscuro`, `clásico`, `torneo`) conserva un overlay diferente para no perder legibilidad.
+- Se corrigió además el markup del selector de tema/fondo en `gruposgen.html` para evitar comillas tipográficas que podían romper atributos HTML.

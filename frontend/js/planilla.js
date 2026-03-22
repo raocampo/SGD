@@ -211,6 +211,9 @@ function obtenerInasistenciaPlanilla() {
 
 function obtenerLadosBloqueadosPlanilla(tipo = obtenerInasistenciaPlanilla()) {
   const normalizado = normalizarInasistenciaPlanilla(tipo);
+  const observacionesLocal = obtenerObservacionesLocalPlanilla();
+  const observacionesVisitante = obtenerObservacionesVisitantePlanilla();
+
   return {
     local: normalizado === "local" || normalizado === "ambos",
     visitante: normalizado === "visitante" || normalizado === "ambos",
@@ -572,6 +575,24 @@ function etiquetaGrupoPartido(p = {}) {
   return "Sin grupo";
 }
 
+function obtenerContextoCompetenciaPlanilla(p = {}) {
+  const metodo = String(p?.metodo_competencia || "").trim().toLowerCase();
+  if (metodo === "liga") {
+    return {
+      etiqueta: "Liga",
+      valor: "Liga",
+      resumen: "Liga",
+    };
+  }
+
+  const grupo = etiquetaGrupoPartido(p);
+  return {
+    etiqueta: "Grupo",
+    valor: grupo,
+    resumen: grupo,
+  };
+}
+
 function obtenerClaveGrupoPartido(p = {}) {
   const grupoId = Number.parseInt(p?.grupo_id, 10);
   if (Number.isFinite(grupoId) && grupoId > 0) return `id:${grupoId}`;
@@ -613,6 +634,73 @@ function obtenerTipoFutbolPlanilla() {
   if (tipo.includes("6")) return "futbol_7";
   if (tipo.includes("7")) return "futbol_7";
   return "futbol_7";
+}
+
+function esPlanillaFutbol11() {
+  return String(dataPlanilla?.partido?.tipo_futbol || "").toLowerCase().includes("11");
+}
+
+function obtenerDatosArbitrajePlanilla(partido = dataPlanilla?.partido || {}) {
+  return {
+    esFutbol11: esPlanillaFutbol11(),
+    central: String(document.getElementById("arbitro-planilla")?.value || partido?.arbitro || "").trim(),
+    linea1: String(
+      document.getElementById("arbitro-linea-1-planilla")?.value || partido?.arbitro_linea_1 || ""
+    ).trim(),
+    linea2: String(
+      document.getElementById("arbitro-linea-2-planilla")?.value || partido?.arbitro_linea_2 || ""
+    ).trim(),
+  };
+}
+
+function obtenerObservacionesArbitroPlanilla(payload = null) {
+  const raw =
+    payload && Object.prototype.hasOwnProperty.call(payload, "observaciones_arbitro")
+      ? payload.observaciones_arbitro
+      : dataPlanilla?.planilla?.observaciones_arbitro;
+  return String(
+    document.getElementById("observaciones-arbitro-planilla")?.value ?? raw ?? ""
+  ).trim();
+}
+
+function obtenerObservacionesLocalPlanilla(payload = null) {
+  const raw =
+    payload && Object.prototype.hasOwnProperty.call(payload, "observaciones_local")
+      ? payload.observaciones_local
+      : dataPlanilla?.planilla?.observaciones_local ?? dataPlanilla?.planilla?.observaciones;
+  return String(document.getElementById("observaciones-planilla")?.value ?? raw ?? "").trim();
+}
+
+function obtenerObservacionesVisitantePlanilla(payload = null) {
+  const raw =
+    payload && Object.prototype.hasOwnProperty.call(payload, "observaciones_visitante")
+      ? payload.observaciones_visitante
+      : dataPlanilla?.planilla?.observaciones_visitante;
+  return String(
+    document.getElementById("observaciones-visitante-planilla")?.value ?? raw ?? ""
+  ).trim();
+}
+
+function actualizarVisibilidadArbitrajePlanilla() {
+  const esF11 = esPlanillaFutbol11();
+  document.querySelectorAll(".planilla-arbitraje-f11-only").forEach((item) => {
+    if (item instanceof HTMLElement) item.hidden = !esF11;
+  });
+}
+
+function combinarObservacionesPlanilla(
+  observacionesLocal = "",
+  observacionesVisitante = "",
+  observacionesArbitro = ""
+) {
+  const partes = [];
+  const localTxt = String(observacionesLocal || "").trim();
+  const visitanteTxt = String(observacionesVisitante || "").trim();
+  const arbitroTxt = String(observacionesArbitro || "").trim();
+  if (localTxt) partes.push(`OBSERVACION LOCAL: ${localTxt}`);
+  if (visitanteTxt) partes.push(`OBSERVACION VISITANTE: ${visitanteTxt}`);
+  if (arbitroTxt) partes.push(`OBSERVACIONES DEL ARBITRO: ${arbitroTxt}`);
+  return partes.join("\n\n");
 }
 
 function obtenerConfigExportacionPlanilla(tipoFutbol) {
@@ -1005,9 +1093,9 @@ function renderEncabezado() {
   if (!cont || !dataPlanilla?.partido) return;
 
   const p = dataPlanilla.partido;
+  const contextoCompetencia = obtenerContextoCompetenciaPlanilla(p);
   const fecha = formatearFecha(p.fecha_partido);
   const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
-  const grupo = etiquetaGrupoPartido(p);
   const jornada = Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
   const tipoTxt = formatearTipoFutbolTexto(p.tipo_futbol);
   const orgTxt = p.campeonato_organizador || p.campeonato_nombre || "Organizador";
@@ -1071,7 +1159,7 @@ function renderEncabezado() {
     </div>
     <div class="planilla-head-meta-grid">
       <div><strong>Partido:</strong> #${obtenerNumeroPartidoVisible(p) || "-"}</div>
-      <div><strong>${escapeHtml(jornada)}</strong> • ${escapeHtml(grupo)}</div>
+      <div><strong>${escapeHtml(jornada)}</strong> • ${escapeHtml(contextoCompetencia.resumen)}</div>
       <div><strong>Fecha:</strong> <span id="head-fecha">${fecha}</span></div>
       <div><strong>Hora:</strong> <span id="head-hora">${escapeHtml(hora)}</span></div>
       <div><strong>Cancha:</strong> <span id="head-cancha">${escapeHtml(p.cancha || "Por definir")}</span></div>
@@ -1203,9 +1291,16 @@ function actualizarHeaderResultado(local, visitante) {
 function capturarEstadoFormularioPlanilla() {
   return {
     arbitro: document.getElementById("arbitro-planilla")?.value || "",
+    arbitro_linea_1: document.getElementById("arbitro-linea-1-planilla")?.value || "",
+    arbitro_linea_2: document.getElementById("arbitro-linea-2-planilla")?.value || "",
     delegado: document.getElementById("delegado-planilla")?.value || "",
     ciudad: document.getElementById("ciudad-planilla")?.value || "",
     observaciones: document.getElementById("observaciones-planilla")?.value || "",
+    observaciones_local: document.getElementById("observaciones-planilla")?.value || "",
+    observaciones_visitante:
+      document.getElementById("observaciones-visitante-planilla")?.value || "",
+    observaciones_arbitro:
+      document.getElementById("observaciones-arbitro-planilla")?.value || "",
     estado: document.getElementById("estado-partido")?.value || "finalizado",
     inasistencia: document.getElementById("inasistencia-planilla")?.value || "ninguno",
     pagos: IDS_PAGOS_PLANILLA.reduce((acc, id) => {
@@ -1238,16 +1333,28 @@ function restaurarEstadoFormularioPlanilla(snapshot = null) {
   );
 
   const arbitro = document.getElementById("arbitro-planilla");
+  const arbitroLinea1 = document.getElementById("arbitro-linea-1-planilla");
+  const arbitroLinea2 = document.getElementById("arbitro-linea-2-planilla");
   const delegado = document.getElementById("delegado-planilla");
   const ciudad = document.getElementById("ciudad-planilla");
   const observaciones = document.getElementById("observaciones-planilla");
+  const observacionesVisitante = document.getElementById("observaciones-visitante-planilla");
+  const observacionesArbitro = document.getElementById("observaciones-arbitro-planilla");
   const estado = document.getElementById("estado-partido");
   const inasistencia = document.getElementById("inasistencia-planilla");
 
   if (arbitro) arbitro.value = snapshot.arbitro || "";
+  if (arbitroLinea1) arbitroLinea1.value = snapshot.arbitro_linea_1 || "";
+  if (arbitroLinea2) arbitroLinea2.value = snapshot.arbitro_linea_2 || "";
   if (delegado) delegado.value = snapshot.delegado || "";
   if (ciudad) ciudad.value = snapshot.ciudad || "";
-  if (observaciones) observaciones.value = snapshot.observaciones || "";
+  if (observaciones) {
+    observaciones.value = snapshot.observaciones_local || snapshot.observaciones || "";
+  }
+  if (observacionesVisitante) {
+    observacionesVisitante.value = snapshot.observaciones_visitante || "";
+  }
+  if (observacionesArbitro) observacionesArbitro.value = snapshot.observaciones_arbitro || "";
   if (estado) estado.value = snapshot.estado || "finalizado";
   if (inasistencia) inasistencia.value = snapshot.inasistencia || "ninguno";
 
@@ -1759,7 +1866,11 @@ function cargarCamposBase() {
   const inputPagoLocal = document.getElementById("pago-local");
   const inputPagoVisitante = document.getElementById("pago-visitante");
   const inputObserv = document.getElementById("observaciones-planilla");
+  const inputObservVisitante = document.getElementById("observaciones-visitante-planilla");
+  const inputObservArbitro = document.getElementById("observaciones-arbitro-planilla");
   const inputArbitro = document.getElementById("arbitro-planilla");
+  const inputArbitroLinea1 = document.getElementById("arbitro-linea-1-planilla");
+  const inputArbitroLinea2 = document.getElementById("arbitro-linea-2-planilla");
   const inputDelegado = document.getElementById("delegado-planilla");
   const inputCiudad = document.getElementById("ciudad-planilla");
   const inputInasistencia = document.getElementById("inasistencia-planilla");
@@ -1808,8 +1919,12 @@ function cargarCamposBase() {
   }
   if (inputPagoLocal) inputPagoLocal.value = planillaSinDatos ? "" : String(aDecimal(plan.pago_local, 0));
   if (inputPagoVisitante) inputPagoVisitante.value = planillaSinDatos ? "" : String(aDecimal(plan.pago_visitante, 0));
-  if (inputObserv) inputObserv.value = plan.observaciones || "";
+  if (inputObserv) inputObserv.value = plan.observaciones_local || plan.observaciones || "";
+  if (inputObservVisitante) inputObservVisitante.value = plan.observaciones_visitante || "";
+  if (inputObservArbitro) inputObservArbitro.value = plan.observaciones_arbitro || "";
   if (inputArbitro) inputArbitro.value = p.arbitro || "";
+  if (inputArbitroLinea1) inputArbitroLinea1.value = p.arbitro_linea_1 || "";
+  if (inputArbitroLinea2) inputArbitroLinea2.value = p.arbitro_linea_2 || "";
   if (inputDelegado) inputDelegado.value = p.delegado_partido || "";
   if (inputCiudad) inputCiudad.value = p.ciudad || "";
   if (inputInasistencia instanceof HTMLSelectElement) {
@@ -1824,6 +1939,7 @@ function cargarCamposBase() {
   }
 
   dataPlanilla.faltas = normalizarEstadoFaltasPlanilla(dataPlanilla?.faltas || {});
+  actualizarVisibilidadArbitrajePlanilla();
 
   actualizarHeaderMetaEditable();
   actualizarHeaderResultado(
@@ -2491,6 +2607,8 @@ function recolectarPayloadPlanilla() {
   const bloqueados = obtenerLadosBloqueadosPlanilla(inasistenciaEquipo);
   const hayInasistencia = bloqueados.local || bloqueados.visitante;
   const resultadoAutomatico = obtenerResultadoPorInasistencia(inasistenciaEquipo);
+  const observacionesLocal = obtenerObservacionesLocalPlanilla();
+  const observacionesVisitante = obtenerObservacionesVisitantePlanilla();
   const goles = [];
   const tarjetas = [];
   const filasCaptura = Array.from(document.querySelectorAll(".planilla-player-row"));
@@ -2615,9 +2733,14 @@ function recolectarPayloadPlanilla() {
     ambos_no_presentes: ambosNoPresentes,
     inasistencia_equipo: inasistenciaEquipo,
     arbitro: String(document.getElementById("arbitro-planilla")?.value || "").trim(),
+    arbitro_linea_1: String(document.getElementById("arbitro-linea-1-planilla")?.value || "").trim(),
+    arbitro_linea_2: String(document.getElementById("arbitro-linea-2-planilla")?.value || "").trim(),
     delegado_partido: String(document.getElementById("delegado-planilla")?.value || "").trim(),
     ciudad: String(document.getElementById("ciudad-planilla")?.value || "").trim(),
-    observaciones: String(document.getElementById("observaciones-planilla")?.value || "").trim(),
+    observaciones: observacionesLocal,
+    observaciones_local: observacionesLocal,
+    observaciones_visitante: observacionesVisitante,
+    observaciones_arbitro: obtenerObservacionesArbitroPlanilla(),
     pagos: {
       pago_ta_local: bloqueados.local ? 0 : leerPagoInput("pago-ta-local"),
       pago_ta_visitante: bloqueados.visitante ? 0 : leerPagoInput("pago-ta-visitante"),
@@ -2717,15 +2840,25 @@ function obtenerModeloPlanillaOficial() {
 }
 
 function obtenerMaxFilasVistaPreviaPlanilla() {
+  const maxConfigurado = obtenerMaxJugadoresConfiguradoPlanilla();
   const localCount = Array.isArray(dataPlanilla?.plantel_local)
     ? dataPlanilla.plantel_local.length
     : 0;
   const visitanteCount = Array.isArray(dataPlanilla?.plantel_visitante)
     ? dataPlanilla.plantel_visitante.length
     : 0;
-  // En vista previa/impresion priorizamos una hoja compacta.
-  const filasNecesarias = Math.max(localCount, visitanteCount, 8);
-  return Math.min(filasNecesarias, 18);
+  return Math.max(localCount, visitanteCount, maxConfigurado, 8);
+}
+
+function obtenerMaxJugadoresConfiguradoPlanilla(partido = dataPlanilla?.partido || {}) {
+  const maxConfigurado = Number(partido?.max_jugador);
+  if (Number.isFinite(maxConfigurado) && maxConfigurado > 0) return maxConfigurado;
+
+  const tipo = String(partido?.tipo_futbol || "").trim().toLowerCase();
+  if (tipo === "futbol_11") return 25;
+
+  const modelo = obtenerModeloPlanillaOficial();
+  return modelo === "futbol_7_5_sala" ? 20 : 18;
 }
 
 function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
@@ -2793,11 +2926,14 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
 
   const modelo = obtenerModeloPlanillaOficial();
   const tituloModelo = modelo === "futbol_11_indor" ? "FUTBOL 11 / INDOR" : "FUTBOL 7 / 5 / SALA";
-  const grupo = etiquetaGrupoPartido(p);
+  const contextoCompetencia = obtenerContextoCompetenciaPlanilla(p);
   const jornada = Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
-  const arbitro = String(document.getElementById("arbitro-planilla")?.value || p.arbitro || "");
+  const arbitraje = obtenerDatosArbitrajePlanilla(p);
   const delegado = String(document.getElementById("delegado-planilla")?.value || p.delegado_partido || "");
   const ciudad = String(document.getElementById("ciudad-planilla")?.value || p.ciudad || "");
+  const observacionesLocal = obtenerObservacionesLocalPlanilla(payload);
+  const observacionesVisitante = obtenerObservacionesVisitantePlanilla(payload);
+  const observacionesArbitro = obtenerObservacionesArbitroPlanilla(payload);
   const logoOrg = normalizarArchivoUrl(p.campeonato_logo_url);
   const logoLocal = normalizarArchivoUrl(p.equipo_local_logo_url);
   const logoVisitante = normalizarArchivoUrl(p.equipo_visitante_logo_url);
@@ -2839,10 +2975,16 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
         <div><strong>Hora:</strong> ${escapeHtml(hora)}</div>
         <div><strong>Cancha:</strong> ${escapeHtml(p.cancha || "Por definir")}</div>
         <div><strong>Ciudad:</strong> ${escapeHtml(ciudad || "Por definir")}</div>
-        <div><strong>Arbitro:</strong> ${escapeHtml(arbitro || "________________")}</div>
+        <div><strong>${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}:</strong> ${escapeHtml(arbitraje.central || "________________")}</div>
+        ${
+          arbitraje.esFutbol11
+            ? `<div><strong>Linea 1:</strong> ${escapeHtml(arbitraje.linea1 || "________________")}</div>
+               <div><strong>Linea 2:</strong> ${escapeHtml(arbitraje.linea2 || "________________")}</div>`
+            : ""
+        }
         <div><strong>Delegado:</strong> ${escapeHtml(delegado || "________________")}</div>
         <div><strong>Partido:</strong> #${obtenerNumeroPartidoVisible(p) || "-"}</div>
-        <div><strong>${escapeHtml(jornada)}</strong> • ${escapeHtml(grupo)}</div>
+        <div><strong>${escapeHtml(jornada)}</strong> • ${escapeHtml(contextoCompetencia.resumen)}</div>
       </div>
 
       <div class="planilla-oficial-score">
@@ -2949,10 +3091,24 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
             </div>
           </article>
         </div>
-
-        <div class="planilla-oficial-observ">
-          <strong>OBSERVACIONES</strong>
-          <p>${escapeHtml(payload.observaciones || "")}</p>
+      </div>
+    </div>
+    <div class="planilla-oficial-sheet ${modelo} planilla-oficial-sheet--page2">
+      <div class="planilla-oficial-observ-page">
+        <h5 class="planilla-oficial-observ-page-title">OBSERVACIONES</h5>
+        <div class="planilla-oficial-observ-grid is-stacked">
+          <div class="planilla-oficial-observ">
+            <strong>OBSERVACION LOCAL</strong>
+            <p>${escapeHtml(observacionesLocal || "")}</p>
+          </div>
+          <div class="planilla-oficial-observ">
+            <strong>OBSERVACION VISITANTE</strong>
+            <p>${escapeHtml(observacionesVisitante || "")}</p>
+          </div>
+          <div class="planilla-oficial-observ">
+            <strong>OBSERVACIONES DEL ARBITRO</strong>
+            <p>${escapeHtml(observacionesArbitro || "")}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -2965,10 +3121,16 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
 
   const categoria = p.evento_nombre || "Sin categoria";
   const tipoFutbol = String(p.tipo_futbol || "").replaceAll("_", " ").toUpperCase();
-  const grupo = etiquetaGrupoPartido(p);
+  const contextoCompetencia = obtenerContextoCompetenciaPlanilla(p);
+  const arbitraje = obtenerDatosArbitrajePlanilla(p);
+  const delegado = String(document.getElementById("delegado-planilla")?.value || p.delegado_partido || "");
+  const ciudad = String(document.getElementById("ciudad-planilla")?.value || p.ciudad || "");
   const filasLocal = renderFilasVistaPreviaEquipo(dataPlanilla.plantel_local || [], stats, maxFilas);
   const filasVisit = renderFilasVistaPreviaEquipo(dataPlanilla.plantel_visitante || [], stats, maxFilas);
   const eventosVistaPrevia = renderListaEventosVistaPrevia(payload);
+  const observacionesLocal = obtenerObservacionesLocalPlanilla(payload);
+  const observacionesVisitante = obtenerObservacionesVisitantePlanilla(payload);
+  const observacionesArbitro = obtenerObservacionesArbitroPlanilla(payload);
 
   const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
   const scoreLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
@@ -2978,7 +3140,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
     <div class="planilla-preview-sheet">
       <div class="planilla-preview-head">
         <h4 class="preview-title">${escapeHtml(p.campeonato_nombre || "Planilla de Juego")}</h4>
-        <p class="preview-subtitle">${escapeHtml(categoria)} • ${escapeHtml(tipoFutbol)} • ${escapeHtml(grupo)}</p>
+        <p class="preview-subtitle">${escapeHtml(categoria)} • ${escapeHtml(tipoFutbol)} • ${escapeHtml(contextoCompetencia.resumen)}</p>
       </div>
 
       <div class="planilla-preview-meta">
@@ -2986,6 +3148,15 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
         <div class="meta-item"><strong>Fecha</strong>${fecha}</div>
         <div class="meta-item"><strong>Hora</strong>${hora}</div>
         <div class="meta-item"><strong>Cancha</strong>${escapeHtml(p.cancha || "Por definir")}</div>
+        <div class="meta-item"><strong>Ciudad</strong>${escapeHtml(ciudad || "Por definir")}</div>
+        <div class="meta-item"><strong>${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}</strong>${escapeHtml(arbitraje.central || "________________")}</div>
+        ${
+          arbitraje.esFutbol11
+            ? `<div class="meta-item"><strong>Linea 1</strong>${escapeHtml(arbitraje.linea1 || "________________")}</div>
+               <div class="meta-item"><strong>Linea 2</strong>${escapeHtml(arbitraje.linea2 || "________________")}</div>`
+            : ""
+        }
+        <div class="meta-item"><strong>Delegado</strong>${escapeHtml(delegado || "________________")}</div>
       </div>
 
       <div class="planilla-preview-score">
@@ -3021,8 +3192,12 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
           <ul class="planilla-preview-list">${eventosVistaPrevia.golesHtml}</ul>
           <h5 style="margin-top:0.8rem;">Tarjetas</h5>
           <ul class="planilla-preview-list">${eventosVistaPrevia.tarjetasHtml}</ul>
-          <h5 style="margin-top:0.8rem;">Observaciones</h5>
-          <div class="planilla-preview-observ">${escapeHtml(payload.observaciones || "")}</div>
+          <h5 style="margin-top:0.8rem;">Observacion local</h5>
+          <div class="planilla-preview-observ">${escapeHtml(observacionesLocal || "")}</div>
+          <h5 style="margin-top:0.8rem;">Observacion visitante</h5>
+          <div class="planilla-preview-observ">${escapeHtml(observacionesVisitante || "")}</div>
+          <h5 style="margin-top:0.8rem;">Observaciones del arbitro</h5>
+          <div class="planilla-preview-observ">${escapeHtml(observacionesArbitro || "")}</div>
         </div>
         <div class="planilla-preview-box">
           <h5>Pagos</h5>
@@ -3384,20 +3559,23 @@ async function imprimirPDFPlanilla() {
     const fecha = formatearFecha(p.fecha_partido);
     const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
     const jornada = Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
-    const grupo = etiquetaGrupoPartido(p);
-    const arbitro = String(document.getElementById("arbitro-planilla")?.value || p.arbitro || "");
+    const contextoCompetencia = obtenerContextoCompetenciaPlanilla(p);
+    const arbitraje = obtenerDatosArbitrajePlanilla(p);
     const delegado = String(document.getElementById("delegado-planilla")?.value || p.delegado_partido || "");
     const ciudad = String(document.getElementById("ciudad-planilla")?.value || p.ciudad || "");
+    const observacionesLocal = obtenerObservacionesLocalPlanilla(payload);
+    const observacionesVisitante = obtenerObservacionesVisitantePlanilla(payload);
+    const observacionesArbitro = obtenerObservacionesArbitroPlanilla(payload);
     const modelo = obtenerModeloPlanillaOficial();
     const tituloModelo = modelo === "futbol_11_indor" ? "FUTBOL 11 / INDOR" : "FUTBOL 7 / 5 / SALA";
     const localNombre = p.equipo_local_nombre || equiposPartido.local.nombre;
     const visitNombre = p.equipo_visitante_nombre || equiposPartido.visitante.nombre;
     const localDt = p.equipo_local_director_tecnico || "-";
     const visitDt = p.equipo_visitante_director_tecnico || "-";
-    const maxFilasObjetivo = modelo === "futbol_7_5_sala" ? 20 : 18;
-    const maxFilas = maxFilasObjetivo;
-    const alturaFilaPlantel = modelo === "futbol_7_5_sala" ? 10 : 9;
-    const alturaCabeceraPlantel = 10;
+    const maxFilas = obtenerMaxJugadoresConfiguradoPlanilla(p);
+    const alturaFilaPlantel =
+      maxFilas >= 25 ? 7.2 : modelo === "futbol_7_5_sala" ? 10 : 9;
+    const alturaCabeceraPlantel = maxFilas >= 25 ? 8 : 10;
     const bodyLocal = construirFilasPlantelPdf(dataPlanilla.plantel_local || [], stats, maxFilas);
     const bodyVisit = construirFilasPlantelPdf(dataPlanilla.plantel_visitante || [], stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
@@ -3450,10 +3628,48 @@ async function imprimirPDFPlanilla() {
                 { text: [{ text: "Ciudad: ", bold: true }, ciudad || "Por definir"] },
               ],
               [
-                { text: [{ text: "Arbitro: ", bold: true }, arbitro || "________________"] },
-                { text: [{ text: "Delegado: ", bold: true }, delegado || "________________"] },
+                {
+                  text: [
+                    {
+                      text: `${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}: `,
+                      bold: true,
+                    },
+                    arbitraje.central || "________________",
+                  ],
+                },
+                {
+                  text: [
+                    { text: `${arbitraje.esFutbol11 ? "Linea 1" : "Delegado"}: `, bold: true },
+                    arbitraje.esFutbol11
+                      ? arbitraje.linea1 || "________________"
+                      : delegado || "________________",
+                  ],
+                },
+                {
+                  text: [
+                    { text: `${arbitraje.esFutbol11 ? "Linea 2" : "Partido"}: `, bold: true },
+                    arbitraje.esFutbol11
+                      ? arbitraje.linea2 || "________________"
+                      : `#${obtenerNumeroPartidoVisible(p) || "-"}`,
+                  ],
+                },
+                {
+                  text: [
+                    { text: `${arbitraje.esFutbol11 ? "Delegado" : "Jornada"}: `, bold: true },
+                    arbitraje.esFutbol11 ? delegado || "________________" : jornada,
+                  ],
+                },
+              ],
+              [
                 { text: [{ text: "Partido: ", bold: true }, `#${obtenerNumeroPartidoVisible(p) || "-"}`] },
-                { text: [{ text: `${jornada}: `, bold: true }, grupo] },
+                { text: "" },
+                { text: [{ text: "Jornada: ", bold: true }, jornada] },
+                {
+                  text: [
+                    { text: `${contextoCompetencia.etiqueta}: `, bold: true },
+                    contextoCompetencia.valor,
+                  ],
+                },
               ],
             ],
           },
@@ -3648,30 +3864,98 @@ async function imprimirPDFPlanilla() {
         {
           text: "OBSERVACIONES",
           style: "sectionTitle",
-          margin: [0, 1, 0, 2],
+          pageBreak: "before",
+          margin: [0, 2, 0, 6],
         },
         {
-          table: {
-            widths: ["*"],
-            body: [
-              [{ text: payload.observaciones || "" }],
-              [{ text: " " }],
-              [{ text: " " }],
-              [{ text: " " }],
-              [{ text: " " }],
-            ],
-            heights: () => 9,
-          },
-          layout: {
-            hLineWidth: () => 0.6,
-            vLineWidth: () => 0.6,
-            hLineColor: () => "#cbd5e1",
-            vLineColor: () => "#cbd5e1",
-            paddingLeft: () => 4,
-            paddingRight: () => 4,
-            paddingTop: () => 2,
-            paddingBottom: () => 2,
-          },
+          stack: [
+            {
+              text: "OBSERVACION LOCAL",
+              style: "sectionTitle",
+              margin: [0, 1, 0, 2],
+            },
+            {
+              table: {
+                widths: ["*"],
+                body: [
+                  [{ text: observacionesLocal || "" }],
+                  [{ text: " " }],
+                  [{ text: " " }],
+                  [{ text: " " }],
+                  [{ text: " " }],
+                ],
+                heights: () => 9,
+              },
+              layout: {
+                hLineWidth: () => 0.6,
+                vLineWidth: () => 0.6,
+                hLineColor: () => "#cbd5e1",
+                vLineColor: () => "#cbd5e1",
+                paddingLeft: () => 4,
+                paddingRight: () => 4,
+                paddingTop: () => 2,
+                paddingBottom: () => 2,
+              },
+              margin: [0, 0, 0, 8],
+            },
+            {
+              text: "OBSERVACION VISITANTE",
+              style: "sectionTitle",
+              margin: [0, 1, 0, 2],
+            },
+            {
+              table: {
+                widths: ["*"],
+                body: [
+                  [{ text: observacionesVisitante || "" }],
+                  [{ text: " " }],
+                  [{ text: " " }],
+                  [{ text: " " }],
+                  [{ text: " " }],
+                ],
+                heights: () => 9,
+              },
+              layout: {
+                hLineWidth: () => 0.6,
+                vLineWidth: () => 0.6,
+                hLineColor: () => "#cbd5e1",
+                vLineColor: () => "#cbd5e1",
+                paddingLeft: () => 4,
+                paddingRight: () => 4,
+                paddingTop: () => 2,
+                paddingBottom: () => 2,
+              },
+              margin: [0, 0, 0, 8],
+            },
+            {
+              text: "OBSERVACIONES DEL ARBITRO",
+              style: "sectionTitle",
+              margin: [0, 1, 0, 2],
+            },
+            {
+              table: {
+                widths: ["*"],
+                body: [
+                  [{ text: observacionesArbitro || "" }],
+                  [{ text: " " }],
+                  [{ text: " " }],
+                  [{ text: " " }],
+                  [{ text: " " }],
+                ],
+                heights: () => 9,
+              },
+              layout: {
+                hLineWidth: () => 0.6,
+                vLineWidth: () => 0.6,
+                hLineColor: () => "#cbd5e1",
+                vLineColor: () => "#cbd5e1",
+                paddingLeft: () => 4,
+                paddingRight: () => 4,
+                paddingTop: () => 2,
+                paddingBottom: () => 2,
+              },
+            },
+          ],
         },
       ],
       styles: {
@@ -3913,7 +4197,11 @@ async function exportarPlanillaXLSX() {
       mostrarEnBlanco ? "" : pagoVisitante || ""
     );
 
-    const observaciones = payload.observaciones || "";
+    const observaciones = combinarObservacionesPlanilla(
+      obtenerObservacionesLocalPlanilla(payload),
+      obtenerObservacionesVisitantePlanilla(payload),
+      obtenerObservacionesArbitroPlanilla(payload)
+    );
     setCellValue(sheet, `${cfg.observaciones.colLocal}${cfg.observaciones.rowInicio}`, observaciones);
     setCellValue(sheet, `${cfg.observaciones.colVisitante}${cfg.observaciones.rowInicio}`, observaciones);
 
@@ -3985,6 +4273,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("ciudad-planilla")?.addEventListener("input", () => {
     actualizarHeaderMetaEditable();
   });
+  actualizarVisibilidadArbitrajePlanilla();
   document.getElementById("inasistencia-planilla")?.addEventListener("change", () => {
     aplicarEstadoInasistenciaPlanilla(true);
   });

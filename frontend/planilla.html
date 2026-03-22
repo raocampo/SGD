@@ -132,8 +132,16 @@
 
               <div class="planilla-score-grid planilla-meta-extra-grid">
                 <div class="form-group">
-                  <label for="arbitro-planilla">Arbitro</label>
-                  <input type="text" id="arbitro-planilla" placeholder="Nombre del arbitro" />
+                  <label for="arbitro-planilla">Arbitro central</label>
+                  <input type="text" id="arbitro-planilla" placeholder="Nombre del arbitro central" />
+                </div>
+                <div class="form-group planilla-arbitraje-f11-only" id="grupo-arbitro-linea-1">
+                  <label for="arbitro-linea-1-planilla">Arbitro linea 1</label>
+                  <input type="text" id="arbitro-linea-1-planilla" placeholder="Nombre del arbitro linea 1" />
+                </div>
+                <div class="form-group planilla-arbitraje-f11-only" id="grupo-arbitro-linea-2">
+                  <label for="arbitro-linea-2-planilla">Arbitro linea 2</label>
+                  <input type="text" id="arbitro-linea-2-planilla" placeholder="Nombre del arbitro linea 2" />
                 </div>
                 <div class="form-group">
                   <label for="delegado-planilla">Delegado del partido</label>
@@ -240,9 +248,19 @@
                 </article>
               </div>
 
-              <div class="form-group">
-                <label for="observaciones-planilla">Observaciones</label>
-                <textarea id="observaciones-planilla" rows="3" placeholder="Novedades, sanciones, observaciones de mesa/arbitraje..."></textarea>
+              <div class="planilla-observaciones-grid">
+                <div class="form-group">
+                  <label for="observaciones-planilla">Observación local</label>
+                  <textarea id="observaciones-planilla" rows="3" placeholder="Novedades, sanciones u observaciones del equipo local..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="observaciones-visitante-planilla">Observación visitante</label>
+                  <textarea id="observaciones-visitante-planilla" rows="3" placeholder="Novedades, sanciones u observaciones del equipo visitante..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="observaciones-arbitro-planilla">Observación árbitro</label>
+                  <textarea id="observaciones-arbitro-planilla" rows="3" placeholder="Informe, incidencias y observaciones del árbitro..."></textarea>
+                </div>
               </div>
 
               <div class="form-actions">

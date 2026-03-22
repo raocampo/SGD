@@ -2812,6 +2812,16 @@ body.modal-open {
   text-transform: none;
 }
 
+.planilla-arbitraje-f11-only[hidden] {
+  display: none !important;
+}
+
+.planilla-observaciones-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
 .planilla-faltas-visual {
   display: none;
   grid-template-columns: 1fr 1fr;
@@ -3464,6 +3474,16 @@ body.modal-open {
   color: #0b2a4a;
 }
 
+.planilla-oficial-observ-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.planilla-oficial-observ-grid.is-stacked {
+  grid-template-columns: 1fr;
+}
+
 .planilla-oficial-score {
   display: grid;
   grid-template-columns: 1fr auto auto auto 1fr;
@@ -3660,6 +3680,18 @@ body.modal-open {
   gap: 0.55rem;
 }
 
+.planilla-oficial-observ-page {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.planilla-oficial-observ-page-title {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: #0b2a4a;
+}
+
 .planilla-oficial-footer-mirror {
   margin-bottom: 0;
 }
@@ -3724,6 +3756,11 @@ body.modal-open {
   }
 
   .planilla-footer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .planilla-observaciones-grid,
+  .planilla-oficial-observ-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -3926,6 +3963,11 @@ body.modal-open {
     padding: 0.4rem !important;
     max-height: 281mm;
     overflow: hidden;
+  }
+
+  body.page-planilla.print-planilla-preview .planilla-oficial-sheet--page2 {
+    break-before: page;
+    page-break-before: always;
   }
 
   body.page-planilla.print-planilla-preview .planilla-oficial-meta {

@@ -174,6 +174,23 @@ body {
   font-weight: 500;
   margin-right: 0.25rem;
 }
+.poster-bg-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.poster-bg-btn {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.poster-bg-status {
+  font-size: 0.82rem;
+  color: #5b6880;
+}
 .btn-poster-tema {
   padding: 0.3rem 0.75rem;
   border-radius: 999px;
@@ -208,6 +225,27 @@ body {
   min-height: auto;
   overflow: hidden;
   transition: background 0.3s, color 0.3s;
+}
+
+.poster.has-custom-background {
+  background-image:
+    linear-gradient(rgba(4, 16, 24, 0.46), rgba(4, 16, 24, 0.46)),
+    var(--poster-custom-bg);
+  background-size: cover, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+}
+
+.poster.tema-clasico.has-custom-background {
+  background-image:
+    linear-gradient(rgba(248, 250, 252, 0.82), rgba(248, 250, 252, 0.82)),
+    var(--poster-custom-bg);
+}
+
+.poster.tema-torneo.has-custom-background {
+  background-image:
+    linear-gradient(rgba(11, 31, 53, 0.48), rgba(11, 31, 53, 0.48)),
+    var(--poster-custom-bg);
 }
 
 .poster-titulo{
@@ -572,4 +610,10 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: clamp(.5rem, 1vw, 1rem);
+}
+
+@media (max-width: 780px) {
+  .poster-bg-status {
+    width: 100%;
+  }
 }

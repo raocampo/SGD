@@ -1813,6 +1813,8 @@ class Partido {
     await pool.query(`
       ALTER TABLE partidos
       ADD COLUMN IF NOT EXISTS arbitro TEXT,
+      ADD COLUMN IF NOT EXISTS arbitro_linea_1 TEXT,
+      ADD COLUMN IF NOT EXISTS arbitro_linea_2 TEXT,
       ADD COLUMN IF NOT EXISTS delegado_partido TEXT,
       ADD COLUMN IF NOT EXISTS ciudad TEXT
     `);
@@ -1844,6 +1846,9 @@ class Partido {
         pago_local NUMERIC(10,2) DEFAULT 0,
         pago_visitante NUMERIC(10,2) DEFAULT 0,
         observaciones TEXT,
+        observaciones_local TEXT,
+        observaciones_visitante TEXT,
+        observaciones_arbitro TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -1860,7 +1865,10 @@ class Partido {
       ADD COLUMN IF NOT EXISTS pago_tr_local NUMERIC(10,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS pago_tr_visitante NUMERIC(10,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS pago_arbitraje_local NUMERIC(10,2) DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS pago_arbitraje_visitante NUMERIC(10,2) DEFAULT 0
+      ADD COLUMN IF NOT EXISTS pago_arbitraje_visitante NUMERIC(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS observaciones_local TEXT,
+      ADD COLUMN IF NOT EXISTS observaciones_visitante TEXT,
+      ADD COLUMN IF NOT EXISTS observaciones_arbitro TEXT
     `);
 
     await pool.query(`
@@ -1925,6 +1933,8 @@ class Partido {
           resultado_local,
           resultado_visitante,
           arbitro,
+          arbitro_linea_1,
+          arbitro_linea_2,
           delegado_partido,
           ciudad,
           faltas_local_total,
@@ -1955,7 +1965,10 @@ class Partido {
           pago_arbitraje,
           pago_local,
           pago_visitante,
-          observaciones
+          observaciones,
+          observaciones_local,
+          observaciones_visitante,
+          observaciones_arbitro
         FROM partido_planillas
         WHERE partido_id = $1
         LIMIT 1
@@ -2035,6 +2048,7 @@ class Partido {
              COALESCE(c.requiere_foto_cedula, false) AS requiere_foto_cedula,
              COALESCE(c.requiere_foto_carnet, false) AS requiere_foto_carnet,
              evt.nombre AS evento_nombre,
+             evt.metodo_competencia,
              g.letra_grupo,
              g.nombre_grupo,
              el.nombre AS equipo_local_nombre,
@@ -2139,7 +2153,10 @@ class Partido {
             Number(planilla?.pago_arbitraje_visitante ?? 0),
         pago_local: Number(planilla?.pago_local || 0),
         pago_visitante: Number(planilla?.pago_visitante || 0),
-        observaciones: planilla?.observaciones || "",
+        observaciones: planilla?.observaciones_local || planilla?.observaciones || "",
+        observaciones_local: planilla?.observaciones_local || planilla?.observaciones || "",
+        observaciones_visitante: planilla?.observaciones_visitante || "",
+        observaciones_arbitro: planilla?.observaciones_arbitro || "",
       },
       faltas: {
         local_1er: Number(partido?.faltas_local_1er ?? 0),
@@ -2377,6 +2394,12 @@ class Partido {
     const arbitro = Object.prototype.hasOwnProperty.call(datos, "arbitro")
       ? (datos.arbitro ?? "").toString().trim()
       : null;
+    const arbitroLinea1 = Object.prototype.hasOwnProperty.call(datos, "arbitro_linea_1")
+      ? (datos.arbitro_linea_1 ?? "").toString().trim()
+      : null;
+    const arbitroLinea2 = Object.prototype.hasOwnProperty.call(datos, "arbitro_linea_2")
+      ? (datos.arbitro_linea_2 ?? "").toString().trim()
+      : null;
     const delegadoPartido = Object.prototype.hasOwnProperty.call(datos, "delegado_partido")
       ? (datos.delegado_partido ?? "").toString().trim()
       : null;
@@ -2384,7 +2407,12 @@ class Partido {
       ? (datos.ciudad ?? "").toString().trim()
       : null;
     const pagos = datos.pagos || {};
-    const observaciones = (datos.observaciones || "").toString().trim();
+    const observacionesLocal = (datos.observaciones_local ?? datos.observaciones ?? "")
+      .toString()
+      .trim();
+    const observacionesVisitante = (datos.observaciones_visitante || "").toString().trim();
+    const observaciones = observacionesLocal;
+    const observacionesArbitro = (datos.observaciones_arbitro || "").toString().trim();
     const motivoEdicion = String(datos?.motivo_edicion || "").trim();
     const usuarioEdicionId =
       Number.isFinite(Number.parseInt(opciones?.usuario_id ?? datos?.usuario_edicion_id, 10)) &&
@@ -2498,22 +2526,26 @@ class Partido {
               resultado_visitante = $2,
               estado = $3,
               arbitro = COALESCE($4, arbitro),
-              delegado_partido = COALESCE($5, delegado_partido),
-              ciudad = COALESCE($6, ciudad),
-              faltas_local_total = $7,
-              faltas_visitante_total = $8,
-              faltas_local_1er = $9,
-              faltas_local_2do = $10,
-              faltas_visitante_1er = $11,
-              faltas_visitante_2do = $12
+              arbitro_linea_1 = COALESCE($5, arbitro_linea_1),
+              arbitro_linea_2 = COALESCE($6, arbitro_linea_2),
+              delegado_partido = COALESCE($7, delegado_partido),
+              ciudad = COALESCE($8, ciudad),
+              faltas_local_total = $9,
+              faltas_visitante_total = $10,
+              faltas_local_1er = $11,
+              faltas_local_2do = $12,
+              faltas_visitante_1er = $13,
+              faltas_visitante_2do = $14
               ${setTs}
-          WHERE id = $13
+          WHERE id = $15
         `,
         [
           resultadoLocal,
           resultadoVisitante,
           estado,
           arbitro,
+          arbitroLinea1,
+          arbitroLinea2,
           delegadoPartido,
           ciudad,
           faltasNormalizadas.local_total,
@@ -2538,10 +2570,11 @@ class Partido {
               pago_tr_local, pago_tr_visitante,
               pago_arbitraje_local, pago_arbitraje_visitante,
               pago_arbitraje, pago_local, pago_visitante,
-              observaciones, updated_at
+              observaciones, observaciones_local, observaciones_visitante,
+              observaciones_arbitro, updated_at
             )
           VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CURRENT_TIMESTAMP)
           ON CONFLICT (partido_id)
           DO UPDATE SET
             ambos_no_presentes = EXCLUDED.ambos_no_presentes,
@@ -2558,6 +2591,9 @@ class Partido {
             pago_local = EXCLUDED.pago_local,
             pago_visitante = EXCLUDED.pago_visitante,
             observaciones = EXCLUDED.observaciones,
+            observaciones_local = EXCLUDED.observaciones_local,
+            observaciones_visitante = EXCLUDED.observaciones_visitante,
+            observaciones_arbitro = EXCLUDED.observaciones_arbitro,
             updated_at = CURRENT_TIMESTAMP
         `,
         [
@@ -2576,6 +2612,9 @@ class Partido {
           pagoLocal,
           pagoVisitante,
           observaciones,
+          observacionesLocal,
+          observacionesVisitante,
+          observacionesArbitro,
         ]
       );
 

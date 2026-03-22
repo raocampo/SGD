@@ -29,6 +29,16 @@
             <button type="button" class="btn-poster-tema" data-tema="clasico" onclick="aplicarTemaFixture('clasico')">Clásico</button>
             <button type="button" class="btn-poster-tema" data-tema="torneo" onclick="aplicarTemaFixture('torneo')">Colores del torneo</button>
           </div>
+          <div class="poster-bg-controls" style="margin:0;">
+            <label for="fixture-bg-input" class="btn btn-secondary poster-bg-btn">
+              <i class="fas fa-image"></i> Fondo
+            </label>
+            <input id="fixture-bg-input" type="file" accept="image/*" hidden />
+            <button type="button" id="btn-fixture-clear-bg" class="btn btn-light poster-bg-btn" disabled>
+              <i class="fas fa-trash-alt"></i> Quitar fondo
+            </button>
+            <span id="fixture-bg-status" class="poster-bg-status">Sin fondo personalizado.</span>
+          </div>
           <button class="btn btn-secondary" onclick="exportarFixturePNG()">
             <i class="fas fa-image"></i> Exportar PNG
           </button>
@@ -98,4 +108,3 @@
     <script src="js/fixtureplantilla.js"></script>
   </body>
 </html>
-

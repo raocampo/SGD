@@ -22,10 +22,14 @@ let contexto = {
   colorPrimario: "#1e3a5f",
   colorSecundario: "#0b1f35",
   colorAcento: "#facc15",
+  fondoPersonalizado: "",
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("fixtureplantilla.html")) return;
+
+  document.getElementById("fixture-bg-input")?.addEventListener("change", manejarCambioFondoFixture);
+  document.getElementById("btn-fixture-clear-bg")?.addEventListener("click", limpiarFondoFixture);
 
   const routeContext =
     window.RouteContext?.read?.("fixtureplantilla.html", ["evento", "grupo", "jornada", "fecha", "vista"]) || {};
@@ -74,6 +78,7 @@ async function cargarContexto() {
       colorPrimario: camp.color_primario || "#1e3a5f",
       colorSecundario: camp.color_secundario || "#0b1f35",
       colorAcento: camp.color_acento || "#facc15",
+      fondoPersonalizado: "",
     };
     // Aplicar colores del torneo como CSS vars para el tema "torneo"
     const poster = document.getElementById("fixture-export");
@@ -83,11 +88,84 @@ async function cargarContexto() {
       poster.style.setProperty("--t-acento", contexto.colorAcento);
     }
     renderAuspiciantesFixture(contexto.auspiciantes);
+    restaurarFondoFixtureGuardado();
   } catch (error) {
     console.warn("No se pudo cargar contexto de plantilla:", error);
     contexto.auspiciantes = [];
     renderAuspiciantesFixture([]);
+    restaurarFondoFixtureGuardado();
   }
+}
+
+function obtenerClaveFondoFixture() {
+  const campeonatoId = Number.parseInt(contexto.campeonatoId || "", 10) || "na";
+  const evento = Number.parseInt(eventoId || "", 10) || "na";
+  return `fixture-bg:${campeonatoId}:${evento}`;
+}
+
+function aplicarFondoFixture(url = "") {
+  const poster = document.getElementById("fixture-export");
+  const status = document.getElementById("fixture-bg-status");
+  const clearBtn = document.getElementById("btn-fixture-clear-bg");
+  const limpio = String(url || "").trim();
+
+  if (poster) {
+    if (limpio) {
+      poster.classList.add("has-custom-background");
+      poster.style.setProperty("--poster-custom-bg", `url("${limpio.replace(/"/g, "%22")}")`);
+    } else {
+      poster.classList.remove("has-custom-background");
+      poster.style.removeProperty("--poster-custom-bg");
+    }
+  }
+
+  if (status) {
+    status.textContent = limpio
+      ? "Fondo personalizado cargado para este fixture."
+      : "Sin fondo personalizado.";
+  }
+  if (clearBtn) clearBtn.disabled = !limpio;
+  contexto.fondoPersonalizado = limpio;
+}
+
+function restaurarFondoFixtureGuardado() {
+  try {
+    const valor = window.localStorage?.getItem?.(obtenerClaveFondoFixture()) || "";
+    aplicarFondoFixture(valor);
+  } catch (error) {
+    console.warn("No se pudo restaurar el fondo del fixture:", error);
+    aplicarFondoFixture("");
+  }
+}
+
+async function manejarCambioFondoFixture(event) {
+  const archivo = event?.target?.files?.[0];
+  if (!archivo) return;
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
+      reader.readAsDataURL(archivo);
+    });
+    window.localStorage?.setItem?.(obtenerClaveFondoFixture(), dataUrl);
+    aplicarFondoFixture(dataUrl);
+    mostrarNotificacion("Fondo del fixture cargado", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion("No se pudo cargar el fondo", "error");
+  } finally {
+    if (event?.target) event.target.value = "";
+  }
+}
+
+function limpiarFondoFixture() {
+  try {
+    window.localStorage?.removeItem?.(obtenerClaveFondoFixture());
+  } catch (error) {
+    console.warn("No se pudo limpiar el fondo del fixture:", error);
+  }
+  aplicarFondoFixture("");
 }
 
 async function cargarPartidos() {
@@ -342,7 +420,7 @@ async function exportarFixturePNG() {
   if (!zona) return;
   const canvas = await html2canvas(zona, {
     scale: 2,
-    backgroundColor: "#071924",
+    backgroundColor: null,
     useCors: true,
   });
   const a = document.createElement("a");
@@ -356,7 +434,7 @@ async function exportarFixturePDF() {
   if (!zona) return;
   const canvas = await html2canvas(zona, {
     scale: 2,
-    backgroundColor: "#071924",
+    backgroundColor: null,
     useCors: true,
   });
   const imgData = canvas.toDataURL("image/png");
