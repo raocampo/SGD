@@ -2925,7 +2925,6 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
   if (!cont) return;
 
   const modelo = obtenerModeloPlanillaOficial();
-  const tituloModelo = modelo === "futbol_11_indor" ? "FUTBOL 11 / INDOR" : "FUTBOL 7 / 5 / SALA";
   const contextoCompetencia = obtenerContextoCompetenciaPlanilla(p);
   const jornada = Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
   const arbitraje = obtenerDatosArbitrajePlanilla(p);
@@ -2952,7 +2951,6 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
         <div class="planilla-oficial-head-text">
           <p class="planilla-oficial-org">${escapeHtml(p.campeonato_organizador || p.campeonato_nombre || "LT&C")}</p>
           <h4>PLANILLA DE JUEGO</h4>
-          <p class="planilla-oficial-type">${escapeHtml(tituloModelo)}</p>
         </div>
         ${
           logoOrg || logosAuspiciantes
@@ -3567,7 +3565,6 @@ async function imprimirPDFPlanilla() {
     const observacionesVisitante = obtenerObservacionesVisitantePlanilla(payload);
     const observacionesArbitro = obtenerObservacionesArbitroPlanilla(payload);
     const modelo = obtenerModeloPlanillaOficial();
-    const tituloModelo = modelo === "futbol_11_indor" ? "FUTBOL 11 / INDOR" : "FUTBOL 7 / 5 / SALA";
     const localNombre = p.equipo_local_nombre || equiposPartido.local.nombre;
     const visitNombre = p.equipo_visitante_nombre || equiposPartido.visitante.nombre;
     const localDt = p.equipo_local_director_tecnico || "-";
@@ -3579,6 +3576,8 @@ async function imprimirPDFPlanilla() {
     const bodyLocal = construirFilasPlantelPdf(dataPlanilla.plantel_local || [], stats, maxFilas);
     const bodyVisit = construirFilasPlantelPdf(dataPlanilla.plantel_visitante || [], stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
+    const logoLocalPdf = await cargarImagenComoDataUrl(p.equipo_local_logo_url);
+    const logoVisitantePdf = await cargarImagenComoDataUrl(p.equipo_visitante_logo_url);
     const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
     const marcadorLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
     const marcadorVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
@@ -3609,7 +3608,6 @@ async function imprimirPDFPlanilla() {
                   fontSize: 10.5,
                 },
                 { text: "PLANILLA DE JUEGO", alignment: "center", bold: true, fontSize: 17, margin: [0, 1, 0, 0] },
-                { text: tituloModelo, alignment: "center", bold: true, fontSize: 10.5, margin: [0, 1, 0, 0] },
               ],
               margin: [0, 3, 0, 0],
             },
@@ -3689,11 +3687,51 @@ async function imprimirPDFPlanilla() {
           table: {
             widths: ["*", 30, 10, 30, "*"],
             body: [[
-              { text: localNombre, alignment: "center", bold: true, fontSize: 11.5, border: [false, false, false, false], margin: [0, 13, 0, 0] },
+              {
+                columns: [
+                  ...(logoLocalPdf
+                    ? [{
+                        width: 20,
+                        image: logoLocalPdf,
+                        fit: [18, 18],
+                        margin: [0, 10, 4, 0],
+                      }]
+                    : []),
+                  {
+                    width: "*",
+                    text: localNombre,
+                    alignment: logoLocalPdf ? "left" : "center",
+                    bold: true,
+                    fontSize: 11.5,
+                    margin: [0, 10, 0, 0],
+                  },
+                ],
+                border: [false, false, false, false],
+              },
               { text: marcadorLocal, alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
               { text: ":", alignment: "center", bold: true, fontSize: 16.5, border: [false, false, false, false], margin: [0, 12, 0, 0] },
               { text: marcadorVisit, alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
-              { text: visitNombre, alignment: "center", bold: true, fontSize: 11.5, border: [false, false, false, false], margin: [0, 13, 0, 0] },
+              {
+                columns: [
+                  {
+                    width: "*",
+                    text: visitNombre,
+                    alignment: logoVisitantePdf ? "right" : "center",
+                    bold: true,
+                    fontSize: 11.5,
+                    margin: [0, 10, 0, 0],
+                  },
+                  ...(logoVisitantePdf
+                    ? [{
+                        width: 20,
+                        image: logoVisitantePdf,
+                        fit: [18, 18],
+                        margin: [4, 10, 0, 0],
+                      }]
+                    : []),
+                ],
+                border: [false, false, false, false],
+              },
             ]],
             heights: () => 48,
           },
