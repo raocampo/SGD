@@ -2014,8 +2014,19 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
 - Documento nuevo:
   - `docs/PLAN_TRANSMISION_PARTIDOS.md`
 
+## 2026-03-22 - Render alineado con migración 049 y ajuste de refresh en landing
+- Se ejecutó formalmente `049_portal_bienvenida_equipos_y_categoria_juvenil.sql` en PostgreSQL de Render.
+- Verificación positiva en Render:
+  - `organizador_portal_config.equipos_bienvenida_titulo`
+  - `organizador_portal_config.equipos_bienvenida_descripcion`
+  - `organizador_portal_config.equipos_bienvenida_imagen_url`
+  - `eventos.categoria_juvenil`
+- También se corrigió un comportamiento molesto del portal público:
+  - al hacer `refresh` en `index.html`, ya no se reabre automáticamente el último torneo visto,
+  - la portada principal solo abre detalle si `campeonato` o `evento` vienen explícitamente en la URL,
+  - `portal.html` mantiene su comportamiento de contexto compartible sin afectar la landing.
+
 ## Pendiente inmediato siguiente sesión
-- Ejecutar la migración `049_portal_bienvenida_equipos_y_categoria_juvenil.sql` también en la BD de Render para dejar producción alineada sin depender solo del endurecimiento de esquema.
 - Validar en el portal público del organizador:
   - carga de imagen de bienvenida,
   - cards/listado de equipos participantes,

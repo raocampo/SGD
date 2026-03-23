@@ -407,7 +407,8 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Estado:
   - implementado en backend y frontend,
   - validado en local,
-  - pendiente aplicar formalmente la migración `049` en Render si se quiere dejar producción alineada también a nivel SQL.
+  - migración `049` aplicada formalmente también en Render,
+  - ajustado el refresh de `index.html` para no reabrir el último torneo por contexto persistido.
 
 19. Categorías juveniles / carnés:
 - Ya existe el flag `categoria_juvenil` en eventos.

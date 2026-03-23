@@ -1398,3 +1398,13 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - retransmisión a redes sociales mediante proveedor externo,
   - propuesta de tabla `partido_transmisiones`,
   - endpoints sugeridos y fases de implementación.
+
+---
+
+## 27. Fix de refresh en la landing pública
+- **Ubicacion frontend:** `frontend/js/portal.js`
+- Se corrigió la rehidratación indeseada del último torneo abierto en `index.html`.
+- Ahora la portada principal:
+  - no reutiliza `campeonato/evento` guardados en sesión para abrir el detalle por sí sola,
+  - solo muestra detalle si esos valores llegan explícitamente por URL.
+- `portal.html` conserva el contexto compartible del torneo sin contaminar la landing general.

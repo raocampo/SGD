@@ -11,6 +11,9 @@ const ES_PORTAL_PAGE = /\/portal\.html$/i.test(window.location.pathname);
 let portalContextoActual = null;
 
 function leerContextoPortalDesdeUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const tieneCampeonatoEnUrl = params.has("campeonato");
+  const tieneEventoEnUrl = params.has("evento");
   const pageKey = ES_PORTAL_PAGE ? "portal.html" : "index.html";
   const routeContext = window.RouteContext?.read?.(pageKey, [
     "campeonato",
@@ -21,8 +24,21 @@ function leerContextoPortalDesdeUrl() {
   const evento = Number.parseInt(routeContext.evento || "", 10);
   const organizador = Number.parseInt(routeContext.organizador || "", 10);
   return {
-    campeonatoId: Number.isFinite(campeonato) && campeonato > 0 ? campeonato : null,
-    eventoId: Number.isFinite(evento) && evento > 0 ? evento : null,
+    // En la landing principal no debemos reabrir automaticamente el ultimo
+    // torneo visto solo por contexto persistido. Ahi solo se respeta torneo/evento
+    // cuando vienen explicitamente en la URL.
+    campeonatoId:
+      Number.isFinite(campeonato) &&
+      campeonato > 0 &&
+      (ES_PORTAL_PAGE || tieneCampeonatoEnUrl)
+        ? campeonato
+        : null,
+    eventoId:
+      Number.isFinite(evento) &&
+      evento > 0 &&
+      (ES_PORTAL_PAGE || tieneEventoEnUrl)
+        ? evento
+        : null,
     organizadorId: Number.isFinite(organizador) && organizador > 0 ? organizador : null,
   };
 }
