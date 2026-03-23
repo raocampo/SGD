@@ -716,6 +716,77 @@ function nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin) {
   }
 }
 
+function contarBloquesDisponiblesEnVentana(evento, windows, slotMin, fechaInicio, fechaFin) {
+  if (!fechaInicio || !fechaFin) return 0;
+  const inicio = new Date(fechaInicio);
+  const fin = new Date(fechaFin);
+  if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime()) || inicio > fin) return 0;
+
+  inicio.setHours(0, 0, 0, 0);
+  fin.setHours(0, 0, 0, 0);
+
+  let total = 0;
+  const cursor = new Date(inicio);
+  while (cursor <= fin) {
+    const window = dayWindowByDate(evento, cursor, windows);
+    if (window) {
+      for (let start = window.startMin; start + slotMin <= window.endMin + 1; start += slotMin) {
+        total += 1;
+      }
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return total;
+}
+
+function construirErrorCapacidadFixture({
+  evento,
+  jornadas,
+  canchas,
+  slotMin,
+  fechaInicio,
+  fechaFin,
+  totalGrupos = 0,
+}) {
+  const windows = buildWindowsFromEvento(evento);
+  const bloquesDisponibles = contarBloquesDisponiblesEnVentana(
+    evento,
+    windows,
+    slotMin,
+    fechaInicio,
+    fechaFin
+  );
+  const totalCanchas = Math.max(1, Array.isArray(canchas) ? canchas.length : Number.parseInt(canchas, 10) || 1);
+  const partidosTotales = jornadas.reduce((acc, jornada) => acc + (Array.isArray(jornada) ? jornada.length : 0), 0);
+  const bloquesRequeridos = jornadas.reduce((acc, jornada) => {
+    const cantidad = Array.isArray(jornada) ? jornada.length : 0;
+    return acc + Math.ceil(cantidad / totalCanchas);
+  }, 0);
+
+  if (bloquesDisponibles <= 0 || bloquesRequeridos <= bloquesDisponibles) {
+    return null;
+  }
+
+  const nombreEvento = String(evento?.nombre || "Evento").trim();
+  const modalidad = String(evento?.modalidad || "weekend").trim().toLowerCase();
+  const metodo = String(evento?.metodo_competencia || "grupos").trim().toLowerCase();
+  const partes = [
+    `No hay fechas suficientes para generar el fixture de ${nombreEvento}.`,
+    `Se requieren ${partidosTotales} partidos (${bloquesRequeridos} bloque(s) de programación con ${totalCanchas} cancha(s)) y solo hay ${bloquesDisponibles} bloque(s) disponibles entre ${formatYMD(new Date(fechaInicio))} y ${formatYMD(new Date(fechaFin))}.`,
+    `Modalidad: ${modalidad}. Método: ${metodo}.`,
+  ];
+
+  if (metodo === "liga" && totalGrupos > 0) {
+    partes.push(`La categoría tiene ${totalGrupos} grupo(s), pero en modo liga el sistema arma un todos-contra-todos general y no usa esos grupos para dividir el fixture.`);
+  }
+
+  if (!Array.isArray(canchas) || canchas.length <= 1) {
+    partes.push("Solo hay 1 cancha operativa para el cálculo actual. Si necesitas más capacidad, asigna canchas al evento o amplía el rango de fechas.");
+  }
+
+  return partes.join(" ");
+}
+
 class Partido {
   static _columnaTimestampActualizacion = undefined;
   static _esquemaPlanillaAsegurado = false;
@@ -1054,6 +1125,32 @@ class Partido {
       return creados;
     }
 
+    const jornadasUnificadas = [];
+    for (let j = 1; j <= maxJornadas; j++) {
+      const partidosJornada = [];
+      for (const item of jornadasPorGrupo) {
+        const jData = item.jornadas.find((x) => x.numero === j);
+        if (!jData) continue;
+        for (const [local, visitante] of jData.partidos) {
+          partidosJornada.push([local, visitante]);
+        }
+      }
+      jornadasUnificadas.push(partidosJornada);
+    }
+
+    const mensajeCapacidad = construirErrorCapacidadFixture({
+      evento,
+      jornadas: jornadasUnificadas,
+      canchas,
+      slotMin,
+      fechaInicio: evento.fecha_inicio,
+      fechaFin: evento.fecha_fin,
+      totalGrupos: grupos.length,
+    });
+    if (mensajeCapacidad) {
+      throw new Error(mensajeCapacidad);
+    }
+
     // Scheduler real
     const windows = buildWindowsFromEvento(evento);
 
@@ -1177,6 +1274,22 @@ class Partido {
         jornada++;
       }
       return creados;
+    }
+
+    const gruposRes = await pool.query(`SELECT COUNT(*)::int AS total FROM grupos WHERE evento_id = $1`, [evento_id]);
+    const totalGrupos = Number.parseInt(gruposRes.rows?.[0]?.total, 10) || 0;
+
+    const mensajeCapacidad = construirErrorCapacidadFixture({
+      evento,
+      jornadas,
+      canchas,
+      slotMin,
+      fechaInicio: evento.fecha_inicio,
+      fechaFin: evento.fecha_fin,
+      totalGrupos,
+    });
+    if (mensajeCapacidad) {
+      throw new Error(mensajeCapacidad);
     }
 
     const windows = buildWindowsFromEvento(evento);
