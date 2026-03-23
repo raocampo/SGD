@@ -24,6 +24,7 @@ let eliminatoriaState = {
     auspiciantes: [],
     fondoPersonalizado: "",
   },
+  rondaJornadaSeleccionada: "",
 };
 let listenersConectoresExportInicializados = false;
 
@@ -152,12 +153,15 @@ function obtenerClaveFondoPlayoff() {
 }
 
 function aplicarFondoPublicacion(url = "") {
-  const zona = document.getElementById("eli-zona-export");
+  const zonas = [
+    document.getElementById("eli-zona-export"),
+    document.getElementById("eli-jornada-export"),
+  ].filter(Boolean);
   const status = document.getElementById("eli-export-bg-status");
   const clearBtn = document.getElementById("btn-eli-clear-bg");
   const limpio = String(url || "").trim();
 
-  if (zona) {
+  zonas.forEach((zona) => {
     if (limpio) {
       zona.classList.add("has-custom-background");
       zona.style.setProperty("--eli-export-custom-bg", `url("${limpio.replace(/"/g, "%22")}")`);
@@ -165,7 +169,7 @@ function aplicarFondoPublicacion(url = "") {
       zona.classList.remove("has-custom-background");
       zona.style.removeProperty("--eli-export-custom-bg");
     }
-  }
+  });
 
   if (status) {
     status.textContent = limpio
@@ -676,6 +680,26 @@ function bindEventosEliminatoria() {
     }
   });
   document.getElementById("btn-eli-exportar")?.addEventListener("click", abrirEnPartidos);
+  document.getElementById("btn-eli-toggle-jornada")?.addEventListener("click", () => {
+    const section = document.getElementById("eli-jornada-section");
+    const button = document.getElementById("btn-eli-toggle-jornada");
+    if (!section || !button) return;
+    const visible = section.style.display !== "none";
+    section.style.display = visible ? "none" : "";
+    button.classList.toggle("is-active", !visible);
+    button.innerHTML = visible
+      ? '<i class="fas fa-calendar-days"></i> Jornada del playoff'
+      : '<i class="fas fa-eye-slash"></i> Ocultar jornada';
+    if (!visible) {
+      activarTabEliminatoria("bracket");
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+  document.getElementById("eli-jornada-ronda")?.addEventListener("change", () => {
+    eliminatoriaState.rondaJornadaSeleccionada =
+      document.getElementById("eli-jornada-ronda")?.value || "";
+    renderJornadaPlayoffPoster();
+  });
   document.getElementById("btn-eli-toggle-plantilla")?.addEventListener("click", () => {
     const section = document.getElementById("eli-publicacion-section");
     const button = document.getElementById("btn-eli-toggle-plantilla");
@@ -691,6 +715,8 @@ function bindEventosEliminatoria() {
       section.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   });
+  document.getElementById("btn-eli-jornada-png")?.addEventListener("click", exportarJornadaPlayoffPNG);
+  document.getElementById("btn-eli-jornada-pdf")?.addEventListener("click", exportarJornadaPlayoffPDF);
   document.getElementById("btn-eli-export-png")?.addEventListener("click", exportarEliminatoriaPNG);
   document.getElementById("btn-eli-export-pdf")?.addEventListener("click", exportarEliminatoriaPDF);
   document.getElementById("btn-eli-share")?.addEventListener("click", compartirEliminatoria);
@@ -1526,6 +1552,201 @@ function renderCabeceraPublicacion() {
     }
   }
   restaurarFondoPublicacionGuardado();
+  renderJornadaPlayoffPoster();
+}
+
+function renderAuspiciantesPosterEnGrid(wrapId, gridId, lista = [], fallbackTexto = "") {
+  const wrap = document.getElementById(wrapId);
+  const grid = document.getElementById(gridId);
+  if (!wrap || !grid) return;
+
+  const items = Array.isArray(lista) ? lista : [];
+  if (!items.length) {
+    if (fallbackTexto) {
+      grid.innerHTML = `<div class="eli-export-sponsor-item is-text"><span>${escapeHtml(fallbackTexto)}</span></div>`;
+      wrap.style.display = "block";
+    } else {
+      grid.innerHTML = "";
+      wrap.style.display = "none";
+    }
+    return;
+  }
+
+  grid.innerHTML = items
+    .map((a) => {
+      const nombre = String(a?.nombre || "Auspiciante");
+      const logo = normalizarLogoUrl(a?.logo_url || null);
+      if (logo) {
+        return `
+          <div class="eli-export-sponsor-item">
+            <img src="${escapeHtml(logo)}" alt="${escapeHtml(
+          nombre
+        )}" crossorigin="anonymous" referrerpolicy="no-referrer" />
+          </div>
+        `;
+      }
+      return `
+        <div class="eli-export-sponsor-item is-text">
+          <span>${escapeHtml(nombre)}</span>
+        </div>
+      `;
+    })
+    .join("");
+  wrap.style.display = "block";
+}
+
+function obtenerRondasDisponiblesJornadaPlayoff() {
+  return agruparPorRonda(eliminatoriaState.cruces || []).filter(
+    (col) => Array.isArray(col?.cruces) && col.cruces.length
+  );
+}
+
+function tieneProgramacionPlayoff(partido = {}) {
+  return Boolean(partido?.fecha_partido || partido?.hora_partido || partido?.cancha);
+}
+
+function sincronizarSelectorRondaPlayoff() {
+  const select = document.getElementById("eli-jornada-ronda");
+  const rounds = obtenerRondasDisponiblesJornadaPlayoff();
+  if (!select) return;
+
+  const previo = eliminatoriaState.rondaJornadaSeleccionada || select.value || "";
+  const preferida =
+    rounds.find((round) => (round.cruces || []).some((c) => tieneProgramacionPlayoff(c)))?.ronda ||
+    rounds[0]?.ronda ||
+    "";
+  const actual = rounds.some((round) => round.ronda === previo) ? previo : preferida;
+
+  select.innerHTML = rounds.length
+    ? rounds
+        .map(
+          (round) =>
+            `<option value="${escapeHtml(round.ronda)}">${escapeHtml(formatearRonda(round.ronda))}</option>`
+        )
+        .join("")
+    : '<option value="">Selecciona una ronda</option>';
+  select.value = actual;
+  select.disabled = !rounds.length;
+  eliminatoriaState.rondaJornadaSeleccionada = actual;
+}
+
+function formatearFechaPlayoffPoster(valor) {
+  if (!valor) return "";
+  const match = String(valor).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return "";
+  const fecha = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return fecha.toLocaleDateString("es-EC", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function construirMetaPlayoffPoster(partido = {}) {
+  const fecha = formatearFechaPlayoffPoster(partido.fecha_partido);
+  const hora = partido.hora_partido ? String(partido.hora_partido).slice(0, 5) : "";
+  const cancha = String(partido.cancha || "").trim();
+  return [fecha, hora, cancha].filter(Boolean).join(" • ");
+}
+
+function renderJornadaPlayoffPoster() {
+  const section = document.getElementById("eli-jornada-section");
+  const lista = document.getElementById("eli-jornada-lista");
+  const tituloEl = document.getElementById("eli-round-titulo");
+  const subtituloEl = document.getElementById("eli-round-subtitulo");
+  const organizadorEl = document.getElementById("eli-round-organizador");
+  const logoEl = document.getElementById("eli-round-logo");
+  const btnPng = document.getElementById("btn-eli-jornada-png");
+  const btnPdf = document.getElementById("btn-eli-jornada-pdf");
+  if (!lista) return;
+
+  sincronizarSelectorRondaPlayoff();
+  const rounds = obtenerRondasDisponiblesJornadaPlayoff();
+  const ronda = eliminatoriaState.rondaJornadaSeleccionada;
+  const round = rounds.find((item) => item.ronda === ronda) || null;
+  const ctx = eliminatoriaState.contextoPublicacion || {};
+
+  if (organizadorEl) {
+    organizadorEl.textContent = `ORGANIZA: ${ctx.organizador || "No registrado"}`;
+  }
+  if (logoEl) {
+    if (ctx.logoUrl) {
+      logoEl.src = ctx.logoUrl;
+      logoEl.style.display = "block";
+    } else {
+      logoEl.removeAttribute("src");
+      logoEl.style.display = "none";
+    }
+  }
+
+  if (!round || !Array.isArray(round.cruces) || !round.cruces.length) {
+    if (tituloEl) tituloEl.textContent = "JORNADA DEL PLAYOFF";
+    if (subtituloEl) subtituloEl.textContent = `Categoría: ${ctx.eventoNombre || "-"}`;
+    lista.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-calendar-days"></i>
+        <p>No hay partidos de playoff listos para esta ronda.</p>
+      </div>`;
+    if (btnPng) btnPng.disabled = true;
+    if (btnPdf) btnPdf.disabled = true;
+    if (section) section.style.display = rounds.length ? section.style.display : "none";
+    return;
+  }
+
+  if (tituloEl) {
+    tituloEl.textContent = `${String(ctx.campeonatoNombre || "Campeonato").toUpperCase()} - ${String(
+      formatearRonda(round.ronda) || "PLAYOFF"
+    ).toUpperCase()}`;
+  }
+  if (subtituloEl) {
+    subtituloEl.textContent = `Categoría: ${ctx.eventoNombre || "-"} • ${round.cruces.length} partido(s)`;
+  }
+
+  lista.innerHTML = round.cruces
+    .map((partido) => {
+      const local = obtenerNombreNodoPublicacion(partido, "local");
+      const visita = obtenerNombreNodoPublicacion(partido, "visitante");
+      const logoLocal = normalizarLogoUrl(partido.equipo_local_logo || null);
+      const logoVisita = normalizarLogoUrl(partido.equipo_visitante_logo || null);
+      const meta = construirMetaPlayoffPoster(partido);
+      const estado = String(partido.estado || "").toLowerCase();
+      const badge = estado === "finalizado"
+        ? "Finalizado"
+        : meta
+          ? "Programado"
+          : "Pendiente";
+      const marcador = Number.isFinite(Number(partido.resultado_local)) && Number.isFinite(Number(partido.resultado_visitante))
+        ? `${Number(partido.resultado_local)} - ${Number(partido.resultado_visitante)}`
+        : "vs";
+      return `
+        <article class="eli-round-match-card">
+          <div class="eli-round-match-head">
+            <span class="eli-round-match-label">${escapeHtml(
+              formatearEtiquetaPartidoEliminatoria(partido.ronda, partido.partido_numero)
+            )}</span>
+            <span class="eli-round-match-badge">${escapeHtml(badge)}</span>
+          </div>
+          <div class="eli-round-match-team is-local">
+            <span class="eli-round-match-team-meta">
+              ${renderEquipoLogo(logoLocal, local, "eli-round-team-logo")}
+              <span>${escapeHtml(local)}</span>
+            </span>
+          </div>
+          <div class="eli-round-match-score">${escapeHtml(marcador)}</div>
+          <div class="eli-round-match-team is-visitante">
+            <span class="eli-round-match-team-meta">
+              ${renderEquipoLogo(logoVisita, visita, "eli-round-team-logo")}
+              <span>${escapeHtml(visita)}</span>
+            </span>
+          </div>
+          <div class="eli-round-match-meta">${escapeHtml(meta || "Por programar")}</div>
+        </article>
+      `;
+    })
+    .join("");
+
+  if (btnPng) btnPng.disabled = false;
+  if (btnPdf) btnPdf.disabled = false;
 }
 
 async function cargarAuspiciantesPublicacion(campeonatoIdRaw) {
@@ -1533,8 +1754,8 @@ async function cargarAuspiciantesPublicacion(campeonatoIdRaw) {
   const grid = document.getElementById("eli-export-sponsors-grid");
   if (!wrap || !grid) return;
 
-  wrap.style.display = "none";
-  grid.innerHTML = "";
+  renderAuspiciantesPosterEnGrid("eli-export-sponsors", "eli-export-sponsors-grid", []);
+  renderAuspiciantesPosterEnGrid("eli-round-sponsors", "eli-round-sponsors-grid", []);
 
   let campeonatoId = Number.parseInt(campeonatoIdRaw || "", 10);
   if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
@@ -1545,6 +1766,8 @@ async function cargarAuspiciantesPublicacion(campeonatoIdRaw) {
     if (eliminatoriaState.contextoPublicacion) {
       eliminatoriaState.contextoPublicacion.auspiciantes = [];
     }
+    renderAuspiciantesPosterEnGrid("eli-export-sponsors", "eli-export-sponsors-grid", []);
+    renderAuspiciantesPosterEnGrid("eli-round-sponsors", "eli-round-sponsors-grid", []);
     return;
   }
 
@@ -1562,40 +1785,40 @@ async function cargarAuspiciantesPublicacion(campeonatoIdRaw) {
     }
 
     if (!lista.length) {
-      grid.innerHTML = `<div class="eli-export-sponsor-item is-text"><span>Sin auspiciantes registrados</span></div>`;
-      wrap.style.display = "block";
+      renderAuspiciantesPosterEnGrid(
+        "eli-export-sponsors",
+        "eli-export-sponsors-grid",
+        [],
+        "Sin auspiciantes registrados"
+      );
+      renderAuspiciantesPosterEnGrid(
+        "eli-round-sponsors",
+        "eli-round-sponsors-grid",
+        [],
+        "Sin auspiciantes registrados"
+      );
       return;
     }
 
-    grid.innerHTML = lista
-      .map((a) => {
-        const nombre = String(a?.nombre || "Auspiciante");
-        const logo = normalizarLogoUrl(a?.logo_url || null);
-        if (logo) {
-          return `
-            <div class="eli-export-sponsor-item">
-              <img src="${escapeHtml(logo)}" alt="${escapeHtml(
-            nombre
-          )}" crossorigin="anonymous" referrerpolicy="no-referrer" />
-            </div>
-          `;
-        }
-        return `
-          <div class="eli-export-sponsor-item is-text">
-            <span>${escapeHtml(nombre)}</span>
-          </div>
-        `;
-      })
-      .join("");
-
-    wrap.style.display = "block";
+    renderAuspiciantesPosterEnGrid("eli-export-sponsors", "eli-export-sponsors-grid", lista);
+    renderAuspiciantesPosterEnGrid("eli-round-sponsors", "eli-round-sponsors-grid", lista);
   } catch (error) {
     console.warn("No se pudieron cargar auspiciantes para la plantilla de eliminatoria:", error);
     if (eliminatoriaState.contextoPublicacion) {
       eliminatoriaState.contextoPublicacion.auspiciantes = [];
     }
-    grid.innerHTML = `<div class="eli-export-sponsor-item is-text"><span>No se pudieron cargar auspiciantes</span></div>`;
-    wrap.style.display = "block";
+    renderAuspiciantesPosterEnGrid(
+      "eli-export-sponsors",
+      "eli-export-sponsors-grid",
+      [],
+      "No se pudieron cargar auspiciantes"
+    );
+    renderAuspiciantesPosterEnGrid(
+      "eli-round-sponsors",
+      "eli-round-sponsors-grid",
+      [],
+      "No se pudieron cargar auspiciantes"
+    );
   }
 }
 
@@ -2502,6 +2725,7 @@ function renderBracket() {
       </div>`;
     renderPlantillaPreviewEliminatoria([]);
     renderPosterPublicacion([]);
+    renderJornadaPlayoffPoster();
     return;
   }
 
@@ -2531,6 +2755,7 @@ function renderBracket() {
   cont.innerHTML = html;
   renderPlantillaPreviewEliminatoria(columnas);
   renderPosterPublicacion(columnas);
+  renderJornadaPlayoffPoster();
 }
 
 function renderPosterPublicacion(columnas = []) {
@@ -2986,6 +3211,10 @@ function getZonaExportEliminatoria() {
   return document.getElementById("eli-zona-export");
 }
 
+function getZonaJornadaPlayoff() {
+  return document.getElementById("eli-jornada-export");
+}
+
 async function esperarImagenes(zona) {
   const imgs = Array.from(zona.querySelectorAll("img"));
   await Promise.all(
@@ -3040,6 +3269,11 @@ function getNombreArchivoBase() {
     : "playoff_evento";
 }
 
+function getNombreArchivoJornadaPlayoff() {
+  const ronda = eliminatoriaState.rondaJornadaSeleccionada || "ronda";
+  return `${getNombreArchivoBase()}_${ronda}`.toLowerCase();
+}
+
 function obtenerSiglaEquipo(nombre = "") {
   const limpio = String(nombre || "")
     .trim()
@@ -3074,6 +3308,21 @@ function descargarBlobEliminatoria(blob, filename) {
     a.remove();
   }, 1000);
   return true;
+}
+
+function prepararZonaParaCapturaSimple(zona) {
+  if (!zona) return () => {};
+  const prevWidth = zona.style.width;
+  const prevMaxWidth = zona.style.maxWidth;
+  const prevOverflow = zona.style.overflow;
+  zona.style.width = `${Math.max(zona.scrollWidth, zona.clientWidth)}px`;
+  zona.style.maxWidth = "none";
+  zona.style.overflow = "visible";
+  return () => {
+    zona.style.width = prevWidth;
+    zona.style.maxWidth = prevMaxWidth;
+    zona.style.overflow = prevOverflow;
+  };
 }
 
 async function exportarEliminatoriaPNG() {
@@ -3229,6 +3478,98 @@ async function compartirEliminatoria() {
   }
 }
 
+async function exportarJornadaPlayoffPNG() {
+  let restaurarCaptura = () => {};
+  try {
+    const zona = getZonaJornadaPlayoff();
+    if (!zona) return;
+    if (!eliminatoriaState.rondaJornadaSeleccionada) {
+      mostrarNotificacion("Selecciona una ronda del playoff", "warning");
+      return;
+    }
+    if (!window.html2canvas) {
+      mostrarNotificacion("No se cargó html2canvas", "error");
+      return;
+    }
+
+    restaurarCaptura = prepararZonaParaCapturaSimple(zona);
+    await esperarImagenes(zona);
+    await inlineImagesAsBase64(zona);
+
+    const canvas = await html2canvas(zona, {
+      scale: 2,
+      backgroundColor: "#eef2f7",
+      useCors: true,
+      width: zona.scrollWidth,
+      height: zona.scrollHeight,
+      windowWidth: zona.scrollWidth,
+      windowHeight: zona.scrollHeight,
+    });
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob || !descargarBlobEliminatoria(blob, `${getNombreArchivoJornadaPlayoff()}.png`)) {
+      throw new Error("No se pudo preparar la descarga de la jornada.");
+    }
+    mostrarNotificacion("Imagen de la jornada exportada", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion("No se pudo exportar la jornada", "error");
+  } finally {
+    restaurarCaptura();
+  }
+}
+
+async function exportarJornadaPlayoffPDF() {
+  let restaurarCaptura = () => {};
+  try {
+    const zona = getZonaJornadaPlayoff();
+    if (!zona) return;
+    if (!eliminatoriaState.rondaJornadaSeleccionada) {
+      mostrarNotificacion("Selecciona una ronda del playoff", "warning");
+      return;
+    }
+    if (!window.html2canvas || !window.jspdf?.jsPDF) {
+      mostrarNotificacion("No se cargó librería PDF", "error");
+      return;
+    }
+
+    restaurarCaptura = prepararZonaParaCapturaSimple(zona);
+    await esperarImagenes(zona);
+    await inlineImagesAsBase64(zona);
+
+    const canvas = await html2canvas(zona, {
+      scale: 2,
+      backgroundColor: "#eef2f7",
+      useCors: true,
+      width: zona.scrollWidth,
+      height: zona.scrollHeight,
+      windowWidth: zona.scrollWidth,
+      windowHeight: zona.scrollHeight,
+    });
+    const imgData = canvas.toDataURL("image/png");
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const props = pdf.getImageProperties(imgData);
+    const renderW = pageW - 12;
+    const renderH = (props.height * renderW) / props.width;
+    const finalH = Math.min(renderH, pageH - 12);
+    const y = (pageH - finalH) / 2;
+    pdf.addImage(imgData, "PNG", 6, y, renderW, finalH);
+    const blob = pdf.output("blob");
+    if (!blob || !descargarBlobEliminatoria(blob, `${getNombreArchivoJornadaPlayoff()}.pdf`)) {
+      throw new Error("No se pudo preparar el PDF de la jornada.");
+    }
+    mostrarNotificacion("PDF de la jornada exportado", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion("No se pudo exportar el PDF de la jornada", "error");
+  } finally {
+    restaurarCaptura();
+  }
+}
+
 function formatearRonda(ronda) {
   const key = String(ronda || "").toLowerCase();
   if (key === "32vos") return "32vos de final";
@@ -3290,6 +3631,8 @@ window.editarCruceEliminatoria = editarCruceEliminatoria;
 window.exportarEliminatoriaPNG = exportarEliminatoriaPNG;
 window.exportarEliminatoriaPDF = exportarEliminatoriaPDF;
 window.compartirEliminatoria = compartirEliminatoria;
+window.exportarJornadaPlayoffPNG = exportarJornadaPlayoffPNG;
+window.exportarJornadaPlayoffPDF = exportarJornadaPlayoffPDF;
 
 // ══ Programación de partidos de playoff ══
 

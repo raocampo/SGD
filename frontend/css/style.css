@@ -6332,14 +6332,16 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-export-poster.is-preview-style.has-custom-background {
+  background-color: rgba(3, 31, 55, 0.92);
   background-image:
-    linear-gradient(rgba(248, 250, 252, 0.84), rgba(248, 250, 252, 0.84)),
+    linear-gradient(rgba(3, 31, 55, 0.18), rgba(3, 31, 55, 0.18)),
     linear-gradient(to right, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
+    linear-gradient(rgba(248, 250, 252, 0.78), rgba(248, 250, 252, 0.78)),
     var(--eli-export-custom-bg);
-  background-size: auto, 24px 24px, 24px 24px, 88% auto;
-  background-position: center, 0 0, 0 0, center 52%;
-  background-repeat: no-repeat, repeat, repeat, no-repeat;
+  background-size: auto, 24px 24px, 24px 24px, 88% auto, 88% auto;
+  background-position: center, 0 0, 0 0, center 52%, center 52%;
+  background-repeat: no-repeat, repeat, repeat, no-repeat, no-repeat;
 }
 
 .page-eliminatorias {
@@ -7170,6 +7172,118 @@ body.page-finanzas {
   padding: 0.2rem 0.35rem;
 }
 
+.page-eliminatorias .eli-jornada-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+.page-eliminatorias .eli-jornada-toolbar select {
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.page-eliminatorias .eli-round-poster {
+  width: min(78rem, 100%);
+}
+
+.page-eliminatorias .eli-round-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.95rem;
+  padding: 0.35rem 0 0.75rem;
+}
+
+.page-eliminatorias .eli-round-match-card {
+  border: 1px solid rgba(59, 110, 192, 0.38);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(79, 134, 216, 0.94) 0%, rgba(59, 110, 192, 0.94) 100%);
+  color: #fff;
+  padding: 0.8rem 0.9rem;
+  display: grid;
+  gap: 0.45rem;
+  box-shadow: 0 12px 24px rgba(30, 58, 138, 0.16);
+}
+
+.page-eliminatorias .eli-round-match-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.page-eliminatorias .eli-round-match-label {
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.page-eliminatorias .eli-round-match-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.page-eliminatorias .eli-round-match-team {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-eliminatorias .eli-round-match-team-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.page-eliminatorias .eli-round-team-logo {
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.page-eliminatorias .eli-round-team-logo.is-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.page-eliminatorias .eli-round-match-score {
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.page-eliminatorias .eli-round-match-meta {
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding-top: 0.45rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
 @media (max-width: 900px) {
   .page-pases .pases-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7194,6 +7308,20 @@ body.page-finanzas {
   .page-eliminatorias .action-bar .btn {
     flex: 1 1 calc(50% - 0.45rem);
     min-width: 170px;
+  }
+
+  .page-eliminatorias .eli-jornada-toolbar {
+    justify-content: stretch;
+  }
+
+  .page-eliminatorias .eli-jornada-toolbar select,
+  .page-eliminatorias .eli-jornada-toolbar .btn {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .page-eliminatorias .eli-round-list {
+    grid-template-columns: 1fr;
   }
 }
 

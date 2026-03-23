@@ -199,6 +199,9 @@
               <button type="button" class="btn btn-secondary" onclick="abrirModalAutoProgramarPlayoff()">
                 <i class="fas fa-calendar-plus"></i> Auto-programar fechas
               </button>
+              <button type="button" class="btn btn-outline" id="btn-eli-toggle-jornada">
+                <i class="fas fa-calendar-days"></i> Jornada del playoff
+              </button>
               <button type="button" class="btn btn-outline" id="btn-eli-toggle-plantilla">
                 <i class="fas fa-file-lines"></i> Plantilla para publicar
               </button>
@@ -209,6 +212,51 @@
                   <i class="fas fa-sitemap"></i>
                   <p>Selecciona una categoría para visualizar la llave eliminatoria.</p>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" id="eli-jornada-section" style="display:none;">
+            <div class="section-head-inline">
+              <div>
+                <h3>Jornada del playoff</h3>
+                <p class="form-hint">
+                  Exporta una ronda del playoff como pieza independiente, con el mismo fondo y branding del campeonato.
+                </p>
+              </div>
+              <div class="eli-jornada-toolbar">
+                <select id="eli-jornada-ronda" class="form-control" aria-label="Seleccionar ronda del playoff">
+                  <option value="">Selecciona una ronda</option>
+                </select>
+                <button type="button" class="btn btn-secondary" id="btn-eli-jornada-png">
+                  <i class="fas fa-image"></i> Exportar imagen
+                </button>
+                <button type="button" class="btn btn-danger" id="btn-eli-jornada-pdf">
+                  <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+              </div>
+            </div>
+
+            <div id="eli-jornada-export" class="eli-export-poster eli-round-poster is-preview-style">
+              <div class="eli-export-header">
+                <img id="eli-round-logo" class="eli-export-logo" alt="Logo organizador" crossorigin="anonymous" referrerpolicy="no-referrer" />
+                <div class="eli-export-head-text">
+                  <div id="eli-round-organizador" class="eli-export-organizador">ORGANIZA: -</div>
+                  <div id="eli-round-titulo" class="eli-export-titulo">JORNADA DEL PLAYOFF</div>
+                  <div id="eli-round-subtitulo" class="eli-export-subtitulo">Categoría: -</div>
+                </div>
+              </div>
+
+              <div id="eli-jornada-lista" class="eli-round-list">
+                <div class="empty-state">
+                  <i class="fas fa-calendar-days"></i>
+                  <p>Selecciona una ronda del playoff para preparar la pieza.</p>
+                </div>
+              </div>
+
+              <div id="eli-round-sponsors" class="eli-export-sponsors" style="display:none;">
+                <div class="eli-export-sponsors-title">Auspician</div>
+                <div id="eli-round-sponsors-grid" class="eli-export-sponsors-grid"></div>
               </div>
             </div>
           </section>
