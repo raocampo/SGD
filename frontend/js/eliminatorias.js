@@ -2265,6 +2265,17 @@ function renderMatchCardEliminatoria(c, { compact = false } = {}) {
   `;
 }
 
+function cruceTieneResultadoRegistrado(cruce = {}) {
+  const estado = String(cruce?.estado || "pendiente").toLowerCase();
+  const rl = Number.parseInt(cruce?.resultado_local, 10);
+  const rv = Number.parseInt(cruce?.resultado_visitante, 10);
+  const tieneGanador = Number.isFinite(Number.parseInt(cruce?.ganador_id, 10));
+  const estadoBloquea = ["finalizado", "en_curso", "no_presentaron_ambos"].includes(estado);
+  const marcadorNoDefault =
+    (Number.isFinite(rl) || Number.isFinite(rv)) && ((rl || 0) !== 0 || (rv || 0) !== 0);
+  return tieneGanador || estadoBloquea || marcadorNoDefault;
+}
+
 function formatearNombreNodoEliminatoria(partido = {}, lado = "local") {
   const sideKey = lado === "visitante" ? "visitante" : "local";
   const nombreBase = nombrePlaceholderEliminatoria(partido, sideKey);
@@ -2668,11 +2679,7 @@ async function editarCruceEliminatoria(id) {
   }
 
   const estado = String(cruce?.estado || "pendiente").toLowerCase();
-  const tieneResultado =
-    Number.isFinite(Number.parseInt(cruce?.resultado_local, 10)) ||
-    Number.isFinite(Number.parseInt(cruce?.resultado_visitante, 10)) ||
-    Number.isFinite(Number.parseInt(cruce?.ganador_id, 10));
-  if (estado === "finalizado" || tieneResultado) {
+  if (estado === "finalizado" || cruceTieneResultadoRegistrado(cruce)) {
     mostrarNotificacion("Solo puedes editar cruces pendientes y sin resultado.", "warning");
     return;
   }

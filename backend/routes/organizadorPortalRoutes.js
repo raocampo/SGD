@@ -9,6 +9,7 @@ function setPortalConfigFolders(req, res, next) {
   req.uploadFolderByField = {
     logo: "portal/organizadores/logos",
     hero_image: "portal/organizadores/heroes",
+    team_welcome_image: "portal/organizadores/bienvenida",
   };
   next();
 }
@@ -38,6 +39,7 @@ router.put(
   upload.fields([
     { name: "logo", maxCount: 1 },
     { name: "hero_image", maxCount: 1 },
+    { name: "team_welcome_image", maxCount: 1 },
   ]),
   organizadorPortalController.guardarConfig
 );

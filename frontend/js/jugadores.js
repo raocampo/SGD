@@ -12,6 +12,7 @@ let eventoCarnetMeta = {
   carnet_color_primario: "",
   carnet_color_secundario: "",
   carnet_color_acento: "",
+  categoria_juvenil: false,
 };
 let jugadorEncontradoPorCedula = null;
 let fotoCarnetPreviewTempUrl = "";
@@ -358,6 +359,20 @@ function obtenerFechaInput(value) {
   const partes = descomponerFechaTexto(value);
   if (!partes) return "";
   return `${partes.year}-${partes.month}-${partes.day}`;
+}
+
+function calcularEdadDesdeFecha(value) {
+  const partes = descomponerFechaTexto(value);
+  if (!partes) return null;
+  const nacimiento = new Date(`${partes.year}-${partes.month}-${partes.day}T00:00:00`);
+  if (Number.isNaN(nacimiento.getTime())) return null;
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  const aunNoCumple =
+    hoy.getMonth() < nacimiento.getMonth() ||
+    (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate());
+  if (aunNoCumple) edad -= 1;
+  return edad >= 0 ? edad : null;
 }
 
 function fotoCarnetMarcadaParaEliminar() {
@@ -1101,6 +1116,7 @@ async function cargarCampeonatosSelectDirecto() {
         carnet_color_primario: "",
         carnet_color_secundario: "",
         carnet_color_acento: "",
+        categoria_juvenil: false,
       };
       guardarContextoJugadoresEnSesion();
       await cargarEventosSelectDirecto(campeonatoId);
@@ -1142,6 +1158,7 @@ async function cargarEventosSelectDirecto(campId) {
         carnet_color_primario: eventoSel?.carnet_color_primario || "",
         carnet_color_secundario: eventoSel?.carnet_color_secundario || "",
         carnet_color_acento: eventoSel?.carnet_color_acento || "",
+        categoria_juvenil: eventoSel?.categoria_juvenil === true || eventoSel?.categoria_juvenil === "true",
       };
     }
 
@@ -1156,6 +1173,7 @@ async function cargarEventosSelectDirecto(campId) {
         carnet_color_primario: eventoSel?.carnet_color_primario || "",
         carnet_color_secundario: eventoSel?.carnet_color_secundario || "",
         carnet_color_acento: eventoSel?.carnet_color_acento || "",
+        categoria_juvenil: eventoSel?.categoria_juvenil === true || eventoSel?.categoria_juvenil === "true",
       };
       equipoId = null;
       guardarContextoJugadoresEnSesion();
@@ -1232,6 +1250,7 @@ async function cargarNombreEventoActual() {
       carnet_color_primario: "",
       carnet_color_secundario: "",
       carnet_color_acento: "",
+      categoria_juvenil: false,
     };
     return;
   }
@@ -1244,6 +1263,7 @@ async function cargarNombreEventoActual() {
       carnet_color_primario: evento?.carnet_color_primario || "",
       carnet_color_secundario: evento?.carnet_color_secundario || "",
       carnet_color_acento: evento?.carnet_color_acento || "",
+      categoria_juvenil: evento?.categoria_juvenil === true || evento?.categoria_juvenil === "true",
     };
   } catch (_) {
     eventoNombreActual = "";
@@ -1252,6 +1272,7 @@ async function cargarNombreEventoActual() {
       carnet_color_primario: "",
       carnet_color_secundario: "",
       carnet_color_acento: "",
+      categoria_juvenil: false,
     };
   }
 }
@@ -2275,6 +2296,7 @@ function renderPlantillaCarnets(filtroIds = null) {
   const categoriaActual = obtenerNombreEventoActual();
   const urlPortalParticipacion = construirUrlPortalParticipacion();
   const qrUrlParticipacion = construirQrUrlParticipacion();
+  const mostrarDatosJuveniles = eventoCarnetMeta?.categoria_juvenil === true;
   const jugadoresARender = filtroIds
     ? jugadoresActuales.filter((j) => filtroIds.includes(j.id))
     : jugadoresActuales;
@@ -2290,6 +2312,8 @@ function renderPlantillaCarnets(filtroIds = null) {
       const fotoPosX = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_x, 50) : 50;
       const fotoPosY = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_y, 35) : 35;
       const fotoZoom = usaPosicionCarnet ? normalizarZoomFotoCarnet(j.foto_carnet_zoom, 1) : 1;
+      const fechaNacimiento = formatearFecha(j?.fecha_nacimiento);
+      const edad = calcularEdadDesdeFecha(j?.fecha_nacimiento);
       const checkboxOverlay = filtroIds
         ? ""
         : `<label class="carnet-sel-overlay" title="Seleccionar para imprimir">
@@ -2314,6 +2338,12 @@ function renderPlantillaCarnets(filtroIds = null) {
             <div class="carnet-data">
               <p><strong>Nombre:</strong> ${escapeHtml(`${j.nombre || ""} ${j.apellido || ""}`.trim())}</p>
               <p><strong>Cédula:</strong> ${escapeHtml(j.cedidentidad || "—")}</p>
+              ${
+                mostrarDatosJuveniles
+                  ? `<p><strong>Fecha nac.:</strong> ${escapeHtml(fechaNacimiento || "—")}</p>
+                     <p><strong>Edad:</strong> ${escapeHtml(edad ?? "—")}</p>`
+                  : ""
+              }
               <p><strong>Categoría:</strong> ${escapeHtml(categoriaActual || "—")}</p>
               <p class="carnet-data-team"><strong>Equipo:</strong> ${escapeHtml(equipoActual.nombre || "—")}</p>
               <p class="carnet-data-numero"><strong>N° ${escapeHtml(j.numero_camiseta || "—")}</strong></p>

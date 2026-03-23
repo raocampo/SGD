@@ -367,6 +367,85 @@ function renderCardTorneoPrincipal(torneo) {
   `;
 }
 
+function renderEquipoParticipanteLanding(equipo = {}) {
+  const nombre = String(equipo?.nombre || "").trim() || "Equipo";
+  const logo = normalizarMediaPortal(equipo?.logo_url || "");
+  return `
+    <article class="ltc-team-chip-card" title="${escPortal(nombre)}">
+      <div class="ltc-team-chip-logo">
+        ${
+          logo
+            ? `<img src="${logo}" alt="${escPortal(nombre)}" loading="lazy" />`
+            : `<span>${escPortal(nombre.slice(0, 2).toUpperCase())}</span>`
+        }
+      </div>
+      <div class="ltc-team-chip-name">${escPortal(nombre)}</div>
+    </article>
+  `;
+}
+
+function renderBloqueEquiposParticipantesLanding(campeonato = {}) {
+  const equipos = Array.isArray(campeonato?.equipos_participantes)
+    ? campeonato.equipos_participantes
+    : [];
+  if (!equipos.length) return "";
+
+  const nombre = limpiarCodigoTorneo(campeonato?.nombre) || "Campeonato";
+  const estado = String(campeonato?.estado || "borrador")
+    .trim()
+    .toLowerCase()
+    .replace("planificacion", "borrador");
+  const total = Number.parseInt(campeonato?.total_equipos, 10) || equipos.length;
+  return `
+    <article class="ltc-team-group-card">
+      <div class="ltc-team-group-head">
+        <div>
+          <h3>${escPortal(nombre)}</h3>
+          <p>${total} equipo(s) inscritos</p>
+        </div>
+        <span class="badge-estado estado-${escPortal(estado)}">${escPortal(estado.replace(/_/g, " "))}</span>
+      </div>
+      <div class="ltc-team-chip-grid">
+        ${equipos.map((equipo) => renderEquipoParticipanteLanding(equipo)).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function renderSeccionEquiposLanding(payload = {}, torneosVisibles = []) {
+  const section = document.getElementById("equipos-bienvenida");
+  const title = document.getElementById("ltc-team-welcome-title");
+  const description = document.getElementById("ltc-team-welcome-description");
+  const image = document.getElementById("ltc-team-welcome-image");
+  const groups = document.getElementById("ltc-team-welcome-groups");
+  if (!section || !title || !description || !image || !groups) return;
+
+  const portalConfig = payload?.portal_config || {};
+  const campeonatosConEquipos = torneosVisibles.filter(
+    (item) => Array.isArray(item?.equipos_participantes) && item.equipos_participantes.length
+  );
+
+  if (!campeonatosConEquipos.length) {
+    section.style.display = "none";
+    return;
+  }
+
+  title.textContent = portalConfig.equipos_bienvenida_titulo || "Bienvenida a equipos participantes";
+  description.textContent =
+    portalConfig.equipos_bienvenida_descripcion ||
+    "Estos son los equipos que ya forman parte de los campeonatos visibles del organizador.";
+  const imagenBienvenida = String(
+    portalConfig.equipos_bienvenida_imagen_url || portalConfig.hero_image_url || ""
+  ).trim();
+  const fallbackImage =
+    document.getElementById("ltc-about-image")?.getAttribute("src") || "assets/ltc/bannerLTC.jpg";
+  image.src = imagenBienvenida ? normalizarMediaPortal(imagenBienvenida) : fallbackImage;
+  groups.innerHTML = campeonatosConEquipos
+    .map((campeonato) => renderBloqueEquiposParticipantesLanding(campeonato))
+    .join("");
+  section.style.display = "";
+}
+
 function ordenarTorneosPortal(lista = []) {
   const prioridadEstado = {
     en_curso: 0,
@@ -615,6 +694,8 @@ function aplicarModoLandingOrganizador(payload) {
       sponsorsSection.hidden = true;
     }
   }
+
+  renderSeccionEquiposLanding(payload, torneosVisibles);
 }
 
 async function cargarLandingOrganizador(organizadorId) {

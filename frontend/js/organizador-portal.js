@@ -61,6 +61,8 @@
     llenarInput("op-hero-title", config.hero_title || "");
     llenarInput("op-hero-chip", config.hero_chip || "");
     llenarInput("op-hero-description", config.hero_description || "");
+    llenarInput("op-team-welcome-title", config.equipos_bienvenida_titulo || "");
+    llenarInput("op-team-welcome-description", config.equipos_bienvenida_descripcion || "");
     llenarInput("op-about-title", config.about_title || "");
     llenarInput("op-about-text-1", config.about_text_1 || "");
     llenarInput("op-about-text-2", config.about_text_2 || "");
@@ -398,10 +400,20 @@
       const element = document.getElementById(`op-${field.replace(/_/g, "-")}`);
       if (element) formData.append(field, String(element.value || "").trim());
     });
+    formData.append(
+      "equipos_bienvenida_titulo",
+      String(document.getElementById("op-team-welcome-title")?.value || "").trim()
+    );
+    formData.append(
+      "equipos_bienvenida_descripcion",
+      String(document.getElementById("op-team-welcome-description")?.value || "").trim()
+    );
     const logo = document.getElementById("op-logo")?.files?.[0];
     const heroImage = document.getElementById("op-hero-image")?.files?.[0];
+    const teamWelcomeImage = document.getElementById("op-team-welcome-image")?.files?.[0];
     if (logo) formData.append("logo", logo);
     if (heroImage) formData.append("hero_image", heroImage);
+    if (teamWelcomeImage) formData.append("team_welcome_image", teamWelcomeImage);
 
     await window.OrganizadorPortalAPI.actualizarConfig(formData);
     window.mostrarNotificacion("Configuración pública actualizada", "success");

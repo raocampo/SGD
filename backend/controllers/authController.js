@@ -350,6 +350,30 @@ const authController = {
               FROM eventos e
               WHERE e.campeonato_id = c.id
             ) AS categorias_resumen
+            ,
+            (
+              SELECT COALESCE(
+                json_agg(
+                  json_build_object(
+                    'id', eqx.id,
+                    'nombre', eqx.nombre,
+                    'logo_url', eqx.logo_url
+                  )
+                  ORDER BY eqx.sort_nombre, eqx.id
+                ),
+                '[]'::json
+              )
+              FROM (
+                SELECT DISTINCT ON (LOWER(COALESCE(eq.nombre, '')))
+                  eq.id,
+                  eq.nombre,
+                  eq.logo_url,
+                  LOWER(COALESCE(eq.nombre, '')) AS sort_nombre
+                FROM equipos eq
+                WHERE eq.campeonato_id = c.id
+                ORDER BY LOWER(COALESCE(eq.nombre, '')), eq.id DESC
+              ) eqx
+            ) AS equipos_participantes
           FROM campeonatos c
           WHERE c.creador_usuario_id = $1
           ORDER BY c.fecha_inicio DESC NULLS LAST, c.id DESC

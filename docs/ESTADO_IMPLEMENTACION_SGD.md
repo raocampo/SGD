@@ -398,6 +398,33 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - revisar si conviene agregar presets de overlay claro/oscuro además del tema actual,
   - decidir si este mismo patrón se replica luego a más posters del sistema.
 
+18. Landing del organizador:
+- Ya existe un bloque público para bienvenida a equipos participantes:
+  - título,
+  - descripción,
+  - imagen,
+  - listado de equipos visibles por campeonato.
+- Estado:
+  - implementado en backend y frontend,
+  - validado en local,
+  - pendiente aplicar formalmente la migración `049` en Render si se quiere dejar producción alineada también a nivel SQL.
+
+19. Categorías juveniles / carnés:
+- Ya existe el flag `categoria_juvenil` en eventos.
+- Cuando la categoría es juvenil, el carné muestra:
+  - fecha de nacimiento,
+  - edad.
+- Estado:
+  - implementado y validado en local.
+
+20. Servicio de transmisión de partidos:
+- Ya existe plan funcional/documental inicial en `docs/PLAN_TRANSMISION_PARTIDOS.md`.
+- Estado:
+  - diseño funcional listo,
+  - sin implementación de backend/frontend todavía.
+- Siguiente fase recomendada:
+  - Fase 1 operativa con tabla `partido_transmisiones`, endpoints básicos y bloque público `Próxima transmisión`.
+
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`
 - Historial de cambios implementados: `docs/CAMBIOS_IMPLEMENTADOS.md`

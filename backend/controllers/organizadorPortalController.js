@@ -121,12 +121,16 @@ const organizadorPortalController = {
       const data = { ...(req.body || {}) };
       const logoFile = req.files?.logo?.[0] || null;
       const heroFile = req.files?.hero_image?.[0] || null;
+      const welcomeFile = req.files?.team_welcome_image?.[0] || null;
 
       if (logoFile) {
         data.logo_url = `/uploads/portal/organizadores/logos/${logoFile.filename}`;
       }
       if (heroFile) {
         data.hero_image_url = `/uploads/portal/organizadores/heroes/${heroFile.filename}`;
+      }
+      if (welcomeFile) {
+        data.equipos_bienvenida_imagen_url = `/uploads/portal/organizadores/bienvenida/${welcomeFile.filename}`;
       }
 
       const config = await OrganizadorPortal.guardarConfig(organizador.id, data);
@@ -135,6 +139,13 @@ const organizadorPortalController = {
       }
       if (heroFile && actual?.hero_image_url && actual.hero_image_url !== config.hero_image_url) {
         safeUnlink(actual.hero_image_url);
+      }
+      if (
+        welcomeFile &&
+        actual?.equipos_bienvenida_imagen_url &&
+        actual.equipos_bienvenida_imagen_url !== config.equipos_bienvenida_imagen_url
+      ) {
+        safeUnlink(actual.equipos_bienvenida_imagen_url);
       }
 
       return res.json({ ok: true, mensaje: "Configuración del portal actualizada", config });

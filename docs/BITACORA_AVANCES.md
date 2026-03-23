@@ -1974,3 +1974,53 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - fixture con fondo personalizado
   - grupos con fondo personalizado
   - contraste de textos/logos sobre fondos cargados por el usuario
+
+## 2026-03-22 - Landing del organizador con bienvenida a equipos y categorías juveniles
+- Se incorporó un nuevo bloque público en la landing del organizador para dar la bienvenida a los equipos participantes:
+  - título personalizado,
+  - descripción personalizada,
+  - imagen de bienvenida,
+  - listado de equipos participantes visibles por campeonato.
+- La configuración quedó integrada en `organizador-portal.html` y se guarda dentro de `organizador_portal_config`:
+  - `equipos_bienvenida_titulo`
+  - `equipos_bienvenida_descripcion`
+  - `equipos_bienvenida_imagen_url`
+- El landing público del organizador ahora expone `equipos_participantes` por campeonato:
+  - se deduplican nombres repetidos,
+  - se conservan logos cuando existan,
+  - la sección solo se muestra si realmente hay equipos visibles para ese organizador.
+- Se agregó la migración `049_portal_bienvenida_equipos_y_categoria_juvenil.sql`, aplicada en la BD local:
+  - nuevos campos de bienvenida para `organizador_portal_config`,
+  - nuevo flag `categoria_juvenil` en `eventos`.
+
+## 2026-03-22 - Carnés con fecha de nacimiento y edad para categorías juveniles
+- En la creación/edición de categorías ahora existe el selector `Categoría juvenil`.
+- Cuando una categoría está marcada como juvenil:
+  - los carnés de jugadores muestran fecha de nacimiento,
+  - muestran también la edad calculada,
+  - el resto de categorías mantiene el formato actual sin ruido extra.
+- El ajuste quedó implementado en:
+  - `frontend/eventos.html`
+  - `frontend/js/eventos.js`
+  - `frontend/js/jugadores.js`
+  - `backend/controllers/eventoController.js`
+
+## 2026-03-22 - Plan inicial para transmisión de partidos
+- Se dejó documentado el plan base para un nuevo servicio de transmisión operado por el organizador:
+  - administración desde SGD,
+  - visibilidad pública en el portal,
+  - retransmisión a redes mediante proveedor especializado,
+  - recomendación de MVP con OBS / StreamYard / Restream.
+- Documento nuevo:
+  - `docs/PLAN_TRANSMISION_PARTIDOS.md`
+
+## Pendiente inmediato siguiente sesión
+- Ejecutar la migración `049_portal_bienvenida_equipos_y_categoria_juvenil.sql` también en la BD de Render para dejar producción alineada sin depender solo del endurecimiento de esquema.
+- Validar en el portal público del organizador:
+  - carga de imagen de bienvenida,
+  - cards/listado de equipos participantes,
+  - comportamiento con organizadores sin equipos visibles.
+- Diseñar la Fase 1 operativa del servicio de transmisión:
+  - modelo de datos definitivo,
+  - endpoints mínimos,
+  - primer flujo en panel del organizador.

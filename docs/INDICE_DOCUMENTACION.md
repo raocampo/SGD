@@ -1,6 +1,6 @@
 # Indice de Documentacion LT&C
 
-Ultima actualizacion: 2026-03-09
+Ultima actualizacion: 2026-03-22
 
 ## Documentos clave
 - `docs/BITACORA_AVANCES.md`
@@ -15,6 +15,8 @@ Ultima actualizacion: 2026-03-09
   - Plan maestro por fases para adaptar LT&C a uso mobile web.
 - `docs/PLAN_CMS_PORTAL_PUBLICO.md`
   - Plan maestro por fases para separar el CMS del portal publico del panel de gestion deportiva, con estado real de fases y alcance institucional.
+- `docs/PLAN_TRANSMISION_PARTIDOS.md`
+  - Plan funcional inicial para habilitar transmisiones de partidos operadas por el organizador y visibles en portal/redes.
 - `docs/GUIA_PRESENTACION_SISTEMA_LT_C.md`
   - Guion operativo recomendado para presentar el sistema LT&C por modulos y roles.
 - `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`

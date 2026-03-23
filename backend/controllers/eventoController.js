@@ -279,9 +279,15 @@ async function asegurarEsquemaEventos() {
     ADD COLUMN IF NOT EXISTS carnet_estilo VARCHAR(30),
     ADD COLUMN IF NOT EXISTS carnet_color_primario VARCHAR(20),
     ADD COLUMN IF NOT EXISTS carnet_color_secundario VARCHAR(20),
-    ADD COLUMN IF NOT EXISTS carnet_color_acento VARCHAR(20)
+    ADD COLUMN IF NOT EXISTS carnet_color_acento VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS categoria_juvenil BOOLEAN DEFAULT FALSE
   `);
 
+  await pool.query(`
+    UPDATE eventos
+    SET categoria_juvenil = COALESCE(categoria_juvenil, FALSE)
+    WHERE categoria_juvenil IS NULL
+  `);
   await pool.query(`
     UPDATE eventos
     SET costo_inscripcion = 0
@@ -384,6 +390,7 @@ const eventoController = {
         carnet_color_primario,
         carnet_color_secundario,
         carnet_color_acento,
+        categoria_juvenil,
       } = req.body;
 
       if (!campeonato_id || !nombre || !fecha_inicio || !fecha_fin) {
@@ -490,6 +497,7 @@ const eventoController = {
       const carnetColorPrimario = normalizarColorHex(carnet_color_primario, null);
       const carnetColorSecundario = normalizarColorHex(carnet_color_secundario, null);
       const carnetColorAcento = normalizarColorHex(carnet_color_acento, null);
+      const categoriaJuvenil = normalizarBooleanFlexible(categoria_juvenil, false) === true;
 
       const query = `
         WITH next_num AS (
@@ -505,13 +513,14 @@ const eventoController = {
           costo_inscripcion, clasificados_por_grupo, clasificacion_tabla_acumulada,
           bloquear_morosos, bloqueo_morosidad_monto,
           carnet_estilo, carnet_color_primario, carnet_color_secundario, carnet_color_acento,
+          categoria_juvenil,
           horario_weekday_inicio, horario_weekday_fin,
           horario_sab_inicio, horario_sab_fin,
           horario_dom_inicio, horario_dom_fin,
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -536,6 +545,7 @@ const eventoController = {
         carnetColorPrimario,
         carnetColorSecundario,
         carnetColorAcento,
+        categoriaJuvenil,
         wkStart,
         wkEnd,
         satStart,
@@ -799,6 +809,16 @@ const eventoController = {
           }
           campos.push(`${k} = $${i}`);
           valores.push(v === null || v === "" ? null : color);
+          i++;
+          continue;
+        }
+        if (k === "categoria_juvenil") {
+          const valorBool = normalizarBooleanFlexible(v, null);
+          if (v !== null && v !== "" && valorBool === null) {
+            return res.status(400).json({ error: "categoria_juvenil invalido. Usa true o false." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(valorBool === true);
           i++;
           continue;
         }

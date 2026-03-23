@@ -2745,12 +2745,23 @@ class Eliminatoria {
         return null;
       }
 
-      const estadoActual = String(actual?.estado || "pendiente").toLowerCase();
-      const tieneResultado =
-        Number.isFinite(Number.parseInt(actual?.resultado_local, 10)) ||
-        Number.isFinite(Number.parseInt(actual?.resultado_visitante, 10)) ||
-        Number.isFinite(Number.parseInt(actual?.ganador_id, 10));
-      if (estadoActual === "finalizado" || tieneResultado) {
+      let estadoActual = "pendiente";
+      if (Number.isFinite(Number.parseInt(actual?.partido_id, 10))) {
+        const partidoR = await client.query(
+          `SELECT estado FROM partidos WHERE id = $1 LIMIT 1`,
+          [Number(actual.partido_id)]
+        );
+        estadoActual = String(partidoR.rows[0]?.estado || "pendiente").toLowerCase();
+      }
+
+      const rl = Number.parseInt(actual?.resultado_local, 10);
+      const rv = Number.parseInt(actual?.resultado_visitante, 10);
+      const tieneGanador = Number.isFinite(Number.parseInt(actual?.ganador_id, 10));
+      const estadoBloquea = ["finalizado", "en_curso", "no_presentaron_ambos"].includes(estadoActual);
+      const marcadorNoDefault =
+        (Number.isFinite(rl) || Number.isFinite(rv)) && ((rl || 0) !== 0 || (rv || 0) !== 0);
+
+      if (tieneGanador || estadoBloquea || marcadorNoDefault) {
         throw new Error("Solo puedes editar cruces pendientes y sin resultado registrado.");
       }
 

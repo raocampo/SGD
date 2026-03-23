@@ -18,6 +18,9 @@ class OrganizadorPortal {
         hero_chip VARCHAR(120),
         hero_cta_label VARCHAR(120),
         hero_image_url TEXT,
+        equipos_bienvenida_titulo VARCHAR(220),
+        equipos_bienvenida_descripcion TEXT,
+        equipos_bienvenida_imagen_url TEXT,
         about_title VARCHAR(180),
         about_text_1 TEXT,
         about_text_2 TEXT,
@@ -32,6 +35,13 @@ class OrganizadorPortal {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    await client.query(`
+      ALTER TABLE organizador_portal_config
+      ADD COLUMN IF NOT EXISTS equipos_bienvenida_titulo VARCHAR(220),
+      ADD COLUMN IF NOT EXISTS equipos_bienvenida_descripcion TEXT,
+      ADD COLUMN IF NOT EXISTS equipos_bienvenida_imagen_url TEXT
     `);
 
     await client.query(`
@@ -129,6 +139,9 @@ class OrganizadorPortal {
       hero_chip: row.hero_chip || "",
       hero_cta_label: row.hero_cta_label || "",
       hero_image_url: row.hero_image_url || "",
+      equipos_bienvenida_titulo: row.equipos_bienvenida_titulo || "",
+      equipos_bienvenida_descripcion: row.equipos_bienvenida_descripcion || "",
+      equipos_bienvenida_imagen_url: row.equipos_bienvenida_imagen_url || "",
       about_title: row.about_title || "",
       about_text_1: row.about_text_1 || "",
       about_text_2: row.about_text_2 || "",
@@ -202,6 +215,9 @@ class OrganizadorPortal {
       hero_chip: "",
       hero_cta_label: "",
       hero_image_url: "",
+      equipos_bienvenida_titulo: "",
+      equipos_bienvenida_descripcion: "",
+      equipos_bienvenida_imagen_url: "",
       about_title: "",
       about_text_1: "",
       about_text_2: "",
@@ -224,6 +240,12 @@ class OrganizadorPortal {
       hero_chip: String(data.hero_chip ?? actual.hero_chip ?? "").trim() || null,
       hero_cta_label: String(data.hero_cta_label ?? actual.hero_cta_label ?? "").trim() || null,
       hero_image_url: String(data.hero_image_url ?? actual.hero_image_url ?? "").trim() || null,
+      equipos_bienvenida_titulo:
+        String(data.equipos_bienvenida_titulo ?? actual.equipos_bienvenida_titulo ?? "").trim() || null,
+      equipos_bienvenida_descripcion:
+        String(data.equipos_bienvenida_descripcion ?? actual.equipos_bienvenida_descripcion ?? "").trim() || null,
+      equipos_bienvenida_imagen_url:
+        String(data.equipos_bienvenida_imagen_url ?? actual.equipos_bienvenida_imagen_url ?? "").trim() || null,
       about_title: String(data.about_title ?? actual.about_title ?? "").trim() || null,
       about_text_1: String(data.about_text_1 ?? actual.about_text_1 ?? "").trim() || null,
       about_text_2: String(data.about_text_2 ?? actual.about_text_2 ?? "").trim() || null,
@@ -249,6 +271,9 @@ class OrganizadorPortal {
           hero_chip,
           hero_cta_label,
           hero_image_url,
+          equipos_bienvenida_titulo,
+          equipos_bienvenida_descripcion,
+          equipos_bienvenida_imagen_url,
           about_title,
           about_text_1,
           about_text_2,
@@ -263,7 +288,8 @@ class OrganizadorPortal {
         )
         VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-          $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+          $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+          $21, $22, $23
         )
         ON CONFLICT (usuario_id) DO UPDATE
         SET
@@ -275,6 +301,9 @@ class OrganizadorPortal {
           hero_chip = EXCLUDED.hero_chip,
           hero_cta_label = EXCLUDED.hero_cta_label,
           hero_image_url = EXCLUDED.hero_image_url,
+          equipos_bienvenida_titulo = EXCLUDED.equipos_bienvenida_titulo,
+          equipos_bienvenida_descripcion = EXCLUDED.equipos_bienvenida_descripcion,
+          equipos_bienvenida_imagen_url = EXCLUDED.equipos_bienvenida_imagen_url,
           about_title = EXCLUDED.about_title,
           about_text_1 = EXCLUDED.about_text_1,
           about_text_2 = EXCLUDED.about_text_2,
@@ -299,6 +328,9 @@ class OrganizadorPortal {
         payload.hero_chip,
         payload.hero_cta_label,
         payload.hero_image_url,
+        payload.equipos_bienvenida_titulo,
+        payload.equipos_bienvenida_descripcion,
+        payload.equipos_bienvenida_imagen_url,
         payload.about_title,
         payload.about_text_1,
         payload.about_text_2,

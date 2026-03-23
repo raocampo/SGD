@@ -103,6 +103,10 @@ function formatearCarnetEstilo(valor) {
   return "Hereda campeonato";
 }
 
+function formatearCategoriaJuvenil(valor) {
+  return valor === true || String(valor).toLowerCase() === "true" ? "Si" : "No";
+}
+
 function formatearClasificadosPorGrupo(evento = {}) {
   const metodo = obtenerMetodoCompetenciaVisibleEvento(evento);
   if (!["grupos", "mixto", "tabla_acumulada"].includes(metodo)) return "No aplica";
@@ -340,6 +344,7 @@ function renderEventoCard(e) {
         <p><strong>Costo inscripción:</strong> ${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</p>
         <p><strong>Bloqueo morosos:</strong> ${escapeHtml(formatearBloqueoMorososEvento(e))}</p>
         <p><strong>Diseño carné:</strong> ${escapeHtml(formatearCarnetEstilo(e.carnet_estilo))}</p>
+        <p><strong>Categoría juvenil:</strong> ${escapeHtml(formatearCategoriaJuvenil(e.categoria_juvenil))}</p>
         <p><strong>Fechas:</strong> ${escapeHtml(formatearFechaSolo(e.fecha_inicio))} - ${escapeHtml(formatearFechaSolo(e.fecha_fin))}</p>
       </div>
       <div class="campeonato-actions">
@@ -374,6 +379,7 @@ function renderTablaEventos(eventos) {
           <td>${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</td>
           <td>${escapeHtml(formatearBloqueoMorososEvento(e))}</td>
           <td>${escapeHtml(formatearCarnetEstilo(e.carnet_estilo))}</td>
+          <td>${escapeHtml(formatearCategoriaJuvenil(e.categoria_juvenil))}</td>
           <td>${escapeHtml(formatearFechaSolo(e.fecha_inicio))}</td>
           <td>${escapeHtml(formatearFechaSolo(e.fecha_fin))}</td>
           <td class="list-table-actions">
@@ -408,6 +414,7 @@ function renderTablaEventos(eventos) {
             <th>Costo inscripción</th>
             <th>Bloqueo morosos</th>
             <th>Diseño carné</th>
+            <th>Juvenil</th>
             <th>Fecha inicio</th>
             <th>Fecha fin</th>
             <th>Acciones</th>
@@ -471,6 +478,7 @@ async function crearEvento() {
     document.getElementById("evt-carnet-color-acento")?.value,
     ""
   ) || null;
+  const categoria_juvenil = document.getElementById("evt-categoria-juvenil")?.value === "true";
   const coloresCamp = obtenerColoresCarnetCampeonatoSeleccionado();
   const personalizaCarnetCategoria =
     Boolean(carnet_estilo) ||
@@ -515,6 +523,7 @@ async function crearEvento() {
       carnet_color_primario: personalizaCarnetCategoria ? carnet_color_primario : null,
       carnet_color_secundario: personalizaCarnetCategoria ? carnet_color_secundario : null,
       carnet_color_acento: personalizaCarnetCategoria ? carnet_color_acento : null,
+      categoria_juvenil,
     });
     mostrarNotificacion("Categoría creada", "success");
     document.getElementById("evt-nombre").value = "";
@@ -534,11 +543,13 @@ async function crearEvento() {
     if (selectBloqMorosos) selectBloqMorosos.value = "";
     if (inputBloqMonto) inputBloqMonto.value = "";
     const selectCarnetEstilo = document.getElementById("evt-carnet-estilo");
+    const selectCategoriaJuvenil = document.getElementById("evt-categoria-juvenil");
     const colorPrimario = document.getElementById("evt-carnet-color-primario");
     const colorSecundario = document.getElementById("evt-carnet-color-secundario");
     const colorAcento = document.getElementById("evt-carnet-color-acento");
     const coloresCamp = obtenerColoresCarnetCampeonatoSeleccionado();
     if (selectCarnetEstilo) selectCarnetEstilo.value = "";
+    if (selectCategoriaJuvenil) selectCategoriaJuvenil.value = "false";
     if (colorPrimario) colorPrimario.value = coloresCamp.primario;
     if (colorSecundario) colorSecundario.value = coloresCamp.secundario;
     if (colorAcento) colorAcento.value = coloresCamp.acento;
@@ -734,6 +745,16 @@ async function editarEvento(id) {
         type: "color",
         value: normalizarColorHexEvento(evento?.carnet_color_acento, coloresCamp.acento),
       },
+      {
+        name: "categoria_juvenil",
+        label: "Categoría juvenil",
+        type: "select",
+        value: evento?.categoria_juvenil === true ? "true" : "false",
+        options: [
+          { value: "false", label: "No" },
+          { value: "true", label: "Si" },
+        ],
+      },
     ],
   });
   if (!form) return;
@@ -806,6 +827,7 @@ async function editarEvento(id) {
     payload.carnet_color_primario = personalizaCarnet ? nuevoColorPrimarioCarnet : null;
     payload.carnet_color_secundario = personalizaCarnet ? nuevoColorSecundarioCarnet : null;
     payload.carnet_color_acento = personalizaCarnet ? nuevoColorAcentoCarnet : null;
+    payload.categoria_juvenil = String(form.categoria_juvenil || "false").trim().toLowerCase() === "true";
     await EventosAPI.actualizar(id, payload);
     mostrarNotificacion("Categoría actualizada", "success");
     await cargarEventos();

@@ -1361,3 +1361,40 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - la imagen de fondo se aplica por CSS variable,
   - cada tema (`oscuro`, `clásico`, `torneo`) conserva un overlay diferente para no perder legibilidad.
 - Se corrigió además el markup del selector de tema/fondo en `gruposgen.html` para evitar comillas tipográficas que podían romper atributos HTML.
+
+---
+
+## 24. Landing del organizador: bienvenida a equipos participantes
+- **Ubicacion backend:** `backend/models/OrganizadorPortal.js`, `backend/controllers/organizadorPortalController.js`, `backend/controllers/authController.js`, `backend/routes/organizadorPortalRoutes.js`
+- **Ubicacion frontend:** `frontend/index.html`, `frontend/organizador-portal.html`, `frontend/js/portal.js`, `frontend/js/organizador-portal.js`, `frontend/css/portal.css`
+- Se agregó configuración pública para mostrar una bienvenida a equipos participantes en la landing del organizador:
+  - `equipos_bienvenida_titulo`
+  - `equipos_bienvenida_descripcion`
+  - `equipos_bienvenida_imagen_url`
+- El organizador puede subir una imagen específica de bienvenida para equipos desde su panel.
+- El landing ahora incluye el listado de equipos participantes por campeonato visible:
+  - deduplicado por nombre,
+  - con logo cuando exista,
+  - agrupado por campeonato.
+
+---
+
+## 25. Categorías juveniles y carnés enriquecidos
+- **Ubicacion backend:** `backend/controllers/eventoController.js`
+- **Ubicacion frontend:** `frontend/eventos.html`, `frontend/js/eventos.js`, `frontend/js/jugadores.js`
+- Se incorporó el flag `categoria_juvenil` en los eventos/categorías.
+- Cuando está activo:
+  - el carné muestra fecha de nacimiento,
+  - el carné muestra edad calculada automáticamente.
+- Esto permite diferenciar categorías juveniles sin alterar el formato del resto de carnés.
+
+---
+
+## 26. Plan funcional para transmisiones de partidos
+- **Documento:** `docs/PLAN_TRANSMISION_PARTIDOS.md`
+- Se documentó la propuesta para un servicio de transmisión de partidos operado por el organizador:
+  - configuración desde SGD,
+  - publicación en portal público,
+  - retransmisión a redes sociales mediante proveedor externo,
+  - propuesta de tabla `partido_transmisiones`,
+  - endpoints sugeridos y fases de implementación.
