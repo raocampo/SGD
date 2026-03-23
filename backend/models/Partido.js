@@ -787,6 +787,30 @@ function construirErrorCapacidadFixture({
   return partes.join(" ");
 }
 
+function resumirResultadoFixture(partidos = [], extras = {}) {
+  const lista = Array.isArray(partidos) ? partidos : [];
+  const programados =
+    extras.programados ??
+    lista.filter((partido) => partido?.fecha_partido || partido?.hora_partido || partido?.cancha).length;
+  const sinProgramar =
+    extras.sin_programar ??
+    Math.max(0, lista.length - programados);
+  const capacidadInsuficiente = extras.capacidad_insuficiente === true || sinProgramar > 0;
+  let modoProgramacion = extras.modo_programacion || "automatica";
+  if (extras.manual === true) modoProgramacion = "manual";
+  else if (capacidadInsuficiente) modoProgramacion = "automatica_parcial";
+
+  return {
+    partidos: lista,
+    total: lista.length,
+    programados,
+    sin_programar: sinProgramar,
+    capacidad_insuficiente: capacidadInsuficiente,
+    mensaje_capacidad: extras.mensaje_capacidad || null,
+    modo_programacion: modoProgramacion,
+  };
+}
+
 class Partido {
   static _columnaTimestampActualizacion = undefined;
   static _esquemaPlanillaAsegurado = false;
@@ -900,6 +924,8 @@ class Partido {
     descanso_min = 10,
     reemplazar = true,
     programacion_manual = false,
+    programacion_automatica = false,
+    permitir_sobrantes_sin_fecha = false,
     fecha_inicio = null,
     fecha_fin = null,
     modo = "auto",
@@ -930,6 +956,7 @@ class Partido {
         duracion_min,
         descanso_min,
         manual: programacion_manual,
+        autoParcial: permitir_sobrantes_sin_fecha === true && programacion_automatica === true,
       });
     }
 
@@ -941,6 +968,7 @@ class Partido {
         duracion_min,
         descanso_min,
         manual: programacion_manual,
+        autoParcial: permitir_sobrantes_sin_fecha === true && programacion_automatica === true,
       });
     }
 
@@ -952,6 +980,7 @@ class Partido {
         duracion_min,
         descanso_min,
         manual: programacion_manual,
+        autoParcial: permitir_sobrantes_sin_fecha === true && programacion_automatica === true,
       });
     }
 
@@ -962,6 +991,7 @@ class Partido {
       duracion_min,
       descanso_min,
       manual: programacion_manual,
+      autoParcial: permitir_sobrantes_sin_fecha === true && programacion_automatica === true,
     });
   }
 
@@ -1028,7 +1058,7 @@ class Partido {
   // ===============================
   // FIXTURE: EVENTO unificado por jornada (todos los grupos)
   // ===============================
-  static async generarFixtureEventoUnificado({ evento, ida_y_vuelta, reemplazar, duracion_min, descanso_min, manual }) {
+  static async generarFixtureEventoUnificado({ evento, ida_y_vuelta, reemplazar, duracion_min, descanso_min, manual, autoParcial = false }) {
     const evento_id = evento.id;
     const campeonato_id = evento.campeonato_id;
 
@@ -1122,7 +1152,10 @@ class Partido {
           }
         }
       }
-      return creados;
+      return resumirResultadoFixture(creados, {
+        manual: true,
+        modo_programacion: "manual",
+      });
     }
 
     const jornadasUnificadas = [];
@@ -1147,7 +1180,7 @@ class Partido {
       fechaFin: evento.fecha_fin,
       totalGrupos: grupos.length,
     });
-    if (mensajeCapacidad) {
+    if (mensajeCapacidad && !autoParcial) {
       throw new Error(mensajeCapacidad);
     }
 
@@ -1159,6 +1192,9 @@ class Partido {
     let cursorTimeMin = 0;
 
     const creados = [];
+    let programados = 0;
+    let sinProgramar = 0;
+    let capacidadInsuficiente = false;
 
     for (let j = 1; j <= maxJornadas; j++) {
       // Jornada unificada (todos los grupos)
@@ -1183,7 +1219,35 @@ class Partido {
       // Asignación por bloques: en cada bloque caben N partidos en paralelo
       let idx = 0;
       while (idx < partidosJornada.length) {
-        const slot = nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin);
+        let slot = null;
+        if (!capacidadInsuficiente) {
+          try {
+            slot = nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin);
+          } catch (error) {
+            if (!autoParcial) throw error;
+            capacidadInsuficiente = true;
+          }
+        }
+
+        if (capacidadInsuficiente || !slot) {
+          for (; idx < partidosJornada.length; idx++) {
+            const p = partidosJornada[idx];
+            const creado = await this.crear(
+              campeonato_id,
+              p.grupo_id,
+              p.local,
+              p.visitante,
+              null,
+              null,
+              null,
+              p.jornada,
+              evento_id
+            );
+            creados.push(creado);
+            sinProgramar += 1;
+          }
+          break;
+        }
 
         // En este bloque, asignar hasta N canchas
         for (let c = 0; c < canchas.length && idx < partidosJornada.length; c++) {
@@ -1200,6 +1264,7 @@ class Partido {
             evento_id
           );
           creados.push(creado);
+          programados += 1;
         }
 
         // Próximo bloque = +slotMin
@@ -1208,17 +1273,24 @@ class Partido {
       }
 
       // Al finalizar la jornada, pasar al siguiente día (el scheduler cae al siguiente día válido según modalidad)
-      cursorDate.setDate(cursorDate.getDate() + 1);
-      cursorTimeMin = 0;
+      if (!capacidadInsuficiente) {
+        cursorDate.setDate(cursorDate.getDate() + 1);
+        cursorTimeMin = 0;
+      }
     }
 
-    return creados;
+    return resumirResultadoFixture(creados, {
+      programados,
+      sin_programar: sinProgramar,
+      capacidad_insuficiente: capacidadInsuficiente,
+      mensaje_capacidad: capacidadInsuficiente ? mensajeCapacidad : null,
+    });
   }
 
   // ===============================
   // FIXTURE: EVENTO todos contra todos (sin grupos)
   // ===============================
-  static async generarFixtureEventoTodosContraTodos({ evento, ida_y_vuelta, reemplazar, duracion_min, descanso_min, manual }) {
+  static async generarFixtureEventoTodosContraTodos({ evento, ida_y_vuelta, reemplazar, duracion_min, descanso_min, manual, autoParcial = false }) {
     await this.asegurarEsquemaEventoEquiposOrden();
     const evento_id = evento.id;
     const campeonato_id = evento.campeonato_id;
@@ -1273,7 +1345,10 @@ class Partido {
         }
         jornada++;
       }
-      return creados;
+      return resumirResultadoFixture(creados, {
+        manual: true,
+        modo_programacion: "manual",
+      });
     }
 
     const gruposRes = await pool.query(`SELECT COUNT(*)::int AS total FROM grupos WHERE evento_id = $1`, [evento_id]);
@@ -1288,7 +1363,7 @@ class Partido {
       fechaFin: evento.fecha_fin,
       totalGrupos,
     });
-    if (mensajeCapacidad) {
+    if (mensajeCapacidad && !autoParcial) {
       throw new Error(mensajeCapacidad);
     }
 
@@ -1297,12 +1372,43 @@ class Partido {
     let cursorTimeMin = 0;
 
     const creados = [];
+    let programados = 0;
+    let sinProgramar = 0;
+    let capacidadInsuficiente = false;
     let jornada = 1;
 
     for (const jf of jornadas) {
       let idx = 0;
       while (idx < jf.length) {
-        const slot = nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin);
+        let slot = null;
+        if (!capacidadInsuficiente) {
+          try {
+            slot = nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin);
+          } catch (error) {
+            if (!autoParcial) throw error;
+            capacidadInsuficiente = true;
+          }
+        }
+
+        if (capacidadInsuficiente || !slot) {
+          for (; idx < jf.length; idx++) {
+            const [local, visitante] = jf[idx];
+            const creado = await this.crear(
+              campeonato_id,
+              null,
+              local,
+              visitante,
+              null,
+              null,
+              null,
+              jornada,
+              evento_id
+            );
+            creados.push(creado);
+            sinProgramar += 1;
+          }
+          break;
+        }
 
         for (let c = 0; c < canchas.length && idx < jf.length; c++) {
           const [local, visitante] = jf[idx++];
@@ -1318,18 +1424,26 @@ class Partido {
             evento_id
           );
           creados.push(creado);
+          programados += 1;
         }
 
         cursorDate = new Date(slot.dateObj);
         cursorTimeMin = slot.timeMin + slotMin;
       }
 
-      cursorDate.setDate(cursorDate.getDate() + 1);
-      cursorTimeMin = 0;
+      if (!capacidadInsuficiente) {
+        cursorDate.setDate(cursorDate.getDate() + 1);
+        cursorTimeMin = 0;
+      }
       jornada++;
     }
 
-    return creados;
+    return resumirResultadoFixture(creados, {
+      programados,
+      sin_programar: sinProgramar,
+      capacidad_insuficiente: capacidadInsuficiente,
+      mensaje_capacidad: capacidadInsuficiente ? mensajeCapacidad : null,
+    });
   }
 
   // ===============================
@@ -1627,6 +1741,8 @@ class Partido {
     duracion_min = 90,
     descanso_min = 10,
     programacion_manual = false,
+    programacion_automatica = false,
+    permitir_sobrantes_sin_fecha = false,
   }) {
     await this.asegurarEsquemaEventoEquiposOrden();
 
@@ -1669,6 +1785,10 @@ class Partido {
     let cursorTimeMin = 0;
 
     const creados = [];
+    let programados = 0;
+    let sinProgramar = 0;
+    let capacidadInsuficiente = false;
+    let mensajeCapacidad = null;
 
     if (tieneGrupos) {
       // ---- MODO CON GRUPOS ----
@@ -1724,6 +1844,30 @@ class Partido {
 
       const maxNuevasJornadas = Math.max(...jornadasPorGrupo.map((g) => g.jornadas.length));
 
+      const jornadasUnificadas = [];
+      for (let jIdx = 0; jIdx < maxNuevasJornadas; jIdx++) {
+        const partidosJornada = [];
+        for (const item of jornadasPorGrupo) {
+          const partidos = item.jornadas[jIdx];
+          if (!partidos) continue;
+          partidosJornada.push(...partidos);
+        }
+        jornadasUnificadas.push(partidosJornada);
+      }
+
+      mensajeCapacidad = construirErrorCapacidadFixture({
+        evento,
+        jornadas: jornadasUnificadas,
+        canchas,
+        slotMin,
+        fechaInicio: evento.fecha_inicio,
+        fechaFin: evento.fecha_fin,
+        totalGrupos: grupos.length,
+      });
+      if (mensajeCapacidad && !permitir_sobrantes_sin_fecha && !programacion_manual) {
+        throw new Error(mensajeCapacidad);
+      }
+
       if (programacion_manual) {
         for (let jIdx = 0; jIdx < maxNuevasJornadas; jIdx++) {
           const numJornada = maxJornadaJugada + jIdx + 1;
@@ -1736,6 +1880,10 @@ class Partido {
             }
           }
         }
+        return resumirResultadoFixture(creados, {
+          manual: true,
+          modo_programacion: "manual",
+        });
       } else {
         for (let jIdx = 0; jIdx < maxNuevasJornadas; jIdx++) {
           const numJornada = maxJornadaJugada + jIdx + 1;
@@ -1751,17 +1899,47 @@ class Partido {
 
           let idx = 0;
           while (idx < partidosJornada.length) {
-            const slot = nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin);
+            let slot = null;
+            if (!capacidadInsuficiente) {
+              try {
+                slot = nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin);
+              } catch (error) {
+                if (!permitir_sobrantes_sin_fecha || !programacion_automatica) throw error;
+                capacidadInsuficiente = true;
+              }
+            }
+            if (capacidadInsuficiente || !slot) {
+              for (; idx < partidosJornada.length; idx++) {
+                const p = partidosJornada[idx];
+                const creado = await this.crear(
+                  campeonato_id,
+                  p.grupo_id,
+                  p.local,
+                  p.visitante,
+                  null,
+                  null,
+                  null,
+                  numJornada,
+                  evento_id
+                );
+                creados.push(creado);
+                sinProgramar += 1;
+              }
+              break;
+            }
             for (let c = 0; c < canchas.length && idx < partidosJornada.length; c++) {
               const p = partidosJornada[idx++];
               const creado = await this.crear(campeonato_id, p.grupo_id, p.local, p.visitante, formatYMD(slot.dateObj), fromMinutesSQL(slot.timeMin), canchas[c], numJornada, evento_id);
               creados.push(creado);
+              programados += 1;
             }
             cursorDate = new Date(slot.dateObj);
             cursorTimeMin = slot.timeMin + slotMin;
           }
-          cursorDate.setDate(cursorDate.getDate() + 1);
-          cursorTimeMin = 0;
+          if (!capacidadInsuficiente) {
+            cursorDate.setDate(cursorDate.getDate() + 1);
+            cursorTimeMin = 0;
+          }
         }
       }
     } else {
@@ -1802,6 +1980,19 @@ class Partido {
 
       if (!jornadasPendientes.length) return [];
 
+      mensajeCapacidad = construirErrorCapacidadFixture({
+        evento,
+        jornadas: jornadasPendientes,
+        canchas,
+        slotMin,
+        fechaInicio: evento.fecha_inicio,
+        fechaFin: evento.fecha_fin,
+        totalGrupos,
+      });
+      if (mensajeCapacidad && !permitir_sobrantes_sin_fecha && !programacion_manual) {
+        throw new Error(mensajeCapacidad);
+      }
+
       if (programacion_manual) {
         for (let jIdx = 0; jIdx < jornadasPendientes.length; jIdx++) {
           const numJornada = maxJornadaJugada + jIdx + 1;
@@ -1810,28 +2001,57 @@ class Partido {
             creados.push(p);
           }
         }
+        return resumirResultadoFixture(creados, {
+          manual: true,
+          modo_programacion: "manual",
+        });
       } else {
         for (let jIdx = 0; jIdx < jornadasPendientes.length; jIdx++) {
           const numJornada = maxJornadaJugada + jIdx + 1;
           const jornada = jornadasPendientes[jIdx];
           let idx = 0;
           while (idx < jornada.length) {
-            const slot = nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin);
+            let slot = null;
+            if (!capacidadInsuficiente) {
+              try {
+                slot = nextBlockSlot(evento, windows, cursorDate, cursorTimeMin, slotMin);
+              } catch (error) {
+                if (!permitir_sobrantes_sin_fecha || !programacion_automatica) throw error;
+                capacidadInsuficiente = true;
+              }
+            }
+            if (capacidadInsuficiente || !slot) {
+              for (; idx < jornada.length; idx++) {
+                const [local, visitante] = jornada[idx];
+                const creado = await this.crear(campeonato_id, null, local, visitante, null, null, null, numJornada, evento_id);
+                creados.push(creado);
+                sinProgramar += 1;
+              }
+              break;
+            }
             for (let c = 0; c < canchas.length && idx < jornada.length; c++) {
               const [local, visitante] = jornada[idx++];
               const creado = await this.crear(campeonato_id, null, local, visitante, formatYMD(slot.dateObj), fromMinutesSQL(slot.timeMin), canchas[c], numJornada, evento_id);
               creados.push(creado);
+              programados += 1;
             }
             cursorDate = new Date(slot.dateObj);
             cursorTimeMin = slot.timeMin + slotMin;
           }
-          cursorDate.setDate(cursorDate.getDate() + 1);
-          cursorTimeMin = 0;
+          if (!capacidadInsuficiente) {
+            cursorDate.setDate(cursorDate.getDate() + 1);
+            cursorTimeMin = 0;
+          }
         }
       }
     }
 
-    return creados;
+    return resumirResultadoFixture(creados, {
+      programados,
+      sin_programar: sinProgramar,
+      capacidad_insuficiente: capacidadInsuficiente,
+      mensaje_capacidad: capacidadInsuficiente ? mensajeCapacidad : null,
+    });
   }
 
   // Calcular puntos por partido (tradicional 3-1-0 o shootouts)

@@ -426,6 +426,17 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Siguiente fase recomendada:
   - Fase 1 operativa con tabla `partido_transmisiones`, endpoints básicos y bloque público `Próxima transmisión`.
 
+21. Fixture / sincronización de fechas:
+- Ya quedó corregida la sincronización de fechas de campeonato a categorías que seguían heredando esas fechas.
+- Ya existe selección explícita de:
+  - programación automática,
+  - programación manual.
+- En automático, cuando la ventana no alcanza:
+  - se programan los partidos posibles,
+  - el resto queda sin fecha/hora/cancha para edición manual,
+  - el sistema informa el resumen de capacidad.
+- La BD local fue realineada con un dump actualizado de Render para seguir validando sobre datos reales de producción.
+
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`
 - Historial de cambios implementados: `docs/CAMBIOS_IMPLEMENTADOS.md`

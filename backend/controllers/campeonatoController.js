@@ -43,6 +43,11 @@ function parseBooleanFlag(value) {
   return value === true || String(value || "").trim().toLowerCase() === "true";
 }
 
+function normalizarFechaSolo(valor) {
+  if (!valor) return "";
+  return String(valor).slice(0, 10);
+}
+
 function safeUnlinkUpload(relativeUrl) {
   if (!relativeUrl) return;
   const filePath = resolveUploadPath(relativeUrl);
@@ -384,12 +389,66 @@ const campeonatoController = {
       }
       delete datos.eliminar_carnet_fondo;
 
+      const fechaInicioAnterior = normalizarFechaSolo(campeonatoActual.fecha_inicio);
+      const fechaFinAnterior = normalizarFechaSolo(campeonatoActual.fecha_fin);
+
       const campeonatoActualizado = await Campeonato.actualizar(id, datos);
 
       if (!campeonatoActualizado) {
         return res.status(404).json({
           error: "Campeonato no encontrado",
         });
+      }
+
+      let eventosSincronizados = 0;
+      const fechaInicioNueva = normalizarFechaSolo(campeonatoActualizado.fecha_inicio);
+      const fechaFinNueva = normalizarFechaSolo(campeonatoActualizado.fecha_fin);
+      const fechaInicioCambio =
+        fechaInicioNueva &&
+        fechaInicioNueva !== fechaInicioAnterior;
+      const fechaFinCambio =
+        fechaFinNueva &&
+        fechaFinNueva !== fechaFinAnterior;
+
+      if (fechaInicioCambio || fechaFinCambio) {
+        const syncSets = [];
+        const syncParams = [id];
+        let paramIndex = 2;
+
+        if (fechaInicioCambio) {
+          syncSets.push(`
+            fecha_inicio = CASE
+              WHEN fecha_inicio IS NULL OR fecha_inicio::date = $${paramIndex}::date THEN $${paramIndex + 1}::date
+              ELSE fecha_inicio
+            END
+          `);
+          syncParams.push(fechaInicioAnterior || null, fechaInicioNueva);
+          paramIndex += 2;
+        }
+
+        if (fechaFinCambio) {
+          syncSets.push(`
+            fecha_fin = CASE
+              WHEN fecha_fin IS NULL OR fecha_fin::date = $${paramIndex}::date THEN $${paramIndex + 1}::date
+              ELSE fecha_fin
+            END
+          `);
+          syncParams.push(fechaFinAnterior || null, fechaFinNueva);
+          paramIndex += 2;
+        }
+
+        if (syncSets.length) {
+          const syncResult = await pool.query(
+            `
+              UPDATE eventos
+              SET ${syncSets.join(",\n")}
+              WHERE campeonato_id = $1
+              RETURNING id
+            `,
+            syncParams
+          );
+          eventosSincronizados = syncResult.rowCount || 0;
+        }
       }
 
       if (
@@ -403,6 +462,7 @@ const campeonatoController = {
       res.json({
         mensaje: "✅ Campeonato actualizado exitosamente",
         campeonato: campeonatoActualizado,
+        eventos_sincronizados: eventosSincronizados,
       });
     } catch (error) {
       console.error("Error actualizando campeonato:", error);

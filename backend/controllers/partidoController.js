@@ -3,6 +3,75 @@ const Partido = require("../models/Partido");
 const Eliminatoria = require("../models/Eliminatoria");
 const pool = require("../config/database");
 
+function parseBooleanFlag(value) {
+  return value === true || String(value || "").trim().toLowerCase() === "true";
+}
+
+function resolverModoProgramacion(body = {}) {
+  const hasAuto = Object.prototype.hasOwnProperty.call(body, "programacion_automatica");
+  const hasManual = Object.prototype.hasOwnProperty.call(body, "programacion_manual");
+  const automatica = parseBooleanFlag(body.programacion_automatica);
+  const manual = parseBooleanFlag(body.programacion_manual);
+
+  if (hasAuto && hasManual) {
+    if (automatica && manual) {
+      const err = new Error("Selecciona solo una opción de programación: automática o manual.");
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!automatica && !manual) {
+      const err = new Error("No se puede generar el fixture porque no tiene seleccionada una opción de programación.");
+      err.statusCode = 400;
+      throw err;
+    }
+    return {
+      programacion_automatica: automatica,
+      programacion_manual: manual,
+      permitir_sobrantes_sin_fecha: automatica,
+      seleccion_explicita: true,
+    };
+  }
+
+  if (hasAuto) {
+    if (!automatica) {
+      const err = new Error("No se puede generar el fixture porque no tiene seleccionada una opción de programación.");
+      err.statusCode = 400;
+      throw err;
+    }
+    return {
+      programacion_automatica: true,
+      programacion_manual: false,
+      permitir_sobrantes_sin_fecha: true,
+      seleccion_explicita: true,
+    };
+  }
+
+  if (hasManual) {
+    if (manual) {
+      return {
+        programacion_automatica: false,
+        programacion_manual: true,
+        permitir_sobrantes_sin_fecha: false,
+        seleccion_explicita: true,
+      };
+    }
+    // Compatibilidad con clientes antiguos: programacion_manual=false implicaba auto.
+    return {
+      programacion_automatica: false,
+      programacion_manual: false,
+      permitir_sobrantes_sin_fecha: false,
+      seleccion_explicita: false,
+    };
+  }
+
+  return {
+    programacion_automatica: false,
+    programacion_manual: false,
+    permitir_sobrantes_sin_fecha: false,
+    seleccion_explicita: false,
+  };
+}
+
 // ===============================
 // 🎯 FIXTURE POR EVENTO (CATEGORÍA)
 // ===============================
@@ -18,13 +87,13 @@ exports.generarFixtureEvento = async (req, res) => {
       duracion_min = 90,
       descanso_min = 10,
       reemplazar = true,
-      programacion_manual = false,
       modo = "auto",
       cantidad_equipos = null,
       // opcional: si algún día quieres sobreescribir fechas del evento
       fecha_inicio = null,
       fecha_fin = null,
     } = req.body || {};
+    const modoProgramacion = resolverModoProgramacion(req.body || {});
 
     const eventoR = await pool.query(
       `SELECT id, metodo_competencia, eliminatoria_equipos FROM eventos WHERE id = $1 LIMIT 1`,
@@ -59,27 +128,32 @@ exports.generarFixtureEvento = async (req, res) => {
       });
     }
 
-    const partidos = await Partido.generarFixtureEvento({
+    const resultado = await Partido.generarFixtureEvento({
       evento_id,
       ida_y_vuelta: ida_y_vuelta === true,
       duracion_min: parseInt(duracion_min, 10),
       descanso_min: parseInt(descanso_min, 10),
       reemplazar: reemplazar === true,
-      programacion_manual: programacion_manual === true,
+      programacion_manual: modoProgramacion.programacion_manual,
+      programacion_automatica: modoProgramacion.programacion_automatica,
+      permitir_sobrantes_sin_fecha: modoProgramacion.permitir_sobrantes_sin_fecha,
       fecha_inicio,
       fecha_fin,
       modo: modoEfectivo,
     });
+    const partidos = Array.isArray(resultado) ? resultado : resultado?.partidos || [];
 
     return res.json({
       ok: true,
       tipo_generacion: "fixture",
       total: partidos.length,
       partidos,
+      ...(Array.isArray(resultado) ? {} : resultado),
     });
   } catch (error) {
     console.error("Error generando fixture evento:", error);
-    return res.status(500).json({ error: error.message });
+    const status = Number.isFinite(Number(error?.statusCode)) ? Number(error.statusCode) : 500;
+    return res.status(status).json({ error: error.message });
   }
 };
 
@@ -130,16 +204,19 @@ exports.regenerarFixturePreservando = async (req, res) => {
       ida_y_vuelta = false,
       duracion_min = 90,
       descanso_min = 10,
-      programacion_manual = false,
     } = req.body || {};
+    const modoProgramacion = resolverModoProgramacion(req.body || {});
 
-    const partidos = await Partido.regenerarFixturePreservandoJugados({
+    const resultado = await Partido.regenerarFixturePreservandoJugados({
       evento_id,
       ida_y_vuelta: ida_y_vuelta === true,
       duracion_min: parseInt(duracion_min, 10) || 90,
       descanso_min: parseInt(descanso_min, 10) || 10,
-      programacion_manual: programacion_manual === true,
+      programacion_manual: modoProgramacion.programacion_manual,
+      programacion_automatica: modoProgramacion.programacion_automatica,
+      permitir_sobrantes_sin_fecha: modoProgramacion.permitir_sobrantes_sin_fecha,
     });
+    const partidos = Array.isArray(resultado) ? resultado : resultado?.partidos || [];
 
     return res.json({
       ok: true,
@@ -148,10 +225,12 @@ exports.regenerarFixturePreservando = async (req, res) => {
         : "No hay partidos pendientes que regenerar. Todos los enfrentamientos posibles ya fueron jugados.",
       total: partidos.length,
       partidos,
+      ...(Array.isArray(resultado) ? {} : resultado),
     });
   } catch (error) {
     console.error("Error regenerando fixture preservando:", error);
-    return res.status(500).json({ error: error.message });
+    const status = Number.isFinite(Number(error?.statusCode)) ? Number(error.statusCode) : 500;
+    return res.status(status).json({ error: error.message });
   }
 };
 

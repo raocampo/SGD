@@ -1408,3 +1408,20 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - no reutiliza `campeonato/evento` guardados en sesión para abrir el detalle por sí sola,
   - solo muestra detalle si esos valores llegan explícitamente por URL.
 - `portal.html` conserva el contexto compartible del torneo sin contaminar la landing general.
+
+---
+
+## 28. Sincronización de fechas heredadas y fixture con programación parcial
+- **Ubicación backend:** `backend/controllers/campeonatoController.js`, `backend/controllers/partidoController.js`, `backend/models/Partido.js`, `backend/services/mobileCompetitionService.js`
+- **Ubicación frontend:** `frontend/partidos.html`, `frontend/js/partidos.js`
+- Se corrigió la edición de campeonatos para que las categorías/eventos que heredaban `fecha_inicio` y `fecha_fin` se actualicen automáticamente al modificar el campeonato.
+- La sincronización es conservadora y no pisa fechas ya personalizadas manualmente en una categoría.
+- En la generación de fixture ahora existe selección explícita de modo:
+  - `Programación automática`
+  - `Programación manual`
+- Si no se elige una opción, se muestra un modal y el fixture no se genera.
+- En modo automático:
+  - se programan los partidos que caben dentro de la ventana del evento,
+  - los partidos restantes se crean sin `fecha/hora/cancha`,
+  - se devuelve un resumen con `programados`, `sin_programar` y `capacidad_insuficiente`.
+- Esta misma lógica aplica también a `Regenerar (preservar jugados)`.

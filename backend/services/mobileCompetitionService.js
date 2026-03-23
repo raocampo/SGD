@@ -146,7 +146,7 @@ async function generarFixtureEvento(user, eventoId, body = {}) {
     throw new Error("No autorizado para generar fixture");
   }
 
-  const partidos = await Partido.generarFixtureEvento({
+  const resultado = await Partido.generarFixtureEvento({
     evento_id: evento.id,
     ida_y_vuelta: body.homeAndAway === true,
     duracion_min: toInteger(body.durationMinutes, 90),
@@ -157,10 +157,12 @@ async function generarFixtureEvento(user, eventoId, body = {}) {
     fecha_inicio: body.startDate || null,
     fecha_fin: body.endDate || null,
   });
+  const partidos = Array.isArray(resultado) ? resultado : resultado?.partidos || [];
 
   return {
     ok: true,
     total: partidos.length,
+    ...(Array.isArray(resultado) ? {} : resultado),
   };
 }
 

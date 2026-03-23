@@ -2035,3 +2035,43 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - modelo de datos definitivo,
   - endpoints mínimos,
   - primer flujo en panel del organizador.
+
+## 2026-03-23 - Sincronización de fechas de campeonato a categorías heredadas
+- Se corrigió la actualización de campeonatos para que, cuando cambien `fecha_inicio` o `fecha_fin`, las categorías/eventos del mismo campeonato que seguían heredando esas fechas también se sincronicen automáticamente.
+- La sincronización es conservadora:
+  - actualiza solo eventos que mantenían la fecha anterior del campeonato,
+  - no pisa categorías que ya fueron ajustadas manualmente a otra fecha.
+- Implementado en:
+  - `backend/controllers/campeonatoController.js`
+
+## 2026-03-23 - Fixture con selección explícita automático/manual
+- En `partidos.html` se añadió la selección explícita del modo de programación:
+  - `Programación automática (fecha/hora/cancha)`
+  - `Programación manual (sin fecha/hora/cancha)`
+- Si el organizador no selecciona ninguna opción, el sistema ahora bloquea la generación y muestra un modal explicativo.
+- Si se elige `automática`:
+  - programa todos los partidos que entren dentro de la ventana del evento,
+  - deja los partidos restantes sin `fecha/hora/cancha`,
+  - muestra un resumen indicando cuántos quedaron para edición manual.
+- También quedó aplicado a `Regenerar (preservar jugados)`.
+- Implementado en:
+  - `frontend/partidos.html`
+  - `frontend/js/partidos.js`
+  - `backend/controllers/partidoController.js`
+  - `backend/models/Partido.js`
+  - `backend/services/mobileCompetitionService.js`
+
+## 2026-03-23 - Entorno local realineado con producción
+- Se hizo respaldo preventivo de la BD local en:
+  - `database/backups/pre-render-sync-20260323-115731.custom.backup`
+- Se instaló cliente PostgreSQL 18 para compatibilidad con Render.
+- Se descargó un dump actualizado de Render en:
+  - `database/backups/render-sync-20260323-133148.custom.backup`
+- La BD local `gestionDeportiva` fue restaurada desde ese dump para trabajar con datos reales de producción.
+- Verificación posterior:
+  - `campeonatos: 9`
+  - `eventos: 15`
+  - `equipos: 138`
+  - `partidos: 414`
+  - `usuarios: 18`
+- El `smoke` del backend pasó `9/9` contra `http://localhost:5000`.

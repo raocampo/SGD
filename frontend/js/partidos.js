@@ -33,6 +33,58 @@ let fixtureContexto = {
   auspiciantes: [],
 };
 
+function leerModoProgramacionFixture() {
+  const automatica = document.getElementById("chk-programacion-automatica")?.checked === true;
+  const manual = document.getElementById("chk-programacion-manual")?.checked === true;
+
+  if (automatica && manual) {
+    return {
+      valida: false,
+      automatica,
+      manual,
+      mensaje: "Selecciona solo una forma de programación: automática o manual.",
+    };
+  }
+
+  if (!automatica && !manual) {
+    return {
+      valida: false,
+      automatica,
+      manual,
+      mensaje: "No se puede generar el fixture ya que no tiene seleccionada una opción de programación.",
+    };
+  }
+
+  return { valida: true, automatica, manual };
+}
+
+async function validarModoProgramacionFixture() {
+  const modo = leerModoProgramacionFixture();
+  if (modo.valida) return modo;
+
+  await window.mostrarAlerta({
+    titulo: "Selecciona una opción de fixture",
+    mensaje: modo.mensaje,
+    tipo: "warning",
+    textoBoton: "Entendido",
+  });
+  return null;
+}
+
+function inicializarControlesModoFixture() {
+  const auto = document.getElementById("chk-programacion-automatica");
+  const manual = document.getElementById("chk-programacion-manual");
+  if (!auto || !manual || auto.dataset.bound === "true") return;
+
+  auto.addEventListener("change", () => {
+    if (auto.checked) manual.checked = false;
+  });
+  manual.addEventListener("change", () => {
+    if (manual.checked) auto.checked = false;
+  });
+  auto.dataset.bound = "true";
+}
+
 function escapeHtml(valor) {
   return String(valor ?? "")
     .replace(/&/g, "&amp;")
@@ -444,6 +496,7 @@ function actualizarUIPorMetodoCompetencia() {
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("partidos.html")) return;
   actualizarBotonesVistaPartidos();
+  inicializarControlesModoFixture();
 
   const selectJornada = document.getElementById("select-jornada");
   if (selectJornada) {
@@ -1915,15 +1968,17 @@ async function generarFixtureEvento() {
   }
 
   const idaYVuelta = document.getElementById("chk-ida-vuelta")?.checked === true;
-  const programacionManual =
-    document.getElementById("chk-programacion-manual")?.checked === true;
+  const modoProgramacion = await validarModoProgramacionFixture();
+  if (!modoProgramacion) return;
   const evento = obtenerEventoSeleccionadoObj();
   const esEliminatoria = metodoCompetenciaActivo === "eliminatoria";
   const cantidadEquiposObjetivo = Number.parseInt(evento?.eliminatoria_equipos, 10) || null;
 
   const mensaje = esEliminatoria
     ? "Se generará la llave eliminatoria de la categoría seleccionada. Si ya existe, se reemplazará. ¿Continuar?"
-    : "Se generara el fixture para todos los grupos del evento seleccionado. Si ya existen partidos del evento, se reemplazaran. Continuar?";
+    : modoProgramacion.automatica
+      ? "Se generará el fixture con programación automática. Los partidos que entren en el rango se programarán con fecha, hora y cancha; los que no alcancen quedarán sin programación para que puedas ajustarlos manualmente. Si ya existen partidos del evento, se reemplazarán. ¿Continuar?"
+      : "Se generará el fixture en modo manual, dejando todos los partidos sin fecha, hora ni cancha. Si ya existen partidos del evento, se reemplazarán. ¿Continuar?";
 
   const ok = await window.mostrarConfirmacion({
     titulo: esEliminatoria ? "Generar llave eliminatoria" : "Generar fixture",
@@ -1937,10 +1992,11 @@ async function generarFixtureEvento() {
   }
 
   try {
-    await ApiClient.post(`/partidos/evento/${eventoSeleccionado}/generar-fixture`, {
+    const resp = await ApiClient.post(`/partidos/evento/${eventoSeleccionado}/generar-fixture`, {
       ida_y_vuelta: idaYVuelta,
       reemplazar: true,
-      programacion_manual: programacionManual,
+      programacion_automatica: modoProgramacion.automatica,
+      programacion_manual: modoProgramacion.manual,
       modo: "auto",
       cantidad_equipos: cantidadEquiposObjetivo,
     });
@@ -1949,6 +2005,16 @@ async function generarFixtureEvento() {
       esEliminatoria ? "Llave eliminatoria generada correctamente" : "Fixture generado correctamente",
       "success"
     );
+    if (!esEliminatoria && resp?.capacidad_insuficiente) {
+      await window.mostrarAlerta({
+        titulo: "Fixture generado con programación parcial",
+        mensaje:
+          `Se programaron ${Number(resp.programados || 0)} partido(s) y ${Number(resp.sin_programar || 0)} quedaron sin fecha/hora/cancha para que puedas completarlos manualmente.` +
+          (resp?.mensaje_capacidad ? `\n\n${resp.mensaje_capacidad}` : ""),
+        tipo: "warning",
+        textoBoton: "Entendido",
+      });
+    }
     await cargarPartidos();
   } catch (error) {
     console.error(error);
@@ -2392,11 +2458,14 @@ async function regenerarFixturePreservando() {
   }
 
   const idaYVuelta = document.getElementById("chk-ida-vuelta")?.checked === true;
-  const programacionManual = document.getElementById("chk-programacion-manual")?.checked === true;
+  const modoProgramacion = await validarModoProgramacionFixture();
+  if (!modoProgramacion) return;
 
   const ok = await window.mostrarConfirmacion({
     titulo: "Regenerar fixture (preservar jugados)",
-    mensaje: "Se eliminarán los partidos pendientes y se generarán los enfrentamientos faltantes para todos los equipos actuales (incluyendo nuevos). Los partidos ya jugados se conservan. ¿Continuar?",
+    mensaje: modoProgramacion.automatica
+      ? "Se eliminarán los partidos pendientes y se regenerarán los enfrentamientos faltantes para todos los equipos actuales (incluyendo nuevos). Los partidos ya jugados se conservan y, si no alcanzan las fechas, el resto quedará sin programación para edición manual. ¿Continuar?"
+      : "Se eliminarán los partidos pendientes y se regenerarán los enfrentamientos faltantes para todos los equipos actuales (incluyendo nuevos). Los partidos ya jugados se conservan y los nuevos cruces quedarán sin fecha/hora/cancha. ¿Continuar?",
     tipo: "warning",
     textoConfirmar: "Regenerar",
     claseConfirmar: "btn-warning",
@@ -2406,9 +2475,20 @@ async function regenerarFixturePreservando() {
   try {
     const resp = await ApiClient.post(`/partidos/evento/${eventoSeleccionado}/regenerar-preservando`, {
       ida_y_vuelta: idaYVuelta,
-      programacion_manual: programacionManual,
+      programacion_automatica: modoProgramacion.automatica,
+      programacion_manual: modoProgramacion.manual,
     });
     mostrarNotificacion(resp?.mensaje || "Fixture regenerado correctamente.", "success");
+    if (resp?.capacidad_insuficiente) {
+      await window.mostrarAlerta({
+        titulo: "Regeneración completada con partidos pendientes",
+        mensaje:
+          `Se programaron ${Number(resp.programados || 0)} partido(s) y ${Number(resp.sin_programar || 0)} quedaron sin fecha/hora/cancha para que puedas completarlos manualmente.` +
+          (resp?.mensaje_capacidad ? `\n\n${resp.mensaje_capacidad}` : ""),
+        tipo: "warning",
+        textoBoton: "Entendido",
+      });
+    }
     await cargarPartidos();
   } catch (error) {
     mostrarNotificacion(error.message || "Error al regenerar el fixture.", "error");
