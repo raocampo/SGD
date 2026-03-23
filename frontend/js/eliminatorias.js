@@ -1642,6 +1642,19 @@ function formatearFechaPlayoffPoster(valor) {
   });
 }
 
+function formatearFechaLargaPlayoffPoster(valor) {
+  if (!valor) return "";
+  const match = String(valor).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return "";
+  const fecha = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const texto = fecha.toLocaleDateString("es-EC", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
 function construirMetaPlayoffPoster(partido = {}) {
   const fecha = formatearFechaPlayoffPoster(partido.fecha_partido);
   const hora = partido.hora_partido ? String(partido.hora_partido).slice(0, 5) : "";
@@ -1656,6 +1669,10 @@ function renderJornadaPlayoffPoster() {
   const subtituloEl = document.getElementById("eli-round-subtitulo");
   const organizadorEl = document.getElementById("eli-round-organizador");
   const logoEl = document.getElementById("eli-round-logo");
+  const summaryWrap = document.getElementById("eli-round-summary");
+  const summaryChip = document.getElementById("eli-round-summary-chip");
+  const summaryDate = document.getElementById("eli-round-summary-date");
+  const summaryMeta = document.getElementById("eli-round-summary-meta");
   const btnPng = document.getElementById("btn-eli-jornada-png");
   const btnPdf = document.getElementById("btn-eli-jornada-pdf");
   if (!lista) return;
@@ -1682,6 +1699,7 @@ function renderJornadaPlayoffPoster() {
   if (!round || !Array.isArray(round.cruces) || !round.cruces.length) {
     if (tituloEl) tituloEl.textContent = "JORNADA DEL PLAYOFF";
     if (subtituloEl) subtituloEl.textContent = `Categoría: ${ctx.eventoNombre || "-"}`;
+    if (summaryWrap) summaryWrap.style.display = "none";
     lista.innerHTML = `
       <div class="empty-state">
         <i class="fas fa-calendar-days"></i>
@@ -1702,44 +1720,77 @@ function renderJornadaPlayoffPoster() {
     subtituloEl.textContent = `Categoría: ${ctx.eventoNombre || "-"} • ${round.cruces.length} partido(s)`;
   }
 
+  const fechasUnicas = [...new Set((round.cruces || []).map((partido) => formatearFechaLargaPlayoffPoster(partido.fecha_partido)).filter(Boolean))];
+  const canchasUnicas = [...new Set((round.cruces || []).map((partido) => String(partido.cancha || "").trim()).filter(Boolean))];
+  if (summaryWrap) summaryWrap.style.display = "";
+  if (summaryChip) {
+    summaryChip.textContent = `${formatearRonda(round.ronda)}${ctx.eventoNombre ? ` • ${ctx.eventoNombre}` : ""}`;
+  }
+  if (summaryDate) {
+    summaryDate.textContent =
+      fechasUnicas.length === 1
+        ? fechasUnicas[0]
+        : fechasUnicas.length > 1
+          ? `${fechasUnicas[0]} — ${fechasUnicas[fechasUnicas.length - 1]}`
+          : "Fecha por confirmar";
+  }
+  if (summaryMeta) {
+    summaryMeta.textContent = [
+      `${round.cruces.length} partido(s)`,
+      canchasUnicas.length === 1 ? canchasUnicas[0] : "",
+    ]
+      .filter(Boolean)
+      .join(" • ");
+  }
+
   lista.innerHTML = round.cruces
     .map((partido) => {
       const local = obtenerNombreNodoPublicacion(partido, "local");
       const visita = obtenerNombreNodoPublicacion(partido, "visitante");
       const logoLocal = normalizarLogoUrl(partido.equipo_local_logo || null);
       const logoVisita = normalizarLogoUrl(partido.equipo_visitante_logo || null);
-      const meta = construirMetaPlayoffPoster(partido);
+      const fechaCorta = formatearFechaPlayoffPoster(partido.fecha_partido);
+      const hora = partido.hora_partido ? String(partido.hora_partido).slice(0, 5) : "";
+      const cancha = String(partido.cancha || "").trim();
+      const meta = [fechaCorta, cancha].filter(Boolean).join(" • ");
       const estado = String(partido.estado || "").toLowerCase();
       const badge = estado === "finalizado"
         ? "Finalizado"
-        : meta
+        : (fechaCorta || hora || cancha)
           ? "Programado"
           : "Pendiente";
       const marcador = Number.isFinite(Number(partido.resultado_local)) && Number.isFinite(Number(partido.resultado_visitante))
         ? `${Number(partido.resultado_local)} - ${Number(partido.resultado_visitante)}`
         : "vs";
       return `
-        <article class="eli-round-match-card">
-          <div class="eli-round-match-head">
-            <span class="eli-round-match-label">${escapeHtml(
+        <article class="eli-round-fixture-row">
+          <div class="eli-round-time-box">
+            <span class="eli-round-time-value">${escapeHtml(hora || "—")}</span>
+          </div>
+          <div class="eli-round-fixture-main">
+            <div class="eli-round-match-head">
+              <span class="eli-round-match-label">${escapeHtml(
               formatearEtiquetaPartidoEliminatoria(partido.ronda, partido.partido_numero)
-            )}</span>
-            <span class="eli-round-match-badge">${escapeHtml(badge)}</span>
+              )}</span>
+              <span class="eli-round-match-badge">${escapeHtml(badge)}</span>
+            </div>
+            <div class="eli-round-fixture-body">
+              <div class="eli-round-side is-local">
+                <span class="eli-round-match-team-meta">
+                  ${renderEquipoLogo(logoLocal, local, "eli-round-team-logo")}
+                  <span>${escapeHtml(local)}</span>
+                </span>
+              </div>
+              <div class="eli-round-vs-badge">${escapeHtml(marcador)}</div>
+              <div class="eli-round-side is-visitante">
+                <span class="eli-round-match-team-meta">
+                  <span>${escapeHtml(visita)}</span>
+                  ${renderEquipoLogo(logoVisita, visita, "eli-round-team-logo")}
+                </span>
+              </div>
+            </div>
+            <div class="eli-round-match-meta">${escapeHtml(meta || "Por programar")}</div>
           </div>
-          <div class="eli-round-match-team is-local">
-            <span class="eli-round-match-team-meta">
-              ${renderEquipoLogo(logoLocal, local, "eli-round-team-logo")}
-              <span>${escapeHtml(local)}</span>
-            </span>
-          </div>
-          <div class="eli-round-match-score">${escapeHtml(marcador)}</div>
-          <div class="eli-round-match-team is-visitante">
-            <span class="eli-round-match-team-meta">
-              ${renderEquipoLogo(logoVisita, visita, "eli-round-team-logo")}
-              <span>${escapeHtml(visita)}</span>
-            </span>
-          </div>
-          <div class="eli-round-match-meta">${escapeHtml(meta || "Por programar")}</div>
         </article>
       `;
     })

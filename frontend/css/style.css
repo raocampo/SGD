@@ -7186,25 +7186,96 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-round-poster {
-  width: min(78rem, 100%);
+  width: min(64rem, 100%);
+}
+
+.page-eliminatorias .eli-round-summary {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0 0.9rem;
+}
+
+.page-eliminatorias .eli-round-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.35rem 1rem;
+  background: rgba(18, 127, 166, 0.78);
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.page-eliminatorias .eli-round-summary-date {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: min(32rem, 92%);
+  padding: 0.35rem 1.1rem;
+  background: rgba(205, 166, 34, 0.9);
+  color: #fff;
+  font-size: 1.75rem;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1.05;
+  text-align: center;
+  clip-path: polygon(3% 0, 97% 0, 100% 50%, 97% 100%, 3% 100%, 0 50%);
+}
+
+.page-eliminatorias .eli-round-summary-meta {
+  color: #274366;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .page-eliminatorias .eli-round-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.95rem;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
   padding: 0.35rem 0 0.75rem;
 }
 
-.page-eliminatorias .eli-round-match-card {
-  border: 1px solid rgba(59, 110, 192, 0.38);
-  border-radius: 1rem;
-  background: linear-gradient(180deg, rgba(79, 134, 216, 0.94) 0%, rgba(59, 110, 192, 0.94) 100%);
-  color: #fff;
-  padding: 0.8rem 0.9rem;
+.page-eliminatorias .eli-round-fixture-row {
   display: grid;
+  grid-template-columns: 8.2rem minmax(0, 1fr);
   gap: 0.45rem;
-  box-shadow: 0 12px 24px rgba(30, 58, 138, 0.16);
+  align-items: stretch;
+}
+
+.page-eliminatorias .eli-round-time-box {
+  border-radius: 999px 0 0 999px;
+  background: linear-gradient(180deg, rgba(32, 126, 156, 0.88) 0%, rgba(25, 103, 131, 0.88) 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.8rem;
+  min-height: 4.55rem;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.14);
+}
+
+.page-eliminatorias .eli-round-time-value {
+  font-size: 2rem;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.page-eliminatorias .eli-round-fixture-main {
+  border-radius: 0 1.15rem 1.15rem 0;
+  background: linear-gradient(180deg, rgba(34, 133, 161, 0.72) 0%, rgba(26, 106, 138, 0.68) 100%);
+  color: #fff;
+  padding: 0.48rem 0.7rem 0.55rem;
+  display: grid;
+  gap: 0.35rem;
+  box-shadow: 0 12px 24px rgba(30, 58, 138, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .page-eliminatorias .eli-round-match-head {
@@ -7232,19 +7303,39 @@ body.page-finanzas {
   border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
-.page-eliminatorias .eli-round-match-team {
+.page-eliminatorias .eli-round-fixture-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.6rem minmax(0, 1fr);
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.page-eliminatorias .eli-round-side {
   display: flex;
   align-items: center;
-  justify-content: center;
+  min-width: 0;
+}
+
+.page-eliminatorias .eli-round-side.is-local {
+  justify-content: flex-start;
+}
+
+.page-eliminatorias .eli-round-side.is-visitante {
+  justify-content: flex-end;
 }
 
 .page-eliminatorias .eli-round-match-team-meta {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
-  text-align: center;
+  text-align: left;
+  min-width: 0;
+}
+
+.page-eliminatorias .eli-round-side.is-visitante .eli-round-match-team-meta {
+  text-align: right;
 }
 
 .page-eliminatorias .eli-round-team-logo {
@@ -7266,20 +7357,32 @@ body.page-finanzas {
   letter-spacing: 0.04em;
 }
 
-.page-eliminatorias .eli-round-match-score {
+.page-eliminatorias .eli-round-match-team-meta > span {
+  line-height: 1.03;
+  word-break: break-word;
+}
+
+.page-eliminatorias .eli-round-vs-badge {
   text-align: center;
   font-size: 1.05rem;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.92);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.4rem;
+  border-radius: 999px;
+  background: rgba(10, 63, 101, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .page-eliminatorias .eli-round-match-meta {
   border-top: 1px solid rgba(255, 255, 255, 0.14);
-  padding-top: 0.45rem;
+  padding-top: 0.32rem;
   text-align: center;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.92);
 }
@@ -7322,6 +7425,41 @@ body.page-finanzas {
 
   .page-eliminatorias .eli-round-list {
     grid-template-columns: 1fr;
+  }
+
+  .page-eliminatorias .eli-round-fixture-row {
+    grid-template-columns: 1fr;
+  }
+
+  .page-eliminatorias .eli-round-time-box {
+    border-radius: 1rem 1rem 0 0;
+    min-height: 3.2rem;
+  }
+
+  .page-eliminatorias .eli-round-fixture-main {
+    border-radius: 0 0 1rem 1rem;
+  }
+
+  .page-eliminatorias .eli-round-fixture-body {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+  }
+
+  .page-eliminatorias .eli-round-side,
+  .page-eliminatorias .eli-round-side.is-local,
+  .page-eliminatorias .eli-round-side.is-visitante {
+    justify-content: center;
+  }
+
+  .page-eliminatorias .eli-round-side.is-visitante .eli-round-match-team-meta,
+  .page-eliminatorias .eli-round-match-team-meta {
+    text-align: center;
+  }
+
+  .page-eliminatorias .eli-round-summary-date {
+    min-width: 0;
+    width: 100%;
+    font-size: 1.3rem;
   }
 }
 
