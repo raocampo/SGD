@@ -1,6 +1,29 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-21 (sesión 9)
+Ultima actualizacion: 2026-03-23 (sesión 10)
+
+## Avances recientes (2026-03-23)
+- Partidos / fixture:
+  - el organizador ya puede definir el `N° visible del partido` sin tocar el identificador interno de BD.
+  - el número visible se puede editar desde `Editar partido` y también se puede definir al crear un `Partido manual`.
+  - el backend ahora valida este número y responde un mensaje claro si el valor se repite dentro del mismo campeonato.
+  - la visualización pública/interna deja de depender del `id` interno como fallback cuando el partido no tiene número visible asignado.
+- Planilla de juego / playoff:
+  - `planilla.html` ya soporta dos fases:
+    - `Fase regular`
+    - `Playoff`
+  - en modo `Playoff`:
+    - se ocultan `Grupo` y `Jornada`,
+    - aparece selector por `Ronda`,
+    - se cargan partidos reales de `reclasificación`, `32vos`, `16vos`, `12vos`, `8vos`, `4tos`, `semifinal`, `final` y `tercer y cuarto`.
+  - la cabecera, vista previa y PDF ya muestran `Llave` / `Ronda` cuando el partido pertenece a playoff.
+  - cada card de `eliminatorias.html` con partido enlazado ya permite abrir su `Planilla` directa.
+- Plantillas / posters:
+  - `jornadasplantilla.html` ya soporta modo `playoff` además de la fase regular, con navegación por ronda.
+  - `gruposgen.html` corrige la exportación duplicada:
+    - se elimina el doble disparo de `html2canvas`,
+    - los botones quedan bloqueados mientras la exportación está en curso,
+    - ya no se generan dos archivos ni dos toasts de éxito por un solo click.
 
 ## Avances recientes (2026-03-22)
 - Playoff / publicación:

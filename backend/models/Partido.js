@@ -1005,7 +1005,8 @@ class Partido {
     hora_partido,
     cancha,
     jornada,
-    evento_id
+    evento_id,
+    numero_campeonato = null
   ) {
     await this.asegurarEsquemaSecuencia();
 
@@ -1035,7 +1036,7 @@ class Partido {
       INSERT INTO partidos 
       (campeonato_id, evento_id, grupo_id, equipo_local_id, equipo_visitante_id, fecha_partido, hora_partido, cancha, jornada, numero_campeonato) 
       SELECT
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,next_num.next_num
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10, next_num.next_num)
       FROM next_num
       RETURNING *
     `;
@@ -1049,6 +1050,9 @@ class Partido {
       hora_partido ?? null,
       cancha ?? null,
       jornada ?? null,
+      Number.isFinite(Number(numero_campeonato)) && Number(numero_campeonato) > 0
+        ? Number(numero_campeonato)
+        : null,
     ];
 
     const result = await pool.query(query, values);
@@ -2384,6 +2388,11 @@ class Partido {
              evt.metodo_competencia,
              g.letra_grupo,
              g.nombre_grupo,
+             pe.ronda AS playoff_ronda,
+             pe.partido_numero AS playoff_partido_numero,
+             erp.id AS reclasificacion_playoff_id,
+             erp.slot_posicion AS reclasificacion_slot_posicion,
+             rg_erp.letra_grupo AS reclasificacion_grupo_letra,
              el.nombre AS equipo_local_nombre,
              ev.nombre AS equipo_visitante_nombre,
              el.director_tecnico AS equipo_local_director_tecnico,
@@ -2394,6 +2403,9 @@ class Partido {
       LEFT JOIN campeonatos c ON c.id = p.campeonato_id
       LEFT JOIN eventos evt ON evt.id = p.evento_id
       LEFT JOIN grupos g ON g.id = p.grupo_id
+      LEFT JOIN partidos_eliminatoria pe ON pe.partido_id = p.id
+      LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
+      LEFT JOIN grupos rg_erp ON rg_erp.id = erp.grupo_id
       JOIN equipos el ON el.id = p.equipo_local_id
       JOIN equipos ev ON ev.id = p.equipo_visitante_id
       WHERE p.id = $1

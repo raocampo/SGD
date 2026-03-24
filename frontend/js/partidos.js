@@ -254,6 +254,14 @@ function obtenerNumeroPartidoVisible(partido, fallback = null) {
   return null;
 }
 
+function obtenerSiguienteNumeroVisiblePartido() {
+  const maxActual = partidosActuales.reduce((maximo, partido) => {
+    const numero = Number.parseInt(partido?.numero_campeonato, 10);
+    return Number.isFinite(numero) && numero > maximo ? numero : maximo;
+  }, 0);
+  return maxActual + 1;
+}
+
 function formatoMonedaPartidos(valor) {
   const n = Number(valor || 0);
   if (!Number.isFinite(n)) return "$0.00";
@@ -1443,8 +1451,8 @@ function renderPartidoCard(p) {
 
 function renderTablaPartidos(partidos) {
   const filas = partidos
-    .map((p, index) => {
-      const numero = obtenerNumeroPartidoVisible(p, index + 1);
+    .map((p) => {
+      const numero = obtenerNumeroPartidoVisible(p);
       const local = escapeHtml(p.equipo_local_nombre || "Local");
       const visita = escapeHtml(p.equipo_visitante_nombre || "Visitante");
       const grupo = escapeHtml(p.letra_grupo ? `Grupo ${p.letra_grupo}` : "-");
@@ -1878,6 +1886,25 @@ async function editarPartido(id) {
       campos: [
         ...camposEquipos,
         {
+          name: "numero_campeonato",
+          label: "N° visible del partido",
+          type: "number",
+          value: p.numero_campeonato ? String(p.numero_campeonato) : "",
+          min: 1,
+          step: 1,
+          placeholder: "Ej. 12",
+          helpText: "Este es el número que verá el organizador en fixture, planilla y publicaciones. El ID interno no cambia.",
+          validate: (value) => {
+            const raw = String(value ?? "").trim();
+            if (!raw) return "";
+            const numero = Number.parseInt(raw, 10);
+            if (!Number.isFinite(numero) || numero <= 0) {
+              return "El número visible debe ser un entero mayor a 0.";
+            }
+            return "";
+          },
+        },
+        {
           name: "fecha",
           label: "Fecha",
           type: "date",
@@ -1934,8 +1961,10 @@ async function editarPartido(id) {
     const nuevaCancha = String(form.cancha || "").trim();
     const nuevaJornada = String(form.jornada || "").trim();
     const nuevoEstado = String(form.estado || "").trim();
+    const nuevoNumeroVisible = String(form.numero_campeonato || "").trim();
 
     const payload = {
+      numero_campeonato: nuevoNumeroVisible ? Number(nuevoNumeroVisible) : null,
       fecha_partido: nuevaFecha || null,
       hora_partido: nuevaHora
         ? nuevaHora.length === 5
@@ -1957,7 +1986,7 @@ async function editarPartido(id) {
     cargarPartidos();
   } catch (error) {
     console.error(error);
-    mostrarNotificacion("Error al editar el partido.", "error");
+    mostrarNotificacion(error?.message || "Error al editar el partido.", "error");
   }
 }
 
@@ -2165,16 +2194,68 @@ function abrirPlantillaJornada() {
     mostrarNotificacion("Selecciona una categoría primero.", "warning");
     return;
   }
+  if (metodoCompetenciaActivo === "eliminatoria") {
+    abrirPlantillaPlayoff();
+    return;
+  }
   if (window.RouteContext?.navigate) {
     window.RouteContext.navigate("jornadasplantilla.html", {
       evento: Number(eventoSeleccionado) || null,
+      modo: "regular",
       jornada: jornadaSeleccionada || "",
     });
     return;
   }
   const params = new URLSearchParams();
   params.set("evento", String(eventoSeleccionado));
+  params.set("modo", "regular");
   if (jornadaSeleccionada) params.set("jornada", String(jornadaSeleccionada));
+  window.location.href = `jornadasplantilla.html?${params.toString()}`;
+}
+
+function obtenerRondaPreferidaPlantillaPlayoff() {
+  if (!Array.isArray(eliminatoriasActuales) || !eliminatoriasActuales.length) return "";
+  const orden = ["32vos", "16vos", "12vos", "8vos", "4tos", "semifinal", "final", "tercer_puesto"];
+  const agrupado = new Map();
+  eliminatoriasActuales.forEach((cruce) => {
+    const ronda = String(cruce?.ronda || "").toLowerCase();
+    if (!ronda) return;
+    if (!agrupado.has(ronda)) agrupado.set(ronda, []);
+    agrupado.get(ronda).push(cruce);
+  });
+  const rondas = [...orden.filter((r) => agrupado.has(r)), ...Array.from(agrupado.keys()).filter((r) => !orden.includes(r))];
+  const conProgramados = rondas.find((ronda) =>
+    (agrupado.get(ronda) || []).some(
+      (cruce) =>
+        cruce?.fecha_partido ||
+        cruce?.hora_partido ||
+        cruce?.cancha ||
+        ["programado", "en_curso", "finalizado", "no_presentaron_ambos"].includes(String(cruce?.estado || "").toLowerCase())
+    )
+  );
+  return conProgramados || rondas[0] || "";
+}
+
+function abrirPlantillaPlayoff() {
+  if (!eventoSeleccionado) {
+    mostrarNotificacion("Selecciona una categoría primero.", "warning");
+    return;
+  }
+
+  const ronda = obtenerRondaPreferidaPlantillaPlayoff();
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("jornadasplantilla.html", {
+      evento: Number(eventoSeleccionado) || null,
+      modo: "playoff",
+      ronda: ronda || "",
+    });
+    return;
+  }
+
+  const params = new URLSearchParams();
+  params.set("evento", String(eventoSeleccionado));
+  params.set("modo", "playoff");
+  if (ronda) params.set("ronda", String(ronda));
   window.location.href = `jornadasplantilla.html?${params.toString()}`;
 }
 
@@ -2339,6 +2420,23 @@ async function crearPartidoManual() {
         },
       },
       {
+        name: "numero_campeonato",
+        label: "N° visible del partido",
+        type: "number",
+        value: String(obtenerSiguienteNumeroVisiblePartido()),
+        min: 1,
+        step: 1,
+        placeholder: "Ej. 12",
+        helpText: "Número visible para el fixture. Si lo cambias, el ID interno del partido no se modifica.",
+        validate: (v) => {
+          const raw = String(v ?? "").trim();
+          if (!raw) return "";
+          const numero = Number.parseInt(raw, 10);
+          if (!Number.isFinite(numero) || numero <= 0) return "El número visible debe ser un entero mayor a 0.";
+          return "";
+        },
+      },
+      {
         name: "jornada",
         label: "Jornada",
         type: "number",
@@ -2379,6 +2477,7 @@ async function crearPartidoManual() {
   const localId  = Number(form.equipo_local_id);
   const visitId  = Number(form.equipo_visitante_id);
   const jornada  = Number(form.jornada);
+  const numeroVisible = Number.parseInt(String(form.numero_campeonato || "").trim(), 10);
   const fecha    = String(form.fecha || "").trim() || null;
   const hora     = String(form.hora  || "").trim();
   const cancha   = String(form.cancha || "").trim() || null;
@@ -2392,6 +2491,7 @@ async function crearPartidoManual() {
       evento_id: eventoSeleccionado,
       equipo_local_id: localId,
       equipo_visitante_id: visitId,
+      numero_campeonato: Number.isFinite(numeroVisible) && numeroVisible > 0 ? numeroVisible : null,
       jornada,
       fecha_partido: fecha,
       hora_partido: hora ? (hora.length === 5 ? `${hora}:00` : hora) : null,

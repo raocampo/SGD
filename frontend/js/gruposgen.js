@@ -17,6 +17,7 @@ let gruposUiState = {
   tabActiva: "panel-grupos",
 };
 let gruposEventosCache = [];
+let gruposExportEnCurso = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("gruposgen.html")) return;
@@ -761,8 +762,37 @@ async function esperarImagenes(zona) {
   );
 }
 
+function setEstadoExportacionGrupos(activo, textoBoton = "") {
+  gruposExportEnCurso = activo;
+  const botones = [
+    document.getElementById("btn-grupos-export-img"),
+    document.getElementById("btn-grupos-export-pdf"),
+    document.getElementById("btn-grupos-share"),
+  ];
+
+  botones.forEach((btn) => {
+    if (!btn) return;
+    if (!btn.dataset.defaultLabel) {
+      btn.dataset.defaultLabel = btn.innerHTML;
+    }
+    btn.disabled = activo;
+  });
+
+  const btnImagen = document.getElementById("btn-grupos-export-img");
+  if (btnImagen) {
+    btnImagen.innerHTML = activo
+      ? (textoBoton || "⏳ Generando...")
+      : (btnImagen.dataset.defaultLabel || "🖼️ Exportar imagen");
+  }
+}
+
 async function exportarGruposPNG() {
+  if (gruposExportEnCurso) {
+    mostrarNotificacion("Ya se está generando la imagen de grupos.", "warning");
+    return;
+  }
   try {
+    setEstadoExportacionGrupos(true, "⏳ Generando imagen...");
     const zona = getZonaExport();
     if (!zona) return;
     if (!window.html2canvas) {
@@ -789,6 +819,8 @@ async function exportarGruposPNG() {
   } catch (error) {
     console.error("Error exportando imagen de grupos:", error);
     mostrarNotificacion("No se pudo exportar imagen", "error");
+  } finally {
+    setEstadoExportacionGrupos(false);
   }
 }
 
@@ -833,7 +865,12 @@ async function cargarAuspiciantesGrupos(campeonatoId) {
 }
 
 async function exportarPDF() {
+  if (gruposExportEnCurso) {
+    mostrarNotificacion("Espera a que termine la exportación actual.", "warning");
+    return;
+  }
   try {
+    setEstadoExportacionGrupos(true, "⏳ Generando PDF...");
     const zona = getZonaExport();
     if (!zona) return;
     if (!window.html2canvas || !window.jspdf?.jsPDF) {
@@ -879,11 +916,18 @@ async function exportarPDF() {
   } catch (error) {
     console.error("Error exportando PDF de grupos:", error);
     mostrarNotificacion("No se pudo exportar PDF", "error");
+  } finally {
+    setEstadoExportacionGrupos(false);
   }
 }
 
 async function compartirRedes() {
+  if (gruposExportEnCurso) {
+    mostrarNotificacion("Espera a que termine la exportación actual.", "warning");
+    return;
+  }
   try {
+    setEstadoExportacionGrupos(true, "⏳ Preparando...");
     const zona = getZonaExport();
     if (!zona) return;
     if (!window.html2canvas) {
@@ -935,6 +979,8 @@ async function compartirRedes() {
   } catch (error) {
     console.error("Error compartiendo grupos:", error);
     mostrarNotificacion("No se pudo compartir la imagen", "error");
+  } finally {
+    setEstadoExportacionGrupos(false);
   }
 }
 

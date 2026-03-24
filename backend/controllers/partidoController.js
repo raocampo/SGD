@@ -72,6 +72,30 @@ function resolverModoProgramacion(body = {}) {
   };
 }
 
+function normalizarNumeroVisiblePartido(valor, { permitirVacio = true } = {}) {
+  if (valor === undefined) return undefined;
+  if (valor === null || valor === "") {
+    return permitirVacio ? null : undefined;
+  }
+
+  const numero = Number.parseInt(valor, 10);
+  if (!Number.isFinite(numero) || numero <= 0) {
+    const err = new Error("El número visible del partido debe ser un entero mayor a 0.");
+    err.statusCode = 400;
+    throw err;
+  }
+  return numero;
+}
+
+function mapearErrorNumeroVisible(error) {
+  if (String(error?.code || "") === "23505" && String(error?.constraint || "") === "idx_partidos_numero_campeonato") {
+    const err = new Error("Ese número visible de partido ya está en uso en este campeonato.");
+    err.statusCode = 400;
+    return err;
+  }
+  return error;
+}
+
 // ===============================
 // 🎯 FIXTURE POR EVENTO (CATEGORÍA)
 // ===============================
@@ -302,6 +326,7 @@ exports.crearPartido = async (req, res) => {
       hora_partido = null,
       cancha = null,
       jornada,
+      numero_campeonato = null,
     } = req.body;
 
     const partido = await Partido.crear(
@@ -313,13 +338,15 @@ exports.crearPartido = async (req, res) => {
       hora_partido,
       cancha,
       jornada ? parseInt(jornada, 10) : null,
-      evento_id ? parseInt(evento_id, 10) : null
+      evento_id ? parseInt(evento_id, 10) : null,
+      normalizarNumeroVisiblePartido(numero_campeonato)
     );
 
     return res.status(201).json({ ok: true, partido });
   } catch (error) {
-    console.error("Error creando partido:", error);
-    return res.status(500).json({ error: error.message });
+    const mapped = mapearErrorNumeroVisible(error);
+    console.error("Error creando partido:", mapped);
+    return res.status(mapped.statusCode || 500).json({ error: mapped.message });
   }
 };
 
@@ -364,6 +391,7 @@ exports.actualizarPartido = async (req, res) => {
       cancha: req.body.cancha ?? undefined,
       jornada: req.body.jornada ?? undefined,
       grupo_id: req.body.grupo_id ?? undefined,
+      numero_campeonato: normalizarNumeroVisiblePartido(req.body.numero_campeonato),
     };
 
     // Cambio de equipos: solo el rol administrador puede hacerlo
@@ -393,8 +421,9 @@ exports.actualizarPartido = async (req, res) => {
     const partido = await Partido.actualizar(id, datos);
     return res.json({ ok: true, partido });
   } catch (error) {
-    console.error("Error actualizando partido:", error);
-    return res.status(500).json({ error: error.message });
+    const mapped = mapearErrorNumeroVisible(error);
+    console.error("Error actualizando partido:", mapped);
+    return res.status(mapped.statusCode || 500).json({ error: mapped.message });
   }
 };
 

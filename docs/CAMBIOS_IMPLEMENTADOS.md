@@ -7,6 +7,31 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-23 - Numeración visible de partidos y planilla de playoff
+- `backend/controllers/partidoController.js` y `backend/models/Partido.js` ahora permiten definir `numero_campeonato` como número visible editable para cada partido:
+  - se puede enviar al crear un partido manual,
+  - se puede actualizar después desde `Editar partido`,
+  - el identificador interno sigue intacto para auditoría.
+- El backend ya intercepta la restricción única `idx_partidos_numero_campeonato` y devuelve un error funcional:
+  - `Ese número visible de partido ya está en uso en este campeonato.`
+- `frontend/js/partidos.js` añade el campo `N° visible del partido` en:
+  - creación manual,
+  - edición de partido.
+- `frontend/js/planilla.js` deja de usar el `id` interno como fallback visual; si no existe número visible, la UI muestra `-` en lugar de filtrar el identificador técnico.
+- `frontend/planilla.html` y `frontend/js/planilla.js` ya soportan `Planilla de Juego` para `playoff`:
+  - nueva fase `Playoff`,
+  - selector de `Ronda`,
+  - lectura de partidos de llave y reclasificación,
+  - cabecera/PDF con contexto `Llave` en vez de `Grupo`.
+- `frontend/js/eliminatorias.js` expone el acceso directo a `Planilla` desde los cruces que ya tienen partido operativo.
+- `frontend/jornadasplantilla.html` y `frontend/js/jornadasplantilla.js` soportan también posters por ronda de `playoff`.
+- `frontend/gruposgen.html` y `frontend/js/gruposgen.js` corrigen la exportación duplicada de imagen/PDF:
+  - se quitan disparos dobles,
+  - se bloquean botones durante el render,
+  - se evita crear dos archivos por una sola acción.
+
+---
+
 ## 2026-03-22 - Cierre de impresión oficial de planilla
 - `frontend/js/eliminatorias.js` y `frontend/css/style.css` ahora permiten que la plantilla publicable del playoff incluya la programación real del partido (`fecha`, `hora`, `cancha`) dentro del nodo cuando el cruce ya fue agendado.
 - se compacta el layout especial del bracket publicable:

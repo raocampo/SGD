@@ -15,8 +15,12 @@ let documentosRequeridos = {
 };
 let eventosPlanillaCache = [];
 let partidosSelectorCache = [];
+let partidosSelectorRegularCache = [];
+let partidosSelectorPlayoffCache = [];
 let grupoSelectorActual = "";
 let jornadaSelectorActual = "";
+let faseSelectorActual = "regular";
+let rondaSelectorActual = "";
 let modoVistaPreviaPlanilla = "oficial";
 let contextoRetornoPlanilla = {
   pagina: null,
@@ -49,6 +53,26 @@ const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante",
 const ESTADOS_PLANILLA_CERRADOS = new Set(["finalizado", "no_presentaron_ambos"]);
 const GOLES_WALKOVER = 3;
 const MAX_FALTAS_PLANILLA = 6;
+const RONDAS_PLAYOFF_PLANILLA = [
+  "reclasificacion",
+  "32vos",
+  "16vos",
+  "12vos",
+  "8vos",
+  "4tos",
+  "semifinal",
+  "final",
+  "tercer_puesto",
+  "tercer_y_cuarto",
+];
+
+function normalizarRondaPlayoffPlanilla(ronda = "") {
+  const raw = String(ronda || "")
+    .trim()
+    .toLowerCase();
+  if (raw === "tercer_puesto") return "tercer_y_cuarto";
+  return raw;
+}
 
 function qp(nombre) {
   const params = new URLSearchParams(window.location.search);
@@ -60,6 +84,8 @@ function guardarContextoRutaPlanilla() {
     campeonato: Number.isFinite(Number(campeonatoIdContexto)) ? Number(campeonatoIdContexto) : null,
     evento: Number.isFinite(Number(eventoId)) ? Number(eventoId) : null,
     partido: Number.isFinite(Number(partidoId)) ? Number(partidoId) : null,
+    fase: String(faseSelectorActual || "regular"),
+    ronda: String(rondaSelectorActual || "").trim() || null,
     regreso_pagina: contextoRetornoPlanilla.pagina || null,
     regreso_evento: Number.isFinite(Number(contextoRetornoPlanilla.evento))
       ? Number(contextoRetornoPlanilla.evento)
@@ -74,6 +100,8 @@ function leerContextoRetornoPlanilla() {
       "partido",
       "evento",
       "campeonato",
+      "fase",
+      "ronda",
       "regreso_pagina",
       "regreso_evento",
       "regreso_fuente",
@@ -86,6 +114,11 @@ function leerContextoRetornoPlanilla() {
   if (!Number.isFinite(Number(contextoRetornoPlanilla.evento))) {
     contextoRetornoPlanilla.evento = null;
   }
+  const fase = String(routeContext.fase || "").trim().toLowerCase();
+  if (fase === "playoff" || fase === "regular") {
+    faseSelectorActual = fase;
+  }
+  rondaSelectorActual = normalizarRondaPlayoffPlanilla(routeContext.ronda || "");
   return routeContext;
 }
 
@@ -149,9 +182,78 @@ function formatearFecha(valor) {
 function obtenerNumeroPartidoVisible(partido) {
   const n = Number.parseInt(partido?.numero_campeonato, 10);
   if (Number.isFinite(n) && n > 0) return n;
-  const fallback = Number.parseInt(partido?.id, 10);
-  if (Number.isFinite(fallback) && fallback > 0) return fallback;
   return null;
+}
+
+function esPartidoPlayoffPlanilla(partido = {}) {
+  return (
+    String(partido?.origen_fase || "").trim().toLowerCase() === "playoff" ||
+    normalizarRondaPlayoffPlanilla(partido?.playoff_ronda || "") !== "" ||
+    normalizarRondaPlayoffPlanilla(partido?.ronda || "") !== "" ||
+    Number.parseInt(partido?.reclasificacion_playoff_id, 10) > 0
+  );
+}
+
+function formatearRondaPlayoffPlanilla(ronda = "") {
+  const raw = normalizarRondaPlayoffPlanilla(ronda);
+  if (!raw) return "Playoff";
+
+  const mapa = {
+    reclasificacion: "Reclasificación",
+    "32vos": "32vos",
+    "16vos": "16vos",
+    "12vos": "12vos",
+    "8vos": "Octavos",
+    "4tos": "Cuartos",
+    semifinal: "Semifinal",
+    final: "Final",
+    tercer_y_cuarto: "Tercer y cuarto",
+  };
+  return mapa[raw] || raw.replaceAll("_", " ");
+}
+
+function obtenerEtiquetaCrucePlayoffPlanilla(partido = {}) {
+  if (Number.parseInt(partido?.reclasificacion_playoff_id, 10) > 0) {
+    const grupo = String(partido?.reclasificacion_grupo_letra || "").trim().toUpperCase();
+    const cupo = Number.parseInt(partido?.reclasificacion_slot_posicion, 10);
+    const partes = ["Reclasificación"];
+    if (Number.isFinite(cupo) && cupo > 0) partes.push(`Cupo ${cupo}`);
+    if (grupo) partes.push(`Grupo ${grupo}`);
+    return partes.join(" · ");
+  }
+
+  const ronda = normalizarRondaPlayoffPlanilla(partido?.playoff_ronda || partido?.ronda || "");
+  const numero = Number.parseInt(partido?.partido_numero ?? partido?.playoff_partido_numero, 10);
+  if (ronda === "final") return "Final";
+  if (ronda === "tercer_y_cuarto") return "Tercer y cuarto";
+  if (!Number.isFinite(numero) || numero <= 0) return formatearRondaPlayoffPlanilla(ronda);
+
+  const prefijos = {
+    "32vos": "32VO",
+    "16vos": "16VO",
+    "12vos": "12VO",
+    "8vos": "8VO",
+    "4tos": "4TO",
+    semifinal: "SEM",
+  };
+  return `${prefijos[ronda] || formatearRondaPlayoffPlanilla(ronda).toUpperCase()} P${numero}`;
+}
+
+function obtenerPartidosActivosSelectorPlanilla() {
+  return faseSelectorActual === "playoff" ? partidosSelectorPlayoffCache : partidosSelectorRegularCache;
+}
+
+function sincronizarCacheActivoSelectorPlanilla() {
+  partidosSelectorCache = [...obtenerPartidosActivosSelectorPlanilla()];
+}
+
+function filtrarPartidosSelectorPorRonda(partidos = []) {
+  if (!rondaSelectorActual) return [...partidos];
+  return partidos.filter(
+    (p) =>
+      normalizarRondaPlayoffPlanilla(p?.playoff_ronda || p?.ronda || "") ===
+      normalizarRondaPlayoffPlanilla(rondaSelectorActual)
+  );
 }
 
 function estadoPlanillaEsCerrado(estado = "") {
@@ -576,6 +678,24 @@ function etiquetaGrupoPartido(p = {}) {
 }
 
 function obtenerContextoCompetenciaPlanilla(p = {}) {
+  if (Number.parseInt(p?.reclasificacion_playoff_id, 10) > 0) {
+    return {
+      etiqueta: "Llave",
+      valor: obtenerEtiquetaCrucePlayoffPlanilla(p),
+      resumen: obtenerEtiquetaCrucePlayoffPlanilla(p),
+    };
+  }
+
+  if (esPartidoPlayoffPlanilla(p)) {
+    const rondaTxt = formatearRondaPlayoffPlanilla(p.playoff_ronda || p.ronda);
+    const cruceTxt = obtenerEtiquetaCrucePlayoffPlanilla(p);
+    return {
+      etiqueta: "Llave",
+      valor: rondaTxt,
+      resumen: cruceTxt === rondaTxt ? rondaTxt : `${rondaTxt} · ${cruceTxt}`,
+    };
+  }
+
   const metodo = String(p?.metodo_competencia || "").trim().toLowerCase();
   if (metodo === "liga") {
     return {
@@ -590,6 +710,21 @@ function obtenerContextoCompetenciaPlanilla(p = {}) {
     etiqueta: "Grupo",
     valor: grupo,
     resumen: grupo,
+  };
+}
+
+function obtenerEtiquetaJornadaPlanilla(p = {}) {
+  if (esPartidoPlayoffPlanilla(p)) return "";
+  return Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
+}
+
+function obtenerResumenCompetenciaPlanilla(p = {}) {
+  const contexto = obtenerContextoCompetenciaPlanilla(p);
+  const jornada = obtenerEtiquetaJornadaPlanilla(p);
+  return {
+    contexto,
+    jornada,
+    linea: jornada ? `${jornada} • ${contexto.resumen}` : contexto.resumen,
   };
 }
 
@@ -609,6 +744,7 @@ function obtenerClaveGrupoPartido(p = {}) {
 }
 
 function filtrarPartidosSelectorPorGrupo(partidos = []) {
+  if (faseSelectorActual === "playoff") return [...partidos];
   if (!grupoSelectorActual) return [...partidos];
   return partidos.filter((p) => obtenerClaveGrupoPartido(p) === grupoSelectorActual);
 }
@@ -1093,10 +1229,9 @@ function renderEncabezado() {
   if (!cont || !dataPlanilla?.partido) return;
 
   const p = dataPlanilla.partido;
-  const contextoCompetencia = obtenerContextoCompetenciaPlanilla(p);
+  const { linea: resumenCompetencia } = obtenerResumenCompetenciaPlanilla(p);
   const fecha = formatearFecha(p.fecha_partido);
   const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
-  const jornada = Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
   const tipoTxt = formatearTipoFutbolTexto(p.tipo_futbol);
   const orgTxt = p.campeonato_organizador || p.campeonato_nombre || "Organizador";
   const logoCampeonato = normalizarArchivoUrl(p.campeonato_logo_url);
@@ -1159,7 +1294,7 @@ function renderEncabezado() {
     </div>
     <div class="planilla-head-meta-grid">
       <div><strong>Partido:</strong> #${obtenerNumeroPartidoVisible(p) || "-"}</div>
-      <div><strong>${escapeHtml(jornada)}</strong> • ${escapeHtml(contextoCompetencia.resumen)}</div>
+      <div><strong>${escapeHtml(resumenCompetencia)}</strong></div>
       <div><strong>Fecha:</strong> <span id="head-fecha">${fecha}</span></div>
       <div><strong>Hora:</strong> <span id="head-hora">${escapeHtml(hora)}</span></div>
       <div><strong>Cancha:</strong> <span id="head-cancha">${escapeHtml(p.cancha || "Por definir")}</span></div>
@@ -2150,12 +2285,130 @@ function actualizarVisibilidadContenidoPlanilla(mostrar) {
   }
 }
 
+function actualizarVisibilidadFiltrosPlanilla() {
+  const grupoFase = document.getElementById("grupo-fase-planilla");
+  const grupoGrupo = document.getElementById("grupo-filtro-grupo-planilla");
+  const grupoJornada = document.getElementById("grupo-filtro-jornada-planilla");
+  const grupoRonda = document.getElementById("grupo-filtro-ronda-planilla");
+
+  if (grupoFase instanceof HTMLElement) {
+    grupoFase.hidden = !partidosSelectorPlayoffCache.length;
+  }
+  if (grupoGrupo instanceof HTMLElement) {
+    grupoGrupo.hidden = faseSelectorActual === "playoff";
+  }
+  if (grupoJornada instanceof HTMLElement) {
+    grupoJornada.hidden = faseSelectorActual === "playoff";
+  }
+  if (grupoRonda instanceof HTMLElement) {
+    grupoRonda.hidden = faseSelectorActual !== "playoff";
+  }
+}
+
+function poblarFaseSelectorPlanilla() {
+  const selectFase = document.getElementById("select-fase-planilla");
+  if (!(selectFase instanceof HTMLSelectElement)) return;
+
+  const tieneRegular = partidosSelectorRegularCache.length > 0;
+  const tienePlayoff = partidosSelectorPlayoffCache.length > 0;
+  const opciones = [];
+  if (tieneRegular || !tienePlayoff) {
+    opciones.push({ valor: "regular", etiqueta: "Fase regular" });
+  }
+  if (tienePlayoff) {
+    opciones.push({ valor: "playoff", etiqueta: "Playoff" });
+  }
+
+  selectFase.innerHTML = opciones
+    .map((item) => `<option value="${item.valor}">${escapeHtml(item.etiqueta)}</option>`)
+    .join("");
+
+  if (!opciones.some((item) => item.valor === faseSelectorActual)) {
+    faseSelectorActual = tienePlayoff && !tieneRegular ? "playoff" : "regular";
+  }
+  selectFase.value = faseSelectorActual;
+  actualizarVisibilidadFiltrosPlanilla();
+}
+
+function poblarRondasSelectorPlanilla() {
+  const selectRonda = document.getElementById("select-ronda-planilla");
+  if (!(selectRonda instanceof HTMLSelectElement)) return;
+
+  const rondas = Array.from(
+    new Set(
+      partidosSelectorPlayoffCache
+        .map((p) => normalizarRondaPlayoffPlanilla(p?.playoff_ronda || p?.ronda || ""))
+        .filter(Boolean)
+    )
+  ).sort((a, b) => {
+    const idxA = RONDAS_PLAYOFF_PLANILLA.indexOf(String(a).toLowerCase());
+    const idxB = RONDAS_PLAYOFF_PLANILLA.indexOf(String(b).toLowerCase());
+    const ordenA = idxA >= 0 ? idxA : 999;
+    const ordenB = idxB >= 0 ? idxB : 999;
+    return ordenA - ordenB || String(a).localeCompare(String(b), "es", { sensitivity: "base" });
+  });
+
+  selectRonda.innerHTML = '<option value="">- Todas -</option>';
+  rondas.forEach((ronda) => {
+    selectRonda.innerHTML += `<option value="${escapeHtml(ronda)}">${escapeHtml(
+      formatearRondaPlayoffPlanilla(ronda)
+    )}</option>`;
+  });
+
+  if (rondaSelectorActual && rondas.includes(rondaSelectorActual)) {
+    selectRonda.value = rondaSelectorActual;
+  } else {
+    rondaSelectorActual = "";
+  }
+}
+function normalizarPartidoRegularSelectorPlanilla(partido = {}) {
+  const id = Number.parseInt(partido?.id, 10);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  return {
+    ...partido,
+    id,
+    origen_fase: "regular",
+  };
+}
+
+function normalizarPartidoReclasificacionSelectorPlanilla(partido = {}) {
+  const id = Number.parseInt(partido?.id, 10);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  return {
+    ...partido,
+    id,
+    origen_fase: "playoff",
+    playoff_ronda: "reclasificacion",
+    ronda: "reclasificacion",
+  };
+}
+
+function normalizarPartidoPlayoffSelectorPlanilla(slot = {}) {
+  const partidoBaseId = Number.parseInt(slot?.partido_id, 10);
+  if (!Number.isFinite(partidoBaseId) || partidoBaseId <= 0) return null;
+  return {
+    ...slot,
+    id: partidoBaseId,
+    partido_id: partidoBaseId,
+    numero_campeonato:
+      Number.parseInt(slot?.numero_campeonato, 10)
+      || Number.parseInt(slot?.partido_numero, 10)
+      || null,
+    playoff_ronda: normalizarRondaPlayoffPlanilla(slot?.ronda || ""),
+    ronda: normalizarRondaPlayoffPlanilla(slot?.ronda || ""),
+    origen_fase: "playoff",
+    grupo_id: null,
+    letra_grupo: null,
+    nombre_grupo: null,
+  };
+}
+
 function poblarGruposSelectorPlanilla() {
   const selectGrupo = document.getElementById("select-grupo-planilla");
   if (!selectGrupo) return;
 
   const grupos = Array.from(
-    partidosSelectorCache.reduce((map, partido) => {
+    obtenerPartidosActivosSelectorPlanilla().reduce((map, partido) => {
       const clave = obtenerClaveGrupoPartido(partido);
       if (!map.has(clave)) {
         map.set(clave, etiquetaGrupoPartido(partido));
@@ -2182,7 +2435,7 @@ function poblarJornadasSelectorPlanilla() {
 
   const jornadas = Array.from(
     new Set(
-      filtrarPartidosSelectorPorGrupo(partidosSelectorCache)
+      filtrarPartidosSelectorPorGrupo(obtenerPartidosActivosSelectorPlanilla())
         .map((p) => Number(p.jornada))
         .filter((j) => Number.isFinite(j))
     )
@@ -2216,12 +2469,29 @@ function poblarPartidosSelectorPlanilla() {
   const selectPartido = document.getElementById("select-partido-planilla");
   if (!selectPartido) return;
 
-  let partidos = filtrarPartidosSelectorPorGrupo(partidosSelectorCache);
-  if (jornadaSelectorActual) {
+  let partidos =
+    faseSelectorActual === "playoff"
+      ? filtrarPartidosSelectorPorRonda(obtenerPartidosActivosSelectorPlanilla())
+      : filtrarPartidosSelectorPorGrupo(obtenerPartidosActivosSelectorPlanilla());
+
+  if (faseSelectorActual !== "playoff" && jornadaSelectorActual) {
     partidos = partidos.filter((p) => String(p.jornada || "") === String(jornadaSelectorActual));
   }
 
   partidos.sort((a, b) => {
+    if (faseSelectorActual === "playoff") {
+      const rondaA = normalizarRondaPlayoffPlanilla(a?.playoff_ronda || a?.ronda || "");
+      const rondaB = normalizarRondaPlayoffPlanilla(b?.playoff_ronda || b?.ronda || "");
+      const idxA = RONDAS_PLAYOFF_PLANILLA.indexOf(rondaA);
+      const idxB = RONDAS_PLAYOFF_PLANILLA.indexOf(rondaB);
+      const ordenA = idxA >= 0 ? idxA : 999;
+      const ordenB = idxB >= 0 ? idxB : 999;
+      if (ordenA !== ordenB) return ordenA - ordenB;
+      return (
+        Number(a.partido_numero ?? a.playoff_partido_numero) || 0
+      ) - (Number(b.partido_numero ?? b.playoff_partido_numero) || 0);
+    }
+
     const ja = Number(a.jornada) || 0;
     const jb = Number(b.jornada) || 0;
     if (ja !== jb) return ja - jb;
@@ -2231,12 +2501,13 @@ function poblarPartidosSelectorPlanilla() {
   selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
   partidos.forEach((p) => {
     const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
-    const numeroPartido = obtenerNumeroPartidoVisible(p) || "-";
-    const grupo = etiquetaGrupoPartido(p);
     const estadoRaw = String(p?.estado || "").trim().toLowerCase();
     const estadoTxt = estadoRaw ? estadoRaw.replaceAll("_", " ").toUpperCase() : "PENDIENTE";
     const esFinalizado = estadoPlanillaEsCerrado(estadoRaw);
-    const label = `P${numeroPartido} • ${grupo} • J${p.jornada || "-"} • ${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre} • ${formatearFecha(p.fecha_partido)} ${hora} • ${estadoTxt}`;
+    const label =
+      faseSelectorActual === "playoff"
+        ? `${formatearRondaPlayoffPlanilla(p.playoff_ronda || p.ronda)} • ${obtenerEtiquetaCrucePlayoffPlanilla(p)} • ${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre} • ${formatearFecha(p.fecha_partido)} ${hora} • ${estadoTxt}`
+        : `P${obtenerNumeroPartidoVisible(p) || "-"} • ${etiquetaGrupoPartido(p)} • J${p.jornada || "-"} • ${p.equipo_local_nombre} vs ${p.equipo_visitante_nombre} • ${formatearFecha(p.fecha_partido)} ${hora} • ${estadoTxt}`;
     const estiloFinalizado = esFinalizado
       ? ' style="background:#fff3cd;color:#7c5a00;font-weight:700;"'
       : "";
@@ -2264,69 +2535,135 @@ async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
   const eventoNum = Number(eventoSeleccionado);
   const selectGrupo = document.getElementById("select-grupo-planilla");
   const selectPartido = document.getElementById("select-partido-planilla");
+  const selectRonda = document.getElementById("select-ronda-planilla");
   if (!Number.isFinite(eventoNum) || eventoNum <= 0) {
+    partidosSelectorRegularCache = [];
+    partidosSelectorPlayoffCache = [];
     partidosSelectorCache = [];
     grupoSelectorActual = "";
     jornadaSelectorActual = "";
+    rondaSelectorActual = "";
+    faseSelectorActual = "regular";
+    poblarFaseSelectorPlanilla();
     poblarGruposSelectorPlanilla();
     poblarJornadasSelectorPlanilla();
-    if (selectGrupo) {
-      selectGrupo.innerHTML = '<option value="">- Todos -</option>';
-    }
-    if (selectPartido) {
-      selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
-    }
+    poblarRondasSelectorPlanilla();
+    if (selectGrupo) selectGrupo.innerHTML = '<option value="">- Todos -</option>';
+    if (selectRonda) selectRonda.innerHTML = '<option value="">- Todas -</option>';
+    if (selectPartido) selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
     return;
   }
 
   try {
-    const resp = await ApiClient.get(`/partidos/evento/${eventoNum}`);
-    partidosSelectorCache = Array.isArray(resp) ? resp : (resp.partidos || []);
-    let jornadaFijadaPorPartido = false;
+    const [respPartidos, respEliminatoria] = await Promise.all([
+      ApiClient.get(`/partidos/evento/${eventoNum}`),
+      ApiClient.get(`/eliminatorias/evento/${eventoNum}`).catch(() => ({ partidos: [] })),
+    ]);
 
+    const partidosCrudos = Array.isArray(respPartidos) ? respPartidos : (respPartidos?.partidos || []);
+    const crucesCrudos = Array.isArray(respEliminatoria) ? respEliminatoria : (respEliminatoria?.partidos || []);
+
+    const reclasificaciones = partidosCrudos
+      .filter((p) => Boolean(p?.es_reclasificacion_playoff))
+      .map((p) => normalizarPartidoReclasificacionSelectorPlanilla(p))
+      .filter(Boolean);
+
+    const crucesPlayoff = crucesCrudos
+      .map((slot) => normalizarPartidoPlayoffSelectorPlanilla(slot))
+      .filter(Boolean);
+
+    const idsPlayoff = new Set([
+      ...reclasificaciones.map((item) => Number(item.id)),
+      ...crucesPlayoff.map((item) => Number(item.id)),
+    ]);
+
+    partidosSelectorRegularCache = partidosCrudos
+      .map((p) => normalizarPartidoRegularSelectorPlanilla(p))
+      .filter((p) => p && !idsPlayoff.has(Number(p.id)) && !p.es_reclasificacion_playoff);
+
+    const idsPlayoffAgregados = new Set();
+    partidosSelectorPlayoffCache = [...reclasificaciones, ...crucesPlayoff].filter((item) => {
+      const id = Number(item?.id);
+      if (!Number.isFinite(id) || id <= 0 || idsPlayoffAgregados.has(id)) return false;
+      idsPlayoffAgregados.add(id);
+      return true;
+    });
+
+    let partidoMatch = null;
     if (Number.isFinite(Number(partidoId))) {
-      const partidoMatch = partidosSelectorCache.find((p) => Number(p.id) === Number(partidoId));
-      if (partidoMatch && Number.isFinite(Number(partidoMatch.jornada))) {
-        grupoSelectorActual = obtenerClaveGrupoPartido(partidoMatch);
-        jornadaSelectorActual = String(partidoMatch.jornada);
-        jornadaFijadaPorPartido = true;
+      partidoMatch =
+        partidosSelectorPlayoffCache.find((p) => Number(p.id) === Number(partidoId)) ||
+        partidosSelectorRegularCache.find((p) => Number(p.id) === Number(partidoId)) ||
+        null;
+    }
+
+    if (partidoMatch) {
+      faseSelectorActual = esPartidoPlayoffPlanilla(partidoMatch) ? "playoff" : "regular";
+      grupoSelectorActual = faseSelectorActual === "playoff" ? "" : obtenerClaveGrupoPartido(partidoMatch);
+      jornadaSelectorActual =
+        faseSelectorActual === "playoff" || !Number.isFinite(Number(partidoMatch.jornada))
+          ? ""
+          : String(partidoMatch.jornada);
+      rondaSelectorActual =
+        faseSelectorActual === "playoff"
+          ? normalizarRondaPlayoffPlanilla(partidoMatch.playoff_ronda || partidoMatch.ronda || "")
+          : "";
+    } else {
+      if (faseSelectorActual === "playoff" && !partidosSelectorPlayoffCache.length) {
+        faseSelectorActual = partidosSelectorRegularCache.length ? "regular" : "playoff";
+      }
+      if (faseSelectorActual !== "playoff" && !partidosSelectorRegularCache.length && partidosSelectorPlayoffCache.length) {
+        faseSelectorActual = "playoff";
+      }
+      if (!jornadaSelectorActual && faseSelectorActual !== "playoff") {
+        jornadaSelectorActual = obtenerUltimaJornadaDisponible(
+          filtrarPartidosSelectorPorGrupo(partidosSelectorRegularCache)
+        );
+      }
+      if (faseSelectorActual !== "playoff") {
+        rondaSelectorActual = "";
       }
     }
 
-    if (!jornadaFijadaPorPartido && !jornadaSelectorActual) {
-      // Sugerimos la ultima jornada por defecto, pero el usuario puede cambiarla libremente.
-      jornadaSelectorActual = obtenerUltimaJornadaDisponible(filtrarPartidosSelectorPorGrupo(partidosSelectorCache));
-    }
-
+    sincronizarCacheActivoSelectorPlanilla();
+    poblarFaseSelectorPlanilla();
     poblarGruposSelectorPlanilla();
     poblarJornadasSelectorPlanilla();
+    poblarRondasSelectorPlanilla();
     poblarPartidosSelectorPlanilla();
   } catch (error) {
     console.error("Error cargando partidos para planillaje directo:", error);
     mostrarNotificacion("Error cargando partidos del evento", "error");
+    partidosSelectorRegularCache = [];
+    partidosSelectorPlayoffCache = [];
     partidosSelectorCache = [];
     grupoSelectorActual = "";
     jornadaSelectorActual = "";
+    rondaSelectorActual = "";
+    faseSelectorActual = "regular";
+    poblarFaseSelectorPlanilla();
     poblarGruposSelectorPlanilla();
     poblarJornadasSelectorPlanilla();
-    if (selectGrupo) {
-      selectGrupo.innerHTML = '<option value="">- Todos -</option>';
-    }
-    if (selectPartido) {
-      selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
-    }
+    poblarRondasSelectorPlanilla();
+    if (selectGrupo) selectGrupo.innerHTML = '<option value="">- Todos -</option>';
+    if (selectRonda) selectRonda.innerHTML = '<option value="">- Todas -</option>';
+    if (selectPartido) selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
   }
 }
 
 async function cargarEventosSelectorPlanilla() {
   const selectCampeonato = document.getElementById("select-campeonato-planilla");
   const selectEvento = document.getElementById("select-evento-planilla");
+  const selectFase = document.getElementById("select-fase-planilla");
   const selectGrupo = document.getElementById("select-grupo-planilla");
   const selectJornada = document.getElementById("select-jornada-planilla");
+  const selectRonda = document.getElementById("select-ronda-planilla");
   const selectPartido = document.getElementById("select-partido-planilla");
-  if (!selectEvento || !selectGrupo || !selectJornada || !selectPartido) return;
-  selectEvento.innerHTML = '<option value="">- Selecciona una categoría -</option>';
+  if (!selectEvento || !selectGrupo || !selectJornada || !selectRonda || !selectPartido) return;
+  selectEvento.innerHTML = '<option value="">- Selecciona una categorÃ­a -</option>';
   selectGrupo.innerHTML = '<option value="">- Todos -</option>';
+  selectJornada.innerHTML = '<option value="">- Todas -</option>';
+  selectRonda.innerHTML = '<option value="">- Todas -</option>';
   selectEvento.disabled = true;
   if (selectPartido) {
     selectPartido.innerHTML = '<option value="">- Selecciona un partido -</option>';
@@ -2352,7 +2689,7 @@ async function cargarEventosSelectorPlanilla() {
     selectEvento.disabled = false;
 
     eventosPlanillaCache.forEach((e) => {
-      const nombre = String(e?.nombre || `Categoría ${e?.id || ""}`).trim();
+      const nombre = String(e?.nombre || `CategorÃ­a ${e?.id || ""}`).trim();
       selectEvento.innerHTML += `<option value="${e.id}">${escapeHtml(nombre)}</option>`;
     });
 
@@ -2360,32 +2697,58 @@ async function cargarEventosSelectorPlanilla() {
       eventoId = selectEvento.value ? Number(selectEvento.value) : null;
       grupoSelectorActual = "";
       jornadaSelectorActual = "";
+      rondaSelectorActual = "";
+      faseSelectorActual = "regular";
       partidoId = NaN;
       guardarContextoRutaPlanilla();
       await cargarPartidosSelectorPorEvento(eventoId);
       actualizarVisibilidadContenidoPlanilla(false);
     };
 
+    if (selectFase instanceof HTMLSelectElement) {
+      selectFase.onchange = () => {
+        faseSelectorActual = String(selectFase.value || "regular").trim().toLowerCase() === "playoff" ? "playoff" : "regular";
+        grupoSelectorActual = "";
+        jornadaSelectorActual = "";
+        rondaSelectorActual = "";
+        sincronizarCacheActivoSelectorPlanilla();
+        actualizarVisibilidadFiltrosPlanilla();
+        poblarGruposSelectorPlanilla();
+        poblarJornadasSelectorPlanilla();
+        poblarRondasSelectorPlanilla();
+        poblarPartidosSelectorPlanilla();
+        guardarContextoRutaPlanilla();
+      };
+    }
+
     selectGrupo.onchange = () => {
       grupoSelectorActual = selectGrupo.value || "";
-      const jornadasDisponibles = filtrarPartidosSelectorPorGrupo(partidosSelectorCache)
+      const jornadasDisponibles = filtrarPartidosSelectorPorGrupo(obtenerPartidosActivosSelectorPlanilla())
         .map((p) => Number(p.jornada))
         .filter((j) => Number.isFinite(j));
 
       if (!jornadasDisponibles.includes(Number(jornadaSelectorActual))) {
         jornadaSelectorActual = obtenerUltimaJornadaDisponible(
-          filtrarPartidosSelectorPorGrupo(partidosSelectorCache)
+          filtrarPartidosSelectorPorGrupo(obtenerPartidosActivosSelectorPlanilla())
         );
       }
 
       poblarGruposSelectorPlanilla();
       poblarJornadasSelectorPlanilla();
       poblarPartidosSelectorPlanilla();
+      guardarContextoRutaPlanilla();
     };
 
     selectJornada.onchange = () => {
       jornadaSelectorActual = selectJornada.value || "";
       poblarPartidosSelectorPlanilla();
+      guardarContextoRutaPlanilla();
+    };
+
+    selectRonda.onchange = () => {
+      rondaSelectorActual = selectRonda.value || "";
+      poblarPartidosSelectorPlanilla();
+      guardarContextoRutaPlanilla();
     };
 
     selectPartido.onchange = () => {
@@ -2400,8 +2763,8 @@ async function cargarEventosSelectorPlanilla() {
       await cargarPartidosSelectorPorEvento(eventoId);
     }
   } catch (error) {
-    console.error("Error cargando Categorías para planillaje directo:", error);
-    mostrarNotificacion("Error cargando Categorías", "error");
+    console.error("Error cargando CategorÃ­as para planillaje directo:", error);
+    mostrarNotificacion("Error cargando CategorÃ­as", "error");
   }
 }
 
@@ -2462,7 +2825,7 @@ async function cargarCampeonatosSelectorPlanilla() {
 }
 
 async function resolverCampeonatoContextoPlanilla() {
-  const routeContext = window.RouteContext?.read?.("planilla.html", ["campeonato", "evento", "partido"]) || {};
+  const routeContext = window.RouteContext?.read?.("planilla.html", ["campeonato", "evento", "partido", "fase", "ronda"]) || {};
 
   const campFromRoute = aEntero(routeContext.campeonato, NaN);
   if (Number.isFinite(campFromRoute) && campFromRoute > 0) {
@@ -2481,6 +2844,12 @@ async function resolverCampeonatoContextoPlanilla() {
     campeonatoIdContexto = campCachePartidos;
   }
 
+  const faseRuta = String(routeContext.fase || "").trim().toLowerCase();
+  if (faseRuta === "playoff" || faseRuta === "regular") {
+    faseSelectorActual = faseRuta;
+  }
+  rondaSelectorActual = normalizarRondaPlayoffPlanilla(routeContext.ronda || "");
+
   const eventoFromRoute = aEntero(routeContext.evento, NaN);
   if (Number.isFinite(eventoFromRoute) && eventoFromRoute > 0) {
     try {
@@ -2492,36 +2861,20 @@ async function resolverCampeonatoContextoPlanilla() {
         localStorage.setItem("sgd_planilla_camp", String(campEvt));
       }
     } catch (error) {
-      console.warn("No se pudo resolver campeonato de la categoría para planilla:", error);
-    }
-  }
-
-  if (!Number.isFinite(Number(campeonatoIdContexto))) {
-    try {
-      const respCamp = await ApiClient.get("/campeonatos");
-      const lista = Array.isArray(respCamp) ? respCamp : (respCamp?.campeonatos || []);
-      if (lista.length) {
-        const ultimo = [...lista].sort((a, b) => Number(b.id) - Number(a.id))[0];
-        const campDefault = Number.parseInt(ultimo?.id, 10);
-        if (Number.isFinite(campDefault) && campDefault > 0) {
-          campeonatoIdContexto = campDefault;
-          localStorage.setItem("sgd_planilla_camp", String(campDefault));
-          guardarContextoRutaPlanilla();
-        }
-      }
-    } catch (error) {
-      console.warn("No se pudo obtener campeonato por defecto para planilla:", error);
+      console.warn("No se pudo resolver campeonato de la categorÃ­a para planilla:", error);
     }
   }
 }
 
 async function sincronizarSelectoresDesdePlanillaActual() {
   const selectEvento = document.getElementById("select-evento-planilla");
+  const selectFase = document.getElementById("select-fase-planilla");
   const selectGrupo = document.getElementById("select-grupo-planilla");
   const selectJornada = document.getElementById("select-jornada-planilla");
+  const selectRonda = document.getElementById("select-ronda-planilla");
   const selectPartido = document.getElementById("select-partido-planilla");
   const p = dataPlanilla?.partido;
-  if (!selectEvento || !selectGrupo || !selectJornada || !selectPartido || !p) return;
+  if (!selectEvento || !selectGrupo || !selectJornada || !selectRonda || !selectPartido || !p) return;
 
   const eventoActual = Number(p.evento_id || eventoId);
   if (Number.isFinite(eventoActual) && eventoActual > 0) {
@@ -2529,18 +2882,46 @@ async function sincronizarSelectoresDesdePlanillaActual() {
     if (String(selectEvento.value) !== String(eventoActual)) {
       selectEvento.value = String(eventoActual);
       await cargarPartidosSelectorPorEvento(eventoActual);
-    } else if (!partidosSelectorCache.length) {
+    } else if (!partidosSelectorRegularCache.length && !partidosSelectorPlayoffCache.length) {
       await cargarPartidosSelectorPorEvento(eventoActual);
     }
   }
 
-  grupoSelectorActual = obtenerClaveGrupoPartido(p);
-  poblarGruposSelectorPlanilla();
-  selectGrupo.value = grupoSelectorActual;
+  const partidoMatchPlayoff = partidosSelectorPlayoffCache.find((item) => Number(item.id) === Number(partidoId)) || null;
+  const partidoMatchRegular = partidosSelectorRegularCache.find((item) => Number(item.id) === Number(partidoId)) || null;
 
-  if (Number.isFinite(Number(p.jornada))) {
-    jornadaSelectorActual = String(p.jornada);
-    selectJornada.value = jornadaSelectorActual;
+  if (partidoMatchPlayoff || esPartidoPlayoffPlanilla(p)) {
+    faseSelectorActual = "playoff";
+    rondaSelectorActual = normalizarRondaPlayoffPlanilla(
+      partidoMatchPlayoff?.playoff_ronda || partidoMatchPlayoff?.ronda || p?.playoff_ronda || p?.ronda || ""
+    );
+    grupoSelectorActual = "";
+    jornadaSelectorActual = "";
+  } else {
+    faseSelectorActual = "regular";
+    grupoSelectorActual = obtenerClaveGrupoPartido(partidoMatchRegular || p);
+    if (Number.isFinite(Number((partidoMatchRegular || p)?.jornada))) {
+      jornadaSelectorActual = String((partidoMatchRegular || p).jornada);
+    }
+    rondaSelectorActual = "";
+  }
+
+  sincronizarCacheActivoSelectorPlanilla();
+  poblarFaseSelectorPlanilla();
+  if (selectFase instanceof HTMLSelectElement) {
+    selectFase.value = faseSelectorActual;
+  }
+  poblarGruposSelectorPlanilla();
+  poblarJornadasSelectorPlanilla();
+  poblarRondasSelectorPlanilla();
+
+  if (faseSelectorActual === "playoff") {
+    selectRonda.value = rondaSelectorActual;
+  } else {
+    selectGrupo.value = grupoSelectorActual;
+    if (jornadaSelectorActual) {
+      selectJornada.value = jornadaSelectorActual;
+    }
   }
 
   poblarPartidosSelectorPlanilla();
@@ -2925,8 +3306,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
   if (!cont) return;
 
   const modelo = obtenerModeloPlanillaOficial();
-  const contextoCompetencia = obtenerContextoCompetenciaPlanilla(p);
-  const jornada = Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
+  const { linea: resumenCompetencia } = obtenerResumenCompetenciaPlanilla(p);
   const arbitraje = obtenerDatosArbitrajePlanilla(p);
   const delegado = String(document.getElementById("delegado-planilla")?.value || p.delegado_partido || "");
   const ciudad = String(document.getElementById("ciudad-planilla")?.value || p.ciudad || "");
@@ -2982,7 +3362,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
         }
         <div><strong>Delegado:</strong> ${escapeHtml(delegado || "________________")}</div>
         <div><strong>Partido:</strong> #${obtenerNumeroPartidoVisible(p) || "-"}</div>
-        <div><strong>${escapeHtml(jornada)}</strong> • ${escapeHtml(contextoCompetencia.resumen)}</div>
+        <div><strong>${escapeHtml(resumenCompetencia)}</strong></div>
       </div>
 
       <div class="planilla-oficial-score">
@@ -3556,8 +3936,7 @@ async function imprimirPDFPlanilla() {
     const stats = construirIndicesEventos(payload);
     const fecha = formatearFecha(p.fecha_partido);
     const hora = (p.hora_partido || "--:--").toString().substring(0, 5);
-    const jornada = Number.isFinite(Number(p.jornada)) ? `Jornada ${p.jornada}` : "Jornada -";
-    const contextoCompetencia = obtenerContextoCompetenciaPlanilla(p);
+    const { contexto: contextoCompetencia, jornada } = obtenerResumenCompetenciaPlanilla(p);
     const arbitraje = obtenerDatosArbitrajePlanilla(p);
     const delegado = String(document.getElementById("delegado-planilla")?.value || p.delegado_partido || "");
     const ciudad = String(document.getElementById("ciudad-planilla")?.value || p.ciudad || "");
@@ -3661,7 +4040,7 @@ async function imprimirPDFPlanilla() {
               [
                 { text: [{ text: "Partido: ", bold: true }, `#${obtenerNumeroPartidoVisible(p) || "-"}`] },
                 { text: "" },
-                { text: [{ text: "Jornada: ", bold: true }, jornada] },
+                jornada ? { text: [{ text: "Jornada: ", bold: true }, jornada] } : { text: "" },
                 {
                   text: [
                     { text: `${contextoCompetencia.etiqueta}: `, bold: true },

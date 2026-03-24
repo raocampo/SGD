@@ -650,17 +650,7 @@ function bindEventosEliminatoria() {
     if (btnPlanilla) {
       const partidoId = Number.parseInt(btnPlanilla.getAttribute("data-reclasif-planilla") || "", 10);
       if (Number.isFinite(partidoId) && partidoId > 0) {
-        if (window.RouteContext?.navigate) {
-          window.RouteContext.navigate("planilla.html", {
-            partido: partidoId,
-            evento: Number(eliminatoriaState.eventoSeleccionado) || null,
-            regreso_pagina: "eliminatorias.html",
-            regreso_evento: Number(eliminatoriaState.eventoSeleccionado) || null,
-            regreso_fuente: "reclasificacion_playoff",
-          });
-        } else {
-          window.location.href = `planilla.html?partido=${encodeURIComponent(partidoId)}`;
-        }
+        abrirPlanillaCruceEliminatoria(partidoId, "reclasificacion");
       }
       return;
     }
@@ -2252,6 +2242,13 @@ function renderMatchCardEliminatoria(c, { compact = false } = {}) {
                 <i class="fas fa-calendar-alt"></i> Programar
               </button>
               ${
+                Number.isFinite(Number.parseInt(c?.partido_id, 10)) && Number.parseInt(c?.partido_id, 10) > 0
+                  ? `<button class="btn btn-primary" onclick="abrirPlanillaCruceEliminatoria(${Number(c.partido_id)}, '${escapeHtml(String(c.ronda || ""))}')">
+                       <i class="fas fa-clipboard-list"></i> Planilla
+                     </button>`
+                  : ""
+              }
+              ${
                 !finalizado
                   ? `<button class="btn btn-outline" onclick="editarCruceEliminatoria(${Number(c.id)})">
                        <i class="fas fa-right-left"></i> Editar cruce
@@ -3254,6 +3251,40 @@ function abrirEnPartidos() {
   window.location.href = `partidos.html?evento=${encodeURIComponent(eventoId)}`;
 }
 
+function abrirPlanillaCruceEliminatoria(partidoId, ronda = "") {
+  const partidoNum = Number.parseInt(partidoId, 10);
+  if (!Number.isFinite(partidoNum) || partidoNum <= 0) {
+    mostrarNotificacion("No hay planilla disponible para este cruce todavía.", "warning");
+    return;
+  }
+
+  const eventoId = Number(eliminatoriaState.eventoSeleccionado) || null;
+  const campeonatoId = Number(eliminatoriaState.contextoPublicacion?.campeonatoId) || null;
+  const rondaNormalizada = String(ronda || "").trim().toLowerCase();
+
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("planilla.html", {
+      partido: partidoNum,
+      evento: eventoId,
+      campeonato: campeonatoId,
+      fase: "playoff",
+      ronda: rondaNormalizada || null,
+      regreso_pagina: "eliminatorias.html",
+      regreso_evento: eventoId,
+      regreso_fuente: rondaNormalizada === "reclasificacion" ? "reclasificacion_playoff" : "playoff",
+    });
+    return;
+  }
+
+  const params = new URLSearchParams();
+  params.set("partido", String(partidoNum));
+  if (eventoId) params.set("evento", String(eventoId));
+  if (campeonatoId) params.set("campeonato", String(campeonatoId));
+  params.set("fase", "playoff");
+  if (rondaNormalizada) params.set("ronda", rondaNormalizada);
+  window.location.href = `planilla.html?${params.toString()}`;
+}
+
 function normalizarLogoUrl(logoUrl) {
   if (!logoUrl) return null;
   if (/^https?:\/\//i.test(logoUrl)) return logoUrl;
@@ -3685,6 +3716,7 @@ function escapeHtml(valor) {
 }
 
 window.registrarResultadoEliminatoria = registrarResultadoEliminatoria;
+window.abrirPlanillaCruceEliminatoria = abrirPlanillaCruceEliminatoria;
 window.editarCruceEliminatoria = editarCruceEliminatoria;
 window.exportarEliminatoriaPNG = exportarEliminatoriaPNG;
 window.exportarEliminatoriaPDF = exportarEliminatoriaPDF;
