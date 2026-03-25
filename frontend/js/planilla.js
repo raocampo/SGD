@@ -176,6 +176,36 @@ function normalizarNumeroCamisetaPlanilla(valor, { permitirVacio = true } = {}) 
   return String(numero);
 }
 
+function normalizarCedulaPlanilla(valor, { permitirVacio = true } = {}) {
+  const limpio = String(valor ?? "")
+    .replace(/\D+/g, "")
+    .slice(0, 10);
+  if (!limpio) return permitirVacio ? "" : null;
+  return limpio;
+}
+
+function normalizarNumeroPartidoPlanilla(valor, { permitirVacio = true } = {}) {
+  if (valor === undefined) return undefined;
+  const limpio = String(valor ?? "")
+    .replace(/\D+/g, "")
+    .slice(0, 6);
+  if (!limpio) return permitirVacio ? null : undefined;
+  const numero = Number.parseInt(limpio, 10);
+  if (!Number.isFinite(numero) || numero <= 0) {
+    return permitirVacio ? null : undefined;
+  }
+  return numero;
+}
+
+function esPosicionArqueroPlanilla(posicion) {
+  const raw = String(posicion || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+  if (!raw) return false;
+  return ["arquero", "portero", "guardameta", "golero", "goalkeeper", "gk"].includes(raw);
+}
 function actualizarNumeroJugadorEnDataPlanilla(jugadorIdRaw, numeroCamisetaRaw) {
   const jugadorId = Number.parseInt(jugadorIdRaw, 10);
   if (!Number.isFinite(jugadorId) || jugadorId <= 0 || !dataPlanilla) return;
@@ -658,8 +688,12 @@ async function cargarAuspiciantesActivosPlanilla(campeonatoId) {
   const id = Number(campeonatoId);
   if (!Number.isFinite(id) || id <= 0 || !window.AuspiciantesAPI?.listarPorCampeonato) return [];
   try {
-    const data = await window.AuspiciantesAPI.listarPorCampeonato(id, true);
-    return Array.isArray(data?.auspiciantes) ? data.auspiciantes : [];
+    const dataActivos = await window.AuspiciantesAPI.listarPorCampeonato(id, true);
+    const activos = Array.isArray(dataActivos?.auspiciantes) ? dataActivos.auspiciantes : [];
+    if (activos.length) return activos;
+
+    const dataTodos = await window.AuspiciantesAPI.listarPorCampeonato(id, false);
+    return Array.isArray(dataTodos?.auspiciantes) ? dataTodos.auspiciantes : [];
   } catch (error) {
     console.warn("No se pudieron cargar auspiciantes para planilla:", error);
     return [];
@@ -1319,7 +1353,7 @@ function renderEncabezado() {
       </div>
     </div>
     <div class="planilla-head-meta-grid">
-      <div><strong>Partido:</strong> #${obtenerNumeroPartidoVisible(p) || "-"}</div>
+      <div><strong>Partido:</strong> <span id="head-numero-partido">#${obtenerNumeroPartidoVisible(p) || "-"}</span></div>
       <div><strong>${escapeHtml(resumenCompetencia)}</strong></div>
       <div><strong>Fecha:</strong> <span id="head-fecha">${fecha}</span></div>
       <div><strong>Hora:</strong> <span id="head-hora">${escapeHtml(hora)}</span></div>
@@ -1430,10 +1464,20 @@ function renderFaltasVisual() {
 function actualizarHeaderMetaEditable() {
   const cancha = String(dataPlanilla?.partido?.cancha || "Por definir");
   const ciudadVal = String(document.getElementById("ciudad-planilla")?.value || dataPlanilla?.partido?.ciudad || "Por definir");
+  const numeroPartido = normalizarNumeroPartidoPlanilla(
+    document.getElementById("numero-partido-planilla")?.value,
+    { permitirVacio: true }
+  );
   const canchaEl = document.getElementById("head-cancha");
   const ciudadEl = document.getElementById("head-ciudad");
+  const numeroEl = document.getElementById("head-numero-partido");
   if (canchaEl) canchaEl.textContent = cancha;
   if (ciudadEl) ciudadEl.textContent = ciudadVal;
+  if (numeroEl) numeroEl.textContent = `#${numeroPartido || obtenerNumeroPartidoVisible(dataPlanilla?.partido) || "-"}`;
+  if (dataPlanilla?.partido) {
+    dataPlanilla.partido.numero_campeonato = numeroPartido || null;
+    dataPlanilla.partido.ciudad = ciudadVal;
+  }
 }
 
 function actualizarHeaderResultado(local, visitante) {
@@ -1451,6 +1495,7 @@ function actualizarHeaderResultado(local, visitante) {
 
 function capturarEstadoFormularioPlanilla() {
   return {
+    numero_partido: document.getElementById("numero-partido-planilla")?.value || "",
     arbitro: document.getElementById("arbitro-planilla")?.value || "",
     arbitro_linea_1: document.getElementById("arbitro-linea-1-planilla")?.value || "",
     arbitro_linea_2: document.getElementById("arbitro-linea-2-planilla")?.value || "",
@@ -1499,12 +1544,14 @@ function restaurarEstadoFormularioPlanilla(snapshot = null) {
   const arbitroLinea2 = document.getElementById("arbitro-linea-2-planilla");
   const delegado = document.getElementById("delegado-planilla");
   const ciudad = document.getElementById("ciudad-planilla");
+  const numeroPartido = document.getElementById("numero-partido-planilla");
   const observaciones = document.getElementById("observaciones-planilla");
   const observacionesVisitante = document.getElementById("observaciones-visitante-planilla");
   const observacionesArbitro = document.getElementById("observaciones-arbitro-planilla");
   const estado = document.getElementById("estado-partido");
   const inasistencia = document.getElementById("inasistencia-planilla");
 
+  if (numeroPartido) numeroPartido.value = snapshot.numero_partido || "";
   if (arbitro) arbitro.value = snapshot.arbitro || "";
   if (arbitroLinea1) arbitroLinea1.value = snapshot.arbitro_linea_1 || "";
   if (arbitroLinea2) arbitroLinea2.value = snapshot.arbitro_linea_2 || "";
@@ -1634,6 +1681,7 @@ function renderPlantel(idContenedor, jugadores) {
     .map((j) => {
       const suspension = j?.suspension || null;
       const suspendido = suspension?.suspendido === true;
+      const esArquero = esPosicionArqueroPlanilla(j?.posicion);
       const docs = [];
       if (documentosRequeridos.foto_cedula) {
         docs.push(j.foto_cedula_url ? "Cédula OK" : "Cédula pendiente");
@@ -1647,7 +1695,7 @@ function renderPlantel(idContenedor, jugadores) {
         : "";
 
       return `
-        <div class="planilla-plantel-item ${suspendido ? "is-suspended" : ""}">
+        <div class="planilla-plantel-item ${suspendido ? "is-suspended" : ""} ${esArquero ? "is-goalkeeper" : ""}">
           <strong>#${j.numero_camiseta || "-"}</strong>
           <span>${nombreJugador(j)}</span>
           <small>${j.posicion || "-"}${docsTxt}${suspensionTxt}</small>
@@ -1698,6 +1746,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
     .map((j, idx) => {
       const suspension = j?.suspension || null;
       const suspendido = suspension?.suspendido === true;
+      const esArquero = esPosicionArqueroPlanilla(j?.posicion);
       const jugadorId = Number(j.id);
       const goles = suspendido ? "" : statsIniciales.golesPorJugador.get(jugadorId) || "";
       const amarillas = suspendido ? "" : statsIniciales.amarillasPorJugador.get(jugadorId) || "";
@@ -1721,7 +1770,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
 
       return `
         <tr
-          class="planilla-player-row ${suspendido ? "is-suspended" : ""}"
+          class="planilla-player-row ${suspendido ? "is-suspended" : ""} ${esArquero ? "is-goalkeeper" : ""}"
           data-equipo-id="${equipoId}"
           data-jugador-id="${j.id}"
           data-rojas-dobles="${rojasDobles}"
@@ -1996,6 +2045,10 @@ async function guardarJugadorDesdePlanilla(event) {
 
   const fechaNacimiento = document.getElementById("planilla-jugador-fecha")?.value?.trim() || "";
   const numeroCamiseta = document.getElementById("planilla-jugador-numero")?.value?.trim() || "";
+  const inputCedula = document.getElementById("planilla-jugador-ced");
+  const cedula = normalizarCedulaPlanilla(inputCedula?.value || "");
+  const submitBtn = document.querySelector("#form-planilla-jugador button[type='submit']");
+  if (inputCedula instanceof HTMLInputElement) inputCedula.value = cedula;
 
   const formData = new FormData();
   formData.append("equipo_id", String(equipoId));
@@ -2004,7 +2057,12 @@ async function guardarJugadorDesdePlanilla(event) {
   }
   formData.append("nombre", document.getElementById("planilla-jugador-nombre")?.value?.trim() || "");
   formData.append("apellido", document.getElementById("planilla-jugador-apellido")?.value?.trim() || "");
-  formData.append("cedidentidad", document.getElementById("planilla-jugador-ced")?.value?.trim() || "");
+  formData.append("cedidentidad", cedula || "");
+  if (cedula && cedula.length !== 10) {
+    mostrarNotificacion("La cédula debe tener exactamente 10 dígitos", "warning");
+    if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = false;
+    return;
+  }
   if (fechaNacimiento) formData.append("fecha_nacimiento", fechaNacimiento);
   formData.append("posicion", document.getElementById("planilla-jugador-posicion")?.value?.trim() || "");
   if (numeroCamiseta) formData.append("numero_camiseta", numeroCamiseta);
@@ -2018,7 +2076,6 @@ async function guardarJugadorDesdePlanilla(event) {
   if (fotoCedula) formData.append("foto_cedula", fotoCedula);
   if (fotoCarnet) formData.append("foto_carnet", fotoCarnet);
 
-  const submitBtn = document.querySelector("#form-planilla-jugador button[type='submit']");
   if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = true;
 
   try {
@@ -2057,6 +2114,7 @@ function cargarCamposBase() {
   const inputArbitro = document.getElementById("arbitro-planilla");
   const inputArbitroLinea1 = document.getElementById("arbitro-linea-1-planilla");
   const inputArbitroLinea2 = document.getElementById("arbitro-linea-2-planilla");
+  const inputNumeroPartido = document.getElementById("numero-partido-planilla");
   const inputDelegado = document.getElementById("delegado-planilla");
   const inputCiudad = document.getElementById("ciudad-planilla");
   const inputInasistencia = document.getElementById("inasistencia-planilla");
@@ -2111,6 +2169,9 @@ function cargarCamposBase() {
   if (inputArbitro) inputArbitro.value = p.arbitro || "";
   if (inputArbitroLinea1) inputArbitroLinea1.value = p.arbitro_linea_1 || "";
   if (inputArbitroLinea2) inputArbitroLinea2.value = p.arbitro_linea_2 || "";
+  if (inputNumeroPartido) {
+    inputNumeroPartido.value = obtenerNumeroPartidoVisible(p) || "";
+  }
   if (inputDelegado) inputDelegado.value = p.delegado_partido || "";
   if (inputCiudad) inputCiudad.value = p.ciudad || "";
   if (inputInasistencia instanceof HTMLSelectElement) {
@@ -3164,6 +3225,10 @@ function recolectarPayloadPlanilla() {
   }
 
   return {
+    numero_campeonato: normalizarNumeroPartidoPlanilla(
+      document.getElementById("numero-partido-planilla")?.value,
+      { permitirVacio: true }
+    ),
     resultado_local: hayInasistencia
       ? resultadoAutomatico.local
       : aEntero(document.getElementById("resultado-local")?.value, 0),
@@ -3217,6 +3282,7 @@ function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
   const filas = [];
   for (let i = 0; i < maxFilas; i += 1) {
     const j = jugadores[i] || null;
+    const esArquero = esPosicionArqueroPlanilla(j?.posicion);
     const jugadorId = Number(j?.id);
     const item = i + 1;
     const numero = j ? j.numero_camiseta || "" : "";
@@ -3226,7 +3292,7 @@ function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
     const rojas = j ? stats.rojasPorJugador.get(jugadorId) || "" : "";
 
     filas.push(`
-      <tr>
+      <tr class="${esArquero ? "is-goalkeeper" : ""}">
         <td>${item}</td>
         <td>${numero}</td>
         <td>${escapeHtml(nombre)}</td>
@@ -3772,6 +3838,51 @@ async function cargarImagenComoDataUrl(url, timeoutMs = 700) {
   }
 }
 
+async function construirBloqueAuspiciantesPdf() {
+  const auspiciantes = obtenerAuspiciantesVisiblesPlanilla();
+  if (!auspiciantes.length) return null;
+
+  const items = await Promise.all(
+    auspiciantes.slice(0, 4).map(async (item) => ({
+      nombre: item.nombre || "Auspiciante",
+      imagen: item.logo_url ? await cargarImagenComoDataUrl(item.logo_url, 1200) : null,
+    }))
+  );
+
+  const celdas = items.map((item) => ({
+    stack: item.imagen
+      ? [{ image: item.imagen, fit: [54, 22], alignment: "center", margin: [0, 3, 0, 3] }]
+      : [{ text: item.nombre, alignment: "center", fontSize: 6.8, margin: [2, 8, 2, 8] }],
+    margin: [0, 0, 0, 0],
+    fillColor: "#ffffff",
+  }));
+
+  while (celdas.length < 4) {
+    celdas.push({ text: "", fillColor: "#ffffff" });
+  }
+
+  return {
+    width: 118,
+    table: {
+      widths: [56, 56],
+      body: [
+        [celdas[0], celdas[1]],
+        [celdas[2], celdas[3]],
+      ],
+    },
+    layout: {
+      hLineWidth: () => 0.4,
+      vLineWidth: () => 0.4,
+      hLineColor: () => "#cbd5e1",
+      vLineColor: () => "#cbd5e1",
+      paddingLeft: () => 1,
+      paddingRight: () => 1,
+      paddingTop: () => 1,
+      paddingBottom: () => 1,
+    },
+  };
+}
+
 function construirFilasPlantelPdf(jugadores, stats, maxFilas) {
   const body = [[
     { text: "Item", style: "thCenter" },
@@ -3990,7 +4101,13 @@ async function imprimirPDFPlanilla() {
     return;
   }
 
-  pdfTab.document.title = `Planilla Partido ${obtenerNumeroPartidoVisible(dataPlanilla.partido) || dataPlanilla.partido.id}`;
+  const numeroPartidoTitulo =
+    normalizarNumeroPartidoPlanilla(document.getElementById("numero-partido-planilla")?.value, {
+      permitirVacio: true,
+    }) ||
+    obtenerNumeroPartidoVisible(dataPlanilla.partido) ||
+    dataPlanilla.partido.id;
+  pdfTab.document.title = `Planilla Partido ${numeroPartidoTitulo}`;
   pdfTab.document.body.innerHTML = "<p style='font-family:Arial,sans-serif;padding:12px;'>Generando PDF...</p>";
 
   try {
@@ -4020,6 +4137,13 @@ async function imprimirPDFPlanilla() {
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
     const logoLocalPdf = await cargarImagenComoDataUrl(p.equipo_local_logo_url);
     const logoVisitantePdf = await cargarImagenComoDataUrl(p.equipo_visitante_logo_url);
+    const bloqueAuspiciantesPdf = await construirBloqueAuspiciantesPdf();
+    const numeroPartidoVisible =
+      normalizarNumeroPartidoPlanilla(document.getElementById("numero-partido-planilla")?.value, {
+        permitirVacio: true,
+      }) ||
+      obtenerNumeroPartidoVisible(p) ||
+      "-";
     const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
     const marcadorLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
     const marcadorVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
@@ -4053,7 +4177,7 @@ async function imprimirPDFPlanilla() {
               ],
               margin: [0, 3, 0, 0],
             },
-            { width: 56, text: "" },
+            bloqueAuspiciantesPdf || { width: 118, text: "" },
           ],
           margin: [0, 0, 0, 36],
         },
@@ -4090,7 +4214,7 @@ async function imprimirPDFPlanilla() {
                     { text: `${arbitraje.esFutbol11 ? "Linea 2" : "Partido"}: `, bold: true },
                     arbitraje.esFutbol11
                       ? arbitraje.linea2 || "________________"
-                      : `#${obtenerNumeroPartidoVisible(p) || "-"}`,
+                      : `#${numeroPartidoVisible}`,
                   ],
                 },
                 {
@@ -4101,7 +4225,7 @@ async function imprimirPDFPlanilla() {
                 },
               ],
               [
-                { text: [{ text: "Partido: ", bold: true }, `#${obtenerNumeroPartidoVisible(p) || "-"}`] },
+                { text: [{ text: "Partido: ", bold: true }, `#${numeroPartidoVisible}`] },
                 { text: "" },
                 jornada ? { text: [{ text: "Jornada: ", bold: true }, jornada] } : { text: "" },
                 {
@@ -4750,9 +4874,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   inicializarModoVistaPreviaPlanilla();
 
-  document.getElementById("ciudad-planilla")?.addEventListener("input", () => {
-    actualizarHeaderMetaEditable();
-  });
+document.getElementById("ciudad-planilla")?.addEventListener("input", () => {
+  actualizarHeaderMetaEditable();
+});
+document.getElementById("numero-partido-planilla")?.addEventListener("input", (event) => {
+  const input = event?.target;
+  if (input instanceof HTMLInputElement) {
+    const numero = normalizarNumeroPartidoPlanilla(input.value, { permitirVacio: true });
+    input.value = numero == null ? "" : String(numero);
+  }
+  actualizarHeaderMetaEditable();
+});
+document.getElementById("planilla-jugador-ced")?.addEventListener("input", (event) => {
+  const input = event?.target;
+  if (input instanceof HTMLInputElement) {
+    input.value = normalizarCedulaPlanilla(input.value);
+  }
+});
   actualizarVisibilidadArbitrajePlanilla();
   document.getElementById("inasistencia-planilla")?.addEventListener("change", () => {
     aplicarEstadoInasistenciaPlanilla(true);

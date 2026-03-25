@@ -13,6 +13,9 @@ let eventoCarnetMeta = {
   carnet_color_secundario: "",
   carnet_color_acento: "",
   categoria_juvenil: false,
+  categoria_juvenil_cupos: 0,
+  categoria_juvenil_max_diferencia: 1,
+  carnet_mostrar_edad: false,
 };
 let jugadorEncontradoPorCedula = null;
 let fotoCarnetPreviewTempUrl = "";
@@ -375,6 +378,79 @@ function calcularEdadDesdeFecha(value) {
   return edad >= 0 ? edad : null;
 }
 
+function inferirEdadBaseCategoriaJugador(nombreEvento) {
+  const raw = String(nombreEvento ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (!raw) return null;
+  const match = raw.match(/\b(?:sub|u)\s*\+?\s*(3\d|4\d|50|51|52|53|54|55|56|57|58|59|60)\b/);
+  if (!match) return null;
+  const edad = Number.parseInt(match[1], 10);
+  return Number.isFinite(edad) && edad >= 30 && edad <= 60 ? edad : null;
+}
+
+function normalizarCuposJuvenilEvento(valor, fallback = 0) {
+  const numero = Number.parseInt(valor, 10);
+  if (!Number.isFinite(numero) || numero < 0) return fallback;
+  return numero;
+}
+
+function normalizarDiferenciaJuvenilEvento(valor, fallback = 1) {
+  const numero = Number.parseInt(valor, 10);
+  if (![1, 2].includes(numero)) return fallback;
+  return numero;
+}
+
+function construirMetaEventoCarnet(evento = {}) {
+  return {
+    carnet_estilo: String(evento?.carnet_estilo || "").trim().toLowerCase(),
+    carnet_color_primario: evento?.carnet_color_primario || "",
+    carnet_color_secundario: evento?.carnet_color_secundario || "",
+    carnet_color_acento: evento?.carnet_color_acento || "",
+    categoria_juvenil: evento?.categoria_juvenil === true || evento?.categoria_juvenil === "true",
+    categoria_juvenil_cupos: normalizarCuposJuvenilEvento(
+      evento?.categoria_juvenil_cupos,
+      evento?.categoria_juvenil === true || evento?.categoria_juvenil === "true" ? 2 : 0
+    ),
+    categoria_juvenil_max_diferencia: normalizarDiferenciaJuvenilEvento(
+      evento?.categoria_juvenil_max_diferencia,
+      evento?.categoria_juvenil === true || evento?.categoria_juvenil === "true" ? 2 : 1
+    ),
+    carnet_mostrar_edad: evento?.carnet_mostrar_edad === true || evento?.carnet_mostrar_edad === "true",
+  };
+}
+
+function evaluarEstadoJuvenilJugador(jugador, nombreEvento = obtenerNombreEventoActual(), metaEvento = eventoCarnetMeta) {
+  const edad = calcularEdadDesdeFecha(jugador?.fecha_nacimiento);
+  const edadBase = inferirEdadBaseCategoriaJugador(nombreEvento);
+  const juvenilActivo = metaEvento?.categoria_juvenil === true;
+  const diferenciaMaxima = normalizarDiferenciaJuvenilEvento(metaEvento?.categoria_juvenil_max_diferencia, 1);
+  if (!Number.isFinite(edadBase) || !Number.isFinite(edad)) {
+    return {
+      edad,
+      edadBase: Number.isFinite(edadBase) ? edadBase : null,
+      esJuvenil: false,
+      controlaEdad: Number.isFinite(edadBase),
+      diferencia: null,
+    };
+  }
+  const diferencia = edadBase - edad;
+  return {
+    edad,
+    edadBase,
+    esJuvenil: juvenilActivo && diferencia >= 1 && diferencia <= diferenciaMaxima,
+    controlaEdad: true,
+    diferencia,
+  };
+}
+
+function renderIndicadorJuvenilJugador(jugador, nombreEvento = obtenerNombreEventoActual(), metaEvento = eventoCarnetMeta) {
+  const estado = evaluarEstadoJuvenilJugador(jugador, nombreEvento, metaEvento);
+  if (!estado.esJuvenil) return "";
+  return '<span class="estado-chip estado-chip-info">Juvenil</span>';
+}
+
 function fotoCarnetMarcadaParaEliminar() {
   return document.getElementById("jugador-eliminar-foto-carnet")?.value === "true";
 }
@@ -387,7 +463,9 @@ function marcarEliminacionFotoCarnet(flag = true) {
 }
 
 function normalizarCedulaValor(valor) {
-  return String(valor || "").replace(/\D/g, "");
+  return String(valor || "")
+    .replace(/\D/g, "")
+    .slice(0, 10);
 }
 
 function eventoRequeridoParaReportes() {
@@ -1024,9 +1102,14 @@ function rellenarFormularioJugadorDesdePerfil(jugador = {}) {
 
 async function buscarJugadorPorCedulaEnBaseLocal() {
   const inputCedula = document.getElementById("jugador-ced");
-  const cedula = String(inputCedula?.value || "").trim();
+  const cedula = normalizarCedulaValor(inputCedula?.value || "");
+  if (inputCedula) inputCedula.value = cedula;
   if (!cedula) {
     actualizarResultadoBusquedaCedula("Ingresa una cédula para buscar en la base local.", "warning");
+    return;
+  }
+  if (cedula.length !== 10) {
+    actualizarResultadoBusquedaCedula("La cédula debe tener exactamente 10 dígitos.", "warning");
     return;
   }
 
@@ -1112,11 +1195,7 @@ async function cargarCampeonatosSelectDirecto() {
       equipoId = null;
       campeonatoMeta = null;
       eventoCarnetMeta = {
-        carnet_estilo: "",
-        carnet_color_primario: "",
-        carnet_color_secundario: "",
-        carnet_color_acento: "",
-        categoria_juvenil: false,
+        ...construirMetaEventoCarnet({}),
       };
       guardarContextoJugadoresEnSesion();
       await cargarEventosSelectDirecto(campeonatoId);
@@ -1153,13 +1232,7 @@ async function cargarEventosSelectDirecto(campId) {
         eventoNombreActual = optSel.textContent.trim();
       }
       const eventoSel = lista.find((item) => Number(item.id) === Number(eventoId));
-      eventoCarnetMeta = {
-        carnet_estilo: String(eventoSel?.carnet_estilo || "").trim().toLowerCase(),
-        carnet_color_primario: eventoSel?.carnet_color_primario || "",
-        carnet_color_secundario: eventoSel?.carnet_color_secundario || "",
-        carnet_color_acento: eventoSel?.carnet_color_acento || "",
-        categoria_juvenil: eventoSel?.categoria_juvenil === true || eventoSel?.categoria_juvenil === "true",
-      };
+      eventoCarnetMeta = construirMetaEventoCarnet(eventoSel);
     }
 
     select.onchange = async () => {
@@ -1168,13 +1241,7 @@ async function cargarEventosSelectDirecto(campId) {
       eventoNombreActual =
         eventoId && optSel?.textContent ? optSel.textContent.trim() : "";
       const eventoSel = lista.find((item) => Number(item.id) === Number(eventoId));
-      eventoCarnetMeta = {
-        carnet_estilo: String(eventoSel?.carnet_estilo || "").trim().toLowerCase(),
-        carnet_color_primario: eventoSel?.carnet_color_primario || "",
-        carnet_color_secundario: eventoSel?.carnet_color_secundario || "",
-        carnet_color_acento: eventoSel?.carnet_color_acento || "",
-        categoria_juvenil: eventoSel?.categoria_juvenil === true || eventoSel?.categoria_juvenil === "true",
-      };
+      eventoCarnetMeta = construirMetaEventoCarnet(eventoSel);
       equipoId = null;
       guardarContextoJugadoresEnSesion();
       await cargarEquiposSelectDirecto(campId, eventoId);
@@ -1246,11 +1313,7 @@ async function cargarNombreEventoActual() {
   if (!eventoId) {
     eventoNombreActual = "";
     eventoCarnetMeta = {
-      carnet_estilo: "",
-      carnet_color_primario: "",
-      carnet_color_secundario: "",
-      carnet_color_acento: "",
-      categoria_juvenil: false,
+      ...construirMetaEventoCarnet({}),
     };
     return;
   }
@@ -1259,20 +1322,12 @@ async function cargarNombreEventoActual() {
     const evento = data?.evento || data;
     eventoNombreActual = (evento?.nombre || "").toString().trim();
     eventoCarnetMeta = {
-      carnet_estilo: String(evento?.carnet_estilo || "").trim().toLowerCase(),
-      carnet_color_primario: evento?.carnet_color_primario || "",
-      carnet_color_secundario: evento?.carnet_color_secundario || "",
-      carnet_color_acento: evento?.carnet_color_acento || "",
-      categoria_juvenil: evento?.categoria_juvenil === true || evento?.categoria_juvenil === "true",
+      ...construirMetaEventoCarnet(evento),
     };
   } catch (_) {
     eventoNombreActual = "";
     eventoCarnetMeta = {
-      carnet_estilo: "",
-      carnet_color_primario: "",
-      carnet_color_secundario: "",
-      carnet_color_acento: "",
-      categoria_juvenil: false,
+      ...construirMetaEventoCarnet({}),
     };
   }
 }
@@ -1511,6 +1566,8 @@ function renderTarjetasJugadores(jugadores) {
   return jugadores
     .map((jugador, index) => {
       const nombreCompleto = `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim();
+      const estadoJuvenil = evaluarEstadoJuvenilJugador(jugador);
+      const edadTexto = Number.isFinite(estadoJuvenil.edad) ? String(estadoJuvenil.edad) : "—";
       return `
         <div class="jugador-card">
           <div class="jugador-card-head">
@@ -1531,6 +1588,7 @@ function renderTarjetasJugadores(jugadores) {
             <p><strong>Posición:</strong> ${escapeHtml(jugador.posicion || "-")}</p>
             <p><strong>Cédula de Identidad:</strong> ${escapeHtml(jugador.cedidentidad || "-")}</p>
             <p><strong>Fecha nac.:</strong> ${escapeHtml(formatearFecha(jugador.fecha_nacimiento))}</p>
+            <p><strong>Edad:</strong> ${escapeHtml(edadTexto)} ${renderIndicadorJuvenilJugador(jugador)}</p>
             <p><strong>Capitán:</strong> ${jugador.es_capitan ? "Sí" : "No"}</p>
             <p><strong>Disciplina:</strong> ${renderEstadoDisciplinarioJugador(jugador)}</p>
           </div>
@@ -1570,12 +1628,15 @@ function renderTablaJugadores(jugadores) {
   const soloLectura = usuarioSoloLecturaJugadores();
   const filas = jugadores
     .map((jugador, index) => {
+      const estadoJuvenil = evaluarEstadoJuvenilJugador(jugador);
+      const edadTexto = Number.isFinite(estadoJuvenil.edad) ? String(estadoJuvenil.edad) : "—";
       return `
         <tr>
           <td>${index + 1}</td>
           <td>${escapeHtml(`${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "—")}</td>
           <td>${escapeHtml(jugador.cedidentidad || "-")}</td>
           <td>${escapeHtml(formatearFecha(jugador.fecha_nacimiento))}</td>
+          <td>${escapeHtml(edadTexto)} ${renderIndicadorJuvenilJugador(jugador)}</td>
           <td>${escapeHtml(jugador.posicion || "-")}</td>
           <td>${escapeHtml(jugador.numero_camiseta || "-")}</td>
           <td>${jugador.es_capitan ? "Sí" : "No"}</td>
@@ -1614,6 +1675,7 @@ function renderTablaJugadores(jugadores) {
             <th>Jugador</th>
             <th>Cédula</th>
             <th>F. Nac.</th>
+            <th>Edad</th>
             <th>Posición</th>
             <th>N°</th>
             <th>Capitán</th>
@@ -1855,11 +1917,14 @@ async function obtenerFilasSancionesCategoriaJugadoresExcel() {
 function obtenerFilasFichaJugadorExcel() {
   const jugador = obtenerJugadorSeleccionadoParaFicha();
   if (!jugador) return [];
+  const estadoJuvenil = evaluarEstadoJuvenilJugador(jugador);
   return [
     {
       Jugador: `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "—",
       Cedula: jugador.cedidentidad || "—",
       FechaNacimiento: formatearFecha(jugador.fecha_nacimiento),
+      Edad: Number.isFinite(estadoJuvenil.edad) ? estadoJuvenil.edad : "—",
+      Juvenil: estadoJuvenil.esJuvenil ? "Sí" : "No",
       Posicion: jugador.posicion || "—",
       Numero: jugador.numero_camiseta || "—",
       Equipo: equipoActual?.nombre || "—",
@@ -1910,6 +1975,7 @@ function renderPlanillaJugador() {
   const fotoCedula = normalizarArchivoUrl(jugador?.foto_cedula_url);
   const logoCampeonato = normalizarArchivoUrl(campeonatoMeta.logo_url);
   const nombreCompleto = `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim();
+  const estadoJuvenil = evaluarEstadoJuvenilJugador(jugador);
 
   zona.innerHTML = `
     <article class="jugador-ficha-sheet">
@@ -1954,6 +2020,7 @@ function renderPlanillaJugador() {
             <p><strong>Jugador:</strong> ${escapeHtml(nombreCompleto || "—")}</p>
             <p><strong>Cédula:</strong> ${escapeHtml(jugador.cedidentidad || "—")}</p>
             <p><strong>Fecha de nacimiento:</strong> ${escapeHtml(formatearFecha(jugador.fecha_nacimiento))}</p>
+            <p><strong>Edad:</strong> ${escapeHtml(Number.isFinite(estadoJuvenil.edad) ? estadoJuvenil.edad : "—")} ${renderIndicadorJuvenilJugador(jugador)}</p>
             <p><strong>Posición:</strong> ${escapeHtml(jugador.posicion || "—")}</p>
             <p><strong>Número:</strong> ${escapeHtml(jugador.numero_camiseta || "—")}</p>
             <p><strong>Capitán:</strong> ${jugador.es_capitan ? "Sí" : "No"}</p>
@@ -2296,7 +2363,7 @@ function renderPlantillaCarnets(filtroIds = null) {
   const categoriaActual = obtenerNombreEventoActual();
   const urlPortalParticipacion = construirUrlPortalParticipacion();
   const qrUrlParticipacion = construirQrUrlParticipacion();
-  const mostrarDatosJuveniles = eventoCarnetMeta?.categoria_juvenil === true;
+  const mostrarEdadEnCarnet = eventoCarnetMeta?.carnet_mostrar_edad === true;
   const jugadoresARender = filtroIds
     ? jugadoresActuales.filter((j) => filtroIds.includes(j.id))
     : jugadoresActuales;
@@ -2313,7 +2380,8 @@ function renderPlantillaCarnets(filtroIds = null) {
       const fotoPosY = usaPosicionCarnet ? normalizarPosicionPorcentaje(j.foto_carnet_pos_y, 35) : 35;
       const fotoZoom = usaPosicionCarnet ? normalizarZoomFotoCarnet(j.foto_carnet_zoom, 1) : 1;
       const fechaNacimiento = formatearFecha(j?.fecha_nacimiento);
-      const edad = calcularEdadDesdeFecha(j?.fecha_nacimiento);
+      const estadoJuvenil = evaluarEstadoJuvenilJugador(j, categoriaActual, eventoCarnetMeta);
+      const edad = estadoJuvenil.edad;
       const checkboxOverlay = filtroIds
         ? ""
         : `<label class="carnet-sel-overlay" title="Seleccionar para imprimir">
@@ -2339,11 +2407,12 @@ function renderPlantillaCarnets(filtroIds = null) {
               <p><strong>Nombre:</strong> ${escapeHtml(`${j.nombre || ""} ${j.apellido || ""}`.trim())}</p>
               <p><strong>Cédula:</strong> ${escapeHtml(j.cedidentidad || "—")}</p>
               ${
-                mostrarDatosJuveniles
+                mostrarEdadEnCarnet
                   ? `<p><strong>Fecha nac.:</strong> ${escapeHtml(fechaNacimiento || "—")}</p>
                      <p><strong>Edad:</strong> ${escapeHtml(edad ?? "—")}</p>`
                   : ""
               }
+              ${estadoJuvenil.esJuvenil ? `<p><strong>Condición:</strong> Juvenil</p>` : ""}
               <p><strong>Categoría:</strong> ${escapeHtml(categoriaActual || "—")}</p>
               <p class="carnet-data-team"><strong>Equipo:</strong> ${escapeHtml(equipoActual.nombre || "—")}</p>
               <p class="carnet-data-numero"><strong>N° ${escapeHtml(j.numero_camiseta || "—")}</strong></p>
@@ -3158,6 +3227,8 @@ function actualizarResumenJugadores() {
   if (!resumenEl) return;
 
   const total = jugadoresActuales.length;
+  const juveniles = jugadoresActuales.filter((jugador) => evaluarEstadoJuvenilJugador(jugador).esJuvenil).length;
+  const cuposJuveniles = normalizarCuposJuvenilEvento(eventoCarnetMeta?.categoria_juvenil_cupos, 0);
 
   let texto = `Jugadores registrados: ${total}`;
   let color = "#2c3e50";
@@ -3172,6 +3243,10 @@ function actualizarResumenJugadores() {
   } else if (maxJugadoresPorEquipo && total > maxJugadoresPorEquipo) {
     texto += " - Excede el maximo permitido";
     color = "#c0392b";
+  }
+
+  if (eventoCarnetMeta?.categoria_juvenil === true) {
+    texto += ` • Juveniles: ${juveniles}/${cuposJuveniles || 0}`;
   }
 
   resumenEl.textContent = texto;
@@ -3290,7 +3365,9 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   const equipoJugador = Number.parseInt(document.getElementById("jugador-equipo-id").value, 10);
   const nombre = document.getElementById("jugador-nombre").value.trim();
   const apellido = document.getElementById("jugador-apellido").value.trim();
-  const cedidentidad = document.getElementById("jugador-ced").value.trim();
+  const cedidentidad = normalizarCedulaValor(document.getElementById("jugador-ced").value);
+
+  document.getElementById("jugador-ced").value = cedidentidad;
 
   const fechaNacimiento = document.getElementById("jugador-fecha").value || "";
   const posicion = document.getElementById("jugador-posicion").value || "";
@@ -3317,6 +3394,11 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
       "Nombre y apellido son obligatorios",
       "error"
     );
+    return;
+  }
+
+  if (cedidentidad && cedidentidad.length !== 10) {
+    mostrarNotificacion("La cédula debe tener exactamente 10 dígitos", "warning");
     return;
   }
 
@@ -3439,6 +3521,8 @@ obtenerCanvasPreviewFotoCarnet()?.addEventListener("pointercancel", terminarArra
 
 document.getElementById("btn-jugador-buscar-cedula")?.addEventListener("click", buscarJugadorPorCedulaEnBaseLocal);
 document.getElementById("jugador-ced")?.addEventListener("input", () => {
+  const input = document.getElementById("jugador-ced");
+  if (input) input.value = normalizarCedulaValor(input.value);
   jugadorEncontradoPorCedula = null;
   actualizarResultadoBusquedaCedula("");
 });

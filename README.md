@@ -30,6 +30,36 @@ Flujo principal operativo:
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
 
+## Novedades Recientes (2026-03-25)
+- Categorías / juvenil:
+  - nueva migración `database/migrations/050_eventos_juvenil_cupos_y_carnet_edad.sql`.
+  - `eventos` ahora puede definir:
+    - `categoria_juvenil`,
+    - `categoria_juvenil_cupos`,
+    - `categoria_juvenil_max_diferencia`,
+    - `carnet_mostrar_edad`.
+  - la opción juvenil ya queda restringida a categorías detectadas como `Sub/U 30` hasta `Sub/U 60`.
+  - si se activa juvenil, la categoría obliga a configurar:
+    - cuántos juveniles permite por equipo,
+    - si admite `1` o `2` años menor al corte.
+- Jugadores / elegibilidad etaria:
+  - `backend/models/Jugador.js` ahora valida la edad por `evento_id` al crear y editar.
+  - en categorías etarias:
+    - si el jugador cumple la edad base, queda habilitado,
+    - si no cumple, solo puede inscribirse como juvenil si la categoría lo permite y todavía hay cupos.
+  - la validación usa el mismo contexto `equipo + categoría`, por lo que no mezcla juveniles entre categorías distintas.
+- Jugadores / UI y carnés:
+  - `jugadores.html` ya muestra la edad en tarjetas y tabla.
+  - cuando un jugador clasifica como juvenil, se marca visualmente con chip `Juvenil`.
+  - el resumen del equipo ya muestra `Juveniles: X / cupos`.
+  - el carné ahora puede imprimir `Fecha nac.` y `Edad` si la categoría activa `Mostrar edad en carné`.
+  - cuando corresponda, el carné también imprime `Condición: Juvenil`.
+- Planilla:
+  - la posición `Arquero` ahora se resalta con color en:
+    - plantel lateral,
+    - tabla de captura,
+    - vista previa oficial.
+
 ## Novedades Recientes (2026-03-16)
 - Jugadores por categoria real:
   - nueva migracion `database/migrations/045_jugadores_evento_categoria.sql`.
@@ -428,6 +458,7 @@ psql -U postgres -d gestionDeportiva -f database/migrations/032_usuarios_usernam
 psql -U postgres -d gestionDeportiva -f database/migrations/033_campeonatos_tipos_futbol_ampliados.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/034_organizador_portal_branding.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/035_campeonato_fondo_carnet.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/050_eventos_juvenil_cupos_y_carnet_edad.sql
 ```
 
 ### 5.3 Ejecutar

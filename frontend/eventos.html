@@ -212,7 +212,29 @@
                 <option value="false" selected>No</option>
                 <option value="true">Si</option>
               </select>
-              <small class="form-hint">Si activas esta opción, el carné mostrará fecha de nacimiento y edad.</small>
+              <small id="evt-categoria-juvenil-hint" class="form-hint">Disponible para categorías Sub 30 a Sub 60.</small>
+            </div>
+
+            <div class="form-group" id="evt-wrap-categoria-juvenil-cupos" style="display:none;">
+              <label>Cupos juveniles permitidos:</label>
+              <input id="evt-categoria-juvenil-cupos" type="number" min="1" step="1" value="2" />
+            </div>
+
+            <div class="form-group" id="evt-wrap-categoria-juvenil-diferencia" style="display:none;">
+              <label>Máximo años menor:</label>
+              <select id="evt-categoria-juvenil-max-diferencia">
+                <option value="1">1 año menor</option>
+                <option value="2" selected>2 años menor</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Mostrar edad en carné:</label>
+              <select id="evt-carnet-mostrar-edad">
+                <option value="false" selected>No</option>
+                <option value="true">Si</option>
+              </select>
+              <small class="form-hint">Si lo activas, el carné imprimirá fecha de nacimiento y edad.</small>
             </div>
 
             <div class="actions">

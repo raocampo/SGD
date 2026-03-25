@@ -1,6 +1,49 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-23 (sesión 10)
+Ultima actualizacion: 2026-03-25 (sesión 11)
+
+## Avances recientes (2026-03-25)
+- Categorías / juvenil:
+  - se agrega la migración `database/migrations/050_eventos_juvenil_cupos_y_carnet_edad.sql`.
+  - `eventos` ahora soporta:
+    - `categoria_juvenil_cupos`,
+    - `categoria_juvenil_max_diferencia`,
+    - `carnet_mostrar_edad`.
+  - la configuración juvenil ya queda limitada a categorías `Sub/U 30` hasta `Sub/U 60`.
+  - si una categoría activa juveniles, ahora debe definir:
+    - cuántos cupos juveniles permite por equipo,
+    - si tolera `1` o `2` años menor.
+- Jugadores:
+  - `backend/models/Jugador.js` ahora valida elegibilidad etaria por `evento_id` al crear y editar.
+  - en categorías etarias:
+    - se exige fecha de nacimiento,
+    - se habilita o rechaza al jugador según la edad base,
+    - y si aplica juvenil, se controlan también los cupos consumidos por equipo.
+  - `frontend/js/jugadores.js` ya muestra la edad en tarjetas y tabla.
+  - los jugadores juveniles se marcan con chip `Juvenil`.
+  - el resumen del equipo muestra `Juveniles: X / cupos`.
+- Carnés:
+  - el carné ahora puede imprimir `Fecha nac.` y `Edad` cuando la categoría activa `Mostrar edad en carné`.
+  - si el jugador entra como juvenil, el carné imprime además `Condición: Juvenil`.
+- Planilla:
+  - la posición `Arquero` ahora se resalta con color en:
+    - plantel lateral,
+    - tabla de captura,
+    - vista previa oficial.
+- Migración local:
+  - `050_eventos_juvenil_cupos_y_carnet_edad.sql` aplicada y verificada en la BD local.
+
+- Jugadores / cédula:
+  - la cédula ya se normaliza y guarda como texto numérico conservando ceros iniciales.
+  - creación y edición de jugadores ahora validan `10 dígitos` exactos cuando la cédula está informada.
+  - el mismo criterio ya se aplica en búsqueda local, importación y flujo mobile.
+- Planilla de juego:
+  - `planilla.html` ahora permite editar el `Número de partido` y guardarlo desde la propia planilla.
+  - la cabecera, vista previa y PDF reutilizan ese mismo número visible.
+  - el guardado de planilla ya intercepta errores de duplicidad del número visible con mensaje funcional.
+- Auspiciantes:
+  - la planilla ahora intenta cargar primero auspiciantes activos y, si no existen, hace fallback al listado completo del campeonato.
+  - la vista previa mantiene auspiciantes en cabecera y el PDF ahora también los imprime en el encabezado.
 
 ## Avances recientes (2026-03-23)
 - Partidos / fixture:

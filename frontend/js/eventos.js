@@ -107,6 +107,66 @@ function formatearCategoriaJuvenil(valor) {
   return valor === true || String(valor).toLowerCase() === "true" ? "Si" : "No";
 }
 
+function inferirEdadBaseCategoria(nombreEvento) {
+  const raw = String(nombreEvento || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (!raw) return null;
+  const match = raw.match(/\b(?:sub|u)\s*\+?\s*(3\d|4\d|50|51|52|53|54|55|56|57|58|59|60)\b/);
+  if (!match) return null;
+  const edad = Number.parseInt(match[1], 10);
+  return Number.isFinite(edad) && edad >= 30 && edad <= 60 ? edad : null;
+}
+
+function normalizarCuposJuvenilEvento(valor, fallback = 0) {
+  if (valor === null || valor === undefined || valor === "") return fallback;
+  const numero = Number.parseInt(valor, 10);
+  if (!Number.isFinite(numero) || numero < 0) return fallback;
+  return numero;
+}
+
+function normalizarDiferenciaJuvenilEvento(valor, fallback = 1) {
+  if (valor === null || valor === undefined || valor === "") return fallback;
+  const numero = Number.parseInt(valor, 10);
+  if (![1, 2].includes(numero)) return fallback;
+  return numero;
+}
+
+function formatearConfiguracionJuvenil(evento = {}) {
+  const activo = evento?.categoria_juvenil === true || String(evento?.categoria_juvenil).toLowerCase() === "true";
+  if (!activo) return "No";
+  const cupos = normalizarCuposJuvenilEvento(evento?.categoria_juvenil_cupos, 0);
+  const diferencia = normalizarDiferenciaJuvenilEvento(evento?.categoria_juvenil_max_diferencia, 1);
+  return `Sí • ${cupos || 0} cupo${cupos === 1 ? "" : "s"} • hasta ${diferencia} año${diferencia === 1 ? "" : "s"} menor`;
+}
+
+function actualizarVisibilidadConfigJuvenil() {
+  const inputNombre = document.getElementById("evt-nombre");
+  const selectJuvenil = document.getElementById("evt-categoria-juvenil");
+  const wrapCupos = document.getElementById("evt-wrap-categoria-juvenil-cupos");
+  const wrapDif = document.getElementById("evt-wrap-categoria-juvenil-diferencia");
+  const hint = document.getElementById("evt-categoria-juvenil-hint");
+  const edadBase = inferirEdadBaseCategoria(inputNombre?.value || "");
+  const esCategoriaEtaria = Number.isFinite(edadBase);
+  const juvenilActivo = selectJuvenil?.value === "true";
+
+  if (wrapCupos) wrapCupos.style.display = esCategoriaEtaria && juvenilActivo ? "" : "none";
+  if (wrapDif) wrapDif.style.display = esCategoriaEtaria && juvenilActivo ? "" : "none";
+
+  if (hint) {
+    if (esCategoriaEtaria) {
+      hint.textContent = `Categoría ${edadBase}+: puedes habilitar juveniles de hasta 1 o 2 años menores y definir cuántos cupos admite el equipo.`;
+    } else {
+      hint.textContent = "Disponible solo para categorías Sub 30 a Sub 60 detectadas por el nombre.";
+    }
+  }
+
+  if (!esCategoriaEtaria && selectJuvenil) {
+    selectJuvenil.value = "false";
+  }
+}
+
 function formatearClasificadosPorGrupo(evento = {}) {
   const metodo = obtenerMetodoCompetenciaVisibleEvento(evento);
   if (!["grupos", "mixto", "tabla_acumulada"].includes(metodo)) return "No aplica";
@@ -147,6 +207,7 @@ function actualizarVisibilidadConfigEliminatoria() {
   if (wrapTercer) {
     wrapTercer.style.display = ["grupos", "eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
   }
+  actualizarVisibilidadConfigJuvenil();
 }
 
 function toggleFormularioCategoria(forzarEstado) {
@@ -212,9 +273,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   toggleFormularioCategoria(false);
 
   const selectMetodo = document.getElementById("evt-metodo-competencia");
+  const inputNombreEvento = document.getElementById("evt-nombre");
+  const selectCategoriaJuvenil = document.getElementById("evt-categoria-juvenil");
   if (selectMetodo) {
     selectMetodo.addEventListener("change", actualizarVisibilidadConfigEliminatoria);
   }
+  inputNombreEvento?.addEventListener("input", actualizarVisibilidadConfigJuvenil);
+  selectCategoriaJuvenil?.addEventListener("change", actualizarVisibilidadConfigJuvenil);
 
   await cargarCampeonatosSelect();
 
@@ -232,6 +297,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (campeonatoSeleccionado) {
     aplicarFechasDesdeCampeonato();
+    actualizarVisibilidadConfigJuvenil();
     await cargarEventos();
   }
 });
@@ -344,7 +410,8 @@ function renderEventoCard(e) {
         <p><strong>Costo inscripción:</strong> ${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</p>
         <p><strong>Bloqueo morosos:</strong> ${escapeHtml(formatearBloqueoMorososEvento(e))}</p>
         <p><strong>Diseño carné:</strong> ${escapeHtml(formatearCarnetEstilo(e.carnet_estilo))}</p>
-        <p><strong>Categoría juvenil:</strong> ${escapeHtml(formatearCategoriaJuvenil(e.categoria_juvenil))}</p>
+        <p><strong>Categoría juvenil:</strong> ${escapeHtml(formatearConfiguracionJuvenil(e))}</p>
+        <p><strong>Carné muestra edad:</strong> ${e.carnet_mostrar_edad === true ? "Sí" : "No"}</p>
         <p><strong>Fechas:</strong> ${escapeHtml(formatearFechaSolo(e.fecha_inicio))} - ${escapeHtml(formatearFechaSolo(e.fecha_fin))}</p>
       </div>
       <div class="campeonato-actions">
@@ -379,7 +446,8 @@ function renderTablaEventos(eventos) {
           <td>${escapeHtml(formatearCostoInscripcion(e.costo_inscripcion))}</td>
           <td>${escapeHtml(formatearBloqueoMorososEvento(e))}</td>
           <td>${escapeHtml(formatearCarnetEstilo(e.carnet_estilo))}</td>
-          <td>${escapeHtml(formatearCategoriaJuvenil(e.categoria_juvenil))}</td>
+          <td>${escapeHtml(formatearConfiguracionJuvenil(e))}</td>
+          <td>${e.carnet_mostrar_edad === true ? "Sí" : "No"}</td>
           <td>${escapeHtml(formatearFechaSolo(e.fecha_inicio))}</td>
           <td>${escapeHtml(formatearFechaSolo(e.fecha_fin))}</td>
           <td class="list-table-actions">
@@ -415,6 +483,7 @@ function renderTablaEventos(eventos) {
             <th>Bloqueo morosos</th>
             <th>Diseño carné</th>
             <th>Juvenil</th>
+            <th>Edad en carné</th>
             <th>Fecha inicio</th>
             <th>Fecha fin</th>
             <th>Acciones</th>
@@ -479,6 +548,16 @@ async function crearEvento() {
     ""
   ) || null;
   const categoria_juvenil = document.getElementById("evt-categoria-juvenil")?.value === "true";
+  const categoria_juvenil_cupos = normalizarCuposJuvenilEvento(
+    document.getElementById("evt-categoria-juvenil-cupos")?.value,
+    categoria_juvenil ? 2 : 0
+  );
+  const categoria_juvenil_max_diferencia = normalizarDiferenciaJuvenilEvento(
+    document.getElementById("evt-categoria-juvenil-max-diferencia")?.value,
+    categoria_juvenil ? 2 : 1
+  );
+  const carnet_mostrar_edad = document.getElementById("evt-carnet-mostrar-edad")?.value === "true";
+  const edadBaseCategoria = inferirEdadBaseCategoria(nombre);
   const coloresCamp = obtenerColoresCarnetCampeonatoSeleccionado();
   const personalizaCarnetCategoria =
     Boolean(carnet_estilo) ||
@@ -503,6 +582,14 @@ async function crearEvento() {
     mostrarNotificacion("Completa nombre + fechas", "warning");
     return;
   }
+  if (categoria_juvenil && !edadBaseCategoria) {
+    mostrarNotificacion("La opción juvenil solo aplica a categorías Sub 30 a Sub 60 detectadas por el nombre.", "warning");
+    return;
+  }
+  if (categoria_juvenil && !categoria_juvenil_cupos) {
+    mostrarNotificacion("Indica cuántos juveniles permite la categoría.", "warning");
+    return;
+  }
 
   try {
     await EventosAPI.crear({
@@ -524,6 +611,9 @@ async function crearEvento() {
       carnet_color_secundario: personalizaCarnetCategoria ? carnet_color_secundario : null,
       carnet_color_acento: personalizaCarnetCategoria ? carnet_color_acento : null,
       categoria_juvenil,
+      categoria_juvenil_cupos: categoria_juvenil ? categoria_juvenil_cupos : 0,
+      categoria_juvenil_max_diferencia: categoria_juvenil ? categoria_juvenil_max_diferencia : 1,
+      carnet_mostrar_edad,
     });
     mostrarNotificacion("Categoría creada", "success");
     document.getElementById("evt-nombre").value = "";
@@ -544,16 +634,23 @@ async function crearEvento() {
     if (inputBloqMonto) inputBloqMonto.value = "";
     const selectCarnetEstilo = document.getElementById("evt-carnet-estilo");
     const selectCategoriaJuvenil = document.getElementById("evt-categoria-juvenil");
+    const inputCategoriaJuvenilCupos = document.getElementById("evt-categoria-juvenil-cupos");
+    const selectCategoriaJuvenilDif = document.getElementById("evt-categoria-juvenil-max-diferencia");
+    const selectCarnetMostrarEdad = document.getElementById("evt-carnet-mostrar-edad");
     const colorPrimario = document.getElementById("evt-carnet-color-primario");
     const colorSecundario = document.getElementById("evt-carnet-color-secundario");
     const colorAcento = document.getElementById("evt-carnet-color-acento");
     const coloresCamp = obtenerColoresCarnetCampeonatoSeleccionado();
     if (selectCarnetEstilo) selectCarnetEstilo.value = "";
     if (selectCategoriaJuvenil) selectCategoriaJuvenil.value = "false";
+    if (inputCategoriaJuvenilCupos) inputCategoriaJuvenilCupos.value = "2";
+    if (selectCategoriaJuvenilDif) selectCategoriaJuvenilDif.value = "2";
+    if (selectCarnetMostrarEdad) selectCarnetMostrarEdad.value = "false";
     if (colorPrimario) colorPrimario.value = coloresCamp.primario;
     if (colorSecundario) colorSecundario.value = coloresCamp.secundario;
     if (colorAcento) colorAcento.value = coloresCamp.acento;
     actualizarVisibilidadConfigEliminatoria();
+    actualizarVisibilidadConfigJuvenil();
     toggleFormularioCategoria(false);
     await cargarEventos();
   } catch (err) {
@@ -755,6 +852,34 @@ async function editarEvento(id) {
           { value: "true", label: "Si" },
         ],
       },
+      {
+        name: "categoria_juvenil_cupos",
+        label: "Cupos juveniles permitidos",
+        type: "number",
+        value: String(normalizarCuposJuvenilEvento(evento?.categoria_juvenil_cupos, evento?.categoria_juvenil === true ? 2 : 0)),
+        min: 0,
+        step: 1,
+      },
+      {
+        name: "categoria_juvenil_max_diferencia",
+        label: "Máximo años menor",
+        type: "select",
+        value: String(normalizarDiferenciaJuvenilEvento(evento?.categoria_juvenil_max_diferencia, evento?.categoria_juvenil === true ? 2 : 1)),
+        options: [
+          { value: "1", label: "1 año menor" },
+          { value: "2", label: "2 años menor" },
+        ],
+      },
+      {
+        name: "carnet_mostrar_edad",
+        label: "Mostrar edad en carné",
+        type: "select",
+        value: evento?.carnet_mostrar_edad === true ? "true" : "false",
+        options: [
+          { value: "false", label: "No" },
+          { value: "true", label: "Sí" },
+        ],
+      },
     ],
   });
   if (!form) return;
@@ -773,6 +898,13 @@ async function editarEvento(id) {
   const nuevoBloqueo = String(form.bloquear_morosos || bloqueoActual).trim().toLowerCase();
   const nuevoMontoBloqueoRaw = String(form.bloqueo_morosidad_monto || "").trim();
   const nuevoMontoBloqueo = normalizarCostoInscripcion(nuevoMontoBloqueoRaw, null);
+  const categoriaJuvenilActiva = String(form.categoria_juvenil || "false").trim().toLowerCase() === "true";
+  const edadBaseCategoria = inferirEdadBaseCategoria(nuevoNombre);
+  const categoriaJuvenilCupos = normalizarCuposJuvenilEvento(form.categoria_juvenil_cupos, categoriaJuvenilActiva ? 2 : 0);
+  const categoriaJuvenilMaxDiferencia = normalizarDiferenciaJuvenilEvento(
+    form.categoria_juvenil_max_diferencia,
+    categoriaJuvenilActiva ? 2 : 1
+  );
 
   if (!nuevoNombre) return;
   if (!nuevoMetodo) {
@@ -797,6 +929,14 @@ async function editarEvento(id) {
   }
   if (nuevoMontoBloqueoRaw && nuevoMontoBloqueo === null) {
     mostrarNotificacion("Monto de bloqueo inválido. Usa solo números >= 0.", "warning");
+    return;
+  }
+  if (categoriaJuvenilActiva && !edadBaseCategoria) {
+    mostrarNotificacion("La opción juvenil solo aplica a categorías Sub 30 a Sub 60 detectadas por el nombre.", "warning");
+    return;
+  }
+  if (categoriaJuvenilActiva && !categoriaJuvenilCupos) {
+    mostrarNotificacion("Indica cuántos juveniles permite la categoría.", "warning");
     return;
   }
 
@@ -827,7 +967,10 @@ async function editarEvento(id) {
     payload.carnet_color_primario = personalizaCarnet ? nuevoColorPrimarioCarnet : null;
     payload.carnet_color_secundario = personalizaCarnet ? nuevoColorSecundarioCarnet : null;
     payload.carnet_color_acento = personalizaCarnet ? nuevoColorAcentoCarnet : null;
-    payload.categoria_juvenil = String(form.categoria_juvenil || "false").trim().toLowerCase() === "true";
+    payload.categoria_juvenil = categoriaJuvenilActiva;
+    payload.categoria_juvenil_cupos = categoriaJuvenilActiva ? categoriaJuvenilCupos : 0;
+    payload.categoria_juvenil_max_diferencia = categoriaJuvenilActiva ? categoriaJuvenilMaxDiferencia : 1;
+    payload.carnet_mostrar_edad = String(form.carnet_mostrar_edad || "false").trim().toLowerCase() === "true";
     await EventosAPI.actualizar(id, payload);
     mostrarNotificacion("Categoría actualizada", "success");
     await cargarEventos();

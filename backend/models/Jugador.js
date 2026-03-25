@@ -19,13 +19,267 @@ class Jugador {
     }
 
     static normalizarCedidentidad(valor) {
-        const texto = String(valor ?? "").trim();
+        const texto = String(valor ?? "")
+            .replace(/\D+/g, "")
+            .trim();
         return texto ? texto : null;
+    }
+
+    static validarCedidentidad(cedula) {
+        if (!cedula) return null;
+        if (!/^\d{10}$/.test(String(cedula))) {
+            throw new Error("La cédula debe tener exactamente 10 dígitos.");
+        }
+        return cedula;
     }
 
     static normalizarFechaNacimiento(valor) {
         const texto = String(valor ?? "").trim();
         return texto ? texto : null;
+    }
+
+    static inferirEdadBaseCategoria(nombreEvento) {
+        const raw = String(nombreEvento ?? "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+        if (!raw) return null;
+        const match = raw.match(/\b(?:sub|u)\s*\+?\s*(3\d|4\d|50|51|52|53|54|55|56|57|58|59|60)\b/);
+        if (!match) return null;
+        const edad = Number.parseInt(match[1], 10);
+        return Number.isFinite(edad) && edad >= 30 && edad <= 60 ? edad : null;
+    }
+
+    static calcularEdadDesdeFechaNacimiento(valor, referencia = new Date()) {
+        const texto = this.normalizarFechaNacimiento(valor);
+        if (!texto) return null;
+
+        let year;
+        let month;
+        let day;
+        let match = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            year = Number.parseInt(match[1], 10);
+            month = Number.parseInt(match[2], 10);
+            day = Number.parseInt(match[3], 10);
+        } else {
+            match = texto.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
+            if (!match) return null;
+            day = Number.parseInt(match[1], 10);
+            month = Number.parseInt(match[2], 10);
+            year = Number.parseInt(match[3], 10);
+        }
+
+        if (![year, month, day].every((item) => Number.isFinite(item))) return null;
+        const nacimiento = new Date(year, month - 1, day);
+        if (Number.isNaN(nacimiento.getTime())) return null;
+
+        let edad = referencia.getFullYear() - nacimiento.getFullYear();
+        const aunNoCumple =
+            referencia.getMonth() < nacimiento.getMonth() ||
+            (referencia.getMonth() === nacimiento.getMonth() &&
+                referencia.getDate() < nacimiento.getDate());
+        if (aunNoCumple) edad -= 1;
+        return edad >= 0 ? edad : null;
+    }
+
+    static normalizarCuposJuvenil(valor, fallback = 0) {
+        if (valor === undefined || valor === null || valor === "") return fallback;
+        const numero = Number.parseInt(valor, 10);
+        if (!Number.isFinite(numero) || numero < 0) return fallback;
+        return numero;
+    }
+
+    static normalizarDiferenciaJuvenil(valor, fallback = 1) {
+        if (valor === undefined || valor === null || valor === "") return fallback;
+        const numero = Number.parseInt(valor, 10);
+        if (![1, 2].includes(numero)) return fallback;
+        return numero;
+    }
+
+    static async obtenerConfiguracionEtariaEvento(eventoId) {
+        const evento = this.normalizarEventoId(eventoId);
+        if (!evento) return null;
+        const result = await pool.query(
+            `
+                SELECT
+                    id,
+                    nombre,
+                    COALESCE(categoria_juvenil, false) AS categoria_juvenil,
+                    COALESCE(categoria_juvenil_cupos, 0) AS categoria_juvenil_cupos,
+                    COALESCE(categoria_juvenil_max_diferencia, 1) AS categoria_juvenil_max_diferencia,
+                    COALESCE(carnet_mostrar_edad, false) AS carnet_mostrar_edad
+                FROM eventos
+                WHERE id = $1
+                LIMIT 1
+            `,
+            [evento]
+        );
+        if (!result.rows.length) return null;
+        const row = result.rows[0];
+        return {
+            ...row,
+            edad_base_categoria: this.inferirEdadBaseCategoria(row.nombre),
+            categoria_juvenil: row.categoria_juvenil === true,
+            categoria_juvenil_cupos: this.normalizarCuposJuvenil(row.categoria_juvenil_cupos, 0),
+            categoria_juvenil_max_diferencia: this.normalizarDiferenciaJuvenil(
+                row.categoria_juvenil_max_diferencia,
+                1
+            ),
+            carnet_mostrar_edad: row.carnet_mostrar_edad === true,
+        };
+    }
+
+    static evaluarCondicionJuvenilEvento(fechaNacimiento, configEvento = {}) {
+        const edadBase = Number.parseInt(configEvento?.edad_base_categoria, 10);
+        if (!Number.isFinite(edadBase) || edadBase < 30 || edadBase > 60) {
+            return {
+                controlaEdad: false,
+                permitido: true,
+                esJuvenil: false,
+                edad: this.calcularEdadDesdeFechaNacimiento(fechaNacimiento),
+                edadBase: null,
+                diferencia: 0,
+                mensaje: "",
+            };
+        }
+
+        if (!this.normalizarFechaNacimiento(fechaNacimiento)) {
+            return {
+                controlaEdad: true,
+                permitido: false,
+                esJuvenil: false,
+                edad: null,
+                edadBase,
+                diferencia: null,
+                mensaje: `La categoría ${edadBase}+ requiere fecha de nacimiento para validar la edad del jugador.`,
+            };
+        }
+
+        const edad = this.calcularEdadDesdeFechaNacimiento(fechaNacimiento);
+        if (!Number.isFinite(edad)) {
+            return {
+                controlaEdad: true,
+                permitido: false,
+                esJuvenil: false,
+                edad: null,
+                edadBase,
+                diferencia: null,
+                mensaje: "No se pudo validar la fecha de nacimiento del jugador.",
+            };
+        }
+
+        if (edad >= edadBase) {
+            return {
+                controlaEdad: true,
+                permitido: true,
+                esJuvenil: false,
+                edad,
+                edadBase,
+                diferencia: 0,
+                mensaje: "",
+            };
+        }
+
+        const diferencia = edadBase - edad;
+        const juvenilActivo = configEvento?.categoria_juvenil === true;
+        const diferenciaMaxima = this.normalizarDiferenciaJuvenil(
+            configEvento?.categoria_juvenil_max_diferencia,
+            1
+        );
+
+        if (!juvenilActivo) {
+            return {
+                controlaEdad: true,
+                permitido: false,
+                esJuvenil: false,
+                edad,
+                edadBase,
+                diferencia,
+                mensaje: `El jugador tiene ${edad} años y no cumple la edad mínima de la categoría ${edadBase}+.`,
+            };
+        }
+
+        if (diferencia > diferenciaMaxima) {
+            return {
+                controlaEdad: true,
+                permitido: false,
+                esJuvenil: false,
+                edad,
+                edadBase,
+                diferencia,
+                mensaje: `El jugador excede el margen juvenil permitido para la categoría ${edadBase}+ (máximo ${diferenciaMaxima} año${diferenciaMaxima === 1 ? "" : "s"} menor).`,
+            };
+        }
+
+        return {
+            controlaEdad: true,
+            permitido: true,
+            esJuvenil: true,
+            edad,
+            edadBase,
+            diferencia,
+            mensaje: "",
+        };
+    }
+
+    static async contarJuvenilesEquipoEvento(equipoId, eventoId, configEvento = {}, excluirJugadorId = null) {
+        const edadBase = Number.parseInt(configEvento?.edad_base_categoria, 10);
+        if (!Number.isFinite(edadBase)) return 0;
+
+        const query = `
+            SELECT id, fecha_nacimiento
+            FROM jugadores
+            WHERE equipo_id = $1
+              AND evento_id = $2
+              ${Number.isFinite(Number(excluirJugadorId)) ? "AND id <> $3" : ""}
+        `;
+        const params = Number.isFinite(Number(excluirJugadorId))
+            ? [equipoId, eventoId, excluirJugadorId]
+            : [equipoId, eventoId];
+        const result = await pool.query(query, params);
+        return result.rows.filter((row) => {
+            const evaluacion = this.evaluarCondicionJuvenilEvento(row.fecha_nacimiento, configEvento);
+            return evaluacion.esJuvenil === true;
+        }).length;
+    }
+
+    static async validarElegibilidadEtaria({
+        equipoId,
+        eventoId,
+        fechaNacimiento,
+        excluirJugadorId = null,
+    }) {
+        const evento = await this.obtenerConfiguracionEtariaEvento(eventoId);
+        if (!evento) return null;
+
+        const evaluacion = this.evaluarCondicionJuvenilEvento(fechaNacimiento, evento);
+        if (!evaluacion.controlaEdad) return evaluacion;
+        if (!evaluacion.permitido) {
+            throw new Error(evaluacion.mensaje);
+        }
+
+        if (evaluacion.esJuvenil) {
+            const cupos = this.normalizarCuposJuvenil(evento.categoria_juvenil_cupos, 0);
+            if (cupos <= 0) {
+                throw new Error(
+                    `La categoría ${evento.edad_base_categoria}+ tiene juvenil habilitado, pero no tiene cupos configurados.`
+                );
+            }
+            const juvenilesActuales = await this.contarJuvenilesEquipoEvento(
+                equipoId,
+                eventoId,
+                evento,
+                excluirJugadorId
+            );
+            if (juvenilesActuales >= cupos) {
+                throw new Error(
+                    `La categoría permite máximo ${cupos} juvenil${cupos === 1 ? "" : "es"} por equipo.`
+                );
+            }
+        }
+
+        return evaluacion;
     }
 
     static normalizarNumeroCamiseta(valor) {
@@ -242,7 +496,9 @@ class Jugador {
         evento_id_contexto = null
     ) {
         await this.asegurarColumnasDocumentos();
-        const cedulaNormalizada = this.normalizarCedidentidad(cedidentidad);
+        const cedulaNormalizada = this.validarCedidentidad(
+            this.normalizarCedidentidad(cedidentidad)
+        );
         const fechaNacimientoNormalizada = this.normalizarFechaNacimiento(fecha_nacimiento);
         const numeroCamisetaNormalizado = this.normalizarNumeroCamiseta(numero_camiseta);
         const fotoCarnetPosX = this.normalizarPosicionFoto(foto_carnet_pos_x, 50);
@@ -280,6 +536,12 @@ class Jugador {
             }
             throw new Error(`Límite de ${maxJugadoresPermitido} jugadores alcanzado en este equipo`);
         }
+
+        await this.validarElegibilidadEtaria({
+            equipoId: equipo_id,
+            eventoId: contextoRoster.eventoId,
+            fechaNacimiento: fechaNacimientoNormalizada,
+        });
 
         // Verificar si la cédula ya existe en otro equipo de la misma categoría/evento
         await this.verificarJugadorUnicoPorEvento(
@@ -455,7 +717,9 @@ class Jugador {
     static async actualizar(id, datos) {
         await this.asegurarColumnasDocumentos();
         if (Object.prototype.hasOwnProperty.call(datos, "cedidentidad")) {
-            datos.cedidentidad = this.normalizarCedidentidad(datos.cedidentidad);
+            datos.cedidentidad = this.validarCedidentidad(
+                this.normalizarCedidentidad(datos.cedidentidad)
+            );
         }
         if (Object.prototype.hasOwnProperty.call(datos, "fecha_nacimiento")) {
             datos.fecha_nacimiento = this.normalizarFechaNacimiento(datos.fecha_nacimiento);
@@ -476,7 +740,7 @@ class Jugador {
             datos.evento_id = this.normalizarEventoId(datos.evento_id);
         }
         const jugadorActualResult = await pool.query(
-            'SELECT cedidentidad, equipo_id, evento_id, numero_camiseta FROM jugadores WHERE id = $1',
+            'SELECT cedidentidad, equipo_id, evento_id, numero_camiseta, fecha_nacimiento FROM jugadores WHERE id = $1',
             [id]
         );
         const jugadorActual = jugadorActualResult.rows[0];
@@ -531,6 +795,20 @@ class Jugador {
                     throw new Error(`Límite de ${maxJugadoresPermitido} jugadores alcanzado en este equipo`);
                 }
             }
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(datos, "fecha_nacimiento") ||
+            Object.prototype.hasOwnProperty.call(datos, "equipo_id") ||
+            Object.prototype.hasOwnProperty.call(datos, "evento_id") ||
+            Object.prototype.hasOwnProperty.call(datos, "evento_id_contexto")
+        ) {
+            await this.validarElegibilidadEtaria({
+                equipoId: equipoDestinoId,
+                eventoId: contextoRoster.eventoId,
+                fechaNacimiento: datos.fecha_nacimiento ?? jugadorActual.fecha_nacimiento,
+                excluirJugadorId: id,
+            });
         }
 
         const cedulaDestino = datos.cedidentidad ?? jugadorActual.cedidentidad;

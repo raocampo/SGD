@@ -7,6 +7,47 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-25 - Juveniles por categoría, edad en carné y arquero resaltado en planilla
+- Nueva migración `database/migrations/050_eventos_juvenil_cupos_y_carnet_edad.sql`.
+- `backend/controllers/eventoController.js` y `frontend/eventos.html` / `frontend/js/eventos.js` ahora permiten configurar por categoría:
+  - `categoria_juvenil`,
+  - `categoria_juvenil_cupos`,
+  - `categoria_juvenil_max_diferencia`,
+  - `carnet_mostrar_edad`.
+- La opción juvenil queda restringida a categorías `Sub/U 30` hasta `Sub/U 60`.
+- `backend/models/Jugador.js` ahora valida la elegibilidad etaria por `evento_id`:
+  - exige fecha de nacimiento cuando la categoría controla edad,
+  - permite jugadores menores solo si la categoría activa juveniles,
+  - valida el margen permitido (`1` o `2` años menor),
+  - y controla cupos juveniles por equipo dentro de esa categoría.
+- `frontend/js/jugadores.js` ya muestra la edad en tarjetas y tabla, marca a los jugadores juveniles con chip visual y resume `Juveniles: X / cupos` en la ficha del equipo.
+- Los carnés ahora imprimen `Fecha nac.` y `Edad` si la categoría activa `Mostrar edad en carné`, y agregan `Condición: Juvenil` cuando corresponde.
+- `frontend/js/planilla.js` + `frontend/css/style.css` ahora resaltan al arquero por color en:
+  - el plantel lateral,
+  - la tabla de captura,
+  - la vista previa oficial de planilla.
+
+---
+
+## 2026-03-25 - Cédula consistente y planilla con número visible / auspiciantes en PDF
+- `backend/models/Jugador.js` ahora normaliza `cedidentidad` eliminando caracteres no numéricos pero conservando ceros iniciales y valida que la cédula tenga exactamente `10 dígitos` cuando se informa.
+- `backend/controllers/jugadorController.js` y `backend/services/mobileOperationsService.js` reutilizan la misma normalización para:
+  - alta web,
+  - importación masiva,
+  - búsqueda local por cédula,
+  - alta móvil.
+- `frontend/jugadores.html`, `frontend/planilla.html`, `frontend/js/jugadores.js` y `frontend/js/planilla.js` refuerzan esa regla en UI:
+  - inputs numéricos de cédula con longitud máxima `10`,
+  - sanitización en vivo,
+  - mensaje funcional si no se completan los `10` dígitos.
+- `frontend/planilla.html` y `frontend/js/planilla.js` agregan el campo `Número de partido` editable dentro de la planilla.
+- `backend/models/Partido.js` ahora actualiza `numero_campeonato` también desde `guardarPlanilla(...)`, y `backend/controllers/partidoController.js` ya devuelve error claro si ese número visible está duplicado en el campeonato.
+- `frontend/js/planilla.js` mejora el bloque de auspiciantes:
+  - fallback `activos -> todos`,
+  - impresión real de logos en la cabecera del PDF,
+  - continuidad visual entre cabecera web, vista previa y PDF.
+
+---
 ## 2026-03-23 - Numeración visible de partidos y planilla de playoff
 - `backend/controllers/partidoController.js` y `backend/models/Partido.js` ahora permiten definir `numero_campeonato` como número visible editable para cada partido:
   - se puede enviar al crear un partido manual,

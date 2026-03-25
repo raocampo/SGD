@@ -2934,6 +2934,16 @@ body.modal-open {
   background: #fff;
 }
 
+.planilla-plantel-item.is-goalkeeper {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.planilla-plantel-item.is-goalkeeper strong,
+.planilla-plantel-item.is-goalkeeper small {
+  color: #1d4ed8;
+}
+
 .planilla-plantel-item.is-suspended {
   border-color: #ef4444;
   background: #fff1f2;
@@ -3039,6 +3049,14 @@ body.modal-open {
   margin-top: 0.1rem;
   color: #64748b;
   font-size: 0.72rem;
+}
+
+.planilla-captura-table .planilla-player-row.is-goalkeeper td {
+  background: #eff6ff;
+}
+
+.planilla-captura-table .planilla-player-row.is-goalkeeper td strong {
+  color: #1d4ed8;
 }
 
 .planilla-captura-table .planilla-player-row.is-suspended td {
@@ -3635,6 +3653,11 @@ body.modal-open {
 .planilla-oficial-table th {
   text-align: left;
   background: #eef4fb;
+}
+
+.planilla-oficial-table tr.is-goalkeeper td {
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .planilla-oficial-table td:nth-child(1),
@@ -5013,6 +5036,24 @@ body.modal-open {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+}
+
+.estado-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.35rem;
+  padding: 0.12rem 0.48rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.estado-chip-info {
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .jugador-ficha-sheet {

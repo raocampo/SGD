@@ -162,6 +162,32 @@ function normalizarCarnetEstilo(value, fallback = null) {
   return permitidos.has(raw) ? raw : fallback;
 }
 
+function inferirEdadBaseCategoria(nombreEvento) {
+  const raw = String(nombreEvento ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (!raw) return null;
+  const match = raw.match(/\b(?:sub|u)\s*\+?\s*(3\d|4\d|50|51|52|53|54|55|56|57|58|59|60)\b/);
+  if (!match) return null;
+  const edad = Number.parseInt(match[1], 10);
+  return Number.isFinite(edad) && edad >= 30 && edad <= 60 ? edad : null;
+}
+
+function normalizarCategoriaJuvenilCupos(value, fallback = 0) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const numero = Number.parseInt(value, 10);
+  if (!Number.isFinite(numero) || numero < 0) return null;
+  return numero;
+}
+
+function normalizarCategoriaJuvenilDiferencia(value, fallback = 1) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const numero = Number.parseInt(value, 10);
+  if (![1, 2].includes(numero)) return null;
+  return numero;
+}
+
 function esAdministrador(user) {
   return String(user?.rol || "").toLowerCase() === "administrador";
 }
@@ -280,13 +306,31 @@ async function asegurarEsquemaEventos() {
     ADD COLUMN IF NOT EXISTS carnet_color_primario VARCHAR(20),
     ADD COLUMN IF NOT EXISTS carnet_color_secundario VARCHAR(20),
     ADD COLUMN IF NOT EXISTS carnet_color_acento VARCHAR(20),
-    ADD COLUMN IF NOT EXISTS categoria_juvenil BOOLEAN DEFAULT FALSE
+    ADD COLUMN IF NOT EXISTS categoria_juvenil BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS categoria_juvenil_cupos INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS categoria_juvenil_max_diferencia INTEGER DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS carnet_mostrar_edad BOOLEAN DEFAULT FALSE
   `);
 
   await pool.query(`
     UPDATE eventos
     SET categoria_juvenil = COALESCE(categoria_juvenil, FALSE)
     WHERE categoria_juvenil IS NULL
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET categoria_juvenil_cupos = COALESCE(categoria_juvenil_cupos, CASE WHEN categoria_juvenil = TRUE THEN 2 ELSE 0 END)
+    WHERE categoria_juvenil_cupos IS NULL
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET categoria_juvenil_max_diferencia = COALESCE(categoria_juvenil_max_diferencia, CASE WHEN categoria_juvenil = TRUE THEN 2 ELSE 1 END)
+    WHERE categoria_juvenil_max_diferencia IS NULL
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET carnet_mostrar_edad = COALESCE(carnet_mostrar_edad, FALSE)
+    WHERE carnet_mostrar_edad IS NULL
   `);
   await pool.query(`
     UPDATE eventos
@@ -391,6 +435,9 @@ const eventoController = {
         carnet_color_secundario,
         carnet_color_acento,
         categoria_juvenil,
+        categoria_juvenil_cupos,
+        categoria_juvenil_max_diferencia,
+        carnet_mostrar_edad,
       } = req.body;
 
       if (!campeonato_id || !nombre || !fecha_inicio || !fecha_fin) {
@@ -498,6 +545,27 @@ const eventoController = {
       const carnetColorSecundario = normalizarColorHex(carnet_color_secundario, null);
       const carnetColorAcento = normalizarColorHex(carnet_color_acento, null);
       const categoriaJuvenil = normalizarBooleanFlexible(categoria_juvenil, false) === true;
+      const edadBaseCategoria = inferirEdadBaseCategoria(nombre);
+      const categoriaJuvenilCupos = normalizarCategoriaJuvenilCupos(categoria_juvenil_cupos, categoriaJuvenil ? 2 : 0);
+      const categoriaJuvenilMaxDiferencia = normalizarCategoriaJuvenilDiferencia(
+        categoria_juvenil_max_diferencia,
+        categoriaJuvenil ? 2 : 1
+      );
+      const carnetMostrarEdad = normalizarBooleanFlexible(carnet_mostrar_edad, false) === true;
+      if (categoriaJuvenil && !edadBaseCategoria) {
+        return res.status(400).json({
+          error: "La opción juvenil solo aplica a categorías Sub 30 a Sub 60; ajusta el nombre de la categoría o desactiva esta opción.",
+        });
+      }
+      if (categoriaJuvenil && categoriaJuvenilCupos === null) {
+        return res.status(400).json({ error: "categoria_juvenil_cupos debe ser un entero mayor o igual a 0." });
+      }
+      if (categoriaJuvenil && (!Number.isFinite(categoriaJuvenilCupos) || categoriaJuvenilCupos <= 0)) {
+        return res.status(400).json({ error: "Debes indicar cuántos juveniles permite la categoría." });
+      }
+      if (categoriaJuvenil && categoriaJuvenilMaxDiferencia === null) {
+        return res.status(400).json({ error: "categoria_juvenil_max_diferencia debe ser 1 o 2." });
+      }
 
       const query = `
         WITH next_num AS (
@@ -513,14 +581,14 @@ const eventoController = {
           costo_inscripcion, clasificados_por_grupo, clasificacion_tabla_acumulada,
           bloquear_morosos, bloqueo_morosidad_monto,
           carnet_estilo, carnet_color_primario, carnet_color_secundario, carnet_color_acento,
-          categoria_juvenil,
+          categoria_juvenil, categoria_juvenil_cupos, categoria_juvenil_max_diferencia, carnet_mostrar_edad,
           horario_weekday_inicio, horario_weekday_fin,
           horario_sab_inicio, horario_sab_fin,
           horario_dom_inicio, horario_dom_fin,
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -546,6 +614,9 @@ const eventoController = {
         carnetColorSecundario,
         carnetColorAcento,
         categoriaJuvenil,
+        categoriaJuvenil ? categoriaJuvenilCupos : 0,
+        categoriaJuvenil ? categoriaJuvenilMaxDiferencia : 1,
+        carnetMostrarEdad,
         wkStart,
         wkEnd,
         satStart,
@@ -822,9 +893,64 @@ const eventoController = {
           i++;
           continue;
         }
+        if (k === "categoria_juvenil_cupos") {
+          const cupos = normalizarCategoriaJuvenilCupos(v, null);
+          if (v !== null && v !== "" && cupos === null) {
+            return res.status(400).json({ error: "categoria_juvenil_cupos debe ser un entero mayor o igual a 0." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(cupos ?? 0);
+          i++;
+          continue;
+        }
+        if (k === "categoria_juvenil_max_diferencia") {
+          const diferencia = normalizarCategoriaJuvenilDiferencia(v, null);
+          if (v !== null && v !== "" && diferencia === null) {
+            return res.status(400).json({ error: "categoria_juvenil_max_diferencia debe ser 1 o 2." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(diferencia ?? 1);
+          i++;
+          continue;
+        }
+        if (k === "carnet_mostrar_edad") {
+          const valorBool = normalizarBooleanFlexible(v, null);
+          if (v !== null && v !== "" && valorBool === null) {
+            return res.status(400).json({ error: "carnet_mostrar_edad invalido. Usa true o false." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(valorBool === true);
+          i++;
+          continue;
+        }
         campos.push(`${k} = $${i}`);
         valores.push(v);
         i++;
+      }
+
+      const nombreDestino = Object.prototype.hasOwnProperty.call(req.body, "nombre")
+        ? String(req.body.nombre || "").trim()
+        : String(eventoActual?.nombre || "").trim();
+      const categoriaJuvenilDestino = Object.prototype.hasOwnProperty.call(req.body, "categoria_juvenil")
+        ? normalizarBooleanFlexible(req.body.categoria_juvenil, false) === true
+        : eventoActual?.categoria_juvenil === true;
+      const edadBaseCategoria = inferirEdadBaseCategoria(nombreDestino);
+      const cuposJuvenilDestino = Object.prototype.hasOwnProperty.call(req.body, "categoria_juvenil_cupos")
+        ? normalizarCategoriaJuvenilCupos(req.body.categoria_juvenil_cupos, 0)
+        : normalizarCategoriaJuvenilCupos(eventoActual?.categoria_juvenil_cupos, 0);
+      const diferenciaJuvenilDestino = Object.prototype.hasOwnProperty.call(req.body, "categoria_juvenil_max_diferencia")
+        ? normalizarCategoriaJuvenilDiferencia(req.body.categoria_juvenil_max_diferencia, 1)
+        : normalizarCategoriaJuvenilDiferencia(eventoActual?.categoria_juvenil_max_diferencia, 1);
+      if (categoriaJuvenilDestino && !edadBaseCategoria) {
+        return res.status(400).json({
+          error: "La opción juvenil solo aplica a categorías Sub 30 a Sub 60; ajusta el nombre de la categoría o desactiva esta opción.",
+        });
+      }
+      if (categoriaJuvenilDestino && (!Number.isFinite(cuposJuvenilDestino) || cuposJuvenilDestino <= 0)) {
+        return res.status(400).json({ error: "Debes indicar cuántos juveniles permite la categoría." });
+      }
+      if (categoriaJuvenilDestino && ![1, 2].includes(Number(diferenciaJuvenilDestino))) {
+        return res.status(400).json({ error: "La diferencia juvenil permitida debe ser 1 o 2 años." });
       }
 
       if (req.body.metodo_competencia !== undefined) {
