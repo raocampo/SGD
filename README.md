@@ -569,6 +569,14 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
 12. Plan mobile orientado a app instalable en tiendas:
    - Android (Play Store),
    - iOS (App Store).
+13. Modulo de transmision en vivo (Streamer):
+   - transmision de partidos directamente desde la plataforma sin contratar servicios externos,
+   - streaming WebRTC desde camara/pantalla del navegador del operador o camarografo,
+   - sala de transmision por partido con URL publica compartible para espectadores,
+   - panel de control del streamer: iniciar/detener transmision, titulo del partido, overlay de marcador en tiempo real,
+   - vista publica de transmision embebida en `portal.html` (tab "En Vivo" por categoria/campeonato),
+   - senalizacion WebRTC via Socket.io en el backend (servidor de senalizacion ligero),
+   - grabacion opcional del stream en disco/CDN para reproduccion posterior.
 
 ## 11.1. Novedades Recientes del Portal Publico
 - Las cards de campeonatos ahora muestran resumen por categoria con cantidad de equipos.

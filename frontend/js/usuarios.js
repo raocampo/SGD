@@ -171,7 +171,8 @@
     rolSelect.disabled = false;
     rolSelect.innerHTML = `
       <option value="administrador">Administrador</option>
-      <option value="operador">Operador portal</option>
+      <option value="operador">Operador CMS (portal web)</option>
+      <option value="operador_sistema">Operador Sistema (planillas)</option>
       <option value="organizador">Organizador</option>
       <option value="tecnico">Técnico</option>
       <option value="dirigente">Dirigente</option>
@@ -179,7 +180,7 @@
     `;
     if (descripcion) {
       descripcion.textContent =
-        "Como administrador puedes visualizar, crear, editar y eliminar usuarios, incluido el operador del portal.";
+        "Como administrador puedes visualizar, crear, editar y eliminar usuarios. Operador CMS gestiona el portal web; Operador Sistema registra planillas de partido.";
     }
     const planGroup = document.getElementById("usr-plan-group");
     const planEstadoGroup = document.getElementById("usr-plan-estado-group");

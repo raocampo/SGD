@@ -63,13 +63,13 @@ router.post("/", requireAuth, requireRoles("administrador", "organizador"), part
 router.get(
   "/:id/planilla",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  requireRoles("administrador", "organizador", "operador_sistema", "tecnico", "dirigente", "jugador"),
   partidoController.obtenerPlanillaPartido
 );
 router.put(
   "/:id/planilla",
   requireAuth,
-  requireRoles("administrador", "organizador"),
+  requireRoles("administrador", "organizador", "operador_sistema"),
   partidoController.guardarPlanillaPartido
 );
 router.put("/:id", requireAuth, requireRoles("administrador", "organizador"), partidoController.actualizarPartido);

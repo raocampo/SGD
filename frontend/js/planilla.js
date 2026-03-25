@@ -663,7 +663,7 @@ function escapeHtml(valor) {
 function puedeInscribirJugadoresEnPlanilla() {
   const rol = String(window.Auth?.getUser?.()?.rol || "").trim().toLowerCase();
   if (window.Auth?.isReadOnly?.()) return false;
-  return ["administrador", "organizador", "tecnico", "dirigente"].includes(rol);
+  return ["administrador", "organizador", "operador_sistema", "tecnico", "dirigente"].includes(rol);
 }
 
 function normalizarArchivoUrl(url) {

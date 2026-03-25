@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LT&C - Portal Operador</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ LT&C</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn active" href="portal-operador.html"><i class="fas fa-home"></i> Mi Panel</a>
+      <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillas</a>
+      <hr class="sidebar-divider" />
+      <span class="sidebar-section-label">Ver módulos</span>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-shield-alt"></i> Equipos</a>
+      <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+      <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+      <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="eliminatorias.html"><i class="fas fa-sitemap"></i> Playoff</a>
+      <a class="nav-btn" href="finanzas.html"><i class="fas fa-wallet"></i> Finanzas</a>
+      <hr class="sidebar-divider" />
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1>Portal Operador</h1>
+    </header>
+
+    <main class="main">
+      <div class="container">
+
+        <div class="welcome-card">
+          <h2><i class="fas fa-clipboard-check"></i> Panel de Operador</h2>
+          <p>Como operador puedes registrar la información de planillas de partido y consultar todos los módulos del sistema.</p>
+
+          <div class="stats-grid">
+            <a class="stat-card stat-card-primary" href="planilla.html">
+              <i class="fas fa-clipboard-list"></i>
+              <h3>Registrar Planilla</h3>
+              <p>Ingresa resultados, goles, tarjetas y árbitros del partido</p>
+            </a>
+            <a class="stat-card" href="partidos.html">
+              <i class="fas fa-futbol"></i>
+              <h3>Ver Partidos</h3>
+              <p>Consulta el fixture y calendario de partidos</p>
+            </a>
+            <a class="stat-card" href="tablas.html">
+              <i class="fas fa-ranking-star"></i>
+              <h3>Tablas</h3>
+              <p>Posiciones, goleadores y fair play</p>
+            </a>
+            <a class="stat-card" href="eliminatorias.html">
+              <i class="fas fa-sitemap"></i>
+              <h3>Playoff</h3>
+              <p>Llaves y cruces eliminatorios</p>
+            </a>
+          </div>
+        </div>
+
+        <div class="section-card" id="partidos-pendientes-seccion">
+          <div class="section-card-header">
+            <h3><i class="fas fa-clock"></i> Partidos pendientes de planilla</h3>
+          </div>
+          <div id="partidos-pendientes-lista">
+            <div class="loading-inline"><i class="fas fa-spinner fa-spin"></i> Cargando partidos...</div>
+          </div>
+        </div>
+
+        <div class="welcome-card" style="margin-top:1.5rem;">
+          <h3><i class="fas fa-eye"></i> Módulos disponibles (solo consulta)</h3>
+          <p>Puedes navegar por todos los módulos para consultar información, pero solo la planilla permite edición.</p>
+          <div class="stats-grid stats-grid-sm">
+            <a class="stat-card" href="campeonatos.html"><i class="fas fa-trophy"></i><h3>Campeonatos</h3></a>
+            <a class="stat-card" href="eventos.html"><i class="fas fa-calendar-alt"></i><h3>Categorías</h3></a>
+            <a class="stat-card" href="equipos.html"><i class="fas fa-shield-alt"></i><h3>Equipos</h3></a>
+            <a class="stat-card" href="jugadores.html"><i class="fas fa-id-card"></i><h3>Jugadores</h3></a>
+            <a class="stat-card" href="finanzas.html"><i class="fas fa-file-invoice-dollar"></i><h3>Finanzas</h3></a>
+            <a class="stat-card" href="pases.html"><i class="fas fa-exchange-alt"></i><h3>Pases</h3></a>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    (async function initPortalOperador() {
+      const user = window.Auth?.getUser?.();
+      if (!user) return;
+
+      // Cargar partidos pendientes de planilla (estado programado/en_curso)
+      try {
+        const campeonatos = await ApiClient.get("/campeonatos");
+        const listaCamps = Array.isArray(campeonatos) ? campeonatos : (campeonatos?.campeonatos || []);
+
+        if (!listaCamps.length) {
+          document.getElementById("partidos-pendientes-lista").innerHTML =
+            '<p class="text-muted">No hay campeonatos activos.</p>';
+          return;
+        }
+
+        // Obtener partidos de los campeonatos activos
+        const activos = listaCamps.filter(c => c.estado === "activo" || c.estado === "en_curso").slice(0, 3);
+        if (!activos.length) {
+          document.getElementById("partidos-pendientes-lista").innerHTML =
+            '<p class="text-muted">No hay campeonatos activos en este momento.</p>';
+          return;
+        }
+
+        const promesas = activos.map(c => ApiClient.get(`/partidos/campeonato/${c.id}`).catch(() => []));
+        const resultados = await Promise.all(promesas);
+
+        const partidos = resultados
+          .flat()
+          .filter(p => p.estado === "programado" || p.estado === "en_curso")
+          .slice(0, 10);
+
+        if (!partidos.length) {
+          document.getElementById("partidos-pendientes-lista").innerHTML =
+            '<p class="text-muted">No hay partidos pendientes de planilla.</p>';
+          return;
+        }
+
+        const filas = partidos.map(p => {
+          const fecha = p.fecha ? new Date(p.fecha).toLocaleDateString("es-EC", { day: "2-digit", month: "short" }) : "—";
+          const hora = p.hora ? p.hora.slice(0, 5) : "—";
+          const local = p.equipo_local_nombre || "Local";
+          const visitante = p.equipo_visitante_nombre || "Visitante";
+          const estado = p.estado === "en_curso" ? '<span class="badge badge-warning">En curso</span>' : '<span class="badge badge-info">Programado</span>';
+          return `
+            <tr>
+              <td>${fecha} ${hora}</td>
+              <td>${local} vs ${visitante}</td>
+              <td>${p.evento_nombre || p.categoria || "—"}</td>
+              <td>${estado}</td>
+              <td>
+                <a href="planilla.html?partido=${p.id}" class="btn btn-sm btn-primary">
+                  <i class="fas fa-clipboard-list"></i> Planilla
+                </a>
+              </td>
+            </tr>`;
+        }).join("");
+
+        document.getElementById("partidos-pendientes-lista").innerHTML = `
+          <table class="sgd-table">
+            <thead>
+              <tr>
+                <th>Fecha / Hora</th>
+                <th>Partido</th>
+                <th>Categoría</th>
+                <th>Estado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+          </table>`;
+      } catch (err) {
+        document.getElementById("partidos-pendientes-lista").innerHTML =
+          '<p class="text-muted">No se pudieron cargar los partidos.</p>';
+      }
+    })();
+  </script>
+</body>
+
+</html>

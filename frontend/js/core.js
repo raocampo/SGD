@@ -43,12 +43,38 @@
     "contenido-portal.html",
     "contacto-admin.html",
   ]);
+  // Operador CMS: gestiona contenido del sitio web
   const OPERADOR_ALLOWED_PAGES = new Set([
     "portal-cms.html",
     "noticias.html",
     "galeria-admin.html",
     "contenido-portal.html",
     "contacto-admin.html",
+    "index.html",
+    "blog.html",
+    "noticia.html",
+    "portal.html",
+    "login.html",
+  ]);
+  // Operador Sistema: registra planillas y consulta módulos deportivos (solo lectura)
+  const OPERADOR_SISTEMA_ALLOWED_PAGES = new Set([
+    "portal-operador.html",
+    "planilla.html",
+    "campeonatos.html",
+    "eventos.html",
+    "equipos.html",
+    "jugadores.html",
+    "partidos.html",
+    "tablas.html",
+    "eliminatorias.html",
+    "finanzas.html",
+    "pases.html",
+    "gruposgen.html",
+    "fixture.html",
+    "fixtureplantilla.html",
+    "jornadasplantilla.html",
+    "sorteo.html",
+    "auspiciantes.html",
     "index.html",
     "blog.html",
     "noticia.html",
@@ -154,6 +180,10 @@
     return String(user?.rol || "").toLowerCase() === "operador";
   }
 
+  function esOperadorSistema(user) {
+    return String(user?.rol || "").toLowerCase() === "operador_sistema";
+  }
+
   function esJugador(user) {
     return String(user?.rol || "").toLowerCase() === "jugador";
   }
@@ -162,6 +192,7 @@
     if (!user) return "login.html";
     const rol = String(user.rol || "").toLowerCase();
     if (rol === "operador") return "portal-cms.html";
+    if (rol === "operador_sistema") return "portal-operador.html";
     if (rol === "administrador" || rol === "organizador") return "portal-admin.html";
     if (rol === "tecnico" || rol === "dirigente" || rol === "jugador") return "portal-tecnico.html";
     return "login.html";
@@ -175,6 +206,7 @@
       return rol === "administrador" || rol === "operador";
     }
     if (esOperadorPortal(user)) return OPERADOR_ALLOWED_PAGES.has(page);
+    if (esOperadorSistema(user)) return OPERADOR_SISTEMA_ALLOWED_PAGES.has(page);
     if (esJugador(user)) return JUGADOR_ALLOWED_PAGES.has(page);
     if (esTecnicoOdirigente(user)) return TECNICO_ALLOWED_PAGES.has(page);
     return true;
@@ -1353,6 +1385,32 @@
         "contacto-admin.html",
         '<i class="fas fa-envelope-open-text"></i> Contacto',
         window.location.pathname.endsWith("contacto-admin.html")
+      );
+    } else if (esOperadorSistema(user)) {
+      // Operador Sistema: ocultar módulos de admin/org, mostrar solo deportivo + planilla
+      [
+        "portal-cms.html",
+        "noticias.html",
+        "galeria-admin.html",
+        "contenido-portal.html",
+        "contacto-admin.html",
+        "usuarios.html",
+        "portal-admin.html",
+        "portal-tecnico.html",
+        "organizador-portal.html",
+      ].forEach((href) => {
+        const link = sidebarNav.querySelector(`a[href="${href}"]`);
+        if (link) link.remove();
+      });
+      ensureNavLink(
+        "portal-operador.html",
+        '<i class="fas fa-home"></i> Mi Panel',
+        window.location.pathname.endsWith("portal-operador.html")
+      );
+      ensureNavLink(
+        "planilla.html",
+        '<i class="fas fa-clipboard-list"></i> Planillas',
+        window.location.pathname.endsWith("planilla.html")
       );
     } else if (esTecnicoOdirigente(user)) {
       tecnicoRestricted.forEach((href) => {

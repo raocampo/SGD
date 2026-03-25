@@ -44,6 +44,7 @@ function permisosPorRol(user) {
   }
 
   if (rol === "operador") {
+    // Operador CMS: gestiona contenido del sitio web (noticias, galería, portal)
     return [
       "portal:read",
       "portal:write",
@@ -57,6 +58,21 @@ function permisosPorRol(user) {
       "contenido:write",
       "contacto:read",
       "contacto:write",
+    ];
+  }
+
+  if (rol === "operador_sistema") {
+    // Operador Sistema: registra planillas de partido, consulta módulos deportivos
+    return [
+      "campeonatos:read",
+      "eventos:read",
+      "equipos:read",
+      "jugadores:read",
+      "partidos:read",
+      "planilla:read",
+      "planilla:write",
+      "finanzas:read",
+      "portal:read",
     ];
   }
 

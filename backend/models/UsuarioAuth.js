@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const pool = require("../config/database");
 const { normalizarPlanCodigo } = require("../services/planLimits");
 
-const ROLES = new Set(["administrador", "operador", "organizador", "tecnico", "dirigente", "jugador"]);
+const ROLES = new Set(["administrador", "operador", "operador_sistema", "organizador", "tecnico", "dirigente", "jugador"]);
 
 class UsuarioAuth {
   static _schemaReady = false;
@@ -62,7 +62,7 @@ class UsuarioAuth {
         email VARCHAR(180) UNIQUE,
         username VARCHAR(80),
         password_hash TEXT NOT NULL,
-        rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'operador', 'organizador', 'tecnico', 'dirigente', 'jugador')),
+        rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'operador', 'operador_sistema', 'organizador', 'tecnico', 'dirigente', 'jugador')),
         activo BOOLEAN NOT NULL DEFAULT TRUE,
         solo_lectura BOOLEAN NOT NULL DEFAULT FALSE,
         debe_cambiar_password BOOLEAN NOT NULL DEFAULT FALSE,
@@ -169,7 +169,7 @@ class UsuarioAuth {
 
         ALTER TABLE usuarios
         ADD CONSTRAINT usuarios_rol_check
-        CHECK (rol IN ('administrador', 'operador', 'organizador', 'tecnico', 'dirigente', 'jugador'));
+        CHECK (rol IN ('administrador', 'operador', 'operador_sistema', 'organizador', 'tecnico', 'dirigente', 'jugador'));
       EXCEPTION WHEN duplicate_object THEN
         NULL;
       END $$;
@@ -419,7 +419,7 @@ class UsuarioAuth {
       throw new Error("password debe tener al menos 6 caracteres");
     }
     if (!ROLES.has(rol)) {
-      throw new Error("rol invalido. Use: administrador, operador, organizador, tecnico, dirigente o jugador");
+      throw new Error("rol invalido. Use: administrador, operador, operador_sistema, organizador, tecnico, dirigente o jugador");
     }
     if (rol === "organizador" && !organizacionNombre) {
       throw new Error("organizacion_nombre es obligatorio para organizador");
@@ -545,7 +545,7 @@ class UsuarioAuth {
     if (data.rol !== undefined) {
       const rol = String(data.rol || "").trim().toLowerCase();
       if (!ROLES.has(rol)) {
-        throw new Error("rol invalido. Use: administrador, operador, organizador, tecnico, dirigente o jugador");
+        throw new Error("rol invalido. Use: administrador, operador, operador_sistema, organizador, tecnico, dirigente o jugador");
       }
       if (rol === "organizador") {
         const orgDestino =
