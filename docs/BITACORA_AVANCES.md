@@ -1,6 +1,27 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-25 (sesión 11)
+Ultima actualizacion: 2026-03-25 (sesión 12)
+
+## Avances recientes (2026-03-25 — sesión 12)
+
+### Rol Operador Sistema (nuevo)
+- Se divide el rol `operador` en dos perfiles distintos con responsabilidades separadas:
+  - `operador` → **Operador CMS**: gestiona contenido del sitio web (noticias, galería, contenido del portal). Redirige a `portal-cms.html`.
+  - `operador_sistema` → **Operador Sistema**: registra planillas de partido y consulta todos los módulos deportivos en solo lectura. Redirige a `portal-operador.html`.
+- Migración `051_roles_operador_sistema.sql` aplicada en BD local y remota (Render actualiza en arranque via `asegurarEsquema`).
+- Archivos modificados:
+  - `backend/models/UsuarioAuth.js`: ROLES set, constraint en initTable, mensajes de error.
+  - `backend/services/sessionService.js`: permisos separados por tipo de operador.
+  - `backend/routes/partidoRoutes.js`: `operador_sistema` habilitado en `GET` y `PUT /planilla`; `operador` CMS eliminado de esas rutas.
+  - `frontend/js/core.js`: `OPERADOR_SISTEMA_ALLOWED_PAGES`, función `esOperadorSistema()`, redirección y bloque de sidebar diferenciados por tipo.
+  - `frontend/js/planilla.js`: `operador_sistema` puede inscribir jugadores de último momento en la planilla.
+  - `frontend/usuarios.html` + `frontend/js/usuarios.js`: dos opciones en el selector de rol con etiquetas descriptivas.
+  - `frontend/portal-operador.html` (nuevo): panel de bienvenida para `operador_sistema` con lista de partidos pendientes de planilla y accesos rápidos a módulos en solo lectura.
+- Commit: `eadf562` — `feat(roles): agregar operador_sistema y separar roles de operador`
+
+### Pendiente identificado — Dashboard de Estadísticas (próxima sesión)
+- Se detecta la ausencia de un dashboard estadístico/financiero para organizadores y administrador.
+- Ver sección §11 del README para el detalle completo del plan de implementación.
 
 ## Avances recientes (2026-03-25)
 - Categorías / juvenil:

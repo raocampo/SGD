@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-21): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. La nomina de jugadores ya puede quedar asociada directamente al `evento_id`, de modo que un mismo equipo reutilizado en varias categorias deje de compartir plantel por accidente. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer. En eliminatorias ya se soporta la plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con cupos `MP1..MP4` calculados segun ranking deportivo; la categoria es la fuente de verdad para `playoff_plantilla` y `playoff_tercer_puesto`, y la llave permite editar manualmente cruces pendientes sin repetir equipos dentro de la misma ronda. La plantilla publicable del playoff ya admite fondo personalizado, conectores reforzados, anchos dinámicos por texto y bloque compacto de `Tercer y cuarto` para exportación `PNG/PDF`.
+Estado del proyecto (2026-03-25): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. La nomina de jugadores ya puede quedar asociada directamente al `evento_id`, de modo que un mismo equipo reutilizado en varias categorias deje de compartir plantel por accidente. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer. En eliminatorias ya se soporta la plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con cupos `MP1..MP4` calculados segun ranking deportivo; la categoria es la fuente de verdad para `playoff_plantilla` y `playoff_tercer_puesto`, y la llave permite editar manualmente cruces pendientes sin repetir equipos dentro de la misma ronda. La plantilla publicable del playoff ya admite fondo personalizado, conectores reforzados, anchos dinámicos por texto y bloque compacto de `Tercer y cuarto` para exportación `PNG/PDF`.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -577,6 +577,68 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
    - vista publica de transmision embebida en `portal.html` (tab "En Vivo" por categoria/campeonato),
    - senalizacion WebRTC via Socket.io en el backend (servidor de senalizacion ligero),
    - grabacion opcional del stream en disco/CDN para reproduccion posterior.
+14. Dashboard de estadisticas (PROXIMO A IMPLEMENTAR — ver §11.2):
+   - Dashboard Organizador: reemplaza la pagina de inicio del organizador (`portal-admin.html`) con KPIs financieros, grafico de ingresos por concepto y proximos encuentros.
+   - Dashboard Administrador: reemplaza `admin.html` con vision comercial de lo que la plataforma ha vendido a los organizadores (organizadores por plan, MRR, nuevos este mes).
+
+## 11.2. Plan de Implementacion — Dashboard de Estadisticas
+
+### Contexto
+El `portal-admin.html` actual es solo accesos directos sin datos. El `admin.html` tiene 5 contadores sin financiero. Se requieren dos dashboards completamente distintos.
+
+### Dashboard Organizador (`portal-admin.html` renovado)
+Datos acotados a los torneos del organizador autenticado.
+
+**KPIs (tarjetas superiores):**
+- Torneos activos del organizador
+- Total de equipos inscritos en sus torneos
+- Jugadores registrados (sin duplicados por cedula)
+- Ingresos del mes actual (suma de movimientos positivos)
+
+**Grafico de barras — Ingresos por concepto:**
+- Inscripciones / Arbitraje / Multas / Tarjetas
+- Libreria: Chart.js via CDN (sin instalacion de paquetes)
+- Periodo: mes actual, con selector de campeonato opcional
+
+**Panel derecho — Proximos encuentros:**
+- Partidos en estado `programado` de sus torneos (proximos 7 dias)
+- Muestra: fecha, hora, equipos, categoria, cancha
+
+**Panel inferior — Morosidad:**
+- Equipos con saldo negativo, monto total pendiente de cobro
+
+**Badge de plan activo:**
+- Plan actual (Free / Base / Competencia / Premium)
+- Limites usados vs disponibles (campeonatos, equipos, jugadores)
+
+### Dashboard Administrador (`admin.html` renovado)
+Vision comercial de la plataforma — lo que el admin ha "vendido" a organizadores.
+
+**KPIs:**
+- Organizadores activos totales
+- Nuevos organizadores este mes
+- MRR estimado (organizadores x precio del plan)
+- Plan mas popular
+
+**Grafico de dona o barras — Organizadores por plan:**
+- Free / Base / Competencia / Premium con conteo y porcentaje
+
+**Tabla de organizadores:**
+- Nombre, plan, estado (activo/suspendido), torneos activos, fecha de alta
+- Filtrable por plan y estado
+
+**Metricas globales de la plataforma:**
+- Total de torneos, equipos y jugadores registrados en todo el sistema
+
+### Pasos de implementacion
+1. `backend/services/planLimits.js`: agregar `precio_mensual` a cada plan (para calculo de MRR).
+2. `backend/routes/finanzaRoutes.js` + `backend/controllers/finanzaController.js`: nuevo endpoint `GET /api/finanzas/dashboard` — devuelve KPIs y resumen por concepto acotado al organizador autenticado.
+3. `backend/routes/authRoutes.js` + `backend/controllers/authController.js`: nuevo endpoint `GET /api/admin/dashboard` — solo para `administrador`, devuelve estadisticas comerciales de organizadores.
+4. `frontend/portal-admin.html`: reescritura completa con los dos paneles (KPIs + grafico + proximos encuentros).
+5. `frontend/admin.html`: reescritura completa con dashboard comercial (KPIs + grafico dona + tabla de organizadores).
+6. `frontend/js/dashboard-organizador.js` (nuevo): logica de carga y renderizado del dashboard del organizador, incluyendo integracion con Chart.js.
+7. `frontend/js/dashboard-admin.js` (nuevo): logica de carga y renderizado del dashboard comercial del administrador.
+8. Ambas paginas incluyen Chart.js via CDN: `https://cdn.jsdelivr.net/npm/chart.js`.
 
 ## 11.1. Novedades Recientes del Portal Publico
 - Las cards de campeonatos ahora muestran resumen por categoria con cantidad de equipos.
