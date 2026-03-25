@@ -2864,6 +2864,20 @@ class Partido {
     const ciudad = Object.prototype.hasOwnProperty.call(datos, "ciudad")
       ? (datos.ciudad ?? "").toString().trim()
       : null;
+    const numeroCampeonato = Object.prototype.hasOwnProperty.call(datos, "numero_campeonato")
+      ? (() => {
+          if (datos.numero_campeonato === null || datos.numero_campeonato === undefined || datos.numero_campeonato === "") {
+            return null;
+          }
+          const numero = Number.parseInt(String(datos.numero_campeonato).replace(/\D+/g, ""), 10);
+          if (!Number.isFinite(numero) || numero <= 0) {
+            const error = new Error("El número visible del partido debe ser un entero mayor a 0.");
+            error.statusCode = 400;
+            throw error;
+          }
+          return numero;
+        })()
+      : undefined;
     const pagos = datos.pagos || {};
     const observacionesLocal = (datos.observaciones_local ?? datos.observaciones ?? "")
       .toString()
@@ -2989,14 +3003,15 @@ class Partido {
               arbitro_linea_2 = COALESCE($6, arbitro_linea_2),
               delegado_partido = COALESCE($7, delegado_partido),
               ciudad = COALESCE($8, ciudad),
-              faltas_local_total = $9,
-              faltas_visitante_total = $10,
-              faltas_local_1er = $11,
-              faltas_local_2do = $12,
-              faltas_visitante_1er = $13,
-              faltas_visitante_2do = $14
+              numero_campeonato = COALESCE($9, numero_campeonato),
+              faltas_local_total = $10,
+              faltas_visitante_total = $11,
+              faltas_local_1er = $12,
+              faltas_local_2do = $13,
+              faltas_visitante_1er = $14,
+              faltas_visitante_2do = $15
               ${setTs}
-          WHERE id = $15
+          WHERE id = $16
         `,
         [
           resultadoLocal,
@@ -3007,6 +3022,7 @@ class Partido {
           arbitroLinea2,
           delegadoPartido,
           ciudad,
+          numeroCampeonato,
           faltasNormalizadas.local_total,
           faltasNormalizadas.visitante_total,
           faltasNormalizadas.local_1er,

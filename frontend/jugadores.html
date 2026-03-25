@@ -305,7 +305,7 @@
         <div class="form-group" id="bloque-jugador-busqueda-cedula">
           <label for="jugador-ced">Cédula de Identidad:</label>
           <div class="inline-file-actions">
-            <input type="text" id="jugador-ced" />
+            <input type="text" id="jugador-ced" maxlength="10" inputmode="numeric" pattern="\d{10}" />
             <button type="button" class="btn btn-outline" id="btn-jugador-buscar-cedula">
               <i class="fas fa-search"></i> Buscar en base local
             </button>

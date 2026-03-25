@@ -523,10 +523,11 @@ exports.guardarPlanillaPartido = async (req, res) => {
       ...planilla,
     });
   } catch (error) {
-    console.error("Error guardando planilla de partido:", error);
-    const status = Number.isFinite(Number(error?.statusCode))
-      ? Number(error.statusCode)
+    const mapped = mapearErrorNumeroVisible(error);
+    console.error("Error guardando planilla de partido:", mapped);
+    const status = Number.isFinite(Number(mapped?.statusCode))
+      ? Number(mapped.statusCode)
       : 500;
-    return res.status(status).json({ error: error.message });
+    return res.status(status).json({ error: mapped.message });
   }
 };

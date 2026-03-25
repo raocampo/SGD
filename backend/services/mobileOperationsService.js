@@ -416,7 +416,9 @@ async function crearJugadorMovil(user, body = {}) {
   const equipoId = parsePositiveInt(body.teamId ?? body.equipo_id, "equipo_id");
   const nombre = String(body.firstName ?? body.nombre ?? "").trim();
   const apellido = String(body.lastName ?? body.apellido ?? "").trim();
-  const cedidentidad = String(body.nationalId ?? body.cedidentidad ?? "").trim() || null;
+  const cedidentidad = Jugador.normalizarCedidentidad(
+    body.nationalId ?? body.cedidentidad ?? ""
+  );
   const fechaNacimiento = String(body.birthDate ?? body.fecha_nacimiento ?? "").trim() || null;
   const posicion = String(body.position ?? body.posicion ?? "").trim() || null;
   const numeroRaw = body.shirtNumber ?? body.numero_camiseta;

@@ -157,6 +157,10 @@
                   <input type="text" id="arbitro-linea-2-planilla" placeholder="Nombre del arbitro linea 2" />
                 </div>
                 <div class="form-group">
+                  <label for="numero-partido-planilla">Número de partido</label>
+                  <input type="text" id="numero-partido-planilla" inputmode="numeric" maxlength="4" placeholder="Ej. 57" />
+                </div>
+                <div class="form-group">
                   <label for="delegado-planilla">Delegado del partido</label>
                   <input type="text" id="delegado-planilla" placeholder="Delegado" />
                 </div>
@@ -339,7 +343,7 @@
             <div class="form-row">
               <div class="form-group half">
                 <label id="planilla-label-jugador-cedula" for="planilla-jugador-ced">Cédula</label>
-                <input type="text" id="planilla-jugador-ced" maxlength="20" />
+                <input type="text" id="planilla-jugador-ced" maxlength="10" inputmode="numeric" pattern="\d{10}" />
                 <small id="planilla-hint-jugador-cedula" class="form-hint"></small>
               </div>
               <div class="form-group half">

@@ -95,6 +95,10 @@ function normalizarUrlInternaJugador(value) {
     return null;
 }
 
+function normalizarCedulaController(value) {
+    return Jugador.normalizarCedidentidad(value);
+}
+
 const jugadorController = {
 
     // CREAR - Nuevo jugador
@@ -140,8 +144,9 @@ const jugadorController = {
                 return;
             }
 
+            const cedulaNormalizada = normalizarCedulaController(cedidentidad);
             const reglasDocs = await obtenerReglasDocumentosPorEquipo(Number(equipo_id));
-            if (reglasDocs.requiere_cedula_jugador && !String(cedidentidad || "").trim()) {
+            if (reglasDocs.requiere_cedula_jugador && !cedulaNormalizada) {
                 return res.status(400).json({
                     error: "Este campeonato exige cédula de identidad para inscribir jugadores"
                 });
@@ -161,7 +166,7 @@ const jugadorController = {
                 equipo_id,
                 nombre,
                 apellido,
-                cedidentidad,
+                cedulaNormalizada,
                 fecha_nacimiento,
                 posicion,
                 numero_camiseta,
@@ -232,7 +237,7 @@ const jugadorController = {
                 const row = filas[i] || {};
                 const nombre = String(row.nombre || "").trim();
                 const apellido = String(row.apellido || "").trim();
-                const cedidentidad = String(row.cedidentidad || row.cedula || "").trim();
+                const cedidentidad = normalizarCedulaController(row.cedidentidad || row.cedula || "");
                 const fecha_nacimiento = row.fecha_nacimiento ? String(row.fecha_nacimiento).trim() : null;
                 const posicion = row.posicion ? String(row.posicion).trim() : null;
                 const numero_camiseta = Number.isFinite(Number(row.numero_camiseta))
@@ -428,10 +433,10 @@ const jugadorController = {
 
     buscarJugadorPorCedula: async (req, res) => {
         try {
-            const cedula = String(req.params?.cedula || "").trim();
-            if (!cedula) {
-                return res.status(400).json({ error: "Debes indicar una cédula válida." });
-            }
+                const cedula = normalizarCedulaController(req.params?.cedula || "");
+                if (!cedula) {
+                    return res.status(400).json({ error: "Debes indicar una cédula válida." });
+                }
 
             const jugador = await Jugador.buscarPerfilPorCedula(cedula);
             return res.json({
