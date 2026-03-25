@@ -28,6 +28,119 @@ function normalizarInasistenciaEquipoPlanilla(valor) {
   return INASISTENCIAS_PLANILLA_VALIDAS.has(raw) ? raw : "ninguno";
 }
 
+function normalizarCambiosNumeroCamisetaPlanilla(items = []) {
+  const cambios = [];
+  const vistos = new Set();
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const jugadorId = Number.parseInt(item?.jugador_id, 10);
+    const equipoId = Number.parseInt(item?.equipo_id, 10);
+    if (!Number.isFinite(jugadorId) || jugadorId <= 0) return;
+    const key = `${equipoId}:${jugadorId}`;
+    if (vistos.has(key)) return;
+    vistos.add(key);
+    cambios.push({
+      jugadorId,
+      equipoId: Number.isFinite(equipoId) && equipoId > 0 ? equipoId : null,
+      numeroCamiseta: Jugador.normalizarNumeroCamiseta(item?.numero_camiseta),
+    });
+  });
+  return cambios;
+}
+
+async function aplicarNumerosCamisetaDesdePlanilla(client, partido, cambios = []) {
+  const cambiosNormalizados = normalizarCambiosNumeroCamisetaPlanilla(cambios);
+  if (!cambiosNormalizados.length) return;
+
+  const equipoLocalId = Number.parseInt(partido?.equipo_local_id, 10);
+  const equipoVisitanteId = Number.parseInt(partido?.equipo_visitante_id, 10);
+  const eventoId = Number.parseInt(partido?.evento_id, 10);
+  const equiposPermitidos = [equipoLocalId, equipoVisitanteId].filter(
+    (id) => Number.isFinite(id) && id > 0
+  );
+  if (!equiposPermitidos.length) return;
+
+  const contextosPorEquipo = new Map();
+  const rosterPorEquipo = new Map();
+  const rosterPorJugador = new Map();
+
+  for (const equipoId of equiposPermitidos) {
+    const contexto = await Jugador.resolverContextoRosterEquipo(
+      equipoId,
+      Number.isFinite(eventoId) && eventoId > 0 ? eventoId : null
+    );
+    contextosPorEquipo.set(equipoId, contexto);
+    const filtroEvento = Jugador.construirFiltroRosterEvento("", "$2", contexto);
+    const params = contexto?.eventoId ? [equipoId, contexto.eventoId] : [equipoId];
+    const rosterR = await client.query(
+      `
+        SELECT id, equipo_id, numero_camiseta
+        FROM jugadores
+        WHERE equipo_id = $1
+        ${filtroEvento}
+        ORDER BY id
+      `,
+      params
+    );
+    const roster = rosterR.rows.map((row) => ({
+      id: Number.parseInt(row.id, 10),
+      equipo_id: Number.parseInt(row.equipo_id, 10),
+      numero_original: Jugador.normalizarNumeroCamiseta(row.numero_camiseta),
+      numero_camiseta: Jugador.normalizarNumeroCamiseta(row.numero_camiseta),
+    }));
+    rosterPorEquipo.set(equipoId, roster);
+    roster.forEach((row) => rosterPorJugador.set(row.id, row));
+  }
+
+  for (const cambio of cambiosNormalizados) {
+    const jugador = rosterPorJugador.get(cambio.jugadorId);
+    if (!jugador) {
+      const error = new Error("Uno de los jugadores editados no pertenece a esta planilla.");
+      error.statusCode = 400;
+      throw error;
+    }
+    if (
+      Number.isFinite(cambio.equipoId) &&
+      cambio.equipoId > 0 &&
+      Number(jugador.equipo_id) !== Number(cambio.equipoId)
+    ) {
+      const error = new Error("El jugador editado no coincide con el equipo de la planilla.");
+      error.statusCode = 400;
+      throw error;
+    }
+    jugador.numero_camiseta = cambio.numeroCamiseta;
+  }
+
+  for (const equipoId of equiposPermitidos) {
+    const roster = rosterPorEquipo.get(equipoId) || [];
+    const usados = new Map();
+    for (const jugador of roster) {
+      const numero = Jugador.normalizarNumeroCamiseta(jugador.numero_camiseta);
+      if (!numero) continue;
+      if (usados.has(numero)) {
+        const error = new Error(
+          `El número de camiseta ${numero} está repetido en este equipo para esta categoría.`
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+      usados.set(numero, jugador.id);
+    }
+  }
+
+  for (const equipoId of equiposPermitidos) {
+    const roster = rosterPorEquipo.get(equipoId) || [];
+    for (const jugador of roster) {
+      const numeroFinal = Jugador.normalizarNumeroCamiseta(jugador.numero_camiseta);
+      const numeroOriginal = Jugador.normalizarNumeroCamiseta(jugador.numero_original);
+      if (numeroFinal === numeroOriginal) continue;
+      await client.query(`UPDATE jugadores SET numero_camiseta = $1 WHERE id = $2`, [
+        numeroFinal,
+        jugador.id,
+      ]);
+    }
+  }
+}
+
 function resultadosImpactanTabla(previo = {}, siguiente = {}) {
   const normalizar = (valor) => {
     if (valor === null || valor === undefined || valor === "") return null;
@@ -2802,6 +2915,7 @@ class Partido {
 
       const equipoLocalId = Number.parseInt(partido.equipo_local_id, 10);
       const equipoVisitanteId = Number.parseInt(partido.equipo_visitante_id, 10);
+      await aplicarNumerosCamisetaDesdePlanilla(client, partido, datos.numeros_jugadores);
       const localBloqueado = inasistenciaEquipo === "local" || inasistenciaEquipo === "ambos";
       const visitanteBloqueado = inasistenciaEquipo === "visitante" || inasistenciaEquipo === "ambos";
       const equipoBloqueado = (equipoIdRaw) => {

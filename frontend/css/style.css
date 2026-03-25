@@ -3062,6 +3062,12 @@ body.modal-open {
   border-radius: 6px;
 }
 
+.planilla-captura-table .cap-numero {
+  width: 3rem;
+  min-width: 3rem;
+  font-weight: 700;
+}
+
 .planilla-captura-table .planilla-player-row.is-suspended input {
   background: #fee2e2;
   border-color: #fca5a5;

@@ -164,6 +164,32 @@ function aDecimal(valor, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function normalizarNumeroCamisetaPlanilla(valor, { permitirVacio = true } = {}) {
+  const limpio = String(valor ?? "")
+    .replace(/\D+/g, "")
+    .slice(0, 3);
+  if (!limpio) return permitirVacio ? "" : null;
+  const numero = Number.parseInt(limpio, 10);
+  if (!Number.isFinite(numero) || numero <= 0) {
+    return permitirVacio ? "" : null;
+  }
+  return String(numero);
+}
+
+function actualizarNumeroJugadorEnDataPlanilla(jugadorIdRaw, numeroCamisetaRaw) {
+  const jugadorId = Number.parseInt(jugadorIdRaw, 10);
+  if (!Number.isFinite(jugadorId) || jugadorId <= 0 || !dataPlanilla) return;
+
+  const numeroCamiseta = normalizarNumeroCamisetaPlanilla(numeroCamisetaRaw);
+  ["plantel_local", "plantel_visitante"].forEach((key) => {
+    const lista = Array.isArray(dataPlanilla?.[key]) ? dataPlanilla[key] : [];
+    const jugador = lista.find((item) => Number.parseInt(item?.id, 10) === jugadorId);
+    if (jugador) {
+      jugador.numero_camiseta = numeroCamiseta || null;
+    }
+  });
+}
+
 function normalizarFechaISO(valor) {
   if (!valor) return "";
   const str = String(valor);
@@ -1445,6 +1471,7 @@ function capturarEstadoFormularioPlanilla() {
     faltas: { ...obtenerEstadoFaltasPlanilla() },
     filas: Array.from(document.querySelectorAll(".planilla-player-row")).map((row) => ({
       key: `${row.dataset.equipoId || ""}:${row.dataset.jugadorId || ""}`,
+      numero: row.querySelector(".cap-numero")?.value || "",
       goles: row.querySelector(".cap-goles")?.value || "",
       amarillas: row.querySelector(".cap-ta")?.value || "",
       rojas: row.querySelector(".cap-tr")?.value || "",
@@ -1506,9 +1533,14 @@ function restaurarEstadoFormularioPlanilla(snapshot = null) {
   (Array.isArray(snapshot.filas) ? snapshot.filas : []).forEach((item) => {
     const row = mapRows.get(item.key);
     if (!(row instanceof HTMLElement)) return;
+    const inputNumero = row.querySelector(".cap-numero");
     const inputGoles = row.querySelector(".cap-goles");
     const inputTa = row.querySelector(".cap-ta");
     const inputTr = row.querySelector(".cap-tr");
+    if (inputNumero instanceof HTMLInputElement) {
+      inputNumero.value = normalizarNumeroCamisetaPlanilla(item.numero || "");
+      actualizarNumeroJugadorEnDataPlanilla(row.dataset.jugadorId, inputNumero.value);
+    }
     if (inputGoles instanceof HTMLInputElement) inputGoles.value = item.goles || "";
     if (inputTa instanceof HTMLInputElement) inputTa.value = item.amarillas || "";
     if (inputTr instanceof HTMLInputElement) inputTr.value = item.rojas || "";
@@ -1672,7 +1704,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
       const rojas = suspendido ? "" : statsIniciales.rojasPorJugador.get(jugadorId) || "";
       const rojasDobles = suspendido ? 0 : statsIniciales.rojasDoblesPorJugador.get(jugadorId) || 0;
       const item = idx + 1;
-      const numero = j.numero_camiseta || "-";
+      const numero = normalizarNumeroCamisetaPlanilla(j.numero_camiseta || "");
       const nombre = nombreJugador(j) || `Jugador ${idx + 1}`;
       const docs = [];
       if (documentosRequeridos.foto_cedula) docs.push(j.foto_cedula_url ? "Cedula OK" : "Cedula pendiente");
@@ -1696,7 +1728,17 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
           data-tarjetas-preset="${rojasDobles > 0 ? "1" : ""}"
         >
           <td>${item}</td>
-          <td>${numero}</td>
+          <td>
+            <input
+              class="cap-numero"
+              type="text"
+              inputmode="numeric"
+              maxlength="3"
+              pattern="[0-9]*"
+              value="${numero}"
+              aria-label="Número de camiseta de ${escapeHtml(nombre)}"
+            />
+          </td>
           <td>
             <strong>${escapeHtml(nombre)}</strong>
             ${docsHtml}
@@ -1789,6 +1831,15 @@ function conectarEventosCaptura() {
       const target = e.target;
       if (!(target instanceof HTMLInputElement)) return;
       const row = target.closest(".planilla-player-row");
+      if (target.classList.contains("cap-numero")) {
+        const valor = normalizarNumeroCamisetaPlanilla(target.value);
+        target.value = valor;
+        if (row instanceof HTMLElement) {
+          actualizarNumeroJugadorEnDataPlanilla(row.dataset.jugadorId, valor);
+        }
+        actualizarVistaPreviaPlanilla(true);
+        return;
+      }
       if (
         row instanceof HTMLElement &&
         (target.classList.contains("cap-ta") || target.classList.contains("cap-tr"))
@@ -2992,6 +3043,7 @@ function recolectarPayloadPlanilla() {
   const observacionesVisitante = obtenerObservacionesVisitantePlanilla();
   const goles = [];
   const tarjetas = [];
+  const numerosJugadores = [];
   const filasCaptura = Array.from(document.querySelectorAll(".planilla-player-row"));
   const faltas = normalizarEstadoFaltasPlanilla(obtenerEstadoFaltasPlanilla());
   if (bloqueados.local) {
@@ -3012,6 +3064,16 @@ function recolectarPayloadPlanilla() {
       if (!Number.isFinite(equipoId) || !Number.isFinite(jugadorId) || estaEquipoBloqueadoPlanilla(equipoId, inasistenciaEquipo)) {
         return;
       }
+
+      const numeroCamiseta = normalizarNumeroCamisetaPlanilla(row.querySelector(".cap-numero")?.value, {
+        permitirVacio: true,
+      });
+      actualizarNumeroJugadorEnDataPlanilla(jugadorId, numeroCamiseta);
+      numerosJugadores.push({
+        equipo_id: equipoId,
+        jugador_id: jugadorId,
+        numero_camiseta: numeroCamiseta || null,
+      });
 
       const golesNum = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
       const tarjetasNormalizadas = normalizarTarjetasFilaCaptura(row);
@@ -3145,6 +3207,7 @@ function recolectarPayloadPlanilla() {
     faltas,
     faltas_local_total: faltas.local_total,
     faltas_visitante_total: faltas.visitante_total,
+    numeros_jugadores: numerosJugadores,
     goles,
     tarjetas,
   };
