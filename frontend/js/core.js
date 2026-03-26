@@ -1433,40 +1433,77 @@
       if (rol !== "organizador") {
         document.querySelectorAll('a[href="organizador-portal.html"]').forEach((lnk) => lnk.remove());
       }
+      // Quitar links CMS planos (se manejan por submenú o por rol)
       if (rol !== "administrador") {
-        document.querySelectorAll('a[href="noticias.html"]').forEach((lnk) => lnk.remove());
+        ["noticias.html","galeria-admin.html","contenido-portal.html","contacto-admin.html"].forEach((href) => {
+          document.querySelectorAll(`a[href="${href}"]`).forEach((lnk) => lnk.remove());
+        });
       }
-      if (rol !== "administrador") {
-        document.querySelectorAll('a[href="galeria-admin.html"]').forEach((lnk) => lnk.remove());
-        document.querySelectorAll('a[href="contenido-portal.html"]').forEach((lnk) => lnk.remove());
-        document.querySelectorAll('a[href="contacto-admin.html"]').forEach((lnk) => lnk.remove());
-      }
-      ensureNavLink(
-        "portal-admin.html",
-        '<i class="fas fa-user-cog"></i> Portal Deportivo',
-        window.location.pathname.endsWith("portal-admin.html")
-      );
+
       if (rol === "administrador") {
-        ensureNavLink(
-          "portal-cms.html",
-          '<i class="fas fa-newspaper"></i> Portal CMS',
-          window.location.pathname.endsWith("portal-cms.html")
-        );
-        ensureNavLink(
-          "galeria-admin.html",
-          '<i class="fas fa-images"></i> Galería',
-          window.location.pathname.endsWith("galeria-admin.html")
-        );
-        ensureNavLink(
-          "contenido-portal.html",
-          '<i class="fas fa-id-card"></i> Contenido',
-          window.location.pathname.endsWith("contenido-portal.html")
-        );
-        ensureNavLink(
-          "contacto-admin.html",
-          '<i class="fas fa-envelope-open-text"></i> Contacto',
-          window.location.pathname.endsWith("contacto-admin.html")
-        );
+        // Admin: NO mostrar "Portal Deportivo" en sidebar
+        document.querySelectorAll('a[href="portal-admin.html"]').forEach((lnk) => lnk.remove());
+
+        // Submenú CMS / CRM colapsable
+        if (!sidebarNav.querySelector(".nav-cms-group")) {
+          const cmsItems = [
+            { href: "portal-cms.html",     icon: "fas fa-newspaper",          label: "Portal CMS" },
+            { href: "noticias.html",        icon: "fas fa-rss",                label: "Noticias" },
+            { href: "galeria-admin.html",   icon: "fas fa-images",             label: "Galería" },
+            { href: "contenido-portal.html",icon: "fas fa-id-card",            label: "Contenido" },
+            { href: "contacto-admin.html",  icon: "fas fa-envelope-open-text", label: "Contacto" },
+          ];
+          const currentPath = window.location.pathname;
+          const isCmsActive = cmsItems.some((item) => currentPath.endsWith(item.href));
+
+          const group = document.createElement("div");
+          group.className = "nav-cms-group";
+
+          const toggle = document.createElement("button");
+          toggle.className = "nav-group-toggle" + (isCmsActive ? " active" : "");
+          toggle.innerHTML = '<i class="fas fa-newspaper"></i> CMS / CRM <i class="fas fa-chevron-right nav-chevron"></i>';
+
+          const itemsWrap = document.createElement("div");
+          itemsWrap.className = "nav-group-items";
+          itemsWrap.style.display = isCmsActive ? "" : "none";
+          if (isCmsActive) {
+            const chevron = toggle.querySelector(".nav-chevron");
+            if (chevron) chevron.style.transform = "rotate(90deg)";
+          }
+
+          cmsItems.forEach((item) => {
+            const a = document.createElement("a");
+            const isActive = currentPath.endsWith(item.href);
+            a.className = "nav-btn" + (isActive ? " active" : "");
+            a.href = item.href;
+            a.innerHTML = `<i class="${item.icon}"></i> ${item.label}`;
+            itemsWrap.appendChild(a);
+          });
+
+          toggle.addEventListener("click", () => {
+            const isOpen = itemsWrap.style.display !== "none";
+            itemsWrap.style.display = isOpen ? "none" : "";
+            const chevron = toggle.querySelector(".nav-chevron");
+            if (chevron) chevron.style.transform = isOpen ? "" : "rotate(90deg)";
+          });
+
+          group.appendChild(toggle);
+          group.appendChild(itemsWrap);
+
+          const portalPublico = sidebarNav.querySelector('a[href="index.html"]');
+          if (portalPublico) sidebarNav.insertBefore(group, portalPublico);
+          else sidebarNav.appendChild(group);
+        }
+      } else if (rol === "organizador") {
+        // Organizador: "Portal Deportivo" al inicio del sidebar
+        let portalDeportivo = sidebarNav.querySelector('a[href="portal-admin.html"]');
+        if (!portalDeportivo) {
+          portalDeportivo = document.createElement("a");
+          portalDeportivo.className = "nav-btn" + (window.location.pathname.endsWith("portal-admin.html") ? " active" : "");
+          portalDeportivo.href = "portal-admin.html";
+          portalDeportivo.innerHTML = '<i class="fas fa-home"></i> Portal Deportivo';
+        }
+        sidebarNav.insertBefore(portalDeportivo, sidebarNav.firstChild);
       }
     }
 

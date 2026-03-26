@@ -110,6 +110,48 @@ body.app-layout {
 .sidebar-nav .nav-btn.active {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* ── Submenú CMS / CRM ── */
+.nav-cms-group { display: flex; flex-direction: column; gap: 0; }
+.nav-group-toggle {
+  display: grid;
+  grid-template-columns: 1.45rem minmax(0,1fr) 0.9rem;
+  align-items: center;
+  column-gap: 0.72rem;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: white;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  width: 100%;
+  text-align: left;
+  transition: background .2s;
+}
+.nav-group-toggle:hover,
+.nav-group-toggle.active { background: rgba(255,255,255,.2); }
+.nav-group-toggle > i:first-child { justify-self: center; }
+.nav-chevron { font-size: 11px; justify-self: end; transition: transform .2s; opacity: .7; }
+
+.nav-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-left: 12px;
+  border-left: 2px solid rgba(255,255,255,.15);
+  margin-left: 20px;
+  margin-top: 2px;
+  margin-bottom: 4px;
+}
+.nav-group-items .nav-btn {
+  font-size: 0.86rem;
+  padding: 7px 12px;
+  opacity: .9;
+}
+.nav-group-items .nav-btn:hover,
+.nav-group-items .nav-btn.active { opacity: 1; background: rgba(255,255,255,.2); }
+
 .main-wrapper {
   flex: 1;
   margin-left: 260px;
