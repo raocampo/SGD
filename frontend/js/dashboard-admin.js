@@ -219,6 +219,15 @@
 
   function init() {
     if (!window.location.pathname.includes("admin.html")) return;
+    const user = window.Auth?.getUser?.();
+    const rol = String(user?.rol || "").toLowerCase();
+    if (rol !== "administrador") {
+      const loading = document.getElementById("dash-admin-loading");
+      const forbidden = document.getElementById("dash-admin-forbidden");
+      if (loading) loading.style.display = "none";
+      if (forbidden) forbidden.style.display = "";
+      return;
+    }
     if (!window.Chart) {
       console.warn("Chart.js no disponible en dashboard-admin.js");
     }

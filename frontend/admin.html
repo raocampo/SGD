@@ -12,7 +12,33 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* ── Dashboard Admin ── */
+    /* ── Fondo y layout con colores LT&C ── */
+    .main { background: #f0f4f8; min-height: 100%; }
+    .container { max-width: 1200px; }
+
+    /* Banner superior de bienvenida */
+    .dash-hero {
+      background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+      border-radius: 12px;
+      padding: 22px 26px;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(44,62,80,.25);
+    }
+    .dash-hero-icon {
+      width: 52px; height: 52px;
+      background: rgba(255,255,255,.18);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; flex-shrink: 0;
+    }
+    .dash-hero-title { font-size: 19px; font-weight: 800; margin-bottom: 2px; }
+    .dash-hero-sub   { font-size: 12.5px; opacity: .82; }
+
+    /* KPIs */
     .dash-kpis {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -24,36 +50,36 @@
 
     .dash-kpi-card {
       background: #fff;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #dde3ec;
       border-radius: 10px;
       padding: 16px 18px;
       display: flex;
       align-items: center;
       gap: 14px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+      box-shadow: 0 2px 6px rgba(44,62,80,.07);
+      transition: box-shadow .15s;
     }
+    .dash-kpi-card:hover { box-shadow: 0 4px 14px rgba(44,62,80,.12); }
+
     .dash-kpi-icon {
-      width: 42px;
-      height: 42px;
+      width: 44px; height: 44px;
       border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 19px; flex-shrink: 0;
     }
-    .dash-kpi-icon.azul  { background: #eff6ff; color: #3b82f6; }
-    .dash-kpi-icon.verde { background: #f0fdf4; color: #22c55e; }
-    .dash-kpi-icon.purp  { background: #faf5ff; color: #8b5cf6; }
-    .dash-kpi-icon.ambar { background: #fffbeb; color: #f59e0b; }
+    .dash-kpi-icon.ltc-azul  { background: #e8f4fd; color: #3498db; }
+    .dash-kpi-icon.ltc-verde { background: #eafaf1; color: #27ae60; }
+    .dash-kpi-icon.ltc-noche { background: #eaecf0; color: #2c3e50; }
+    .dash-kpi-icon.ltc-ambar { background: #fef9e7; color: #f39c12; }
 
     .dash-kpi-body { min-width: 0; }
-    .dash-kpi-val  { font-size: 22px; font-weight: 700; color: #0f172a; line-height: 1.1; }
-    .dash-kpi-lbl  { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+    .dash-kpi-val  { font-size: 23px; font-weight: 800; color: #2c3e50; line-height: 1.1; }
+    .dash-kpi-lbl  { font-size: 11.5px; color: #7f8c8d; margin-top: 2px; }
 
+    /* Paneles */
     .dash-row {
       display: grid;
-      grid-template-columns: 220px 1fr;
+      grid-template-columns: 230px 1fr;
       gap: 16px;
       margin-bottom: 20px;
       align-items: start;
@@ -62,109 +88,116 @@
 
     .dash-panel {
       background: #fff;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #dde3ec;
       border-radius: 10px;
-      padding: 16px 18px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+      padding: 18px 20px;
+      box-shadow: 0 2px 6px rgba(44,62,80,.07);
     }
     .dash-panel-title {
       font-size: 13px;
       font-weight: 700;
-      color: #0f172a;
-      margin-bottom: 12px;
+      color: #2c3e50;
+      margin-bottom: 14px;
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 8px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #eaf1f8;
     }
-    .dash-panel-title i { color: #64748b; }
+    .dash-panel-title i { color: #3498db; }
     .dash-chart-wrap { height: 200px; position: relative; }
 
     /* Tabla organizadores */
     .dash-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-    .dash-table th { text-align: left; padding: 6px 10px; color: #475569; font-weight: 600; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
-    .dash-table td { padding: 7px 10px; border-bottom: 1px solid #f8fafc; color: #1e293b; }
+    .dash-table th {
+      text-align: left; padding: 8px 10px;
+      background: #f0f4f8;
+      color: #2c3e50; font-weight: 700;
+      border-bottom: 2px solid #dde3ec;
+      white-space: nowrap;
+    }
+    .dash-table th:first-child { border-radius: 6px 0 0 0; }
+    .dash-table th:last-child  { border-radius: 0 6px 0 0; }
+    .dash-table td { padding: 8px 10px; border-bottom: 1px solid #f0f4f8; color: #2c3e50; }
     .dash-table tr:last-child td { border-bottom: none; }
-    .dash-table tr:hover td { background: #f8fafc; }
+    .dash-table tr:hover td { background: #f8fbff; }
     .text-center { text-align: center; }
+    .dash-table-wrap { overflow-x: auto; }
 
-    /* Plan badges inline */
+    /* Badges plan */
     .badge-plan-min {
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 12px;
+      font-size: 11px; font-weight: 700;
+      padding: 2px 9px; border-radius: 12px;
       display: inline-block;
     }
-    .badge-plan-demo        { background: #f1f5f9; color: #475569; }
-    .badge-plan-free        { background: #dbeafe; color: #1d4ed8; }
-    .badge-plan-base        { background: #dcfce7; color: #166534; }
-    .badge-plan-competencia { background: #fef9c3; color: #854d0e; }
-    .badge-plan-premium     { background: #ede9fe; color: #6d28d9; }
+    .badge-plan-demo        { background: #eaecf0; color: #2c3e50; }
+    .badge-plan-free        { background: #d6eaf8; color: #1a5276; }
+    .badge-plan-base        { background: #d5f5e3; color: #1e8449; }
+    .badge-plan-competencia { background: #fdebd0; color: #784212; }
+    .badge-plan-premium     { background: #e8daef; color: #6c3483; }
 
-    .badge-estado-activo   { background: #dcfce7; color: #166534; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
-    .badge-estado-inactivo { background: #f1f5f9; color: #64748b; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+    .badge-estado-activo   { background: #d5f5e3; color: #1e8449; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+    .badge-estado-inactivo { background: #eaecf0; color: #7f8c8d; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
 
     /* Métricas globales */
     .dash-global-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
+      gap: 14px;
       margin-bottom: 20px;
     }
     @media (max-width: 600px) { .dash-global-row { grid-template-columns: 1fr; } }
+
     .dash-global-card {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 9px;
-      padding: 14px 16px;
+      background: linear-gradient(135deg, #2c3e50, #34495e);
+      border-radius: 10px;
+      padding: 18px 20px;
       text-align: center;
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(44,62,80,.2);
     }
-    .dash-global-val { font-size: 26px; font-weight: 800; color: #0f172a; }
-    .dash-global-lbl { font-size: 11.5px; color: #64748b; margin-top: 3px; }
+    .dash-global-val { font-size: 30px; font-weight: 900; letter-spacing: -1px; }
+    .dash-global-lbl { font-size: 12px; opacity: .8; margin-top: 4px; }
 
-    .dash-empty-msg { font-size: 12.5px; color: #94a3b8; padding: 16px 0; text-align: center; }
-    .dash-loading { padding: 50px; text-align: center; color: #94a3b8; font-size: 14px; }
-
-    .dash-table-wrap { overflow-x: auto; }
-
-    /* Precios de planes */
+    /* Precios */
     .dash-precios-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 12px;
+      gap: 14px;
     }
-    .dash-precio-item {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .dash-precio-item label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #475569;
-    }
+    .dash-precio-item { display: flex; flex-direction: column; gap: 6px; }
+    .dash-precio-item label { font-size: 12px; font-weight: 600; color: #2c3e50; }
     .dash-precio-item .precio-badge {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 10px;
-      margin-bottom: 2px;
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 2px 9px; border-radius: 10px; margin-bottom: 2px;
     }
     .dash-precio-item input[type="number"] {
-      width: 100%;
-      padding: 7px 10px;
-      border: 1px solid #e2e8f0;
+      width: 100%; padding: 8px 11px;
+      border: 1.5px solid #dde3ec;
       border-radius: 7px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #0f172a;
+      font-size: 15px; font-weight: 700; color: #2c3e50;
+      transition: border-color .15s;
     }
     .dash-precio-item input[type="number"]:focus {
       outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px #bfdbfe;
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52,152,219,.15);
     }
+
+    .dash-empty-msg { font-size: 12.5px; color: #95a5a6; padding: 16px 0; text-align: center; }
+    .dash-loading   { padding: 60px; text-align: center; color: #95a5a6; font-size: 14px; }
+
+    /* Acceso denegado */
+    .dash-forbidden {
+      text-align: center;
+      padding: 60px 20px;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #dde3ec;
+    }
+    .dash-forbidden i  { font-size: 48px; color: #e74c3c; margin-bottom: 16px; display: block; }
+    .dash-forbidden h2 { font-size: 18px; color: #2c3e50; margin-bottom: 8px; }
+    .dash-forbidden p  { font-size: 13px; color: #7f8c8d; margin-bottom: 20px; }
   </style>
 </head>
 
@@ -197,36 +230,48 @@
       <div class="container">
 
         <!-- Loading -->
-        <div class="dash-loading" id="dash-admin-loading"><i class="fas fa-spinner fa-spin"></i> Cargando dashboard...</div>
+        <div class="dash-loading" id="dash-admin-loading">
+          <i class="fas fa-spinner fa-spin" style="font-size:28px; color:#3498db; display:block; margin-bottom:12px;"></i>
+          Cargando dashboard...
+        </div>
 
-        <!-- Dashboard root -->
+        <!-- Dashboard root (admin) -->
         <div id="dash-admin-root" style="display:none;">
+
+          <!-- Hero banner -->
+          <div class="dash-hero">
+            <div class="dash-hero-icon"><i class="fas fa-gauge"></i></div>
+            <div>
+              <div class="dash-hero-title">Dashboard Administrativo — LT&C</div>
+              <div class="dash-hero-sub">Visión comercial de la plataforma: organizadores, planes y métricas globales</div>
+            </div>
+          </div>
 
           <!-- KPIs -->
           <div class="dash-kpis">
             <div class="dash-kpi-card">
-              <div class="dash-kpi-icon azul"><i class="fas fa-building"></i></div>
+              <div class="dash-kpi-icon ltc-noche"><i class="fas fa-building"></i></div>
               <div class="dash-kpi-body">
                 <div class="dash-kpi-val" id="dash-admin-kpi-orgs">—</div>
                 <div class="dash-kpi-lbl">Organizadores activos</div>
               </div>
             </div>
             <div class="dash-kpi-card">
-              <div class="dash-kpi-icon verde"><i class="fas fa-user-plus"></i></div>
+              <div class="dash-kpi-icon ltc-verde"><i class="fas fa-user-plus"></i></div>
               <div class="dash-kpi-body">
                 <div class="dash-kpi-val" id="dash-admin-kpi-nuevos">—</div>
                 <div class="dash-kpi-lbl">Nuevos este mes</div>
               </div>
             </div>
             <div class="dash-kpi-card">
-              <div class="dash-kpi-icon ambar"><i class="fas fa-dollar-sign"></i></div>
+              <div class="dash-kpi-icon ltc-ambar"><i class="fas fa-dollar-sign"></i></div>
               <div class="dash-kpi-body">
                 <div class="dash-kpi-val" id="dash-admin-kpi-mrr">—</div>
                 <div class="dash-kpi-lbl">MRR estimado</div>
               </div>
             </div>
             <div class="dash-kpi-card">
-              <div class="dash-kpi-icon purp"><i class="fas fa-star"></i></div>
+              <div class="dash-kpi-icon ltc-azul"><i class="fas fa-star"></i></div>
               <div class="dash-kpi-body">
                 <div class="dash-kpi-val" id="dash-admin-kpi-plan-popular">—</div>
                 <div class="dash-kpi-lbl">Plan más popular</div>
@@ -237,7 +282,7 @@
           <!-- Gráfico de dona + tabla de orgs -->
           <div class="dash-row">
             <div class="dash-panel">
-              <div class="dash-panel-title"><i class="fas fa-chart-pie"></i> Por plan</div>
+              <div class="dash-panel-title"><i class="fas fa-chart-pie"></i> Organizadores por plan</div>
               <div class="dash-chart-wrap">
                 <canvas id="dash-admin-chart-planes"></canvas>
               </div>
@@ -267,33 +312,45 @@
           <div class="dash-global-row">
             <div class="dash-global-card">
               <div class="dash-global-val" id="dash-admin-global-camps">—</div>
-              <div class="dash-global-lbl">Campeonatos totales</div>
+              <div class="dash-global-lbl"><i class="fas fa-trophy"></i> Campeonatos totales</div>
             </div>
             <div class="dash-global-card">
               <div class="dash-global-val" id="dash-admin-global-equipos">—</div>
-              <div class="dash-global-lbl">Equipos registrados</div>
+              <div class="dash-global-lbl"><i class="fas fa-users"></i> Equipos registrados</div>
             </div>
             <div class="dash-global-card">
               <div class="dash-global-val" id="dash-admin-global-jugadores">—</div>
-              <div class="dash-global-lbl">Jugadores registrados</div>
+              <div class="dash-global-lbl"><i class="fas fa-user-friends"></i> Jugadores registrados</div>
             </div>
           </div>
 
           <!-- Precios de planes -->
-          <div class="dash-panel" style="margin-bottom:20px;">
-            <div class="dash-panel-title"><i class="fas fa-tag"></i> Precios de planes (USD/mes)</div>
+          <div class="dash-panel" style="margin-bottom:24px;">
+            <div class="dash-panel-title"><i class="fas fa-tag"></i> Precios de planes (USD / mes)</div>
             <div id="dash-admin-precios-wrap">
               <p class="dash-empty-msg">Cargando...</p>
             </div>
-            <div style="margin-top:12px; display:flex; gap:10px; justify-content:flex-end;">
+            <div style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
+              <span id="dash-admin-precios-msg" style="font-size:12.5px; align-self:center;"></span>
               <button class="btn btn-primary" id="dash-admin-precios-guardar" type="button" style="display:none;">
                 <i class="fas fa-save"></i> Guardar precios
               </button>
-              <span id="dash-admin-precios-msg" style="font-size:12.5px; color:#22c55e; align-self:center;"></span>
             </div>
           </div>
 
         </div><!-- /dash-admin-root -->
+
+        <!-- Acceso denegado (para no-administradores) -->
+        <div id="dash-admin-forbidden" style="display:none;">
+          <div class="dash-forbidden">
+            <i class="fas fa-lock"></i>
+            <h2>Acceso restringido</h2>
+            <p>Este panel es exclusivo del administrador del sistema.</p>
+            <a href="portal-admin.html" class="btn btn-primary">
+              <i class="fas fa-home"></i> Ir a mi portal
+            </a>
+          </div>
+        </div>
 
       </div>
     </main>
@@ -301,9 +358,9 @@
 
   <div class="nav-overlay" id="nav-overlay"></div>
 
+  <!-- NO se incluye app.js: esta página no usa sus modales -->
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
-  <script src="js/app.js"></script>
   <script src="js/dashboard-admin.js"></script>
 </body>
 
