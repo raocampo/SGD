@@ -176,6 +176,75 @@ async function actualizarPrecioPlan(planCodigo, precio, client = pool) {
   return { codigo, precio: monto };
 }
 
+// ── Formas de pago ────────────────────────────────────────────────────────────
+
+const FORMAS_PAGO_DEFAULTS = {
+  pago_whatsapp:               "593982413081",
+  pago_transferencia_banco:    "Banco Pichincha",
+  pago_transferencia_cuenta:   "",
+  pago_transferencia_tipo:     "Ahorro",
+  pago_transferencia_titular:  "Loja Torneos & Competencias",
+  pago_transferencia_cedula:   "",
+  pago_efectivo_activo:        "false",
+  pago_efectivo_instrucciones: "Coordina la entrega de efectivo por WhatsApp.",
+  pago_instrucciones_extra:    "Envía el comprobante de pago al WhatsApp indicado para activar tu cuenta.",
+};
+
+async function obtenerFormasPago(client = pool) {
+  try {
+    await asegurarTablaConfiguracion(client);
+    const r = await client.query(
+      `SELECT clave, valor FROM configuracion_sistema WHERE clave LIKE 'pago_%'`
+    );
+    const cfg = { ...FORMAS_PAGO_DEFAULTS };
+    for (const row of r.rows) {
+      cfg[row.clave] = row.valor;
+    }
+    return {
+      whatsapp:              cfg.pago_whatsapp,
+      transferencia: {
+        banco:    cfg.pago_transferencia_banco,
+        cuenta:   cfg.pago_transferencia_cuenta,
+        tipo:     cfg.pago_transferencia_tipo,
+        titular:  cfg.pago_transferencia_titular,
+        cedula:   cfg.pago_transferencia_cedula,
+      },
+      efectivo: {
+        activo:        cfg.pago_efectivo_activo === "true",
+        instrucciones: cfg.pago_efectivo_instrucciones,
+      },
+      instrucciones_extra: cfg.pago_instrucciones_extra,
+    };
+  } catch {
+    return {
+      whatsapp: FORMAS_PAGO_DEFAULTS.pago_whatsapp,
+      transferencia: {
+        banco:   FORMAS_PAGO_DEFAULTS.pago_transferencia_banco,
+        cuenta:  "",
+        tipo:    "Ahorro",
+        titular: FORMAS_PAGO_DEFAULTS.pago_transferencia_titular,
+        cedula:  "",
+      },
+      efectivo: { activo: false, instrucciones: "" },
+      instrucciones_extra: FORMAS_PAGO_DEFAULTS.pago_instrucciones_extra,
+    };
+  }
+}
+
+async function actualizarFormasPago(campos, client = pool) {
+  await asegurarTablaConfiguracion(client);
+  const CLAVES_PERMITIDAS = new Set(Object.keys(FORMAS_PAGO_DEFAULTS));
+  for (const [clave, valor] of Object.entries(campos)) {
+    if (!CLAVES_PERMITIDAS.has(clave)) continue;
+    await client.query(
+      `INSERT INTO configuracion_sistema (clave, valor, tipo)
+       VALUES ($1, $2, 'string')
+       ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, updated_at = CURRENT_TIMESTAMP`,
+      [clave, String(valor ?? "")]
+    );
+  }
+}
+
 module.exports = {
   PLANES,
   PLANES_PUBLICOS,
@@ -189,4 +258,6 @@ module.exports = {
   asegurarTablaConfiguracion,
   obtenerPreciosPlanes,
   actualizarPrecioPlan,
+  obtenerFormasPago,
+  actualizarFormasPago,
 };

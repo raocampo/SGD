@@ -184,6 +184,105 @@
     }
   }
 
+  function renderFormasPago(formas) {
+    const wrap = document.getElementById("dash-admin-pago-wrap");
+    const btn = document.getElementById("dash-admin-pago-guardar");
+    if (!wrap) return;
+
+    const tf = formas?.transferencia || {};
+    const ef = formas?.efectivo || {};
+
+    wrap.innerHTML = `
+      <div class="dash-pago-grid" id="dash-admin-pago-fields">
+
+        <div class="dash-pago-group dash-pago-full">
+          <label>WhatsApp para confirmar pagos <small style="color:#94a3b8;">(con código de país, sin +)</small></label>
+          <input type="text" id="pago-whatsapp" value="${formas?.whatsapp || ""}" placeholder="Ej: 593982413081" maxlength="20" />
+        </div>
+
+        <div class="dash-pago-group">
+          <label>Banco</label>
+          <input type="text" id="pago-tf-banco" value="${tf.banco || ""}" placeholder="Ej: Banco Pichincha" maxlength="80" />
+        </div>
+        <div class="dash-pago-group">
+          <label>Tipo de cuenta</label>
+          <select id="pago-tf-tipo">
+            <option value="Ahorro" ${tf.tipo === "Ahorro" ? "selected" : ""}>Ahorro</option>
+            <option value="Corriente" ${tf.tipo === "Corriente" ? "selected" : ""}>Corriente</option>
+          </select>
+        </div>
+        <div class="dash-pago-group">
+          <label>Número de cuenta</label>
+          <input type="text" id="pago-tf-cuenta" value="${tf.cuenta || ""}" placeholder="Ej: 2200123456" maxlength="30" />
+        </div>
+        <div class="dash-pago-group">
+          <label>Titular de la cuenta</label>
+          <input type="text" id="pago-tf-titular" value="${tf.titular || ""}" placeholder="Ej: Loja Torneos &amp; Competencias" maxlength="100" />
+        </div>
+        <div class="dash-pago-group">
+          <label>Cédula / RUC del titular</label>
+          <input type="text" id="pago-tf-cedula" value="${tf.cedula || ""}" placeholder="Ej: 1105001234001" maxlength="20" />
+        </div>
+
+        <div class="dash-pago-group">
+          <div class="dash-pago-check-row">
+            <input type="checkbox" id="pago-ef-activo" ${ef.activo ? "checked" : ""} />
+            <label for="pago-ef-activo">Habilitar opción de pago en efectivo</label>
+          </div>
+        </div>
+        <div class="dash-pago-group dash-pago-full">
+          <label>Instrucciones para pago en efectivo</label>
+          <textarea id="pago-ef-instrucciones" maxlength="300" placeholder="Ej: Coordina la entrega de efectivo por WhatsApp.">${ef.instrucciones || ""}</textarea>
+        </div>
+
+        <div class="dash-pago-group dash-pago-full">
+          <label>Instrucciones generales (mostradas al final del modal)</label>
+          <textarea id="pago-instrucciones-extra" maxlength="400" placeholder="Ej: Envía el comprobante de pago al WhatsApp indicado para activar tu cuenta.">${formas?.instrucciones_extra || ""}</textarea>
+        </div>
+
+      </div>`;
+
+    if (btn) btn.style.display = "";
+  }
+
+  async function guardarFormasPago() {
+    const btn = document.getElementById("dash-admin-pago-guardar");
+    const msg = document.getElementById("dash-admin-pago-msg");
+
+    const campos = {
+      pago_whatsapp:               document.getElementById("pago-whatsapp")?.value?.trim() || "",
+      pago_transferencia_banco:    document.getElementById("pago-tf-banco")?.value?.trim() || "",
+      pago_transferencia_tipo:     document.getElementById("pago-tf-tipo")?.value || "Ahorro",
+      pago_transferencia_cuenta:   document.getElementById("pago-tf-cuenta")?.value?.trim() || "",
+      pago_transferencia_titular:  document.getElementById("pago-tf-titular")?.value?.trim() || "",
+      pago_transferencia_cedula:   document.getElementById("pago-tf-cedula")?.value?.trim() || "",
+      pago_efectivo_activo:        document.getElementById("pago-ef-activo")?.checked ? "true" : "false",
+      pago_efectivo_instrucciones: document.getElementById("pago-ef-instrucciones")?.value?.trim() || "",
+      pago_instrucciones_extra:    document.getElementById("pago-instrucciones-extra")?.value?.trim() || "",
+    };
+
+    try {
+      if (btn) btn.disabled = true;
+      if (msg) msg.textContent = "";
+      await window.ApiClient.put("/auth/admin/formas-pago", { formas: campos });
+      if (msg) { msg.style.color = "#22c55e"; msg.textContent = "Formas de pago guardadas."; }
+      setTimeout(() => { if (msg) msg.textContent = ""; }, 3000);
+    } catch (err) {
+      if (msg) { msg.style.color = "#ef4444"; msg.textContent = err.message || "Error al guardar"; }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function cargarFormasPago() {
+    try {
+      const data = await window.ApiClient.get("/auth/admin/formas-pago");
+      if (data?.ok) renderFormasPago(data.formas);
+    } catch (err) {
+      console.warn("No se pudo cargar formas de pago:", err.message);
+    }
+  }
+
   async function cargarDashboard() {
     const cont = document.getElementById("dash-admin-root");
     if (!cont) return;
@@ -203,6 +302,7 @@
       renderChartPlanes(data.por_plan);
       renderTablaOrgs(data.organizadores);
       await cargarPrecios();
+      await cargarFormasPago();
 
       const loading = document.getElementById("dash-admin-loading");
       if (loading) loading.style.display = "none";
@@ -210,6 +310,8 @@
 
       const btn = document.getElementById("dash-admin-precios-guardar");
       if (btn) btn.addEventListener("click", guardarPrecios);
+      const btnPago = document.getElementById("dash-admin-pago-guardar");
+      if (btnPago) btnPago.addEventListener("click", guardarFormasPago);
     } catch (err) {
       console.error("dashboardAdmin:", err);
       const loading = document.getElementById("dash-admin-loading");

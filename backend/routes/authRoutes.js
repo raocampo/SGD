@@ -15,6 +15,7 @@ router.post("/password/reset", authController.resetearPassword);
 router.post("/password/change", requireAuth, authController.cambiarPasswordActual);
 router.get("/organizadores/:id/landing", authController.landingOrganizadorPublica);
 router.get("/planes/precios", authController.preciosPublicos);
+router.get("/formas-pago", authController.formasPagoPublicas);
 router.get("/me", requireAuth, authController.me);
 
 router.get(
@@ -70,6 +71,18 @@ router.put(
   requireAuth,
   requireRoles("administrador"),
   authController.actualizarPrecioPlanes
+);
+router.get(
+  "/admin/formas-pago",
+  requireAuth,
+  requireRoles("administrador"),
+  authController.listarFormasPago
+);
+router.put(
+  "/admin/formas-pago",
+  requireAuth,
+  requireRoles("administrador"),
+  authController.actualizarFormasPagoAdmin
 );
 
 module.exports = router;

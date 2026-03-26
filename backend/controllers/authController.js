@@ -21,6 +21,8 @@ const {
   obtenerPlan,
   obtenerPreciosPlanes,
   actualizarPrecioPlan,
+  obtenerFormasPago,
+  actualizarFormasPago,
 } = require("../services/planLimits");
 const ROLES_REGISTRO_PUBLICO = new Set(["organizador", "dirigente", "tecnico", "jugador"]);
 
@@ -749,6 +751,49 @@ const authController = {
       console.error("Error actualizarPrecioPlanes:", error);
       const status = String(error?.message || "").includes("inválido") ? 400 : 500;
       return res.status(status).json({ error: error.message || "No se pudo actualizar los precios" });
+    }
+  },
+
+  // ── Formas de pago ──────────────────────────────────────────────────────────
+
+  async formasPagoPublicas(req, res) {
+    try {
+      const formas = await obtenerFormasPago();
+      return res.json({ ok: true, formas });
+    } catch (error) {
+      console.error("Error formasPagoPublicas:", error);
+      return res.status(500).json({ error: "No se pudo obtener las formas de pago" });
+    }
+  },
+
+  async listarFormasPago(req, res) {
+    try {
+      if (!esAdministrador(req.user)) {
+        return res.status(403).json({ error: "Solo el administrador puede ver la configuración de pagos" });
+      }
+      const formas = await obtenerFormasPago();
+      return res.json({ ok: true, formas });
+    } catch (error) {
+      console.error("Error listarFormasPago:", error);
+      return res.status(500).json({ error: "No se pudo obtener las formas de pago" });
+    }
+  },
+
+  async actualizarFormasPagoAdmin(req, res) {
+    try {
+      if (!esAdministrador(req.user)) {
+        return res.status(403).json({ error: "Solo el administrador puede modificar las formas de pago" });
+      }
+      const campos = req.body?.formas;
+      if (!campos || typeof campos !== "object") {
+        return res.status(400).json({ error: "Se esperan campos de formas de pago como objeto" });
+      }
+      await actualizarFormasPago(campos);
+      const formas = await obtenerFormasPago();
+      return res.json({ ok: true, formas });
+    } catch (error) {
+      console.error("Error actualizarFormasPagoAdmin:", error);
+      return res.status(500).json({ error: error.message || "No se pudo actualizar las formas de pago" });
     }
   },
 

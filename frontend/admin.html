@@ -187,6 +187,40 @@
     .dash-empty-msg { font-size: 12.5px; color: #95a5a6; padding: 16px 0; text-align: center; }
     .dash-loading   { padding: 60px; text-align: center; color: #95a5a6; font-size: 14px; }
 
+    /* ── Formas de pago ── */
+    .dash-pago-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 600px) { .dash-pago-grid { grid-template-columns: 1fr; } }
+    .dash-pago-group { display: flex; flex-direction: column; gap: 5px; }
+    .dash-pago-group label { font-size: 12px; font-weight: 600; color: #2c3e50; }
+    .dash-pago-group input,
+    .dash-pago-group select,
+    .dash-pago-group textarea {
+      padding: 8px 11px;
+      border: 1.5px solid #dde3ec;
+      border-radius: 7px;
+      font-size: 13px; color: #2c3e50;
+      width: 100%;
+      transition: border-color .15s;
+      background: #fff;
+      font-family: inherit;
+    }
+    .dash-pago-group input:focus,
+    .dash-pago-group select:focus,
+    .dash-pago-group textarea:focus {
+      outline: none; border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52,152,219,.12);
+    }
+    .dash-pago-group textarea { resize: vertical; min-height: 62px; }
+    .dash-pago-full { grid-column: 1 / -1; }
+    .dash-pago-check-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .dash-pago-check-row input[type="checkbox"] { width: auto; }
+    .dash-pago-check-row label { font-size: 13px; font-weight: 600; color: #2c3e50; margin: 0; cursor: pointer; }
+
     /* Acceso denegado */
     .dash-forbidden {
       text-align: center;
@@ -334,6 +368,20 @@
               <span id="dash-admin-precios-msg" style="font-size:12.5px; align-self:center;"></span>
               <button class="btn btn-primary" id="dash-admin-precios-guardar" type="button" style="display:none;">
                 <i class="fas fa-save"></i> Guardar precios
+              </button>
+            </div>
+          </div>
+
+          <!-- Formas de pago -->
+          <div class="dash-panel" style="margin-bottom:24px;">
+            <div class="dash-panel-title"><i class="fas fa-money-check-alt"></i> Formas de pago (mostradas en landing pública)</div>
+            <div id="dash-admin-pago-wrap">
+              <p class="dash-empty-msg">Cargando...</p>
+            </div>
+            <div style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
+              <span id="dash-admin-pago-msg" style="font-size:12.5px; align-self:center;"></span>
+              <button class="btn btn-primary" id="dash-admin-pago-guardar" type="button" style="display:none;">
+                <i class="fas fa-save"></i> Guardar formas de pago
               </button>
             </div>
           </div>

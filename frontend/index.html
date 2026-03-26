@@ -15,6 +15,114 @@
   />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/portal.css" />
+  <style>
+    /* ── Modal Formas de Pago ── */
+    .ltc-pago-modal-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,.55);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(3px);
+    }
+    .ltc-pago-modal-box {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      position: relative;
+      padding: 28px 28px 22px;
+    }
+    .ltc-pago-modal-close {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none; font-size: 22px;
+      color: #94a3b8; cursor: pointer; line-height: 1;
+      transition: color .15s;
+    }
+    .ltc-pago-modal-close:hover { color: #0f172a; }
+    .ltc-pago-modal-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 18px;
+    }
+    .ltc-pago-modal-header i { font-size: 20px; color: #3498db; }
+    .ltc-pago-modal-header h2 { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; }
+
+    .ltc-pago-plan-resumen {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f0f9ff;
+      border: 1.5px solid #bae6fd;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+    }
+    .ltc-pago-plan-nombre { font-size: 14px; font-weight: 700; color: #0369a1; }
+    .ltc-pago-plan-precio { font-size: 20px; font-weight: 800; color: #0f172a; }
+
+    /* Métodos */
+    .ltc-pago-metodo {
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .ltc-pago-metodo-titulo {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13.5px; font-weight: 700; color: #1e293b;
+      margin-bottom: 10px;
+    }
+    .ltc-pago-metodo-titulo i { color: #3498db; font-size: 15px; }
+    .ltc-pago-metodo-fila {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      font-size: 12.5px; margin-bottom: 5px; gap: 8px;
+    }
+    .ltc-pago-metodo-fila:last-child { margin-bottom: 0; }
+    .ltc-pago-metodo-lbl { color: #64748b; font-weight: 600; white-space: nowrap; }
+    .ltc-pago-metodo-val { color: #0f172a; text-align: right; word-break: break-all; }
+    .ltc-pago-metodo-val strong { font-weight: 700; }
+
+    .ltc-pago-instrucciones {
+      background: #fffbeb;
+      border: 1.5px solid #fde68a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      color: #78350f;
+      margin-bottom: 16px;
+      display: flex; gap: 8px; align-items: flex-start;
+    }
+    .ltc-pago-instrucciones i { color: #f59e0b; margin-top: 2px; flex-shrink: 0; }
+
+    .ltc-pago-whatsapp-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: #25d366; color: #fff;
+      border: none; border-radius: 8px;
+      padding: 10px 16px; font-size: 13px; font-weight: 700;
+      cursor: pointer; width: 100%; margin-bottom: 14px;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .ltc-pago-whatsapp-btn:hover { background: #1ebe5d; color: #fff; }
+    .ltc-pago-whatsapp-btn i { font-size: 16px; }
+
+    .ltc-pago-modal-footer { display: flex; flex-direction: column; gap: 8px; }
+    .ltc-pago-btn-continuar {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: #3498db; color: #fff;
+      border: none; border-radius: 8px;
+      padding: 12px 20px; font-size: 14px; font-weight: 700;
+      cursor: pointer; text-decoration: none;
+      transition: background .15s;
+    }
+    .ltc-pago-btn-continuar:hover { background: #2980b9; color: #fff; }
+    .ltc-pago-btn-cancelar {
+      background: none; border: 1.5px solid #e2e8f0;
+      border-radius: 8px; padding: 10px; font-size: 13px;
+      color: #64748b; cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .ltc-pago-btn-cancelar:hover { border-color: #94a3b8; color: #0f172a; }
+    .ltc-pago-cargando { text-align: center; color: #94a3b8; font-size: 13px; padding: 20px 0; }
+  </style>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 </head>
 <body class="ltc-landing">
@@ -204,38 +312,65 @@
             <span class="ltc-plan-chip">Base</span>
             <h3>Plan Base</h3>
             <p class="ltc-plan-note">Ideal para iniciar un torneo rápido.</p>
-            <p class="ltc-pricing-amount" id="precio-plan-base">$49 <span>/ torneo</span></p>
+            <p class="ltc-pricing-amount" id="precio-plan-base">$15 <span>/ mes</span></p>
             <ul>
               <li>Gestión de categorías y equipos</li>
               <li>Fixture y tablas automáticas</li>
               <li>Portal público básico</li>
             </ul>
-            <a href="register.html?plan=base" class="ltc-pricing-btn" target="_blank" rel="noopener noreferrer">Comenzar</a>
+            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="base" data-plan-nombre="Plan Base" data-precio-id="precio-plan-base">Comenzar</button>
           </article>
           <article class="ltc-pricing-card ltc-pricing-card-highlight">
             <span class="ltc-plan-chip ltc-plan-chip-hot">Recomendado</span>
             <h3>Plan Competencia</h3>
             <p class="ltc-plan-note">El balance ideal para ligas activas.</p>
-            <p class="ltc-pricing-amount" id="precio-plan-competencia">$89 <span>/ torneo</span></p>
+            <p class="ltc-pricing-amount" id="precio-plan-competencia">$35 <span>/ mes</span></p>
             <ul>
               <li>Todo el Plan Base</li>
               <li>Planillaje y reportes PDF</li>
               <li>Módulo financiero y estado de cuenta</li>
             </ul>
-            <a href="register.html?plan=competencia" class="ltc-pricing-btn" target="_blank" rel="noopener noreferrer">Elegir Plan</a>
+            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="competencia" data-plan-nombre="Plan Competencia" data-precio-id="precio-plan-competencia">Elegir Plan</button>
           </article>
           <article class="ltc-pricing-card">
             <span class="ltc-plan-chip">Premium</span>
             <h3>Plan Premium</h3>
             <p class="ltc-plan-note">Para torneos con branding y operación completa.</p>
-            <p class="ltc-pricing-amount" id="precio-plan-premium">$129 <span>/ torneo</span></p>
+            <p class="ltc-pricing-amount" id="precio-plan-premium">$70 <span>/ mes</span></p>
             <ul>
               <li>Todo el Plan Competencia</li>
               <li>Carnés con QR y branding completo</li>
               <li>Soporte prioritario LT&C</li>
             </ul>
-            <a href="register.html?plan=premium" class="ltc-pricing-btn" target="_blank" rel="noopener noreferrer">Solicitar</a>
+            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="premium" data-plan-nombre="Plan Premium" data-precio-id="precio-plan-premium">Solicitar</button>
           </article>
+        </div>
+
+        <!-- Modal: Formas de Pago -->
+        <div id="ltc-pago-modal" class="ltc-pago-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="ltc-pago-modal-title">
+          <div class="ltc-pago-modal-box">
+            <button class="ltc-pago-modal-close" id="ltc-pago-modal-close" aria-label="Cerrar">&times;</button>
+            <div class="ltc-pago-modal-header">
+              <i class="fas fa-credit-card"></i>
+              <h2 id="ltc-pago-modal-title">Pagar plan</h2>
+            </div>
+
+            <div class="ltc-pago-plan-resumen" id="ltc-pago-plan-resumen">
+              <span class="ltc-pago-plan-nombre" id="ltc-pago-plan-nombre-txt"></span>
+              <span class="ltc-pago-plan-precio" id="ltc-pago-plan-precio-txt"></span>
+            </div>
+
+            <div id="ltc-pago-metodos-wrap">
+              <p class="ltc-pago-cargando"><i class="fas fa-spinner fa-spin"></i> Cargando formas de pago...</p>
+            </div>
+
+            <div class="ltc-pago-modal-footer">
+              <a id="ltc-pago-continuar-btn" href="#" class="ltc-pago-btn-continuar" target="_blank" rel="noopener noreferrer">
+                <i class="fas fa-user-plus"></i> Continuar al registro
+              </a>
+              <button class="ltc-pago-btn-cancelar" id="ltc-pago-cancelar-btn">Cancelar</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -362,17 +497,133 @@
           if (!resp.ok) return;
           const data = await resp.json();
           if (!data?.ok || !Array.isArray(data.planes)) return;
-          const sufijos = { free: "/ mensual", base: "/ torneo", competencia: "/ torneo", premium: "/ torneo" };
+          const sufijos = { free: "/ mes", base: "/ mes", competencia: "/ mes", premium: "/ mes" };
           for (const plan of data.planes) {
             const el = document.getElementById(`precio-plan-${plan.codigo}`);
             if (!el) continue;
-            const suf = sufijos[plan.codigo] || "/ torneo";
+            const suf = sufijos[plan.codigo] || "/ mes";
             el.innerHTML = `$${Number(plan.precio_mensual).toLocaleString("es-EC")} <span>${suf}</span>`;
           }
         } catch (e) {
           // Si falla, los precios por defecto del HTML se mantienen
         }
       })();
+
+      // ── Modal Formas de Pago ───────────────────────────────────────────────
+      let _formasPagoCache = null;
+      let _planActual = { codigo: "", nombre: "", precio: "" };
+
+      async function cargarFormasPago() {
+        if (_formasPagoCache) return _formasPagoCache;
+        try {
+          const base = (window.API_BASE_URL || "").replace(/\/$/, "");
+          const resp = await fetch(`${base}/auth/formas-pago`);
+          if (!resp.ok) return null;
+          const data = await resp.json();
+          if (data?.ok) { _formasPagoCache = data.formas; return _formasPagoCache; }
+          return null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function renderMetodosPago(formas) {
+        const wrap = document.getElementById("ltc-pago-metodos-wrap");
+        if (!wrap) return;
+
+        const tf = formas?.transferencia;
+        const ef = formas?.efectivo;
+        const instrExtra = formas?.instrucciones_extra || "";
+        const whatsapp = formas?.whatsapp || "";
+
+        let html = "";
+
+        // Transferencia bancaria
+        if (tf?.cuenta) {
+          html += `
+          <div class="ltc-pago-metodo">
+            <div class="ltc-pago-metodo-titulo"><i class="fas fa-university"></i> Transferencia / Depósito bancario</div>
+            <div class="ltc-pago-metodo-fila"><span class="ltc-pago-metodo-lbl">Banco</span><span class="ltc-pago-metodo-val"><strong>${tf.banco || "—"}</strong></span></div>
+            <div class="ltc-pago-metodo-fila"><span class="ltc-pago-metodo-lbl">Cuenta</span><span class="ltc-pago-metodo-val"><strong>${tf.cuenta}</strong></span></div>
+            <div class="ltc-pago-metodo-fila"><span class="ltc-pago-metodo-lbl">Tipo</span><span class="ltc-pago-metodo-val">${tf.tipo || "Ahorro"}</span></div>
+            <div class="ltc-pago-metodo-fila"><span class="ltc-pago-metodo-lbl">Titular</span><span class="ltc-pago-metodo-val">${tf.titular || "—"}</span></div>
+            ${tf.cedula ? `<div class="ltc-pago-metodo-fila"><span class="ltc-pago-metodo-lbl">Cédula / RUC</span><span class="ltc-pago-metodo-val">${tf.cedula}</span></div>` : ""}
+          </div>`;
+        } else {
+          html += `
+          <div class="ltc-pago-metodo">
+            <div class="ltc-pago-metodo-titulo"><i class="fas fa-university"></i> Transferencia / Depósito bancario</div>
+            <p style="font-size:12.5px;color:#64748b;margin:0;">Consulta los datos bancarios por WhatsApp antes de realizar el pago.</p>
+          </div>`;
+        }
+
+        // Pago en efectivo (solo si está activo)
+        if (ef?.activo) {
+          html += `
+          <div class="ltc-pago-metodo">
+            <div class="ltc-pago-metodo-titulo"><i class="fas fa-money-bill-wave"></i> Pago en efectivo</div>
+            <p style="font-size:12.5px;color:#0f172a;margin:0;">${ef.instrucciones || "Coordina por WhatsApp."}</p>
+          </div>`;
+        }
+
+        // WhatsApp
+        if (whatsapp) {
+          const msg = encodeURIComponent(`Hola, quiero contratar el ${_planActual.nombre} (${_planActual.precio}). ¿Cuáles son los pasos para el pago?`);
+          html += `<a class="ltc-pago-whatsapp-btn" href="https://wa.me/${whatsapp}?text=${msg}" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i> Confirmar pago por WhatsApp</a>`;
+        }
+
+        // Instrucciones generales
+        if (instrExtra) {
+          html += `<div class="ltc-pago-instrucciones"><i class="fas fa-info-circle"></i><span>${instrExtra}</span></div>`;
+        }
+
+        wrap.innerHTML = html;
+      }
+
+      async function abrirModalPago(planCodigo, planNombre, precioTxt) {
+        _planActual = { codigo: planCodigo, nombre: planNombre, precio: precioTxt };
+
+        const modal = document.getElementById("ltc-pago-modal");
+        const titleEl = document.getElementById("ltc-pago-modal-title");
+        const nombreEl = document.getElementById("ltc-pago-plan-nombre-txt");
+        const precioEl = document.getElementById("ltc-pago-plan-precio-txt");
+        const continuarBtn = document.getElementById("ltc-pago-continuar-btn");
+        const wrap = document.getElementById("ltc-pago-metodos-wrap");
+
+        if (titleEl) titleEl.textContent = `Pagar ${planNombre}`;
+        if (nombreEl) nombreEl.textContent = planNombre;
+        if (precioEl) precioEl.textContent = precioTxt;
+        if (continuarBtn) continuarBtn.href = `register.html?plan=${planCodigo}`;
+        if (wrap) wrap.innerHTML = '<p class="ltc-pago-cargando"><i class="fas fa-spinner fa-spin"></i> Cargando formas de pago...</p>';
+
+        if (modal) { modal.style.display = "flex"; document.body.style.overflow = "hidden"; }
+
+        const formas = await cargarFormasPago();
+        renderMetodosPago(formas);
+      }
+
+      function cerrarModalPago() {
+        const modal = document.getElementById("ltc-pago-modal");
+        if (modal) { modal.style.display = "none"; document.body.style.overflow = ""; }
+      }
+
+      // Eventos de los botones de planes pagados
+      document.querySelectorAll(".ltc-pricing-btn-pago").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const plan = btn.dataset.plan;
+          const nombre = btn.dataset.planNombre;
+          const precioEl = document.getElementById(btn.dataset.precioId);
+          const precioTxt = precioEl ? precioEl.textContent.trim() : "";
+          abrirModalPago(plan, nombre, precioTxt);
+        });
+      });
+
+      // Cerrar modal
+      document.getElementById("ltc-pago-modal-close")?.addEventListener("click", cerrarModalPago);
+      document.getElementById("ltc-pago-cancelar-btn")?.addEventListener("click", cerrarModalPago);
+      document.getElementById("ltc-pago-modal")?.addEventListener("click", function (e) {
+        if (e.target === this) cerrarModalPago();
+      });
     });
   </script>
 </body>
