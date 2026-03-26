@@ -260,7 +260,7 @@ const finanzaController = {
       // Próximos encuentros (7 días)
       const rEncuentros = await pool.query(
         `SELECT p.id, p.fecha_partido, p.hora_partido, p.cancha,
-                p.estado, p.numero_partido_visible,
+                p.estado, p.numero_campeonato AS numero_partido_visible,
                 el.nombre AS equipo_local_nombre,
                 evis.nombre AS equipo_visitante_nombre,
                 ev.nombre AS evento_nombre,
