@@ -187,6 +187,13 @@ const FORMAS_PAGO_DEFAULTS = {
   pago_transferencia_cedula:   "",
   pago_efectivo_activo:        "false",
   pago_efectivo_instrucciones: "Coordina la entrega de efectivo por WhatsApp.",
+  pago_paypal_activo:          "false",
+  pago_paypal_enlace:          "",
+  pago_paypal_instrucciones:   'Envía el pago como "Amigos y familiares" a la cuenta PayPal indicada y adjunta el comprobante por WhatsApp.',
+  pago_tarjeta_activo:         "false",
+  pago_tarjeta_plataforma:     "Payphone",
+  pago_tarjeta_enlace:         "",
+  pago_tarjeta_instrucciones:  "Haz clic en el botón para pagar de forma segura con tu tarjeta de crédito o débito.",
   pago_instrucciones_extra:    "Envía el comprobante de pago al WhatsApp indicado para activar tu cuenta.",
 };
 
@@ -213,6 +220,17 @@ async function obtenerFormasPago(client = pool) {
         activo:        cfg.pago_efectivo_activo === "true",
         instrucciones: cfg.pago_efectivo_instrucciones,
       },
+      paypal: {
+        activo:        cfg.pago_paypal_activo === "true",
+        enlace:        cfg.pago_paypal_enlace,
+        instrucciones: cfg.pago_paypal_instrucciones,
+      },
+      tarjeta: {
+        activo:        cfg.pago_tarjeta_activo === "true",
+        plataforma:    cfg.pago_tarjeta_plataforma,
+        enlace:        cfg.pago_tarjeta_enlace,
+        instrucciones: cfg.pago_tarjeta_instrucciones,
+      },
       instrucciones_extra: cfg.pago_instrucciones_extra,
     };
   } catch {
@@ -226,6 +244,8 @@ async function obtenerFormasPago(client = pool) {
         cedula:  "",
       },
       efectivo: { activo: false, instrucciones: "" },
+      paypal:   { activo: false, enlace: "", instrucciones: "" },
+      tarjeta:  { activo: false, plataforma: "Payphone", enlace: "", instrucciones: "" },
       instrucciones_extra: FORMAS_PAGO_DEFAULTS.pago_instrucciones_extra,
     };
   }

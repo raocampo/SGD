@@ -192,6 +192,9 @@
     const tf = formas?.transferencia || {};
     const ef = formas?.efectivo || {};
 
+    const pp  = formas?.paypal  || {};
+    const tc  = formas?.tarjeta || {};
+
     wrap.innerHTML = `
       <div class="dash-pago-grid" id="dash-admin-pago-fields">
 
@@ -200,6 +203,46 @@
           <input type="text" id="pago-whatsapp" value="${formas?.whatsapp || ""}" placeholder="Ej: 593982413081" maxlength="20" />
         </div>
 
+        <!-- Tarjeta de crédito / débito -->
+        <div class="dash-pago-group dash-pago-full" style="border-top:1.5px solid #e2e8f0;padding-top:14px;margin-top:4px;">
+          <div class="dash-pago-check-row">
+            <input type="checkbox" id="pago-tc-activo" ${tc.activo ? "checked" : ""} />
+            <label for="pago-tc-activo"><i class="fas fa-credit-card" style="color:#7c3aed;"></i> Habilitar pago con tarjeta de crédito / débito</label>
+          </div>
+        </div>
+        <div class="dash-pago-group">
+          <label>Plataforma de cobro</label>
+          <input type="text" id="pago-tc-plataforma" value="${tc.plataforma || "Payphone"}" placeholder="Ej: Payphone, Stripe" maxlength="50" />
+        </div>
+        <div class="dash-pago-group">
+          <label>Enlace de pago con tarjeta</label>
+          <input type="text" id="pago-tc-enlace" value="${tc.enlace || ""}" placeholder="Ej: https://pay.payphone.com/..." maxlength="300" />
+        </div>
+        <div class="dash-pago-group dash-pago-full">
+          <label>Instrucciones para pago con tarjeta</label>
+          <textarea id="pago-tc-instrucciones" maxlength="300" placeholder="Ej: Haz clic en el botón para pagar de forma segura.">${tc.instrucciones || ""}</textarea>
+        </div>
+
+        <!-- PayPal -->
+        <div class="dash-pago-group dash-pago-full" style="border-top:1.5px solid #e2e8f0;padding-top:14px;margin-top:4px;">
+          <div class="dash-pago-check-row">
+            <input type="checkbox" id="pago-pp-activo" ${pp.activo ? "checked" : ""} />
+            <label for="pago-pp-activo"><i class="fab fa-paypal" style="color:#003087;"></i> Habilitar pago con PayPal</label>
+          </div>
+        </div>
+        <div class="dash-pago-group">
+          <label>Enlace PayPal.me o correo PayPal</label>
+          <input type="text" id="pago-pp-enlace" value="${pp.enlace || ""}" placeholder="Ej: paypal.me/tuusuario o pagos@correo.com" maxlength="200" />
+        </div>
+        <div class="dash-pago-group dash-pago-full">
+          <label>Instrucciones para pago con PayPal</label>
+          <textarea id="pago-pp-instrucciones" maxlength="300" placeholder='Ej: Envía el pago como "Amigos y familiares"...'>${pp.instrucciones || ""}</textarea>
+        </div>
+
+        <!-- Transferencia bancaria -->
+        <div class="dash-pago-group dash-pago-full" style="border-top:1.5px solid #e2e8f0;padding-top:14px;margin-top:4px;">
+          <label style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-university" style="color:#3498db;"></i> Transferencia / Depósito bancario</label>
+        </div>
         <div class="dash-pago-group">
           <label>Banco</label>
           <input type="text" id="pago-tf-banco" value="${tf.banco || ""}" placeholder="Ej: Banco Pichincha" maxlength="80" />
@@ -224,10 +267,11 @@
           <input type="text" id="pago-tf-cedula" value="${tf.cedula || ""}" placeholder="Ej: 1105001234001" maxlength="20" />
         </div>
 
-        <div class="dash-pago-group">
+        <!-- Efectivo -->
+        <div class="dash-pago-group dash-pago-full" style="border-top:1.5px solid #e2e8f0;padding-top:14px;margin-top:4px;">
           <div class="dash-pago-check-row">
             <input type="checkbox" id="pago-ef-activo" ${ef.activo ? "checked" : ""} />
-            <label for="pago-ef-activo">Habilitar opción de pago en efectivo</label>
+            <label for="pago-ef-activo"><i class="fas fa-money-bill-wave" style="color:#16a34a;"></i> Habilitar opción de pago en efectivo</label>
           </div>
         </div>
         <div class="dash-pago-group dash-pago-full">
@@ -235,8 +279,9 @@
           <textarea id="pago-ef-instrucciones" maxlength="300" placeholder="Ej: Coordina la entrega de efectivo por WhatsApp.">${ef.instrucciones || ""}</textarea>
         </div>
 
-        <div class="dash-pago-group dash-pago-full">
-          <label>Instrucciones generales (mostradas al final del modal)</label>
+        <!-- Instrucciones generales -->
+        <div class="dash-pago-group dash-pago-full" style="border-top:1.5px solid #e2e8f0;padding-top:14px;margin-top:4px;">
+          <label>Instrucciones generales (se muestran al final del modal de pago)</label>
           <textarea id="pago-instrucciones-extra" maxlength="400" placeholder="Ej: Envía el comprobante de pago al WhatsApp indicado para activar tu cuenta.">${formas?.instrucciones_extra || ""}</textarea>
         </div>
 
@@ -251,6 +296,13 @@
 
     const campos = {
       pago_whatsapp:               document.getElementById("pago-whatsapp")?.value?.trim() || "",
+      pago_tarjeta_activo:         document.getElementById("pago-tc-activo")?.checked ? "true" : "false",
+      pago_tarjeta_plataforma:     document.getElementById("pago-tc-plataforma")?.value?.trim() || "Payphone",
+      pago_tarjeta_enlace:         document.getElementById("pago-tc-enlace")?.value?.trim() || "",
+      pago_tarjeta_instrucciones:  document.getElementById("pago-tc-instrucciones")?.value?.trim() || "",
+      pago_paypal_activo:          document.getElementById("pago-pp-activo")?.checked ? "true" : "false",
+      pago_paypal_enlace:          document.getElementById("pago-pp-enlace")?.value?.trim() || "",
+      pago_paypal_instrucciones:   document.getElementById("pago-pp-instrucciones")?.value?.trim() || "",
       pago_transferencia_banco:    document.getElementById("pago-tf-banco")?.value?.trim() || "",
       pago_transferencia_tipo:     document.getElementById("pago-tf-tipo")?.value || "Ahorro",
       pago_transferencia_cuenta:   document.getElementById("pago-tf-cuenta")?.value?.trim() || "",
