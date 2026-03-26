@@ -693,6 +693,23 @@ const authController = {
     }
   },
 
+  async preciosPublicos(req, res) {
+    try {
+      const precios = await obtenerPreciosPlanes();
+      const planes = Object.entries(PLANES)
+        .filter(([codigo]) => codigo !== "demo")
+        .map(([codigo, plan]) => ({
+          codigo,
+          nombre: plan.nombre,
+          precio_mensual: precios[codigo] ?? plan.precio_mensual ?? 0,
+        }));
+      return res.json({ ok: true, planes });
+    } catch (error) {
+      console.error("Error preciosPublicos:", error);
+      return res.status(500).json({ error: "No se pudo obtener los precios" });
+    }
+  },
+
   async listarPreciosPlanes(req, res) {
     try {
       if (!esAdministrador(req.user)) {

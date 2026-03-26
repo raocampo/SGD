@@ -189,7 +189,7 @@
             <span class="ltc-plan-chip">Free</span>
             <h3>Plan Free</h3>
             <p class="ltc-plan-note">Acceso gratuito para pruebas del sistema.</p>
-            <p class="ltc-pricing-amount">$0 <span>/ mensual</span></p>
+            <p class="ltc-pricing-amount" id="precio-plan-free">$0 <span>/ mensual</span></p>
             <ul>
               <li>Máximo 2 campeonatos</li>
               <li>Hasta 3 categorías por campeonato</li>
@@ -204,7 +204,7 @@
             <span class="ltc-plan-chip">Base</span>
             <h3>Plan Base</h3>
             <p class="ltc-plan-note">Ideal para iniciar un torneo rápido.</p>
-            <p class="ltc-pricing-amount">$49 <span>/ torneo</span></p>
+            <p class="ltc-pricing-amount" id="precio-plan-base">$49 <span>/ torneo</span></p>
             <ul>
               <li>Gestión de categorías y equipos</li>
               <li>Fixture y tablas automáticas</li>
@@ -216,7 +216,7 @@
             <span class="ltc-plan-chip ltc-plan-chip-hot">Recomendado</span>
             <h3>Plan Competencia</h3>
             <p class="ltc-plan-note">El balance ideal para ligas activas.</p>
-            <p class="ltc-pricing-amount">$89 <span>/ torneo</span></p>
+            <p class="ltc-pricing-amount" id="precio-plan-competencia">$89 <span>/ torneo</span></p>
             <ul>
               <li>Todo el Plan Base</li>
               <li>Planillaje y reportes PDF</li>
@@ -228,7 +228,7 @@
             <span class="ltc-plan-chip">Premium</span>
             <h3>Plan Premium</h3>
             <p class="ltc-plan-note">Para torneos con branding y operación completa.</p>
-            <p class="ltc-pricing-amount">$129 <span>/ torneo</span></p>
+            <p class="ltc-pricing-amount" id="precio-plan-premium">$129 <span>/ torneo</span></p>
             <ul>
               <li>Todo el Plan Competencia</li>
               <li>Carnés con QR y branding completo</li>
@@ -352,6 +352,27 @@
           lnk.addEventListener("click", () => nav.classList.remove("open"))
         );
       }
+
+      // Cargar precios desde el CRM
+      (async () => {
+        try {
+          const base = (window.API_BASE_URL || "").replace(/\/$/, "");
+          const url = `${base}/auth/planes/precios`;
+          const resp = await fetch(url);
+          if (!resp.ok) return;
+          const data = await resp.json();
+          if (!data?.ok || !Array.isArray(data.planes)) return;
+          const sufijos = { free: "/ mensual", base: "/ torneo", competencia: "/ torneo", premium: "/ torneo" };
+          for (const plan of data.planes) {
+            const el = document.getElementById(`precio-plan-${plan.codigo}`);
+            if (!el) continue;
+            const suf = sufijos[plan.codigo] || "/ torneo";
+            el.innerHTML = `$${Number(plan.precio_mensual).toLocaleString("es-EC")} <span>${suf}</span>`;
+          }
+        } catch (e) {
+          // Si falla, los precios por defecto del HTML se mantienen
+        }
+      })();
     });
   </script>
 </body>
