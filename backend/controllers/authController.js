@@ -5,7 +5,11 @@ const {
   isOrganizador,
   obtenerEquipoIdsOrganizador,
 } = require("../services/organizadorScope");
-const { enviarEmailRecuperacionPassword } = require("../services/emailService");
+const {
+  enviarEmailRecuperacionPassword,
+  enviarEmailBienvenida,
+  enviarEmailNotificacionAdminNuevoRegistro,
+} = require("../services/emailService");
 const {
   buildSessionPayload,
   cerrarSession,
@@ -187,6 +191,23 @@ const authController = {
         user_agent: req.headers["user-agent"] || null,
         ip_address: req.ip,
       });
+
+      // Enviar emails en background (sin bloquear respuesta al usuario)
+      Promise.allSettled([
+        enviarEmailBienvenida({
+          nombre: limpio.nombre,
+          email: limpio.email,
+          rol:   limpio.rol,
+          plan,
+        }),
+        enviarEmailNotificacionAdminNuevoRegistro({
+          nombre:       limpio.nombre,
+          email:        limpio.email,
+          rol:          limpio.rol,
+          plan,
+          organizacion: rolSolicitado === "organizador" ? organizacionNombre : null,
+        }),
+      ]).catch(() => {});
 
       return res.status(201).json({
         ...session,
