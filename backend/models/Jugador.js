@@ -83,6 +83,28 @@ class Jugador {
         return edad >= 0 ? edad : null;
     }
 
+    /**
+     * Edad por año calendario: anioRef - anioNacimiento.
+     * Para categorías Sub 30-60 (masters) no se evalúan mes ni día;
+     * basta con haber nacido en ese año para pertenecer a la categoría.
+     */
+    static calcularEdadPorAnio(valor, anioRef = new Date().getFullYear()) {
+        const texto = this.normalizarFechaNacimiento(valor);
+        if (!texto) return null;
+        let anioNac;
+        let match = texto.match(/^(\d{4})-\d{2}-\d{2}/);
+        if (match) {
+            anioNac = Number.parseInt(match[1], 10);
+        } else {
+            match = texto.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
+            if (!match) return null;
+            anioNac = Number.parseInt(match[3], 10);
+        }
+        if (!Number.isFinite(anioNac)) return null;
+        const edad = anioRef - anioNac;
+        return edad >= 0 ? edad : null;
+    }
+
     static normalizarCuposJuvenil(valor, fallback = 0) {
         if (valor === undefined || valor === null || valor === "") return fallback;
         const numero = Number.parseInt(valor, 10);
@@ -156,7 +178,10 @@ class Jugador {
             };
         }
 
-        const edad = this.calcularEdadDesdeFechaNacimiento(fechaNacimiento);
+        // Para categorías Sub 30-60 (masters) la elegibilidad se evalúa
+        // solo por año de nacimiento: cualquier jugador nacido en el año
+        // correspondiente califica sin importar mes ni día.
+        const edad = this.calcularEdadPorAnio(fechaNacimiento);
         if (!Number.isFinite(edad)) {
             return {
                 controlaEdad: true,

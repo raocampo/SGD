@@ -1,4 +1,6 @@
 const Finanza = require("../models/Finanza");
+const pool = require("../config/database");
+const { PLANES, normalizarPlanCodigo } = require("../services/planLimits");
 const {
   esTecnicoOdirigente,
   obtenerEquiposPermitidosTecnico,
@@ -183,6 +185,134 @@ const finanzaController = {
     } catch (error) {
       console.error("Error obteniendo morosidad:", error);
       return res.status(statusParaError(error)).json({ error: error.message });
+    }
+  },
+
+  async dashboardOrganizador(req, res) {
+    try {
+      const user = req.user;
+      if (!user) return res.status(401).json({ error: "No autenticado" });
+
+      const esAdmin = String(user.rol || "").toLowerCase() === "administrador";
+      const esOrg = String(user.rol || "").toLowerCase() === "organizador";
+      if (!esAdmin && !esOrg) {
+        return res.status(403).json({ error: "Acceso no permitido" });
+      }
+
+      const campeonatoIds = esAdmin ? [] : await obtenerCampeonatoIdsOrganizador(user);
+      const campFiltroSQL = esAdmin
+        ? "1=1"
+        : campeonatoIds.length === 0
+        ? "c.id = -1"
+        : "c.id = ANY($1::int[])";
+      const campParams = esAdmin || campeonatoIds.length === 0 ? [] : [campeonatoIds];
+
+      // Torneos activos
+      const rTorneos = await pool.query(
+        `SELECT COUNT(*) AS total FROM campeonatos c WHERE c.estado NOT IN ('archivado') AND ${campFiltroSQL}`,
+        campParams
+      );
+
+      // Total equipos inscritos (en eventos del organizador)
+      const rEquipos = await pool.query(
+        `SELECT COUNT(DISTINCT ee.equipo_id) AS total
+         FROM evento_equipos ee
+         JOIN eventos ev ON ee.evento_id = ev.id
+         JOIN campeonatos c ON ev.campeonato_id = c.id
+         WHERE ${campFiltroSQL}`,
+        campParams
+      );
+
+      // Jugadores distintos por cedula
+      const rJugadores = await pool.query(
+        `SELECT COUNT(DISTINCT j.cedidentidad) AS total
+         FROM jugadores j
+         JOIN equipos eq ON j.equipo_id = eq.id
+         JOIN campeonatos c ON eq.campeonato_id = c.id
+         WHERE j.cedidentidad IS NOT NULL AND j.cedidentidad <> '' AND ${campFiltroSQL}`,
+        campParams
+      );
+
+      // Ingresos mes actual (abonos)
+      const rIngresosMes = await pool.query(
+        `SELECT COALESCE(SUM(fm.monto), 0) AS total
+         FROM finanzas_movimientos fm
+         JOIN campeonatos c ON fm.campeonato_id = c.id
+         WHERE fm.tipo_movimiento = 'abono'
+           AND fm.fecha_movimiento >= DATE_TRUNC('month', CURRENT_DATE)
+           AND ${campFiltroSQL}`,
+        campParams
+      );
+
+      // Ingresos por concepto (mes actual)
+      const rPorConcepto = await pool.query(
+        `SELECT fm.concepto, COALESCE(SUM(fm.monto), 0) AS total
+         FROM finanzas_movimientos fm
+         JOIN campeonatos c ON fm.campeonato_id = c.id
+         WHERE fm.tipo_movimiento = 'abono'
+           AND fm.fecha_movimiento >= DATE_TRUNC('month', CURRENT_DATE)
+           AND ${campFiltroSQL}
+         GROUP BY fm.concepto
+         ORDER BY total DESC`,
+        campParams
+      );
+
+      // Próximos encuentros (7 días)
+      const rEncuentros = await pool.query(
+        `SELECT p.id, p.fecha_partido, p.hora_partido, p.cancha,
+                p.estado, p.numero_partido_visible,
+                el.nombre AS equipo_local_nombre,
+                evis.nombre AS equipo_visitante_nombre,
+                ev.nombre AS evento_nombre,
+                c.nombre AS campeonato_nombre
+         FROM partidos p
+         JOIN campeonatos c ON p.campeonato_id = c.id
+         LEFT JOIN equipos el ON p.equipo_local_id = el.id
+         LEFT JOIN equipos evis ON p.equipo_visitante_id = evis.id
+         LEFT JOIN eventos ev ON p.evento_id = ev.id
+         WHERE p.estado = 'programado'
+           AND p.fecha_partido BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+           AND ${campFiltroSQL}
+         ORDER BY p.fecha_partido ASC, p.hora_partido ASC
+         LIMIT 10`,
+        campParams
+      );
+
+      // Morosidad (top 5)
+      const filtrosMor = {};
+      if (!esAdmin && campeonatoIds.length === 1) {
+        filtrosMor.campeonato_id = campeonatoIds[0];
+      } else if (!esAdmin && campeonatoIds.length > 1) {
+        filtrosMor.campeonato_ids = campeonatoIds;
+      }
+      const morosos = await Finanza.obtenerMorosidad(filtrosMor);
+
+      // Plan del organizador
+      const planCodigo = normalizarPlanCodigo(user.plan_codigo, "free");
+      const plan = PLANES[planCodigo] || PLANES.free;
+
+      return res.json({
+        ok: true,
+        kpis: {
+          torneos_activos: Number(rTorneos.rows[0]?.total || 0),
+          equipos_inscritos: Number(rEquipos.rows[0]?.total || 0),
+          jugadores_registrados: Number(rJugadores.rows[0]?.total || 0),
+          ingresos_mes: Number(rIngresosMes.rows[0]?.total || 0),
+        },
+        ingresos_por_concepto: rPorConcepto.rows,
+        proximos_encuentros: rEncuentros.rows,
+        morosos: morosos.slice(0, 5),
+        plan: {
+          codigo: plan.codigo,
+          nombre: plan.nombre,
+          precio_mensual: plan.precio_mensual,
+          max_campeonatos: plan.max_campeonatos,
+          campeonatos_usados: Number(rTorneos.rows[0]?.total || 0),
+        },
+      });
+    } catch (error) {
+      console.error("Error en dashboardOrganizador:", error);
+      return res.status(500).json({ error: "No se pudo obtener el dashboard" });
     }
   },
 };

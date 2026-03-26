@@ -14,10 +14,13 @@ const {
   refrescarSession,
 } = require("../services/sessionService");
 const {
+  PLANES,
   normalizarPlanCodigo,
   esPlanPublico,
   esPlanPagado,
   obtenerPlan,
+  obtenerPreciosPlanes,
+  actualizarPrecioPlan,
 } = require("../services/planLimits");
 const ROLES_REGISTRO_PUBLICO = new Set(["organizador", "dirigente", "tecnico", "jugador"]);
 
@@ -687,6 +690,131 @@ const authController = {
           ? 400
           : 500;
       return res.status(status).json({ error: msg || "No se pudo actualizar la contraseña" });
+    }
+  },
+
+  async listarPreciosPlanes(req, res) {
+    try {
+      if (!esAdministrador(req.user)) {
+        return res.status(403).json({ error: "Solo el administrador puede gestionar precios de planes" });
+      }
+      const precios = await obtenerPreciosPlanes();
+      const planes = Object.entries(PLANES)
+        .filter(([codigo]) => codigo !== "demo")
+        .map(([codigo, plan]) => ({
+          codigo,
+          nombre: plan.nombre,
+          precio_mensual: precios[codigo] ?? plan.precio_mensual ?? 0,
+        }));
+      return res.json({ ok: true, planes });
+    } catch (error) {
+      console.error("Error listarPreciosPlanes:", error);
+      return res.status(500).json({ error: "No se pudo obtener los precios" });
+    }
+  },
+
+  async actualizarPrecioPlanes(req, res) {
+    try {
+      if (!esAdministrador(req.user)) {
+        return res.status(403).json({ error: "Solo el administrador puede modificar precios de planes" });
+      }
+      const precios = req.body?.precios;
+      if (!precios || typeof precios !== "object") {
+        return res.status(400).json({ error: "Se esperan precios como objeto { codigo: precio }" });
+      }
+      const actualizados = [];
+      for (const [codigo, precio] of Object.entries(precios)) {
+        const result = await actualizarPrecioPlan(codigo, precio);
+        actualizados.push(result);
+      }
+      return res.json({ ok: true, actualizados });
+    } catch (error) {
+      console.error("Error actualizarPrecioPlanes:", error);
+      const status = String(error?.message || "").includes("inválido") ? 400 : 500;
+      return res.status(status).json({ error: error.message || "No se pudo actualizar los precios" });
+    }
+  },
+
+  async dashboardAdmin(req, res) {
+    try {
+      const user = req.user;
+      if (!esAdministrador(user)) {
+        return res.status(403).json({ error: "Solo el administrador puede acceder a este dashboard" });
+      }
+
+      // Organizadores activos totales
+      const rOrgs = await pool.query(
+        `SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'organizador' AND activo = true`
+      );
+
+      // Nuevos este mes
+      const rNuevos = await pool.query(
+        `SELECT COUNT(*) AS total FROM usuarios
+         WHERE rol = 'organizador' AND activo = true
+           AND created_at >= DATE_TRUNC('month', CURRENT_DATE)`
+      );
+
+      // Por plan
+      const rPorPlan = await pool.query(
+        `SELECT COALESCE(plan_codigo, 'free') AS plan_codigo, COUNT(*) AS total
+         FROM usuarios
+         WHERE rol = 'organizador' AND activo = true
+         GROUP BY plan_codigo
+         ORDER BY total DESC`
+      );
+
+      // MRR estimado (usando precios desde BD)
+      const preciosDB = await obtenerPreciosPlanes();
+      let mrr = 0;
+      for (const row of rPorPlan.rows) {
+        const codigo = normalizarPlanCodigo(row.plan_codigo, "free");
+        const precio = preciosDB[codigo] ?? PLANES[codigo]?.precio_mensual ?? 0;
+        mrr += precio * Number(row.total || 0);
+      }
+
+      // Plan más popular
+      const planPopular = rPorPlan.rows[0]?.plan_codigo || "free";
+
+      // Tabla de organizadores (con torneos activos)
+      const rTablaOrgs = await pool.query(
+        `SELECT u.id, u.nombre, u.email, COALESCE(u.plan_codigo, 'free') AS plan_codigo,
+                u.activo, u.created_at,
+                COUNT(c.id) FILTER (WHERE c.estado NOT IN ('archivado')) AS torneos_activos
+         FROM usuarios u
+         LEFT JOIN campeonatos c ON c.creador_usuario_id = u.id
+         WHERE u.rol = 'organizador'
+         GROUP BY u.id
+         ORDER BY u.created_at DESC
+         LIMIT 50`
+      );
+
+      // Métricas globales
+      const rGlobal = await pool.query(
+        `SELECT
+           (SELECT COUNT(*) FROM campeonatos) AS total_campeonatos,
+           (SELECT COUNT(*) FROM equipos) AS total_equipos,
+           (SELECT COUNT(*) FROM jugadores) AS total_jugadores`
+      );
+
+      return res.json({
+        ok: true,
+        kpis: {
+          organizadores_activos: Number(rOrgs.rows[0]?.total || 0),
+          nuevos_este_mes: Number(rNuevos.rows[0]?.total || 0),
+          mrr_estimado: mrr,
+          plan_popular: planPopular,
+        },
+        por_plan: rPorPlan.rows,
+        organizadores: rTablaOrgs.rows,
+        global: {
+          total_campeonatos: Number(rGlobal.rows[0]?.total_campeonatos || 0),
+          total_equipos: Number(rGlobal.rows[0]?.total_equipos || 0),
+          total_jugadores: Number(rGlobal.rows[0]?.total_jugadores || 0),
+        },
+      });
+    } catch (error) {
+      console.error("Error en dashboardAdmin:", error);
+      return res.status(500).json({ error: "No se pudo obtener el dashboard de administrador" });
     }
   },
 };

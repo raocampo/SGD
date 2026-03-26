@@ -52,5 +52,23 @@ router.delete(
   requireRoles("administrador"),
   authController.quitarEquipo
 );
+router.get(
+  "/admin/dashboard",
+  requireAuth,
+  requireRoles("administrador"),
+  authController.dashboardAdmin
+);
+router.get(
+  "/admin/planes/precios",
+  requireAuth,
+  requireRoles("administrador"),
+  authController.listarPreciosPlanes
+);
+router.put(
+  "/admin/planes/precios",
+  requireAuth,
+  requireRoles("administrador"),
+  authController.actualizarPrecioPlanes
+);
 
 module.exports = router;

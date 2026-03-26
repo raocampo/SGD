@@ -10,6 +10,153 @@
   <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
   <link rel="stylesheet" href="css/style.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* ── Dashboard Organizador ── */
+    .dash-kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 900px) { .dash-kpis { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .dash-kpis { grid-template-columns: 1fr; } }
+
+    .dash-kpi-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .dash-kpi-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .dash-kpi-icon.azul  { background: #eff6ff; color: #3b82f6; }
+    .dash-kpi-icon.verde { background: #f0fdf4; color: #22c55e; }
+    .dash-kpi-icon.purp  { background: #faf5ff; color: #8b5cf6; }
+    .dash-kpi-icon.ambar { background: #fffbeb; color: #f59e0b; }
+
+    .dash-kpi-body { min-width: 0; }
+    .dash-kpi-val  { font-size: 22px; font-weight: 700; color: #0f172a; line-height: 1.1; }
+    .dash-kpi-lbl  { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+
+    .dash-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 700px) { .dash-row { grid-template-columns: 1fr; } }
+
+    .dash-panel {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 18px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .dash-panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .dash-panel-title i { color: #64748b; }
+    .dash-chart-wrap { height: 190px; position: relative; }
+
+    .dash-encuentro-card {
+      border-bottom: 1px solid #f1f5f9;
+      padding: 8px 0;
+    }
+    .dash-encuentro-card:last-child { border-bottom: none; }
+    .dash-encuentro-fecha { font-size: 11px; color: #64748b; }
+    .dash-encuentro-equipos { font-size: 13.5px; font-weight: 600; color: #0f172a; margin: 2px 0; }
+    .dash-vs { color: #94a3b8; font-weight: 400; margin: 0 5px; }
+    .dash-encuentro-meta { font-size: 11px; color: #94a3b8; }
+
+    .dash-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .dash-table th { text-align: left; padding: 5px 8px; color: #475569; font-weight: 600; border-bottom: 1px solid #e2e8f0; }
+    .dash-table td { padding: 6px 8px; border-bottom: 1px solid #f8fafc; color: #1e293b; }
+    .dash-table tr:last-child td { border-bottom: none; }
+    .text-right { text-align: right; }
+    .text-danger { color: #ef4444; font-weight: 600; }
+
+    .dash-empty-msg { font-size: 12.5px; color: #94a3b8; padding: 12px 0; text-align: center; }
+
+    /* Plan badge */
+    .dash-plan-panel {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .dash-plan-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .badge-plan-demo       { background: #f1f5f9; color: #475569; }
+    .badge-plan-free       { background: #dbeafe; color: #1d4ed8; }
+    .badge-plan-base       { background: #dcfce7; color: #166534; }
+    .badge-plan-competencia{ background: #fef9c3; color: #854d0e; }
+    .badge-plan-premium    { background: #ede9fe; color: #6d28d9; }
+
+    .dash-plan-info { flex: 1; min-width: 0; }
+    .dash-plan-nombre { font-size: 14px; font-weight: 700; color: #0f172a; }
+    .dash-plan-meta   { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    .dash-loading { padding: 40px; text-align: center; color: #94a3b8; font-size: 14px; }
+
+    /* Accesos rápidos compactos */
+    .dash-shortcuts {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 900px) { .dash-shortcuts { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 480px) { .dash-shortcuts { grid-template-columns: repeat(2, 1fr); } }
+
+    .dash-shortcut {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      padding: 12px 8px;
+      text-align: center;
+      text-decoration: none;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 600;
+      transition: background .15s, border-color .15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .dash-shortcut:hover { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+    .dash-shortcut i { font-size: 18px; }
+  </style>
 </head>
 
 <body class="app-layout">
@@ -38,22 +185,92 @@
 
     <main class="main">
       <div class="container">
-        <div class="welcome-card">
-          <h2>Accesos rápidos</h2>
-          <div class="stats-grid">
-            <a class="stat-card" href="campeonatos.html"><i class="fas fa-trophy"></i><h3>Campeonatos</h3></a>
-            <a class="stat-card" href="eventos.html"><i class="fas fa-calendar-alt"></i><h3>Categorías</h3></a>
-            <a class="stat-card" href="equipos.html"><i class="fas fa-users"></i><h3>Equipos</h3></a>
-            <a class="stat-card" href="jugadores.html"><i class="fas fa-user-friends"></i><h3>Jugadores</h3></a>
-            <a class="stat-card" href="usuarios.html"><i class="fas fa-user-shield"></i><h3>Usuarios</h3></a>
-            <a id="landing-organizador-shortcut" class="stat-card" href="organizador-portal.html"><i class="fas fa-globe"></i><h3>Mi Landing</h3></a>
-            <a class="stat-card" href="partidos.html"><i class="fas fa-futbol"></i><h3>Partidos</h3></a>
-            <a class="stat-card" href="planilla.html"><i class="fas fa-clipboard-list"></i><h3>Planillas</h3></a>
-            <a class="stat-card" href="finanzas.html"><i class="fas fa-wallet"></i><h3>Finanzas</h3></a>
-            <a class="stat-card" href="tablas.html"><i class="fas fa-table"></i><h3>Tablas</h3></a>
+
+        <!-- Plan badge -->
+        <div class="dash-plan-panel" id="dash-plan-panel">
+          <span class="dash-plan-badge" id="dash-plan-badge">Free</span>
+          <div class="dash-plan-info">
+            <div class="dash-plan-nombre" id="dash-plan-nombre">Plan Free</div>
+            <div class="dash-plan-meta" id="dash-plan-limite"></div>
           </div>
+          <div style="font-size:13px; font-weight:600; color:#64748b;" id="dash-plan-precio"></div>
         </div>
 
+        <!-- Loading -->
+        <div class="dash-loading" id="dash-loading"><i class="fas fa-spinner fa-spin"></i> Cargando dashboard...</div>
+
+        <!-- Dashboard root (oculto hasta carga) -->
+        <div id="dash-organizador-root" style="display:none;">
+
+          <!-- KPIs -->
+          <div class="dash-kpis">
+            <div class="dash-kpi-card">
+              <div class="dash-kpi-icon azul"><i class="fas fa-trophy"></i></div>
+              <div class="dash-kpi-body">
+                <div class="dash-kpi-val" id="dash-kpi-torneos">—</div>
+                <div class="dash-kpi-lbl">Torneos activos</div>
+              </div>
+            </div>
+            <div class="dash-kpi-card">
+              <div class="dash-kpi-icon verde"><i class="fas fa-users"></i></div>
+              <div class="dash-kpi-body">
+                <div class="dash-kpi-val" id="dash-kpi-equipos">—</div>
+                <div class="dash-kpi-lbl">Equipos inscritos</div>
+              </div>
+            </div>
+            <div class="dash-kpi-card">
+              <div class="dash-kpi-icon purp"><i class="fas fa-user-friends"></i></div>
+              <div class="dash-kpi-body">
+                <div class="dash-kpi-val" id="dash-kpi-jugadores">—</div>
+                <div class="dash-kpi-lbl">Jugadores registrados</div>
+              </div>
+            </div>
+            <div class="dash-kpi-card">
+              <div class="dash-kpi-icon ambar"><i class="fas fa-dollar-sign"></i></div>
+              <div class="dash-kpi-body">
+                <div class="dash-kpi-val" id="dash-kpi-ingresos">—</div>
+                <div class="dash-kpi-lbl">Ingresos este mes</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráfico + Próximos encuentros -->
+          <div class="dash-row">
+            <div class="dash-panel">
+              <div class="dash-panel-title"><i class="fas fa-chart-bar"></i> Ingresos por concepto (mes actual)</div>
+              <div class="dash-chart-wrap">
+                <canvas id="dash-chart-concepto"></canvas>
+              </div>
+            </div>
+            <div class="dash-panel">
+              <div class="dash-panel-title"><i class="fas fa-calendar-check"></i> Próximos encuentros (7 días)</div>
+              <div id="dash-encuentros-lista"></div>
+            </div>
+          </div>
+
+          <!-- Morosidad -->
+          <div class="dash-panel" style="margin-bottom:20px;">
+            <div class="dash-panel-title"><i class="fas fa-exclamation-triangle"></i> Equipos morosos</div>
+            <div id="dash-morosos-lista"></div>
+          </div>
+
+        </div><!-- /dash-organizador-root -->
+
+        <!-- Accesos rápidos -->
+        <div class="dash-shortcuts">
+          <a class="dash-shortcut" href="campeonatos.html"><i class="fas fa-trophy"></i>Campeonatos</a>
+          <a class="dash-shortcut" href="eventos.html"><i class="fas fa-calendar-alt"></i>Categorías</a>
+          <a class="dash-shortcut" href="equipos.html"><i class="fas fa-users"></i>Equipos</a>
+          <a class="dash-shortcut" href="jugadores.html"><i class="fas fa-user-friends"></i>Jugadores</a>
+          <a class="dash-shortcut" href="partidos.html"><i class="fas fa-futbol"></i>Partidos</a>
+          <a class="dash-shortcut" href="planilla.html"><i class="fas fa-clipboard-list"></i>Planillas</a>
+          <a class="dash-shortcut" href="finanzas.html"><i class="fas fa-wallet"></i>Finanzas</a>
+          <a class="dash-shortcut" href="tablas.html"><i class="fas fa-table"></i>Tablas</a>
+          <a id="landing-organizador-shortcut" class="dash-shortcut" href="organizador-portal.html"><i class="fas fa-globe"></i>Mi Landing</a>
+          <a class="dash-shortcut" href="usuarios.html"><i class="fas fa-user-shield"></i>Usuarios</a>
+        </div>
+
+        <!-- Landing card (mantenida para compatibilidad con portal-admin.js) -->
         <div class="config-card" id="landing-organizador-card" style="display:none;">
           <h3><i class="fas fa-globe"></i> Landing pública de organizador</h3>
           <p id="landing-organizador-msg" style="margin-top:6px; color:#475569;"></p>
@@ -66,6 +283,7 @@
             </button>
           </div>
         </div>
+
       </div>
     </main>
   </div>
@@ -75,7 +293,7 @@
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/portal-admin.js"></script>
+  <script src="js/dashboard-organizador.js"></script>
 </body>
 
 </html>
-

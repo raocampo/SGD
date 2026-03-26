@@ -10,6 +10,7 @@ const PLANES = {
     max_equipos_por_categoria: 8,
     max_jugadores_por_equipo: 15,
     permite_carnets: false,
+    precio_mensual: 0,
   },
   free: {
     codigo: "free",
@@ -20,6 +21,7 @@ const PLANES = {
     max_equipos_por_categoria: 32,
     max_jugadores_por_equipo: 15,
     permite_carnets: false,
+    precio_mensual: 0,
   },
   base: {
     codigo: "base",
@@ -30,6 +32,7 @@ const PLANES = {
     max_equipos_por_categoria: 64,
     max_jugadores_por_equipo: 25,
     permite_carnets: false,
+    precio_mensual: 15,
   },
   competencia: {
     codigo: "competencia",
@@ -40,6 +43,7 @@ const PLANES = {
     max_equipos_por_categoria: 128,
     max_jugadores_por_equipo: 40,
     permite_carnets: true,
+    precio_mensual: 35,
   },
   premium: {
     codigo: "premium",
@@ -50,6 +54,7 @@ const PLANES = {
     max_equipos_por_categoria: null,
     max_jugadores_por_equipo: null,
     permite_carnets: true,
+    precio_mensual: 70,
   },
 };
 
@@ -106,6 +111,71 @@ async function obtenerPlanPorCampeonatoId(campeonatoId, client = pool) {
   return obtenerPlan(r.rows[0].plan_codigo);
 }
 
+// ── Configuración de sistema (precios desde BD) ───────────────────────────
+
+async function asegurarTablaConfiguracion(client = pool) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS configuracion_sistema (
+      clave       VARCHAR(120) PRIMARY KEY,
+      valor       TEXT         NOT NULL,
+      tipo        VARCHAR(20)  NOT NULL DEFAULT 'string'
+                    CHECK (tipo IN ('string', 'number', 'boolean', 'json')),
+      descripcion TEXT,
+      updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  const claves = [
+    ["plan_precio_demo",        "0",  "Precio mensual plan Demo (USD)"],
+    ["plan_precio_free",        "0",  "Precio mensual plan Free (USD)"],
+    ["plan_precio_base",        "15", "Precio mensual plan Base (USD)"],
+    ["plan_precio_competencia", "35", "Precio mensual plan Competencia (USD)"],
+    ["plan_precio_premium",     "70", "Precio mensual plan Premium (USD)"],
+  ];
+  for (const [clave, valor, descripcion] of claves) {
+    await client.query(
+      `INSERT INTO configuracion_sistema (clave, valor, tipo, descripcion)
+       VALUES ($1, $2, 'number', $3)
+       ON CONFLICT (clave) DO NOTHING`,
+      [clave, valor, descripcion]
+    );
+  }
+}
+
+async function obtenerPreciosPlanes(client = pool) {
+  try {
+    await asegurarTablaConfiguracion(client);
+    const r = await client.query(
+      `SELECT clave, valor FROM configuracion_sistema
+       WHERE clave LIKE 'plan_precio_%'`
+    );
+    const precios = {};
+    for (const row of r.rows) {
+      const codigo = row.clave.replace("plan_precio_", "");
+      precios[codigo] = Number(row.valor) || 0;
+    }
+    return precios;
+  } catch {
+    // fallback a valores hardcodeados
+    return { demo: 0, free: 0, base: 15, competencia: 35, premium: 70 };
+  }
+}
+
+async function actualizarPrecioPlan(planCodigo, precio, client = pool) {
+  const codigo = normalizarPlanCodigo(planCodigo, null);
+  if (!codigo) throw new Error("Plan inválido");
+  const monto = Number(precio);
+  if (!Number.isFinite(monto) || monto < 0) throw new Error("Precio inválido: debe ser >= 0");
+  await asegurarTablaConfiguracion(client);
+  await client.query(
+    `INSERT INTO configuracion_sistema (clave, valor, tipo, descripcion)
+     VALUES ($1, $2, 'number', $3)
+     ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, updated_at = CURRENT_TIMESTAMP`,
+    [`plan_precio_${codigo}`, String(monto), `Precio mensual plan ${PLANES[codigo]?.nombre || codigo} (USD)`]
+  );
+  return { codigo, precio: monto };
+}
+
 module.exports = {
   PLANES,
   PLANES_PUBLICOS,
@@ -116,4 +186,7 @@ module.exports = {
   obtenerPlan,
   obtenerPlanUsuarioPorId,
   obtenerPlanPorCampeonatoId,
+  asegurarTablaConfiguracion,
+  obtenerPreciosPlanes,
+  actualizarPrecioPlan,
 };

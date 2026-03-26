@@ -3893,17 +3893,20 @@ function construirFilasPlantelPdf(jugadores, stats, maxFilas) {
     { text: "TR", style: "thCenter" },
   ]];
 
+  let item = 0;
   for (let i = 0; i < maxFilas; i += 1) {
     const j = jugadores[i] || null;
-    const jugadorId = Number(j?.id);
-    const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
-    const numero = j ? String(j.numero_camiseta || "") : "";
-    const goles = j ? String(stats.golesPorJugador.get(jugadorId) || "") : "";
-    const ta = j ? String(stats.amarillasPorJugador.get(jugadorId) || "") : "";
-    const tr = j ? String(stats.rojasPorJugador.get(jugadorId) || "") : "";
+    if (!j) continue;
+    item += 1;
+    const jugadorId = Number(j.id);
+    const nombre = `${j.apellido || ""} ${j.nombre || ""}`.trim();
+    const numero = String(j.numero_camiseta || "");
+    const goles = String(stats.golesPorJugador.get(jugadorId) || "");
+    const ta = String(stats.amarillasPorJugador.get(jugadorId) || "");
+    const tr = String(stats.rojasPorJugador.get(jugadorId) || "");
 
     body.push([
-      { text: String(i + 1), style: "tdCenter" },
+      { text: String(item), style: "tdCenter" },
       { text: numero, style: "tdCenter" },
       { text: nombre, style: "tdLeft" },
       { text: goles, style: "tdCenter" },

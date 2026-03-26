@@ -4,19 +4,175 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LT&C (Loja Torneos & Competencias) - Panel de Administración</title>
+  <title>LT&C - Panel de Administración</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
   <link rel="stylesheet" href="css/style.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* ── Dashboard Admin ── */
+    .dash-kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 900px) { .dash-kpis { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .dash-kpis { grid-template-columns: 1fr; } }
+
+    .dash-kpi-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .dash-kpi-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .dash-kpi-icon.azul  { background: #eff6ff; color: #3b82f6; }
+    .dash-kpi-icon.verde { background: #f0fdf4; color: #22c55e; }
+    .dash-kpi-icon.purp  { background: #faf5ff; color: #8b5cf6; }
+    .dash-kpi-icon.ambar { background: #fffbeb; color: #f59e0b; }
+
+    .dash-kpi-body { min-width: 0; }
+    .dash-kpi-val  { font-size: 22px; font-weight: 700; color: #0f172a; line-height: 1.1; }
+    .dash-kpi-lbl  { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+
+    .dash-row {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+      align-items: start;
+    }
+    @media (max-width: 700px) { .dash-row { grid-template-columns: 1fr; } }
+
+    .dash-panel {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 18px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .dash-panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .dash-panel-title i { color: #64748b; }
+    .dash-chart-wrap { height: 200px; position: relative; }
+
+    /* Tabla organizadores */
+    .dash-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .dash-table th { text-align: left; padding: 6px 10px; color: #475569; font-weight: 600; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+    .dash-table td { padding: 7px 10px; border-bottom: 1px solid #f8fafc; color: #1e293b; }
+    .dash-table tr:last-child td { border-bottom: none; }
+    .dash-table tr:hover td { background: #f8fafc; }
+    .text-center { text-align: center; }
+
+    /* Plan badges inline */
+    .badge-plan-min {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+    .badge-plan-demo        { background: #f1f5f9; color: #475569; }
+    .badge-plan-free        { background: #dbeafe; color: #1d4ed8; }
+    .badge-plan-base        { background: #dcfce7; color: #166534; }
+    .badge-plan-competencia { background: #fef9c3; color: #854d0e; }
+    .badge-plan-premium     { background: #ede9fe; color: #6d28d9; }
+
+    .badge-estado-activo   { background: #dcfce7; color: #166534; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+    .badge-estado-inactivo { background: #f1f5f9; color: #64748b; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+
+    /* Métricas globales */
+    .dash-global-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) { .dash-global-row { grid-template-columns: 1fr; } }
+    .dash-global-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .dash-global-val { font-size: 26px; font-weight: 800; color: #0f172a; }
+    .dash-global-lbl { font-size: 11.5px; color: #64748b; margin-top: 3px; }
+
+    .dash-empty-msg { font-size: 12.5px; color: #94a3b8; padding: 16px 0; text-align: center; }
+    .dash-loading { padding: 50px; text-align: center; color: #94a3b8; font-size: 14px; }
+
+    .dash-table-wrap { overflow-x: auto; }
+
+    /* Precios de planes */
+    .dash-precios-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .dash-precio-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .dash-precio-item label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+    }
+    .dash-precio-item .precio-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-bottom: 2px;
+    }
+    .dash-precio-item input[type="number"] {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .dash-precio-item input[type="number"]:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px #bfdbfe;
+    }
+  </style>
 </head>
 
 <body class="app-layout">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">⚽ LT&C</div>
     <nav class="sidebar-nav">
-      <a class="nav-btn active" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+      <a class="nav-btn active" href="admin.html"><i class="fas fa-gauge"></i> Dashboard</a>
       <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
       <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
       <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
@@ -26,6 +182,7 @@
       <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
       <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
       <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="usuarios.html"><i class="fas fa-user-shield"></i> Usuarios</a>
       <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
     </nav>
   </aside>
@@ -33,48 +190,113 @@
   <div class="main-wrapper">
     <header class="top-bar">
       <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
-      <h1>🏠 Panel de Administración</h1>
+      <h1>Panel de Administración</h1>
     </header>
 
-  <main class="main">
-    <section id="inicio" class="section active">
+    <main class="main">
       <div class="container">
-        <div class="welcome-card">
-          <h2>¡Bienvenido al LT&C (Loja Torneos & Competencias)!</h2>
-          <p>
-            Gestiona tus campeonatos, equipos, jugadores y mucho más de forma profesional.
-          </p>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <i class="fas fa-calendar"></i>
-              <h3>Categorías</h3>
-              <span id="stats-eventos">0</span>
+
+        <!-- Loading -->
+        <div class="dash-loading" id="dash-admin-loading"><i class="fas fa-spinner fa-spin"></i> Cargando dashboard...</div>
+
+        <!-- Dashboard root -->
+        <div id="dash-admin-root" style="display:none;">
+
+          <!-- KPIs -->
+          <div class="dash-kpis">
+            <div class="dash-kpi-card">
+              <div class="dash-kpi-icon azul"><i class="fas fa-building"></i></div>
+              <div class="dash-kpi-body">
+                <div class="dash-kpi-val" id="dash-admin-kpi-orgs">—</div>
+                <div class="dash-kpi-lbl">Organizadores activos</div>
+              </div>
             </div>
-            <div class="stat-card">
-              <i class="fas fa-trophy"></i>
-              <h3>Campeonatos</h3>
-              <span id="stats-campeonatos">0</span>
+            <div class="dash-kpi-card">
+              <div class="dash-kpi-icon verde"><i class="fas fa-user-plus"></i></div>
+              <div class="dash-kpi-body">
+                <div class="dash-kpi-val" id="dash-admin-kpi-nuevos">—</div>
+                <div class="dash-kpi-lbl">Nuevos este mes</div>
+              </div>
             </div>
-            <div class="stat-card">
-              <i class="fas fa-users"></i>
-              <h3>Equipos</h3>
-              <span id="stats-equipos">0</span>
+            <div class="dash-kpi-card">
+              <div class="dash-kpi-icon ambar"><i class="fas fa-dollar-sign"></i></div>
+              <div class="dash-kpi-body">
+                <div class="dash-kpi-val" id="dash-admin-kpi-mrr">—</div>
+                <div class="dash-kpi-lbl">MRR estimado</div>
+              </div>
             </div>
-            <div class="stat-card">
-              <i class="fas fa-futbol"></i>
-              <h3>Jugadores</h3>
-              <span id="stats-jugadores">0</span>
-            </div>
-            <div class="stat-card">
-              <i class="fas fa-table"></i>
-              <h3>Partidos</h3>
-              <span id="stats-partidos">0</span>
+            <div class="dash-kpi-card">
+              <div class="dash-kpi-icon purp"><i class="fas fa-star"></i></div>
+              <div class="dash-kpi-body">
+                <div class="dash-kpi-val" id="dash-admin-kpi-plan-popular">—</div>
+                <div class="dash-kpi-lbl">Plan más popular</div>
+              </div>
             </div>
           </div>
-        </div>
+
+          <!-- Gráfico de dona + tabla de orgs -->
+          <div class="dash-row">
+            <div class="dash-panel">
+              <div class="dash-panel-title"><i class="fas fa-chart-pie"></i> Por plan</div>
+              <div class="dash-chart-wrap">
+                <canvas id="dash-admin-chart-planes"></canvas>
+              </div>
+            </div>
+            <div class="dash-panel">
+              <div class="dash-panel-title"><i class="fas fa-list"></i> Organizadores registrados</div>
+              <div class="dash-table-wrap">
+                <table class="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Plan</th>
+                      <th>Estado</th>
+                      <th class="text-center">Torneos</th>
+                      <th>Alta</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dash-admin-orgs-tbody">
+                    <tr><td colspan="5" class="dash-empty-msg">Cargando...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Métricas globales -->
+          <div class="dash-global-row">
+            <div class="dash-global-card">
+              <div class="dash-global-val" id="dash-admin-global-camps">—</div>
+              <div class="dash-global-lbl">Campeonatos totales</div>
+            </div>
+            <div class="dash-global-card">
+              <div class="dash-global-val" id="dash-admin-global-equipos">—</div>
+              <div class="dash-global-lbl">Equipos registrados</div>
+            </div>
+            <div class="dash-global-card">
+              <div class="dash-global-val" id="dash-admin-global-jugadores">—</div>
+              <div class="dash-global-lbl">Jugadores registrados</div>
+            </div>
+          </div>
+
+          <!-- Precios de planes -->
+          <div class="dash-panel" style="margin-bottom:20px;">
+            <div class="dash-panel-title"><i class="fas fa-tag"></i> Precios de planes (USD/mes)</div>
+            <div id="dash-admin-precios-wrap">
+              <p class="dash-empty-msg">Cargando...</p>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; justify-content:flex-end;">
+              <button class="btn btn-primary" id="dash-admin-precios-guardar" type="button" style="display:none;">
+                <i class="fas fa-save"></i> Guardar precios
+              </button>
+              <span id="dash-admin-precios-msg" style="font-size:12.5px; color:#22c55e; align-self:center;"></span>
+            </div>
+          </div>
+
+        </div><!-- /dash-admin-root -->
+
       </div>
-    </section>
-  </main>
+    </main>
   </div>
 
   <div class="nav-overlay" id="nav-overlay"></div>
@@ -82,29 +304,7 @@
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/app.js"></script>
-  <script>
-    if (typeof initStatsAdmin === "function") initStatsAdmin();
-    else document.addEventListener("DOMContentLoaded", () => {
-      const path = window.location.pathname;
-      if (path.endsWith("admin.html") || path.includes("admin.html")) {
-        fetch(`${window.API_BASE_URL || "/api"}/eventos`).then(r=>r.json()).then(d=>{
-          const n = (d.eventos||d||[]).length;
-          const el = document.getElementById("stats-eventos"); if(el) el.textContent = n;
-        }).catch(()=>{});
-        fetch(`${window.API_BASE_URL || "/api"}/campeonatos`).then(r=>r.json()).then(d=>{
-          const n = (d.campeonatos||d||[]).length;
-          const el = document.getElementById("stats-campeonatos"); if(el) el.textContent = n;
-        }).catch(()=>{});
-        fetch(`${window.API_BASE_URL || "/api"}/equipos`).then(r=>r.json()).then(d=>{
-          const n = (d.equipos||d||[]).length;
-          const el = document.getElementById("stats-equipos"); if(el) el.textContent = n;
-        }).catch(()=>{});
-      }
-    });
-  </script>
+  <script src="js/dashboard-admin.js"></script>
 </body>
 
 </html>
-
-
-

@@ -27,5 +27,11 @@ router.get(
   requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
   finanzaController.obtenerMorosidad
 );
+router.get(
+  "/dashboard",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  finanzaController.dashboardOrganizador
+);
 
 module.exports = router;

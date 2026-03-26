@@ -378,6 +378,15 @@ function calcularEdadDesdeFecha(value) {
   return edad >= 0 ? edad : null;
 }
 
+function calcularEdadPorAnio(value) {
+  const partes = descomponerFechaTexto(value);
+  if (!partes) return null;
+  const anioNac = Number.parseInt(partes.year, 10);
+  if (!Number.isFinite(anioNac)) return null;
+  const edad = new Date().getFullYear() - anioNac;
+  return edad >= 0 ? edad : null;
+}
+
 function inferirEdadBaseCategoriaJugador(nombreEvento) {
   const raw = String(nombreEvento ?? "")
     .normalize("NFD")
@@ -422,8 +431,11 @@ function construirMetaEventoCarnet(evento = {}) {
 }
 
 function evaluarEstadoJuvenilJugador(jugador, nombreEvento = obtenerNombreEventoActual(), metaEvento = eventoCarnetMeta) {
-  const edad = calcularEdadDesdeFecha(jugador?.fecha_nacimiento);
   const edadBase = inferirEdadBaseCategoriaJugador(nombreEvento);
+  // Para Sub 30-60 (masters) la elegibilidad es por año de nacimiento solamente.
+  const edad = Number.isFinite(edadBase)
+    ? calcularEdadPorAnio(jugador?.fecha_nacimiento)
+    : calcularEdadDesdeFecha(jugador?.fecha_nacimiento);
   const juvenilActivo = metaEvento?.categoria_juvenil === true;
   const diferenciaMaxima = normalizarDiferenciaJuvenilEvento(metaEvento?.categoria_juvenil_max_diferencia, 1);
   if (!Number.isFinite(edadBase) || !Number.isFinite(edad)) {
