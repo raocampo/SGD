@@ -1444,6 +1444,11 @@
         // Admin: NO mostrar "Portal Deportivo" en sidebar
         document.querySelectorAll('a[href="portal-admin.html"]').forEach((lnk) => lnk.remove());
 
+        // Quitar links CMS planos antes de crear el submenú
+        ["noticias.html","galeria-admin.html","contenido-portal.html","contacto-admin.html","portal-cms.html"].forEach((href) => {
+          sidebarNav.querySelectorAll(`a[href="${href}"]`).forEach((lnk) => lnk.remove());
+        });
+
         // Submenú CMS / CRM colapsable
         if (!sidebarNav.querySelector(".nav-cms-group")) {
           const cmsItems = [
