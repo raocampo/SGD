@@ -128,8 +128,45 @@
       html[data-auth-pending="true"] body {
         visibility: hidden;
       }
+      #sgd-auth-loader {
+        position: fixed;
+        inset: 0;
+        background: #f8fafc;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 1rem;
+        font-family: sans-serif;
+        visibility: visible;
+      }
+      #sgd-auth-loader-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #dbeafe;
+        border-top-color: #2563eb;
+        border-radius: 50%;
+        animation: sgd-spin 0.7s linear infinite;
+      }
+      #sgd-auth-loader-text {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 500;
+      }
+      @keyframes sgd-spin {
+        to { transform: rotate(360deg); }
+      }
     `;
     document.head.appendChild(style);
+  }
+
+  function ensureAuthLoader() {
+    if (document.getElementById("sgd-auth-loader")) return;
+    const div = document.createElement("div");
+    div.id = "sgd-auth-loader";
+    div.innerHTML = `<div id="sgd-auth-loader-spinner"></div><div id="sgd-auth-loader-text">Verificando sesión…</div>`;
+    document.body.appendChild(div);
   }
 
   function setAuthPendingState(enabled) {
@@ -137,9 +174,12 @@
     if (enabled) {
       ensureAuthPendingStyle();
       document.documentElement.setAttribute("data-auth-pending", "true");
+      if (document.body) ensureAuthLoader();
       return;
     }
     document.documentElement.removeAttribute("data-auth-pending");
+    const loader = document.getElementById("sgd-auth-loader");
+    if (loader) loader.remove();
   }
 
   setAuthPendingState(!PUBLIC_PAGES.has(CURRENT_PAGE));

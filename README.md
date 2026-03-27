@@ -577,9 +577,9 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
    - vista publica de transmision embebida en `portal.html` (tab "En Vivo" por categoria/campeonato),
    - senalizacion WebRTC via Socket.io en el backend (servidor de senalizacion ligero),
    - grabacion opcional del stream en disco/CDN para reproduccion posterior.
-14. Dashboard de estadisticas (PROXIMO A IMPLEMENTAR — ver §11.2):
-   - Dashboard Organizador: reemplaza la pagina de inicio del organizador (`portal-admin.html`) con KPIs financieros, grafico de ingresos por concepto y proximos encuentros.
-   - Dashboard Administrador: reemplaza `admin.html` con vision comercial de lo que la plataforma ha vendido a los organizadores (organizadores por plan, MRR, nuevos este mes).
+14. Dashboard de estadisticas (IMPLEMENTADO — ver §11.2):
+   - Dashboard Organizador (`portal-admin.html`): KPIs financieros, grafico de ingresos por concepto (Chart.js), proximos encuentros y equipos morosos.
+   - Dashboard Administrador (`admin.html`): vision comercial — organizadores por plan, MRR estimado, metricas globales y tabla de organizadores.
 
 ## 11.2. Plan de Implementacion — Dashboard de Estadisticas
 
