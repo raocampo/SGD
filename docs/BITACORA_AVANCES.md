@@ -1,6 +1,28 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-26 (sesión 13)
+Ultima actualizacion: 2026-03-27 (sesión 14)
+
+## Avances recientes (2026-03-27 — sesión 14)
+
+### Alineación de migraciones entre local y Render
+
+- Se revisó el estado documental vs. el estado real de las bases local y Render.
+- Verificación realizada sobre migraciones recientes:
+  - `051_roles_operador_sistema.sql`
+  - `052_configuracion_sistema.sql`
+  - `053_formas_pago.sql`
+  - `054_formas_pago_paypal_tarjeta.sql`
+  - `055_plan_estado_pendiente_pago.sql`
+  - `056_gastos_operativos.sql`
+- Resultado:
+  - `051`, `052`, `053` y `054` ya estaban aplicadas en local y Render.
+  - `055` faltaba en local y quedó aplicada.
+  - `056` faltaba en local y Render y quedó aplicada en ambos entornos.
+- Verificación posterior:
+  - `usuarios_plan_estado_check` ya acepta `pendiente_pago` en local y Render.
+  - la tabla `gastos_operativos` ya existe en local y Render.
+- Se identificó además un desajuste documental previo:
+  - `050_eventos_juvenil_cupos_y_carnet_edad.sql` ya estaba aplicada también en Render y no solo en local.
 
 ## Avances recientes (2026-03-26 — sesión 13)
 
@@ -2219,3 +2241,4 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - `partidos: 414`
   - `usuarios: 18`
 - El `smoke` del backend pasó `9/9` contra `http://localhost:5000`.
+

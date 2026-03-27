@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-03-25 (sesión 11)
+Ultima actualizacion: 2026-03-27 (sesión 14)
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -61,10 +61,13 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - propagacion de ganador/perdedor en slots de eliminatoria.
 - la migracion `045_jugadores_evento_categoria.sql` ya fue aplicada en BD local y Render para separar la nomina por categoria.
 - la migracion `046_jugadores_cedula_por_evento.sql` ya fue aplicada en BD local y Render para reemplazar la unicidad global de cédula por una unicidad `cedidentidad + evento_id`.
-- la migracion `050_eventos_juvenil_cupos_y_carnet_edad.sql` ya fue aplicada en BD local para habilitar:
+- la migracion `050_eventos_juvenil_cupos_y_carnet_edad.sql` ya fue aplicada en BD local y Render para habilitar:
   - cupos juveniles por categoría,
   - diferencia máxima juvenil,
   - impresión de edad en carné.
+- las migraciones `051_roles_operador_sistema.sql`, `052_configuracion_sistema.sql`, `053_formas_pago.sql` y `054_formas_pago_paypal_tarjeta.sql` ya están alineadas en BD local y Render.
+- la migracion `055_plan_estado_pendiente_pago.sql` ya fue aplicada en BD local y Render para permitir el estado `pendiente_pago` en usuarios.
+- la migracion `056_gastos_operativos.sql` ya fue aplicada en BD local y Render para habilitar el registro de gastos operativos del organizador.
 - pendiente operativo: copiar el contenido historico de `backend/uploads/` al disco persistente antes de validar carga completa de imagenes/documentos en produccion.
 
 ## Estado Detallado del Alcance Actual
@@ -447,3 +450,4 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Propuesta funcional original: `docs/propuestaDesarrolloSGD.md`
 - Plan mobile web: `docs/PLAN_MOBILE_LT_C.md`
 - Plan CMS del portal publico: `docs/PLAN_CMS_PORTAL_PUBLICO.md`
+
