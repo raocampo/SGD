@@ -152,10 +152,7 @@
       // Plan pagado: cuenta creada pero sin sesión hasta confirmar pago
       if (data?.pendiente_pago) {
         const planNombre = data.plan_nombre || PLANES_LABEL[planSeleccionado] || planSeleccionado;
-        mostrarNotificacion(`Cuenta registrada. Confirma el pago para activar el acceso.`, "success");
-        setTimeout(() => {
-          window.location.href = `login.html?pendiente_pago=1&plan=${encodeURIComponent(planNombre)}`;
-        }, 1800);
+        mostrarModalPendienteRegistro(planNombre);
         return;
       }
 
@@ -196,6 +193,35 @@
         actualizarVisibilidadOrganizacion();
         validarFormularioRegistro();
       });
+    });
+  }
+
+  function mostrarModalPendienteRegistro(planNombre) {
+    const modal = document.getElementById("reg-pendiente-modal");
+    if (!modal) return;
+
+    const planEl = document.getElementById("reg-pendiente-plan");
+    if (planEl) planEl.textContent = planNombre;
+
+    // Cargar número WhatsApp desde la API
+    const wspBtn = document.getElementById("reg-pendiente-wsp");
+    fetch(`${window.ApiClient?.baseUrl || "/api"}/auth/formas-pago`)
+      .then((r) => r.json())
+      .then((data) => {
+        const wsp = data?.datos?.whatsapp_numero || "";
+        if (wspBtn && wsp) {
+          const msg = encodeURIComponent(`Hola LT&C, me registré con ${planNombre} y necesito confirmar mi pago para activar mi cuenta.`);
+          wspBtn.href = `https://wa.me/${wsp.replace(/\D/g, "")}?text=${msg}`;
+        } else if (wspBtn) {
+          wspBtn.style.display = "none";
+        }
+      })
+      .catch(() => { if (wspBtn) wspBtn.style.display = "none"; });
+
+    modal.style.display = "flex";
+
+    document.getElementById("reg-pendiente-login")?.addEventListener("click", () => {
+      window.location.href = `login.html?pendiente_pago=1&plan=${encodeURIComponent(planNombre)}`;
     });
   }
 

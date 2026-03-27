@@ -135,6 +135,37 @@
     </section>
   </main>
 
+  <!-- Modal: Cuenta pendiente de pago -->
+  <div id="reg-pendiente-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,.6); display:none; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px);" role="dialog" aria-modal="true">
+    <div style="background:#fff; border-radius:18px; width:100%; max-width:460px; box-shadow:0 24px 64px rgba(0,0,0,.28); padding:36px 32px 28px; text-align:center; animation: fadeInUp .3s ease;">
+      <!-- Ícono -->
+      <div style="width:72px; height:72px; border-radius:50%; background:#fff1f1; border:2px solid #fca5a5; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:32px; color:#dc2626;">
+        <i class="fas fa-clock"></i>
+      </div>
+      <!-- Título -->
+      <h2 style="font-size:20px; font-weight:800; color:#0f172a; margin:0 0 10px;">¡Cuenta creada exitosamente!</h2>
+      <!-- Plan badge -->
+      <div id="reg-pendiente-plan" style="display:inline-block; background:#fee2e2; border:1.5px solid #fca5a5; border-radius:8px; padding:6px 18px; font-size:13px; font-weight:700; color:#dc2626; margin-bottom:16px;"></div>
+      <!-- Texto -->
+      <p style="font-size:14px; color:#475569; line-height:1.7; margin-bottom:24px;">
+        Tu cuenta está registrada pero el acceso al sistema requiere que
+        <strong style="color:#dc2626;">confirmes tu pago</strong> con el equipo de LT&amp;C.<br><br>
+        Una vez verificado, tu cuenta será activada y podrás ingresar normalmente.
+      </p>
+      <!-- Acciones -->
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <a id="reg-pendiente-wsp" href="#" target="_blank" rel="noopener noreferrer"
+           style="display:flex; align-items:center; justify-content:center; gap:9px; background:#25d366; color:#fff; border:none; border-radius:10px; padding:13px 20px; font-size:14px; font-weight:700; text-decoration:none; transition:background .15s;">
+          <i class="fab fa-whatsapp" style="font-size:18px;"></i> Confirmar pago por WhatsApp
+        </a>
+        <button id="reg-pendiente-login"
+           style="background:#2c3e50; color:#fff; border:none; border-radius:10px; padding:13px 20px; font-size:14px; font-weight:700; cursor:pointer; transition:background .15s;">
+          <i class="fas fa-sign-in-alt"></i> Ir a iniciar sesión
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/register.js"></script>
