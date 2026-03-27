@@ -332,10 +332,11 @@
                       <th>Estado</th>
                       <th class="text-center">Torneos</th>
                       <th>Alta</th>
+                      <th class="text-center">Acción</th>
                     </tr>
                   </thead>
                   <tbody id="dash-admin-orgs-tbody">
-                    <tr><td colspan="5" class="dash-empty-msg">Cargando...</td></tr>
+                    <tr><td colspan="6" class="dash-empty-msg">Cargando...</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -405,6 +406,53 @@
   </div>
 
   <div class="nav-overlay" id="nav-overlay"></div>
+
+  <!-- Modal: Gestión de estado de organizador -->
+  <div id="modal-org-estado" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,.55); align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(3px);" role="dialog" aria-modal="true">
+    <div style="background:#fff; border-radius:14px; width:100%; max-width:420px; box-shadow:0 20px 56px rgba(0,0,0,.22); padding:28px 28px 22px;">
+      <h3 style="font-size:16px; font-weight:800; color:#2c3e50; margin:0 0 4px;" id="modal-org-nombre">—</h3>
+      <p style="font-size:12px; color:#7f8c8d; margin:0 0 20px;" id="modal-org-email">—</p>
+
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px; font-weight:700; color:#2c3e50; display:block; margin-bottom:6px;">Plan</label>
+        <select id="modal-org-plan" style="width:100%; padding:9px 11px; border:1.5px solid #dde3ec; border-radius:8px; font-size:13px; color:#2c3e50; background:#fff;">
+          <option value="demo">Demo</option>
+          <option value="free">Free</option>
+          <option value="base">Base</option>
+          <option value="competencia">Competencia</option>
+          <option value="premium">Premium</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:22px;">
+        <label style="font-size:12px; font-weight:700; color:#2c3e50; display:block; margin-bottom:6px;">Estado de cuenta</label>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="display:flex; align-items:center; gap:10px; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:9px; cursor:pointer;">
+            <input type="radio" name="modal-org-estado-radio" value="activo" style="accent-color:#27ae60;" />
+            <span style="font-size:13px; font-weight:600; color:#1e8449;"><i class="fas fa-check-circle"></i> Activo — puede ingresar al sistema</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:9px; cursor:pointer;">
+            <input type="radio" name="modal-org-estado-radio" value="pendiente_pago" style="accent-color:#dc2626;" />
+            <span style="font-size:13px; font-weight:600; color:#dc2626;"><i class="fas fa-clock"></i> Pago pendiente — bloqueado hasta confirmar pago</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:9px; cursor:pointer;">
+            <input type="radio" name="modal-org-estado-radio" value="suspendido" style="accent-color:#7f8c8d;" />
+            <span style="font-size:13px; font-weight:600; color:#7f8c8d;"><i class="fas fa-ban"></i> Suspendido — cuenta desactivada</span>
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button id="modal-org-guardar" style="flex:1; background:#2c3e50; color:#fff; border:none; border-radius:9px; padding:12px; font-size:14px; font-weight:700; cursor:pointer;">
+          <i class="fas fa-save"></i> Guardar cambios
+        </button>
+        <button id="modal-org-cancelar" style="flex:1; background:none; border:1.5px solid #dde3ec; border-radius:9px; padding:12px; font-size:14px; color:#64748b; cursor:pointer;">
+          Cancelar
+        </button>
+      </div>
+      <p id="modal-org-msg" style="font-size:12px; text-align:center; margin-top:10px; min-height:16px;"></p>
+    </div>
+  </div>
 
   <!-- NO se incluye app.js: esta página no usa sus modales -->
   <script src="js/core.js"></script>

@@ -16,6 +16,7 @@
   };
 
   let chartInstance = null;
+  let _orgData = []; // caché local de organizadores para el modal
 
   function fmt(n) {
     return Number(n || 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -97,6 +98,8 @@
       return;
     }
 
+    _orgData = organizadores;
+
     tbody.innerHTML = organizadores
       .map((o) => {
         const planLabel = PLAN_LABEL[o.plan_codigo] || o.plan_codigo || "free";
@@ -107,14 +110,25 @@
         const torneos = Number(o.torneos_activos || 0);
         return `
         <tr>
-          <td>${o.nombre || "—"}</td>
+          <td>${o.nombre || "—"}<br><small style="color:#94a3b8;font-size:11px;">${o.email || ""}</small></td>
           <td><span class="badge-plan-min badge-plan-${o.plan_codigo || 'free'}">${planLabel}</span></td>
           <td>${estado}</td>
           <td class="text-center">${torneos}</td>
           <td>${formatearFecha(o.created_at)}</td>
+          <td class="text-center">
+            <button class="btn-gestionar-org" data-id="${o.id}"
+              style="background:#3498db; color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer;">
+              <i class="fas fa-edit"></i> Gestionar
+            </button>
+          </td>
         </tr>`;
       })
       .join("");
+
+    // Enlazar botones de gestión
+    tbody.querySelectorAll(".btn-gestionar-org").forEach((btn) => {
+      btn.addEventListener("click", () => abrirModalOrg(Number(btn.dataset.id)));
+    });
   }
 
   function renderPreciosPlanes(planes) {
@@ -371,6 +385,69 @@
       console.error("dashboardAdmin:", err);
       const loading = document.getElementById("dash-admin-loading");
       if (loading) loading.textContent = "No se pudo cargar el dashboard.";
+    }
+  }
+
+  function abrirModalOrg(id) {
+    const org = _orgData.find((o) => o.id === id);
+    if (!org) return;
+
+    const modal = document.getElementById("modal-org-estado");
+    if (!modal) return;
+
+    document.getElementById("modal-org-nombre").textContent = org.nombre || "—";
+    document.getElementById("modal-org-email").textContent = org.email || "";
+    document.getElementById("modal-org-plan").value = org.plan_codigo || "free";
+
+    const planEstado = String(org.plan_estado || "activo").toLowerCase();
+    const radio = document.querySelector(`input[name="modal-org-estado-radio"][value="${planEstado}"]`);
+    if (radio) radio.checked = true;
+
+    const msg = document.getElementById("modal-org-msg");
+    if (msg) msg.textContent = "";
+
+    modal.style.display = "flex";
+    modal._orgId = id;
+
+    document.getElementById("modal-org-cancelar").onclick = () => { modal.style.display = "none"; };
+    modal.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
+    document.getElementById("modal-org-guardar").onclick = () => guardarEstadoOrg(modal, org);
+  }
+
+  async function guardarEstadoOrg(modal, org) {
+    const planCodigo = document.getElementById("modal-org-plan").value;
+    const planEstado = document.querySelector('input[name="modal-org-estado-radio"]:checked')?.value;
+    const msg = document.getElementById("modal-org-msg");
+    const btn = document.getElementById("modal-org-guardar");
+
+    if (!planEstado) return;
+
+    const activo = planEstado !== "suspendido";
+
+    try {
+      if (btn) btn.disabled = true;
+      if (msg) { msg.style.color = "#64748b"; msg.textContent = "Guardando..."; }
+
+      await window.ApiClient.put(`/usuarios/${org.id}`, {
+        plan_codigo: planCodigo,
+        plan_estado: planEstado,
+        activo,
+      });
+
+      if (msg) { msg.style.color = "#27ae60"; msg.textContent = "¡Cambios guardados!"; }
+
+      // Actualizar caché local y re-renderizar fila
+      const idx = _orgData.findIndex((o) => o.id === org.id);
+      if (idx !== -1) {
+        _orgData[idx] = { ..._orgData[idx], plan_codigo: planCodigo, plan_estado: planEstado, activo };
+        renderTablaOrgs(_orgData);
+      }
+
+      setTimeout(() => { modal.style.display = "none"; }, 900);
+    } catch (err) {
+      if (msg) { msg.style.color = "#dc2626"; msg.textContent = err.message || "Error al guardar"; }
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
