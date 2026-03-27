@@ -148,6 +148,17 @@
     try {
       if (btn) btn.disabled = true;
       const data = await AuthAPI.registerPublic(validacion.payload);
+
+      // Plan pagado: cuenta creada pero sin sesión hasta confirmar pago
+      if (data?.pendiente_pago) {
+        const planNombre = data.plan_nombre || PLANES_LABEL[planSeleccionado] || planSeleccionado;
+        mostrarNotificacion(`Cuenta registrada. Confirma el pago para activar el acceso.`, "success");
+        setTimeout(() => {
+          window.location.href = `login.html?pendiente_pago=1&plan=${encodeURIComponent(planNombre)}`;
+        }, 1800);
+        return;
+      }
+
       const token = data?.token || "";
       const usuario = data?.usuario || null;
       if (!token || !usuario) throw new Error("No se pudo crear la cuenta");

@@ -259,6 +259,18 @@
     }
   }
 
+  function mostrarModalSiPendientePago() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("pendiente_pago") !== "1") return;
+    const planNombre = decodeURIComponent(params.get("plan") || "Plan de pago");
+    // Limpiar params de la URL sin recargar
+    const url = new URL(window.location.href);
+    url.searchParams.delete("pendiente_pago");
+    url.searchParams.delete("plan");
+    window.history.replaceState({}, "", url.toString());
+    mostrarModalPendientePago(planNombre);
+  }
+
   document.addEventListener("DOMContentLoaded", async () => {
     if (!window.location.pathname.endsWith("login.html")) return;
     document.getElementById("login-form")?.addEventListener("submit", onSubmitLogin);
@@ -269,6 +281,7 @@
 
     mostrarResetSiExisteToken();
     mostrarAvisoSalidaSesion();
+    mostrarModalSiPendientePago();
     await verificarRegistroInicial();
   });
 })();

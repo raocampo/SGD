@@ -190,11 +190,6 @@ const authController = {
 
       const user = await UsuarioAuth.obtenerPorId(creado.id);
       const limpio = UsuarioAuth.limpiarUsuario(user || creado);
-      const session = await crearSession(limpio, {
-        client_type: req.body?.client_type || "web",
-        user_agent: req.headers["user-agent"] || null,
-        ip_address: req.ip,
-      });
 
       // Enviar emails en background (sin bloquear respuesta al usuario)
       Promise.allSettled([
@@ -212,6 +207,22 @@ const authController = {
           organizacion: rolSolicitado === "organizador" ? organizacionNombre : null,
         }),
       ]).catch(() => {});
+
+      // Plan pagado: NO crear sesión — el acceso se activa cuando el admin confirme el pago
+      if (planEstadoInicial === "pendiente_pago") {
+        return res.status(201).json({
+          ok: true,
+          pendiente_pago: true,
+          plan_nombre: plan?.nombre || planCodigo,
+          mensaje: `Cuenta registrada en ${plan?.nombre || planCodigo}. El acceso se activará una vez confirmado el pago.`,
+        });
+      }
+
+      const session = await crearSession(limpio, {
+        client_type: req.body?.client_type || "web",
+        user_agent: req.headers["user-agent"] || null,
+        ip_address: req.ip,
+      });
 
       return res.status(201).json({
         ...session,
