@@ -233,7 +233,8 @@
     const rol = String(user.rol || "").toLowerCase();
     if (rol === "operador") return "portal-cms.html";
     if (rol === "operador_sistema") return "portal-operador.html";
-    if (rol === "administrador" || rol === "organizador") return "portal-admin.html";
+    if (rol === "administrador") return "admin.html";
+    if (rol === "organizador") return "portal-admin.html";
     if (rol === "tecnico" || rol === "dirigente" || rol === "jugador") return "portal-tecnico.html";
     return "login.html";
   }
@@ -241,8 +242,10 @@
   function canAccessPage(user, page) {
     if (PUBLIC_PAGES.has(page)) return true;
     if (!user) return false;
+    const rol = String(user?.rol || "").toLowerCase();
+    // portal-admin.html es exclusivo de organizadores — admin gestiona desde admin.html
+    if (page === "portal-admin.html" && rol === "administrador") return false;
     if (CMS_PAGES.has(page)) {
-      const rol = String(user?.rol || "").toLowerCase();
       return rol === "administrador" || rol === "operador";
     }
     if (esOperadorPortal(user)) return OPERADOR_ALLOWED_PAGES.has(page);
