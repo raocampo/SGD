@@ -149,13 +149,16 @@
     if (!rolSelect) return;
 
     if (esOrganizadorActual()) {
-      rolSelect.innerHTML = '<option value="dirigente">Dirigente</option>';
+      rolSelect.innerHTML = `
+        <option value="dirigente">Dirigente</option>
+        <option value="tecnico">Técnico</option>
+      `;
       rolSelect.value = "dirigente";
-      rolSelect.disabled = true;
+      rolSelect.disabled = false;
       if (btnCancelar) btnCancelar.style.display = "none";
       if (descripcion) {
         descripcion.textContent =
-          "Como organizador puedes crear y eliminar usuarios dirigentes de tus campeonatos. No puedes editar usuarios.";
+          "Como organizador puedes crear y eliminar dirigentes y técnicos de tus campeonatos. No puedes editar usuarios existentes.";
       }
       const planGroup = document.getElementById("usr-plan-group");
       const planEstadoGroup = document.getElementById("usr-plan-estado-group");
@@ -206,12 +209,24 @@
     }
 
     if (title) {
-      title.textContent = organizador ? "Nuevo dirigente" : "Nuevo usuario";
+      if (organizador) {
+        const rolSel = document.getElementById("usr-rol");
+        const rolVal = String(rolSel?.value || "dirigente");
+        title.textContent = rolVal === "tecnico" ? "Nuevo técnico" : "Nuevo dirigente";
+      } else {
+        title.textContent = "Nuevo usuario";
+      }
     }
     if (btnGuardar) {
-      btnGuardar.innerHTML = organizador
-        ? '<i class="fas fa-plus"></i> Crear dirigente'
-        : '<i class="fas fa-plus"></i> Crear usuario';
+      if (organizador) {
+        const rolSel = document.getElementById("usr-rol");
+        const rolVal = String(rolSel?.value || "dirigente");
+        btnGuardar.innerHTML = rolVal === "tecnico"
+          ? '<i class="fas fa-plus"></i> Crear técnico'
+          : '<i class="fas fa-plus"></i> Crear dirigente';
+      } else {
+        btnGuardar.innerHTML = '<i class="fas fa-plus"></i> Crear usuario';
+      }
       btnGuardar.style.display = "inline-flex";
       btnGuardar.disabled = false;
     }
@@ -482,7 +497,10 @@
     const username = normalizarUsername(document.getElementById("usr-username")?.value || "");
     const password = String(document.getElementById("usr-password")?.value || "");
     const rolCampo = String(document.getElementById("usr-rol")?.value || "tecnico").trim();
-    const rol = esOrganizadorActual() ? "dirigente" : rolCampo;
+    const ROL_PERMITIDOS_ORG = new Set(["dirigente", "tecnico"]);
+    const rol = esOrganizadorActual()
+      ? (ROL_PERMITIDOS_ORG.has(rolCampo) ? rolCampo : "dirigente")
+      : rolCampo;
     const equipo = document.getElementById("usr-equipo")?.value || "";
     const activo = String(document.getElementById("usr-activo")?.value || "true") === "true";
     const planCodigo = String(document.getElementById("usr-plan")?.value || "free")
@@ -521,7 +539,7 @@
       return;
     }
     if (esOrganizadorActual() && !equipo) {
-      mostrarNotificacion("Debes seleccionar un equipo para el dirigente", "warning");
+      mostrarNotificacion("Debes seleccionar un equipo para el dirigente o técnico", "warning");
       return;
     }
     if (esAdminActual() && rol === "organizador" && organizacionNombre.length < 3) {
@@ -704,7 +722,10 @@
     actualizarTituloFormulario();
 
     document.getElementById("usuarios-form")?.addEventListener("submit", guardarUsuario);
-    document.getElementById("usr-rol")?.addEventListener("change", actualizarCamposPlan);
+    document.getElementById("usr-rol")?.addEventListener("change", () => {
+      actualizarCamposPlan();
+      actualizarTituloFormulario();
+    });
     document.getElementById("btn-usuarios-cancelar")?.addEventListener("click", limpiarFormulario);
     document.getElementById("btn-usuarios-recargar")?.addEventListener("click", async () => {
       organizadorPortalCache.clear();

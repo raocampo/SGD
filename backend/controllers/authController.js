@@ -465,13 +465,15 @@ const authController = {
 
       if (isOrganizador(req.user)) {
         if (!Number.isFinite(equipoId) || equipoId <= 0) {
-          return res.status(400).json({ error: "equipo_id es obligatorio para crear dirigente" });
+          return res.status(400).json({ error: "equipo_id es obligatorio para crear dirigente o técnico" });
         }
         const equiposPermitidos = await obtenerEquipoIdsOrganizador(req.user);
         if (!equiposPermitidos.length || !equiposPermitidos.includes(equipoId)) {
           return res.status(403).json({ error: "No autorizado para crear usuarios en ese equipo" });
         }
-        body.rol = "dirigente";
+        const ROLES_ORG = new Set(["dirigente", "tecnico"]);
+        const rolSolicitado = String(body?.rol || "dirigente").trim().toLowerCase();
+        body.rol = ROLES_ORG.has(rolSolicitado) ? rolSolicitado : "dirigente";
         body.plan_codigo = req.user?.plan_codigo || "free";
         body.plan_estado = "activo";
         body.debe_cambiar_password = true;
@@ -597,8 +599,9 @@ const authController = {
         const objetivo = await UsuarioAuth.obtenerPorId(usuarioId);
         const limpio = UsuarioAuth.limpiarUsuario(objetivo);
         if (!limpio) return res.status(404).json({ error: "Usuario no encontrado" });
-        if (String(limpio.rol || "").toLowerCase() !== "dirigente") {
-          return res.status(403).json({ error: "Solo puedes eliminar usuarios dirigentes" });
+        const rolObjetivo = String(limpio.rol || "").toLowerCase();
+        if (rolObjetivo !== "dirigente" && rolObjetivo !== "tecnico") {
+          return res.status(403).json({ error: "Solo puedes eliminar usuarios dirigentes o técnicos" });
         }
 
         const equiposPermitidos = await obtenerEquipoIdsOrganizador(req.user);
