@@ -67,9 +67,10 @@ async function listarUsuariosVisiblesPorOrganizador(user) {
   const equiposPermitidos = await obtenerEquipoIdsOrganizador(user);
   if (!equiposPermitidos?.length) return [];
 
+  const ROLES_VISIBLES = new Set(["dirigente", "tecnico"]);
   const usuarios = await UsuarioAuth.listar();
   return usuarios.filter((u) => {
-    if (String(u.rol || "").toLowerCase() !== "dirigente") return false;
+    if (!ROLES_VISIBLES.has(String(u.rol || "").toLowerCase())) return false;
     if (!Array.isArray(u.equipo_ids) || !u.equipo_ids.length) return false;
     return estaContenido(u.equipo_ids, equiposPermitidos);
   });
