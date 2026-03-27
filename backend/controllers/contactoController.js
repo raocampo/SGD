@@ -1,4 +1,5 @@
 const ContactoMensaje = require("../models/ContactoMensaje");
+const { enviarEmailNotificacionContacto } = require("../services/emailService");
 
 const CONTACTO_RATE_WINDOW_MS = 10 * 60 * 1000;
 const CONTACTO_RATE_MAX = 3;
@@ -53,6 +54,15 @@ const contactoController = {
         ...(req.body || {}),
         origen: "portal_publico",
       });
+
+      // Notificar al admin en background
+      enviarEmailNotificacionContacto({
+        nombre:   req.body?.nombre,
+        telefono: req.body?.telefono,
+        email:    req.body?.email,
+        mensaje:  req.body?.mensaje,
+      }).catch(() => {});
+
       return res.status(201).json({
         ok: true,
         mensaje: "Mensaje enviado correctamente",

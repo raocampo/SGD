@@ -215,9 +215,45 @@ async function enviarEmailNotificacionAdminNuevoRegistro({ nombre, email, rol, p
   }
 }
 
+// ── Notificación al admin: formulario de contacto ────────────────────────────
+
+async function enviarEmailNotificacionContacto({ nombre, telefono, email, mensaje }) {
+  const adminEmail = String(
+    process.env.ADMIN_EMAIL || process.env.SMTP_USER || ""
+  ).trim();
+  if (!adminEmail) return { sent: false, reason: "sin_admin_email" };
+
+  const ahora = new Date().toLocaleString("es-EC", { timeZone: "America/Guayaquil" });
+
+  const text = `Nuevo mensaje de contacto — LT&C\n\nNombre: ${nombre || "—"}\nTeléfono: ${telefono || "—"}\nCorreo: ${email || "—"}\nFecha: ${ahora}\n\nMensaje:\n${mensaje || "—"}`;
+
+  const html = wrapHtml(`
+    <h2>Nuevo mensaje de contacto</h2>
+    <div class="data-row"><span class="data-lbl">Nombre:</span><span>${nombre || "—"}</span></div>
+    <div class="data-row"><span class="data-lbl">Teléfono:</span><span>${telefono || "—"}</span></div>
+    <div class="data-row"><span class="data-lbl">Correo:</span><span>${email || "—"}</span></div>
+    <div class="data-row"><span class="data-lbl">Fecha:</span><span>${ahora}</span></div>
+    <p style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:13.5px;margin-top:12px;white-space:pre-wrap;">${String(mensaje || "—").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+    <div class="footer">LT&C — notificación automática del formulario de contacto</div>
+  `);
+
+  try {
+    return await enviarEmail({
+      to: adminEmail,
+      subject: `Contacto LT&C — ${nombre || email || "sin nombre"}`,
+      text,
+      html,
+    });
+  } catch (err) {
+    console.warn("[email] Error enviando notificación de contacto:", err.message);
+    return { sent: false, reason: err.message };
+  }
+}
+
 module.exports = {
   enviarEmailRecuperacionPassword,
   enviarEmailBienvenida,
   enviarEmailNotificacionAdminNuevoRegistro,
+  enviarEmailNotificacionContacto,
   construirUrlReset,
 };
