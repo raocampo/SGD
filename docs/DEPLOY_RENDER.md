@@ -40,6 +40,7 @@ CORS_ORIGINS=https://tu-servicio.onrender.com,https://www.tudominio.com
 AUTH_ADMIN_EMAIL=
 AUTH_ADMIN_PASSWORD=
 AUTH_ADMIN_NOMBRE=Administrador SGD
+FRONTEND_URL=https://tu-servicio.onrender.com/frontend
 SMTP_HOST=
 SMTP_PORT=587
 SMTP_USER=
@@ -47,7 +48,10 @@ SMTP_PASS=
 SMTP_SECURE=false
 SMTP_IGNORE_TLS=false
 MAIL_FROM=
+ADMIN_EMAIL=correo-donde-llegan-alertas@tudominio.com
 ```
+
+> **Nota emails:** `ADMIN_EMAIL` es la dirección que recibe alertas del sistema (nuevo registro con plan pagado, mensajes de contacto, etc.). Si se omite se usa `SMTP_USER`. `FRONTEND_URL` se usa en los emails de bienvenida para generar el enlace de login.
 
 ## Opcion B: Render + PostgreSQL de Render
 Si creas una base administrada en Render:
