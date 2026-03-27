@@ -38,6 +38,25 @@ Ultima actualizacion: 2026-03-26 (sesión 13)
   - `#lista-equipos` y `#jugadores-lista`: forzados a 1 columna en ≤ 520px.
   - `form-grid` de selección en eventos/equipos/usuarios: 1 columna en ≤ 768px.
 
+### Spinner de carga durante verificación de sesión (UX)
+- Reemplaza el `visibility: hidden` en body (pantalla en blanco) por un overlay con spinner animado y texto "Verificando sesión…" mientras se valida la sesión.
+- El overlay usa `visibility: visible` para escapar del heredado `visibility: hidden` del body.
+- Se elimina al completar la verificación y el sidebar + topbar están listos.
+- Archivos modificados: `frontend/js/core.js`.
+
+### Portal de organizador — alta de técnicos
+- Organizador ahora puede crear usuarios con rol `técnico` además de `dirigente` desde `usuarios.html`.
+- Backend `authController.crearUsuario`: acepta `rol='tecnico'` del organizador (antes forzaba `dirigente`).
+- Backend `authController.eliminarUsuario`: permite eliminar tanto `dirigente` como `tecnico` para organizadores.
+- Backend `listarUsuariosVisiblesPorOrganizador`: ahora incluye `tecnico` además de `dirigente`.
+- Frontend `usuarios.js`: selector de rol con dos opciones, título y botón dinámicos según rol seleccionado.
+- Archivos modificados: `backend/controllers/authController.js`, `frontend/js/usuarios.js`.
+
+### Documentación de despliegue actualizada
+- `docs/DEPLOY_RENDER.md`: añadidas variables `ADMIN_EMAIL` y `FRONTEND_URL` con nota explicativa.
+- `backend/.env.example`: añadidas mismas variables con comentarios descriptivos.
+- README §11 actualizado: dashboard de estadísticas marcado como IMPLEMENTADO.
+
 ---
 
 ## Avances recientes (2026-03-25 — sesión 12)
