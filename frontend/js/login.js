@@ -116,19 +116,20 @@
 
     if (planTxt) planTxt.textContent = planNombre;
 
-    // Intentar cargar el número de WhatsApp de las formas de pago
+    // Cargar número de WhatsApp desde formas de pago
     fetch(`${window.ApiClient?.baseUrl || "/api"}/auth/formas-pago`)
       .then((r) => r.json())
       .then((data) => {
         const wsp = data?.datos?.whatsapp_numero || "";
+        const msg = encodeURIComponent(`Hola LT&C, me registré con ${planNombre} y necesito confirmar mi pago para activar mi cuenta.`);
         if (wspBtn && wsp) {
-          const msg = encodeURIComponent(`Hola LT&C, me registré con ${planNombre} y necesito confirmar mi pago para activar mi cuenta.`);
           wspBtn.href = `https://wa.me/${wsp.replace(/\D/g, "")}?text=${msg}`;
         } else if (wspBtn) {
-          wspBtn.style.display = "none";
+          // Sin número configurado: mostrar igual con wa.me vacío o cambiar a contacto genérico
+          wspBtn.href = `https://wa.me/?text=${msg}`;
         }
       })
-      .catch(() => { if (wspBtn) wspBtn.style.display = "none"; });
+      .catch(() => {});
 
     modal.style.display = "flex";
 

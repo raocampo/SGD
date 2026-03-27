@@ -209,14 +209,14 @@
       .then((r) => r.json())
       .then((data) => {
         const wsp = data?.datos?.whatsapp_numero || "";
+        const msg = encodeURIComponent(`Hola LT&C, me registré con ${planNombre} y necesito confirmar mi pago para activar mi cuenta.`);
         if (wspBtn && wsp) {
-          const msg = encodeURIComponent(`Hola LT&C, me registré con ${planNombre} y necesito confirmar mi pago para activar mi cuenta.`);
           wspBtn.href = `https://wa.me/${wsp.replace(/\D/g, "")}?text=${msg}`;
         } else if (wspBtn) {
-          wspBtn.style.display = "none";
+          wspBtn.href = `https://wa.me/?text=${msg}`;
         }
       })
-      .catch(() => { if (wspBtn) wspBtn.style.display = "none"; });
+      .catch(() => {});
 
     modal.style.display = "flex";
 

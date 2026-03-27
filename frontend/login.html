@@ -143,21 +143,27 @@
   </main>
 
   <!-- Modal: Cuenta pendiente de pago -->
-  <div id="ltc-pendiente-modal" class="ltc-pendiente-overlay" style="display:none;" role="dialog" aria-modal="true">
-    <div class="ltc-pendiente-box">
-      <div class="ltc-pendiente-icon"><i class="fas fa-clock"></i></div>
-      <div class="ltc-pendiente-titulo">Pago pendiente de confirmación</div>
-      <p class="ltc-pendiente-texto">
+  <div id="ltc-pendiente-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,.6); align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px);" role="dialog" aria-modal="true">
+    <div style="background:#fff; border-radius:18px; width:100%; max-width:460px; box-shadow:0 24px 64px rgba(0,0,0,.28); padding:36px 32px 28px; text-align:center;">
+      <div style="width:72px; height:72px; border-radius:50%; background:#fff1f1; border:2px solid #fca5a5; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:32px; color:#dc2626;">
+        <i class="fas fa-clock"></i>
+      </div>
+      <h2 style="font-size:20px; font-weight:800; color:#0f172a; margin:0 0 10px;">Pago pendiente de confirmación</h2>
+      <div id="ltc-pendiente-plan-txt" style="display:inline-block; background:#fee2e2; border:1.5px solid #fca5a5; border-radius:8px; padding:6px 18px; font-size:13px; font-weight:700; color:#dc2626; margin-bottom:16px;"></div>
+      <p style="font-size:14px; color:#475569; line-height:1.7; margin-bottom:24px;">
         Tu cuenta está registrada, pero el acceso al sistema requiere que
-        <strong>tu pago sea confirmado</strong> por el equipo de LT&C.<br><br>
+        <strong style="color:#dc2626;">tu pago sea confirmado</strong> por el equipo de LT&amp;C.<br><br>
         Una vez verificado el pago, tu cuenta será activada y podrás ingresar normalmente.
       </p>
-      <div class="ltc-pendiente-plan-badge" id="ltc-pendiente-plan-txt"></div>
-      <div class="ltc-pendiente-acciones">
-        <a id="ltc-pendiente-wsp-btn" href="#" class="ltc-pendiente-btn-wsp" target="_blank" rel="noopener noreferrer">
-          <i class="fab fa-whatsapp"></i> Contactar a LT&C por WhatsApp
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <a id="ltc-pendiente-wsp-btn" href="#" target="_blank" rel="noopener noreferrer"
+           style="display:flex; align-items:center; justify-content:center; gap:9px; background:#25d366; color:#fff; border:none; border-radius:10px; padding:13px 20px; font-size:14px; font-weight:700; text-decoration:none;">
+          <i class="fab fa-whatsapp" style="font-size:18px;"></i> Confirmar pago por WhatsApp
         </a>
-        <button class="ltc-pendiente-btn-cerrar" id="ltc-pendiente-cerrar-btn">Cerrar</button>
+        <button id="ltc-pendiente-cerrar-btn"
+           style="background:#2c3e50; color:#fff; border:none; border-radius:10px; padding:13px 20px; font-size:14px; font-weight:700; cursor:pointer;">
+          Cerrar
+        </button>
       </div>
     </div>
   </div>
