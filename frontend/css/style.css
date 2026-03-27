@@ -8247,3 +8247,80 @@ body.page-finanzas {
 .badge-estado-activo   { background: #d5f5e3; color: #1e8449; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
 .badge-estado-inactivo { background: #eaecf0; color: #7f8c8d; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
 .badge-estado-pendiente { background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+
+/* ===== GASTOS OPERATIVOS ===== */
+.gastos-form-wrap {
+  padding: 1rem 0 0.5rem;
+  border-top: 1px solid var(--border);
+  margin-top: 0.75rem;
+}
+.gastos-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+  gap: 0.75rem;
+}
+.gastos-resumen-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.75rem;
+  align-items: center;
+}
+.gasto-badge-resumen {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.gasto-badge-total {
+  margin-left: auto;
+  background: #1e40af;
+  color: #fff;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 13px;
+}
+.gastos-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gastos-tabla th { background: #f8fafc; font-weight: 600; color: #374151; padding: 6px 10px; text-align: left; border-bottom: 2px solid #e5e7eb; }
+.gastos-tabla td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.gastos-tabla tbody tr:hover { background: #f8fafc; }
+.monto-gasto { color: #dc2626; white-space: nowrap; }
+.acciones-gasto { white-space: nowrap; }
+.btn-xs { padding: 3px 8px; font-size: 11px; }
+.btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+.btn-danger:hover { background: #fecaca; }
+
+/* Badge por categoría de gasto */
+.badge-categoria-gasto {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;
+  white-space: nowrap;
+}
+.badge-arbitraje       { background: #dbeafe; color: #1e40af; }
+.badge-delegado        { background: #ede9fe; color: #5b21b6; }
+.badge-alquiler_cancha { background: #d1fae5; color: #065f46; }
+.badge-tizado          { background: #fef9c3; color: #854d0e; }
+.badge-transporte      { background: #ffedd5; color: #9a3412; }
+.badge-comida          { background: #fce7f3; color: #9d174d; }
+.badge-otro            { background: #f1f5f9; color: #475569; }
+
+@media (max-width: 768px) {
+  .gastos-tabla th:nth-child(4),
+  .gastos-tabla td:nth-child(4),
+  .gastos-tabla th:nth-child(6),
+  .gastos-tabla td:nth-child(6),
+  .gastos-tabla th:nth-child(8),
+  .gastos-tabla td:nth-child(8) { display: none; }
+}
+@media (max-width: 520px) {
+  .gastos-tabla th:nth-child(3),
+  .gastos-tabla td:nth-child(3) { display: none; }
+  .gasto-badge-total { margin-left: 0; }
+}

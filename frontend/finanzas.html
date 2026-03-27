@@ -274,6 +274,88 @@
           <div id="fin-ejecutivo-equipos-contenido" class="tabla-scroll"></div>
         </div>
 
+        <!-- Gastos Operativos -->
+        <div class="card" id="bloque-gastos-operativos">
+          <div class="fin-card-headline">
+            <h3>Gastos Operativos</h3>
+            <div class="fin-card-actions">
+              <button type="button" class="btn btn-outline btn-sm" id="btn-toggle-form-gasto">
+                <i class="fas fa-plus"></i> Registrar gasto
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-gastos">
+                <i class="fas fa-print"></i> Imprimir
+              </button>
+              <button type="button" class="fin-toggle-btn" id="btn-toggle-gastos"
+                title="Mostrar/ocultar gastos" aria-expanded="true">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Formulario inline para registrar/editar gasto -->
+          <div id="fin-form-gasto-wrap" style="display:none;" class="gastos-form-wrap">
+            <form id="fin-form-gasto">
+              <input type="hidden" id="gasto-id" />
+              <div class="form-grid gastos-form-grid">
+                <div class="form-group">
+                  <label for="gasto-campeonato">Campeonato</label>
+                  <select id="gasto-campeonato" required></select>
+                </div>
+                <div class="form-group">
+                  <label for="gasto-evento">Categoría (opcional)</label>
+                  <select id="gasto-evento">
+                    <option value="">Sin categoría</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="gasto-partido">Partido (opcional)</label>
+                  <select id="gasto-partido">
+                    <option value="">Sin partido</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="gasto-categoria">Tipo de gasto</label>
+                  <select id="gasto-categoria" required>
+                    <option value="arbitraje">Arbitraje</option>
+                    <option value="delegado">Delegado / Vocal de cancha</option>
+                    <option value="alquiler_cancha">Alquiler de cancha</option>
+                    <option value="tizado">Tizado de cancha</option>
+                    <option value="transporte">Transporte</option>
+                    <option value="comida">Comida</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="gasto-monto">Monto ($)</label>
+                  <input type="number" id="gasto-monto" min="0.01" step="0.01" required />
+                </div>
+                <div class="form-group">
+                  <label for="gasto-fecha">Fecha</label>
+                  <input type="date" id="gasto-fecha" />
+                </div>
+                <div class="form-group">
+                  <label for="gasto-referencia">Referencia</label>
+                  <input type="text" id="gasto-referencia" placeholder="Comprobante, factura..." />
+                </div>
+                <div class="form-group form-group-full">
+                  <label for="gasto-descripcion">Descripción</label>
+                  <textarea id="gasto-descripcion" rows="2" placeholder="Detalle del gasto..."></textarea>
+                </div>
+              </div>
+              <div class="partidos-actions">
+                <button type="submit" class="btn btn-success" id="btn-gasto-guardar">
+                  <i class="fas fa-save"></i> Guardar gasto
+                </button>
+                <button type="button" class="btn btn-outline" id="btn-gasto-cancelar">
+                  <i class="fas fa-times"></i> Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div id="fin-gastos-contenido" class="tabla-scroll"></div>
+        </div>
+
         <div class="card">
           <div class="fin-card-headline">
             <h3>Movimientos Financieros</h3>

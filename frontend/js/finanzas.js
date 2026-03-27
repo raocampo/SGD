@@ -40,6 +40,8 @@ async function inicializarFinanzas() {
   bindEventosFinanzas();
   inicializarTogglesReportes();
   await cargarCatalogosFinanzas();
+  inicializarGastosOperativos();
+  poblarSelectCampeonatosGasto();
   await Promise.all([
     buscarMovimientosFinanzas(),
     cargarMorosidadFinanzas(),
@@ -47,6 +49,7 @@ async function inicializarFinanzas() {
     cargarResumenEjecutivoFinanzas(),
     cargarResumenEjecutivoEquiposFinanzas(),
     cargarEstadoCuentaActual(),
+    cargarGastosOperativos(),
   ]);
 }
 
@@ -83,6 +86,7 @@ function bindEventosFinanzas() {
       cargarResumenEjecutivoFinanzas(),
       cargarResumenEjecutivoEquiposFinanzas(),
       cargarEstadoCuentaActual(),
+      cargarGastosOperativos(),
     ]);
     mostrarNotificacion("Datos financieros recargados", "success");
   });
@@ -97,6 +101,8 @@ function bindEventosFinanzas() {
       cargarResumenEjecutivoFinanzas();
       cargarResumenEjecutivoEquiposFinanzas();
       cargarEstadoCuentaActual();
+      cargarGastosOperativos();
+      poblarSelectCampeonatosGasto();
     });
 
   document
@@ -151,6 +157,7 @@ function inicializarTogglesReportes() {
   configurarToggleReporte("btn-toggle-sanciones", "fin-sanciones-contenido", true);
   configurarToggleReporte("btn-toggle-ejecutivo", "fin-ejecutivo-contenido", true);
   configurarToggleReporte("btn-toggle-ejecutivo-equipos", "fin-ejecutivo-equipos-contenido", true);
+  configurarToggleReporte("btn-toggle-gastos", "fin-gastos-contenido", true);
 }
 
 function configurarToggleReporte(btnId, targetId, expandedInicial = true) {
@@ -2180,4 +2187,316 @@ function escaparHtml(valor) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+// ─── Gastos Operativos ────────────────────────────────────────────────────────
+
+const GASTOS_LABELS = {
+  arbitraje:      "Arbitraje",
+  delegado:       "Delegado / Vocal",
+  alquiler_cancha:"Alquiler cancha",
+  tizado:         "Tizado",
+  transporte:     "Transporte",
+  comida:         "Comida",
+  otro:           "Otro",
+};
+
+const GASTOS_ICONOS = {
+  arbitraje:       "fas fa-whistle",
+  delegado:        "fas fa-user-tie",
+  alquiler_cancha: "fas fa-futbol",
+  tizado:          "fas fa-spray-can",
+  transporte:      "fas fa-bus",
+  comida:          "fas fa-utensils",
+  otro:            "fas fa-tag",
+};
+
+function inicializarGastosOperativos() {
+  configurarToggleReporte("btn-toggle-gastos", "fin-gastos-contenido", true);
+
+  document.getElementById("btn-toggle-form-gasto")?.addEventListener("click", () => {
+    limpiarFormGasto();
+    const wrap = document.getElementById("fin-form-gasto-wrap");
+    if (wrap) wrap.style.display = wrap.style.display === "none" ? "block" : "none";
+  });
+
+  document.getElementById("btn-gasto-cancelar")?.addEventListener("click", () => {
+    limpiarFormGasto();
+    const wrap = document.getElementById("fin-form-gasto-wrap");
+    if (wrap) wrap.style.display = "none";
+  });
+
+  document.getElementById("fin-form-gasto")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await guardarGasto();
+  });
+
+  document.getElementById("btn-fin-imprimir-gastos")?.addEventListener("click", imprimirGastos);
+
+  // Sincronizar partidos al cambiar categoría/evento en el form de gasto
+  document.getElementById("gasto-campeonato")?.addEventListener("change", () => {
+    sincronizarFormGasto();
+  });
+  document.getElementById("gasto-evento")?.addEventListener("change", () => {
+    cargarPartidosParaGasto();
+  });
+}
+
+function sincronizarFormGasto() {
+  const campId = document.getElementById("gasto-campeonato")?.value;
+  const evSel = document.getElementById("gasto-evento");
+  if (!evSel) return;
+
+  const eventos = (finanzasState.eventos || []).filter(
+    (e) => String(e.campeonato_id) === String(campId)
+  );
+  evSel.innerHTML = '<option value="">Sin categoría</option>';
+  eventos.forEach((ev) => {
+    const opt = document.createElement("option");
+    opt.value = ev.id;
+    opt.textContent = ev.nombre;
+    evSel.appendChild(opt);
+  });
+
+  cargarPartidosParaGasto();
+}
+
+async function cargarPartidosParaGasto() {
+  const campId = document.getElementById("gasto-campeonato")?.value;
+  const evId = document.getElementById("gasto-evento")?.value;
+  const sel = document.getElementById("gasto-partido");
+  if (!sel) return;
+
+  sel.innerHTML = '<option value="">Sin partido</option>';
+  if (!campId) return;
+
+  try {
+    const params = new URLSearchParams({ campeonato_id: campId });
+    if (evId) params.append("evento_id", evId);
+    const data = await ApiClient.get(`/partidos?${params.toString()}`);
+    const partidos = data.partidos || data || [];
+    partidos.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      const num = p.numero_partido_visible ? `P${p.numero_partido_visible} - ` : "";
+      const local = p.equipo_local_nombre || "?";
+      const visit = p.equipo_visitante_nombre || "?";
+      opt.textContent = `${num}${local} vs ${visit}`;
+      sel.appendChild(opt);
+    });
+  } catch (_) {}
+}
+
+function limpiarFormGasto() {
+  ["gasto-id", "gasto-referencia", "gasto-descripcion"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  const monto = document.getElementById("gasto-monto");
+  if (monto) monto.value = "";
+  const fecha = document.getElementById("gasto-fecha");
+  if (fecha) fecha.value = new Date().toISOString().slice(0, 10);
+  document.getElementById("gasto-categoria").value = "arbitraje";
+  document.getElementById("gasto-partido").value = "";
+  document.getElementById("btn-gasto-guardar").innerHTML =
+    '<i class="fas fa-save"></i> Guardar gasto';
+
+  // Precargar campeonato activo
+  const campSel = document.getElementById("gasto-campeonato");
+  const finCamp = document.getElementById("fin-campeonato");
+  if (campSel && finCamp?.value) {
+    campSel.innerHTML = "";
+    (finanzasState.campeonatos || []).forEach((c) => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.nombre;
+      if (String(c.id) === String(finCamp.value)) opt.selected = true;
+      campSel.appendChild(opt);
+    });
+    sincronizarFormGasto();
+  }
+}
+
+function poblarSelectCampeonatosGasto() {
+  const sel = document.getElementById("gasto-campeonato");
+  if (!sel) return;
+  sel.innerHTML = "";
+  (finanzasState.campeonatos || []).forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.nombre;
+    sel.appendChild(opt);
+  });
+  sincronizarFormGasto();
+}
+
+async function guardarGasto() {
+  const id = document.getElementById("gasto-id")?.value;
+  const body = {
+    campeonato_id: document.getElementById("gasto-campeonato")?.value || null,
+    evento_id:     document.getElementById("gasto-evento")?.value     || null,
+    partido_id:    document.getElementById("gasto-partido")?.value    || null,
+    categoria:     document.getElementById("gasto-categoria")?.value,
+    monto:         document.getElementById("gasto-monto")?.value,
+    fecha_gasto:   document.getElementById("gasto-fecha")?.value      || null,
+    referencia:    document.getElementById("gasto-referencia")?.value || null,
+    descripcion:   document.getElementById("gasto-descripcion")?.value || null,
+  };
+
+  try {
+    if (id) {
+      await ApiClient.put(`/finanzas/gastos/${id}`, body);
+    } else {
+      await ApiClient.post("/finanzas/gastos", body);
+    }
+    document.getElementById("fin-form-gasto-wrap").style.display = "none";
+    limpiarFormGasto();
+    await cargarGastosOperativos();
+    mostrarNotificacion("Gasto guardado", "success");
+  } catch (err) {
+    mostrarNotificacion(err.message || "Error al guardar gasto", "error");
+  }
+}
+
+async function eliminarGasto(id) {
+  if (!confirm("¿Eliminar este gasto?")) return;
+  try {
+    await ApiClient.delete(`/finanzas/gastos/${id}`);
+    await cargarGastosOperativos();
+    mostrarNotificacion("Gasto eliminado", "success");
+  } catch (err) {
+    mostrarNotificacion(err.message || "Error al eliminar", "error");
+  }
+}
+
+function editarGasto(gasto) {
+  document.getElementById("gasto-id").value = gasto.id;
+  document.getElementById("gasto-campeonato").value = gasto.campeonato_id;
+  sincronizarFormGasto();
+  // Pequeño delay para que se carguen los selects dependientes
+  setTimeout(() => {
+    if (gasto.evento_id) document.getElementById("gasto-evento").value = gasto.evento_id;
+    cargarPartidosParaGasto().then(() => {
+      if (gasto.partido_id) document.getElementById("gasto-partido").value = gasto.partido_id;
+    });
+  }, 100);
+  document.getElementById("gasto-categoria").value = gasto.categoria;
+  document.getElementById("gasto-monto").value = gasto.monto;
+  document.getElementById("gasto-fecha").value = gasto.fecha_gasto?.slice(0, 10) || "";
+  document.getElementById("gasto-referencia").value = gasto.referencia || "";
+  document.getElementById("gasto-descripcion").value = gasto.descripcion || "";
+  document.getElementById("btn-gasto-guardar").innerHTML =
+    '<i class="fas fa-save"></i> Actualizar gasto';
+
+  const wrap = document.getElementById("fin-form-gasto-wrap");
+  if (wrap) wrap.style.display = "block";
+  wrap?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+async function cargarGastosOperativos() {
+  const cont = document.getElementById("fin-gastos-contenido");
+  if (!cont) return;
+
+  const campId = document.getElementById("fin-campeonato")?.value;
+  const params = new URLSearchParams();
+  if (campId) params.append("campeonato_id", campId);
+
+  try {
+    const data = await ApiClient.get(`/finanzas/gastos?${params.toString()}`);
+    const gastos = data.gastos || [];
+
+    if (!gastos.length) {
+      cont.innerHTML = renderVacio("No hay gastos registrados para este campeonato.");
+      return;
+    }
+
+    // Totales por categoría
+    const totalesCat = {};
+    let totalGeneral = 0;
+    gastos.forEach((g) => {
+      totalesCat[g.categoria] = (totalesCat[g.categoria] || 0) + Number(g.monto);
+      totalGeneral += Number(g.monto);
+    });
+
+    const resumenHtml = Object.entries(totalesCat)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, tot]) => `
+        <span class="gasto-badge-resumen">
+          <i class="${GASTOS_ICONOS[cat] || "fas fa-tag"}"></i>
+          ${GASTOS_LABELS[cat] || cat}: <strong>$${Number(tot).toFixed(2)}</strong>
+        </span>`)
+      .join("");
+
+    const filasHtml = gastos.map((g) => `
+      <tr>
+        <td>${g.fecha_gasto?.slice(0, 10) || "-"}</td>
+        <td><span class="badge-categoria-gasto badge-${g.categoria}">
+          <i class="${GASTOS_ICONOS[g.categoria] || "fas fa-tag"}"></i>
+          ${GASTOS_LABELS[g.categoria] || g.categoria}
+        </span></td>
+        <td>${escaparHtml(g.evento_nombre || "-")}</td>
+        <td>${escaparHtml(g.partido_numero ? `P${g.partido_numero}` : "-")}</td>
+        <td>${escaparHtml(g.descripcion || "-")}</td>
+        <td>${escaparHtml(g.referencia || "-")}</td>
+        <td class="monto-gasto"><strong>$${Number(g.monto).toFixed(2)}</strong></td>
+        <td>${escaparHtml(g.registrado_por || "-")}</td>
+        <td class="acciones-gasto">
+          <button class="btn btn-xs btn-outline" onclick="editarGasto(${JSON.stringify(g).replace(/"/g, "&quot;")})">
+            <i class="fas fa-pencil"></i>
+          </button>
+          <button class="btn btn-xs btn-danger" onclick="eliminarGasto(${g.id})">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      </tr>`).join("");
+
+    cont.innerHTML = `
+      <div class="gastos-resumen-badges">${resumenHtml}
+        <span class="gasto-badge-total">
+          Total: <strong>$${totalGeneral.toFixed(2)}</strong>
+        </span>
+      </div>
+      <table class="tabla-finanzas gastos-tabla">
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Partido</th>
+            <th>Descripción</th><th>Referencia</th><th>Monto</th>
+            <th>Registrado por</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${filasHtml}</tbody>
+      </table>`;
+  } catch (err) {
+    cont.innerHTML = renderVacio("No se pudieron cargar los gastos.");
+    console.warn("Error cargando gastos:", err.message);
+  }
+}
+
+function imprimirGastos() {
+  const cont = document.getElementById("fin-gastos-contenido");
+  if (!cont || !cont.innerHTML.trim()) {
+    mostrarNotificacion("No hay gastos para imprimir", "warning");
+    return;
+  }
+  const w = window.open("", "_blank");
+  if (!w) return;
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8"><title>Gastos Operativos</title>
+    <style>
+      body { font-family: sans-serif; font-size: 12px; padding: 1rem; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
+      th { background: #f0f0f0; }
+      .gastos-resumen-badges { margin-bottom: 1rem; }
+      .gasto-badge-resumen, .gasto-badge-total { margin-right: 1rem; }
+      .acciones-gasto { display: none; }
+      @media print { .acciones-gasto { display: none; } }
+    </style>
+  </head><body>
+    <h2>Gastos Operativos</h2>
+    ${cont.innerHTML}
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  w.print();
 }
