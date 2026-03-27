@@ -1516,7 +1516,7 @@ body.app-layout {
 #lista-campeonatos,
 #lista-eventos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 1.5rem;
   align-items: stretch;
   margin-top: 2rem;
@@ -1794,6 +1794,8 @@ body.app-layout {
 
 .usuarios-table-wrap {
   width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .usuarios-list-table {
@@ -7969,6 +7971,84 @@ body.page-finanzas {
   border-radius: 10px;
   padding: 2px 10px;
   margin-left: 0.5rem;
+}
+
+/* ===== RESPONSIVE — Campeonatos, Equipos, Eventos, Jugadores, Usuarios ===== */
+
+/* --- Campeonatos / Eventos / Equipos / Jugadores ≤ 768px --- */
+@media (max-width: 768px) {
+  /* Tarjeta de campeonato: compactar padding y encabezado */
+  .page-campeonatos .campeonato-card,
+  .page-campeonatos .equipo-card-gestion {
+    padding: 1rem;
+  }
+
+  .page-campeonatos .campeonato-header h3 {
+    font-size: 1.1rem;
+  }
+
+  /* Eventos: ajuste de forma */
+  .page-eventos .config-card .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Usuarios: asegurar que el formulario ocupe 1 col */
+  .page-usuarios .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Equipos: ajustar form-grid de selección */
+  .page-equipos .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Card actions ≤ 520px: botones full-width para táctil --- */
+@media (max-width: 520px) {
+  .campeonato-actions .btn,
+  .equipo-actions .btn,
+  .jugador-actions .btn {
+    flex: 1 1 100%;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .campeonato-actions .select-estado {
+    width: 100%;
+  }
+
+  .page-campeonatos .campeonato-card,
+  .page-equipos .equipo-card-gestion {
+    padding: 0.85rem;
+  }
+
+  .page-campeonatos .campeonato-header h3 {
+    font-size: 1rem;
+  }
+
+  .page-campeonatos .campeonato-info p,
+  .page-equipos .equipo-meta p {
+    font-size: 0.88rem;
+  }
+
+  /* Equipos en 1 columna */
+  #lista-equipos {
+    grid-template-columns: 1fr;
+  }
+
+  /* Jugadores en 1 columna */
+  #jugadores-lista {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Usuarios ≤ 520px: botones full-width --- */
+@media (max-width: 520px) {
+  .page-usuarios .actions .btn,
+  .page-usuarios .action-bar .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* ===== BYE EN FIXTURE TEMPLATE ===== */

@@ -1,6 +1,44 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-25 (sesión 12)
+Ultima actualizacion: 2026-03-26 (sesión 13)
+
+## Avances recientes (2026-03-26 — sesión 13)
+
+### Formas de pago — modal en landing y configuración desde admin
+
+- Al hacer clic en una card de plan de pago en `index.html`, ya no navega directo a `register.html`; abre un modal que muestra las formas de pago disponibles antes de continuar el registro.
+- Nuevas migraciones `053_formas_pago.sql` y `054_formas_pago_paypal_tarjeta.sql` agregaron 16 claves en `configuracion_sistema` para WhatsApp, transferencia, efectivo, PayPal y tarjeta de crédito/débito.
+- `backend/services/planLimits.js`: funciones `obtenerFormasPago()` y `actualizarFormasPago()` con validación de claves permitidas.
+- `backend/controllers/authController.js`: endpoints `GET /auth/formas-pago` (público), `GET/PUT /auth/admin/formas-pago` (admin).
+- `backend/routes/authRoutes.js`: rutas para las tres formas de pago.
+- `frontend/admin.html` + `frontend/js/dashboard-admin.js`: panel "Formas de pago" con formulario completo de configuración de métodos.
+- `frontend/index.html`: modal intercepción con `renderMetodosPago()`, botones de WhatsApp, PayPal, tarjeta y transferencia bancaria.
+
+### Notificaciones por email — infraestructura completa
+
+- `backend/services/emailService.js` ampliado con:
+  - `wrapHtml()` — plantilla HTML con CSS embebido reutilizable.
+  - `enviarEmail()` — helper genérico SMTP con fallback graceful a consola si no está configurado.
+  - `enviarEmailBienvenida()` — bienvenida al nuevo usuario con datos de cuenta y enlace de login.
+  - `enviarEmailNotificacionAdminNuevoRegistro()` — alerta al admin con ⚠️ si el plan es de pago.
+  - `enviarEmailNotificacionContacto()` — notifica al admin cuando se recibe un mensaje del formulario de contacto.
+- `backend/controllers/authController.js`: en `registerPublic()` dispara bienvenida + alerta admin en `Promise.allSettled()` background.
+- `backend/controllers/contactoController.js`: dispara `enviarEmailNotificacionContacto()` en background tras guardar el mensaje en BD.
+- Configuración requerida en producción: `ADMIN_EMAIL`, `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (sin estas vars solo logea en consola).
+
+### Responsive web — módulos campeonatos, equipos, eventos, jugadores y usuarios
+
+- Añadida clase `page-campeonatos` a `campeonatos.html`, `page-equipos` a `equipos.html`, `page-eventos` a `eventos.html`, `page-usuarios` a `usuarios.html`.
+- Corrección de overflow en grid de `#lista-campeonatos` y `#lista-eventos`: cambiado `minmax(300px, 1fr)` → `minmax(min(300px, 100%), 1fr)` para evitar desborde en pantallas < 313px.
+- `.usuarios-table-wrap` ya tiene `overflow-x: auto` explícito para garantizar scroll horizontal en cualquier viewport.
+- Nuevos bloques `@media (max-width: 768px)` y `@media (max-width: 520px)` en `style.css`:
+  - tarjetas de campeonato/equipo/jugador: padding compacto, `h3` reducido en móvil.
+  - botones de `campeonato-actions`, `equipo-actions`, `jugador-actions`: pasan a `flex: 1 1 100%` en ≤ 520px.
+  - `select-estado` en campeonato: ancho 100% en móvil.
+  - `#lista-equipos` y `#jugadores-lista`: forzados a 1 columna en ≤ 520px.
+  - `form-grid` de selección en eventos/equipos/usuarios: 1 columna en ≤ 768px.
+
+---
 
 ## Avances recientes (2026-03-25 — sesión 12)
 
