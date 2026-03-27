@@ -100,7 +100,10 @@
     tbody.innerHTML = organizadores
       .map((o) => {
         const planLabel = PLAN_LABEL[o.plan_codigo] || o.plan_codigo || "free";
-        const estado = o.activo ? '<span class="badge-estado-activo">Activo</span>' : '<span class="badge-estado-inactivo">Inactivo</span>';
+        const planEstado = String(o.plan_estado || "activo").toLowerCase();
+        const estado = planEstado === "pendiente_pago"
+          ? '<span class="badge-estado-pendiente">Pago pendiente</span>'
+          : (o.activo ? '<span class="badge-estado-activo">Activo</span>' : '<span class="badge-estado-inactivo">Inactivo</span>');
         const torneos = Number(o.torneos_activos || 0);
         return `
         <tr>

@@ -8062,3 +8062,188 @@ body.page-finanzas {
   border-radius: 4px;
   text-align: center;
 }
+
+/* ===== MODAL FORMAS DE PAGO (index.html) ===== */
+.ltc-pago-modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(15,23,42,.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+}
+.ltc-pago-modal-box {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%; max-width: 480px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  position: relative;
+  padding: 28px 28px 22px;
+}
+.ltc-pago-modal-close {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: none; font-size: 22px;
+  color: #94a3b8; cursor: pointer; line-height: 1;
+  transition: color .15s;
+}
+.ltc-pago-modal-close:hover { color: #0f172a; }
+.ltc-pago-modal-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 18px;
+}
+.ltc-pago-modal-header i { font-size: 20px; color: #3498db; }
+.ltc-pago-modal-header h2 { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; }
+
+.ltc-pago-plan-resumen {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #f0f9ff;
+  border: 1.5px solid #bae6fd;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+.ltc-pago-plan-nombre { font-size: 14px; font-weight: 700; color: #0369a1; }
+.ltc-pago-plan-precio { font-size: 20px; font-weight: 800; color: #0f172a; }
+
+.ltc-pago-metodo {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.ltc-pago-metodo-titulo {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13.5px; font-weight: 700; color: #1e293b;
+  margin-bottom: 10px;
+}
+.ltc-pago-metodo-titulo i { color: #3498db; font-size: 15px; }
+.ltc-pago-metodo-fila {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  font-size: 12.5px; margin-bottom: 5px; gap: 8px;
+}
+.ltc-pago-metodo-fila:last-child { margin-bottom: 0; }
+.ltc-pago-metodo-lbl { color: #64748b; font-weight: 600; white-space: nowrap; }
+.ltc-pago-metodo-val { color: #0f172a; text-align: right; word-break: break-all; }
+.ltc-pago-metodo-val strong { font-weight: 700; }
+
+.ltc-pago-instrucciones {
+  background: #fffbeb;
+  border: 1.5px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: #78350f;
+  margin-bottom: 16px;
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.ltc-pago-instrucciones i { color: #f59e0b; margin-top: 2px; flex-shrink: 0; }
+
+.ltc-pago-whatsapp-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: #25d366; color: #fff;
+  border: none; border-radius: 8px;
+  padding: 10px 16px; font-size: 13px; font-weight: 700;
+  cursor: pointer; width: 100%; margin-bottom: 14px;
+  text-decoration: none;
+  transition: background .15s;
+}
+.ltc-pago-whatsapp-btn:hover { background: #1ebe5d; color: #fff; }
+.ltc-pago-whatsapp-btn i { font-size: 16px; }
+
+.ltc-pago-modal-footer { display: flex; flex-direction: column; gap: 8px; }
+.ltc-pago-btn-continuar {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: #3498db; color: #fff;
+  border: none; border-radius: 8px;
+  padding: 12px 20px; font-size: 14px; font-weight: 700;
+  cursor: pointer; text-decoration: none;
+  transition: background .15s;
+}
+.ltc-pago-btn-continuar:hover { background: #2980b9; color: #fff; }
+.ltc-pago-btn-cancelar {
+  background: none; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; padding: 10px; font-size: 13px;
+  color: #64748b; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.ltc-pago-btn-cancelar:hover { border-color: #94a3b8; color: #0f172a; }
+.ltc-pago-cargando { text-align: center; color: #94a3b8; font-size: 13px; padding: 20px 0; }
+
+.ltc-pago-link-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 14px; border-radius: 7px;
+  font-size: 13px; font-weight: 700; text-decoration: none;
+  transition: filter .15s;
+}
+.ltc-pago-link-btn:hover { filter: brightness(.92); }
+.ltc-pago-link-btn-paypal  { background: #003087; color: #fff; }
+.ltc-pago-link-btn-tarjeta { background: #1a1a2e; color: #fff; }
+.ltc-pago-metodo-tarjeta { border-color: #c7d2fe; background: #f5f3ff; }
+.ltc-pago-metodo-tarjeta .ltc-pago-metodo-titulo { color: #4c1d95; }
+.ltc-pago-metodo-tarjeta .ltc-pago-metodo-titulo i { color: #7c3aed; }
+.ltc-pago-metodo-paypal  { border-color: #bfdbfe; background: #eff6ff; }
+.ltc-pago-metodo-paypal .ltc-pago-metodo-titulo  { color: #1e3a5f; }
+.ltc-pago-metodo-paypal .ltc-pago-metodo-titulo i { color: #003087; }
+
+/* ===== MODAL CUENTA PENDIENTE DE PAGO (login.html) ===== */
+.ltc-pendiente-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(15,23,42,.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+}
+.ltc-pendiente-box {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%; max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  padding: 32px 28px 24px;
+  text-align: center;
+}
+.ltc-pendiente-icon {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: #fff7ed;
+  border: 2px solid #fed7aa;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px;
+  font-size: 28px;
+  color: #ea580c;
+}
+.ltc-pendiente-titulo {
+  font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 8px;
+}
+.ltc-pendiente-texto {
+  font-size: 13.5px; color: #475569; line-height: 1.6; margin-bottom: 20px;
+}
+.ltc-pendiente-texto strong { color: #ea580c; }
+.ltc-pendiente-plan-badge {
+  display: inline-block;
+  background: #f0f9ff; border: 1.5px solid #bae6fd;
+  border-radius: 8px; padding: 8px 16px;
+  font-size: 13px; font-weight: 700; color: #0369a1;
+  margin-bottom: 20px;
+}
+.ltc-pendiente-acciones { display: flex; flex-direction: column; gap: 8px; }
+.ltc-pendiente-btn-wsp {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: #25d366; color: #fff;
+  border: none; border-radius: 8px;
+  padding: 12px 20px; font-size: 14px; font-weight: 700;
+  cursor: pointer; text-decoration: none;
+  transition: background .15s;
+}
+.ltc-pendiente-btn-wsp:hover { background: #1ebe5d; color: #fff; }
+.ltc-pendiente-btn-cerrar {
+  background: none; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; padding: 10px; font-size: 13px;
+  color: #64748b; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.ltc-pendiente-btn-cerrar:hover { border-color: #94a3b8; color: #0f172a; }
+
+/* ===== BADGES DE ESTADO (admin dashboard) ===== */
+.badge-estado-activo   { background: #d5f5e3; color: #1e8449; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+.badge-estado-inactivo { background: #eaecf0; color: #7f8c8d; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+.badge-estado-pendiente { background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }

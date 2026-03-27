@@ -60,7 +60,10 @@
     if (resp.status === 401 && !String(endpoint || "").includes("/auth/login")) {
       window.Auth?.handleUnauthorized?.();
     }
-    throw new Error(msg);
+    const err = new Error(msg);
+    // Adjuntar payload original para que el caller pueda leer campos como `codigo`
+    err.data = typeof data === "object" ? data : {};
+    throw err;
   }
 
   window.ApiClient = window.ApiClient || {

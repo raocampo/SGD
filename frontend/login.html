@@ -142,6 +142,26 @@
     </section>
   </main>
 
+  <!-- Modal: Cuenta pendiente de pago -->
+  <div id="ltc-pendiente-modal" class="ltc-pendiente-overlay" style="display:none;" role="dialog" aria-modal="true">
+    <div class="ltc-pendiente-box">
+      <div class="ltc-pendiente-icon"><i class="fas fa-clock"></i></div>
+      <div class="ltc-pendiente-titulo">Pago pendiente de confirmación</div>
+      <p class="ltc-pendiente-texto">
+        Tu cuenta está registrada, pero el acceso al sistema requiere que
+        <strong>tu pago sea confirmado</strong> por el equipo de LT&C.<br><br>
+        Una vez verificado el pago, tu cuenta será activada y podrás ingresar normalmente.
+      </p>
+      <div class="ltc-pendiente-plan-badge" id="ltc-pendiente-plan-txt"></div>
+      <div class="ltc-pendiente-acciones">
+        <a id="ltc-pendiente-wsp-btn" href="#" class="ltc-pendiente-btn-wsp" target="_blank" rel="noopener noreferrer">
+          <i class="fab fa-whatsapp"></i> Contactar a LT&C por WhatsApp
+        </a>
+        <button class="ltc-pendiente-btn-cerrar" id="ltc-pendiente-cerrar-btn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/login.js"></script>

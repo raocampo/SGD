@@ -95,10 +95,49 @@
       }
     } catch (error) {
       console.error(error);
-      mostrarNotificacion(error.message || "No se pudo iniciar sesión", "error");
+      // Cuenta con pago pendiente → modal específico
+      if (error?.data?.codigo === "pendiente_pago" || error?.codigo === "pendiente_pago") {
+        const planNombre = error?.data?.plan_nombre || error?.plan_nombre || "Plan de pago";
+        mostrarModalPendientePago(planNombre);
+      } else {
+        mostrarNotificacion(error.message || "No se pudo iniciar sesión", "error");
+      }
     } finally {
       if (btn) btn.disabled = false;
     }
+  }
+
+  function mostrarModalPendientePago(planNombre) {
+    const modal = document.getElementById("ltc-pendiente-modal");
+    const planTxt = document.getElementById("ltc-pendiente-plan-txt");
+    const wspBtn = document.getElementById("ltc-pendiente-wsp-btn");
+    const cerrarBtn = document.getElementById("ltc-pendiente-cerrar-btn");
+    if (!modal) return;
+
+    if (planTxt) planTxt.textContent = planNombre;
+
+    // Intentar cargar el número de WhatsApp de las formas de pago
+    fetch(`${window.ApiClient?.baseUrl || "/api"}/auth/formas-pago`)
+      .then((r) => r.json())
+      .then((data) => {
+        const wsp = data?.datos?.whatsapp_numero || "";
+        if (wspBtn && wsp) {
+          const msg = encodeURIComponent(`Hola LT&C, me registré con ${planNombre} y necesito confirmar mi pago para activar mi cuenta.`);
+          wspBtn.href = `https://wa.me/${wsp.replace(/\D/g, "")}?text=${msg}`;
+        } else if (wspBtn) {
+          wspBtn.style.display = "none";
+        }
+      })
+      .catch(() => { if (wspBtn) wspBtn.style.display = "none"; });
+
+    modal.style.display = "flex";
+
+    if (cerrarBtn) {
+      cerrarBtn.onclick = () => { modal.style.display = "none"; };
+    }
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.style.display = "none";
+    }, { once: true });
   }
 
   async function onSubmitForgot(e) {

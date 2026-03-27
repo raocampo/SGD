@@ -163,6 +163,9 @@ const authController = {
       const planCodigo = normalizarPlanCodigo(planCodigoRaw, "demo");
       const plan = obtenerPlan(planCodigo);
 
+      // Planes pagados quedan en pendiente_pago hasta que el admin confirme el cobro
+      const planEstadoInicial = esPlanPagado(planCodigo) ? "pendiente_pago" : "activo";
+
       const creado = await UsuarioAuth.crear({
         nombre,
         email,
@@ -172,7 +175,7 @@ const authController = {
         solo_lectura: false,
         debe_cambiar_password: false,
         plan_codigo: planCodigo,
-        plan_estado: "activo",
+        plan_estado: planEstadoInicial,
         organizacion_nombre: rolSolicitado === "organizador" ? organizacionNombre : null,
       });
 
@@ -240,6 +243,15 @@ const authController = {
 
       const user = await UsuarioAuth.validarCredenciales(identificador, password);
       if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
+
+      if (String(user.plan_estado || "").toLowerCase() === "pendiente_pago") {
+        const plan = obtenerPlan(user.plan_codigo);
+        return res.status(402).json({
+          codigo: "pendiente_pago",
+          plan_nombre: plan?.nombre || user.plan_codigo,
+          error: "Tu cuenta está registrada pero el pago aún no ha sido confirmado. Comunícate con LT&C para activar tu acceso.",
+        });
+      }
 
       const session = await crearSession(user, {
         client_type: req.body?.client_type || "web",
@@ -865,7 +877,7 @@ const authController = {
       // Tabla de organizadores (con torneos activos)
       const rTablaOrgs = await pool.query(
         `SELECT u.id, u.nombre, u.email, COALESCE(u.plan_codigo, 'free') AS plan_codigo,
-                u.activo, u.created_at,
+                u.plan_estado, u.activo, u.created_at,
                 COUNT(c.id) FILTER (WHERE c.estado NOT IN ('archivado')) AS torneos_activos
          FROM usuarios u
          LEFT JOIN campeonatos c ON c.creador_usuario_id = u.id

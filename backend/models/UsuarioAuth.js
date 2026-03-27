@@ -146,7 +146,7 @@ class UsuarioAuth {
 
         ALTER TABLE usuarios
         ADD CONSTRAINT usuarios_plan_estado_check
-        CHECK (plan_estado IN ('activo', 'suspendido'));
+        CHECK (plan_estado IN ('activo', 'suspendido', 'pendiente_pago'));
       EXCEPTION WHEN duplicate_object THEN
         NULL;
       END $$;
@@ -401,8 +401,9 @@ class UsuarioAuth {
       data.debe_cambiar_password === true ||
       String(data.debe_cambiar_password || "").toLowerCase() === "true";
     const planCodigo = normalizarPlanCodigo(data.plan_codigo, "premium");
-    const planEstado = String(data.plan_estado || "activo").trim().toLowerCase() === "suspendido"
-      ? "suspendido"
+    const _planEstadoRaw = String(data.plan_estado || "activo").trim().toLowerCase();
+    const planEstado = ["activo", "suspendido", "pendiente_pago"].includes(_planEstadoRaw)
+      ? _planEstadoRaw
       : "activo";
 
     if (!nombre) throw new Error("nombre es obligatorio");
@@ -591,10 +592,10 @@ class UsuarioAuth {
     }
 
     if (data.plan_estado !== undefined) {
-      const planEstado =
-        String(data.plan_estado || "").trim().toLowerCase() === "suspendido"
-          ? "suspendido"
-          : "activo";
+      const _peRaw = String(data.plan_estado || "").trim().toLowerCase();
+      const planEstado = ["activo", "suspendido", "pendiente_pago"].includes(_peRaw)
+        ? _peRaw
+        : "activo";
       campos.push(`plan_estado = $${idx++}`);
       valores.push(planEstado);
     }
