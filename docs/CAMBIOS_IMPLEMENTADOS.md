@@ -7,6 +7,33 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-27 - Finanzas: cierre de permisos en gastos operativos
+- `backend/models/Finanza.js` ahora soporta `campeonato_ids` en `listarGastos(...)` y añade `obtenerGastoPorId(...)` para consultar un gasto puntual con sus joins.
+- `backend/controllers/finanzaController.js` corrige el uso de `obtenerCampeonatoIdsOrganizador(user)` en gastos operativos.
+- El listado ya no devuelve gastos de otros campeonatos cuando el organizador no envía `campeonato_id`; ahora filtra por todos sus campeonatos permitidos.
+- La edición y eliminación de gastos ya no cargan la tabla completa para buscar un ID; validan directamente sobre el gasto objetivo.
+- Se endurece así el alcance real del módulo de `gastos_operativos` para organizadores y se evita exposición de datos financieros ajenos.
+
+---
+## 2026-03-27 - Alineación de migraciones local / Render
+- Se auditó el estado real de migraciones recientes en ambas bases (`local` y `Render`) contra la documentación vigente.
+- Se confirmó que ya estaban presentes en ambos entornos:
+  - `051_roles_operador_sistema.sql`
+  - `052_configuracion_sistema.sql`
+  - `053_formas_pago.sql`
+  - `054_formas_pago_paypal_tarjeta.sql`
+- Se aplicó en BD local la migración pendiente:
+  - `055_plan_estado_pendiente_pago.sql`
+- Se aplicó en BD local y Render la migración pendiente:
+  - `056_gastos_operativos.sql`
+- Verificación final:
+  - `usuarios_plan_estado_check` ya incluye `pendiente_pago` en ambos entornos.
+  - `gastos_operativos` ya existe en ambas bases.
+- También se corrigió el estado documental para reflejar que:
+  - `050_eventos_juvenil_cupos_y_carnet_edad.sql` ya estaba aplicada en Render, no solo en local.
+
+---
+
 ## 2026-03-25 - Juveniles por categoría, edad en carné y arquero resaltado en planilla
 - Nueva migración `database/migrations/050_eventos_juvenil_cupos_y_carnet_edad.sql`.
 - `backend/controllers/eventoController.js` y `frontend/eventos.html` / `frontend/js/eventos.js` ahora permiten configurar por categoría:
@@ -1491,3 +1518,5 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - los partidos restantes se crean sin `fecha/hora/cancha`,
   - se devuelve un resumen con `programados`, `sin_programar` y `capacidad_insuficiente`.
 - Esta misma lógica aplica también a `Regenerar (preservar jugados)`.
+
+

@@ -315,6 +315,124 @@ const finanzaController = {
       return res.status(500).json({ error: "No se pudo obtener el dashboard" });
     }
   },
+
+  // ─── Gastos operativos ───────────────────────────────────────────────────
+
+  async crearGasto(req, res) {
+    try {
+      const user = req.user;
+      if (!user) return res.status(401).json({ error: "No autenticado" });
+
+      const body = req.body || {};
+
+      // El organizador solo puede registrar gastos de sus campeonatos
+      if (isOrganizador(user)) {
+        const ids = await obtenerCampeonatoIdsOrganizador(user);
+        if (!ids.includes(Number(body.campeonato_id))) {
+          return res.status(403).json({ error: "No autorizado para este campeonato" });
+        }
+      }
+
+      const gasto = await Finanza.crearGasto({ ...body, created_by: user.id });
+      return res.status(201).json({ ok: true, gasto });
+    } catch (error) {
+      const status = statusParaError(error);
+      return res.status(status).json({ error: error.message });
+    }
+  },
+
+  async listarGastos(req, res) {
+    try {
+      const user = req.user;
+      if (!user) return res.status(401).json({ error: "No autenticado" });
+
+      const filtros = { ...req.query };
+
+      if (isOrganizador(user)) {
+        const ids = await obtenerCampeonatoIdsOrganizador(user);
+        if (!ids.length) return res.json({ ok: true, total: 0, gastos: [] });
+        if (!filtros.campeonato_id) {
+          filtros.campeonato_ids = ids;
+        } else if (!ids.includes(Number(filtros.campeonato_id))) {
+          return res.status(403).json({ error: "No autorizado para este campeonato" });
+        }
+      }
+
+      const gastos = await Finanza.listarGastos(filtros);
+      return res.json({ ok: true, total: gastos.length, gastos });
+    } catch (error) {
+      console.error("Error listando gastos operativos:", error);
+      return res.status(statusParaError(error)).json({ error: error.message || "No se pudo listar los gastos" });
+    }
+  },
+
+  async actualizarGasto(req, res) {
+    try {
+      const user = req.user;
+      if (!user) return res.status(401).json({ error: "No autenticado" });
+
+      const id = Number(req.params.id);
+      const existente = await Finanza.obtenerGastoPorId(id);
+      if (!existente) return res.status(404).json({ error: "Gasto no encontrado" });
+
+      if (isOrganizador(user)) {
+        const ids = await obtenerCampeonatoIdsOrganizador(user);
+        if (!ids.includes(Number(existente.campeonato_id))) {
+          return res.status(403).json({ error: "No autorizado" });
+        }
+      }
+
+      const gasto = await Finanza.actualizarGasto(id, req.body || {});
+      return res.json({ ok: true, gasto });
+    } catch (error) {
+      const status = statusParaError(error);
+      return res.status(status).json({ error: error.message });
+    }
+  },
+
+  async eliminarGasto(req, res) {
+    try {
+      const user = req.user;
+      if (!user) return res.status(401).json({ error: "No autenticado" });
+
+      const id = Number(req.params.id);
+      const existente = await Finanza.obtenerGastoPorId(id);
+      if (!existente) return res.status(404).json({ error: "Gasto no encontrado" });
+
+      if (isOrganizador(user)) {
+        const ids = await obtenerCampeonatoIdsOrganizador(user);
+        if (!ids.includes(Number(existente.campeonato_id))) {
+          return res.status(403).json({ error: "No autorizado" });
+        }
+      }
+
+      await Finanza.eliminarGasto(id);
+      return res.json({ ok: true });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  },
+
+  async resumenGastos(req, res) {
+    try {
+      const user = req.user;
+      if (!user) return res.status(401).json({ error: "No autenticado" });
+
+      const campeonato_id = Number(req.params.campeonato_id);
+
+      if (isOrganizador(user)) {
+        const ids = await obtenerCampeonatoIdsOrganizador(user);
+        if (!ids.includes(campeonato_id)) {
+          return res.status(403).json({ error: "No autorizado" });
+        }
+      }
+
+      const resumen = await Finanza.resumenGastosPorCategoria(campeonato_id);
+      return res.json({ ok: true, resumen });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  },
 };
 
 module.exports = finanzaController;

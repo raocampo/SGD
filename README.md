@@ -459,6 +459,12 @@ psql -U postgres -d gestionDeportiva -f database/migrations/033_campeonatos_tipo
 psql -U postgres -d gestionDeportiva -f database/migrations/034_organizador_portal_branding.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/035_campeonato_fondo_carnet.sql
 psql -U postgres -d gestionDeportiva -f database/migrations/050_eventos_juvenil_cupos_y_carnet_edad.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/051_roles_operador_sistema.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/052_configuracion_sistema.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/053_formas_pago.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/054_formas_pago_paypal_tarjeta.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/055_plan_estado_pendiente_pago.sql
+psql -U postgres -d gestionDeportiva -f database/migrations/056_gastos_operativos.sql
 ```
 
 ### 5.3 Ejecutar
@@ -665,3 +671,4 @@ Vision comercial de la plataforma — lo que el admin ha "vendido" a organizador
 - `backend/uploads/` y cualquier ruta definida por `UPLOADS_DIR` deben permanecer fuera del versionado (runtime).
 - Dumps pesados de DB deben mantenerse fuera del flujo principal de commits.
 - No incluir secretos reales en archivos `.env`.
+

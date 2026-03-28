@@ -34,4 +34,36 @@ router.get(
   finanzaController.dashboardOrganizador
 );
 
+// Gastos operativos — IMPORTANTE: ruta estática /gastos/resumen/:id antes de /:id
+router.get(
+  "/gastos/resumen/:campeonato_id",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  finanzaController.resumenGastos
+);
+router.get(
+  "/gastos",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  finanzaController.listarGastos
+);
+router.post(
+  "/gastos",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  finanzaController.crearGasto
+);
+router.put(
+  "/gastos/:id",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  finanzaController.actualizarGasto
+);
+router.delete(
+  "/gastos/:id",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  finanzaController.eliminarGasto
+);
+
 module.exports = router;
