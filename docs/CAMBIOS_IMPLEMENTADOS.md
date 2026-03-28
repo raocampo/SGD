@@ -7,6 +7,14 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-27 - Finanzas: cierre de permisos en gastos operativos
+- `backend/models/Finanza.js` ahora soporta `campeonato_ids` en `listarGastos(...)` y añade `obtenerGastoPorId(...)` para consultar un gasto puntual con sus joins.
+- `backend/controllers/finanzaController.js` corrige el uso de `obtenerCampeonatoIdsOrganizador(user)` en gastos operativos.
+- El listado ya no devuelve gastos de otros campeonatos cuando el organizador no envía `campeonato_id`; ahora filtra por todos sus campeonatos permitidos.
+- La edición y eliminación de gastos ya no cargan la tabla completa para buscar un ID; validan directamente sobre el gasto objetivo.
+- Se endurece así el alcance real del módulo de `gastos_operativos` para organizadores y se evita exposición de datos financieros ajenos.
+
+---
 ## 2026-03-27 - Alineación de migraciones local / Render
 - Se auditó el estado real de migraciones recientes en ambas bases (`local` y `Render`) contra la documentación vigente.
 - Se confirmó que ya estaban presentes en ambos entornos:
@@ -1510,4 +1518,5 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - los partidos restantes se crean sin `fecha/hora/cancha`,
   - se devuelve un resumen con `programados`, `sin_programar` y `capacidad_insuficiente`.
 - Esta misma lógica aplica también a `Regenerar (preservar jugados)`.
+
 

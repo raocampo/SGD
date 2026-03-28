@@ -793,11 +793,20 @@ class Finanza {
   }
 
   static async listarGastos(filtros = {}) {
-    const { campeonato_id, evento_id, partido_id, categoria, desde, hasta } = filtros;
+    const { campeonato_id, campeonato_ids, evento_id, partido_id, categoria, desde, hasta } = filtros;
     const params = [];
     const where = [];
 
     if (campeonato_id) { params.push(campeonato_id); where.push(`g.campeonato_id = $${params.length}`); }
+    if (Array.isArray(campeonato_ids) && campeonato_ids.length) {
+      const ids = campeonato_ids
+        .map((x) => this.parseEntero(x, "campeonato_id"))
+        .filter((x) => Number.isFinite(x) && x > 0);
+      if (ids.length) {
+        params.push(ids);
+        where.push(`g.campeonato_id = ANY($${params.length}::int[])`);
+      }
+    }
     if (evento_id)     { params.push(evento_id);     where.push(`g.evento_id = $${params.length}`); }
     if (partido_id)    { params.push(partido_id);    where.push(`g.partido_id = $${params.length}`); }
     if (categoria)     { params.push(categoria);     where.push(`g.categoria = $${params.length}`); }
@@ -820,6 +829,28 @@ class Finanza {
 
     const r = await pool.query(sql, params);
     return r.rows;
+  }
+
+  static async obtenerGastoPorId(id) {
+    const gastoId = this.parseEntero(id, "id");
+    const r = await pool.query(
+      `
+        SELECT g.*,
+               c.nombre AS campeonato_nombre,
+               e.nombre AS evento_nombre,
+               p.numero_partido_visible AS partido_numero,
+               u.nombre AS registrado_por
+          FROM gastos_operativos g
+          LEFT JOIN campeonatos c ON c.id = g.campeonato_id
+          LEFT JOIN eventos e     ON e.id = g.evento_id
+          LEFT JOIN partidos p    ON p.id = g.partido_id
+          LEFT JOIN usuarios u    ON u.id = g.created_by
+         WHERE g.id = $1
+         LIMIT 1
+      `,
+      [gastoId]
+    );
+    return r.rows[0] || null;
   }
 
   static async actualizarGasto(id, data = {}) {

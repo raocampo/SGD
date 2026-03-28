@@ -1,6 +1,18 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-27 (sesión 14)
+Ultima actualizacion: 2026-03-27 (sesión 15)
+
+## Avances recientes (2026-03-27 — sesión 15)
+
+### Finanzas — permisos correctos para gastos operativos del organizador
+
+- Se corrigió el módulo de `gastos_operativos` para que un organizador ya no pueda listar gastos fuera de sus campeonatos cuando no envía `campeonato_id`.
+- `backend/models/Finanza.js` ahora acepta `campeonato_ids` en `listarGastos(...)` y agrega `obtenerGastoPorId(...)` para recuperar un gasto puntual sin cargar toda la tabla.
+- `backend/controllers/finanzaController.js` ahora:
+  - usa `obtenerCampeonatoIdsOrganizador(user)` con el objeto `user` correcto,
+  - restringe el listado a `campeonato_ids` permitidos cuando no se filtra un campeonato puntual,
+  - valida edición y eliminación con `obtenerGastoPorId(...)` en lugar de listar todos los gastos.
+- Resultado: el organizador solo puede crear, listar, editar, eliminar y resumir gastos de campeonatos propios, sin fugas de datos ni consultas innecesariamente amplias.
 
 ## Avances recientes (2026-03-27 — sesión 14)
 
@@ -2241,4 +2253,5 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - `partidos: 414`
   - `usuarios: 18`
 - El `smoke` del backend pasó `9/9` contra `http://localhost:5000`.
+
 
