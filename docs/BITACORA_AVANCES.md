@@ -1,6 +1,27 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-27 (sesión 15)
+Ultima actualizacion: 2026-03-27 (sesión 16)
+
+## Avances recientes (2026-03-27 — sesión 16)
+
+### Fix: admin redirige a admin.html como página inicial
+
+- `core.js` — `getDefaultPageByRole()`: administrador ahora retorna `admin.html`, organizador retorna `portal-admin.html`.
+- `core.js` — `canAccessPage()`: se bloquea explícitamente al rol `administrador` en `portal-admin.html`; si intenta acceder directamente por URL, es redirigido a `admin.html`.
+- Criterio de negocio: el administrador no organiza torneos — administra la plataforma. Para organizar debe crear cuenta de organizador (trazabilidad y auditoría).
+
+### Fix: error al eliminar jugador (violación FK en goleadores/tarjetas)
+
+- **Causa**: el FK `goleadores_jugador_id_fkey` en Render fue creado sin `ON DELETE SET NULL` (table pre-existente antes de la migración 005). Lo mismo aplica a `tarjetas_jugador_id_fkey`.
+- **Fix inmediato** — `backend/models/Jugador.js` → `static async eliminar()`: antes del `DELETE`, se nullifican las referencias en `goleadores` y `tarjetas` con `UPDATE ... SET jugador_id = NULL WHERE jugador_id = $1`. Funciona independientemente del comportamiento del FK en la BD.
+- **Fix estructural** — Migración `057_fix_fk_on_delete_set_null.sql`: recrea ambos FK con `ON DELETE SET NULL`. Aplicada en BD local.
+- **Pendiente**: aplicar migración 057 en Render (la BD local ya está corregida).
+
+### Fix: error al crear jugador ocultaba el mensaje real de PostgreSQL
+
+- `backend/controllers/jugadorController.js`: el catch del endpoint de creación retornaba `error: 'Error creando jugador'` que no coincidía con el regex `/interno/i` de `api.js`, por lo que `detalle` (el error real de PG) nunca llegaba al usuario.
+- Corregido a `error: 'Error interno del servidor'` para que `extractErrorMessage` en `api.js` exponga el `detalle` real al frontend.
+- Permite diagnosticar la causa raíz si el error de creación persiste tras el redespliegue.
 
 ## Avances recientes (2026-03-27 — sesión 15)
 

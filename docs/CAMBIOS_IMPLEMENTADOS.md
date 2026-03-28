@@ -7,6 +7,15 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-27 - Fix jugadores: eliminar y crear
+
+- `backend/models/Jugador.js` → `eliminar()`: nullifica `jugador_id` en `goleadores` y `tarjetas` antes del `DELETE` para evitar violación del FK en Render (que no tenía `ON DELETE SET NULL`).
+- `backend/controllers/jugadorController.js`: catch de creación usa `'Error interno del servidor'` para que `api.js` muestre el detalle real del error al usuario.
+- Migración `057_fix_fk_on_delete_set_null.sql`: recrea FK `goleadores_jugador_id_fkey` y `tarjetas_jugador_id_fkey` con `ON DELETE SET NULL`. Aplicada en local; pendiente en Render.
+- `core.js`: administrador redirige a `admin.html` (no a `portal-admin.html`); acceso directo a `portal-admin.html` bloqueado para rol administrador.
+
+---
+
 ## 2026-03-27 - Finanzas: cierre de permisos en gastos operativos
 - `backend/models/Finanza.js` ahora soporta `campeonato_ids` en `listarGastos(...)` y añade `obtenerGastoPorId(...)` para consultar un gasto puntual con sus joins.
 - `backend/controllers/finanzaController.js` corrige el uso de `obtenerCampeonatoIdsOrganizador(user)` en gastos operativos.
