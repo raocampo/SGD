@@ -201,7 +201,7 @@ const jugadorController = {
             }
 
             res.status(500).json({
-                error: 'Error creando jugador',
+                error: 'Error interno del servidor',
                 detalle: error.message
             });
         }

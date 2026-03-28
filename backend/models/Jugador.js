@@ -934,6 +934,10 @@ class Jugador {
 
     // DELETE - Eliminar jugador
     static async eliminar(id) {
+        // Nullificar FK en tablas relacionadas antes de eliminar
+        // (el FK puede no tener ON DELETE SET NULL en producción)
+        await pool.query('UPDATE goleadores SET jugador_id = NULL WHERE jugador_id = $1', [id]);
+        await pool.query('UPDATE tarjetas SET jugador_id = NULL WHERE jugador_id = $1', [id]);
         const query = 'DELETE FROM jugadores WHERE id = $1 RETURNING *';
         const result = await pool.query(query, [id]);
         return result.rows[0];
