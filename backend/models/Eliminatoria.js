@@ -1054,6 +1054,41 @@ class Eliminatoria {
     return pares;
   }
 
+  static normalizarCrucesBalanceadosCanonicos(letrasGrupos = [], plantillaLlave = "estandar", clasificadosPorGrupo = null) {
+    const plantilla = this.normalizarPlantillaLlaveInput(plantillaLlave, "estandar");
+    if (plantilla !== "balanceada_8vos") return null;
+    const letras = [...new Set((letrasGrupos || [])
+      .map((x) => String(x || "").toUpperCase().trim())
+      .filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
+    const clasificados = Math.max(0, Number.parseInt(clasificadosPorGrupo, 10) || 0);
+    if (letras.length === 4 && clasificados >= 4) {
+      return [
+        [letras[0], letras[2]],
+        [letras[1], letras[3]],
+      ];
+    }
+    if (letras.length === 2 && clasificados >= 2) {
+      return [[letras[0], letras[1]]];
+    }
+    return null;
+  }
+  static normalizarCrucesPlayoffInput(
+    crucesRaw,
+    letrasGrupos = [],
+    plantillaLlave = "estandar",
+    clasificadosPorGrupo = null
+  ) {
+    const canonicos = this.normalizarCrucesBalanceadosCanonicos(
+      letrasGrupos,
+      plantillaLlave,
+      clasificadosPorGrupo
+    );
+    if (Array.isArray(canonicos) && canonicos.length) {
+      return canonicos;
+    }
+    return this.normalizarCrucesGruposInput(crucesRaw, letrasGrupos);
+  }
   static normalizarMetodoCompetenciaInput(value, fallback = "grupos") {
     const metodo = String(value || fallback || "grupos").toLowerCase().trim();
     return ["grupos", "liga", "eliminatoria", "mixto"].includes(metodo) ? metodo : fallback;
@@ -1156,7 +1191,12 @@ class Eliminatoria {
     );
     const crucesGrupos =
       origen === "grupos" && metodoClasificacion === "cruces_grupos"
-        ? this.normalizarCrucesGruposInput(config?.cruces_grupos, letras)
+        ? this.normalizarCrucesPlayoffInput(
+            config?.cruces_grupos,
+            letras,
+            plantillaLlave,
+            clasificadosPorGrupo
+          )
         : [];
 
     return {
@@ -1231,7 +1271,12 @@ class Eliminatoria {
         .filter(Boolean);
       const crucesGrupos =
         origen === "grupos" && metodoClasificacion === "cruces_grupos"
-          ? this.normalizarCrucesGruposInput(payload?.cruces_grupos, letras)
+          ? this.normalizarCrucesPlayoffInput(
+              payload?.cruces_grupos,
+              letras,
+              plantillaLlave,
+              clasificadosPorGrupo
+            )
           : [];
 
       await client.query(
@@ -3481,7 +3526,12 @@ class Eliminatoria {
         meta.clasificados_adicionales_tabla_unica = tabla.adicionales || [];
         meta.faltantes_tabla_unica = Number(tabla.faltantes_para_objetivo || 0);
       } else {
-        const cruces = this.normalizarCrucesGruposInput(opciones.cruces_grupos, gruposLetras);
+        const cruces = this.normalizarCrucesPlayoffInput(
+          opciones.cruces_grupos,
+          gruposLetras,
+          plantillaLlave,
+          clasificadosPorGrupo
+        );
         if (!cruces.length) {
           throw new Error("No se pudieron definir cruces de grupos válidos");
         }

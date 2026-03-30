@@ -239,17 +239,21 @@ function obtenerCrucesConfiguradosDesdeWrap(wrap) {
 
 function obtenerCrucesPorDefecto(letras = [], plantillaLlave = "estandar", clasificados = 2) {
   const grupos = Array.isArray(letras)
-    ? letras.map((letra) => String(letra || "").toUpperCase().trim()).filter(Boolean)
+    ? [...new Set(letras.map((letra) => String(letra || "").toUpperCase().trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
     : [];
-  if (
-    String(plantillaLlave || "estandar").toLowerCase() === "balanceada_8vos" &&
-    grupos.length === 4 &&
-    Number(clasificados || 0) >= 4
-  ) {
-    return [
-      [grupos[0], grupos[2]],
-      [grupos[1], grupos[3]],
-    ];
+  const plantilla = String(plantillaLlave || "estandar").toLowerCase();
+  const cupos = Number(clasificados || 0);
+
+  if (plantilla === "balanceada_8vos") {
+    if (grupos.length === 4 && cupos >= 4) {
+      return [
+        [grupos[0], grupos[2]],
+        [grupos[1], grupos[3]],
+      ];
+    }
+    if (grupos.length === 2 && cupos >= 2) {
+      return [[grupos[0], grupos[1]]];
+    }
   }
 
   const pares = Math.floor(grupos.length / 2);
@@ -1888,7 +1892,7 @@ function actualizarMetaEvento() {
     metodo === "tabla_acumulada" ? "tabla_unica" : (config?.metodo_clasificacion || "cruces_grupos")
   ).toLowerCase();
   const plantillaLlave = String(
-    config?.plantilla_llave || evento?.playoff_plantilla || "estandar"
+    evento?.playoff_plantilla || config?.plantilla_llave || "estandar"
   ).toLowerCase();
   const incluirTercerPuesto =
     config?.incluir_tercer_puesto === true || evento?.playoff_tercer_puesto === true;
@@ -1969,6 +1973,7 @@ function renderConfiguracionCruces() {
   const letras = [...eliminatoriaState.gruposEvento];
   const plantillaLlave = String(document.getElementById("eli-plantilla-llave")?.value || "estandar").toLowerCase();
   const clasificados = obtenerClasificadosPorGrupoActual();
+  const crucesCanonicos = obtenerCrucesPorDefecto(letras, plantillaLlave, clasificados);
   if (letras.length < 2) {
     cont.innerHTML = `
       <div class="empty-state">
@@ -1979,13 +1984,18 @@ function renderConfiguracionCruces() {
   }
 
   const pares = Math.floor(letras.length / 2);
-  const crucesDefault = obtenerCrucesPorDefecto(letras, plantillaLlave, clasificados);
+  const crucesDefault = crucesCanonicos;
   const rows = [];
   for (let i = 0; i < pares; i++) {
-    const parBase = crucesActuales[i] || crucesGuardados[i] || [
-      crucesDefault[i]?.[0] || letras[i],
-      crucesDefault[i]?.[1] || letras[letras.length - 1 - i],
-    ];
+    const parBase = plantillaLlave === "balanceada_8vos"
+      ? (crucesCanonicos[i] || [
+          crucesDefault[i]?.[0] || letras[i],
+          crucesDefault[i]?.[1] || letras[letras.length - 1 - i],
+        ])
+      : (crucesActuales[i] || crucesGuardados[i] || [
+          crucesDefault[i]?.[0] || letras[i],
+          crucesDefault[i]?.[1] || letras[letras.length - 1 - i],
+        ]);
     const a = parBase[0];
     const b = parBase[1];
     rows.push(`
@@ -2007,7 +2017,9 @@ function renderConfiguracionCruces() {
   }
   cont.innerHTML = rows.join("");
   cont.querySelectorAll("select").forEach((select) => {
-    select.disabled = eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
+    select.disabled =
+      eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true ||
+      plantillaLlave === "balanceada_8vos";
     select.addEventListener("change", () => {
       renderVistaPreviaCruces(obtenerCrucesConfigurados());
     });
@@ -2016,6 +2028,14 @@ function renderConfiguracionCruces() {
 }
 
 function obtenerCrucesConfigurados() {
+  const plantillaLlave = String(document.getElementById("eli-plantilla-llave")?.value || "estandar").toLowerCase();
+  const clasificados = obtenerClasificadosPorGrupoActual();
+  const letras = [...eliminatoriaState.gruposEvento];
+
+  if (plantillaLlave === "balanceada_8vos") {
+    return obtenerCrucesPorDefecto(letras, plantillaLlave, clasificados);
+  }
+
   const wrap = document.getElementById("eli-cruces-grupos");
   if (!wrap) return [];
   const cruces = obtenerCrucesConfiguradosDesdeWrap(wrap);
