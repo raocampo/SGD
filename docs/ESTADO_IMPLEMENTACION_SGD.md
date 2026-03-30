@@ -1,6 +1,6 @@
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-03-29 (sesión 17)
+Ultima actualizacion: 2026-03-30 (sesión 18)
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -67,7 +67,8 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - impresión de edad en carné.
 - las migraciones `051_roles_operador_sistema.sql`, `052_configuracion_sistema.sql`, `053_formas_pago.sql` y `054_formas_pago_paypal_tarjeta.sql` ya están alineadas en BD local y Render.
 - la migracion `055_plan_estado_pendiente_pago.sql` ya fue aplicada en BD local y Render para permitir el estado `pendiente_pago` en usuarios.
-- la migracion `056_gastos_operativos.sql` ya fue aplicada en BD local y Render para habilitar el registro de gastos operativos del organizador.
+- la migracion  56_gastos_operativos.sql ya fue aplicada en BD local y Render para habilitar el registro de gastos operativos del organizador.
+- la migracion  57_fix_fk_on_delete_set_null.sql ya fue aplicada y verificada en BD local y Render para asegurar ON DELETE SET NULL en goleadores.jugador_id y 	arjetas.jugador_id.
 - pendiente operativo: copiar el contenido historico de `backend/uploads/` al disco persistente antes de validar carga completa de imagenes/documentos en produccion.
 
 ## Estado Detallado del Alcance Actual
@@ -452,5 +453,6 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Propuesta funcional original: `docs/propuestaDesarrolloSGD.md`
 - Plan mobile web: `docs/PLAN_MOBILE_LT_C.md`
 - Plan CMS del portal publico: `docs/PLAN_CMS_PORTAL_PUBLICO.md`
+
 
 

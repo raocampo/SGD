@@ -1,6 +1,16 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-29 (sesión 17)
+Ultima actualizacion: 2026-03-30 (sesión 18)
+
+## Avances recientes (2026-03-30 — sesión 18)
+
+### Cierre de migración 057 en local y Render
+
+- Se aplicó y verificó formalmente `database/migrations/057_fix_fk_on_delete_set_null.sql` tanto en BD local como en PostgreSQL de Render.
+- Verificación posterior:
+  - `goleadores_jugador_id_fkey` -> `ON DELETE SET NULL`
+  - `tarjetas_jugador_id_fkey` -> `ON DELETE SET NULL`
+- Con esto queda alineado el fix estructural para eliminación de jugadores, complementando el `UPDATE ... SET jugador_id = NULL` defensivo ya incorporado en `backend/models/Jugador.js`.
 
 ## Avances recientes (2026-03-29 — sesión 17)
 
@@ -27,8 +37,7 @@ Ultima actualizacion: 2026-03-29 (sesión 17)
 
 - **Causa**: el FK `goleadores_jugador_id_fkey` en Render fue creado sin `ON DELETE SET NULL` (table pre-existente antes de la migración 005). Lo mismo aplica a `tarjetas_jugador_id_fkey`.
 - **Fix inmediato** — `backend/models/Jugador.js` → `static async eliminar()`: antes del `DELETE`, se nullifican las referencias en `goleadores` y `tarjetas` con `UPDATE ... SET jugador_id = NULL WHERE jugador_id = $1`. Funciona independientemente del comportamiento del FK en la BD.
-- **Fix estructural** — Migración `057_fix_fk_on_delete_set_null.sql`: recrea ambos FK con `ON DELETE SET NULL`. Aplicada en BD local.
-- **Pendiente**: aplicar migración 057 en Render (la BD local ya está corregida).
+- **Fix estructural** — Migración `057_fix_fk_on_delete_set_null.sql`: recrea ambos FK con `ON DELETE SET NULL`. Aplicada y verificada en BD local y Render.
 
 ### Fix: error al crear jugador ocultaba el mensaje real de PostgreSQL
 
@@ -2287,5 +2296,7 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - `partidos: 414`
   - `usuarios: 18`
 - El `smoke` del backend pasó `9/9` contra `http://localhost:5000`.
+
+
 
 

@@ -20,7 +20,7 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 - `backend/models/Jugador.js` → `eliminar()`: nullifica `jugador_id` en `goleadores` y `tarjetas` antes del `DELETE` para evitar violación del FK en Render (que no tenía `ON DELETE SET NULL`).
 - `backend/controllers/jugadorController.js`: catch de creación usa `'Error interno del servidor'` para que `api.js` muestre el detalle real del error al usuario.
-- Migración `057_fix_fk_on_delete_set_null.sql`: recrea FK `goleadores_jugador_id_fkey` y `tarjetas_jugador_id_fkey` con `ON DELETE SET NULL`. Aplicada en local; pendiente en Render.
+- Migración `057_fix_fk_on_delete_set_null.sql`: recrea FK `goleadores_jugador_id_fkey` y `tarjetas_jugador_id_fkey` con `ON DELETE SET NULL`. Aplicada y verificada en local y Render.
 - `core.js`: administrador redirige a `admin.html` (no a `portal-admin.html`); acceso directo a `portal-admin.html` bloqueado para rol administrador.
 
 ---
@@ -1536,5 +1536,6 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - los partidos restantes se crean sin `fecha/hora/cancha`,
   - se devuelve un resumen con `programados`, `sin_programar` y `capacidad_insuficiente`.
 - Esta misma lógica aplica también a `Regenerar (preservar jugados)`.
+
 
 
