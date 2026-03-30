@@ -9,8 +9,14 @@ Ultima actualizacion: 2026-03-30 (sesión 19)
 - `backend/models/Eliminatoria.js` valida el sembrado manual, evita repetir equipos y genera la llave exactamente con el orden elegido por el organizador.
 - `backend/controllers/eventoController.js` ya normaliza `manual_asistida` como valor válido de `playoff_plantilla`.
 - Pendiente inmediato: validar en operación real que la vista previa, la llave generada y la plantilla exportable respeten el mismo orden manual.
-## Avances recientes (2026-03-30 — sesión 18)
 
+### Fix de sembrado balanceado por slot_posicion
+
+- Se corrigió `backend/models/Eliminatoria.js` para que el armado balanceado de playoff use el `slot_posicion` real de cada clasificado y no la posición accidental del arreglo.
+- Además se ordenan los clasificados de cada grupo antes de construir el sembrado.
+- Esto corrige el caso donde la vista previa sugerida mostraba un orden balanceado correcto, pero la llave real se generaba corrida en `P1..P8`.
+
+## Avances recientes (2026-03-30 — sesión 18)
 ### Cierre de migración 057 en local y Render
 
 - Se aplicó y verificó formalmente `database/migrations/057_fix_fk_on_delete_set_null.sql` tanto en BD local como en PostgreSQL de Render.

@@ -2046,10 +2046,13 @@ class Eliminatoria {
 
   static construirEntradaGrupo(grupoMap, letraGrupo, posicion) {
     const grupo = grupoMap.get(String(letraGrupo || "").toUpperCase()) || [];
-    const row = grupo[Number(posicion) - 1] || null;
+    const slot = Number.parseInt(posicion, 10) || null;
+    const row = Number.isFinite(slot)
+      ? grupo.find((item) => Number.parseInt(item?.slot_posicion, 10) === slot) || null
+      : null;
     return {
       equipo_id: row ? Number(row.equipo_id) : null,
-      seed_ref: row?.seed_ref || null,
+      seed_ref: row?.seed_ref || (slot ? `${slot}${String(letraGrupo || '').toUpperCase()}` : null),
     };
   }
 
@@ -2147,7 +2150,13 @@ class Eliminatoria {
   static construirSembradoCrucesGrupos(clasificadosData, crucesGrupos = [], plantillaLlave = "estandar") {
     const mapGrupo = new Map();
     for (const g of clasificadosData.grupos) {
-      mapGrupo.set(String(g.grupo_letra || "").toUpperCase(), g.clasificados || []);
+      const rows = Array.isArray(g?.clasificados)
+        ? [...g.clasificados].sort(
+            (a, b) =>
+              Number.parseInt(a?.slot_posicion, 10) - Number.parseInt(b?.slot_posicion, 10)
+          )
+        : [];
+      mapGrupo.set(String(g.grupo_letra || "").toUpperCase(), rows);
     }
 
     const plantilla = this.normalizarPlantillaLlaveInput(plantillaLlave, "estandar");
