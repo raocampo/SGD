@@ -52,6 +52,7 @@ function formatearMetodoCompetencia(valor) {
 function formatearPlantillaPlayoff(valor) {
   const key = String(valor || "estandar").toLowerCase();
   if (key === "balanceada_8vos") return "Evitar reencuentros tempranos de grupo (balanceada)";
+  if (key === "manual_asistida") return "Manual asistida (definir P1..Pn)";
   if (key === "mejores_perdedores_12vos") return "Mejores perdedores (24 -> 12vos -> 8vos)";
   return "Estándar";
 }
@@ -773,6 +774,7 @@ async function editarEvento(id) {
         options: [
           { value: "estandar", label: "Estándar automático" },
           { value: "balanceada_8vos", label: "Evitar reencuentros tempranos de grupo (balanceada)" },
+          { value: "manual_asistida", label: "Manual asistida (definir P1..Pn)" },
           { value: "mejores_perdedores_12vos", label: "Mejores perdedores (24 -> 12vos -> 8vos)" },
         ],
       },

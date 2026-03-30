@@ -1,7 +1,14 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-30 (sesión 18)
+Ultima actualizacion: 2026-03-30 (sesión 19)
 
+## 2026-03-30 - Sembrado manual asistido de playoff
+
+- `frontend/eliminatorias.html` y `frontend/eventos.html` agregan la plantilla `Manual asistida (definir P1..Pn)`.
+- `frontend/js/eliminatorias.js` parte de una sugerencia balanceada y permite redefinir manualmente el orden `P1..Pn` con clasificados vigentes antes de generar la llave.
+- `backend/models/Eliminatoria.js` valida el sembrado manual, evita repetir equipos y genera la llave exactamente con el orden elegido por el organizador.
+- `backend/controllers/eventoController.js` ya normaliza `manual_asistida` como valor válido de `playoff_plantilla`.
+- Pendiente inmediato: validar en operación real que la vista previa, la llave generada y la plantilla exportable respeten el mismo orden manual.
 ## Avances recientes (2026-03-30 — sesión 18)
 
 ### Cierre de migración 057 en local y Render
@@ -2296,6 +2303,7 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - `partidos: 414`
   - `usuarios: 18`
 - El `smoke` del backend pasó `9/9` contra `http://localhost:5000`.
+
 
 
 

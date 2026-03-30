@@ -110,6 +110,7 @@
                 <select id="eli-plantilla-llave">
                   <option value="estandar">Estándar automático</option>
                   <option value="balanceada_8vos">Evitar reencuentros tempranos de grupo (balanceada)</option>
+                  <option value="manual_asistida">Manual asistida (definir P1..Pn)</option>
                   <option value="mejores_perdedores_12vos">Mejores perdedores (24 -> 12vos -> 8vos)</option>
                 </select>
               </div>
@@ -127,6 +128,11 @@
                   Ejemplo: A vs C y B vs D. Cada cruce genera los enfrentamientos por posición (1° vs último, etc.).
                 </small>
                 <div id="eli-cruces-preview" class="eli-cruces-preview"></div>
+              </div>
+              <div class="form-group form-group-full" id="eli-wrap-sembrado-manual" style="display:none;">
+                <label>Sembrado manual asistido</label>
+                <p class="form-hint">Organiza manualmente los cruces P1..Pn usando solo los clasificados vigentes de esta categoría. La llave respetará exactamente este orden al generarse.</p>
+                <div id="eli-sembrado-manual" class="eli-manual-seeding-grid"></div>
               </div>
             </div>
             <div class="action-bar">

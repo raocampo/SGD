@@ -25,6 +25,7 @@ let eliminatoriaState = {
     fondoPersonalizado: "",
   },
   rondaJornadaSeleccionada: "",
+  sembradoManualDraft: [],
 };
 let listenersConectoresExportInicializados = false;
 
@@ -119,6 +120,7 @@ function obtenerMetodoCompetenciaVisibleEliminatoria(evento = {}) {
 function formatearPlantillaLlaveEliminatoria(valor) {
   const key = String(valor || "estandar").toLowerCase();
   if (key === "balanceada_8vos") return "Evitar reencuentros tempranos de grupo (balanceada)";
+  if (key === "manual_asistida") return "Manual asistida (definir P1..Pn)";
   if (key === "mejores_perdedores_12vos") return "Mejores perdedores (24 -> 12vos -> 8vos)";
   return "Estándar";
 }
@@ -612,6 +614,7 @@ function bindEventosEliminatoria() {
   document.getElementById("eli-evento")?.addEventListener("change", async () => {
     const id = Number.parseInt(document.getElementById("eli-evento")?.value || "", 10);
     eliminatoriaState.eventoSeleccionado = Number.isFinite(id) ? id : null;
+    eliminatoriaState.sembradoManualDraft = [];
     window.RouteContext?.save?.("eliminatorias.html", { evento: eliminatoriaState.eventoSeleccionado });
     await cargarContextoPublicacion(eliminatoriaState.eventoSeleccionado);
     await cargarConfiguracionPlayoffCompartida();
@@ -624,10 +627,12 @@ function bindEventosEliminatoria() {
     actualizarUIPlayoffPorOrigen();
   });
   document.getElementById("eli-clasificados")?.addEventListener("change", async () => {
+    eliminatoriaState.sembradoManualDraft = [];
     actualizarUIPlayoffPorOrigen();
     await cargarResumenClasificacionManual();
   });
   document.getElementById("eli-plantilla-llave")?.addEventListener("change", () => {
+    eliminatoriaState.sembradoManualDraft = [];
     actualizarUIPlayoffPorOrigen();
   });
   document
@@ -1026,6 +1031,7 @@ async function cargarResumenClasificacionManual() {
         <i class="fas fa-list-check"></i>
         <p>Selecciona una categoría para revisar la clasificación.</p>
       </div>`;
+    renderSembradoManualAsistido();
     return;
   }
 
@@ -1041,6 +1047,7 @@ async function cargarResumenClasificacionManual() {
     );
     eliminatoriaState.resumenClasificacion = resp || null;
     renderResumenClasificacionManual();
+    renderSembradoManualAsistido();
   } catch (error) {
     console.error(error);
     eliminatoriaState.resumenClasificacion = null;
@@ -1049,6 +1056,7 @@ async function cargarResumenClasificacionManual() {
         <i class="fas fa-triangle-exclamation"></i>
         <p>No se pudo cargar la clasificación manual.</p>
       </div>`;
+    renderSembradoManualAsistido();
   }
 }
 
@@ -1185,6 +1193,7 @@ async function resolverReclasificacion(eventoId, reclasificacionId, ganadorId) {
     );
     eliminatoriaState.resumenClasificacion = resp || null;
     renderResumenClasificacionManual();
+    renderSembradoManualAsistido();
     mostrarNotificacion("Ganador de reclasificación registrado.", "success");
   } catch (error) {
     console.error(error);
@@ -1455,6 +1464,7 @@ async function guardarClasificacionManual() {
     );
     eliminatoriaState.resumenClasificacion = resp || null;
     renderResumenClasificacionManual();
+    renderSembradoManualAsistido();
     mostrarNotificacion("Clasificación manual guardada", "success");
   } catch (error) {
     console.error(error);
@@ -1932,16 +1942,20 @@ function actualizarUIPlayoffPorOrigen() {
   }
   const origen = origenEl?.value || "evento";
   const metodoGrupos = metodoGruposEl?.value || "cruces_grupos";
+  const plantillaLlave = String(document.getElementById("eli-plantilla-llave")?.value || "estandar").toLowerCase();
   const wrapClasificados = document.getElementById("eli-wrap-clasificados");
   const wrapMetodo = document.getElementById("eli-wrap-metodo-grupos");
   const wrapCruces = document.getElementById("eli-wrap-cruces");
+  const wrapManual = document.getElementById("eli-wrap-sembrado-manual");
   const wrapPlantilla = document.getElementById("eli-wrap-plantilla-llave");
   const wrapTercer = document.getElementById("eli-wrap-tercer-puesto");
 
   const usaGrupos = origen === "grupos";
+  const usaManual = usaGrupos && metodoGrupos === "cruces_grupos" && plantillaLlave === "manual_asistida";
   if (wrapClasificados) wrapClasificados.style.display = usaGrupos ? "" : "none";
   if (wrapMetodo) wrapMetodo.style.display = usaGrupos ? "" : "none";
-  if (wrapCruces) wrapCruces.style.display = usaGrupos && metodoGrupos === "cruces_grupos" ? "" : "none";
+  if (wrapCruces) wrapCruces.style.display = usaGrupos && metodoGrupos === "cruces_grupos" && !usaManual ? "" : "none";
+  if (wrapManual) wrapManual.style.display = usaManual ? "" : "none";
   if (wrapPlantilla) wrapPlantilla.style.display = usaGrupos ? "" : "none";
   if (wrapTercer) {
     wrapTercer.style.display = ["grupos", "eliminatoria", "mixto", "tabla_acumulada"].includes(metodoCompetencia)
@@ -1955,11 +1969,12 @@ function actualizarUIPlayoffPorOrigen() {
   if (plantillaSel) plantillaSel.disabled = eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
   if (tercerSel) tercerSel.disabled = eliminatoriaState.configuracionPlayoff?.configuracion?.guardada === true;
 
-  if (usaGrupos && metodoGrupos === "cruces_grupos") {
+  if (usaGrupos && metodoGrupos === "cruces_grupos" && !usaManual) {
     renderConfiguracionCruces();
   } else {
     renderVistaPreviaCruces([]);
   }
+  renderSembradoManualAsistido();
 }
 
 function renderConfiguracionCruces() {
@@ -2040,7 +2055,6 @@ function obtenerCrucesConfigurados() {
   if (!wrap) return [];
   const cruces = obtenerCrucesConfiguradosDesdeWrap(wrap);
 
-  // valida que no se repitan grupos
   const usados = new Set();
   const limpios = [];
   for (const [a, b] of cruces) {
@@ -2052,11 +2066,375 @@ function obtenerCrucesConfigurados() {
   return limpios;
 }
 
+function calcularTamanoBracketManual(cantidadSolicitada = null, cantidadEquipos = 0) {
+  const solicitado = parsePositiveInt(cantidadSolicitada) || 0;
+  const base = Math.max(2, parsePositiveInt(cantidadEquipos) || 0, solicitado);
+  let n = 1;
+  while (n < base) n *= 2;
+  return Math.min(n, 32);
+}
+
+function construirGrupoMapSembradoManual() {
+  const resumen = eliminatoriaState.resumenClasificacion;
+  const map = new Map();
+  for (const grupo of Array.isArray(resumen?.grupos) ? resumen.grupos : []) {
+    const letra = String(grupo?.grupo_letra || "").toUpperCase().trim();
+    if (!letra) continue;
+    const base = Array.isArray(grupo?.clasificados_finales) && grupo.clasificados_finales.length
+      ? grupo.clasificados_finales
+      : (Array.isArray(grupo?.sugeridos) ? grupo.sugeridos : []);
+    const rows = base
+      .filter((row) => Number.isFinite(Number.parseInt(row?.equipo_id, 10)))
+      .map((row) => {
+        const slot = Number.parseInt(row?.slot_posicion, 10) || null;
+        return {
+          ...row,
+          equipo_id: Number.parseInt(row.equipo_id, 10),
+          grupo_letra: letra,
+          slot_posicion: slot,
+          seed_ref: String(row?.seed_ref || "").trim() || (slot ? `${slot}${letra}` : null),
+        };
+      })
+      .sort((a, b) => Number(a?.slot_posicion || 999) - Number(b?.slot_posicion || 999));
+    map.set(letra, rows);
+  }
+  return map;
+}
+
+function construirCatalogoSembradoManual() {
+  const catalogo = [];
+  for (const [letra, rows] of construirGrupoMapSembradoManual()) {
+    for (const row of rows) {
+      catalogo.push({
+        ...row,
+        grupo_letra: letra,
+        seed_ref: String(row?.seed_ref || "").trim() || (row?.slot_posicion ? `${row.slot_posicion}${letra}` : null),
+      });
+    }
+  }
+  return catalogo;
+}
+
+function construirEntradaSembradoManual(grupoMap, letraGrupo, posicion) {
+  const letra = String(letraGrupo || "").toUpperCase().trim();
+  const slot = Number.parseInt(posicion, 10);
+  const rows = grupoMap.get(letra) || [];
+  const row = rows.find((item) => Number(item?.slot_posicion || 0) === slot) || null;
+  return {
+    equipo_id: row ? Number(row.equipo_id) : null,
+    seed_ref: row?.seed_ref || (Number.isFinite(slot) && letra ? `${slot}${letra}` : null),
+  };
+}
+
+function construirEntradasBalanceadasCuatroGruposManual(grupoMap, cruces) {
+  if (!Array.isArray(cruces) || cruces.length !== 2) return [];
+  const [parA, parB] = cruces;
+  if (!Array.isArray(parA) || !Array.isArray(parB) || parA.length < 2 || parB.length < 2) return [];
+  const [g1, g2] = parA;
+  const [g3, g4] = parB;
+  const partidos = [
+    [[g1, 1], [g2, 4]],
+    [[g3, 2], [g4, 3]],
+    [[g4, 1], [g3, 4]],
+    [[g2, 2], [g1, 3]],
+    [[g3, 1], [g4, 4]],
+    [[g1, 2], [g2, 3]],
+    [[g2, 1], [g1, 4]],
+    [[g4, 2], [g3, 3]],
+  ];
+  return partidos.flatMap(([localRef, visitaRef]) => [
+    construirEntradaSembradoManual(grupoMap, localRef[0], localRef[1]),
+    construirEntradaSembradoManual(grupoMap, visitaRef[0], visitaRef[1]),
+  ]);
+}
+
+function construirEntradasBalanceadasDosGruposManual(grupoMap, cruces) {
+  if (!Array.isArray(cruces) || cruces.length !== 1) return [];
+  const [par] = cruces;
+  if (!Array.isArray(par) || par.length < 2) return [];
+  const [g1, g2] = par;
+  const grupoA = grupoMap.get(String(g1 || "").toUpperCase()) || [];
+  const grupoB = grupoMap.get(String(g2 || "").toUpperCase()) || [];
+  const maxSlots = Math.max(grupoA.length, grupoB.length);
+  if (maxSlots < 2) return [];
+
+  const mitad = Math.ceil(maxSlots / 2);
+  const partidos = [];
+  for (let idx = 1; idx <= maxSlots; idx += 1) {
+    const indiceLado = idx <= mitad ? idx : idx - mitad;
+    const visitaPosicion = maxSlots - indiceLado + 1;
+    const ladoIzquierdo = idx <= mitad;
+    const impar = indiceLado % 2 === 1;
+
+    let localGrupo = g1;
+    let visitaGrupo = g2;
+    if (ladoIzquierdo) {
+      if (!impar) {
+        localGrupo = g2;
+        visitaGrupo = g1;
+      }
+    } else if (impar) {
+      localGrupo = g2;
+      visitaGrupo = g1;
+    }
+
+    partidos.push([
+      [localGrupo, indiceLado],
+      [visitaGrupo, visitaPosicion],
+    ]);
+  }
+
+  return partidos.flatMap(([localRef, visitaRef]) => [
+    construirEntradaSembradoManual(grupoMap, localRef[0], localRef[1]),
+    construirEntradaSembradoManual(grupoMap, visitaRef[0], visitaRef[1]),
+  ]);
+}
+
+function construirEntradasCrucesEstandarManual(grupoMap, cruces) {
+  const matchesPorCruce = [];
+  for (const [ga, gb] of Array.isArray(cruces) ? cruces : []) {
+    const grupoA = grupoMap.get(String(ga || "").toUpperCase()) || [];
+    const grupoB = grupoMap.get(String(gb || "").toUpperCase()) || [];
+    const n = Math.max(grupoA.length, grupoB.length);
+    const matches = [];
+    for (let i = 0; i < n; i += 1) {
+      matches.push([
+        grupoA[i]
+          ? { equipo_id: Number(grupoA[i].equipo_id), seed_ref: grupoA[i].seed_ref || null }
+          : { equipo_id: null, seed_ref: null },
+        grupoB[n - 1 - i]
+          ? { equipo_id: Number(grupoB[n - 1 - i].equipo_id), seed_ref: grupoB[n - 1 - i].seed_ref || null }
+          : { equipo_id: null, seed_ref: null },
+      ]);
+    }
+    matchesPorCruce.push(matches);
+  }
+
+  const maxRondas = Math.max(...matchesPorCruce.map((m) => m.length), 0);
+  const sembrados = [];
+  for (let i = 0; i < maxRondas; i += 1) {
+    for (const matches of matchesPorCruce) {
+      if (i < matches.length) {
+        const [local, visita] = matches[i];
+        sembrados.push(local || { equipo_id: null, seed_ref: null });
+        sembrados.push(visita || { equipo_id: null, seed_ref: null });
+      }
+    }
+  }
+  return sembrados;
+}
+
+function normalizarFilasSembradoManual(filas = [], totalFilas = null) {
+  const lista = Array.isArray(filas) ? filas : [];
+  const maxPartido = lista.reduce((acc, row) => Math.max(acc, Number.parseInt(row?.partido_numero, 10) || 0), 0);
+  const cantidad = Math.max(0, Number.parseInt(totalFilas, 10) || maxPartido || lista.length || 0);
+  return Array.from({ length: cantidad }, (_, idx) => {
+    const partidoNumero = idx + 1;
+    const src = lista.find((row) => Number.parseInt(row?.partido_numero, 10) === partidoNumero) || {};
+    const localId = Number.parseInt(src?.equipo_local_id, 10);
+    const visitaId = Number.parseInt(src?.equipo_visitante_id, 10);
+    return {
+      partido_numero: partidoNumero,
+      equipo_local_id: Number.isFinite(localId) ? localId : null,
+      equipo_visitante_id: Number.isFinite(visitaId) ? visitaId : null,
+    };
+  });
+}
+
+function obtenerSembradoManualDesdeLlaveActual(totalFilas = 0) {
+  const filasRonda = Array.isArray(eliminatoriaState.cruces)
+    ? eliminatoriaState.cruces.filter((partido) => String(partido?.ronda || "").toLowerCase() !== "tercer_puesto")
+    : [];
+  const rondaActual = RONDAS_ORDEN_ELI.find((ronda) =>
+    filasRonda.some((partido) => String(partido?.ronda || "").toLowerCase() === ronda)
+  );
+  if (!rondaActual) return normalizarFilasSembradoManual([], totalFilas);
+  const filas = filasRonda
+    .filter((partido) => String(partido?.ronda || "").toLowerCase() === rondaActual)
+    .sort((a, b) => Number(a?.partido_numero || 0) - Number(b?.partido_numero || 0))
+    .map((partido, idx) => ({
+      partido_numero: idx + 1,
+      equipo_local_id: Number.isFinite(Number(partido?.equipo_local_id)) ? Number(partido.equipo_local_id) : null,
+      equipo_visitante_id: Number.isFinite(Number(partido?.equipo_visitante_id)) ? Number(partido.equipo_visitante_id) : null,
+    }));
+  return normalizarFilasSembradoManual(filas, totalFilas);
+}
+
+function construirSembradoManualSugerido() {
+  const grupoMap = construirGrupoMapSembradoManual();
+  const catalogo = construirCatalogoSembradoManual();
+  const evento = obtenerEventoActual();
+  const clasificados = obtenerClasificadosPorGrupoActual();
+  const bracketSize = calcularTamanoBracketManual(evento?.eliminatoria_equipos, catalogo.length);
+  const totalFilas = Math.max(1, bracketSize / 2);
+  const letras = Array.from(grupoMap.keys()).sort((a, b) => a.localeCompare(b));
+  let entradas = [];
+
+  if (letras.length === 4 && clasificados >= 4) {
+    const cruces = obtenerCrucesPorDefecto(letras, "balanceada_8vos", clasificados);
+    entradas = construirEntradasBalanceadasCuatroGruposManual(grupoMap, cruces);
+  } else if (letras.length === 2 && clasificados >= 2) {
+    const cruces = obtenerCrucesPorDefecto(letras, "balanceada_8vos", clasificados);
+    entradas = construirEntradasBalanceadasDosGruposManual(grupoMap, cruces);
+  } else {
+    const cruces = obtenerCrucesPorDefecto(letras, "estandar", clasificados);
+    entradas = construirEntradasCrucesEstandarManual(grupoMap, cruces);
+  }
+
+  const necesarios = totalFilas * 2;
+  const padded = [...entradas];
+  while (padded.length < necesarios) {
+    padded.push({ equipo_id: null, seed_ref: null });
+  }
+
+  return normalizarFilasSembradoManual(
+    Array.from({ length: totalFilas }, (_, idx) => ({
+      partido_numero: idx + 1,
+      equipo_local_id: Number.isFinite(Number(padded[idx * 2]?.equipo_id)) ? Number(padded[idx * 2].equipo_id) : null,
+      equipo_visitante_id: Number.isFinite(Number(padded[idx * 2 + 1]?.equipo_id)) ? Number(padded[idx * 2 + 1].equipo_id) : null,
+    })),
+    totalFilas
+  );
+}
+
+function obtenerSembradoManualEditable() {
+  const catalogo = construirCatalogoSembradoManual();
+  const evento = obtenerEventoActual();
+  const totalFilas = Math.max(1, calcularTamanoBracketManual(evento?.eliminatoria_equipos, catalogo.length) / 2);
+  const draft = normalizarFilasSembradoManual(eliminatoriaState.sembradoManualDraft, totalFilas);
+  if (draft.length === totalFilas && draft.some((row) => row.equipo_local_id || row.equipo_visitante_id)) {
+    return draft;
+  }
+  const actual = obtenerSembradoManualDesdeLlaveActual(totalFilas);
+  if (actual.length === totalFilas && actual.some((row) => row.equipo_local_id || row.equipo_visitante_id)) {
+    return actual;
+  }
+  return construirSembradoManualSugerido();
+}
+
+function actualizarSembradoManualDraftDesdeDOM() {
+  const cont = document.getElementById("eli-sembrado-manual");
+  if (!cont) return;
+  const filas = Array.from(cont.querySelectorAll(".eli-manual-seeding-row")).map((row) => {
+    const partidoNumero = Number.parseInt(row.getAttribute("data-manual-partido") || "", 10);
+    const localId = Number.parseInt(row.querySelector("[data-manual-local]")?.value || "", 10);
+    const visitaId = Number.parseInt(row.querySelector("[data-manual-visitante]")?.value || "", 10);
+    return {
+      partido_numero: Number.isFinite(partidoNumero) ? partidoNumero : null,
+      equipo_local_id: Number.isFinite(localId) ? localId : null,
+      equipo_visitante_id: Number.isFinite(visitaId) ? visitaId : null,
+    };
+  });
+  eliminatoriaState.sembradoManualDraft = normalizarFilasSembradoManual(filas, filas.length);
+}
+
+function construirOpcionesSembradoManual(catalogo = [], seleccionado = null) {
+  const selectedId = Number.parseInt(seleccionado, 10);
+  const grupos = new Map();
+  for (const row of Array.isArray(catalogo) ? catalogo : []) {
+    const letra = String(row?.grupo_letra || "-").toUpperCase();
+    if (!grupos.has(letra)) grupos.set(letra, []);
+    grupos.get(letra).push(row);
+  }
+  const opts = ['<option value="">Por definir</option>'];
+  for (const [letra, rows] of grupos) {
+    const inner = rows
+      .sort((a, b) => Number(a?.slot_posicion || 999) - Number(b?.slot_posicion || 999))
+      .map((row) => {
+        const id = Number(row.equipo_id);
+        const label = `${row.seed_ref || `${row.slot_posicion || ""}${letra}`} • ${row.equipo_nombre || "Equipo"}`;
+        return `<option value="${id}" ${id === selectedId ? "selected" : ""}>${escapeHtml(label)}</option>`;
+      })
+      .join("");
+    opts.push(`<optgroup label="Grupo ${escapeHtml(letra)}">${inner}</optgroup>`);
+  }
+  return opts.join("");
+}
+
+function renderSembradoManualAsistido() {
+  const wrap = document.getElementById("eli-wrap-sembrado-manual");
+  const cont = document.getElementById("eli-sembrado-manual");
+  if (!cont) return;
+
+  const evento = obtenerEventoActual();
+  const origen = document.getElementById("eli-origen")?.value || "evento";
+  const metodoGrupos = document.getElementById("eli-metodo-grupos")?.value || "cruces_grupos";
+  const plantillaLlave = String(document.getElementById("eli-plantilla-llave")?.value || "estandar").toLowerCase();
+  const visible = origen === "grupos" && metodoGrupos === "cruces_grupos" && plantillaLlave === "manual_asistida";
+  if (wrap) wrap.style.display = visible ? "" : "none";
+  if (!visible) {
+    cont.innerHTML = "";
+    return;
+  }
+
+  const catalogo = construirCatalogoSembradoManual();
+  const totalFilas = Math.max(1, calcularTamanoBracketManual(evento?.eliminatoria_equipos, catalogo.length) / 2);
+  if (!catalogo.length) {
+    eliminatoriaState.sembradoManualDraft = [];
+    cont.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-diagram-project"></i>
+        <p>Carga primero la clasificación por grupos para definir el sembrado manual.</p>
+      </div>`;
+    return;
+  }
+
+  const filas = obtenerSembradoManualEditable();
+  eliminatoriaState.sembradoManualDraft = normalizarFilasSembradoManual(filas, totalFilas);
+
+  cont.innerHTML = `
+    <div class="eli-manual-seeding-toolbar">
+      <div>
+        <strong>Sembrado manual asistido</strong>
+        <p class="form-hint">Define el orden de P1..Pn. Partimos de una sugerencia balanceada y luego puedes ajustarla manualmente.</p>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" id="btn-eli-reset-manual-seeding">
+        <i class="fas fa-rotate-left"></i> Restablecer sugerencia
+      </button>
+    </div>
+    <div class="eli-manual-seeding-list">
+      ${eliminatoriaState.sembradoManualDraft
+        .map((fila) => `
+          <div class="eli-manual-seeding-row" data-manual-partido="${Number(fila.partido_numero)}">
+            <div class="eli-manual-seeding-index">P${Number(fila.partido_numero)}</div>
+            <select data-manual-local="${Number(fila.partido_numero)}">
+              ${construirOpcionesSembradoManual(catalogo, fila.equipo_local_id)}
+            </select>
+            <span class="eli-manual-seeding-vs">vs</span>
+            <select data-manual-visitante="${Number(fila.partido_numero)}">
+              ${construirOpcionesSembradoManual(catalogo, fila.equipo_visitante_id)}
+            </select>
+          </div>
+        `)
+        .join("")}
+    </div>
+  `;
+
+  cont.querySelectorAll("select[data-manual-local], select[data-manual-visitante]").forEach((select) => {
+    select.addEventListener("change", () => {
+      actualizarSembradoManualDraftDesdeDOM();
+    });
+  });
+  cont.querySelector("#btn-eli-reset-manual-seeding")?.addEventListener("click", () => {
+    eliminatoriaState.sembradoManualDraft = construirSembradoManualSugerido();
+    renderSembradoManualAsistido();
+  });
+}
+
+function obtenerSembradoManualConfigurado() {
+  actualizarSembradoManualDraftDesdeDOM();
+  const catalogo = construirCatalogoSembradoManual();
+  const evento = obtenerEventoActual();
+  const totalFilas = Math.max(1, calcularTamanoBracketManual(evento?.eliminatoria_equipos, catalogo.length) / 2);
+  return normalizarFilasSembradoManual(eliminatoriaState.sembradoManualDraft, totalFilas);
+}
+
 async function cargarLlaveEliminatoria() {
   const eventoId = eliminatoriaState.eventoSeleccionado;
   if (!eventoId) {
     mostrarNotificacion("Selecciona una categoría", "warning");
     renderPosterPublicacion([]);
+    renderSembradoManualAsistido();
     return;
   }
   activarTabEliminatoria("bracket");
@@ -2075,10 +2453,12 @@ async function cargarLlaveEliminatoria() {
     eliminatoriaState.cruces = Array.isArray(resp?.partidos) ? resp.partidos : [];
     actualizarBarraProgPlayoff();
     renderBracket();
+    renderSembradoManualAsistido();
   } catch (error) {
     console.error(error);
     eliminatoriaState.cruces = [];
     renderPosterPublicacion([]);
+    renderSembradoManualAsistido();
     if (cont) {
       cont.innerHTML = `
         <div class="empty-state">
@@ -2109,12 +2489,12 @@ async function generarLlaveEliminatoria() {
   const plantillaLlave = String(document.getElementById("eli-plantilla-llave")?.value || "estandar").toLowerCase();
   const incluirTercerPuesto =
     String(document.getElementById("eli-tercer-puesto")?.value || "false").toLowerCase() === "true";
-  const cruces = metodoGrupos === "cruces_grupos" ? obtenerCrucesConfigurados() : [];
+  const cruces = metodoGrupos === "cruces_grupos" && plantillaLlave !== "manual_asistida" ? obtenerCrucesConfigurados() : [];
 
   const configOk = await guardarConfiguracionPlayoffCompartida({ silencioso: true });
   if (!configOk) return;
 
-  if (origen === "grupos" && metodoGrupos === "cruces_grupos" && !cruces.length) {
+  if (origen === "grupos" && metodoGrupos === "cruces_grupos" && plantillaLlave !== "manual_asistida" && !cruces.length) {
     mostrarNotificacion("Configura al menos un cruce de grupos válido.", "warning");
     return;
   }
@@ -2139,7 +2519,17 @@ async function generarLlaveEliminatoria() {
     if (origen !== "grupos" && Number.isFinite(cantidadObjetivo)) {
       payload.cantidad_equipos = cantidadObjetivo;
     }
-    if (cruces.length) payload.cruces_grupos = cruces;
+    if (plantillaLlave === "manual_asistida") {
+      const sembradoManual = obtenerSembradoManualConfigurado();
+      if (!sembradoManual.length) {
+        mostrarNotificacion("Define el sembrado manual antes de generar la llave.", "warning");
+        return;
+      }
+      payload.sembrado_manual = sembradoManual;
+      payload.cantidad_equipos = sembradoManual.length * 2;
+    } else if (cruces.length) {
+      payload.cruces_grupos = cruces;
+    }
 
     const resp = await ApiClient.post(`/eliminatorias/evento/${eventoId}/generar`, payload);
     const meta = resp?.meta || null;

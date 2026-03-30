@@ -8367,3 +8367,65 @@ body.page-finanzas {
   .gastos-tabla td:nth-child(3) { display: none; }
   .gasto-badge-total { margin-left: 0; }
 }
+
+.page-eliminatorias .eli-manual-seeding-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.page-eliminatorias .eli-manual-seeding-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.page-eliminatorias .eli-manual-seeding-toolbar strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.98rem;
+}
+
+.page-eliminatorias .eli-manual-seeding-toolbar .form-hint {
+  margin: 0.25rem 0 0;
+}
+
+.page-eliminatorias .eli-manual-seeding-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.page-eliminatorias .eli-manual-seeding-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto 1fr;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.page-eliminatorias .eli-manual-seeding-index {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.page-eliminatorias .eli-manual-seeding-vs {
+  font-weight: 800;
+  color: #475467;
+}
+
+@media (max-width: 900px) {
+  .page-eliminatorias .eli-manual-seeding-row {
+    grid-template-columns: 1fr;
+  }
+
+  .page-eliminatorias .eli-manual-seeding-index,
+  .page-eliminatorias .eli-manual-seeding-vs {
+    justify-self: center;
+  }
+}
+

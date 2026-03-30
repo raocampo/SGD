@@ -1113,6 +1113,9 @@ class Eliminatoria {
       balanceada_8vos: "balanceada_8vos",
       octavos_balanceados: "balanceada_8vos",
       finish_balanceado: "balanceada_8vos",
+      manual: "manual_asistida",
+      manual_asistida: "manual_asistida",
+      manual_asistido: "manual_asistida",
       mejores_perdedores: PLANTILLA_MEJORES_PERDEDORES_12VOS,
       mejores_perdedores_12vos: PLANTILLA_MEJORES_PERDEDORES_12VOS,
       mejores_perdedores_24: PLANTILLA_MEJORES_PERDEDORES_12VOS,
@@ -2251,6 +2254,95 @@ class Eliminatoria {
       objetivo,
       faltantes_para_objetivo: Math.max(0, objetivo - (base.length + adicionales.length)),
     };
+  }
+
+  static construirCatalogoClasificadosPlayoff(clasificadosData = {}) {
+    const catalogo = new Map();
+    for (const grupo of Array.isArray(clasificadosData?.grupos) ? clasificadosData.grupos : []) {
+      for (const row of Array.isArray(grupo?.clasificados) ? grupo.clasificados : []) {
+        const equipoId = Number.parseInt(row?.equipo_id, 10);
+        if (!Number.isFinite(equipoId) || catalogo.has(equipoId)) continue;
+        const slotPosicion = Number.parseInt(row?.slot_posicion, 10) || null;
+        const grupoLetra = String(row?.grupo_letra || grupo?.grupo_letra || '').toUpperCase().trim() || null;
+        catalogo.set(equipoId, {
+          ...row,
+          equipo_id: equipoId,
+          grupo_id: Number.parseInt(row?.grupo_id ?? grupo?.grupo_id, 10) || null,
+          grupo_letra: grupoLetra,
+          slot_posicion: slotPosicion,
+          seed_ref: String(row?.seed_ref || '').trim() || (slotPosicion && grupoLetra ? String(slotPosicion) + grupoLetra : null),
+        });
+      }
+    }
+    return catalogo;
+  }
+
+  static construirSembradoManualDesdePayload(clasificadosData = {}, sembradoManual = []) {
+    const filas = Array.isArray(sembradoManual) ? sembradoManual : [];
+    if (!filas.length) {
+      throw new Error('Configura el sembrado manual antes de generar la llave.');
+    }
+
+    const catalogo = this.construirCatalogoClasificadosPlayoff(clasificadosData);
+    const usados = new Set();
+    const entradas = [];
+    const resumen = [];
+
+    for (let idx = 0; idx < filas.length; idx += 1) {
+      const fila = filas[idx] || {};
+      const partidoNumero = Number.parseInt(fila?.partido_numero, 10) || idx + 1;
+      const localId = Number.parseInt(fila?.equipo_local_id, 10);
+      const visitanteId = Number.parseInt(fila?.equipo_visitante_id, 10);
+      const localValido = Number.isFinite(localId) ? localId : null;
+      const visitanteValido = Number.isFinite(visitanteId) ? visitanteId : null;
+
+      if (localValido !== null && visitanteValido !== null && localValido === visitanteValido) {
+        throw new Error('El partido P' + partidoNumero + ' no puede repetir el mismo equipo en ambos lados.');
+      }
+
+      const local = localValido !== null ? catalogo.get(localValido) : null;
+      const visitante = visitanteValido !== null ? catalogo.get(visitanteValido) : null;
+
+      if (localValido !== null && !local) {
+        throw new Error('El equipo local seleccionado en P' + partidoNumero + ' ya no pertenece a los clasificados vigentes.');
+      }
+      if (visitanteValido !== null && !visitante) {
+        throw new Error('El equipo visitante seleccionado en P' + partidoNumero + ' ya no pertenece a los clasificados vigentes.');
+      }
+      if (localValido !== null && usados.has(localValido)) {
+        throw new Error('El equipo local de P' + partidoNumero + ' ya fue usado en otro cruce manual.');
+      }
+      if (visitanteValido !== null && usados.has(visitanteValido)) {
+        throw new Error('El equipo visitante de P' + partidoNumero + ' ya fue usado en otro cruce manual.');
+      }
+
+      if (localValido !== null) usados.add(localValido);
+      if (visitanteValido !== null) usados.add(visitanteValido);
+
+      entradas.push({
+        equipo_id: local ? Number(local.equipo_id) : null,
+        seed_ref: local?.seed_ref || null,
+      });
+      entradas.push({
+        equipo_id: visitante ? Number(visitante.equipo_id) : null,
+        seed_ref: visitante?.seed_ref || null,
+      });
+
+      resumen.push({
+        partido_numero: partidoNumero,
+        equipo_local_id: local ? Number(local.equipo_id) : null,
+        equipo_visitante_id: visitante ? Number(visitante.equipo_id) : null,
+        local_seed_ref: local?.seed_ref || null,
+        visitante_seed_ref: visitante?.seed_ref || null,
+      });
+    }
+
+    const totalSeleccionados = entradas.filter((row) => Number.isFinite(Number(row?.equipo_id))).length;
+    if (totalSeleccionados < 2) {
+      throw new Error('Debes seleccionar al menos dos equipos para generar la llave manual.');
+    }
+
+    return { entradas, resumen };
   }
 
   static construirSembradoTablaUnica(clasificadosData, opciones = {}) {
@@ -3514,7 +3606,15 @@ class Eliminatoria {
         clasificados_por_grupo: clasificadosPorGrupo,
       };
 
-      if (metodo === "tabla_unica") {
+      if (plantillaLlave === "manual_asistida") {
+        const manual = this.construirSembradoManualDesdePayload(
+          clasificadosData,
+          opciones?.sembrado_manual
+        );
+        entradas = manual.entradas;
+        meta.armado_manual = true;
+        meta.sembrado_manual = manual.resumen;
+      } else if (metodo === "tabla_unica") {
         const cantidadObjetivo = Number.parseInt(opciones.cantidad_equipos, 10);
         const tabla = this.construirSembradoTablaUnica(clasificadosData, {
           cantidad_objetivo: Number.isFinite(cantidadObjetivo) ? cantidadObjetivo : null,

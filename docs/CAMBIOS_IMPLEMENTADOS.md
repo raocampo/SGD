@@ -7,6 +7,13 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-30 - Playoff con sembrado manual asistido
+- `frontend/eliminatorias.html`, `frontend/eventos.html`, `frontend/js/eliminatorias.js` y `frontend/js/eventos.js` agregan la plantilla `Manual asistida (definir P1..Pn)` dentro de la configuración de playoff.
+- El organizador ahora puede partir de una sugerencia balanceada por grupos y luego redefinir manualmente el orden `P1..Pn` antes de generar la llave, manteniendo validación para no repetir equipos y usando solo clasificados vigentes.
+- `backend/models/Eliminatoria.js` soporta `manual_asistida`, construye el catálogo actual de clasificados y genera la llave exactamente con el sembrado manual enviado por la UI.
+- `backend/controllers/eventoController.js` normaliza y valida `manual_asistida` como valor aceptado de `playoff_plantilla`.
+
+---
 ## 2026-03-29 - Penales en planilla de playoff y publicación pública
 - `frontend/planilla.html`, `frontend/js/planilla.js` y `frontend/css/style.css` agregan captura de penales en la planilla de `playoff`, con validación para exigir un ganador cuando el partido termina empatado.
 - `backend/models/Partido.js` persiste `resultado_local_shootouts`, `resultado_visitante_shootouts` y `shootouts`, y ya propaga el clasificado correcto a la llave cuando el desempate se define por penales.
@@ -1536,6 +1543,7 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - los partidos restantes se crean sin `fecha/hora/cancha`,
   - se devuelve un resumen con `programados`, `sin_programar` y `capacidad_insuficiente`.
 - Esta misma lógica aplica también a `Regenerar (preservar jugados)`.
+
 
 
 
