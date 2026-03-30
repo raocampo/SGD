@@ -469,6 +469,152 @@ function formatearMarcadorPlanilla(valor) {
   return String(aEntero(valor, 0));
 }
 
+function normalizarMarcadorPenalesPlanilla(valor, { permitirVacio = true } = {}) {
+  if (valor === undefined || valor === null || String(valor).trim() === "") {
+    return permitirVacio ? null : 0;
+  }
+  const limpio = String(valor).replace(/\D+/g, "").slice(0, 2);
+  if (!limpio) return permitirVacio ? null : 0;
+  const numero = Number.parseInt(limpio, 10);
+  if (!Number.isFinite(numero) || numero < 0) {
+    return permitirVacio ? null : 0;
+  }
+  return numero;
+}
+
+function obtenerDatosPenalesPlanilla(payload = {}, partido = dataPlanilla?.partido || {}) {
+  const resultadoLocal = aEntero(
+    payload?.resultado_local ?? document.getElementById("resultado-local")?.value ?? partido?.resultado_local,
+    0
+  );
+  const resultadoVisitante = aEntero(
+    payload?.resultado_visitante ?? document.getElementById("resultado-visitante")?.value ?? partido?.resultado_visitante,
+    0
+  );
+  const shootoutsLocal = normalizarMarcadorPenalesPlanilla(
+    payload?.resultado_local_shootouts ??
+      payload?.shootouts_local ??
+      document.getElementById("resultado-local-penales")?.value ??
+      partido?.resultado_local_shootouts,
+    { permitirVacio: true }
+  );
+  const shootoutsVisitante = normalizarMarcadorPenalesPlanilla(
+    payload?.resultado_visitante_shootouts ??
+      payload?.shootouts_visitante ??
+      document.getElementById("resultado-visitante-penales")?.value ??
+      partido?.resultado_visitante_shootouts,
+    { permitirVacio: true }
+  );
+  const tieneCarga = Number.isFinite(shootoutsLocal) || Number.isFinite(shootoutsVisitante);
+  const empate = resultadoLocal === resultadoVisitante;
+  const esPlayoff = esPartidoPlayoffPlanilla(partido);
+  const ganadorLocal =
+    Number.isFinite(shootoutsLocal) &&
+    Number.isFinite(shootoutsVisitante) &&
+    shootoutsLocal > shootoutsVisitante;
+  const ganadorId =
+    Number.isFinite(shootoutsLocal) && Number.isFinite(shootoutsVisitante) && shootoutsLocal !== shootoutsVisitante
+      ? ganadorLocal
+        ? Number(partido?.equipo_local_id)
+        : Number(partido?.equipo_visitante_id)
+      : null;
+  const ganadorNombre =
+    ganadorId === Number(partido?.equipo_local_id)
+      ? partido?.equipo_local_nombre || equiposPartido.local.nombre
+      : ganadorId === Number(partido?.equipo_visitante_id)
+        ? partido?.equipo_visitante_nombre || equiposPartido.visitante.nombre
+        : "";
+
+  return {
+    esPlayoff,
+    resultadoLocal,
+    resultadoVisitante,
+    shootoutsLocal,
+    shootoutsVisitante,
+    empate,
+    tieneCarga,
+    aplica:
+      esPlayoff &&
+      empate &&
+      Number.isFinite(shootoutsLocal) &&
+      Number.isFinite(shootoutsVisitante) &&
+      shootoutsLocal !== shootoutsVisitante,
+    ganadorId,
+    ganadorNombre,
+  };
+}
+
+function obtenerResumenPenalesPlanilla(payload = {}, partido = dataPlanilla?.partido || {}) {
+  const datos = obtenerDatosPenalesPlanilla(payload, partido);
+  if (!datos.aplica) {
+    return { aplica: false, texto: "", clasificaTexto: "", ganadorId: null, ganadorNombre: "" };
+  }
+  return {
+    aplica: true,
+    texto: `Penales: ${datos.shootoutsLocal} - ${datos.shootoutsVisitante}`,
+    clasificaTexto: `Clasifica ${datos.ganadorNombre} por penales`,
+    ganadorId: datos.ganadorId,
+    ganadorNombre: datos.ganadorNombre,
+  };
+}
+
+function actualizarVisibilidadPenalesPlanilla() {
+  const grupo = document.getElementById("grupo-penales-planilla");
+  if (!(grupo instanceof HTMLElement)) return;
+
+  const esPlayoff = esPartidoPlayoffPlanilla(dataPlanilla?.partido || {});
+  grupo.hidden = !esPlayoff;
+  if (!esPlayoff) return;
+
+  const inputLocal = document.getElementById("resultado-local-penales");
+  const inputVisitante = document.getElementById("resultado-visitante-penales");
+  const bloqueado = hayInasistenciaPlanilla();
+  if (inputLocal instanceof HTMLInputElement) inputLocal.disabled = bloqueado;
+  if (inputVisitante instanceof HTMLInputElement) inputVisitante.disabled = bloqueado;
+
+  const hint = grupo.querySelector(".planilla-penales-hint");
+  if (!(hint instanceof HTMLElement)) return;
+
+  const datos = obtenerDatosPenalesPlanilla();
+  if (bloqueado) {
+    hint.textContent = "La definición por penales no aplica cuando hay inasistencia o walkover.";
+    return;
+  }
+  if (datos.empate) {
+    hint.textContent = "Empate detectado. Registra la tanda de penales para definir al clasificado.";
+    return;
+  }
+  hint.textContent = "Solo para playoff: si el partido termina empatado, registra aquí la definición por penales.";
+}
+
+function actualizarHeaderPenales(payload = null) {
+  const head = document.getElementById("head-penales");
+  if (!(head instanceof HTMLElement)) return;
+  const resumen = obtenerResumenPenalesPlanilla(payload || {}, dataPlanilla?.partido || {});
+  if (!resumen.aplica) {
+    head.textContent = "";
+    head.classList.add("is-hidden");
+    return;
+  }
+  head.textContent = `${resumen.texto} • ${resumen.clasificaTexto}`;
+  head.classList.remove("is-hidden");
+}
+
+function validarPenalesPlanilla(payload = {}, partido = dataPlanilla?.partido || {}) {
+  const datos = obtenerDatosPenalesPlanilla(payload, partido);
+  const estado = String(payload?.estado ?? partido?.estado ?? "").trim().toLowerCase();
+  const inasistencia = normalizarInasistenciaPlanilla(payload?.inasistencia_equipo);
+  if (!datos.esPlayoff || inasistencia !== "ninguno" || payload?.ambos_no_presentes === true) return null;
+  if (estado !== "finalizado" || !datos.empate) return null;
+  if (!Number.isFinite(datos.shootoutsLocal) || !Number.isFinite(datos.shootoutsVisitante)) {
+    return "En playoff, si el partido termina empatado debes registrar penales para definir al clasificado.";
+  }
+  if (datos.shootoutsLocal === datos.shootoutsVisitante) {
+    return "En playoff, los penales no pueden terminar empatados.";
+  }
+  return null;
+}
+
 function obtenerMensajeInasistencia(tipo = "ninguno") {
   switch (normalizarInasistenciaPlanilla(tipo)) {
     case "local":
@@ -500,7 +646,13 @@ function planillaSinDatosDeJuego(payload = {}) {
   if (payload.ambos_no_presentes === true) return false;
   const goles = Array.isArray(payload.goles) ? payload.goles : [];
   const tarjetas = Array.isArray(payload.tarjetas) ? payload.tarjetas : [];
-  return goles.length === 0 && tarjetas.length === 0 && !tienePagosRegistrados(payload.pagos || {});
+  const penales = obtenerDatosPenalesPlanilla(payload);
+  return (
+    goles.length === 0 &&
+    tarjetas.length === 0 &&
+    !tienePagosRegistrados(payload.pagos || {}) &&
+    !penales.tieneCarga
+  );
 }
 
 function formatearMonedaPlanilla(valor, mostrarEnBlanco = false) {
@@ -535,7 +687,9 @@ function hayDatosEnFormularioPlanilla() {
     pago_tr_local: leerPagoInput("pago-tr-local"),
     pago_tr_visitante: leerPagoInput("pago-tr-visitante"),
   });
-  return hayCaptura || hayPagos;
+  const penales = obtenerDatosPenalesPlanilla();
+  const hayPenales = penales.tieneCarga;
+  return hayCaptura || hayPagos || hayPenales;
 }
 
 function limpiarCapturaPlanilla() {
@@ -1312,6 +1466,23 @@ function renderEncabezado() {
     !hayDatosEnFormularioPlanilla() &&
     formatearMarcadorPlanilla(resultadoLocal) === "" &&
     formatearMarcadorPlanilla(resultadoVisit) === "";
+  const resumenPenales = obtenerResumenPenalesPlanilla(
+    {
+      resultado_local: resultadoLocal,
+      resultado_visitante: resultadoVisit,
+      resultado_local_shootouts:
+        document.getElementById("resultado-local-penales")?.value ?? p.resultado_local_shootouts,
+      resultado_visitante_shootouts:
+        document.getElementById("resultado-visitante-penales")?.value ?? p.resultado_visitante_shootouts,
+      estado: document.getElementById("estado-partido")?.value || p.estado,
+      inasistencia_equipo:
+        document.getElementById("inasistencia-planilla")?.value || dataPlanilla?.planilla?.inasistencia_equipo || "ninguno",
+      ambos_no_presentes:
+        String(document.getElementById("inasistencia-planilla")?.value || "") === "ambos" ||
+        dataPlanilla?.planilla?.ambos_no_presentes === true,
+    },
+    p
+  );
 
   const reqCed = documentosRequeridos.cedula ? "Cédula: requerida" : "Cédula: opcional";
   const reqFotoCed = documentosRequeridos.foto_cedula
@@ -1352,6 +1523,9 @@ function renderEncabezado() {
         <span class="planilla-head-score-name">${escapeHtml(p.equipo_visitante_nombre || "Visitante")}</span>
       </div>
     </div>
+    <div id="head-penales" class="planilla-head-penales${resumenPenales.aplica ? "" : " is-hidden"}">${
+      resumenPenales.aplica ? escapeHtml(`${resumenPenales.texto} • ${resumenPenales.clasificaTexto}`) : ""
+    }</div>
     <div class="planilla-head-meta-grid">
       <div><strong>Partido:</strong> <span id="head-numero-partido">#${obtenerNumeroPartidoVisible(p) || "-"}</span></div>
       <div><strong>${escapeHtml(resumenCompetencia)}</strong></div>
@@ -1491,6 +1665,7 @@ function actualizarHeaderResultado(local, visitante) {
     marcadorVisitante === "";
   if (localEl) localEl.textContent = marcadorVacio ? "" : marcadorLocal;
   if (visitEl) visitEl.textContent = marcadorVacio ? "" : marcadorVisitante;
+  actualizarHeaderPenales();
 }
 
 function capturarEstadoFormularioPlanilla() {
@@ -1509,6 +1684,8 @@ function capturarEstadoFormularioPlanilla() {
       document.getElementById("observaciones-arbitro-planilla")?.value || "",
     estado: document.getElementById("estado-partido")?.value || "finalizado",
     inasistencia: document.getElementById("inasistencia-planilla")?.value || "ninguno",
+    penales_local: document.getElementById("resultado-local-penales")?.value || "",
+    penales_visitante: document.getElementById("resultado-visitante-penales")?.value || "",
     pagos: IDS_PAGOS_PLANILLA.reduce((acc, id) => {
       acc[id] = document.getElementById(id)?.value || "";
       return acc;
@@ -1550,6 +1727,8 @@ function restaurarEstadoFormularioPlanilla(snapshot = null) {
   const observacionesArbitro = document.getElementById("observaciones-arbitro-planilla");
   const estado = document.getElementById("estado-partido");
   const inasistencia = document.getElementById("inasistencia-planilla");
+  const penalesLocal = document.getElementById("resultado-local-penales");
+  const penalesVisitante = document.getElementById("resultado-visitante-penales");
 
   if (numeroPartido) numeroPartido.value = snapshot.numero_partido || "";
   if (arbitro) arbitro.value = snapshot.arbitro || "";
@@ -1566,6 +1745,14 @@ function restaurarEstadoFormularioPlanilla(snapshot = null) {
   if (observacionesArbitro) observacionesArbitro.value = snapshot.observaciones_arbitro || "";
   if (estado) estado.value = snapshot.estado || "finalizado";
   if (inasistencia) inasistencia.value = snapshot.inasistencia || "ninguno";
+  if (penalesLocal instanceof HTMLInputElement) {
+    penalesLocal.value =
+      normalizarMarcadorPenalesPlanilla(snapshot.penales_local, { permitirVacio: true }) ?? "";
+  }
+  if (penalesVisitante instanceof HTMLInputElement) {
+    penalesVisitante.value =
+      normalizarMarcadorPenalesPlanilla(snapshot.penales_visitante, { permitirVacio: true }) ?? "";
+  }
 
   IDS_PAGOS_PLANILLA.forEach((id) => {
     const input = document.getElementById(id);
@@ -1600,6 +1787,8 @@ function restaurarEstadoFormularioPlanilla(snapshot = null) {
   recalcularTotalesCapturaEquipo("captura-local");
   recalcularTotalesCapturaEquipo("captura-visitante");
   recalcularResultadoDesdeCaptura(false);
+  actualizarVisibilidadPenalesPlanilla();
+  actualizarHeaderPenales();
   actualizarVistaPreviaPlanilla(true);
 }
 
@@ -1871,6 +2060,7 @@ function recalcularResultadoDesdeCaptura(preservarSiSinDatos = false) {
   if (inputLocal) inputLocal.value = String(golesLocal);
   if (inputVisitante) inputVisitante.value = String(golesVisitante);
   actualizarHeaderResultado(golesLocal, golesVisitante);
+  actualizarVisibilidadPenalesPlanilla();
   actualizarResumenFooterDesdeCaptura();
 }
 
@@ -2111,6 +2301,8 @@ function cargarCamposBase() {
   const inputObserv = document.getElementById("observaciones-planilla");
   const inputObservVisitante = document.getElementById("observaciones-visitante-planilla");
   const inputObservArbitro = document.getElementById("observaciones-arbitro-planilla");
+  const inputPenalesLocal = document.getElementById("resultado-local-penales");
+  const inputPenalesVisit = document.getElementById("resultado-visitante-penales");
   const inputArbitro = document.getElementById("arbitro-planilla");
   const inputArbitroLinea1 = document.getElementById("arbitro-linea-1-planilla");
   const inputArbitroLinea2 = document.getElementById("arbitro-linea-2-planilla");
@@ -2124,6 +2316,14 @@ function cargarCamposBase() {
   }
   if (inputResultadoVisit) {
     inputResultadoVisit.value = p.resultado_visitante == null ? "" : String(aEntero(p.resultado_visitante, 0));
+  }
+  if (inputPenalesLocal instanceof HTMLInputElement) {
+    const valorPenalesLocal = normalizarMarcadorPenalesPlanilla(p.resultado_local_shootouts, { permitirVacio: true });
+    inputPenalesLocal.value = valorPenalesLocal == null ? "" : String(valorPenalesLocal);
+  }
+  if (inputPenalesVisit instanceof HTMLInputElement) {
+    const valorPenalesVisit = normalizarMarcadorPenalesPlanilla(p.resultado_visitante_shootouts, { permitirVacio: true });
+    inputPenalesVisit.value = valorPenalesVisit == null ? "" : String(valorPenalesVisit);
   }
   if (inputEstado) inputEstado.value = p.estado || "finalizado";
 
@@ -2193,6 +2393,7 @@ function cargarCamposBase() {
     document.getElementById("resultado-local")?.value ?? "",
     document.getElementById("resultado-visitante")?.value ?? ""
   );
+  actualizarVisibilidadPenalesPlanilla();
   aplicarEstadoInasistenciaPlanilla(false);
 }
 
@@ -3224,6 +3425,17 @@ function recolectarPayloadPlanilla() {
     tarjetas.splice(0, tarjetas.length, ...normalizarTarjetasPayload(tarjetas));
   }
 
+  const resultadoLocalShootouts = hayInasistencia
+    ? null
+    : normalizarMarcadorPenalesPlanilla(document.getElementById("resultado-local-penales")?.value, {
+        permitirVacio: true,
+      });
+  const resultadoVisitanteShootouts = hayInasistencia
+    ? null
+    : normalizarMarcadorPenalesPlanilla(document.getElementById("resultado-visitante-penales")?.value, {
+        permitirVacio: true,
+      });
+
   return {
     numero_campeonato: normalizarNumeroPartidoPlanilla(
       document.getElementById("numero-partido-planilla")?.value,
@@ -3240,6 +3452,10 @@ function recolectarPayloadPlanilla() {
       : String(document.getElementById("estado-partido")?.value || "finalizado"),
     ambos_no_presentes: ambosNoPresentes,
     inasistencia_equipo: inasistenciaEquipo,
+    resultado_local_shootouts: resultadoLocalShootouts,
+    resultado_visitante_shootouts: resultadoVisitanteShootouts,
+    shootouts:
+      Number.isFinite(resultadoLocalShootouts) && Number.isFinite(resultadoVisitanteShootouts),
     arbitro: String(document.getElementById("arbitro-planilla")?.value || "").trim(),
     arbitro_linea_1: String(document.getElementById("arbitro-linea-1-planilla")?.value || "").trim(),
     arbitro_linea_2: String(document.getElementById("arbitro-linea-2-planilla")?.value || "").trim(),
@@ -3453,6 +3669,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
   const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
   const marcadorLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
   const marcadorVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
+  const resumenPenales = obtenerResumenPenalesPlanilla(payload, p);
 
   cont.innerHTML = `
     <div class="planilla-oficial-sheet ${modelo}">
@@ -3507,6 +3724,11 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           <span>${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</span>
         </div>
       </div>
+      ${
+        resumenPenales.aplica
+          ? `<div class="planilla-oficial-penales">${escapeHtml(`${resumenPenales.texto} • ${resumenPenales.clasificaTexto}`)}</div>`
+          : ""
+      }
 
       ${
         modelo === "futbol_7_5_sala"
@@ -3642,6 +3864,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
   const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
   const scoreLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
   const scoreVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
+  const resumenPenales = obtenerResumenPenalesPlanilla(payload, p);
 
   cont.innerHTML = `
     <div class="planilla-preview-sheet">
@@ -3671,6 +3894,11 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
         <div class="score-box">${scoreLocal}${scoreLocal !== "" || scoreVisit !== "" ? " - " : ""}${scoreVisit}</div>
         <div class="team-name">${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</div>
       </div>
+      ${
+        resumenPenales.aplica
+          ? `<div class="planilla-preview-penales">${escapeHtml(`${resumenPenales.texto} • ${resumenPenales.clasificaTexto}`)}</div>`
+          : ""
+      }
 
       <div class="planilla-preview-columns">
         <article class="planilla-preview-team">
@@ -4150,6 +4378,7 @@ async function imprimirPDFPlanilla() {
     const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
     const marcadorLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
     const marcadorVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
+    const resumenPenales = obtenerResumenPenalesPlanilla(payload, p);
 
     const docDefinition = {
       pageSize: "A4",
@@ -4314,6 +4543,18 @@ async function imprimirPDFPlanilla() {
           },
           margin: [0, 0, 0, 6],
         },
+        ...(resumenPenales.aplica
+          ? [
+              {
+                text: `${resumenPenales.texto} • ${resumenPenales.clasificaTexto}`,
+                alignment: "center",
+                bold: true,
+                color: "#1d4f8c",
+                fontSize: 8.6,
+                margin: [0, -2, 0, 6],
+              },
+            ]
+          : []),
         ...(modelo === "futbol_7_5_sala"
           ? [
               {
@@ -4621,6 +4862,11 @@ async function guardarPlanilla(e) {
   }
 
   const payload = recolectarPayloadPlanilla();
+  const validacionPenales = validarPenalesPlanilla(payload, dataPlanilla?.partido || {});
+  if (validacionPenales) {
+    mostrarNotificacion(validacionPenales, "warning");
+    return;
+  }
   const partidoYaFinalizado = estadoPlanillaEsCerrado(dataPlanilla?.partido?.estado);
   if (partidoYaFinalizado) {
     const motivo = await window.mostrarPrompt({
@@ -4867,8 +5113,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   const formJugadorPlanilla = document.getElementById("form-planilla-jugador");
   const modalJugadorPlanilla = document.getElementById("modal-planilla-jugador");
   formPlanilla?.addEventListener("submit", guardarPlanilla);
-  formPlanilla?.addEventListener("input", () => actualizarVistaPreviaPlanilla(true));
-  formPlanilla?.addEventListener("change", () => actualizarVistaPreviaPlanilla(true));
+  formPlanilla?.addEventListener("input", () => {
+    actualizarVisibilidadPenalesPlanilla();
+    actualizarHeaderPenales();
+    actualizarVistaPreviaPlanilla(true);
+  });
+  formPlanilla?.addEventListener("change", () => {
+    actualizarVisibilidadPenalesPlanilla();
+    actualizarHeaderPenales();
+    actualizarVistaPreviaPlanilla(true);
+  });
   formJugadorPlanilla?.addEventListener("submit", guardarJugadorDesdePlanilla);
   modalJugadorPlanilla?.addEventListener("click", (event) => {
     if (event.target === modalJugadorPlanilla) {
@@ -4879,6 +5133,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 document.getElementById("ciudad-planilla")?.addEventListener("input", () => {
   actualizarHeaderMetaEditable();
+});
+document.getElementById("resultado-local-penales")?.addEventListener("input", (event) => {
+  const input = event?.target;
+  if (input instanceof HTMLInputElement) {
+    const numero = normalizarMarcadorPenalesPlanilla(input.value, { permitirVacio: true });
+    input.value = numero == null ? "" : String(numero);
+  }
+  actualizarVisibilidadPenalesPlanilla();
+  actualizarHeaderPenales();
+  actualizarVistaPreviaPlanilla(true);
+});
+document.getElementById("resultado-visitante-penales")?.addEventListener("input", (event) => {
+  const input = event?.target;
+  if (input instanceof HTMLInputElement) {
+    const numero = normalizarMarcadorPenalesPlanilla(input.value, { permitirVacio: true });
+    input.value = numero == null ? "" : String(numero);
+  }
+  actualizarVisibilidadPenalesPlanilla();
+  actualizarHeaderPenales();
+  actualizarVistaPreviaPlanilla(true);
 });
 document.getElementById("numero-partido-planilla")?.addEventListener("input", (event) => {
   const input = event?.target;

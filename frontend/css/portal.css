@@ -1255,6 +1255,15 @@ body.ltc-landing {
   color: #9a3030;
 }
 
+.portal-playoff-penales {
+  grid-column: 1 / -1;
+  margin-top: -0.05rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1d4f8c;
+  text-align: center;
+}
+
 /* columna de cada equipo: logo centrado + nombre debajo */
 .equipo-col {
   display: flex;

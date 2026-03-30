@@ -1330,6 +1330,19 @@ function renderEliminatoriasPortal(payload = []) {
     return ronda || "Ronda";
   };
 
+  const resolverResumenPenalesPortal = (partido = {}) => {
+    const shootoutsActivos = partido?.shootouts === true || partido?.shootouts === "t";
+    const local = Number.parseInt(partido?.resultado_local_shootouts, 10);
+    const visitante = Number.parseInt(partido?.resultado_visitante_shootouts, 10);
+    if (!shootoutsActivos || !Number.isFinite(local) || !Number.isFinite(visitante) || local === visitante) {
+      return "";
+    }
+    const ganador = local > visitante
+      ? resolverNombreSeedPortal(partido, "local")
+      : resolverNombreSeedPortal(partido, "visitante");
+    return `Penales: ${local} - ${visitante} • Clasifica ${ganador} por penales`;
+  };
+
   return `
     <div class="portal-eliminatoria-grid">
       ${rondasValidas
@@ -1350,6 +1363,7 @@ function renderEliminatoriasPortal(payload = []) {
               const numeroPartido = Number.isFinite(Number(partido.numero_campeonato))
                 ? `P${Number(partido.numero_campeonato)}`
                 : "";
+              const resumenPenales = resolverResumenPenalesPortal(partido);
               return `
                 <div class="partido-publico">
                   <div class="portal-playoff-match-head">
@@ -1363,6 +1377,11 @@ function renderEliminatoriasPortal(payload = []) {
                   <div class="equipo-nombre">${escPortal(resolverNombreSeedPortal(partido, "local"))}</div>
                   <div class="marcador">${escPortal(marcador)}</div>
                   <div class="equipo-nombre">${escPortal(resolverNombreSeedPortal(partido, "visitante"))}</div>
+                  ${
+                    resumenPenales
+                      ? `<div class="portal-playoff-penales">${escPortal(resumenPenales)}</div>`
+                      : ""
+                  }
                 </div>
               `;
             })

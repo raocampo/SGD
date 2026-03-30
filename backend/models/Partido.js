@@ -157,6 +157,147 @@ function resultadosImpactanTabla(previo = {}, siguiente = {}) {
   );
 }
 
+function normalizarMarcadorShootoutsPartido(valor, { permitirVacio = true } = {}) {
+  if (valor === undefined || valor === null || String(valor).trim() === "") {
+    return permitirVacio ? null : 0;
+  }
+  const numero = Number.parseInt(String(valor).replace(/\D+/g, ""), 10);
+  if (!Number.isFinite(numero) || numero < 0) {
+    return permitirVacio ? null : 0;
+  }
+  return numero;
+}
+
+function resolverGanadorPlayoffDesdeMarcador(partido = {}, {
+  resultadoLocal = null,
+  resultadoVisitante = null,
+  resultadoLocalShootouts = null,
+  resultadoVisitanteShootouts = null,
+  estado = "",
+} = {}) {
+  const estadoNormalizado = String(estado || "").trim().toLowerCase();
+  if (estadoNormalizado !== "finalizado") {
+    return { definido: false, requierePenales: false, empate: false, ganadorId: null, perdedorId: null };
+  }
+
+  const localId = Number.parseInt(partido?.equipo_local_id, 10);
+  const visitanteId = Number.parseInt(partido?.equipo_visitante_id, 10);
+  const rl = Number.parseInt(resultadoLocal, 10);
+  const rv = Number.parseInt(resultadoVisitante, 10);
+  if (!Number.isFinite(localId) || !Number.isFinite(visitanteId) || !Number.isFinite(rl) || !Number.isFinite(rv)) {
+    return { definido: false, requierePenales: false, empate: false, ganadorId: null, perdedorId: null };
+  }
+
+  if (rl > rv) {
+    return { definido: true, requierePenales: false, empate: false, ganadorId: localId, perdedorId: visitanteId };
+  }
+  if (rv > rl) {
+    return { definido: true, requierePenales: false, empate: false, ganadorId: visitanteId, perdedorId: localId };
+  }
+
+  const sl = normalizarMarcadorShootoutsPartido(resultadoLocalShootouts, { permitirVacio: true });
+  const sv = normalizarMarcadorShootoutsPartido(resultadoVisitanteShootouts, { permitirVacio: true });
+  if (!Number.isFinite(sl) || !Number.isFinite(sv) || sl === sv) {
+    return { definido: false, requierePenales: true, empate: true, ganadorId: null, perdedorId: null };
+  }
+
+  return sl > sv
+    ? { definido: true, requierePenales: true, empate: true, ganadorId: localId, perdedorId: visitanteId }
+    : { definido: true, requierePenales: true, empate: true, ganadorId: visitanteId, perdedorId: localId };
+}
+
+async function obtenerEnlacePlayoffPartido(client, partidoId) {
+  const id = Number.parseInt(partidoId, 10);
+  if (!Number.isFinite(id) || id <= 0) {
+    return { slot: null, reclasificacion: null };
+  }
+
+  const schema = await detectarSchemaOverrideCompeticion(client);
+  let slot = null;
+  let reclasificacion = null;
+
+  if (schema.tiene_partidos_eliminatoria === true) {
+    const slotR = await client.query(
+      `
+        SELECT id, evento_id, ronda, partido_numero, equipo_local_id, equipo_visitante_id
+        FROM partidos_eliminatoria
+        WHERE partido_id = $1
+        LIMIT 1
+      `,
+      [id]
+    );
+    slot = slotR.rows[0] || null;
+  }
+
+  if (schema.tiene_reclasificaciones === true) {
+    const reclaR = await client.query(
+      `
+        SELECT id, evento_id, equipo_a_id, equipo_b_id, partido_id, ganador_id, estado
+        FROM evento_reclasificaciones_playoff
+        WHERE partido_id = $1
+        LIMIT 1
+      `,
+      [id]
+    );
+    reclasificacion = reclaR.rows[0] || null;
+  }
+
+  return { slot, reclasificacion };
+}
+
+async function sincronizarResolucionPlayoffDesdePartido(client, partido = {}, enlace = {}, resultados = {}) {
+  const slot = enlace?.slot || null;
+  const reclasificacion = enlace?.reclasificacion || null;
+  if (!slot && !reclasificacion) return null;
+
+  const resolucion = resolverGanadorPlayoffDesdeMarcador(partido, resultados);
+  if (!resolucion.definido) return null;
+
+  const Eliminatoria = require("./Eliminatoria");
+
+  if (slot) {
+    await client.query(
+      `
+        UPDATE partidos_eliminatoria
+        SET resultado_local = $1,
+            resultado_visitante = $2,
+            ganador_id = $3,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4
+      `,
+      [
+        Number.parseInt(resultados.resultadoLocal, 10) || 0,
+        Number.parseInt(resultados.resultadoVisitante, 10) || 0,
+        resolucion.ganadorId,
+        Number(slot.id),
+      ]
+    );
+    await Eliminatoria.propagarResultadoSlot(
+      Number(slot.id),
+      { ganadorId: resolucion.ganadorId, perdedorId: resolucion.perdedorId },
+      client
+    );
+    if (String(slot?.ronda || "").trim().toLowerCase() === "12vos") {
+      await Eliminatoria.sincronizarMejoresPerdedores12vos(Number(slot.evento_id), client);
+    }
+  }
+
+  if (reclasificacion) {
+    await client.query(
+      `
+        UPDATE evento_reclasificaciones_playoff
+        SET ganador_id = $1,
+            estado = 'resuelto',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+      `,
+      [resolucion.ganadorId, Number(reclasificacion.id)]
+    );
+  }
+
+  return resolucion;
+}
+
 async function detectarSchemaOverrideCompeticion(client = pool) {
   if (_schemaOverrideCompeticion) return _schemaOverrideCompeticion;
   const r = await client.query(`
@@ -2938,6 +3079,7 @@ class Partido {
       );
       const partido = partidoR.rows[0];
       if (!partido) throw new Error("Partido no encontrado");
+      const enlacePlayoff = await obtenerEnlacePlayoffPartido(client, partido_id);
 
       const planillaActualR = await client.query(
         `SELECT * FROM partido_planillas WHERE partido_id = $1 LIMIT 1`,
@@ -2964,6 +3106,44 @@ class Partido {
 
       const equipoLocalId = Number.parseInt(partido.equipo_local_id, 10);
       const equipoVisitanteId = Number.parseInt(partido.equipo_visitante_id, 10);
+      const resultadoLocalShootoutsRaw = hayInasistencia
+        ? null
+        : normalizarMarcadorShootoutsPartido(datos.resultado_local_shootouts ?? datos.shootouts_local, {
+            permitirVacio: true,
+          });
+      const resultadoVisitanteShootoutsRaw = hayInasistencia
+        ? null
+        : normalizarMarcadorShootoutsPartido(datos.resultado_visitante_shootouts ?? datos.shootouts_visitante, {
+            permitirVacio: true,
+          });
+      const shootoutsActivos =
+        !hayInasistencia &&
+        resultadoLocal === resultadoVisitante &&
+        Number.isFinite(resultadoLocalShootoutsRaw) &&
+        Number.isFinite(resultadoVisitanteShootoutsRaw);
+      const resultadoLocalShootouts = shootoutsActivos ? resultadoLocalShootoutsRaw : null;
+      const resultadoVisitanteShootouts = shootoutsActivos ? resultadoVisitanteShootoutsRaw : null;
+      const esPlayoff = Boolean(enlacePlayoff?.slot || enlacePlayoff?.reclasificacion);
+      if (esPlayoff) {
+        const resolucionPlayoff = resolverGanadorPlayoffDesdeMarcador(partido, {
+          resultadoLocal,
+          resultadoVisitante,
+          resultadoLocalShootouts,
+          resultadoVisitanteShootouts,
+          estado,
+        });
+        if (
+          String(estado || "").trim().toLowerCase() === "finalizado" &&
+          resolucionPlayoff.empate &&
+          !resolucionPlayoff.definido
+        ) {
+          const error = new Error(
+            "En playoff, si el partido termina empatado debes registrar penales válidos para definir al clasificado."
+          );
+          error.statusCode = 400;
+          throw error;
+        }
+      }
       await aplicarNumerosCamisetaDesdePlanilla(client, partido, datos.numeros_jugadores);
       const localBloqueado = inasistenciaEquipo === "local" || inasistenciaEquipo === "ambos";
       const visitanteBloqueado = inasistenciaEquipo === "visitante" || inasistenciaEquipo === "ambos";
@@ -3039,14 +3219,17 @@ class Partido {
               delegado_partido = COALESCE($7, delegado_partido),
               ciudad = COALESCE($8, ciudad),
               numero_campeonato = COALESCE($9, numero_campeonato),
-              faltas_local_total = $10,
-              faltas_visitante_total = $11,
-              faltas_local_1er = $12,
-              faltas_local_2do = $13,
-              faltas_visitante_1er = $14,
-              faltas_visitante_2do = $15
+              resultado_local_shootouts = $10,
+              resultado_visitante_shootouts = $11,
+              shootouts = $12,
+              faltas_local_total = $13,
+              faltas_visitante_total = $14,
+              faltas_local_1er = $15,
+              faltas_local_2do = $16,
+              faltas_visitante_1er = $17,
+              faltas_visitante_2do = $18
               ${setTs}
-          WHERE id = $16
+          WHERE id = $19
         `,
         [
           resultadoLocal,
@@ -3058,6 +3241,9 @@ class Partido {
           delegadoPartido,
           ciudad,
           numeroCampeonato,
+          resultadoLocalShootouts,
+          resultadoVisitanteShootouts,
+          shootoutsActivos,
           faltasNormalizadas.local_total,
           faltasNormalizadas.visitante_total,
           faltasNormalizadas.local_1er,
@@ -3198,15 +3384,41 @@ class Partido {
         });
       }
 
+      if (esPlayoff) {
+        await sincronizarResolucionPlayoffDesdePartido(
+          client,
+          partido,
+          enlacePlayoff,
+          {
+            resultadoLocal,
+            resultadoVisitante,
+            resultadoLocalShootouts,
+            resultadoVisitanteShootouts,
+            estado,
+          }
+        );
+      }
+
       const cambioDeportivo = resultadosImpactanTabla(partido, {
         ...partido,
         resultado_local: resultadoLocal,
         resultado_visitante: resultadoVisitante,
+        resultado_local_shootouts: resultadoLocalShootouts,
+        resultado_visitante_shootouts: resultadoVisitanteShootouts,
+        shootouts: shootoutsActivos,
         estado,
       });
       if (cambioDeportivo) {
         await invalidarOverridesCompeticionPorResultado(
-          { ...partido, resultado_local: resultadoLocal, resultado_visitante: resultadoVisitante, estado },
+          {
+            ...partido,
+            resultado_local: resultadoLocal,
+            resultado_visitante: resultadoVisitante,
+            resultado_local_shootouts: resultadoLocalShootouts,
+            resultado_visitante_shootouts: resultadoVisitanteShootouts,
+            shootouts: shootoutsActivos,
+            estado,
+          },
           {
             usuarioId: usuarioEdicionId,
             motivo: `Invalidación automática por actualización de planilla en partido #${partido_id}.`,

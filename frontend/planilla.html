@@ -173,6 +173,19 @@
               <input type="hidden" id="resultado-local" value="0" />
               <input type="hidden" id="resultado-visitante" value="0" />
               <p class="form-hint">El resultado se calcula automaticamente desde la tabla de jugadores y se refleja en la cabecera.</p>
+              <div id="grupo-penales-planilla" class="planilla-penales-grid" hidden>
+                <div class="form-group">
+                  <label for="resultado-local-penales">Penales local</label>
+                  <input type="text" id="resultado-local-penales" inputmode="numeric" maxlength="2" placeholder="0" />
+                </div>
+                <div class="form-group">
+                  <label for="resultado-visitante-penales">Penales visitante</label>
+                  <input type="text" id="resultado-visitante-penales" inputmode="numeric" maxlength="2" placeholder="0" />
+                </div>
+                <p class="form-hint planilla-penales-hint">
+                  Solo para playoff: si el partido termina empatado, registra aquí la definición por penales.
+                </p>
+              </div>
 
               <div id="planilla-faltas-visual" class="planilla-faltas-visual"></div>
 

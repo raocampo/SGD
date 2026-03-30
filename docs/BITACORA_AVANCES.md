@@ -1,6 +1,19 @@
 # Bitácora de Avances - LT&C
 
-Ultima actualizacion: 2026-03-27 (sesión 16)
+Ultima actualizacion: 2026-03-29 (sesión 17)
+
+## Avances recientes (2026-03-29 — sesión 17)
+
+### Playoff — penales en planilla y publicación pública
+
+- `frontend/planilla.html`, `frontend/js/planilla.js` y `frontend/css/style.css`: la planilla de partidos de `playoff` ya soporta captura de `penales` cuando el marcador regular termina empatado.
+- `backend/models/Partido.js`: al guardar una planilla de playoff finalizada con empate, el backend ya exige penales válidos, resuelve el ganador y propaga al clasificado en la llave.
+- `backend/models/Eliminatoria.js`: la sincronización de cruces/reclasificaciones ya considera `resultado_local_shootouts`, `resultado_visitante_shootouts` y `shootouts`.
+- `frontend/js/portal.js` + `frontend/css/portal.css`: el portal público ya muestra debajo del resultado el resumen `Penales: X - Y • Clasifica ... por penales` cuando corresponde.
+
+### Pendiente prioritario para la siguiente sesión
+
+- Recomponer y validar la llave de playoff en los campeonatos afectados de producción, asegurando que los cruces recuperados queden visibles y consistentes tanto en el módulo interno como en el portal público.
 
 ## Avances recientes (2026-03-27 — sesión 16)
 

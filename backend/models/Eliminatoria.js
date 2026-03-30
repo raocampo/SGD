@@ -680,7 +680,10 @@ class Eliminatoria {
           p.jornada,
           p.numero_campeonato,
           p.resultado_local,
-          p.resultado_visitante
+          p.resultado_visitante,
+          p.resultado_local_shootouts,
+          p.resultado_visitante_shootouts,
+          p.shootouts
         FROM evento_reclasificaciones_playoff erp
         JOIN grupos g ON g.id = erp.grupo_id
         JOIN equipos ga ON ga.id = erp.equipo_a_id
@@ -851,7 +854,10 @@ class Eliminatoria {
           p.equipo_local_id,
           p.equipo_visitante_id,
           p.resultado_local,
-          p.resultado_visitante
+          p.resultado_visitante,
+          p.resultado_local_shootouts,
+          p.resultado_visitante_shootouts,
+          p.shootouts
         FROM evento_reclasificaciones_playoff erp
         JOIN partidos p ON p.id = erp.partido_id
         WHERE erp.evento_id = $1
@@ -863,14 +869,25 @@ class Eliminatoria {
       const estadoPartido = String(row?.partido_estado || "").toLowerCase();
       const rl = Number.parseInt(row?.resultado_local, 10);
       const rv = Number.parseInt(row?.resultado_visitante, 10);
-      if (estadoPartido !== "finalizado" || !Number.isFinite(rl) || !Number.isFinite(rv) || rl === rv) {
+      if (estadoPartido !== "finalizado" || !Number.isFinite(rl) || !Number.isFinite(rv)) {
         continue;
       }
 
-      const ganadorId =
-        rl > rv
+      const sl = Number.parseInt(row?.resultado_local_shootouts, 10);
+      const sv = Number.parseInt(row?.resultado_visitante_shootouts, 10);
+      let ganadorId = null;
+      if (rl > rv) {
+        ganadorId = Number.parseInt(row?.equipo_local_id, 10);
+      } else if (rv > rl) {
+        ganadorId = Number.parseInt(row?.equipo_visitante_id, 10);
+      } else if ((row?.shootouts === true || row?.shootouts === 't') && Number.isFinite(sl) && Number.isFinite(sv) && sl !== sv) {
+        ganadorId = sl > sv
           ? Number.parseInt(row?.equipo_local_id, 10)
           : Number.parseInt(row?.equipo_visitante_id, 10);
+      }
+      if (!Number.isFinite(ganadorId)) {
+        continue;
+      }
       const candidatos = [
         Number.parseInt(row?.equipo_a_id, 10),
         Number.parseInt(row?.equipo_b_id, 10),
@@ -2539,7 +2556,10 @@ class Eliminatoria {
              p.hora_partido,
              p.cancha,
              p.jornada,
-             p.numero_campeonato
+             p.numero_campeonato,
+             p.resultado_local_shootouts,
+             p.resultado_visitante_shootouts,
+             p.shootouts
       FROM partidos_eliminatoria pe
       LEFT JOIN equipos el ON pe.equipo_local_id = el.id
       LEFT JOIN equipos ev ON pe.equipo_visitante_id = ev.id
@@ -2565,7 +2585,10 @@ class Eliminatoria {
              p.hora_partido,
              p.cancha,
              p.jornada,
-             p.numero_campeonato
+             p.numero_campeonato,
+             p.resultado_local_shootouts,
+             p.resultado_visitante_shootouts,
+             p.shootouts
       FROM partidos_eliminatoria pe
       LEFT JOIN equipos el ON pe.equipo_local_id = el.id
       LEFT JOIN equipos ev ON pe.equipo_visitante_id = ev.id

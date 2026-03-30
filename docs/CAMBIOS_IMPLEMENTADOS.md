@@ -7,6 +7,15 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 
 ---
 
+## 2026-03-29 - Penales en planilla de playoff y publicación pública
+- `frontend/planilla.html`, `frontend/js/planilla.js` y `frontend/css/style.css` agregan captura de penales en la planilla de `playoff`, con validación para exigir un ganador cuando el partido termina empatado.
+- `backend/models/Partido.js` persiste `resultado_local_shootouts`, `resultado_visitante_shootouts` y `shootouts`, y ya propaga el clasificado correcto a la llave cuando el desempate se define por penales.
+- `backend/models/Eliminatoria.js` sincroniza cruces y reclasificaciones resueltas usando también el marcador de penales.
+- `frontend/js/portal.js` y `frontend/css/portal.css` muestran en el portal público el resumen de penales debajo del resultado del partido cuando aplica.
+- Pendiente operativo documentado: recomponer y validar la llave de playoff de los campeonatos afectados en producción para retomar pruebas E2E desde oficina.
+
+---
+
 ## 2026-03-27 - Fix jugadores: eliminar y crear
 
 - `backend/models/Jugador.js` → `eliminar()`: nullifica `jugador_id` en `goleadores` y `tarjetas` antes del `DELETE` para evitar violación del FK en Render (que no tenía `ON DELETE SET NULL`).
