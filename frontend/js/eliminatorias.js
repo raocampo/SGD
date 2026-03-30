@@ -594,6 +594,8 @@ function aplicarPermisosEliminatoriaUI() {
 
   const btn = document.getElementById("btn-eli-generar");
   if (btn) btn.style.display = "none";
+  const btnRecomponer = document.getElementById("btn-eli-recomponer");
+  if (btnRecomponer) btnRecomponer.style.display = "none";
   const adminEstado = document.getElementById("eli-admin-estado-section");
   const adminClasif = document.getElementById("eli-admin-clasificacion-section");
   if (adminEstado) adminEstado.style.display = "none";
@@ -643,6 +645,7 @@ function bindEventosEliminatoria() {
     ?.addEventListener("click", reiniciarConfiguracionPlayoffCompartida);
   document.getElementById("btn-eli-cargar")?.addEventListener("click", cargarLlaveEliminatoria);
   document.getElementById("btn-eli-generar")?.addEventListener("click", generarLlaveEliminatoria);
+  document.getElementById("btn-eli-recomponer")?.addEventListener("click", recomponerLlaveEliminatoria);
   document
     .getElementById("btn-eli-guardar-clasificacion")
     ?.addEventListener("click", guardarClasificacionManual);
@@ -2466,6 +2469,38 @@ async function cargarLlaveEliminatoria() {
           <p>${escapeHtml(error.message || "No se pudo cargar la llave")}</p>
         </div>`;
     }
+  }
+}
+
+async function recomponerLlaveEliminatoria() {
+  const eventoId = eliminatoriaState.eventoSeleccionado;
+  if (!eventoId) {
+    mostrarNotificacion("Selecciona una categoría", "warning");
+    return;
+  }
+
+  const ok = await window.mostrarConfirmacion({
+    titulo: "Recomponer llave vigente",
+    mensaje:
+      "Se reordenará la primera ronda con la plantilla vigente y se resincronizarán las rondas posteriores sin borrar la programación ni los resultados ya jugados en esa primera ronda.",
+    tipo: "warning",
+    textoConfirmar: "Recomponer llave",
+    claseConfirmar: "btn-warning",
+  });
+  if (!ok) return;
+
+  try {
+    const resp = await ApiClient.post(`/eliminatorias/evento/${eventoId}/recomponer`, {});
+    const recompuesto = resp?.meta?.recompuesto !== false;
+    mostrarNotificacion(
+      recompuesto ? "Llave recompuesta con la plantilla vigente" : "La llave ya estaba alineada",
+      "success"
+    );
+    await cargarLlaveEliminatoria();
+    activarTabEliminatoria("bracket");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo recomponer la llave", "error");
   }
 }
 

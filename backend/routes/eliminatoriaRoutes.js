@@ -22,6 +22,12 @@ router.post(
   requireRoles("administrador", "organizador"),
   eliminatoriaController.generarBracket
 );
+router.post(
+  "/evento/:evento_id/recomponer",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  eliminatoriaController.recomponerBracket
+);
 router.put(
   "/evento/:evento_id/configuracion",
   requireAuth,

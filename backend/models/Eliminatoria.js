@@ -2439,6 +2439,315 @@ class Eliminatoria {
     }));
   }
 
+  static slotTieneActividadCompetitiva(slot = {}) {
+    const resultadoLocal = Number(slot?.resultado_local || 0);
+    const resultadoVisitante = Number(slot?.resultado_visitante || 0);
+    const estado = String(slot?.estado || "").toLowerCase();
+    return Boolean(
+      Number.isFinite(Number.parseInt(slot?.ganador_id, 10)) ||
+      resultadoLocal !== 0 ||
+      resultadoVisitante !== 0 ||
+      ["finalizado", "en_curso", "no_presentaron_ambos"].includes(estado)
+    );
+  }
+
+  static obtenerPerdedorSlot(slot = {}) {
+    const ganadorId = Number.parseInt(slot?.ganador_id, 10);
+    const localId = Number.parseInt(slot?.equipo_local_id, 10);
+    const visitanteId = Number.parseInt(slot?.equipo_visitante_id, 10);
+    if (!Number.isFinite(ganadorId) || !Number.isFinite(localId) || !Number.isFinite(visitanteId)) {
+      return null;
+    }
+    return ganadorId == localId ? visitanteId : localId;
+  }
+
+  static async construirSembradoEsperadoEvento(evento_id, config = null, db = pool) {
+    const configPlayoff = config || (await this.obtenerConfiguracionPlayoff(evento_id, db));
+    const origen = String(configPlayoff?.configuracion?.origen || "evento").toLowerCase();
+    if (origen !== "grupos") {
+      throw new Error("Solo se puede recomponer la llave cuando el playoff se genera desde grupos.");
+    }
+
+    const clasificadosPorGrupo = Math.max(
+      1,
+      Number.parseInt(configPlayoff?.evento?.clasificados_por_grupo, 10) || 1
+    );
+    const clasificadosData = await this.obtenerClasificadosPorGrupo(evento_id, clasificadosPorGrupo, db);
+    const reclasPendientes = Array.isArray(clasificadosData?.reclasificaciones)
+      ? clasificadosData.reclasificaciones.filter(
+          (row) => String(row?.estado || "pendiente").toLowerCase() !== "resuelto"
+        )
+      : [];
+    if (reclasPendientes.length) {
+      throw new Error("No se puede recomponer la llave mientras existan reclasificaciones pendientes.");
+    }
+
+    const metodo = String(configPlayoff?.configuracion?.metodo_clasificacion || "cruces_grupos").toLowerCase();
+    const plantillaLlave = this.normalizarPlantillaLlaveInput(
+      configPlayoff?.configuracion?.plantilla_llave,
+      configPlayoff?.evento?.playoff_plantilla || "estandar"
+    );
+    const gruposLetras = (clasificadosData?.grupos || []).map((g) => String(g.grupo_letra || "").toUpperCase());
+
+    let esperado = [];
+    if (metodo === "tabla_unica") {
+      const cantidadObjetivo = Number.parseInt(configPlayoff?.evento?.eliminatoria_equipos, 10) || null;
+      const enfrentamientosDirectos = await this.obtenerMapaEnfrentamientosDirectosEvento(
+        evento_id,
+        configPlayoff?.evento?.sistema_puntuacion || "tradicional",
+        db
+      );
+      const tabla = this.construirSembradoTablaUnica(clasificadosData, {
+        cantidad_objetivo: cantidadObjetivo,
+        enfrentamientosDirectos,
+      });
+      esperado = tabla.sembrados || [];
+    } else if (plantillaLlave === "manual_asistida") {
+      throw new Error("La recomposición automática no aplica a una llave configurada en modo manual asistido.");
+    } else {
+      const cruces = this.normalizarCrucesPlayoffInput(
+        configPlayoff?.configuracion?.cruces_grupos || [],
+        gruposLetras,
+        plantillaLlave,
+        clasificadosPorGrupo
+      );
+      esperado = this.construirSembradoCrucesGrupos(clasificadosData, cruces, plantillaLlave);
+    }
+
+    return {
+      config: configPlayoff,
+      clasificadosData,
+      esperado: this.normalizarEntradasSembrado(esperado),
+      plantillaLlave,
+      metodo,
+    };
+  }
+
+  static async recomponerPrimeraRondaSegunConfiguracion(evento_id, db = pool) {
+    const client = db === pool ? await pool.connect() : null;
+    const conn = client || db;
+    try {
+      if (client) await conn.query("BEGIN");
+      await this.asegurarEsquema(conn);
+
+      const partidosActuales = await this.obtenerPorEvento(evento_id, conn);
+      if (!partidosActuales.length) {
+        throw new Error("No existe una llave generada para recomponer.");
+      }
+
+      const primeraRonda = this.obtenerPrimeraRondaPartidos(partidosActuales);
+      if (!primeraRonda.length) {
+        throw new Error("No se pudo identificar la primera ronda de la llave.");
+      }
+      const rondaPrimera = String(primeraRonda[0]?.ronda || "").toLowerCase();
+      const rondasPosteriores = partidosActuales.filter(
+        (slot) => String(slot?.ronda || "").toLowerCase() !== rondaPrimera
+      );
+      const posterioresConActividad = rondasPosteriores.filter((slot) =>
+        this.slotTieneActividadCompetitiva(slot)
+      );
+      if (posterioresConActividad.length) {
+        throw new Error("No se puede recomponer la llave porque ya hay actividad registrada en rondas posteriores.");
+      }
+
+      const { config, esperado, plantillaLlave } = await this.construirSembradoEsperadoEvento(
+        evento_id,
+        null,
+        conn
+      );
+      const capacidadPrimeraRonda = primeraRonda.length * 2;
+      const sembradoEsperado = esperado.slice(0, capacidadPrimeraRonda);
+      if (sembradoEsperado.length !== capacidadPrimeraRonda) {
+        throw new Error("No hay suficientes clasificados vigentes para recomponer la primera ronda.");
+      }
+      if (sembradoEsperado.some((entry) => !Number.isFinite(Number(entry?.equipo_id)))) {
+        throw new Error("La llave vigente todavía tiene vacantes. Resuelve la clasificación antes de recomponer.");
+      }
+
+      const primeraOrdenada = [...primeraRonda].sort(
+        (a, b) => Number(a?.partido_numero || 0) - Number(b?.partido_numero || 0)
+      );
+      const snapshotPorId = new Map(primeraOrdenada.map((slot) => [Number(slot.id), { ...slot }]));
+      const usados = new Set();
+      const estadoDeseadoPorId = new Map();
+
+      const buscarFuente = (localEsperado, visitaEsperada) => {
+        const localId = Number(localEsperado?.equipo_id);
+        const visitaId = Number(visitaEsperada?.equipo_id);
+        const seedLocal = String(localEsperado?.seed_ref || "").trim().toUpperCase();
+        const seedVisit = String(visitaEsperada?.seed_ref || "").trim().toUpperCase();
+
+        let encontrado = primeraOrdenada.find((slot) =>
+          !usados.has(Number(slot.id)) &&
+          Number(slot?.equipo_local_id) === localId &&
+          Number(slot?.equipo_visitante_id) === visitaId
+        );
+        if (encontrado) return encontrado;
+
+        encontrado = primeraOrdenada.find((slot) =>
+          !usados.has(Number(slot.id)) &&
+          String(slot?.seed_local_ref || "").trim().toUpperCase() === seedLocal &&
+          String(slot?.seed_visitante_ref || "").trim().toUpperCase() === seedVisit
+        );
+        return encontrado || null;
+      };
+
+      for (let index = 0; index < primeraOrdenada.length; index += 1) {
+        const targetSlot = primeraOrdenada[index];
+        const localEsperado = sembradoEsperado[index * 2] || null;
+        const visitaEsperada = sembradoEsperado[index * 2 + 1] || null;
+        const fuente = buscarFuente(localEsperado, visitaEsperada);
+        if (!fuente) {
+          throw new Error(
+            `No se pudo ubicar el cruce esperado para ${String(rondaPrimera).toUpperCase()} P${index + 1}. Revisa la clasificación vigente o usa el sembrado manual.`
+          );
+        }
+        usados.add(Number(fuente.id));
+        estadoDeseadoPorId.set(Number(targetSlot.id), { ...snapshotPorId.get(Number(fuente.id)) });
+      }
+
+      const yaEstaCorrecta = primeraOrdenada.every((slot) => {
+        const deseado = estadoDeseadoPorId.get(Number(slot.id));
+        return (
+          Number(slot?.equipo_local_id || 0) === Number(deseado?.equipo_local_id || 0) &&
+          Number(slot?.equipo_visitante_id || 0) === Number(deseado?.equipo_visitante_id || 0) &&
+          String(slot?.seed_local_ref || "") === String(deseado?.seed_local_ref || "") &&
+          String(slot?.seed_visitante_ref || "") === String(deseado?.seed_visitante_ref || "")
+        );
+      });
+
+      if (yaEstaCorrecta) {
+        const partidos = await this.obtenerPorEvento(evento_id, conn);
+        if (client) await conn.query("COMMIT");
+        return {
+          partidos,
+          meta: { recompuesto: false, codigo: "sin_cambios", plantilla_llave: plantillaLlave, configuracion: config?.configuracion || null },
+        };
+      }
+
+      for (const slot of primeraOrdenada) {
+        const deseado = estadoDeseadoPorId.get(Number(slot.id));
+        await conn.query(
+          `
+            UPDATE partidos_eliminatoria
+            SET equipo_local_id = $1,
+                equipo_visitante_id = $2,
+                ganador_id = $3,
+                resultado_local = $4,
+                resultado_visitante = $5,
+                partido_id = $6,
+                seed_local_ref = $7,
+                seed_visitante_ref = $8,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $9
+          `,
+          [
+            Number.isFinite(Number(deseado?.equipo_local_id)) ? Number(deseado.equipo_local_id) : null,
+            Number.isFinite(Number(deseado?.equipo_visitante_id)) ? Number(deseado.equipo_visitante_id) : null,
+            Number.isFinite(Number(deseado?.ganador_id)) ? Number(deseado.ganador_id) : null,
+            Number.isFinite(Number(deseado?.resultado_local)) ? Number(deseado.resultado_local) : null,
+            Number.isFinite(Number(deseado?.resultado_visitante)) ? Number(deseado.resultado_visitante) : null,
+            Number.isFinite(Number(deseado?.partido_id)) ? Number(deseado.partido_id) : null,
+            deseado?.seed_local_ref || null,
+            deseado?.seed_visitante_ref || null,
+            Number(slot.id),
+          ]
+        );
+      }
+
+      await conn.query(
+        `
+          UPDATE partidos_eliminatoria
+          SET equipo_local_id = NULL,
+              equipo_visitante_id = NULL,
+              ganador_id = NULL,
+              resultado_local = NULL,
+              resultado_visitante = NULL,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE evento_id = $1
+            AND LOWER(COALESCE(ronda, '')) <> $2
+        `,
+        [evento_id, rondaPrimera]
+      );
+
+      await conn.query(
+        `
+          UPDATE partidos p
+          SET equipo_local_id = NULL,
+              equipo_visitante_id = NULL
+          FROM partidos_eliminatoria pe
+          WHERE pe.evento_id = $1
+            AND LOWER(COALESCE(pe.ronda, '')) <> $2
+            AND pe.partido_id = p.id
+        `,
+        [evento_id, rondaPrimera]
+      );
+
+      const primeraRecompuesta = this.obtenerPrimeraRondaPartidos(await this.obtenerPorEvento(evento_id, conn));
+      for (const slot of primeraRecompuesta) {
+        if (slot?.partido_id) {
+          await conn.query(
+            `
+              UPDATE partidos
+              SET equipo_local_id = $2,
+                  equipo_visitante_id = $3
+              WHERE id = $1
+            `,
+            [
+              Number(slot.partido_id),
+              Number.isFinite(Number(slot?.equipo_local_id)) ? Number(slot.equipo_local_id) : null,
+              Number.isFinite(Number(slot?.equipo_visitante_id)) ? Number(slot.equipo_visitante_id) : null,
+            ]
+          );
+        }
+        const ganadorId = Number.parseInt(slot?.ganador_id, 10);
+        if (Number.isFinite(ganadorId)) {
+          await this.propagarResultadoSlot(slot.id, {
+            ganadorId,
+            perdedorId: this.obtenerPerdedorSlot(slot),
+          }, conn);
+        } else {
+          await this.intentarResolverByeEnSlot(slot.id, conn);
+        }
+      }
+
+      const partidosFinales = await this.obtenerPorEvento(evento_id, conn);
+      for (const slot of partidosFinales) {
+        if (!Number.isFinite(Number.parseInt(slot?.partido_id, 10))) continue;
+        await conn.query(
+          `
+            UPDATE partidos
+            SET equipo_local_id = $2,
+                equipo_visitante_id = $3
+            WHERE id = $1
+          `,
+          [
+            Number(slot.partido_id),
+            Number.isFinite(Number(slot?.equipo_local_id)) ? Number(slot.equipo_local_id) : null,
+            Number.isFinite(Number(slot?.equipo_visitante_id)) ? Number(slot.equipo_visitante_id) : null,
+          ]
+        );
+      }
+
+      if (client) await conn.query("COMMIT");
+      return {
+        partidos: partidosFinales,
+        meta: {
+          recompuesto: true,
+          codigo: "recompuesto",
+          ronda: rondaPrimera,
+          plantilla_llave: plantillaLlave,
+          configuracion: config?.configuracion || null,
+        },
+      };
+    } catch (error) {
+      if (client) await conn.query("ROLLBACK");
+      throw error;
+    } finally {
+      if (client) client.release();
+    }
+  }
+
   static construirDiagnosticoInconsistenciaBracket({
     partidos = [],
     esperado = [],

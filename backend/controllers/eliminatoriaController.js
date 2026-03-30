@@ -132,6 +132,30 @@ const eliminatoriaController = {
     }
   },
 
+  recomponerBracket: async (req, res) => {
+    try {
+      const evento_id = parseInt(req.params.evento_id, 10);
+      if (!Number.isFinite(evento_id)) {
+        return res.status(400).json({ error: "evento_id inválido" });
+      }
+      const evento = await validarAccesoEventoGestion(req, res, evento_id);
+      if (!evento) return;
+
+      const recompuesto = await Eliminatoria.recomponerPrimeraRondaSegunConfiguracion(evento_id);
+      res.json({
+        mensaje: recompuesto?.meta?.recompuesto === false ? "La llave ya estaba alineada" : "Llave recompuesta",
+        evento_id,
+        ...recompuesto,
+      });
+    } catch (error) {
+      console.error("Error recomponiendo bracket:", error);
+      res.status(500).json({
+        error: "Error recomponiendo bracket",
+        detalle: error.message,
+      });
+    }
+  },
+
   generarBracket: async (req, res) => {
     try {
       const evento_id = parseInt(req.params.evento_id, 10);
