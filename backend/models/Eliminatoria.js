@@ -2314,7 +2314,22 @@ class Eliminatoria {
       ordenActual.length !== ordenEsperado.length ||
       ordenActual.some((value, index) => Number(value ?? -1) !== Number(ordenEsperado[index] ?? -1));
 
-    const inconsistente = fueraDeClasificacion.length > 0 || faltantes.length > 0 || ordenDistinto;
+    const playoffIniciado = Array.isArray(partidos) && partidos.some((partido) => {
+      const resultadoLocal = Number(partido?.resultado_local || 0);
+      const resultadoVisitante = Number(partido?.resultado_visitante || 0);
+      const estado = String(partido?.estado || '').toLowerCase();
+      return Boolean(
+        partido?.ganador_id ||
+        resultadoLocal !== 0 ||
+        resultadoVisitante !== 0 ||
+        ['finalizado', 'en_curso', 'no_presentaron_ambos'].includes(estado)
+      );
+    });
+
+    const inconsistente =
+      fueraDeClasificacion.length > 0 ||
+      faltantes.length > 0 ||
+      (ordenDistinto && !playoffIniciado);
     if (!inconsistente) {
       return {
         consistente: true,
