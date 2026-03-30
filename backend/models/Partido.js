@@ -198,7 +198,42 @@ async function invalidarOverridesCompeticionPorResultado(
 ) {
   const eventoId = Number.parseInt(partido?.evento_id, 10);
   if (!Number.isFinite(eventoId) || eventoId <= 0) return false;
+  const partidoId = Number.parseInt(partido?.id, 10);
   const grupoIdPartido = Number.parseInt(partido?.grupo_id, 10);
+
+  const esPlayoffDirecto =
+    String(partido?.playoff_ronda || "").trim() !== "" ||
+    (Number.isFinite(Number(partido?.reclasificacion_playoff_id)) &&
+      Number(partido?.reclasificacion_playoff_id) > 0);
+  if (esPlayoffDirecto) return false;
+
+  if (Number.isFinite(partidoId) && partidoId > 0) {
+    try {
+      const enlaceR = await client.query(
+        `
+          SELECT
+            EXISTS (
+              SELECT 1
+              FROM partidos_eliminatoria pe
+              WHERE pe.partido_id = $1
+            ) AS en_playoff,
+            EXISTS (
+              SELECT 1
+              FROM evento_reclasificaciones_playoff erp
+              WHERE erp.partido_id = $1
+            ) AS es_reclasificacion
+        `,
+        [partidoId]
+      );
+      const enlace = enlaceR.rows[0] || {};
+      if (enlace.en_playoff === true || enlace.es_reclasificacion === true) {
+        return false;
+      }
+    } catch (_) {
+      // Si esta verificacion puntual falla, preferimos no bloquear la grabacion del
+      // resultado. El resto de rutas ya valida el esquema por separado.
+    }
+  }
 
   let scopeGrupoId = null;
   try {
@@ -3548,3 +3583,4 @@ class Partido {
 }
 
 module.exports = Partido;
+
