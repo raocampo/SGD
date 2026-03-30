@@ -2057,23 +2057,25 @@ class Eliminatoria {
   }
 
   static construirSembradoCrucesGruposBalanceado16(grupoMap, crucesGrupos = []) {
-    if (!Array.isArray(crucesGrupos) || crucesGrupos.length !== 2) return null;
-    const [parA, parB] = crucesGrupos;
-    if (!Array.isArray(parA) || !Array.isArray(parB) || parA.length < 2 || parB.length < 2) return null;
-    const [g1, g2] = parA;
-    const [g3, g4] = parB;
-    const grupos = [g1, g2, g3, g4].map((letra) => grupoMap.get(String(letra || "").toUpperCase()) || []);
+    const letrasCanonicas = [...grupoMap.keys()]
+      .map((letra) => String(letra || "").toUpperCase().trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    if (letrasCanonicas.length !== 4) return null;
+
+    const [A, B, C, D] = letrasCanonicas;
+    const grupos = [A, B, C, D].map((letra) => grupoMap.get(letra) || []);
     if (grupos.some((grupo) => grupo.length < 4)) return null;
 
     const partidos = [
-      [[g1, 1], [g2, 4]],
-      [[g3, 2], [g4, 3]],
-      [[g4, 1], [g3, 4]],
-      [[g2, 2], [g1, 3]],
-      [[g3, 1], [g4, 4]],
-      [[g1, 2], [g2, 3]],
-      [[g2, 1], [g1, 4]],
-      [[g4, 2], [g3, 3]],
+      [[A, 1], [C, 4]],
+      [[B, 2], [D, 3]],
+      [[D, 1], [B, 4]],
+      [[C, 2], [A, 3]],
+      [[B, 1], [D, 4]],
+      [[A, 2], [C, 3]],
+      [[C, 1], [A, 4]],
+      [[D, 2], [B, 3]],
     ];
 
     return partidos.flatMap(([localRef, visitaRef]) => [
