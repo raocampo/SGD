@@ -1163,7 +1163,7 @@ function extraerFechasJornada(partidos = []) {
 
 function esPartidoConResultadoPortal(partido = {}) {
   const st = String(partido.estado || "").toLowerCase();
-  return st === "finalizado" || st === "no_presentaron_ambos";
+  return st === "finalizado" || st === "no_presentaron_ambos" || partido?.tiene_planilla_publicada === true;
 }
 
 function esJornadaFinalizada(partidos = []) {
@@ -1176,7 +1176,8 @@ function renderBadgeJornadaPortal(partidos = []) {
   if (!total) return "";
   const finalizados = partidos.filter((p) => String(p.estado || "").toLowerCase() === "finalizado").length;
   const noPresentaron = partidos.filter((p) => String(p.estado || "").toLowerCase() === "no_presentaron_ambos").length;
-  const jugados = finalizados + noPresentaron;
+  const conPlanilla = partidos.filter((p) => p?.tiene_planilla_publicada === true).length;
+  const jugados = Math.max(finalizados + noPresentaron, conPlanilla);
   const enCurso = partidos.some((p) => String(p.estado || "").toLowerCase() === "en_curso");
   if (enCurso) return '<span class="portal-jornada-badge badge-en-curso">En curso</span>';
   if (jugados === total) return '<span class="portal-jornada-badge badge-finalizada">Finalizada</span>';

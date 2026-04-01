@@ -1,3 +1,12 @@
+# Cambios Implementados - LT&C
+
+Ultima actualizacion: 2026-03-31 (sesión 20)
+
+## Portal público - resultados con planilla
+
+- Se corrigió la lectura pública de partidos para incluir el `LEFT JOIN` faltante a `partidos_eliminatoria` y el flag `tiene_planilla_publicada`.
+- Se ajustó el conteo público de partidos publicados por evento para considerar planillas ya guardadas.
+- Se ajustó `frontend/js/portal.js` para que la pestaña `Resultados` y el badge de jornada consideren partidos con planilla publicada además de los `finalizados`.
 # Cambios implementados según propuesta LT&C
 
 > Seguimiento continuo actualizado: `docs/BITACORA_AVANCES.md`
@@ -1543,6 +1552,7 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - los partidos restantes se crean sin `fecha/hora/cancha`,
   - se devuelve un resumen con `programados`, `sin_programar` y `capacidad_insuficiente`.
 - Esta misma lógica aplica también a `Regenerar (preservar jugados)`.
+
 
 
 

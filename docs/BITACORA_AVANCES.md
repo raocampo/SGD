@@ -1,5 +1,16 @@
 # Bitácora de Avances - LT&C
 
+Ultima actualizacion: 2026-03-31 (sesión 20)
+
+## 2026-03-31 - Portal público: jornadas y resultados con planilla publicada
+
+- `backend/models/Partido.js`: se corrigió un bug en `obtenerPorEvento`, `obtenerPorEventoYJornada`, `obtenerPorCampeonato` y `obtenerPorCampeonatoYJornada` donde se seleccionaban campos de `partidos_eliminatoria` sin el `LEFT JOIN` correspondiente. Eso provocaba que algunos campeonatos aparecieran sin jornadas ni resultados en el portal.
+- En esas mismas lecturas se añadió `tiene_planilla_publicada` para que el frontend pueda distinguir partidos con planilla guardada aunque no tengan `estado = 'finalizado'`.
+- `backend/services/publicPortalService.js`: el resumen público de eventos ya cuenta como partidos publicados tanto los `finalizado / no_presentaron_ambos` como los partidos con `partido_planillas` guardada.
+- `frontend/js/portal.js`: la subtab `Resultados` y los badges de jornada ya consideran `tiene_planilla_publicada`, evitando ocultar jornadas parciales con información deportiva ya cargada.
+- Validación local: el evento `SENIOR` del campeonato `CAMPEONATO BARRIAL DE FUTBOL` volvió a exponer `55` partidos en el servicio público y el resumen pasó de `0/55` a `2/55` partidos publicados, consistente con las dos planillas guardadas.
+# Bitácora de Avances - LT&C
+
 Ultima actualizacion: 2026-03-30 (sesión 19)
 
 ## 2026-03-30 - Sembrado manual asistido de playoff
@@ -2309,6 +2320,7 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - `partidos: 414`
   - `usuarios: 18`
 - El `smoke` del backend pasó `9/9` contra `http://localhost:5000`.
+
 
 
 

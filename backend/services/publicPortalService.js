@@ -357,13 +357,17 @@ async function listarEventosPublicosPorCampeonato(campeonatoId) {
       COUNT(DISTINCT ee.equipo_id)::int AS total_equipos,
       COUNT(DISTINCT g.id)::int AS total_grupos,
       COUNT(DISTINCT p.id)::int AS total_partidos,
-      COUNT(DISTINCT CASE WHEN p.estado = 'finalizado' THEN p.id END)::int AS partidos_finalizados
+      COUNT(DISTINCT CASE
+        WHEN p.estado IN ('finalizado', 'no_presentaron_ambos') OR pp.id IS NOT NULL
+        THEN p.id
+      END)::int AS partidos_finalizados
     FROM eventos e
     JOIN campeonatos c ON c.id = e.campeonato_id
     LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
     LEFT JOIN evento_equipos ee ON ee.evento_id = e.id
     LEFT JOIN grupos g ON g.evento_id = e.id
     LEFT JOIN partidos p ON p.evento_id = e.id
+    LEFT JOIN partido_planillas pp ON pp.partido_id = p.id
     WHERE e.campeonato_id = $1
       AND ${SQL_FILTRO_PUBLICO_CAMPEONATO}
     GROUP BY e.id, c.nombre, c.organizador, c.fecha_inicio, c.fecha_fin, c.tipo_futbol, c.sistema_puntuacion

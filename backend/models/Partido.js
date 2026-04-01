@@ -1777,6 +1777,7 @@ class Partido {
              g.letra_grupo,
              pe.ronda AS playoff_ronda,
              pe.partido_numero AS playoff_partido_numero,
+             (pp.id IS NOT NULL) AS tiene_planilla_publicada,
              (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
              erp.id AS reclasificacion_playoff_id,
              erp.slot_posicion AS reclasificacion_slot_posicion,
@@ -1785,6 +1786,8 @@ class Partido {
       JOIN equipos el ON p.equipo_local_id = el.id
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
+      LEFT JOIN partidos_eliminatoria pe ON pe.partido_id = p.id
+      LEFT JOIN partido_planillas pp ON pp.partido_id = p.id
       LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
       LEFT JOIN grupos rg ON rg.id = erp.grupo_id
       WHERE p.evento_id = $1
@@ -1807,6 +1810,7 @@ class Partido {
              g.letra_grupo,
              pe.ronda AS playoff_ronda,
              pe.partido_numero AS playoff_partido_numero,
+             (pp.id IS NOT NULL) AS tiene_planilla_publicada,
              (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
              erp.id AS reclasificacion_playoff_id,
              erp.slot_posicion AS reclasificacion_slot_posicion,
@@ -1815,6 +1819,8 @@ class Partido {
       JOIN equipos el ON p.equipo_local_id = el.id
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
+      LEFT JOIN partidos_eliminatoria pe ON pe.partido_id = p.id
+      LEFT JOIN partido_planillas pp ON pp.partido_id = p.id
       LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
       LEFT JOIN grupos rg ON rg.id = erp.grupo_id
       WHERE p.evento_id = $1 AND p.jornada = $2
@@ -1837,6 +1843,7 @@ class Partido {
              g.letra_grupo,
              pe.ronda AS playoff_ronda,
              pe.partido_numero AS playoff_partido_numero,
+             (pp.id IS NOT NULL) AS tiene_planilla_publicada,
              (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
              erp.id AS reclasificacion_playoff_id,
              erp.slot_posicion AS reclasificacion_slot_posicion,
@@ -1845,6 +1852,8 @@ class Partido {
       JOIN equipos el ON p.equipo_local_id = el.id
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
+      LEFT JOIN partidos_eliminatoria pe ON pe.partido_id = p.id
+      LEFT JOIN partido_planillas pp ON pp.partido_id = p.id
       LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
       LEFT JOIN grupos rg ON rg.id = erp.grupo_id
       WHERE p.campeonato_id = $1
@@ -1867,6 +1876,7 @@ class Partido {
              g.letra_grupo,
              pe.ronda AS playoff_ronda,
              pe.partido_numero AS playoff_partido_numero,
+             (pp.id IS NOT NULL) AS tiene_planilla_publicada,
              (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
              erp.id AS reclasificacion_playoff_id,
              erp.slot_posicion AS reclasificacion_slot_posicion,
@@ -1875,6 +1885,8 @@ class Partido {
       JOIN equipos el ON p.equipo_local_id = el.id
       JOIN equipos ev ON p.equipo_visitante_id = ev.id
       LEFT JOIN grupos g ON p.grupo_id = g.id
+      LEFT JOIN partidos_eliminatoria pe ON pe.partido_id = p.id
+      LEFT JOIN partido_planillas pp ON pp.partido_id = p.id
       LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
       LEFT JOIN grupos rg ON rg.id = erp.grupo_id
       WHERE p.campeonato_id = $1 AND p.jornada = $2

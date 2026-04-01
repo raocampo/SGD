@@ -1,3 +1,12 @@
+# Estado de Implementacion SGD - LT&C
+
+Ultima actualizacion: 2026-03-31 (sesión 20)
+
+## Portal público - ajuste reciente
+
+- Resuelto el fallo que dejaba campeonatos sin jornadas/resultados por una consulta incompleta en `Partido.obtenerPorEvento...` al referenciar `pe.*` sin `JOIN`.
+- El portal público ahora reconoce partidos con `planilla` guardada como información deportiva publicada, incluso si el organizador todavía no cerró el `estado` en `finalizado`.
+- Impacto esperado en Render: vuelven a aparecer las jornadas y la subtab `Resultados` ya no se queda vacía en categorías con planillas registradas.
 # Estado de Implementacion vs Propuesta LT&C
 
 Ultima actualizacion: 2026-03-30 (sesión 18)
@@ -453,6 +462,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Propuesta funcional original: `docs/propuestaDesarrolloSGD.md`
 - Plan mobile web: `docs/PLAN_MOBILE_LT_C.md`
 - Plan CMS del portal publico: `docs/PLAN_CMS_PORTAL_PUBLICO.md`
+
 
 
 
