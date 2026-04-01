@@ -1161,12 +1161,14 @@ function extraerFechasJornada(partidos = []) {
   return fechas;
 }
 
+function esPartidoConResultadoPortal(partido = {}) {
+  const st = String(partido.estado || "").toLowerCase();
+  return st === "finalizado" || st === "no_presentaron_ambos";
+}
+
 function esJornadaFinalizada(partidos = []) {
   if (!partidos.length) return false;
-  return partidos.every((p) => {
-    const st = String(p.estado || "").toLowerCase();
-    return st === "finalizado" || st === "no_presentaron_ambos";
-  });
+  return partidos.every((p) => esPartidoConResultadoPortal(p));
 }
 
 function renderBadgeJornadaPortal(partidos = []) {
@@ -1182,52 +1184,54 @@ function renderBadgeJornadaPortal(partidos = []) {
   return '<span class="portal-jornada-badge badge-proxima">Próxima</span>';
 }
 
-// modo: "proximas" muestra todos los botones (deshabilita finalizadas); "finalizadas" solo las completadas
+// modo: "proximas" muestra jornadas publicadas; "resultados" muestra partidos ya jugados aunque la jornada siga parcial
 function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
-  // Calcular byes usando TODOS los partidos del evento (no solo los del modo)
   const byesPorJornada = calcularByesPortal(partidos);
   const bloques = normalizarJornadasPortal(jornadas, partidos);
 
-  // Para "finalizadas" solo mostramos las completadas
-  const bloquesVista = modo === "finalizadas"
-    ? bloques.filter((b) => esJornadaFinalizada(b.partidos))
-    : bloques; // "proximas": todos los botones visibles
+  const bloquesVista = modo === "resultados"
+    ? bloques
+        .map((b) => ({
+          ...b,
+          partidosOriginales: Array.isArray(b.partidos) ? b.partidos : [],
+          partidos: Array.isArray(b.partidos) ? b.partidos.filter((p) => esPartidoConResultadoPortal(p)) : [],
+        }))
+        .filter((b) => b.partidos.length > 0)
+    : bloques;
 
   if (!bloquesVista.length) {
-    const msg = modo === "finalizadas"
+    const msg = modo === "resultados"
       ? "No hay resultados registrados aún para esta categoría."
       : "No hay jornadas publicadas para esta categoría.";
     return `<p class="empty-msg">${msg}</p>`;
   }
 
-  // Para proximas: primera jornada con al menos un partido no finalizado (habilitada)
-  // Para finalizadas: la última
   let jornadaActivaIndex = -1;
-  if (modo === "finalizadas") {
+  if (modo === "resultados") {
     jornadaActivaIndex = bloquesVista.length - 1;
   } else {
     for (let i = 0; i < bloquesVista.length; i++) {
       const ps = Array.isArray(bloquesVista[i].partidos) ? bloquesVista[i].partidos : [];
-      // Jornada activa = primera con al menos un partido en estado "programado"
       if (ps.some((p) => String(p.estado || "").toLowerCase() === "programado")) {
-        jornadaActivaIndex = i; break;
+        jornadaActivaIndex = i;
+        break;
       }
     }
     if (jornadaActivaIndex < 0) jornadaActivaIndex = bloquesVista.length - 1;
   }
 
-  // Alias para el resto del render
   const bloques_ = bloquesVista;
 
   const selectorHtml = bloques_.length > 1
     ? `<div class="portal-jornadas-selector" role="tablist" aria-label="Seleccionar jornada">
         ${bloques_.map((j, i) => {
           const ps = Array.isArray(j.partidos) ? j.partidos : [];
-          // Habilitado solo si la jornada tiene al menos un partido explícitamente "programado"
-          const tieneProgr = modo === "finalizadas"
+          const psOriginales = Array.isArray(j.partidosOriginales) ? j.partidosOriginales : ps;
+          const metaBloque = resolverMetaBloquePortal(j);
+          const tieneProgr = modo === "resultados"
             ? true
             : ps.some((p) => String(p.estado || "").toLowerCase() === "programado");
-          const esFinalizada = esJornadaFinalizada(ps);
+          const esFinalizada = esJornadaFinalizada(psOriginales);
           const tooltip = !tieneProgr
             ? (esFinalizada ? "Jornada finalizada" : "Jornada por programar")
             : "";
@@ -1239,7 +1243,7 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
             aria-selected="${isActive ? "true" : "false"}"
             ${!tieneProgr ? "disabled" : ""}
             title="${escPortal(tooltip)}"
-          >J${escPortal(j.numero)}</button>`;
+          >${escPortal(metaBloque.boton)}</button>`;
         }).join("")}
       </div>`
     : "";
@@ -1247,6 +1251,8 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
   const tarjetasHtml = bloques_
     .map((jornada, i) => {
       const ps = Array.isArray(jornada.partidos) ? jornada.partidos : [];
+      const psOriginales = Array.isArray(jornada.partidosOriginales) ? jornada.partidosOriginales : ps;
+      const metaBloque = resolverMetaBloquePortal(jornada);
       const fechas = extraerFechasJornada(ps);
       let subtituloFecha = "";
       if (fechas.length === 1) {
@@ -1256,21 +1262,24 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
         const ultima = fechas[fechas.length - 1].toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" });
         subtituloFecha = `${primera} – ${ultima}`;
       }
-      const badge = renderBadgeJornadaPortal(ps);
-      const byesJornada = byesPorJornada.get(String(jornada.numero)) || [];
+      const badge = renderBadgeJornadaPortal(psOriginales);
+      const byesJornada = modo === "resultados" ? [] : (byesPorJornada.get(String(jornada.numero)) || []);
       const byeHtml = byesJornada.length
         ? `<div class="portal-jornada-bye"><span class="portal-jornada-bye-icon">🌙</span> <strong>Descansa:</strong> ${byesJornada.map(escPortal).join(", ")}</div>`
         : "";
+      const countLabel = modo === "resultados"
+        ? `${ps.length} resultado${ps.length !== 1 ? "s" : ""}`
+        : `${ps.length} partido${ps.length !== 1 ? "s" : ""}`;
       return `
         <section class="portal-jornada-card${i === jornadaActivaIndex ? " portal-jornada-activa" : ""}" data-jornada-card="${i}" ${i !== jornadaActivaIndex ? 'hidden' : ''}>
           <div class="portal-jornada-card-head">
             <div class="portal-jornada-card-title">
-              <h4>Jornada ${escPortal(jornada.numero)}</h4>
+              <h4>${escPortal(metaBloque.titulo)}</h4>
               ${subtituloFecha ? `<span class="portal-jornada-fecha">${escPortal(subtituloFecha)}</span>` : ""}
             </div>
             <div class="portal-jornada-card-meta">
               ${badge}
-              <span class="portal-jornada-count">${ps.length} partido${ps.length !== 1 ? "s" : ""}</span>
+              <span class="portal-jornada-count">${countLabel}</span>
             </div>
           </div>
           <div class="portal-jornada-card-body">
@@ -1292,8 +1301,44 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
   `;
 }
 
+function formatearRondaPlayoffPortal(ronda) {
+  const key = String(ronda || "").toLowerCase();
+  if (key === "32vos") return "32vos de final";
+  if (key === "16vos") return "16vos de final";
+  if (key === "12vos") return "12vos de final";
+  if (key === "8vos") return "Octavos";
+  if (key === "4tos") return "Cuartos";
+  if (key === "semifinal") return "Semifinal";
+  if (key === "final") return "Final";
+  if (key === "tercer_puesto") return "Tercer y cuarto";
+  if (key === "reclasificacion") return "Reclasificación";
+  return String(ronda || "").trim() || "Playoff";
+}
+
+function resolverMetaBloquePortal(jornada = {}) {
+  const partidosBloque = Array.isArray(jornada?.partidosOriginales)
+    ? jornada.partidosOriginales
+    : (Array.isArray(jornada?.partidos) ? jornada.partidos : []);
+  const rondas = Array.from(new Set(partidosBloque.map((p) => String(p?.playoff_ronda || "").trim()).filter(Boolean)));
+  if (rondas.length === 1) {
+    const rondaRaw = rondas[0];
+    return {
+      esPlayoff: true,
+      rondaRaw,
+      titulo: formatearRondaPlayoffPortal(rondaRaw),
+      boton: formatearRondaPlayoffPortal(rondaRaw),
+    };
+  }
+  return {
+    esPlayoff: false,
+    rondaRaw: "",
+    titulo: `Jornada ${jornada?.numero ?? "Sin jornada"}`,
+    boton: `J${jornada?.numero ?? "-"}`,
+  };
+}
+
 function renderResultadosPortal(jornadas = [], partidos = []) {
-  return renderJornadasPortal(jornadas, partidos, "finalizadas");
+  return renderJornadasPortal(jornadas, partidos, "resultados");
 }
 
 function renderEliminatoriasPortal(payload = []) {
@@ -1317,18 +1362,6 @@ function renderEliminatoriasPortal(payload = []) {
     return "Por definir";
   };
 
-  const formatearRondaPortal = (ronda) => {
-    const key = String(ronda || "").toLowerCase();
-    if (key === "32vos") return "32vos de final";
-    if (key === "16vos") return "16vos de final";
-    if (key === "12vos") return "12vos de final";
-    if (key === "8vos") return "Octavos";
-    if (key === "4tos") return "Cuartos";
-    if (key === "semifinal") return "Semifinal";
-    if (key === "final") return "Final";
-    if (key === "tercer_puesto") return "Tercer y cuarto";
-    return ronda || "Ronda";
-  };
 
   const resolverResumenPenalesPortal = (partido = {}) => {
     const shootoutsActivos = partido?.shootouts === true || partido?.shootouts === "t";
