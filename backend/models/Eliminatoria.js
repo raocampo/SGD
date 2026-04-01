@@ -3001,8 +3001,187 @@ class Eliminatoria {
     return r.rows[0] || null;
   }
 
+  static resolverResultadoDesdePartidoEnlazado(slot = {}) {
+    const estado = String(slot?.estado || "").trim().toLowerCase();
+    const resultadoLocal = Number.parseInt(slot?.partido_resultado_local, 10);
+    const resultadoVisitante = Number.parseInt(slot?.partido_resultado_visitante, 10);
+    const marcadorDisponible =
+      Number.isFinite(resultadoLocal) && Number.isFinite(resultadoVisitante);
+    const shootoutsActivos = slot?.shootouts === true || slot?.shootouts === "t";
+    const penalesLocal = Number.parseInt(slot?.resultado_local_shootouts, 10);
+    const penalesVisitante = Number.parseInt(slot?.resultado_visitante_shootouts, 10);
+    const definidoPorPenales =
+      shootoutsActivos &&
+      Number.isFinite(penalesLocal) &&
+      Number.isFinite(penalesVisitante) &&
+      penalesLocal !== penalesVisitante;
+    const resultadoCerrado =
+      marcadorDisponible &&
+      (["finalizado", "no_presentaron_ambos"].includes(estado) ||
+        resultadoLocal !== 0 ||
+        resultadoVisitante !== 0 ||
+        definidoPorPenales);
+
+    const localId = Number.parseInt(slot?.equipo_local_id, 10);
+    const visitanteId = Number.parseInt(slot?.equipo_visitante_id, 10);
+    let ganadorId = null;
+    let perdedorId = null;
+
+    if (resultadoCerrado) {
+      if (
+        Number.isFinite(localId) &&
+        Number.isFinite(visitanteId) &&
+        resultadoLocal > resultadoVisitante
+      ) {
+        ganadorId = localId;
+        perdedorId = visitanteId;
+      } else if (
+        Number.isFinite(localId) &&
+        Number.isFinite(visitanteId) &&
+        resultadoVisitante > resultadoLocal
+      ) {
+        ganadorId = visitanteId;
+        perdedorId = localId;
+      } else if (
+        Number.isFinite(localId) &&
+        Number.isFinite(visitanteId) &&
+        definidoPorPenales
+      ) {
+        ganadorId = penalesLocal > penalesVisitante ? localId : visitanteId;
+        perdedorId = ganadorId === localId ? visitanteId : localId;
+      }
+    }
+
+    return {
+      resultadoCerrado,
+      resultadoLocal: resultadoCerrado ? resultadoLocal : null,
+      resultadoVisitante: resultadoCerrado ? resultadoVisitante : null,
+      ganadorId,
+      perdedorId,
+    };
+  }
+
+  static async sincronizarResultadosDesdePartidosEnlazados(evento_id, db = pool) {
+    await this.asegurarEsquema(db);
+    const q = `
+      SELECT pe.id,
+             pe.evento_id,
+             pe.ronda,
+             pe.partido_numero,
+             pe.equipo_local_id,
+             pe.equipo_visitante_id,
+             pe.resultado_local AS slot_resultado_local,
+             pe.resultado_visitante AS slot_resultado_visitante,
+             pe.ganador_id AS slot_ganador_id,
+             p.id AS partido_id,
+             p.estado,
+             p.resultado_local AS partido_resultado_local,
+             p.resultado_visitante AS partido_resultado_visitante,
+             p.resultado_local_shootouts,
+             p.resultado_visitante_shootouts,
+             p.shootouts
+      FROM partidos_eliminatoria pe
+      JOIN partidos p ON p.id = pe.partido_id
+      WHERE pe.evento_id = $1
+        AND (
+          pe.ganador_id IS NULL
+          OR pe.resultado_local IS NULL
+          OR pe.resultado_visitante IS NULL
+          OR (
+            LOWER(COALESCE(p.estado, '')) IN ('finalizado', 'no_presentaron_ambos')
+            AND (
+              pe.resultado_local IS DISTINCT FROM p.resultado_local
+              OR pe.resultado_visitante IS DISTINCT FROM p.resultado_visitante
+            )
+          )
+        )
+      ORDER BY
+        array_position($2::varchar[], pe.ronda),
+        pe.partido_numero,
+        pe.id
+    `;
+    const r = await db.query(q, [evento_id, RONDAS_ORDEN]);
+    if (!r.rows.length) return { actualizados: 0 };
+
+    let actualizados = 0;
+    let actualizarDoceavos = false;
+
+    for (const row of r.rows) {
+      const slotResultadoLocal = Number.isFinite(Number.parseInt(row?.slot_resultado_local, 10))
+        ? Number.parseInt(row.slot_resultado_local, 10)
+        : null;
+      const slotResultadoVisitante = Number.isFinite(
+        Number.parseInt(row?.slot_resultado_visitante, 10)
+      )
+        ? Number.parseInt(row.slot_resultado_visitante, 10)
+        : null;
+      const slotGanadorId = Number.isFinite(Number.parseInt(row?.slot_ganador_id, 10))
+        ? Number.parseInt(row.slot_ganador_id, 10)
+        : null;
+      const resultado = this.resolverResultadoDesdePartidoEnlazado(row);
+      if (!resultado.resultadoCerrado) continue;
+
+      const cambios = [];
+      const valores = [];
+      let idx = 1;
+
+      if (
+        slotResultadoLocal !== resultado.resultadoLocal ||
+        slotResultadoVisitante !== resultado.resultadoVisitante
+      ) {
+        cambios.push(`resultado_local = $${idx++}`);
+        valores.push(resultado.resultadoLocal);
+        cambios.push(`resultado_visitante = $${idx++}`);
+        valores.push(resultado.resultadoVisitante);
+      }
+
+      if (
+        Number.isFinite(Number(resultado.ganadorId)) &&
+        Number(slotGanadorId || 0) !== Number(resultado.ganadorId)
+      ) {
+        cambios.push(`ganador_id = $${idx++}`);
+        valores.push(resultado.ganadorId);
+      }
+
+      if (cambios.length) {
+        cambios.push(`updated_at = CURRENT_TIMESTAMP`);
+        valores.push(Number(row.id));
+        await db.query(
+          `
+            UPDATE partidos_eliminatoria
+            SET ${cambios.join(", ")}
+            WHERE id = $${idx}
+          `,
+          valores
+        );
+        actualizados += 1;
+      }
+
+      if (Number.isFinite(Number(resultado.ganadorId))) {
+        await this.propagarResultadoSlot(
+          Number(row.id),
+          {
+            ganadorId: resultado.ganadorId,
+            perdedorId: resultado.perdedorId,
+          },
+          db
+        );
+        if (String(row?.ronda || "").trim().toLowerCase() === "12vos") {
+          actualizarDoceavos = true;
+        }
+      }
+    }
+
+    if (actualizarDoceavos) {
+      await this.sincronizarMejoresPerdedores12vos(evento_id, db);
+    }
+
+    return { actualizados };
+  }
+
   static async obtenerPorEvento(evento_id, db = pool) {
     await this.asegurarEsquema(db);
+    await this.sincronizarResultadosDesdePartidosEnlazados(evento_id, db);
     const q = `
       SELECT pe.*,
              el.nombre AS equipo_local_nombre, ev.nombre AS equipo_visitante_nombre,
@@ -3014,6 +3193,8 @@ class Eliminatoria {
              p.cancha,
              p.jornada,
              p.numero_campeonato,
+             p.resultado_local AS partido_resultado_local,
+             p.resultado_visitante AS partido_resultado_visitante,
              p.resultado_local_shootouts,
              p.resultado_visitante_shootouts,
              p.shootouts
@@ -3033,6 +3214,7 @@ class Eliminatoria {
 
   static async obtenerPorRonda(evento_id, ronda, db = pool) {
     await this.asegurarEsquema(db);
+    await this.sincronizarResultadosDesdePartidosEnlazados(evento_id, db);
     const q = `
       SELECT pe.*,
              el.nombre AS equipo_local_nombre, ev.nombre AS equipo_visitante_nombre,
@@ -3043,6 +3225,8 @@ class Eliminatoria {
              p.cancha,
              p.jornada,
              p.numero_campeonato,
+             p.resultado_local AS partido_resultado_local,
+             p.resultado_visitante AS partido_resultado_visitante,
              p.resultado_local_shootouts,
              p.resultado_visitante_shootouts,
              p.shootouts

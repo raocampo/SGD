@@ -73,6 +73,32 @@ function normalizarRondaPlayoffPortal(ronda) {
   return String(ronda || "").trim().toLowerCase();
 }
 
+function normalizarTextoCoincidenciaPortal(valor = "") {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function construirClaveCoincidenciaPlayoffPortal(item = {}) {
+  const localId = Number.parseInt(item?.equipo_local_id, 10);
+  const visitanteId = Number.parseInt(item?.equipo_visitante_id, 10);
+  if (
+    Number.isFinite(localId) &&
+    localId > 0 &&
+    Number.isFinite(visitanteId) &&
+    visitanteId > 0
+  ) {
+    return `ids:${localId}-${visitanteId}`;
+  }
+  const local = normalizarTextoCoincidenciaPortal(item?.equipo_local_nombre);
+  const visitante = normalizarTextoCoincidenciaPortal(item?.equipo_visitante_nombre);
+  if (local && visitante) return `names:${local}|${visitante}`;
+  return "";
+}
+
 function obtenerIndiceRondaPlayoffPortal(ronda) {
   const key = normalizarRondaPlayoffPortal(ronda);
   const idx = RONDAS_PLAYOFF_PORTAL_ORDEN.indexOf(key);
@@ -125,21 +151,47 @@ function enriquecerColeccionesPortal(partidos = [], eliminatoriasPayload = []) {
   const rondas = Array.isArray(eliminatoriasData?.rondas) ? eliminatoriasData.rondas : [];
 
   const slotsPorPartidoId = new Map();
+  const slotsFallbackPorClave = new Map();
   rondas.forEach((ronda) => {
     const rondaRaw = normalizarRondaPlayoffPortal(ronda?.ronda);
     (Array.isArray(ronda?.partidos) ? ronda.partidos : []).forEach((slot) => {
       const partidoId = Number.parseInt(slot?.partido_id, 10);
+      const slotNormalizado = {
+        ...slot,
+        playoff_ronda: rondaRaw || normalizarRondaPlayoffPortal(slot?.ronda),
+      };
       if (Number.isFinite(partidoId) && partidoId > 0) {
-        slotsPorPartidoId.set(partidoId, {
-          ...slot,
-          playoff_ronda: rondaRaw || normalizarRondaPlayoffPortal(slot?.ronda),
-        });
+        slotsPorPartidoId.set(partidoId, slotNormalizado);
+        return;
+      }
+      const claveFallback = construirClaveCoincidenciaPlayoffPortal(slotNormalizado);
+      if (claveFallback) {
+        if (!slotsFallbackPorClave.has(claveFallback)) {
+          slotsFallbackPorClave.set(claveFallback, []);
+        }
+        slotsFallbackPorClave.get(claveFallback).push(slotNormalizado);
       }
     });
   });
 
   const partidosEnriquecidos = partidosList.map((partido) => {
-    const slot = slotsPorPartidoId.get(Number.parseInt(partido?.id, 10));
+    let slot = slotsPorPartidoId.get(Number.parseInt(partido?.id, 10));
+    if (!slot) {
+      const jornadaRaw = partido?.jornada;
+      const esLegacySinJornada =
+        !normalizarRondaPlayoffPortal(partido?.playoff_ronda) &&
+        (jornadaRaw === null ||
+          jornadaRaw === undefined ||
+          String(jornadaRaw || "").trim() === "" ||
+          String(jornadaRaw || "").trim().toLowerCase() === "sin jornada");
+      if (esLegacySinJornada) {
+        const claveFallback = construirClaveCoincidenciaPlayoffPortal(partido);
+        const candidatos = claveFallback ? slotsFallbackPorClave.get(claveFallback) : null;
+        if (Array.isArray(candidatos) && candidatos.length) {
+          slot = candidatos.shift();
+        }
+      }
+    }
     if (!slot) return partido;
     return {
       ...partido,
@@ -1382,7 +1434,7 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
   const byesPorJornada = calcularByesPortal(partidos);
   const bloques = normalizarJornadasPortal(jornadas, partidos);
 
-  const bloquesVista = modo === "resultados"
+  const bloquesVista = (modo === "resultados"
     ? bloques
         .map((b) => ({
           ...b,
@@ -1390,7 +1442,23 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
           partidos: Array.isArray(b.partidos) ? b.partidos.filter((p) => esPartidoConResultadoPortal(p)) : [],
         }))
         .filter((b) => b.partidos.length > 0)
-    : bloques;
+    : bloques
+  ).map((bloque) => {
+    const partidosBloque = Array.isArray(bloque?.partidos) ? bloque.partidos : [];
+    const partidosOriginales = Array.isArray(bloque?.partidosOriginales)
+      ? bloque.partidosOriginales
+      : partidosBloque;
+    return {
+      ...bloque,
+      partidos: partidosBloque,
+      partidosOriginales,
+      tieneActivos:
+        modo === "resultados"
+          ? true
+          : partidosBloque.some((partido) => !esPartidoConResultadoPortal(partido)),
+      esFinalizada: esJornadaFinalizada(partidosOriginales),
+    };
+  });
 
   if (!bloquesVista.length) {
     const msg = modo === "resultados"
@@ -1403,14 +1471,7 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
   if (modo === "resultados") {
     jornadaActivaIndex = bloquesVista.length - 1;
   } else {
-    for (let i = 0; i < bloquesVista.length; i++) {
-      const ps = Array.isArray(bloquesVista[i].partidos) ? bloquesVista[i].partidos : [];
-      if (ps.some((p) => String(p.estado || "").toLowerCase() === "programado")) {
-        jornadaActivaIndex = i;
-        break;
-      }
-    }
-    if (jornadaActivaIndex < 0) jornadaActivaIndex = bloquesVista.length - 1;
+    jornadaActivaIndex = bloquesVista.findIndex((bloque) => bloque.tieneActivos);
   }
 
   const bloques_ = bloquesVista;
@@ -1421,20 +1482,17 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
           const ps = Array.isArray(j.partidos) ? j.partidos : [];
           const psOriginales = Array.isArray(j.partidosOriginales) ? j.partidosOriginales : ps;
           const metaBloque = resolverMetaBloquePortal(j);
-          const tieneProgr = modo === "resultados"
-            ? true
-            : ps.some((p) => String(p.estado || "").toLowerCase() === "programado");
-          const esFinalizada = esJornadaFinalizada(psOriginales);
-          const tooltip = !tieneProgr
-            ? (esFinalizada ? "Jornada finalizada" : "Jornada por programar")
+          const tieneActivos = modo === "resultados" ? true : j.tieneActivos === true;
+          const tooltip = !tieneActivos
+            ? (j.esFinalizada ? "Jornada finalizada" : "Jornada por programar")
             : "";
           const isActive = i === jornadaActivaIndex;
           return `<button
-            class="portal-jornada-selector-btn${isActive ? " active" : ""}${!tieneProgr ? " disabled" : ""}"
+            class="portal-jornada-selector-btn${isActive ? " active" : ""}${!tieneActivos ? " disabled" : ""}"
             type="button"
             data-jornada-btn="${i}"
             aria-selected="${isActive ? "true" : "false"}"
-            ${!tieneProgr ? "disabled" : ""}
+            ${!tieneActivos ? "disabled" : ""}
             title="${escPortal(tooltip)}"
           >${escPortal(metaBloque.boton)}</button>`;
         }).join("")}
@@ -1463,8 +1521,9 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
       const countLabel = modo === "resultados"
         ? `${ps.length} resultado${ps.length !== 1 ? "s" : ""}`
         : `${ps.length} partido${ps.length !== 1 ? "s" : ""}`;
+      const isActive = i === jornadaActivaIndex && jornadaActivaIndex >= 0;
       return `
-        <section class="portal-jornada-card${i === jornadaActivaIndex ? " portal-jornada-activa" : ""}" data-jornada-card="${i}" ${i !== jornadaActivaIndex ? 'hidden' : ''}>
+        <section class="portal-jornada-card${isActive ? " portal-jornada-activa" : ""}" data-jornada-card="${i}" ${isActive ? "" : "hidden"}>
           <div class="portal-jornada-card-head">
             <div class="portal-jornada-card-title">
               <h4>${escPortal(metaBloque.titulo)}</h4>
@@ -1488,7 +1547,11 @@ function renderJornadasPortal(jornadas = [], partidos = [], modo = "proximas") {
     <div class="portal-jornadas-wrap">
       ${selectorHtml}
       <div class="portal-jornadas-cards" data-jornadas-cards>
-        ${tarjetasHtml}
+        ${
+          jornadaActivaIndex >= 0 || modo === "resultados"
+            ? tarjetasHtml
+            : '<p class="empty-msg">No hay jornadas activas en esta categoría. Revisa la pestaña Resultados.</p>'
+        }
       </div>
     </div>
   `;

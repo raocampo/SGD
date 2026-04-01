@@ -2356,3 +2356,62 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - publicación consistente de fecha, hora, cancha y logos.
 - Revisar si conviene replicar la misma normalización de rondas en cualquier vista pública adicional que consuma `partidos` sin pasar por `portal.js`.
 
+## 2026-04-01 - Portal público: playoff legacy y jornadas solo activas
+- Se corrigió el caso real detectado en `Copa Ciudad de Loja` donde categorías con partidos de playoff legacy seguían mostrando `Sin jornada` en el portal público.
+- Ahora `frontend/js/portal.js` hace una coincidencia adicional por equipos cuando el partido público no trae `playoff_ronda` ni `partido_id` enlazado en el slot de eliminatoria:
+  - intenta primero por `equipo_local_id` y `equipo_visitante_id`,
+  - si no existen ids confiables, hace fallback por nombres normalizados.
+- Con eso, rondas como `Octavos` ya se rotulan correctamente aunque producción tenga partidos heredados con `jornada = null`.
+- También se ajustó la pestaña `Jornadas` del portal:
+  - solo quedan activas jornadas/rondas que todavía tengan partidos sin resultado,
+  - bloques completamente cerrados se siguen consultando desde `Resultados`,
+  - si no hay ninguna jornada activa, el portal lo informa explícitamente.
+- En backend se añadió una sincronización correctiva para eliminatorias enlazadas a `partidos`:
+  - si el partido real ya está finalizado y tiene marcador o penales,
+  - pero `partidos_eliminatoria` quedó sin `resultado_local`, `resultado_visitante` o `ganador_id`,
+  - el sistema ahora recompone esos datos al consultar la llave y vuelve a propagar el clasificado a la siguiente ronda.
+- Esto apunta al caso observado en `Master (Sub +40)`:
+  - octavos ya finalizados con planilla,
+  - cuartos todavía sin armar por datos stale en `partidos_eliminatoria`.
+- Implementado en:
+  - `frontend/js/portal.js`
+  - `backend/models/Eliminatoria.js`
+- Verificación realizada:
+  - `node --check frontend/js/portal.js`
+  - `node --check backend/models/Eliminatoria.js`
+  - simulación contra payload público real de Render para `evento 8`, confirmando detección de `8vos` en partidos legacy sin jornada.
+
+## 2026-04-01 - BD local realineada nuevamente con Render
+- Se recibió y validó la `External Database URL` de Render.
+- Primero se hizo respaldo preventivo de la BD local en:
+  - `database/backups/pre-render-sync-20260401-103256.custom.backup`
+- Se confirmó que producción ya estaba por delante de la copia local:
+  - `campeonatos: 11`
+  - `eventos: 16`
+  - `equipos: 144`
+  - `partidos: 422`
+  - `usuarios: 25`
+- El primer intento de dump con `pg_dump` 17 falló por incompatibilidad con PostgreSQL 18 de Render.
+- Se repitió correctamente con cliente PostgreSQL 18 y se generó:
+  - `database/backups/render-sync-20260401-173728.custom.backup`
+- Luego se recreó la base local `gestionDeportiva` y se restauró ese dump limpio.
+- Verificación final en local, ya alineada con Render:
+  - `campeonatos: 11`
+  - `eventos: 16`
+  - `equipos: 144`
+  - `partidos: 422`
+  - `usuarios: 25`
+
+## Pendiente inmediato siguiente sesión
+- Hacer deploy en Render de los cambios de `portal.js` y `Eliminatoria.js`.
+- Validar visualmente en producción:
+  - `Copa Ciudad de Loja -> Abierta`: playoff rotulado por ronda y no como `Sin jornada`.
+  - `Copa Ciudad de Loja -> Abierta`: pestaña `Jornadas` sin rondas de playoff cerradas activas.
+  - `Copa Ciudad de Loja -> Master (Sub +40)`: octavos ya finalizados reflejados y cuartos armados automáticamente.
+- Confirmar en `eliminatorias.html` y en el portal público que la propagación de ganadores ya quedó consistente tras el deploy.
+- Ejecutar una revisión rápida con datos reales sobre:
+  - `portal público`,
+  - `resultados`,
+  - `playoff`,
+  - `planillas` ya registradas en cruces.
+- Si aparece otro caso legacy sin `playoff_ronda`, revisar si conviene mover esta normalización a una capa compartida del backend público y no solo al enriquecimiento del frontend.
