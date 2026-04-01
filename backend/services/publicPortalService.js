@@ -391,25 +391,45 @@ async function obtenerPartidosPublicosPorEvento(eventoId) {
 
   const partidos = await Partido.obtenerPorEvento(eventoId);
   const jornadasMap = new Map();
+  const rondasOrden = ["reclasificacion", "32vos", "16vos", "12vos", "8vos", "4tos", "semifinal", "final", "tercer_puesto"];
+  const indiceRonda = (ronda = "") => {
+    const idx = rondasOrden.indexOf(String(ronda || "").trim().toLowerCase());
+    return idx >= 0 ? idx : Number.MAX_SAFE_INTEGER;
+  };
+  const ordenarBloques = (a, b) => {
+    const rondaA = String(a?.playoff_ronda || "").trim().toLowerCase();
+    const rondaB = String(b?.playoff_ronda || "").trim().toLowerCase();
+    if (rondaA && rondaB) {
+      const idxA = indiceRonda(rondaA);
+      const idxB = indiceRonda(rondaB);
+      if (idxA !== idxB) return idxA - idxB;
+    }
+    if (rondaA !== rondaB) return rondaA ? 1 : -1;
+    return ordenarJornadas(a, b);
+  };
 
   for (const partido of partidos) {
-    const numero = partido.jornada ?? "Sin jornada";
-    // Si hay filtro activo, saltar jornadas no habilitadas
-    if (jornadasHabilitadas !== null) {
+    const playoffRonda = String(
+      partido.playoff_ronda || (partido.es_reclasificacion_playoff ? "reclasificacion" : "")
+    ).trim().toLowerCase();
+    const numero = playoffRonda ? null : (partido.jornada ?? "Sin jornada");
+    // Si hay filtro activo, saltar jornadas no habilitadas solo en fase regular
+    if (jornadasHabilitadas !== null && !playoffRonda) {
       const numParsed = normalizarEntero(numero);
       if (numParsed === null || !jornadasHabilitadas.has(numParsed)) continue;
     }
-    const clave = String(numero);
+    const clave = playoffRonda ? `playoff:${playoffRonda}` : String(numero);
     if (!jornadasMap.has(clave)) {
       jornadasMap.set(clave, {
         numero,
+        playoff_ronda: playoffRonda || null,
         partidos: [],
       });
     }
     jornadasMap.get(clave).partidos.push(partido);
   }
 
-  const jornadasFiltradas = Array.from(jornadasMap.values()).sort(ordenarJornadas);
+  const jornadasFiltradas = Array.from(jornadasMap.values()).sort(ordenarBloques);
   const partidosFiltrados = jornadasFiltradas.flatMap((j) => j.partidos);
 
   return {

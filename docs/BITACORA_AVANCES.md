@@ -2326,9 +2326,33 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - `usuarios: 18`
 - El `smoke` del backend pasó `9/9` contra `http://localhost:5000`.
 
+## 2026-03-31 - Portal público: resultados parciales y rondas de playoff
+- Se corrigió el portal público para que la subtab `Resultados` ya no dependa de jornadas completamente cerradas.
+- Ahora los partidos ya jugados aparecen aunque la jornada siga parcial, siempre que tengan:
+  - estado `finalizado` / `no_presentaron_ambos`, o
+  - planilla pública guardada.
+- También se normalizó el agrupamiento de bloques en fase eliminatoria:
+  - ya no se muestra `Sin jornada` para partidos de playoff,
+  - el portal agrupa y rotula por ronda (`Octavos`, `Cuartos`, `Semifinal`, `Final`, `Tercer y cuarto`, `Reclasificación`).
+- Se reforzó el cruce de datos entre `partidos` y `eliminatorias` para que la pestaña `Playoff` publique correctamente:
+  - estado,
+  - fecha,
+  - hora,
+  - cancha,
+  - número visible del partido,
+  - logos de los equipos,
+  - resumen de penales cuando aplica.
+- Archivos ajustados:
+  - `backend/services/publicPortalService.js`
+  - `frontend/js/portal.js`
 
-
-
-
-
+## Pendiente inmediato siguiente sesión
+- Validar en Render con datos reales de oficina:
+  - `Copa Ciudad de Loja -> Abierta`
+  - campeonatos de terceros organizadores con jornadas parciales
+- Confirmar visualmente en portal público:
+  - `Resultados` con ronda de playoff en vez de `Sin jornada`,
+  - `Playoff` con estado `Finalizado` en cruces ya jugados,
+  - publicación consistente de fecha, hora, cancha y logos.
+- Revisar si conviene replicar la misma normalización de rondas en cualquier vista pública adicional que consuma `partidos` sin pasar por `portal.js`.
 

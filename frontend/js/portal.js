@@ -9,6 +9,17 @@ const IMG_TORNEO_SVG_B = "assets/ltc/torneos/ProximoB.svg";
 const ES_PORTAL_PAGE = /\/portal\.html$/i.test(window.location.pathname);
 
 let portalContextoActual = null;
+const RONDAS_PLAYOFF_PORTAL_ORDEN = [
+  "reclasificacion",
+  "32vos",
+  "16vos",
+  "12vos",
+  "8vos",
+  "4tos",
+  "semifinal",
+  "final",
+  "tercer_puesto",
+];
 
 function leerContextoPortalDesdeUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -56,6 +67,155 @@ function normalizarLogoUrl(logoUrl) {
 
 function normalizarMediaPortal(url) {
   return normalizarLogoUrl(url);
+}
+
+function normalizarRondaPlayoffPortal(ronda) {
+  return String(ronda || "").trim().toLowerCase();
+}
+
+function obtenerIndiceRondaPlayoffPortal(ronda) {
+  const key = normalizarRondaPlayoffPortal(ronda);
+  const idx = RONDAS_PLAYOFF_PORTAL_ORDEN.indexOf(key);
+  return idx >= 0 ? idx : Number.MAX_SAFE_INTEGER;
+}
+
+function construirClaveBloquePortal(partido = {}) {
+  const ronda = normalizarRondaPlayoffPortal(
+    partido?.playoff_ronda || (partido?.es_reclasificacion_playoff ? "reclasificacion" : "")
+  );
+  if (ronda) {
+    return {
+      key: `playoff:${ronda}`,
+      numero: null,
+      playoff_ronda: ronda,
+    };
+  }
+  return {
+    key: String(partido?.jornada ?? "Sin jornada"),
+    numero: partido?.jornada ?? "Sin jornada",
+    playoff_ronda: "",
+  };
+}
+
+function ordenarBloquesPortal(a, b) {
+  const rondaA = normalizarRondaPlayoffPortal(a?.playoff_ronda);
+  const rondaB = normalizarRondaPlayoffPortal(b?.playoff_ronda);
+  if (rondaA && rondaB) {
+    const idxA = obtenerIndiceRondaPlayoffPortal(rondaA);
+    const idxB = obtenerIndiceRondaPlayoffPortal(rondaB);
+    if (idxA !== idxB) return idxA - idxB;
+  }
+  if (rondaA !== rondaB) {
+    return rondaA ? 1 : -1;
+  }
+  const aNum = Number.parseInt(a?.numero, 10);
+  const bNum = Number.parseInt(b?.numero, 10);
+  if (Number.isFinite(aNum) && Number.isFinite(bNum)) return aNum - bNum;
+  return String(a?.numero ?? "").localeCompare(String(b?.numero ?? ""));
+}
+
+function normalizarPayloadEliminatoriasPortal(payload = []) {
+  if (Array.isArray(payload)) return { rondas: payload };
+  return payload && typeof payload === "object" ? payload : { rondas: [] };
+}
+
+function enriquecerColeccionesPortal(partidos = [], eliminatoriasPayload = []) {
+  const partidosList = Array.isArray(partidos) ? partidos : [];
+  const eliminatoriasData = normalizarPayloadEliminatoriasPortal(eliminatoriasPayload);
+  const rondas = Array.isArray(eliminatoriasData?.rondas) ? eliminatoriasData.rondas : [];
+
+  const slotsPorPartidoId = new Map();
+  rondas.forEach((ronda) => {
+    const rondaRaw = normalizarRondaPlayoffPortal(ronda?.ronda);
+    (Array.isArray(ronda?.partidos) ? ronda.partidos : []).forEach((slot) => {
+      const partidoId = Number.parseInt(slot?.partido_id, 10);
+      if (Number.isFinite(partidoId) && partidoId > 0) {
+        slotsPorPartidoId.set(partidoId, {
+          ...slot,
+          playoff_ronda: rondaRaw || normalizarRondaPlayoffPortal(slot?.ronda),
+        });
+      }
+    });
+  });
+
+  const partidosEnriquecidos = partidosList.map((partido) => {
+    const slot = slotsPorPartidoId.get(Number.parseInt(partido?.id, 10));
+    if (!slot) return partido;
+    return {
+      ...partido,
+      playoff_ronda: partido?.playoff_ronda || slot?.playoff_ronda || null,
+      playoff_partido_numero:
+        partido?.playoff_partido_numero ?? slot?.partido_numero ?? null,
+      equipo_local_logo_url:
+        partido?.equipo_local_logo_url || slot?.equipo_local_logo || null,
+      equipo_visitante_logo_url:
+        partido?.equipo_visitante_logo_url || slot?.equipo_visitante_logo || null,
+      tiene_planilla_publicada:
+        partido?.tiene_planilla_publicada === true || slot?.tiene_planilla_publicada === true,
+    };
+  });
+
+  const partidosPorId = new Map(
+    partidosEnriquecidos
+      .map((partido) => [Number.parseInt(partido?.id, 10), partido])
+      .filter(([id]) => Number.isFinite(id) && id > 0)
+  );
+
+  const rondasEnriquecidas = rondas.map((ronda) => ({
+    ...ronda,
+    partidos: (Array.isArray(ronda?.partidos) ? ronda.partidos : []).map((slot) => {
+      const partidoRelacionado = partidosPorId.get(Number.parseInt(slot?.partido_id, 10));
+      const base = {
+        ...slot,
+        playoff_ronda:
+          normalizarRondaPlayoffPortal(ronda?.ronda) ||
+          normalizarRondaPlayoffPortal(slot?.playoff_ronda),
+      };
+      if (!partidoRelacionado) {
+        return base;
+      }
+      return {
+        ...base,
+        estado: partidoRelacionado?.estado || base?.estado || null,
+        fecha_partido: partidoRelacionado?.fecha_partido || base?.fecha_partido || null,
+        hora_partido: partidoRelacionado?.hora_partido || base?.hora_partido || null,
+        cancha: partidoRelacionado?.cancha || base?.cancha || null,
+        jornada: partidoRelacionado?.jornada ?? base?.jornada ?? null,
+        numero_campeonato:
+          Number.isFinite(Number(partidoRelacionado?.numero_campeonato)) &&
+          Number(partidoRelacionado.numero_campeonato) > 0
+            ? Number(partidoRelacionado.numero_campeonato)
+            : base?.numero_campeonato ?? null,
+        resultado_local:
+          Number.isFinite(Number(partidoRelacionado?.resultado_local))
+            ? Number(partidoRelacionado.resultado_local)
+            : base?.resultado_local ?? null,
+        resultado_visitante:
+          Number.isFinite(Number(partidoRelacionado?.resultado_visitante))
+            ? Number(partidoRelacionado.resultado_visitante)
+            : base?.resultado_visitante ?? null,
+        equipo_local_nombre:
+          base?.equipo_local_nombre || partidoRelacionado?.equipo_local_nombre || null,
+        equipo_visitante_nombre:
+          base?.equipo_visitante_nombre || partidoRelacionado?.equipo_visitante_nombre || null,
+        equipo_local_logo:
+          base?.equipo_local_logo || partidoRelacionado?.equipo_local_logo_url || null,
+        equipo_visitante_logo:
+          base?.equipo_visitante_logo || partidoRelacionado?.equipo_visitante_logo_url || null,
+        tiene_planilla_publicada:
+          partidoRelacionado?.tiene_planilla_publicada === true ||
+          base?.tiene_planilla_publicada === true,
+      };
+    }),
+  }));
+
+  return {
+    partidos: partidosEnriquecidos,
+    eliminatorias: {
+      ...eliminatoriasData,
+      rondas: rondasEnriquecidas,
+    },
+  };
 }
 
 function obtenerUrlInicioPortalCompartible() {
@@ -1060,40 +1220,71 @@ function calcularByesPortal(todosPartidos = []) {
 }
 
 function normalizarJornadasPortal(jornadas = [], partidos = []) {
-  if (Array.isArray(jornadas) && jornadas.length) {
+  const partidosList = Array.isArray(partidos) ? partidos : [];
+  const hayPlayoff = partidosList.some((partido) => normalizarRondaPlayoffPortal(partido?.playoff_ronda));
+
+  if (Array.isArray(jornadas) && jornadas.length && !hayPlayoff) {
     return jornadas
       .map((item) => ({
+        ...item,
         numero: item?.numero ?? "Sin jornada",
+        playoff_ronda: item?.playoff_ronda || "",
         partidos: Array.isArray(item?.partidos) ? item.partidos : [],
       }))
-      .sort((a, b) => {
-        const aNum = Number.parseInt(a.numero, 10);
-        const bNum = Number.parseInt(b.numero, 10);
-        if (Number.isFinite(aNum) && Number.isFinite(bNum)) return aNum - bNum;
-        return String(a.numero).localeCompare(String(b.numero));
-      });
+      .sort(ordenarBloquesPortal);
   }
 
   const jornadasMap = new Map();
-  (Array.isArray(partidos) ? partidos : []).forEach((partido) => {
-    const numero = partido?.jornada ?? "Sin jornada";
-    const key = String(numero);
-    if (!jornadasMap.has(key)) {
-      jornadasMap.set(key, { numero, partidos: [] });
+  partidosList.forEach((partido) => {
+    const bloque = construirClaveBloquePortal(partido);
+    if (!jornadasMap.has(bloque.key)) {
+      jornadasMap.set(bloque.key, {
+        numero: bloque.numero,
+        playoff_ronda: bloque.playoff_ronda,
+        partidos: [],
+      });
     }
-    jornadasMap.get(key).partidos.push(partido);
+    jornadasMap.get(bloque.key).partidos.push(partido);
   });
 
-  return Array.from(jornadasMap.values()).sort((a, b) => {
-    const aNum = Number.parseInt(a.numero, 10);
-    const bNum = Number.parseInt(b.numero, 10);
-    if (Number.isFinite(aNum) && Number.isFinite(bNum)) return aNum - bNum;
-    return String(a.numero).localeCompare(String(b.numero));
-  });
+  return Array.from(jornadasMap.values()).sort(ordenarBloquesPortal);
+}
+
+function resolverEstadoNormalizadoPortal(partido = {}) {
+  const estado = String(partido?.estado || "").trim().toLowerCase();
+  if (estado) return estado;
+  if (partido?.tiene_planilla_publicada === true) return "finalizado";
+  const resultadoLocal = Number(partido?.resultado_local);
+  const resultadoVisitante = Number(partido?.resultado_visitante);
+  const tieneResultado = Number.isFinite(resultadoLocal) && Number.isFinite(resultadoVisitante);
+  const tienePartidoReal =
+    (Number.isFinite(Number.parseInt(partido?.partido_id, 10)) && Number.parseInt(partido?.partido_id, 10) > 0) ||
+    (Number.isFinite(Number.parseInt(partido?.id, 10)) && Number.parseInt(partido?.id, 10) > 0);
+
+  const shootoutsActivos = partido?.shootouts === true || partido?.shootouts === "t";
+  const penalesLocal = Number(partido?.resultado_local_shootouts);
+  const penalesVisitante = Number(partido?.resultado_visitante_shootouts);
+
+  if (
+    shootoutsActivos &&
+    Number.isFinite(penalesLocal) &&
+    Number.isFinite(penalesVisitante) &&
+    penalesLocal !== penalesVisitante
+  ) {
+    return "finalizado";
+  }
+
+  if (tieneResultado && (resultadoLocal !== 0 || resultadoVisitante !== 0)) {
+    return "finalizado";
+  }
+  if (tienePartidoReal && tieneResultado) {
+    return "programado";
+  }
+  return tienePartidoReal ? "programado" : "pendiente";
 }
 
 function obtenerEstadoPartidoPortal(partido) {
-  const estado = String(partido?.estado || "").trim().toLowerCase();
+  const estado = resolverEstadoNormalizadoPortal(partido);
   const mapa = {
     finalizado: "Finalizado",
     programado: "Programado",
@@ -1119,14 +1310,15 @@ function renderPartidoJornadaPortal(partido = {}) {
   const hora = formatearHoraPortal(partido.hora_partido || partido.hora || partido.hora_programada);
   const cancha = String(partido.cancha || partido.escenario || "").trim();
   const meta = [fecha, hora ? `Hora ${hora}` : "", cancha].filter(Boolean).join(" • ");
-  const finalizado = String(partido.estado || "").trim().toLowerCase() === "finalizado";
+  const estadoNormalizado = resolverEstadoNormalizadoPortal(partido);
+  const finalizado = estadoNormalizado === "finalizado" || estadoNormalizado === "no_presentaron_ambos";
   const tieneMarcador =
     Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante));
   const marcador = finalizado || tieneMarcador
     ? `${partido.resultado_local ?? 0} - ${partido.resultado_visitante ?? 0}`
     : "vs";
   const estado = obtenerEstadoPartidoPortal(partido);
-  const estadoClass = String(partido.estado || "programado").replace(/[^a-z_]/gi, "_").toLowerCase();
+  const estadoClass = estadoNormalizado.replace(/[^a-z_]/gi, "_").toLowerCase();
 
   return `
     <article class="portal-jornada-match">
@@ -1317,6 +1509,16 @@ function formatearRondaPlayoffPortal(ronda) {
 }
 
 function resolverMetaBloquePortal(jornada = {}) {
+  const rondaDirecta = normalizarRondaPlayoffPortal(jornada?.playoff_ronda);
+  if (rondaDirecta) {
+    return {
+      esPlayoff: true,
+      rondaRaw: rondaDirecta,
+      titulo: formatearRondaPlayoffPortal(rondaDirecta),
+      boton: formatearRondaPlayoffPortal(rondaDirecta),
+    };
+  }
+
   const partidosBloque = Array.isArray(jornada?.partidosOriginales)
     ? jornada.partidosOriginales
     : (Array.isArray(jornada?.partidos) ? jornada.partidos : []);
@@ -1343,7 +1545,7 @@ function renderResultadosPortal(jornadas = [], partidos = []) {
 }
 
 function renderEliminatoriasPortal(payload = []) {
-  const data = Array.isArray(payload) ? { rondas: payload } : (payload || {});
+  const data = normalizarPayloadEliminatoriasPortal(payload);
   const rondasValidas = Array.isArray(data?.rondas)
     ? data.rondas.filter((item) => Array.isArray(item?.partidos) && item.partidos.length)
     : [];
@@ -1362,7 +1564,6 @@ function renderEliminatoriasPortal(payload = []) {
     }
     return "Por definir";
   };
-
 
   const resolverResumenPenalesPortal = (partido = {}) => {
     const shootoutsActivos = partido?.shootouts === true || partido?.shootouts === "t";
@@ -1383,34 +1584,43 @@ function renderEliminatoriasPortal(payload = []) {
         .map((ronda) => {
           const partidosHtml = ronda.partidos
             .map((partido) => {
+              const estadoNormalizado = resolverEstadoNormalizadoPortal(partido);
               const marcador =
                 Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante))
                   ? `${partido.resultado_local ?? 0} - ${partido.resultado_visitante ?? 0}`
                   : "vs";
-              const estado = String(partido.estado || "pendiente").replace(/[^a-z_]/gi, "_").toLowerCase();
               const fecha = formatearFechaPortal(partido.fecha_partido || null);
               const hora = formatearHoraPortal(partido.hora_partido || null);
               const cancha = String(partido.cancha || "").trim();
               const meta = [fecha !== "Por definir" ? fecha : "", hora ? `Hora ${hora}` : "", cancha]
                 .filter(Boolean)
                 .join(" • ");
-              const numeroPartido = Number.isFinite(Number(partido.numero_campeonato))
-                ? `P${Number(partido.numero_campeonato)}`
-                : "";
+              const numero = Number.parseInt(partido.numero_campeonato, 10);
+              const numeroPartido = Number.isFinite(numero) && numero > 0 ? `P${numero}` : "";
               const resumenPenales = resolverResumenPenalesPortal(partido);
+              const nombreLocal = resolverNombreSeedPortal(partido, "local");
+              const nombreVisitante = resolverNombreSeedPortal(partido, "visitante");
               return `
                 <div class="partido-publico">
                   <div class="portal-playoff-match-head">
-                    <span class="portal-playoff-match-status estado-${escPortal(estado)}">${escPortal(
+                    <span class="portal-playoff-match-status estado-${escPortal(estadoNormalizado)}">${escPortal(
                       obtenerEstadoPartidoPortal(partido)
                     )}</span>
                     <span class="portal-playoff-match-meta">${escPortal(
                       [numeroPartido, meta].filter(Boolean).join(" • ") || "Por programar"
                     )}</span>
                   </div>
-                  <div class="equipo-nombre">${escPortal(resolverNombreSeedPortal(partido, "local"))}</div>
-                  <div class="marcador">${escPortal(marcador)}</div>
-                  <div class="equipo-nombre">${escPortal(resolverNombreSeedPortal(partido, "visitante"))}</div>
+                  <div class="equipo-col equipo-local">
+                    ${renderLogoEquipoPortal(partido.equipo_local_logo || partido.equipo_local_logo_url, nombreLocal)}
+                    <div class="equipo-nombre">${escPortal(nombreLocal)}</div>
+                  </div>
+                  <div class="marcador-col">
+                    <div class="marcador">${escPortal(marcador)}</div>
+                  </div>
+                  <div class="equipo-col equipo-visitante">
+                    ${renderLogoEquipoPortal(partido.equipo_visitante_logo || partido.equipo_visitante_logo_url, nombreVisitante)}
+                    <div class="equipo-nombre">${escPortal(nombreVisitante)}</div>
+                  </div>
                   ${
                     resumenPenales
                       ? `<div class="portal-playoff-penales">${escPortal(resumenPenales)}</div>`
@@ -1893,15 +2103,20 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
           fetch(`${API}/public/eventos/${ev.id}/partidos`).then((r) => r.json()).catch(() => ({ jornadas: [], partidos: [] })),
         ]);
 
+        const coleccionesPortal = enriquecerColeccionesPortal(
+          partidosRes.partidos || [],
+          eliminatoriasRes || { rondas: [] }
+        );
+
         return {
           evento: ev,
           tablas: tablasRes.grupos || [],
           goleadores: goleadoresRes.goleadores || [],
           tarjetas: tarjetasRes.tarjetas || [],
           fairPlay: fairPlayRes.fair_play || [],
-          eliminatorias: eliminatoriasRes || { rondas: [] },
+          eliminatorias: coleccionesPortal.eliminatorias,
           jornadas: partidosRes.jornadas || [],
-          partidos: partidosRes.partidos || [],
+          partidos: coleccionesPortal.partidos,
         };
       })
     );

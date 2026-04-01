@@ -1558,8 +1558,33 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - se devuelve un resumen con `programados`, `sin_programar` y `capacidad_insuficiente`.
 - Esta misma lógica aplica también a `Regenerar (preservar jugados)`.
 
+---
 
-
-
-
+## 29. Portal público: resultados parciales y publicación correcta de playoff
+- **Ubicación backend:** `backend/services/publicPortalService.js`
+- **Ubicación frontend:** `frontend/js/portal.js`
+- Se corrigió la pestaña pública `Resultados` para que muestre partidos ya jugados aunque la jornada no esté completamente cerrada.
+- Ahora el portal considera como resultados visibles:
+  - partidos `finalizado`,
+  - partidos `no_presentaron_ambos`,
+  - partidos con planilla pública guardada.
+- Se corrigió el agrupamiento de partidos eliminatorios para que no aparezcan bajo `Sin jornada`.
+- Los bloques de resultados y navegación ahora rotulan correctamente por ronda:
+  - `32vos de final`
+  - `16vos de final`
+  - `12vos de final`
+  - `Octavos`
+  - `Cuartos`
+  - `Semifinal`
+  - `Final`
+  - `Tercer y cuarto`
+  - `Reclasificación`
+- En la pestaña pública `Playoff` se reforzó el cruce entre datos de `partidos` y `eliminatorias` para publicar:
+  - estado correcto (`Finalizado`, `Programado`, etc.),
+  - fecha,
+  - hora,
+  - cancha,
+  - número visible del partido,
+  - logos de los equipos,
+  - resumen de penales si aplica.
 

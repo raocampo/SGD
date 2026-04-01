@@ -461,12 +461,26 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - el sistema informa el resumen de capacidad.
 - La BD local fue realineada con un dump actualizado de Render para seguir validando sobre datos reales de producción.
 
+22. Portal público / resultados y playoff:
+- Ya quedó corregido el caso donde `Resultados` ocultaba partidos jugados de jornadas parciales.
+- Ya se normalizó el agrupamiento de partidos eliminatorios para mostrar la ronda real de playoff en vez de `Sin jornada`.
+- La pestaña pública `Playoff` ya cruza la información de:
+  - `partidos`,
+  - `eliminatorias`
+  para publicar estado, fecha, hora, cancha, logos y penales.
+- Pendiente inmediato:
+  - validar en producción con `Copa Ciudad de Loja -> Abierta`,
+  - revisar campeonatos de otros organizadores con jornadas parciales,
+  - confirmar que no haya otra vista pública heredando el rotulado viejo de `Sin jornada`.
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`
 - Historial de cambios implementados: `docs/CAMBIOS_IMPLEMENTADOS.md`
 - Propuesta funcional original: `docs/propuestaDesarrolloSGD.md`
 - Plan mobile web: `docs/PLAN_MOBILE_LT_C.md`
 - Plan CMS del portal publico: `docs/PLAN_CMS_PORTAL_PUBLICO.md`
+
+
+
 
 
 
