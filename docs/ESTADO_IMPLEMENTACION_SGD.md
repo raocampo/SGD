@@ -1,3 +1,8 @@
+## 2026-03-31 - Portal público: fix de playoff y tabla pública con planillas
+
+- `frontend/js/portal.js`: se corrigió la referencia rota `formatearRondaPortal(...)` por `formatearRondaPlayoffPortal(...)`, que estaba rompiendo el detalle de torneos con playoff en el portal público.
+- `backend/controllers/tablaController.js`: las tablas públicas ya consideran como partidos publicados los `finalizado / no_presentaron_ambos` y también los partidos con `partido_planillas` guardada.
+- Esto corrige el caso donde la pestaña `Resultados` sí mostraba partidos y la `Tabla de posiciones` seguía vacía o en cero por depender solo de `estado='finalizado'`.
 # Estado de Implementacion SGD - LT&C
 
 Ultima actualizacion: 2026-03-31 (sesión 20)
@@ -462,6 +467,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Propuesta funcional original: `docs/propuestaDesarrolloSGD.md`
 - Plan mobile web: `docs/PLAN_MOBILE_LT_C.md`
 - Plan CMS del portal publico: `docs/PLAN_CMS_PORTAL_PUBLICO.md`
+
 
 
 

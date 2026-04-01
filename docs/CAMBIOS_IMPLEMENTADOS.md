@@ -1,3 +1,8 @@
+## 2026-03-31 - Portal público: fix de playoff y tabla pública con planillas
+
+- `frontend/js/portal.js`: se corrigió la referencia rota `formatearRondaPortal(...)` por `formatearRondaPlayoffPortal(...)`, que estaba rompiendo el detalle de torneos con playoff en el portal público.
+- `backend/controllers/tablaController.js`: las tablas públicas ya consideran como partidos publicados los `finalizado / no_presentaron_ambos` y también los partidos con `partido_planillas` guardada.
+- Esto corrige el caso donde la pestaña `Resultados` sí mostraba partidos y la `Tabla de posiciones` seguía vacía o en cero por depender solo de `estado='finalizado'`.
 # Cambios Implementados - LT&C
 
 Ultima actualizacion: 2026-03-31 (sesión 20)
@@ -1552,6 +1557,7 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - los partidos restantes se crean sin `fecha/hora/cancha`,
   - se devuelve un resumen con `programados`, `sin_programar` y `capacidad_insuficiente`.
 - Esta misma lógica aplica también a `Regenerar (preservar jugados)`.
+
 
 
 

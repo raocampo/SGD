@@ -1424,7 +1424,7 @@ function renderEliminatoriasPortal(payload = []) {
           return `
             <section class="portal-eliminatoria-ronda">
               <div class="portal-eliminatoria-ronda-head">
-                <h4>${escPortal(formatearRondaPortal(ronda.ronda))}</h4>
+                <h4>${escPortal(formatearRondaPlayoffPortal(ronda.ronda))}</h4>
                 <span>${Array.isArray(ronda.partidos) ? ronda.partidos.length : 0} partido(s)</span>
               </div>
               <div class="portal-eliminatoria-ronda-body">

@@ -580,6 +580,8 @@ function aplicarEstadoClasificacionTabla(tabla, clasificadosPorGrupo = null) {
   });
 }
 
+const SQL_PARTIDO_PUBLICADO_TABLA = "(estado IN ('finalizado', 'no_presentaron_ambos') OR EXISTS (SELECT 1 FROM partido_planillas pp WHERE pp.partido_id = partidos.id))";
+
 async function calcularPuntosEquipoEnGrupo(equipoId, grupoId, sistema) {
   try {
     const q = `
@@ -587,7 +589,7 @@ async function calcularPuntosEquipoEnGrupo(equipoId, grupoId, sistema) {
       FROM partidos
       WHERE grupo_id = $1
         AND (equipo_local_id = $2 OR equipo_visitante_id = $2)
-        AND estado = 'finalizado'
+        AND ${SQL_PARTIDO_PUBLICADO_TABLA}
     `;
     const r = await pool.query(q, [grupoId, equipoId]);
     let puntos = 0;
@@ -610,7 +612,7 @@ async function calcularPuntosEquipoEnGrupo(equipoId, grupoId, sistema) {
       FROM partidos
       WHERE grupo_id = $1
         AND (equipo_local_id = $2 OR equipo_visitante_id = $2)
-        AND estado = 'finalizado'
+        AND ${SQL_PARTIDO_PUBLICADO_TABLA}
     `;
     const r = await pool.query(qLegacy, [grupoId, equipoId]);
     let puntos = 0;
@@ -631,7 +633,7 @@ async function calcularResumenEvento(equipoId, eventoId, sistema) {
     FROM partidos
     WHERE evento_id = $1
       AND (equipo_local_id = $2 OR equipo_visitante_id = $2)
-      AND estado = 'finalizado'
+      AND ${SQL_PARTIDO_PUBLICADO_TABLA}
   `;
   const r = await pool.query(q, [eventoId, equipoId]);
 
