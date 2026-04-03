@@ -19,6 +19,7 @@ const fromMinutesSQL = (min) => {
 
 const formatYMD = (d) => d.toISOString().split("T")[0];
 const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante", "ambos"]);
+const CONVOCATORIAS_PLANILLA_VALIDAS = new Set(["P", "S"]);
 const GOLES_WALKOVER = 3;
 const MAX_FALTAS_PLANILLA = 6;
 let _schemaOverrideCompeticion = null;
@@ -45,6 +46,79 @@ function normalizarCambiosNumeroCamisetaPlanilla(items = []) {
     });
   });
   return cambios;
+}
+
+function normalizarConvocatoriaPlanilla(valor, { permitirVacio = true } = {}) {
+  const raw = String(valor ?? "")
+    .trim()
+    .toUpperCase();
+  if (!raw) return permitirVacio ? "" : null;
+  const normalizada = raw === "PRINCIPAL" ? "P" : raw === "SUPLENTE" ? "S" : raw;
+  if (!CONVOCATORIAS_PLANILLA_VALIDAS.has(normalizada)) {
+    return permitirVacio ? "" : null;
+  }
+  return normalizada;
+}
+
+function normalizarBooleanRegistroPlanilla(valor) {
+  if (typeof valor === "boolean") return valor;
+  const raw = String(valor ?? "")
+    .trim()
+    .toLowerCase();
+  if (!raw) return false;
+  return ["1", "true", "si", "sí", "yes", "y", "x", "on"].includes(raw);
+}
+
+function normalizarRegistroJugadoresPlanilla(items = [], { equipoIdPermitido = null, esFutbol11 = false } = {}) {
+  const registros = [];
+  const vistos = new Set();
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const jugadorId = Number.parseInt(item?.jugador_id, 10);
+    const equipoId = Number.parseInt(item?.equipo_id, 10);
+    if (!Number.isFinite(jugadorId) || jugadorId <= 0) return;
+    if (!Number.isFinite(equipoId) || equipoId <= 0) return;
+    if (Number.isFinite(Number(equipoIdPermitido)) && Number(equipoIdPermitido) > 0) {
+      if (Number(equipoId) !== Number(equipoIdPermitido)) return;
+    }
+    const key = `${equipoId}:${jugadorId}`;
+    if (vistos.has(key)) return;
+    vistos.add(key);
+    registros.push({
+      jugador_id: jugadorId,
+      equipo_id: equipoId,
+      numero_camiseta: Jugador.normalizarNumeroCamiseta(
+        item?.numero_camiseta ?? item?.shirtNumber ?? null
+      ),
+      convocatoria:
+        normalizarConvocatoriaPlanilla(
+          item?.convocatoria ?? item?.lineup_role ?? item?.lineupRole,
+          { permitirVacio: true }
+        ) || null,
+      entra: esFutbol11
+        ? normalizarBooleanRegistroPlanilla(item?.entra ?? item?.enters)
+        : false,
+      sale: esFutbol11
+        ? normalizarBooleanRegistroPlanilla(item?.sale ?? item?.exits)
+        : false,
+    });
+  });
+  return registros;
+}
+
+function construirMapaRegistroPlanilla(items = []) {
+  const mapa = new Map();
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const jugadorId = Number.parseInt(item?.jugador_id, 10);
+    if (!Number.isFinite(jugadorId) || jugadorId <= 0) return;
+    mapa.set(jugadorId, {
+      numero_camiseta: Jugador.normalizarNumeroCamiseta(item?.numero_camiseta),
+      convocatoria:
+        normalizarConvocatoriaPlanilla(item?.convocatoria, { permitirVacio: true }) || null,
+      entra: normalizarBooleanRegistroPlanilla(item?.entra),
+      sale: normalizarBooleanRegistroPlanilla(item?.sale),
+    });
+  });
+  return mapa;
 }
 
 async function aplicarNumerosCamisetaDesdePlanilla(client, partido, cambios = []) {
@@ -2495,6 +2569,8 @@ class Partido {
         observaciones_local TEXT,
         observaciones_visitante TEXT,
         observaciones_arbitro TEXT,
+        registro_jugadores_local JSONB NOT NULL DEFAULT '[]'::jsonb,
+        registro_jugadores_visitante JSONB NOT NULL DEFAULT '[]'::jsonb,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -2514,7 +2590,9 @@ class Partido {
       ADD COLUMN IF NOT EXISTS pago_arbitraje_visitante NUMERIC(10,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS observaciones_local TEXT,
       ADD COLUMN IF NOT EXISTS observaciones_visitante TEXT,
-      ADD COLUMN IF NOT EXISTS observaciones_arbitro TEXT
+      ADD COLUMN IF NOT EXISTS observaciones_arbitro TEXT,
+      ADD COLUMN IF NOT EXISTS registro_jugadores_local JSONB NOT NULL DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS registro_jugadores_visitante JSONB NOT NULL DEFAULT '[]'::jsonb
     `);
 
     await pool.query(`
@@ -2614,7 +2692,9 @@ class Partido {
           observaciones,
           observaciones_local,
           observaciones_visitante,
-          observaciones_arbitro
+          observaciones_arbitro,
+          registro_jugadores_local,
+          registro_jugadores_visitante
         FROM partido_planillas
         WHERE partido_id = $1
         LIMIT 1
@@ -2768,14 +2848,46 @@ class Partido {
       this.calcularSuspensionesEquipoParaPartido(partido, plantelVisitante, partido.equipo_visitante_id),
     ]);
 
-    const plantelLocalConSuspension = plantelLocal.map((jugador) => ({
-      ...jugador,
-      suspension: suspensionesLocal.get(Number(jugador.id)) || null,
-    }));
-    const plantelVisitanteConSuspension = plantelVisitante.map((jugador) => ({
-      ...jugador,
-      suspension: suspensionesVisitante.get(Number(jugador.id)) || null,
-    }));
+    const esFutbol11 = String(partido?.tipo_futbol || "").toLowerCase().includes("11");
+    const registroJugadoresLocal = normalizarRegistroJugadoresPlanilla(planilla?.registro_jugadores_local || [], {
+      equipoIdPermitido: partido.equipo_local_id,
+      esFutbol11,
+    });
+    const registroJugadoresVisitante = normalizarRegistroJugadoresPlanilla(planilla?.registro_jugadores_visitante || [], {
+      equipoIdPermitido: partido.equipo_visitante_id,
+      esFutbol11,
+    });
+    const registroLocalPorJugador = construirMapaRegistroPlanilla(registroJugadoresLocal);
+    const registroVisitantePorJugador = construirMapaRegistroPlanilla(registroJugadoresVisitante);
+
+    const plantelLocalConSuspension = plantelLocal.map((jugador) => {
+      const registro = registroLocalPorJugador.get(Number(jugador.id)) || null;
+      return {
+        ...jugador,
+        suspension: suspensionesLocal.get(Number(jugador.id)) || null,
+        planilla_registro: {
+          numero_camiseta:
+            registro?.numero_camiseta ?? Jugador.normalizarNumeroCamiseta(jugador?.numero_camiseta),
+          convocatoria: registro?.convocatoria || null,
+          entra: registro?.entra === true,
+          sale: registro?.sale === true,
+        },
+      };
+    });
+    const plantelVisitanteConSuspension = plantelVisitante.map((jugador) => {
+      const registro = registroVisitantePorJugador.get(Number(jugador.id)) || null;
+      return {
+        ...jugador,
+        suspension: suspensionesVisitante.get(Number(jugador.id)) || null,
+        planilla_registro: {
+          numero_camiseta:
+            registro?.numero_camiseta ?? Jugador.normalizarNumeroCamiseta(jugador?.numero_camiseta),
+          convocatoria: registro?.convocatoria || null,
+          entra: registro?.entra === true,
+          sale: registro?.sale === true,
+        },
+      };
+    });
 
     return {
       partido,
@@ -2811,6 +2923,8 @@ class Partido {
         observaciones_local: planilla?.observaciones_local || planilla?.observaciones || "",
         observaciones_visitante: planilla?.observaciones_visitante || "",
         observaciones_arbitro: planilla?.observaciones_arbitro || "",
+        registro_jugadores_local: registroJugadoresLocal,
+        registro_jugadores_visitante: registroJugadoresVisitante,
       },
       faltas: {
         local_1er: Number(partido?.faltas_local_1er ?? 0),
@@ -3081,6 +3195,12 @@ class Partido {
     const observacionesVisitante = (datos.observaciones_visitante || "").toString().trim();
     const observaciones = observacionesLocal;
     const observacionesArbitro = (datos.observaciones_arbitro || "").toString().trim();
+    const registroJugadoresLocalRaw = Array.isArray(datos.registro_jugadores_local)
+      ? datos.registro_jugadores_local
+      : [];
+    const registroJugadoresVisitanteRaw = Array.isArray(datos.registro_jugadores_visitante)
+      ? datos.registro_jugadores_visitante
+      : [];
     const motivoEdicion = String(datos?.motivo_edicion || "").trim();
     const usuarioEdicionId =
       Number.isFinite(Number.parseInt(opciones?.usuario_id ?? datos?.usuario_edicion_id, 10)) &&
@@ -3126,6 +3246,20 @@ class Partido {
 
       const equipoLocalId = Number.parseInt(partido.equipo_local_id, 10);
       const equipoVisitanteId = Number.parseInt(partido.equipo_visitante_id, 10);
+      const esFutbol11 = String(partido?.tipo_futbol || "").toLowerCase().includes("11");
+      const registroJugadoresLocal = normalizarRegistroJugadoresPlanilla(registroJugadoresLocalRaw, {
+        equipoIdPermitido: equipoLocalId,
+        esFutbol11,
+      });
+      const registroJugadoresVisitante = normalizarRegistroJugadoresPlanilla(registroJugadoresVisitanteRaw, {
+        equipoIdPermitido: equipoVisitanteId,
+        esFutbol11,
+      });
+      const cambiosNumeroCamiseta = [
+        ...(Array.isArray(datos.numeros_jugadores) ? datos.numeros_jugadores : []),
+        ...registroJugadoresLocal,
+        ...registroJugadoresVisitante,
+      ];
       const resultadoLocalShootoutsRaw = hayInasistencia
         ? null
         : normalizarMarcadorShootoutsPartido(datos.resultado_local_shootouts ?? datos.shootouts_local, {
@@ -3164,7 +3298,7 @@ class Partido {
           throw error;
         }
       }
-      await aplicarNumerosCamisetaDesdePlanilla(client, partido, datos.numeros_jugadores);
+      await aplicarNumerosCamisetaDesdePlanilla(client, partido, cambiosNumeroCamiseta);
       const localBloqueado = inasistenciaEquipo === "local" || inasistenciaEquipo === "ambos";
       const visitanteBloqueado = inasistenciaEquipo === "visitante" || inasistenciaEquipo === "ambos";
       const equipoBloqueado = (equipoIdRaw) => {
@@ -3287,10 +3421,10 @@ class Partido {
               pago_arbitraje_local, pago_arbitraje_visitante,
               pago_arbitraje, pago_local, pago_visitante,
               observaciones, observaciones_local, observaciones_visitante,
-              observaciones_arbitro, updated_at
+              observaciones_arbitro, registro_jugadores_local, registro_jugadores_visitante, updated_at
             )
           VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CURRENT_TIMESTAMP)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19::jsonb, $20::jsonb, CURRENT_TIMESTAMP)
           ON CONFLICT (partido_id)
           DO UPDATE SET
             ambos_no_presentes = EXCLUDED.ambos_no_presentes,
@@ -3310,6 +3444,8 @@ class Partido {
             observaciones_local = EXCLUDED.observaciones_local,
             observaciones_visitante = EXCLUDED.observaciones_visitante,
             observaciones_arbitro = EXCLUDED.observaciones_arbitro,
+            registro_jugadores_local = EXCLUDED.registro_jugadores_local,
+            registro_jugadores_visitante = EXCLUDED.registro_jugadores_visitante,
             updated_at = CURRENT_TIMESTAMP
         `,
         [
@@ -3331,6 +3467,8 @@ class Partido {
           observacionesLocal,
           observacionesVisitante,
           observacionesArbitro,
+          JSON.stringify(registroJugadoresLocal),
+          JSON.stringify(registroJugadoresVisitante),
         ]
       );
 

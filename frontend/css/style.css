@@ -3173,6 +3173,89 @@ body.modal-open {
   font-weight: 700;
 }
 
+.planilla-captura-table .planilla-col-item,
+.planilla-captura-table .planilla-col-numero,
+.planilla-captura-table .planilla-col-convocatoria,
+.planilla-captura-table .planilla-col-goles,
+.planilla-captura-table .planilla-col-ta,
+.planilla-captura-table .planilla-col-tr,
+.planilla-captura-table .planilla-col-entra,
+.planilla-captura-table .planilla-col-sale,
+.planilla-preview-table .planilla-col-item,
+.planilla-preview-table .planilla-col-numero,
+.planilla-preview-table .planilla-col-convocatoria,
+.planilla-preview-table .planilla-col-goles,
+.planilla-preview-table .planilla-col-ta,
+.planilla-preview-table .planilla-col-tr,
+.planilla-preview-table .planilla-col-entra,
+.planilla-preview-table .planilla-col-sale,
+.planilla-oficial-table .planilla-col-item,
+.planilla-oficial-table .planilla-col-numero,
+.planilla-oficial-table .planilla-col-convocatoria,
+.planilla-oficial-table .planilla-col-goles,
+.planilla-oficial-table .planilla-col-ta,
+.planilla-oficial-table .planilla-col-tr,
+.planilla-oficial-table .planilla-col-entra,
+.planilla-oficial-table .planilla-col-sale {
+  text-align: center;
+}
+
+.planilla-captura-table .planilla-col-item,
+.planilla-captura-table .planilla-col-numero,
+.planilla-captura-table .planilla-col-convocatoria,
+.planilla-captura-table .planilla-col-goles,
+.planilla-captura-table .planilla-col-ta,
+.planilla-captura-table .planilla-col-tr,
+.planilla-captura-table .planilla-col-entra,
+.planilla-captura-table .planilla-col-sale {
+  width: 3rem;
+}
+
+.planilla-captura-table .planilla-col-jugador,
+.planilla-preview-table .planilla-col-jugador,
+.planilla-oficial-table .planilla-col-jugador {
+  min-width: 11rem;
+}
+
+.planilla-captura-table .planilla-col-convocatoria select {
+  width: 3.1rem;
+  min-width: 3.1rem;
+  text-align: center;
+  padding: 0.18rem 0.2rem;
+  border-radius: 6px;
+}
+
+.planilla-captura-table .planilla-col-entra input,
+.planilla-captura-table .planilla-col-sale input {
+  width: 1rem;
+  min-width: 1rem;
+  height: 1rem;
+}
+
+.planilla-preview-table .planilla-col-convocatoria,
+.planilla-preview-table .planilla-col-entra,
+.planilla-preview-table .planilla-col-sale,
+.planilla-oficial-table .planilla-col-convocatoria,
+.planilla-oficial-table .planilla-col-entra,
+.planilla-oficial-table .planilla-col-sale {
+  width: 3rem;
+}
+
+.planilla-cell-blank,
+.planilla-cell-checkblank {
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 1px solid #94a3b8;
+  border-radius: 2px;
+  background: #ffffff;
+  vertical-align: middle;
+}
+
+.planilla-cell-blank {
+  width: 1.35rem;
+}
+
 .planilla-captura-table .planilla-player-row.is-suspended input {
   background: #fee2e2;
   border-color: #fca5a5;
@@ -8428,4 +8511,3 @@ body.page-finanzas {
     justify-self: center;
   }
 }
-

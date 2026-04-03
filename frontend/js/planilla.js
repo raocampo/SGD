@@ -216,8 +216,131 @@ function actualizarNumeroJugadorEnDataPlanilla(jugadorIdRaw, numeroCamisetaRaw) 
     const jugador = lista.find((item) => Number.parseInt(item?.id, 10) === jugadorId);
     if (jugador) {
       jugador.numero_camiseta = numeroCamiseta || null;
+      const registroActual = jugador.planilla_registro && typeof jugador.planilla_registro === "object"
+        ? jugador.planilla_registro
+        : {};
+      jugador.planilla_registro = {
+        numero_camiseta: numeroCamiseta || null,
+        convocatoria:
+          normalizarConvocatoriaPlanilla(registroActual.convocatoria || "", { permitirVacio: true }) || null,
+        entra: registroActual.entra === true,
+        sale: registroActual.sale === true,
+      };
     }
   });
+}
+
+function normalizarConvocatoriaPlanilla(valor, { permitirVacio = true } = {}) {
+  const raw = String(valor ?? "")
+    .trim()
+    .toUpperCase();
+  if (!raw) return permitirVacio ? "" : null;
+  const normalizada = raw === "PRINCIPAL" ? "P" : raw === "SUPLENTE" ? "S" : raw;
+  if (!["P", "S"].includes(normalizada)) {
+    return permitirVacio ? "" : null;
+  }
+  return normalizada;
+}
+
+function leerBooleanoRegistroPlanilla(valor) {
+  if (typeof valor === "boolean") return valor;
+  const raw = String(valor ?? "")
+    .trim()
+    .toLowerCase();
+  if (!raw) return false;
+  return ["1", "true", "si", "sí", "yes", "y", "x", "on"].includes(raw);
+}
+
+function obtenerRegistroPlanillaJugador(jugador = {}) {
+  const registro = jugador?.planilla_registro && typeof jugador.planilla_registro === "object"
+    ? jugador.planilla_registro
+    : {};
+  return {
+    numero_camiseta:
+      normalizarNumeroCamisetaPlanilla(
+        registro.numero_camiseta ?? jugador?.numero_camiseta ?? "",
+        { permitirVacio: true }
+      ) || "",
+    convocatoria:
+      normalizarConvocatoriaPlanilla(
+        registro.convocatoria ?? registro.lineupRole ?? "",
+        { permitirVacio: true }
+      ) || "",
+    entra: esPlanillaFutbol11() ? leerBooleanoRegistroPlanilla(registro.entra ?? registro.enters) : false,
+    sale: esPlanillaFutbol11() ? leerBooleanoRegistroPlanilla(registro.sale ?? registro.exits) : false,
+  };
+}
+
+function actualizarRegistroJugadorEnDataPlanilla(jugadorIdRaw, equipoIdRaw, cambios = {}) {
+  const jugadorId = Number.parseInt(jugadorIdRaw, 10);
+  const equipoId = Number.parseInt(equipoIdRaw, 10);
+  if (!Number.isFinite(jugadorId) || jugadorId <= 0 || !dataPlanilla) return;
+
+  ["plantel_local", "plantel_visitante"].forEach((key) => {
+    const lista = Array.isArray(dataPlanilla?.[key]) ? dataPlanilla[key] : [];
+    const jugador = lista.find((item) => Number.parseInt(item?.id, 10) === jugadorId);
+    if (!jugador) return;
+    const jugadorEquipoId = Number.parseInt(jugador?.equipo_id, 10);
+    if (Number.isFinite(equipoId) && equipoId > 0 && jugadorEquipoId !== equipoId) return;
+
+    const actual = obtenerRegistroPlanillaJugador(jugador);
+    const siguienteNumero = Object.prototype.hasOwnProperty.call(cambios, "numero_camiseta")
+      ? normalizarNumeroCamisetaPlanilla(cambios.numero_camiseta, { permitirVacio: true }) || ""
+      : actual.numero_camiseta;
+    const siguienteConvocatoria = Object.prototype.hasOwnProperty.call(cambios, "convocatoria")
+      ? normalizarConvocatoriaPlanilla(cambios.convocatoria, { permitirVacio: true }) || ""
+      : actual.convocatoria;
+    const siguienteEntra = Object.prototype.hasOwnProperty.call(cambios, "entra")
+      ? leerBooleanoRegistroPlanilla(cambios.entra)
+      : actual.entra;
+    const siguienteSale = Object.prototype.hasOwnProperty.call(cambios, "sale")
+      ? leerBooleanoRegistroPlanilla(cambios.sale)
+      : actual.sale;
+
+    jugador.numero_camiseta = siguienteNumero || null;
+    jugador.planilla_registro = {
+      numero_camiseta: siguienteNumero || null,
+      convocatoria: siguienteConvocatoria || null,
+      entra: esPlanillaFutbol11() ? siguienteEntra : false,
+      sale: esPlanillaFutbol11() ? siguienteSale : false,
+    };
+  });
+}
+
+function aplicarRegistroPlanillaAPlanteles() {
+  if (!dataPlanilla) return;
+  const registroLocal = Array.isArray(dataPlanilla?.planilla?.registro_jugadores_local)
+    ? dataPlanilla.planilla.registro_jugadores_local
+    : [];
+  const registroVisitante = Array.isArray(dataPlanilla?.planilla?.registro_jugadores_visitante)
+    ? dataPlanilla.planilla.registro_jugadores_visitante
+    : [];
+  const mapaLocal = new Map(registroLocal.map((item) => [Number.parseInt(item?.jugador_id, 10), item]));
+  const mapaVisitante = new Map(registroVisitante.map((item) => [Number.parseInt(item?.jugador_id, 10), item]));
+
+  const aplicar = (key, mapa) => {
+    const lista = Array.isArray(dataPlanilla?.[key]) ? dataPlanilla[key] : [];
+    dataPlanilla[key] = lista.map((jugador) => {
+      const item = mapa.get(Number.parseInt(jugador?.id, 10)) || jugador?.planilla_registro || {};
+      const numero = normalizarNumeroCamisetaPlanilla(
+        item?.numero_camiseta ?? jugador?.numero_camiseta ?? "",
+        { permitirVacio: true }
+      );
+      return {
+        ...jugador,
+        numero_camiseta: numero || null,
+        planilla_registro: {
+          numero_camiseta: numero || null,
+          convocatoria: normalizarConvocatoriaPlanilla(item?.convocatoria, { permitirVacio: true }) || null,
+          entra: esPlanillaFutbol11() ? leerBooleanoRegistroPlanilla(item?.entra) : false,
+          sale: esPlanillaFutbol11() ? leerBooleanoRegistroPlanilla(item?.sale) : false,
+        },
+      };
+    });
+  };
+
+  aplicar("plantel_local", mapaLocal);
+  aplicar("plantel_visitante", mapaVisitante);
 }
 
 function normalizarFechaISO(valor) {
@@ -1694,6 +1817,9 @@ function capturarEstadoFormularioPlanilla() {
     filas: Array.from(document.querySelectorAll(".planilla-player-row")).map((row) => ({
       key: `${row.dataset.equipoId || ""}:${row.dataset.jugadorId || ""}`,
       numero: row.querySelector(".cap-numero")?.value || "",
+      convocatoria: row.querySelector(".cap-convocatoria")?.value || "",
+      entra: row.querySelector(".cap-entra")?.checked ? "1" : "",
+      sale: row.querySelector(".cap-sale")?.checked ? "1" : "",
       goles: row.querySelector(".cap-goles")?.value || "",
       amarillas: row.querySelector(".cap-ta")?.value || "",
       rojas: row.querySelector(".cap-tr")?.value || "",
@@ -1768,13 +1894,31 @@ function restaurarEstadoFormularioPlanilla(snapshot = null) {
     const row = mapRows.get(item.key);
     if (!(row instanceof HTMLElement)) return;
     const inputNumero = row.querySelector(".cap-numero");
+    const inputConvocatoria = row.querySelector(".cap-convocatoria");
+    const inputEntra = row.querySelector(".cap-entra");
+    const inputSale = row.querySelector(".cap-sale");
     const inputGoles = row.querySelector(".cap-goles");
     const inputTa = row.querySelector(".cap-ta");
     const inputTr = row.querySelector(".cap-tr");
+    const numeroNormalizado = normalizarNumeroCamisetaPlanilla(item.numero || "");
+    const convocatoriaNormalizada =
+      normalizarConvocatoriaPlanilla(item.convocatoria, { permitirVacio: true }) || "";
+    const entra = leerBooleanoRegistroPlanilla(item.entra);
+    const sale = leerBooleanoRegistroPlanilla(item.sale);
     if (inputNumero instanceof HTMLInputElement) {
-      inputNumero.value = normalizarNumeroCamisetaPlanilla(item.numero || "");
-      actualizarNumeroJugadorEnDataPlanilla(row.dataset.jugadorId, inputNumero.value);
+      inputNumero.value = numeroNormalizado;
     }
+    if (inputConvocatoria instanceof HTMLSelectElement) {
+      inputConvocatoria.value = convocatoriaNormalizada;
+    }
+    if (inputEntra instanceof HTMLInputElement) inputEntra.checked = entra;
+    if (inputSale instanceof HTMLInputElement) inputSale.checked = sale;
+    actualizarRegistroJugadorEnDataPlanilla(row.dataset.jugadorId, row.dataset.equipoId, {
+      numero_camiseta: numeroNormalizado,
+      convocatoria: convocatoriaNormalizada,
+      entra,
+      sale,
+    });
     if (inputGoles instanceof HTMLInputElement) inputGoles.value = item.goles || "";
     if (inputTa instanceof HTMLInputElement) inputTa.value = item.amarillas || "";
     if (inputTr instanceof HTMLInputElement) inputTr.value = item.rojas || "";
@@ -1797,6 +1941,7 @@ async function refrescarPlanillaPreservandoFormulario() {
   const snapshot = capturarEstadoFormularioPlanilla();
   const resp = await ApiClient.get(`/partidos/${partidoId}/planilla`);
   dataPlanilla = resp;
+  aplicarRegistroPlanillaAPlanteles();
   dataPlanilla.auspiciantes = await cargarAuspiciantesActivosPlanilla(dataPlanilla?.partido?.campeonato_id);
 
   const p = dataPlanilla.partido || {};
@@ -1931,6 +2076,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
     return;
   }
 
+  const esFutbol11 = esPlanillaFutbol11();
   const filas = jugadores
     .map((j, idx) => {
       const suspension = j?.suspension || null;
@@ -1942,7 +2088,8 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
       const rojas = suspendido ? "" : statsIniciales.rojasPorJugador.get(jugadorId) || "";
       const rojasDobles = suspendido ? 0 : statsIniciales.rojasDoblesPorJugador.get(jugadorId) || 0;
       const item = idx + 1;
-      const numero = normalizarNumeroCamisetaPlanilla(j.numero_camiseta || "");
+      const registro = obtenerRegistroPlanillaJugador(j);
+      const numero = normalizarNumeroCamisetaPlanilla(registro.numero_camiseta || j.numero_camiseta || "");
       const nombre = nombreJugador(j) || `Jugador ${idx + 1}`;
       const docs = [];
       if (documentosRequeridos.foto_cedula) docs.push(j.foto_cedula_url ? "Cedula OK" : "Cedula pendiente");
@@ -1965,8 +2112,8 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
           data-rojas-dobles="${rojasDobles}"
           data-tarjetas-preset="${rojasDobles > 0 ? "1" : ""}"
         >
-          <td>${item}</td>
-          <td>
+          <td class="planilla-col-item">${item}</td>
+          <td class="planilla-col-numero">
             <input
               class="cap-numero"
               type="text"
@@ -1977,14 +2124,31 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
               aria-label="Número de camiseta de ${escapeHtml(nombre)}"
             />
           </td>
-          <td>
+          <td class="planilla-col-convocatoria">
+            <select class="cap-convocatoria" aria-label="Convocatoria de ${escapeHtml(nombre)}" ${disabledAttr}>
+              <option value=""></option>
+              <option value="P" ${registro.convocatoria === "P" ? "selected" : ""}>P</option>
+              <option value="S" ${registro.convocatoria === "S" ? "selected" : ""}>S</option>
+            </select>
+          </td>
+          ${
+            esFutbol11
+              ? `<td class="planilla-col-entra"><input class="cap-entra" type="checkbox" aria-label="Entra de ${escapeHtml(
+                  nombre
+                )}" ${registro.entra ? "checked" : ""} ${disabledAttr} /></td>
+                 <td class="planilla-col-sale"><input class="cap-sale" type="checkbox" aria-label="Sale de ${escapeHtml(
+                   nombre
+                 )}" ${registro.sale ? "checked" : ""} ${disabledAttr} /></td>`
+              : ""
+          }
+          <td class="planilla-col-jugador">
             <strong>${escapeHtml(nombre)}</strong>
             ${docsHtml}
             ${suspensionHtml}
           </td>
-          <td><input class="cap-goles" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${goles}" ${disabledAttr} /></td>
-          <td><input class="cap-ta" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${amarillas}" ${disabledAttr} /></td>
-          <td><input class="cap-tr" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${rojas}" ${disabledAttr} /></td>
+          <td class="planilla-col-goles"><input class="cap-goles" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${goles}" ${disabledAttr} /></td>
+          <td class="planilla-col-ta"><input class="cap-ta" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${amarillas}" ${disabledAttr} /></td>
+          <td class="planilla-col-tr"><input class="cap-tr" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${rojas}" ${disabledAttr} /></td>
         </tr>
       `;
     })
@@ -1995,7 +2159,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
     <div class="planilla-captura-table-wrap">
       <table class="planilla-captura-table">
         <thead>
-          <tr><th>Item</th><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+          ${renderCabeceraTablaPlanillaHtml()}
         </thead>
         <tbody>${filas}</tbody>
       </table>
@@ -2065,34 +2229,69 @@ function recalcularResultadoDesdeCaptura(preservarSiSinDatos = false) {
 }
 
 function conectarEventosCaptura() {
-  document.querySelectorAll("#captura-local input, #captura-visitante input").forEach((input) => {
-    input.addEventListener("input", (e) => {
-      const target = e.target;
-      if (!(target instanceof HTMLInputElement)) return;
-      const row = target.closest(".planilla-player-row");
-      if (target.classList.contains("cap-numero")) {
-        const valor = normalizarNumeroCamisetaPlanilla(target.value);
-        target.value = valor;
-        if (row instanceof HTMLElement) {
-          actualizarNumeroJugadorEnDataPlanilla(row.dataset.jugadorId, valor);
-        }
-        actualizarVistaPreviaPlanilla(true);
-        return;
-      }
-      if (
-        row instanceof HTMLElement &&
-        (target.classList.contains("cap-ta") || target.classList.contains("cap-tr"))
-      ) {
-        row.dataset.tarjetasPreset = "";
-      }
+  const controles = document.querySelectorAll(
+    "#captura-local input, #captura-local select, #captura-visitante input, #captura-visitante select"
+  );
+
+  const manejarCambio = (target) => {
+    if (!(target instanceof HTMLElement)) return;
+    const row = target.closest(".planilla-player-row");
+    if (!(row instanceof HTMLElement)) return;
+
+    if (target.classList.contains("cap-numero") && target instanceof HTMLInputElement) {
+      const valor = normalizarNumeroCamisetaPlanilla(target.value);
+      target.value = valor;
+      actualizarNumeroJugadorEnDataPlanilla(row.dataset.jugadorId, valor);
+      actualizarVistaPreviaPlanilla(true);
+      return;
+    }
+
+    if (target.classList.contains("cap-convocatoria") && target instanceof HTMLSelectElement) {
+      const convocatoria =
+        normalizarConvocatoriaPlanilla(target.value, { permitirVacio: true }) || "";
+      target.value = convocatoria;
+      actualizarRegistroJugadorEnDataPlanilla(row.dataset.jugadorId, row.dataset.equipoId, {
+        convocatoria,
+      });
+      actualizarVistaPreviaPlanilla(true);
+      return;
+    }
+
+    if (target.classList.contains("cap-entra") || target.classList.contains("cap-sale")) {
+      actualizarRegistroJugadorEnDataPlanilla(row.dataset.jugadorId, row.dataset.equipoId, {
+        entra: row.querySelector(".cap-entra")?.checked === true,
+        sale: row.querySelector(".cap-sale")?.checked === true,
+      });
+      actualizarVistaPreviaPlanilla(true);
+      return;
+    }
+
+    if (
+      (target.classList.contains("cap-ta") || target.classList.contains("cap-tr")) &&
+      row instanceof HTMLElement
+    ) {
+      row.dataset.tarjetasPreset = "";
+    }
+
+    if (target instanceof HTMLInputElement) {
       const limpio = String(target.value || "").replace(/\D+/g, "").slice(0, 2);
       const valor = valorNoNegativoEntero(limpio, 0, 99);
       target.value = valor ? String(valor) : "";
-      recalcularTotalesCapturaEquipo("captura-local");
-      recalcularTotalesCapturaEquipo("captura-visitante");
-      recalcularResultadoDesdeCaptura(false);
-      actualizarVistaPreviaPlanilla(true);
-    });
+    }
+    recalcularTotalesCapturaEquipo("captura-local");
+    recalcularTotalesCapturaEquipo("captura-visitante");
+    recalcularResultadoDesdeCaptura(false);
+    actualizarVistaPreviaPlanilla(true);
+  };
+
+  controles.forEach((control) => {
+    const evento =
+      control.classList.contains("cap-convocatoria") ||
+      control.classList.contains("cap-entra") ||
+      control.classList.contains("cap-sale")
+        ? "change"
+        : "input";
+    control.addEventListener(evento, (e) => manejarCambio(e.target));
   });
 }
 
@@ -3269,6 +3468,7 @@ async function cargarPlanilla() {
   try {
     const resp = await ApiClient.get(`/partidos/${partidoId}/planilla`);
     dataPlanilla = resp;
+  aplicarRegistroPlanillaAPlanteles();
     dataPlanilla.auspiciantes = await cargarAuspiciantesActivosPlanilla(dataPlanilla?.partido?.campeonato_id);
 
     const p = dataPlanilla.partido || {};
@@ -3306,6 +3506,8 @@ function recolectarPayloadPlanilla() {
   const goles = [];
   const tarjetas = [];
   const numerosJugadores = [];
+  const registroJugadoresLocal = [];
+  const registroJugadoresVisitante = [];
   const filasCaptura = Array.from(document.querySelectorAll(".planilla-player-row"));
   const faltas = normalizarEstadoFaltasPlanilla(obtenerEstadoFaltasPlanilla());
   if (bloqueados.local) {
@@ -3330,12 +3532,36 @@ function recolectarPayloadPlanilla() {
       const numeroCamiseta = normalizarNumeroCamisetaPlanilla(row.querySelector(".cap-numero")?.value, {
         permitirVacio: true,
       });
-      actualizarNumeroJugadorEnDataPlanilla(jugadorId, numeroCamiseta);
+      const convocatoria =
+        normalizarConvocatoriaPlanilla(row.querySelector(".cap-convocatoria")?.value, {
+          permitirVacio: true,
+        }) || null;
+      const entra = esPlanillaFutbol11() ? row.querySelector(".cap-entra")?.checked === true : false;
+      const sale = esPlanillaFutbol11() ? row.querySelector(".cap-sale")?.checked === true : false;
+      actualizarRegistroJugadorEnDataPlanilla(jugadorId, equipoId, {
+        numero_camiseta: numeroCamiseta,
+        convocatoria,
+        entra,
+        sale,
+      });
       numerosJugadores.push({
         equipo_id: equipoId,
         jugador_id: jugadorId,
         numero_camiseta: numeroCamiseta || null,
       });
+      const registroJugador = {
+        equipo_id: equipoId,
+        jugador_id: jugadorId,
+        numero_camiseta: numeroCamiseta || null,
+        convocatoria,
+        entra,
+        sale,
+      };
+      if (equipoId === Number(equiposPartido.local.id)) {
+        registroJugadoresLocal.push(registroJugador);
+      } else if (equipoId === Number(equiposPartido.visitante.id)) {
+        registroJugadoresVisitante.push(registroJugador);
+      }
 
       const golesNum = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
       const tarjetasNormalizadas = normalizarTarjetasFilaCaptura(row);
@@ -3489,9 +3715,105 @@ function recolectarPayloadPlanilla() {
     faltas_local_total: faltas.local_total,
     faltas_visitante_total: faltas.visitante_total,
     numeros_jugadores: numerosJugadores,
+    registro_jugadores_local: registroJugadoresLocal,
+    registro_jugadores_visitante: registroJugadoresVisitante,
     goles,
     tarjetas,
   };
+}
+
+function obtenerRegistroBasePlanilla() {
+  return {
+    numero_camiseta: "",
+    convocatoria: "",
+    entra: false,
+    sale: false,
+  };
+}
+
+function obtenerColumnasRegistroPlanilla({ encabezadoCompleto = false } = {}) {
+  const columnas = [
+    {
+      key: "item",
+      label: "Item",
+      headerClass: "planilla-col-item",
+      cellClass: "planilla-col-item",
+      pdfWidth: 18,
+    },
+    {
+      key: "numero",
+      label: "N",
+      headerClass: "planilla-col-numero",
+      cellClass: "planilla-col-numero",
+      pdfWidth: 18,
+    },
+    {
+      key: "convocatoria",
+      label: "P/S",
+      headerClass: "planilla-col-convocatoria",
+      cellClass: "planilla-col-convocatoria",
+      pdfWidth: 20,
+    },
+  ];
+  if (esPlanillaFutbol11()) {
+    columnas.push(
+      {
+        key: "entra",
+        label: "Entra",
+        headerClass: "planilla-col-entra",
+        cellClass: "planilla-col-entra",
+        pdfWidth: 20,
+      },
+      {
+        key: "sale",
+        label: "Sale",
+        headerClass: "planilla-col-sale",
+        cellClass: "planilla-col-sale",
+        pdfWidth: 20,
+      }
+    );
+  }
+  columnas.push(
+    {
+      key: "nombre",
+      label: "Jugador",
+      headerClass: "planilla-col-jugador",
+      cellClass: "planilla-col-jugador",
+      pdfWidth: "*",
+    },
+    {
+      key: "goles",
+      label: encabezadoCompleto ? "Gol" : "G",
+      headerClass: "planilla-col-goles",
+      cellClass: "planilla-col-goles",
+      pdfWidth: 18,
+    },
+    {
+      key: "amarillas",
+      label: "TA",
+      headerClass: "planilla-col-ta",
+      cellClass: "planilla-col-ta",
+      pdfWidth: 18,
+    },
+    {
+      key: "rojas",
+      label: "TR",
+      headerClass: "planilla-col-tr",
+      cellClass: "planilla-col-tr",
+      pdfWidth: 18,
+    }
+  );
+  return columnas;
+}
+
+function renderCabeceraTablaPlanillaHtml({ encabezadoCompleto = false } = {}) {
+  return `<tr>${obtenerColumnasRegistroPlanilla({ encabezadoCompleto })
+    .map((col) => `<th class="${col.headerClass}">${col.label}</th>`)
+    .join("")}</tr>`;
+}
+
+function obtenerColumnasPdfPlanilla() {
+  return obtenerColumnasRegistroPlanilla({ encabezadoCompleto: true }).map((col) => col.pdfWidth);
 }
 
 function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
@@ -3500,21 +3822,46 @@ function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
     const j = jugadores[i] || null;
     const esArquero = esPosicionArqueroPlanilla(j?.posicion);
     const jugadorId = Number(j?.id);
+    const registro = j ? obtenerRegistroPlanillaJugador(j) : obtenerRegistroBasePlanilla();
     const item = i + 1;
-    const numero = j ? j.numero_camiseta || "" : "";
+    const numero = j ? registro.numero_camiseta || j.numero_camiseta || "" : "";
     const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
+    const convocatoria = j ? normalizarConvocatoriaPlanilla(registro.convocatoria || "") : "";
+    const entra = j && registro.entra ? "X" : "";
+    const sale = j && registro.sale ? "X" : "";
     const goles = j ? stats.golesPorJugador.get(jugadorId) || "" : "";
     const amarillas = j ? stats.amarillasPorJugador.get(jugadorId) || "" : "";
     const rojas = j ? stats.rojasPorJugador.get(jugadorId) || "" : "";
+    const columnas = obtenerColumnasRegistroPlanilla();
+
+    const cells = columnas.map((col) => {
+      switch (col.key) {
+        case "item":
+          return `<td class="${col.cellClass}">${item}</td>`;
+        case "numero":
+          return `<td class="${col.cellClass}">${escapeHtml(String(numero))}</td>`;
+        case "convocatoria":
+          return `<td class="${col.cellClass}">${escapeHtml(convocatoria)}</td>`;
+        case "entra":
+          return `<td class="${col.cellClass}">${escapeHtml(entra)}</td>`;
+        case "sale":
+          return `<td class="${col.cellClass}">${escapeHtml(sale)}</td>`;
+        case "nombre":
+          return `<td class="${col.cellClass}">${escapeHtml(nombre)}</td>`;
+        case "goles":
+          return `<td class="${col.cellClass}">${goles}</td>`;
+        case "amarillas":
+          return `<td class="${col.cellClass}">${amarillas}</td>`;
+        case "rojas":
+          return `<td class="${col.cellClass}">${rojas}</td>`;
+        default:
+          return `<td class="${col.cellClass}"></td>`;
+      }
+    });
 
     filas.push(`
       <tr class="${esArquero ? "is-goalkeeper" : ""}">
-        <td>${item}</td>
-        <td>${numero}</td>
-        <td>${escapeHtml(nombre)}</td>
-        <td>${goles}</td>
-        <td>${amarillas}</td>
-        <td>${rojas}</td>
+        ${cells.join("")}
       </tr>
     `);
   }
@@ -3593,20 +3940,40 @@ function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
     const j = jugadores[i] || null;
     const jugadorId = Number(j?.id);
     const item = i + 1;
-    const numero = j ? j.numero_camiseta || "" : "";
+    const registro = j ? obtenerRegistroPlanillaJugador(j) : obtenerRegistroBasePlanilla();
+    const numero = j ? registro.numero_camiseta || j.numero_camiseta || "" : "";
     const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
     const goles = j ? stats.golesPorJugador.get(jugadorId) || "" : "";
     const amarillas = j ? stats.amarillasPorJugador.get(jugadorId) || "" : "";
     const rojas = j ? stats.rojasPorJugador.get(jugadorId) || "" : "";
+    const columnas = obtenerColumnasRegistroPlanilla({ encabezadoCompleto: true });
+    const cells = columnas.map((col) => {
+      switch (col.key) {
+        case "item":
+          return `<td class="${col.cellClass}">${item}</td>`;
+        case "numero":
+          return `<td class="${col.cellClass}">${escapeHtml(String(numero))}</td>`;
+        case "convocatoria":
+          return `<td class="${col.cellClass}"><span class="planilla-cell-blank" aria-hidden="true"></span></td>`;
+        case "entra":
+        case "sale":
+          return `<td class="${col.cellClass}"><span class="planilla-cell-checkblank" aria-hidden="true"></span></td>`;
+        case "nombre":
+          return `<td class="${col.cellClass}">${escapeHtml(nombre)}</td>`;
+        case "goles":
+          return `<td class="${col.cellClass}">${goles}</td>`;
+        case "amarillas":
+          return `<td class="${col.cellClass}">${amarillas}</td>`;
+        case "rojas":
+          return `<td class="${col.cellClass}">${rojas}</td>`;
+        default:
+          return `<td class="${col.cellClass}"></td>`;
+      }
+    });
 
     filas.push(`
       <tr>
-        <td>${item}</td>
-        <td>${numero}</td>
-        <td>${escapeHtml(nombre)}</td>
-        <td>${goles}</td>
-        <td>${amarillas}</td>
-        <td>${rojas}</td>
+        ${cells.join("")}
       </tr>
     `);
   }
@@ -3749,7 +4116,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           <div class="planilla-oficial-team-title">EQUIPO: ${escapeHtml(p.equipo_local_nombre || equiposPartido.local.nombre)}</div>
           <table class="planilla-oficial-table">
             <thead>
-              <tr><th>Item</th><th>N</th><th>Nombre</th><th>Gol</th><th>TA</th><th>TR</th></tr>
+              ${renderCabeceraTablaPlanillaHtml({ encabezadoCompleto: true })}
             </thead>
             <tbody>${filasLocal}</tbody>
           </table>
@@ -3765,7 +4132,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           <div class="planilla-oficial-team-title">EQUIPO: ${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</div>
           <table class="planilla-oficial-table">
             <thead>
-              <tr><th>Item</th><th>N</th><th>Nombre</th><th>Gol</th><th>TA</th><th>TR</th></tr>
+              ${renderCabeceraTablaPlanillaHtml({ encabezadoCompleto: true })}
             </thead>
             <tbody>${filasVisit}</tbody>
           </table>
@@ -3905,7 +4272,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
           <h4>Plantel Local</h4>
           <table class="planilla-preview-table">
             <thead>
-              <tr><th>Item</th><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+              ${renderCabeceraTablaPlanillaHtml()}
             </thead>
             <tbody>${filasLocal}</tbody>
           </table>
@@ -3914,7 +4281,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
           <h4>Plantel Visitante</h4>
           <table class="planilla-preview-table">
             <thead>
-              <tr><th>Item</th><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+              ${renderCabeceraTablaPlanillaHtml()}
             </thead>
             <tbody>${filasVisit}</tbody>
           </table>
@@ -4112,35 +4479,53 @@ async function construirBloqueAuspiciantesPdf() {
 }
 
 function construirFilasPlantelPdf(jugadores, stats, maxFilas) {
+  const columnas = obtenerColumnasRegistroPlanilla({ encabezadoCompleto: true });
   const body = [[
-    { text: "Item", style: "thCenter" },
-    { text: "N", style: "thCenter" },
-    { text: "Nombre", style: "thLeft" },
-    { text: "Gol", style: "thCenter" },
-    { text: "TA", style: "thCenter" },
-    { text: "TR", style: "thCenter" },
+    ...columnas.map((col) => ({
+      text: col.label,
+      style:
+        col.key === "nombre"
+          ? "thLeft"
+          : "thCenter",
+    })),
   ]];
 
-  let item = 0;
   for (let i = 0; i < maxFilas; i += 1) {
     const j = jugadores[i] || null;
-    if (!j) continue;
-    item += 1;
-    const jugadorId = Number(j.id);
-    const nombre = `${j.apellido || ""} ${j.nombre || ""}`.trim();
-    const numero = String(j.numero_camiseta || "");
-    const goles = String(stats.golesPorJugador.get(jugadorId) || "");
-    const ta = String(stats.amarillasPorJugador.get(jugadorId) || "");
-    const tr = String(stats.rojasPorJugador.get(jugadorId) || "");
+    const jugadorId = Number(j?.id);
+    const registro = j ? obtenerRegistroPlanillaJugador(j) : obtenerRegistroBasePlanilla();
+    const item = i + 1;
+    const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
+    const numero = j ? String(registro.numero_camiseta || j.numero_camiseta || "") : "";
+    const goles = j ? String(stats.golesPorJugador.get(jugadorId) || "") : "";
+    const ta = j ? String(stats.amarillasPorJugador.get(jugadorId) || "") : "";
+    const tr = j ? String(stats.rojasPorJugador.get(jugadorId) || "") : "";
 
-    body.push([
-      { text: String(item), style: "tdCenter" },
-      { text: numero, style: "tdCenter" },
-      { text: nombre, style: "tdLeft" },
-      { text: goles, style: "tdCenter" },
-      { text: ta, style: "tdCenter" },
-      { text: tr, style: "tdCenter" },
-    ]);
+    body.push(
+      columnas.map((col) => {
+        switch (col.key) {
+          case "item":
+            return { text: String(item), style: "tdCenter" };
+          case "numero":
+            return { text: numero, style: "tdCenter" };
+          case "convocatoria":
+            return { text: "[ ]", style: "tdCenter" };
+          case "entra":
+          case "sale":
+            return { text: "[ ]", style: "tdCenter" };
+          case "nombre":
+            return { text: nombre, style: "tdLeft" };
+          case "goles":
+            return { text: goles, style: "tdCenter" };
+          case "amarillas":
+            return { text: ta, style: "tdCenter" };
+          case "rojas":
+            return { text: tr, style: "tdCenter" };
+          default:
+            return { text: "", style: "tdCenter" };
+        }
+      })
+    );
   }
 
   return body;
@@ -4576,7 +4961,7 @@ async function imprimirPDFPlanilla() {
                 {
                   table: {
                     headerRows: 1,
-                    widths: [20, 20, "*", 18, 18, 18],
+                    widths: obtenerColumnasPdfPlanilla(),
                     body: bodyLocal,
                     heights: (row) => (row === 0 ? alturaCabeceraPlantel : alturaFilaPlantel),
                   },
@@ -4642,7 +5027,7 @@ async function imprimirPDFPlanilla() {
                 {
                   table: {
                     headerRows: 1,
-                    widths: [20, 20, "*", 18, 18, 18],
+                    widths: obtenerColumnasPdfPlanilla(),
                     body: bodyVisit,
                     heights: (row) => (row === 0 ? alturaCabeceraPlantel : alturaFilaPlantel),
                   },
@@ -5211,3 +5596,5 @@ window.volverAPartidos = volverAPartidos;
 window.recargarPlanilla = recargarPlanilla;
 window.abrirModalInscripcionPlanilla = abrirModalInscripcionPlanilla;
 window.cerrarModalInscripcionPlanilla = cerrarModalInscripcionPlanilla;
+
+
