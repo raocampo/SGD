@@ -598,6 +598,35 @@ class Eliminatoria {
     return r.rows.map((x) => Number(x.id)).filter((x) => Number.isFinite(x));
   }
 
+  static async asegurarPartidosOperativosPlayoff(evento_id, db = pool) {
+    await this.asegurarEsquema(db);
+    const slotsR = await db.query(
+      `
+        SELECT pe.id
+        FROM partidos_eliminatoria pe
+        WHERE pe.evento_id = $1
+          AND pe.partido_id IS NULL
+          AND pe.equipo_local_id IS NOT NULL
+          AND pe.equipo_visitante_id IS NOT NULL
+        ORDER BY
+          array_position($2::varchar[], pe.ronda),
+          pe.partido_numero,
+          pe.id
+      `,
+      [evento_id, RONDAS_ORDEN]
+    );
+
+    let creados = 0;
+    for (const row of slotsR.rows) {
+      const slotId = Number.parseInt(row?.id, 10);
+      if (!Number.isFinite(slotId) || slotId <= 0) continue;
+      await this.programarSlot(slotId, {}, db);
+      creados += 1;
+    }
+
+    return { creados };
+  }
+
   static async programarSlot(slotId, { fecha_partido, hora_partido, cancha } = {}, db = pool) {
     await this.asegurarEsquema(db);
     // Get the slot
@@ -3176,12 +3205,15 @@ class Eliminatoria {
       await this.sincronizarMejoresPerdedores12vos(evento_id, db);
     }
 
+    await this.asegurarPartidosOperativosPlayoff(evento_id, db);
+
     return { actualizados };
   }
 
   static async obtenerPorEvento(evento_id, db = pool) {
     await this.asegurarEsquema(db);
     await this.sincronizarResultadosDesdePartidosEnlazados(evento_id, db);
+    await this.asegurarPartidosOperativosPlayoff(evento_id, db);
     const q = `
       SELECT pe.*,
              el.nombre AS equipo_local_nombre, ev.nombre AS equipo_visitante_nombre,
@@ -3215,6 +3247,7 @@ class Eliminatoria {
   static async obtenerPorRonda(evento_id, ronda, db = pool) {
     await this.asegurarEsquema(db);
     await this.sincronizarResultadosDesdePartidosEnlazados(evento_id, db);
+    await this.asegurarPartidosOperativosPlayoff(evento_id, db);
     const q = `
       SELECT pe.*,
              el.nombre AS equipo_local_nombre, ev.nombre AS equipo_visitante_nombre,

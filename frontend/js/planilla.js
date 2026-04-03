@@ -2915,6 +2915,24 @@ function normalizarPartidoPlayoffSelectorPlanilla(slot = {}) {
   };
 }
 
+function normalizarPartidoPlayoffDesdePartidosSelectorPlanilla(partido = {}) {
+  const base = normalizarPartidoRegularSelectorPlanilla(partido);
+  if (!base) return null;
+  return {
+    ...base,
+    origen_fase: "playoff",
+    playoff_ronda: normalizarRondaPlayoffPlanilla(partido?.playoff_ronda || partido?.ronda || ""),
+    ronda: normalizarRondaPlayoffPlanilla(partido?.playoff_ronda || partido?.ronda || ""),
+    partido_numero:
+      Number.parseInt(partido?.playoff_partido_numero, 10)
+      || Number.parseInt(partido?.partido_numero, 10)
+      || null,
+    grupo_id: null,
+    letra_grupo: null,
+    nombre_grupo: null,
+  };
+}
+
 function poblarGruposSelectorPlanilla() {
   const selectGrupo = document.getElementById("select-grupo-planilla");
   if (!selectGrupo) return;
@@ -3080,26 +3098,29 @@ async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
       .map((p) => normalizarPartidoReclasificacionSelectorPlanilla(p))
       .filter(Boolean);
 
+    const playoffDesdePartidos = partidosCrudos
+      .filter((p) => !p?.es_reclasificacion_playoff && esPartidoPlayoffPlanilla(p))
+      .map((p) => normalizarPartidoPlayoffDesdePartidosSelectorPlanilla(p))
+      .filter(Boolean);
+
     const crucesPlayoff = crucesCrudos
       .map((slot) => normalizarPartidoPlayoffSelectorPlanilla(slot))
       .filter(Boolean);
 
-    const idsPlayoff = new Set([
-      ...reclasificaciones.map((item) => Number(item.id)),
-      ...crucesPlayoff.map((item) => Number(item.id)),
-    ]);
+    const mapaPlayoff = new Map();
+    [...playoffDesdePartidos, ...reclasificaciones, ...crucesPlayoff].forEach((item) => {
+      const id = Number(item?.id);
+      if (!Number.isFinite(id) || id <= 0) return;
+      mapaPlayoff.set(id, item);
+    });
+
+    const idsPlayoff = new Set(mapaPlayoff.keys());
 
     partidosSelectorRegularCache = partidosCrudos
       .map((p) => normalizarPartidoRegularSelectorPlanilla(p))
       .filter((p) => p && !idsPlayoff.has(Number(p.id)) && !p.es_reclasificacion_playoff);
 
-    const idsPlayoffAgregados = new Set();
-    partidosSelectorPlayoffCache = [...reclasificaciones, ...crucesPlayoff].filter((item) => {
-      const id = Number(item?.id);
-      if (!Number.isFinite(id) || id <= 0 || idsPlayoffAgregados.has(id)) return false;
-      idsPlayoffAgregados.add(id);
-      return true;
-    });
+    partidosSelectorPlayoffCache = [...mapaPlayoff.values()];
 
     let partidoMatch = null;
     if (Number.isFinite(Number(partidoId))) {
@@ -3735,41 +3756,41 @@ function obtenerColumnasRegistroPlanilla({ encabezadoCompleto = false } = {}) {
   const columnas = [
     {
       key: "item",
-      label: "Item",
+      label: encabezadoCompleto ? "#" : "Item",
       headerClass: "planilla-col-item",
       cellClass: "planilla-col-item",
-      pdfWidth: 18,
+      pdfWidth: 12,
     },
     {
       key: "numero",
       label: "N",
       headerClass: "planilla-col-numero",
       cellClass: "planilla-col-numero",
-      pdfWidth: 18,
+      pdfWidth: 12,
     },
     {
       key: "convocatoria",
       label: "P/S",
       headerClass: "planilla-col-convocatoria",
       cellClass: "planilla-col-convocatoria",
-      pdfWidth: 20,
+      pdfWidth: 10,
     },
   ];
   if (esPlanillaFutbol11()) {
     columnas.push(
       {
         key: "entra",
-        label: "Entra",
+        label: encabezadoCompleto ? "E" : "Entra",
         headerClass: "planilla-col-entra",
         cellClass: "planilla-col-entra",
-        pdfWidth: 20,
+        pdfWidth: 9,
       },
       {
         key: "sale",
-        label: "Sale",
+        label: encabezadoCompleto ? "S" : "Sale",
         headerClass: "planilla-col-sale",
         cellClass: "planilla-col-sale",
-        pdfWidth: 20,
+        pdfWidth: 9,
       }
     );
   }
@@ -3786,21 +3807,21 @@ function obtenerColumnasRegistroPlanilla({ encabezadoCompleto = false } = {}) {
       label: encabezadoCompleto ? "Gol" : "G",
       headerClass: "planilla-col-goles",
       cellClass: "planilla-col-goles",
-      pdfWidth: 18,
+      pdfWidth: 12,
     },
     {
       key: "amarillas",
       label: "TA",
       headerClass: "planilla-col-ta",
       cellClass: "planilla-col-ta",
-      pdfWidth: 18,
+      pdfWidth: 12,
     },
     {
       key: "rojas",
       label: "TR",
       headerClass: "planilla-col-tr",
       cellClass: "planilla-col-tr",
-      pdfWidth: 18,
+      pdfWidth: 12,
     }
   );
   return columnas;
@@ -3814,6 +3835,14 @@ function renderCabeceraTablaPlanillaHtml({ encabezadoCompleto = false } = {}) {
 
 function obtenerColumnasPdfPlanilla() {
   return obtenerColumnasRegistroPlanilla({ encabezadoCompleto: true }).map((col) => col.pdfWidth);
+}
+
+function obtenerJugadoresImpresionPlanilla(jugadores, maxFilas) {
+  const lista = Array.isArray(jugadores) ? jugadores : [];
+  const tope = Number.isFinite(Number(maxFilas)) && Number(maxFilas) > 0 ? Number(maxFilas) : lista.length;
+  return lista
+    .filter((jugador) => jugador && (Number.isFinite(Number(jugador.id)) || Boolean(nombreJugador(jugador))))
+    .slice(0, tope);
 }
 
 function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
@@ -3936,8 +3965,9 @@ function obtenerMaxJugadoresConfiguradoPlanilla(partido = dataPlanilla?.partido 
 
 function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
   const filas = [];
-  for (let i = 0; i < maxFilas; i += 1) {
-    const j = jugadores[i] || null;
+  const jugadoresImpresion = obtenerJugadoresImpresionPlanilla(jugadores, maxFilas);
+  for (let i = 0; i < jugadoresImpresion.length; i += 1) {
+    const j = jugadoresImpresion[i] || null;
     const jugadorId = Number(j?.id);
     const item = i + 1;
     const registro = j ? obtenerRegistroPlanillaJugador(j) : obtenerRegistroBasePlanilla();
@@ -3954,10 +3984,10 @@ function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
         case "numero":
           return `<td class="${col.cellClass}">${escapeHtml(String(numero))}</td>`;
         case "convocatoria":
-          return `<td class="${col.cellClass}"><span class="planilla-cell-blank" aria-hidden="true"></span></td>`;
+          return `<td class="${col.cellClass}"><span class="planilla-cell-box" aria-hidden="true"></span></td>`;
         case "entra":
         case "sale":
-          return `<td class="${col.cellClass}"><span class="planilla-cell-checkblank" aria-hidden="true"></span></td>`;
+          return `<td class="${col.cellClass}"><span class="planilla-cell-box is-mini" aria-hidden="true"></span></td>`;
         case "nombre":
           return `<td class="${col.cellClass}">${escapeHtml(nombre)}</td>`;
         case "goles":
@@ -4031,15 +4061,24 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
   const logosAuspiciantes = renderAuspiciantesHeaderPlanilla("planilla-oficial-head");
   const faltasPayload = normalizarEstadoFaltasPlanilla(payload.faltas || dataPlanilla?.faltas || {});
 
-  const filasLocal = renderFilasVistaPreviaOficialEquipo(dataPlanilla.plantel_local || [], stats, maxFilas);
-  const filasVisit = renderFilasVistaPreviaOficialEquipo(dataPlanilla.plantel_visitante || [], stats, maxFilas);
+  const plantelLocalImpresion = obtenerJugadoresImpresionPlanilla(dataPlanilla.plantel_local || [], maxFilas);
+  const plantelVisitanteImpresion = obtenerJugadoresImpresionPlanilla(dataPlanilla.plantel_visitante || [], maxFilas);
+  const totalFilasImpresion = Math.max(plantelLocalImpresion.length, plantelVisitanteImpresion.length, 0);
+  const clasesCompactacion = [
+    totalFilasImpresion >= 24 ? "is-compact" : "",
+    totalFilasImpresion >= 30 ? "is-ultra-compact" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const filasLocal = renderFilasVistaPreviaOficialEquipo(plantelLocalImpresion, stats, maxFilas);
+  const filasVisit = renderFilasVistaPreviaOficialEquipo(plantelVisitanteImpresion, stats, maxFilas);
   const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
   const marcadorLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
   const marcadorVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
   const resumenPenales = obtenerResumenPenalesPlanilla(payload, p);
 
   cont.innerHTML = `
-    <div class="planilla-oficial-sheet ${modelo}">
+    <div class="planilla-oficial-sheet ${modelo} ${clasesCompactacion}">
       <header class="planilla-oficial-head">
         <div class="planilla-oficial-head-text">
           <p class="planilla-oficial-org">${escapeHtml(p.campeonato_organizador || p.campeonato_nombre || "LT&C")}</p>
@@ -4122,9 +4161,8 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           </table>
           <div class="planilla-oficial-team-notes">
             <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(p.equipo_local_director_tecnico || "________________")}</p>
-            <p class="planilla-oficial-signature-line"><strong>Firma:</strong> ____________________________</p>
-            <p><strong>Tarjetas amarillas:</strong> ${formatearConteoPlanilla(stats.totalAmarillasLocal, mostrarEnBlanco)}</p>
-            <p><strong>Tarjetas rojas:</strong> ${formatearConteoPlanilla(stats.totalRojasLocal, mostrarEnBlanco)}</p>
+            <div class="planilla-oficial-signature-row"><strong>Firma tecnico:</strong><span class="planilla-oficial-signature-line" aria-hidden="true"></span></div>
+            <p><strong>TA:</strong> ${formatearConteoPlanilla(stats.totalAmarillasLocal, mostrarEnBlanco)} <strong>TR:</strong> ${formatearConteoPlanilla(stats.totalRojasLocal, mostrarEnBlanco)}</p>
           </div>
         </article>
 
@@ -4138,9 +4176,8 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           </table>
           <div class="planilla-oficial-team-notes">
             <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(p.equipo_visitante_director_tecnico || "________________")}</p>
-            <p class="planilla-oficial-signature-line"><strong>Firma:</strong> ____________________________</p>
-            <p><strong>Tarjetas amarillas:</strong> ${formatearConteoPlanilla(stats.totalAmarillasVisitante, mostrarEnBlanco)}</p>
-            <p><strong>Tarjetas rojas:</strong> ${formatearConteoPlanilla(stats.totalRojasVisitante, mostrarEnBlanco)}</p>
+            <div class="planilla-oficial-signature-row"><strong>Firma tecnico:</strong><span class="planilla-oficial-signature-line" aria-hidden="true"></span></div>
+            <p><strong>TA:</strong> ${formatearConteoPlanilla(stats.totalAmarillasVisitante, mostrarEnBlanco)} <strong>TR:</strong> ${formatearConteoPlanilla(stats.totalRojasVisitante, mostrarEnBlanco)}</p>
           </div>
         </article>
       </div>
@@ -4478,6 +4515,45 @@ async function construirBloqueAuspiciantesPdf() {
   };
 }
 
+function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false, ultra = false } = {}) {
+  const fitLogo = ultra ? [9, 9] : compacto ? [11, 11] : [14, 14];
+  const fontSize = ultra ? 7 : compacto ? 7.8 : 9.2;
+  const body = [[]];
+
+  if (logoDataUrl) {
+    body[0].push({
+      image: logoDataUrl,
+      fit: fitLogo,
+      margin: [0, 0, 3, 0],
+      border: [false, false, false, false],
+    });
+  }
+
+  body[0].push({
+    text: nombre || "Por definir",
+    alignment: "center",
+    bold: true,
+    fontSize,
+    border: [false, false, false, false],
+  });
+
+  return {
+    table: {
+      widths: logoDataUrl ? ["auto", "*"] : ["*"],
+      body,
+    },
+    layout: {
+      hLineWidth: () => 0,
+      vLineWidth: () => 0,
+      paddingLeft: () => 0,
+      paddingRight: () => 0,
+      paddingTop: () => 0,
+      paddingBottom: () => 0,
+    },
+    alignment: "center",
+  };
+}
+
 function construirFilasPlantelPdf(jugadores, stats, maxFilas) {
   const columnas = obtenerColumnasRegistroPlanilla({ encabezadoCompleto: true });
   const body = [[
@@ -4486,12 +4562,14 @@ function construirFilasPlantelPdf(jugadores, stats, maxFilas) {
       style:
         col.key === "nombre"
           ? "thLeft"
-          : "thCenter",
+      : "thCenter",
     })),
   ]];
 
-  for (let i = 0; i < maxFilas; i += 1) {
-    const j = jugadores[i] || null;
+  const jugadoresImpresion = obtenerJugadoresImpresionPlanilla(jugadores, maxFilas);
+
+  for (let i = 0; i < jugadoresImpresion.length; i += 1) {
+    const j = jugadoresImpresion[i] || null;
     const jugadorId = Number(j?.id);
     const registro = j ? obtenerRegistroPlanillaJugador(j) : obtenerRegistroBasePlanilla();
     const item = i + 1;
@@ -4509,10 +4587,10 @@ function construirFilasPlantelPdf(jugadores, stats, maxFilas) {
           case "numero":
             return { text: numero, style: "tdCenter" };
           case "convocatoria":
-            return { text: "[ ]", style: "tdCenter" };
+            return { text: "", style: "tdCenter" };
           case "entra":
           case "sale":
-            return { text: "[ ]", style: "tdCenter" };
+            return { text: "", style: "tdCenter" };
           case "nombre":
             return { text: nombre, style: "tdLeft" };
           case "goles":
@@ -4745,11 +4823,24 @@ async function imprimirPDFPlanilla() {
     const localDt = p.equipo_local_director_tecnico || "-";
     const visitDt = p.equipo_visitante_director_tecnico || "-";
     const maxFilas = obtenerMaxJugadoresConfiguradoPlanilla(p);
-    const alturaFilaPlantel =
-      maxFilas >= 25 ? 7.2 : modelo === "futbol_7_5_sala" ? 10 : 9;
-    const alturaCabeceraPlantel = maxFilas >= 25 ? 8 : 10;
-    const bodyLocal = construirFilasPlantelPdf(dataPlanilla.plantel_local || [], stats, maxFilas);
-    const bodyVisit = construirFilasPlantelPdf(dataPlanilla.plantel_visitante || [], stats, maxFilas);
+    const plantelLocalImpresion = obtenerJugadoresImpresionPlanilla(dataPlanilla.plantel_local || [], maxFilas);
+    const plantelVisitanteImpresion = obtenerJugadoresImpresionPlanilla(
+      dataPlanilla.plantel_visitante || [],
+      maxFilas
+    );
+    const totalFilasImpresion = Math.max(plantelLocalImpresion.length, plantelVisitanteImpresion.length, 0);
+    const modoCompactoPdf = totalFilasImpresion >= 24;
+    const modoUltraCompactoPdf = totalFilasImpresion >= 30;
+    const alturaFilaPlantel = modoUltraCompactoPdf
+      ? 4.7
+      : modoCompactoPdf
+        ? 5.3
+        : modelo === "futbol_7_5_sala"
+          ? 8.4
+          : 7.8;
+    const alturaCabeceraPlantel = modoUltraCompactoPdf ? 5.2 : modoCompactoPdf ? 6 : 8;
+    const bodyLocal = construirFilasPlantelPdf(plantelLocalImpresion, stats, maxFilas);
+    const bodyVisit = construirFilasPlantelPdf(plantelVisitanteImpresion, stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
     const logoLocalPdf = await cargarImagenComoDataUrl(p.equipo_local_logo_url);
     const logoVisitantePdf = await cargarImagenComoDataUrl(p.equipo_visitante_logo_url);
@@ -4767,20 +4858,20 @@ async function imprimirPDFPlanilla() {
 
     const docDefinition = {
       pageSize: "A4",
-      pageMargins: [8, 8, 8, 8],
-      defaultStyle: { fontSize: 8.2, color: "#111827" },
+      pageMargins: modoUltraCompactoPdf ? [5, 4, 5, 4] : modoCompactoPdf ? [6, 5, 6, 5] : [8, 6, 8, 6],
+      defaultStyle: { fontSize: modoUltraCompactoPdf ? 6.9 : modoCompactoPdf ? 7.5 : 8.1, color: "#111827" },
       content: [
         {
           columns: [
             logoOrg
               ? {
-                  width: 56,
+                  width: modoCompactoPdf ? 48 : 54,
                   image: logoOrg,
-                  fit: [54, 54],
+                  fit: modoCompactoPdf ? [42, 42] : [50, 50],
                   alignment: "left",
-                  margin: [0, 2, 0, 0],
+                  margin: [0, 1, 0, 0],
                 }
-              : { width: 56, text: "" },
+              : { width: modoCompactoPdf ? 48 : 54, text: "" },
             {
               width: "*",
               stack: [
@@ -4788,15 +4879,21 @@ async function imprimirPDFPlanilla() {
                   text: p.campeonato_organizador || p.campeonato_nombre || "LT&C",
                   alignment: "center",
                   bold: true,
-                  fontSize: 10.5,
+                  fontSize: modoUltraCompactoPdf ? 8.3 : modoCompactoPdf ? 8.9 : 10,
                 },
-                { text: "PLANILLA DE JUEGO", alignment: "center", bold: true, fontSize: 17, margin: [0, 1, 0, 0] },
+                {
+                  text: "PLANILLA DE JUEGO",
+                  alignment: "center",
+                  bold: true,
+                  fontSize: modoUltraCompactoPdf ? 12.8 : modoCompactoPdf ? 13.8 : 16,
+                  margin: [0, 0, 0, 0],
+                },
               ],
-              margin: [0, 3, 0, 0],
+              margin: [0, modoCompactoPdf ? 0 : 2, 0, 0],
             },
             bloqueAuspiciantesPdf || { width: 118, text: "" },
           ],
-          margin: [0, 0, 0, 36],
+          margin: [0, 0, 0, modoUltraCompactoPdf ? 4 : modoCompactoPdf ? 7 : 12],
         },
         {
           table: {
@@ -4859,74 +4956,65 @@ async function imprimirPDFPlanilla() {
             vLineWidth: () => 0.6,
             hLineColor: () => "#cbd5e1",
             vLineColor: () => "#cbd5e1",
-            paddingLeft: () => 4,
-            paddingRight: () => 4,
-            paddingTop: () => 4,
-            paddingBottom: () => 4,
+            paddingLeft: () => (modoCompactoPdf ? 2 : 3),
+            paddingRight: () => (modoCompactoPdf ? 2 : 3),
+            paddingTop: () => (modoCompactoPdf ? 1.4 : 2.2),
+            paddingBottom: () => (modoCompactoPdf ? 1.4 : 2.2),
           },
-          margin: [0, 0, 0, 6],
+          margin: [0, 0, 0, modoCompactoPdf ? 3 : 5],
         },
         {
           table: {
-            widths: ["*", 30, 10, 30, "*"],
+            widths: [
+              "*",
+              modoUltraCompactoPdf ? 16 : modoCompactoPdf ? 18 : 22,
+              modoUltraCompactoPdf ? 6 : modoCompactoPdf ? 7 : 8,
+              modoUltraCompactoPdf ? 16 : modoCompactoPdf ? 18 : 22,
+              "*",
+            ],
             body: [[
+              construirCeldaMarcadorEquipoPdf(localNombre, logoLocalPdf, {
+                compacto: modoCompactoPdf,
+                ultra: modoUltraCompactoPdf,
+              }),
               {
-                columns: [
-                  ...(logoLocalPdf
-                    ? [{
-                        width: 20,
-                        image: logoLocalPdf,
-                        fit: [18, 18],
-                        margin: [0, 10, 4, 0],
-                      }]
-                    : []),
-                  {
-                    width: "*",
-                    text: localNombre,
-                    alignment: logoLocalPdf ? "left" : "center",
-                    bold: true,
-                    fontSize: 11.5,
-                    margin: [0, 10, 0, 0],
-                  },
-                ],
-                border: [false, false, false, false],
+                text: marcadorLocal,
+                alignment: "center",
+                bold: true,
+                fontSize: modoUltraCompactoPdf ? 10.2 : modoCompactoPdf ? 11.1 : 13.8,
+                margin: [0, modoCompactoPdf ? 4 : 6, 0, 0],
               },
-              { text: marcadorLocal, alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
-              { text: ":", alignment: "center", bold: true, fontSize: 16.5, border: [false, false, false, false], margin: [0, 12, 0, 0] },
-              { text: marcadorVisit, alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
               {
-                columns: [
-                  {
-                    width: "*",
-                    text: visitNombre,
-                    alignment: logoVisitantePdf ? "right" : "center",
-                    bold: true,
-                    fontSize: 11.5,
-                    margin: [0, 10, 0, 0],
-                  },
-                  ...(logoVisitantePdf
-                    ? [{
-                        width: 20,
-                        image: logoVisitantePdf,
-                        fit: [18, 18],
-                        margin: [4, 10, 0, 0],
-                      }]
-                    : []),
-                ],
+                text: ":",
+                alignment: "center",
+                bold: true,
+                fontSize: modoUltraCompactoPdf ? 10.6 : modoCompactoPdf ? 11.6 : 14.4,
                 border: [false, false, false, false],
+                margin: [0, modoCompactoPdf ? 4 : 6, 0, 0],
               },
+              {
+                text: marcadorVisit,
+                alignment: "center",
+                bold: true,
+                fontSize: modoUltraCompactoPdf ? 10.2 : modoCompactoPdf ? 11.1 : 13.8,
+                margin: [0, modoCompactoPdf ? 4 : 6, 0, 0],
+              },
+              construirCeldaMarcadorEquipoPdf(visitNombre, logoVisitantePdf, {
+                compacto: modoCompactoPdf,
+                ultra: modoUltraCompactoPdf,
+              }),
             ]],
-            heights: () => 48,
+            heights: () => (modoUltraCompactoPdf ? 24 : modoCompactoPdf ? 28 : 34),
           },
           layout: {
             hLineWidth: (i) => (i === 0 || i === 1 ? 0 : 0),
             vLineWidth: (i) => (i === 1 || i === 2 || i === 3 || i === 4 ? 0.6 : 0),
             hLineColor: () => "#94a3b8",
             vLineColor: () => "#94a3b8",
-            paddingTop: () => 6,
-            paddingBottom: () => 6,
+            paddingTop: () => (modoCompactoPdf ? 2 : 4),
+            paddingBottom: () => (modoCompactoPdf ? 2 : 4),
           },
-          margin: [0, 0, 0, 6],
+          margin: [0, 0, 0, modoCompactoPdf ? 3 : 5],
         },
         ...(resumenPenales.aplica
           ? [
@@ -4935,8 +5023,8 @@ async function imprimirPDFPlanilla() {
                 alignment: "center",
                 bold: true,
                 color: "#1d4f8c",
-                fontSize: 8.6,
-                margin: [0, -2, 0, 6],
+                fontSize: modoCompactoPdf ? 7.8 : 8.6,
+                margin: [0, -2, 0, modoCompactoPdf ? 4 : 6],
               },
             ]
           : []),
@@ -4957,7 +5045,7 @@ async function imprimirPDFPlanilla() {
             {
               width: "*",
               stack: [
-                { text: `EQUIPO: ${localNombre}`, style: "teamHead" },
+                { text: `EQUIPO: ${localNombre}`, style: "teamHead", margin: [0, 0, 0, modoCompactoPdf ? 1 : 2] },
                 {
                   table: {
                     headerRows: 1,
@@ -4970,31 +5058,32 @@ async function imprimirPDFPlanilla() {
                     vLineWidth: () => 0.5,
                     hLineColor: () => "#cbd5e1",
                     vLineColor: () => "#cbd5e1",
-                    paddingLeft: () => 2,
-                    paddingRight: () => 2,
-                    paddingTop: () => 2,
-                    paddingBottom: () => 2,
+                    paddingLeft: () => (modoCompactoPdf ? 1.4 : 2),
+                    paddingRight: () => (modoCompactoPdf ? 1.4 : 2),
+                    paddingTop: () => (modoCompactoPdf ? 1 : 2),
+                    paddingBottom: () => (modoCompactoPdf ? 1 : 2),
                   },
                 },
-                { text: [{ text: "Dirigente / Director tecnico: ", bold: true }, localDt], margin: [0, 4, 0, 0] },
+                {
+                  text: [{ text: "Dirigente / Director tecnico: ", bold: true }, localDt],
+                  margin: [0, modoCompactoPdf ? 1 : 3, 0, 0],
+                  fontSize: modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 6.8 : 7.8,
+                },
                 {
                   table: {
-                    widths: [26, "*"],
+                    widths: [modoCompactoPdf ? 38 : 44, "*"],
                     body: [
                       [
-                        { text: "Firma:", bold: true, border: [false, false, false, false] },
-                        { text: "", border: [false, false, false, true] },
-                      ],
-                      [
-                        { text: "", border: [false, false, false, false] },
-                        { text: "", border: [false, false, false, true] },
-                      ],
-                      [
-                        { text: "", border: [false, false, false, false] },
+                        {
+                          text: "Firma tecnico:",
+                          bold: true,
+                          border: [false, false, false, false],
+                          fontSize: modoUltraCompactoPdf ? 6 : modoCompactoPdf ? 6.6 : 7.6,
+                        },
                         { text: "", border: [false, false, false, true] },
                       ],
                     ],
-                    heights: (row) => (row === 0 ? 11 : 12),
+                    heights: () => (modoUltraCompactoPdf ? 7 : modoCompactoPdf ? 8 : 10),
                   },
                   layout: {
                     hLineWidth: () => 0,
@@ -5004,7 +5093,7 @@ async function imprimirPDFPlanilla() {
                     paddingTop: () => 0,
                     paddingBottom: () => 0,
                   },
-                  margin: [0, 1, 0, 0],
+                  margin: [0, 0, 0, 0],
                 },
                 {
                   ...construirBloqueTarjetasEquipoPdf(
@@ -5012,7 +5101,7 @@ async function imprimirPDFPlanilla() {
                     Number(stats.totalRojasLocal || 0),
                     mostrarEnBlanco
                   ),
-                  margin: [0, 3, 0, 0],
+                  margin: [0, modoCompactoPdf ? 2 : 3, 0, 0],
                 },
               ],
             },
@@ -5023,7 +5112,7 @@ async function imprimirPDFPlanilla() {
             {
               width: "*",
               stack: [
-                { text: `EQUIPO: ${visitNombre}`, style: "teamHead" },
+                { text: `EQUIPO: ${visitNombre}`, style: "teamHead", margin: [0, 0, 0, modoCompactoPdf ? 1 : 2] },
                 {
                   table: {
                     headerRows: 1,
@@ -5036,31 +5125,32 @@ async function imprimirPDFPlanilla() {
                     vLineWidth: () => 0.5,
                     hLineColor: () => "#cbd5e1",
                     vLineColor: () => "#cbd5e1",
-                    paddingLeft: () => 2,
-                    paddingRight: () => 2,
-                    paddingTop: () => 2,
-                    paddingBottom: () => 2,
+                    paddingLeft: () => (modoCompactoPdf ? 1.4 : 2),
+                    paddingRight: () => (modoCompactoPdf ? 1.4 : 2),
+                    paddingTop: () => (modoCompactoPdf ? 1 : 2),
+                    paddingBottom: () => (modoCompactoPdf ? 1 : 2),
                   },
                 },
-                { text: [{ text: "Dirigente / Director tecnico: ", bold: true }, visitDt], margin: [0, 4, 0, 0] },
+                {
+                  text: [{ text: "Dirigente / Director tecnico: ", bold: true }, visitDt],
+                  margin: [0, modoCompactoPdf ? 1 : 3, 0, 0],
+                  fontSize: modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 6.8 : 7.8,
+                },
                 {
                   table: {
-                    widths: [26, "*"],
+                    widths: [modoCompactoPdf ? 38 : 44, "*"],
                     body: [
                       [
-                        { text: "Firma:", bold: true, border: [false, false, false, false] },
-                        { text: "", border: [false, false, false, true] },
-                      ],
-                      [
-                        { text: "", border: [false, false, false, false] },
-                        { text: "", border: [false, false, false, true] },
-                      ],
-                      [
-                        { text: "", border: [false, false, false, false] },
+                        {
+                          text: "Firma tecnico:",
+                          bold: true,
+                          border: [false, false, false, false],
+                          fontSize: modoUltraCompactoPdf ? 6 : modoCompactoPdf ? 6.6 : 7.6,
+                        },
                         { text: "", border: [false, false, false, true] },
                       ],
                     ],
-                    heights: (row) => (row === 0 ? 11 : 12),
+                    heights: () => (modoUltraCompactoPdf ? 7 : modoCompactoPdf ? 8 : 10),
                   },
                   layout: {
                     hLineWidth: () => 0,
@@ -5070,7 +5160,7 @@ async function imprimirPDFPlanilla() {
                     paddingTop: () => 0,
                     paddingBottom: () => 0,
                   },
-                  margin: [0, 1, 0, 0],
+                  margin: [0, 0, 0, 0],
                 },
                 {
                   ...construirBloqueTarjetasEquipoPdf(
@@ -5078,17 +5168,17 @@ async function imprimirPDFPlanilla() {
                     Number(stats.totalRojasVisitante || 0),
                     mostrarEnBlanco
                   ),
-                  margin: [0, 3, 0, 0],
+                  margin: [0, modoCompactoPdf ? 2 : 3, 0, 0],
                 },
               ],
             },
           ],
-          margin: [0, 0, 0, 6],
+          margin: [0, 0, 0, modoCompactoPdf ? 4 : 6],
         },
         {
           text: "PAGOS",
           style: "sectionTitle",
-          margin: [0, 1, 0, 3],
+          margin: [0, 0, 0, modoCompactoPdf ? 2 : 3],
         },
         {
           ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos, mostrarEnBlanco),
@@ -5192,16 +5282,42 @@ async function imprimirPDFPlanilla() {
         },
       ],
       styles: {
-        sectionTitle: { bold: true, fontSize: 8.8, color: "#0f172a" },
-        teamHead: { bold: true, fontSize: 8.6, margin: [0, 0, 0, 2] },
-        thCenter: { bold: true, alignment: "center", fillColor: "#eef4fb", fontSize: 8 },
-        thLeft: { bold: true, alignment: "left", fillColor: "#eef4fb", fontSize: 8 },
-        tdCenter: { alignment: "center", fontSize: 7.8 },
-        tdLeft: { alignment: "left", fontSize: 7.8 },
-        footTeamTitle: { bold: true, fillColor: "#f3f4f6", fontSize: 8.5 },
-        footLabel: { bold: true, fontSize: 7.8 },
-        footValue: { fontSize: 7.8, alignment: "right" },
-        footValueCenter: { fontSize: 8.2, alignment: "center", bold: true },
+        sectionTitle: {
+          bold: true,
+          fontSize: modoUltraCompactoPdf ? 7.1 : modoCompactoPdf ? 7.6 : 8.6,
+          color: "#0f172a",
+        },
+        teamHead: {
+          bold: true,
+          fontSize: modoUltraCompactoPdf ? 6.7 : modoCompactoPdf ? 7.2 : 8.3,
+          margin: [0, 0, 0, modoCompactoPdf ? 1 : 2],
+        },
+        thCenter: {
+          bold: true,
+          alignment: "center",
+          fillColor: "#eef4fb",
+          fontSize: modoUltraCompactoPdf ? 6.1 : modoCompactoPdf ? 6.6 : 7.6,
+        },
+        thLeft: {
+          bold: true,
+          alignment: "left",
+          fillColor: "#eef4fb",
+          fontSize: modoUltraCompactoPdf ? 6.1 : modoCompactoPdf ? 6.6 : 7.6,
+        },
+        tdCenter: { alignment: "center", fontSize: modoUltraCompactoPdf ? 5.9 : modoCompactoPdf ? 6.4 : 7.3 },
+        tdLeft: { alignment: "left", fontSize: modoUltraCompactoPdf ? 5.9 : modoCompactoPdf ? 6.4 : 7.3 },
+        footTeamTitle: {
+          bold: true,
+          fillColor: "#f3f4f6",
+          fontSize: modoUltraCompactoPdf ? 7.1 : modoCompactoPdf ? 7.6 : 8.3,
+        },
+        footLabel: { bold: true, fontSize: modoUltraCompactoPdf ? 6.3 : modoCompactoPdf ? 6.8 : 7.4 },
+        footValue: { fontSize: modoUltraCompactoPdf ? 6.3 : modoCompactoPdf ? 6.8 : 7.4, alignment: "right" },
+        footValueCenter: {
+          fontSize: modoUltraCompactoPdf ? 6.6 : modoCompactoPdf ? 7.2 : 7.8,
+          alignment: "center",
+          bold: true,
+        },
       },
     };
 
