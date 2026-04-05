@@ -251,6 +251,48 @@
     .dash-forbidden i  { font-size: 48px; color: #e74c3c; margin-bottom: 16px; display: block; }
     .dash-forbidden h2 { font-size: 18px; color: #2c3e50; margin-bottom: 8px; }
     .dash-forbidden p  { font-size: 13px; color: #7f8c8d; margin-bottom: 20px; }
+
+    /* ── Auditoría ── */
+    .dash-audit-filters {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+    }
+    .dash-audit-input {
+      padding: 7px 10px; border: 1.5px solid #dde3ec;
+      border-radius: 7px; font-size: 12.5px; color: #2c3e50;
+      background: #fff; height: 34px;
+    }
+    .dash-audit-input:focus { outline: none; border-color: #3498db; }
+    .dash-audit-btn {
+      height: 34px; padding: 0 14px; font-size: 12.5px;
+      border-radius: 7px; white-space: nowrap;
+    }
+    .dash-audit-btn-reset {
+      background: #f0f4f8; color: #2c3e50;
+      border: 1.5px solid #dde3ec;
+    }
+    .dash-audit-btn-reset:hover { background: #e2e8f0; }
+    .dash-audit-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f4f8;
+    }
+    .badge-audit {
+      display: inline-block; font-size: 10.5px; font-weight: 700;
+      padding: 2px 8px; border-radius: 10px;
+    }
+    .badge-audit-login       { background: #d5f5e3; color: #1e8449; }
+    .badge-audit-logout      { background: #eaecf0; color: #566573; }
+    .badge-audit-registro    { background: #d6eaf8; color: #1a5276; }
+    .badge-audit-password    { background: #fef9e7; color: #7d6608; }
+    .badge-audit-plan        { background: #fdebd0; color: #784212; }
+    .badge-audit-activacion  { background: #d4efdf; color: #1e8449; }
+    .badge-audit-precio      { background: #e8daef; color: #6c3483; }
+    .badge-audit-eliminacion { background: #fadbd8; color: #922b21; }
+    .badge-audit-otro        { background: #f0f4f8; color: #566573; }
+    .dash-audit-detalle {
+      font-size: 11px; color: #7f8c8d; max-width: 200px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      cursor: help;
+    }
   </style>
 </head>
 
@@ -403,6 +445,61 @@
               <button class="btn btn-primary" id="dash-admin-pago-guardar" type="button" style="display:none;">
                 <i class="fas fa-save"></i> Guardar formas de pago
               </button>
+            </div>
+          </div>
+
+          <!-- Auditoría -->
+          <div class="dash-panel" style="margin-bottom:24px;" id="dash-audit-panel">
+            <div class="dash-panel-title"><i class="fas fa-shield-alt"></i> Registro de Auditoría</div>
+            <!-- Filtros -->
+            <div class="dash-audit-filters">
+              <select id="dash-audit-accion" class="dash-audit-input">
+                <option value="">Todas las acciones</option>
+                <option value="login">Login</option>
+                <option value="logout">Logout</option>
+                <option value="registro">Registro</option>
+                <option value="cambio_password">Cambio de contraseña</option>
+                <option value="cambio_plan_estado">Cambio de estado de plan</option>
+                <option value="activacion_cuenta">Activación de cuenta</option>
+                <option value="cambio_precio_plan">Cambio de precios</option>
+                <option value="eliminacion_campeonato">Eliminación campeonato</option>
+                <option value="eliminacion_equipo">Eliminación equipo</option>
+                <option value="eliminacion_jugador">Eliminación jugador</option>
+              </select>
+              <input type="date" id="dash-audit-desde" class="dash-audit-input" title="Desde" />
+              <input type="date" id="dash-audit-hasta" class="dash-audit-input" title="Hasta" />
+              <button class="btn btn-primary dash-audit-btn" id="dash-audit-buscar" type="button">
+                <i class="fas fa-search"></i> Filtrar
+              </button>
+              <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-reset" type="button">
+                <i class="fas fa-times"></i> Limpiar
+              </button>
+            </div>
+            <!-- Tabla -->
+            <div class="dash-table-wrap" id="dash-audit-wrap">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Acción</th>
+                    <th>Entidad</th>
+                    <th>IP</th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-audit-tbody">
+                  <tr><td colspan="7" class="dash-empty-msg">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="dash-audit-footer">
+              <span id="dash-audit-total" style="font-size:12px;color:#7f8c8d;"></span>
+              <div style="display:flex;gap:6px;">
+                <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-prev" type="button">‹ Anterior</button>
+                <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-next" type="button">Siguiente ›</button>
+              </div>
             </div>
           </div>
 

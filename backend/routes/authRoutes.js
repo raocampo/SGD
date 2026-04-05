@@ -84,5 +84,11 @@ router.put(
   requireRoles("administrador"),
   authController.actualizarFormasPagoAdmin
 );
+router.get(
+  "/admin/auditoria",
+  requireAuth,
+  requireRoles("administrador"),
+  authController.listarAuditoria
+);
 
 module.exports = router;
