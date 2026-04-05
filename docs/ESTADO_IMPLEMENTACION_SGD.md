@@ -472,6 +472,23 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - validar en producción con `Copa Ciudad de Loja -> Abierta`,
   - revisar campeonatos de otros organizadores con jornadas parciales,
   - confirmar que no haya otra vista pública heredando el rotulado viejo de `Sin jornada`.
+
+23. Planilla oficial compacta y BD local alineada:
+- La `planilla de juego` oficial quedó compactada en vista previa y PDF.
+- Ahora la impresión:
+  - reduce espacios entre secciones,
+  - centra mejor logos y nombres del marcador,
+  - usa casillas pequeñas en blanco para `P/S`, `E` y `S`,
+  - imprime solo filas con jugadores realmente cargados.
+- Se dejó lista para casos de planteles altos, apuntando a `30` filas útiles con firmas técnicas incluidas.
+- El bloque fue publicado en `commit 3783216`.
+- Además, la BD local quedó nuevamente realineada con Render usando:
+  - `database/backups/pre-render-sync-20260403-000331.custom.backup`
+  - `database/backups/render-sync-20260403-000331.custom.backup`
+- Estado:
+  - implementado,
+  - publicado,
+  - datos locales alineados con producción.
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`
 - Historial de cambios implementados: `docs/CAMBIOS_IMPLEMENTADOS.md`

@@ -2402,6 +2402,30 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - `partidos: 422`
   - `usuarios: 25`
 
+## 2026-04-03 - Compactación final de planilla oficial y nueva realineación local
+- Se compactó la `planilla` oficial tanto en vista previa como en PDF para soportar mejor partidos con planteles grandes, incluyendo el caso operativo de hasta `30` registros impresos.
+- Ajustes aplicados en `frontend/js/planilla.js` y `frontend/css/style.css`:
+  - menor espacio entre secciones,
+  - bloque de marcador más pequeño,
+  - nombres y logos de los equipos centrados en el marcador,
+  - columnas `P/S`, `Entra` y `Sale` impresas como casillas en blanco más pequeñas y sin corchetes,
+  - impresión/PDF limitada a filas realmente cargadas, sin arrastrar filas vacías.
+- También se consolidó en el mismo cierre el ajuste previo de `backend/models/Eliminatoria.js` para mantener sincronizados los partidos operativos de playoff.
+- El bloque completo se publicó en:
+  - `commit 3783216`
+  - mensaje: `feat: compact planilla print layout and playoff match sync`
+- Antes de volver a probar en oficina se hizo una nueva realineación de la BD local con la base actual de Render.
+- Respaldo preventivo de la BD local:
+  - `database/backups/pre-render-sync-20260403-000331.custom.backup`
+- Nuevo dump traído desde Render:
+  - `database/backups/render-sync-20260403-000331.custom.backup`
+- Verificación posterior a la restauración local:
+  - `campeonatos: 11`
+  - `eventos: 16`
+  - `equipos: 144`
+  - `partidos: 422`
+  - `usuarios: 25`
+
 ## Pendiente inmediato siguiente sesión
 - Hacer deploy en Render de los cambios de `portal.js` y `Eliminatoria.js`.
 - Validar visualmente en producción:

@@ -1588,3 +1588,28 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - logos de los equipos,
   - resumen de penales si aplica.
 
+---
+
+## 30. Compactación de planilla oficial y realineación local con Render
+- **Ubicación frontend:** `frontend/js/planilla.js`, `frontend/css/style.css`
+- **Ubicación backend asociada:** `backend/models/Eliminatoria.js`
+- Se compactó la `planilla de juego` oficial en vista previa y PDF para aprovechar mejor la hoja:
+  - menor espacio entre bloques,
+  - marcador más corto,
+  - logos y nombres centrados,
+  - casillas `P/S`, `E` y `S` impresas en blanco y en tamaño reducido,
+  - eliminación de filas vacías en impresión/PDF.
+- Se dejó la maquetación preparada para escenarios con planteles grandes, incluyendo el objetivo operativo de `30` filas útiles sin perder las firmas técnicas.
+- En el mismo cierre se incluyó el ajuste de sincronización de partidos operativos de playoff en `backend/models/Eliminatoria.js`.
+- Publicado en:
+  - `commit 3783216`
+  - `feat: compact planilla print layout and playoff match sync`
+- Además, la BD local se volvió a alinear con el estado real de Render:
+  - respaldo local previo: `database/backups/pre-render-sync-20260403-000331.custom.backup`
+  - dump restaurado desde Render: `database/backups/render-sync-20260403-000331.custom.backup`
+  - verificación final:
+    - `campeonatos: 11`
+    - `eventos: 16`
+    - `equipos: 144`
+    - `partidos: 422`
+    - `usuarios: 25`
