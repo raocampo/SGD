@@ -1,3 +1,28 @@
+## 2026-04-05 - Estado de planes
+
+- El sistema sí tiene restricciones reales entre planes.
+- Planes técnicos activos hoy:
+  - `demo`
+  - `free`
+  - `base`
+  - `competencia`
+  - `premium`
+- Restricciones ya aplicadas por backend según plan:
+  - máximo de campeonatos
+  - máximo de categorías por campeonato
+  - máximo de equipos por campeonato
+  - máximo de equipos por categoría
+  - máximo de jugadores por equipo
+  - habilitación o no de carnés
+- El plan `demo` ya quedó ajustado a `1 campeonato`.
+- La capa pública/comercial quedó separada en:
+  - `free`
+  - `mensual_base`, `mensual_competencia`, `mensual_premium`
+  - `campeonato_base`, `campeonato_competencia`, `campeonato_premium`
+  - `anual_base`, `anual_competencia`, `anual_premium`
+- Estas modalidades comerciales públicas son editables desde administración, pero los límites técnicos del sistema siguen gobernados por `demo/free/base/competencia/premium`.
+- Las modalidades `campeonato` y `anual` todavía no funcionan como `plan_codigo` técnico del usuario; operan como catálogo comercial y flujo de contratación/contacto.
+
 ## 2026-03-31 - Portal público: fix de playoff y tabla pública con planillas
 
 - `frontend/js/portal.js`: se corrigió la referencia rota `formatearRondaPortal(...)` por `formatearRondaPlayoffPortal(...)`, que estaba rompiendo el detalle de torneos con playoff en el portal público.

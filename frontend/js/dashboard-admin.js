@@ -141,23 +141,45 @@
       return;
     }
 
-    wrap.innerHTML = `
-      <div class="dash-precios-grid" id="dash-admin-precios-inputs">
-        ${planes.map((p) => `
-          <div class="dash-precio-item">
-            <span class="precio-badge badge-plan-${p.codigo}">${p.nombre}</span>
-            <label>Precio mensual (USD)</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value="${p.precio_mensual}"
-              data-plan-codigo="${p.codigo}"
-              id="precio-plan-${p.codigo}"
-            />
+    const ordenFamilias = ["pruebas", "mensual", "campeonato", "anual"];
+    const titulosFamilia = {
+      pruebas: "Pruebas y acceso gratuito",
+      mensual: "Planes mensuales",
+      campeonato: "Planes por campeonato",
+      anual: "Planes anuales",
+    };
+
+    const grupos = planes.reduce((acc, p) => {
+      const familia = String(p.familia || "general").toLowerCase();
+      if (!acc[familia]) acc[familia] = [];
+      acc[familia].push(p);
+      return acc;
+    }, {});
+
+    wrap.innerHTML = ordenFamilias
+      .filter((familia) => Array.isArray(grupos[familia]) && grupos[familia].length)
+      .map((familia) => `
+        <section class="dash-precios-group">
+          <div class="dash-precios-group-title">${titulosFamilia[familia] || familia}</div>
+          <div class="dash-precios-grid" id="dash-admin-precios-inputs-${familia}">
+            ${grupos[familia].map((p) => `
+              <div class="dash-precio-item">
+                <span class="precio-badge precio-badge-familia-${familia} precio-badge-nivel-${String(p.nivel || "").toLowerCase()}">${p.nombre}</span>
+                <label>Precio ${p.periodicidad || "(USD)"}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="${p.precio_mensual}"
+                  data-plan-codigo="${p.codigo}"
+                  id="precio-plan-${p.codigo}"
+                />
+              </div>
+            `).join("")}
           </div>
-        `).join("")}
-      </div>`;
+        </section>
+      `)
+      .join("");
 
     if (btn) btn.style.display = "";
   }

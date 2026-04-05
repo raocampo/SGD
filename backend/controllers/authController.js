@@ -23,6 +23,7 @@ const {
   esPlanPublico,
   esPlanPagado,
   obtenerPlan,
+  obtenerCatalogoPreciosPublicos,
   obtenerPreciosPlanes,
   actualizarPrecioPlan,
   obtenerFormasPago,
@@ -746,13 +747,18 @@ const authController = {
   async preciosPublicos(req, res) {
     try {
       const precios = await obtenerPreciosPlanes();
-      const planes = Object.entries(PLANES)
-        .filter(([codigo]) => codigo !== "demo")
-        .map(([codigo, plan]) => ({
-          codigo,
-          nombre: plan.nombre,
-          precio_mensual: precios[codigo] ?? plan.precio_mensual ?? 0,
-        }));
+      const catalogo = obtenerCatalogoPreciosPublicos();
+      const planes = Object.values(catalogo).map((item) => ({
+        codigo: item.codigo,
+        nombre: item.nombre,
+        tipo: item.tipo,
+        familia: item.familia || "general",
+        nivel: item.nivel || item.codigo,
+        registrable: item.registrable === true,
+        plan_registro: item.plan_registro || null,
+        periodicidad: item.sufijo_precio || "/ mes",
+        precio_mensual: precios[item.codigo] ?? item.precio_default ?? 0,
+      }));
       return res.json({ ok: true, planes });
     } catch (error) {
       console.error("Error preciosPublicos:", error);
@@ -766,13 +772,18 @@ const authController = {
         return res.status(403).json({ error: "Solo el administrador puede gestionar precios de planes" });
       }
       const precios = await obtenerPreciosPlanes();
-      const planes = Object.entries(PLANES)
-        .filter(([codigo]) => codigo !== "demo")
-        .map(([codigo, plan]) => ({
-          codigo,
-          nombre: plan.nombre,
-          precio_mensual: precios[codigo] ?? plan.precio_mensual ?? 0,
-        }));
+      const catalogo = obtenerCatalogoPreciosPublicos();
+      const planes = Object.values(catalogo).map((item) => ({
+        codigo: item.codigo,
+        nombre: item.nombre,
+        tipo: item.tipo,
+        familia: item.familia || "general",
+        nivel: item.nivel || item.codigo,
+        registrable: item.registrable === true,
+        plan_registro: item.plan_registro || null,
+        periodicidad: item.sufijo_precio || "/ mes",
+        precio_mensual: precios[item.codigo] ?? item.precio_default ?? 0,
+      }));
       return res.json({ ok: true, planes });
     } catch (error) {
       console.error("Error listarPreciosPlanes:", error);

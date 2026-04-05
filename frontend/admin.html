@@ -165,12 +165,31 @@
       grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: 14px;
     }
+    .dash-precios-group {
+      margin-bottom: 18px;
+    }
+    .dash-precios-group-title {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #4b5563;
+      margin-bottom: 10px;
+    }
     .dash-precio-item { display: flex; flex-direction: column; gap: 6px; }
     .dash-precio-item label { font-size: 12px; font-weight: 600; color: #2c3e50; }
     .dash-precio-item .precio-badge {
       display: inline-block; font-size: 11px; font-weight: 700;
       padding: 2px 9px; border-radius: 10px; margin-bottom: 2px;
     }
+    .precio-badge-familia-pruebas { background: #e0f2fe; color: #075985; }
+    .precio-badge-familia-mensual { background: #eef2ff; color: #3730a3; }
+    .precio-badge-familia-campeonato { background: #ecfeff; color: #155e75; }
+    .precio-badge-familia-anual { background: #fef2f2; color: #991b1b; }
+    .precio-badge-nivel-base { box-shadow: inset 0 0 0 1px rgba(16, 185, 129, .25); }
+    .precio-badge-nivel-competencia { box-shadow: inset 0 0 0 1px rgba(245, 158, 11, .25); }
+    .precio-badge-nivel-premium { box-shadow: inset 0 0 0 1px rgba(139, 92, 246, .25); }
+    .precio-badge-nivel-free { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .25); }
     .dash-precio-item input[type="number"] {
       width: 100%; padding: 8px 11px;
       border: 1.5px solid #dde3ec;
@@ -361,7 +380,7 @@
 
           <!-- Precios de planes -->
           <div class="dash-panel" style="margin-bottom:24px;">
-            <div class="dash-panel-title"><i class="fas fa-tag"></i> Precios de planes (USD / mes)</div>
+            <div class="dash-panel-title"><i class="fas fa-tag"></i> Catálogo público de planes y tarifas (USD)</div>
             <div id="dash-admin-precios-wrap">
               <p class="dash-empty-msg">Cargando...</p>
             </div>
