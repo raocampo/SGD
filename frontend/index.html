@@ -192,7 +192,7 @@
           <p>Elige la modalidad que mejor se adapta a tu actividad deportiva.</p>
         </div>
 
-        <div class="ltc-plan-summary-grid">
+        <div class="ltc-plan-summary-grid ltc-plan-summary-grid-4">
 
           <!-- MENSUAL -->
           <article class="ltc-pricing-card ltc-pricing-card-summary">
@@ -204,12 +204,12 @@
             <p class="ltc-plan-note">Para ligas con operación continua mes a mes.</p>
             <p class="ltc-pricing-amount" data-price-family-min="mensual">Desde $20 <span>/ mes</span></p>
             <ul class="ltc-plan-features">
-              <li><i class="fas fa-check"></i> Niveles Básico, Competencia y Premium</li>
+              <li><i class="fas fa-check"></i> Básico, Competencia y Premium</li>
               <li><i class="fas fa-check"></i> Hasta 20 campeonatos activos</li>
               <li><i class="fas fa-check"></i> Carnés digitales (Competencia+)</li>
-              <li><i class="fas fa-check"></i> Registro directo desde la plataforma</li>
+              <li><i class="fas fa-check"></i> Registro directo en la plataforma</li>
             </ul>
-            <a href="planes.html#mensual" class="ltc-pricing-btn ltc-submenu-close">Ver planes mensuales →</a>
+            <a href="planes.html#mensual" class="ltc-pricing-btn">Ver planes mensuales →</a>
           </article>
 
           <!-- CAMPEONATO -->
@@ -222,12 +222,12 @@
             <p class="ltc-plan-note">Pago único por torneo, sin suscripción mensual.</p>
             <p class="ltc-pricing-amount" data-price-family-min="campeonato">Desde $200 <span>/ campeonato</span></p>
             <ul class="ltc-plan-features">
-              <li><i class="fas fa-check"></i> Niveles Básico, Competencia y Premium</li>
+              <li><i class="fas fa-check"></i> Básico, Competencia y Premium</li>
               <li><i class="fas fa-check"></i> Sin compromiso de permanencia</li>
               <li><i class="fas fa-check"></i> Carnés digitales (Competencia+)</li>
               <li><i class="fas fa-check"></i> Acceso completo durante el torneo</li>
             </ul>
-            <a href="planes.html#campeonato" class="ltc-pricing-btn ltc-submenu-close">Ver planes por campeonato →</a>
+            <a href="planes.html#campeonato" class="ltc-pricing-btn">Ver planes por campeonato →</a>
           </article>
 
           <!-- ANUAL -->
@@ -237,25 +237,35 @@
               <span class="ltc-plan-icon">🗓️</span>
             </div>
             <h3>Plan anual</h3>
-            <p class="ltc-plan-note">El precio más bajo del mercado con un año de gestión completa.</p>
+            <p class="ltc-plan-note">El precio más bajo del mercado, un año de gestión completa.</p>
             <p class="ltc-pricing-amount" data-price-family-min="anual">Desde $49 <span>/ año</span></p>
             <ul class="ltc-plan-features">
-              <li><i class="fas fa-check"></i> Niveles Básico, Competencia y Premium</li>
+              <li><i class="fas fa-check"></i> Básico, Competencia y Premium</li>
               <li><i class="fas fa-check"></i> Hasta 20 campeonatos anuales</li>
               <li><i class="fas fa-check"></i> Carnés digitales (Competencia+)</li>
               <li><i class="fas fa-check"></i> Streaming incluido en Premium</li>
             </ul>
-            <a href="planes.html#anual" class="ltc-pricing-btn ltc-submenu-close">Ver planes anuales →</a>
+            <a href="planes.html#anual" class="ltc-pricing-btn">Ver planes anuales →</a>
           </article>
 
-        </div>
+          <!-- FREE -->
+          <article class="ltc-pricing-card ltc-pricing-card-free ltc-pricing-card-summary">
+            <div class="ltc-plan-card-header">
+              <span class="ltc-plan-chip ltc-plan-chip-free">Free</span>
+              <span class="ltc-plan-icon">🆓</span>
+            </div>
+            <h3>Plan Free</h3>
+            <p class="ltc-plan-note">Empieza sin costo, sin tarjeta de crédito.</p>
+            <p class="ltc-pricing-amount ltc-pricing-amount-free">$0 <span>/ siempre gratis</span></p>
+            <ul class="ltc-plan-features">
+              <li><i class="fas fa-check"></i> 2 campeonatos activos</li>
+              <li><i class="fas fa-check"></i> 3 categorías por campeonato</li>
+              <li><i class="fas fa-check"></i> Hasta 32 equipos por categoría</li>
+              <li><i class="fas fa-check"></i> Sin carnés digitales</li>
+            </ul>
+            <a href="register.html?plan=free" class="ltc-pricing-btn ltc-pricing-btn-free" target="_blank" rel="noopener noreferrer">Empezar gratis →</a>
+          </article>
 
-        <!-- Plan Free como nota inferior -->
-        <div class="ltc-plan-free-note">
-          <span>¿Quieres empezar sin costo?</span>
-          <a href="register.html?plan=free" target="_blank" rel="noopener noreferrer">Plan Free — 2 campeonatos gratis</a>
-          <span class="ltc-plan-free-sep">·</span>
-          <a href="register.html?plan=demo" target="_blank" rel="noopener noreferrer">Probar demo</a>
         </div>
 
       </div>
@@ -364,14 +374,5 @@
   <script src="js/api.js"></script>
   <script src="js/portal.js"></script>
   <script src="js/public-pricing.js"></script>
-  <script>
-    // Cerrar submenú al hacer click en cualquier enlace dentro de él
-    document.querySelectorAll('.ltc-nav-submenu a').forEach(function(link) {
-      link.addEventListener('click', function() {
-        var item = link.closest('.ltc-nav-item-submenu');
-        if (item) { item.blur(); link.blur(); }
-      });
-    });
-  </script>
 </body>
 </html>

@@ -112,13 +112,14 @@ body.ltc-landing {
 
 .ltc-nav-submenu {
   position: absolute;
-  top: calc(100% + 0.4rem);
+  top: 100%;
   left: 0;
   min-width: 13rem;
   display: none;
   flex-direction: column;
   gap: 0.2rem;
-  padding: 0.55rem;
+  /* padding-top cubre el gap visual sin perder el hover al cruzar */
+  padding: 0.4rem 0.55rem 0.55rem;
   border-radius: 10px;
   background: #070707;
   border: 1px solid rgba(248, 220, 106, 0.3);
@@ -1771,6 +1772,59 @@ body.ltc-landing {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.ltc-plan-summary-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .ltc-plan-summary-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .ltc-plan-summary-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Card Free */
+.ltc-pricing-card-free {
+  border-color: #c8e6c9;
+  background: linear-gradient(165deg, #f1fff2 0%, #e8f5e9 100%);
+}
+
+.ltc-pricing-card-free::before {
+  background: linear-gradient(90deg, #43a047, #66bb6a);
+}
+
+.ltc-plan-chip-free {
+  background: #d4f5d6;
+  color: #2e7d32;
+}
+
+.ltc-pricing-card-free h3 {
+  color: #1b5e20;
+}
+
+.ltc-pricing-amount-free {
+  color: #2e7d32 !important;
+}
+
+.ltc-pricing-card-free .ltc-plan-features li .fas.fa-check {
+  color: #43a047;
+}
+
+.ltc-pricing-btn-free {
+  border-color: #43a047 !important;
+  background: #43a047 !important;
+  color: #fff !important;
+}
+
+.ltc-pricing-btn-free:hover {
+  background: #388e3c !important;
 }
 
 /* Plan card header (chip + icon) */
