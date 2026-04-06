@@ -987,6 +987,133 @@ function generarRoundRobin(equipos) {
   return fixture;
 }
 
+/**
+ * Distribuye un conjunto de pares (partidos pendientes) en jornadas válidas
+ * donde cada jornada tiene exactamente floor(numEquipos/2) partidos y
+ * ningún equipo aparece dos veces en la misma jornada.
+ *
+ * Se usa como fallback en regenerarFixturePreservandoJugados cuando el orden
+ * de los equipos en la regeneración difiere del original, produciendo jornadas
+ * incompletas al filtrar pares ya jugados.
+ *
+ * Algoritmo: por cada jornada se selecciona el equipo "descansante" probando
+ * primero los de menor grado (menos partidos pendientes), y se busca un
+ * emparejamiento perfecto para los restantes usando backtracking.  Esto
+ * garantiza que los equipos con pocas opciones descansen antes que los que
+ * tienen muchos partidos pendientes, evitando bloqueos en rondas futuras.
+ */
+function distribuirParesEnJornadas(paresRestantes, numEquipos) {
+  const matchesPorJornada = Math.floor(numEquipos / 2);
+
+  // Grafo de adyacencia mutable: equipo -> Set de rivales pendientes
+  const adj = new Map();
+  // pairRef: clave "min:max" -> par original [local, visitante]
+  const pairRef = new Map();
+
+  for (const [a, b] of paresRestantes) {
+    if (!adj.has(a)) adj.set(a, new Set());
+    if (!adj.has(b)) adj.set(b, new Set());
+    adj.get(a).add(b);
+    adj.get(b).add(a);
+    pairRef.set(`${Math.min(a, b)}:${Math.max(a, b)}`, [a, b]);
+  }
+
+  // Intenta encontrar un emparejamiento perfecto para `teamsToMatch`
+  // usando backtracking con orden ascendente de grado (MRV heuristic).
+  // Devuelve el arreglo de pares o null si no existe emparejamiento.
+  function perfectMatching(teamsToMatch) {
+    // Ordenar por grado asc para procesar primero los más restringidos
+    const ordered = [...teamsToMatch].sort(
+      (a, b) => (adj.get(a)?.size || 0) - (adj.get(b)?.size || 0) || a - b
+    );
+    const used = new Set();
+    const result = [];
+
+    function bt(idx) {
+      // Avanzar hasta el siguiente equipo aún no emparejado
+      while (idx < ordered.length && used.has(ordered[idx])) idx++;
+      if (idx >= ordered.length) return result.length === matchesPorJornada;
+
+      const teamA = ordered[idx];
+      // Candidatos: vecinos no usados, ordenados por grado asc (MRV)
+      const candidates = [...(adj.get(teamA) || [])]
+        .filter((b) => teamsToMatch.has(b) && !used.has(b))
+        .sort((a, b) => (adj.get(a)?.size || 0) - (adj.get(b)?.size || 0) || a - b);
+
+      for (const teamB of candidates) {
+        used.add(teamA);
+        used.add(teamB);
+        result.push([teamA, teamB]);
+        if (bt(idx + 1)) return true;
+        result.pop();
+        used.delete(teamA);
+        used.delete(teamB);
+      }
+      return false;
+    }
+
+    return bt(0) ? result : null;
+  }
+
+  const allTeams = [...adj.keys()];
+  const jornadas = [];
+
+  while (true) {
+    const active = allTeams.filter((t) => (adj.get(t)?.size || 0) > 0);
+    if (active.length === 0) break;
+
+    // Probar equipos descansantes de menor a mayor grado.
+    // Para n impar, activos puede ser n (odd) → siempre hay 1 descansante.
+    // Para n par todos los activos deben ser emparejados (sin bye).
+    const needsBye = active.length % 2 !== 0;
+    let jornada = null;
+
+    if (needsBye) {
+      // Ordenar candidatos a descanso por grado asc (menos opciones = descansa antes)
+      const byeCandidates = [...active].sort(
+        (a, b) => (adj.get(a)?.size || 0) - (adj.get(b)?.size || 0) || a - b
+      );
+      for (const bye of byeCandidates) {
+        const teamsToMatch = new Set(active.filter((t) => t !== bye));
+        const matching = perfectMatching(teamsToMatch);
+        if (matching) {
+          jornada = matching;
+          break;
+        }
+      }
+    } else {
+      jornada = perfectMatching(new Set(active));
+    }
+
+    // Fallback greedy si el backtracking no encontró solución (no debería ocurrir)
+    if (!jornada) {
+      jornada = [];
+      const used = new Set();
+      for (const teamA of active) {
+        if (used.has(teamA)) continue;
+        const teamB = [...(adj.get(teamA) || [])].find((b) => !used.has(b));
+        if (!teamB) continue;
+        jornada.push([teamA, teamB]);
+        used.add(teamA);
+        used.add(teamB);
+        if (jornada.length === matchesPorJornada) break;
+      }
+      if (jornada.length === 0) break;
+    }
+
+    // Aplicar los pares de esta jornada al grafo y registrar
+    const jornadaConRef = [];
+    for (const [a, b] of jornada) {
+      adj.get(a).delete(b);
+      adj.get(b).delete(a);
+      jornadaConRef.push(pairRef.get(`${Math.min(a, b)}:${Math.max(a, b)}`));
+    }
+    jornadas.push(jornadaConRef);
+  }
+
+  return jornadas;
+}
+
 // ===============================
 // Scheduler por modalidad + canchas
 // ===============================
@@ -2365,6 +2492,25 @@ class Partido {
           return true;
         });
         if (pendientes.length) jornadasPendientes.push(pendientes);
+      }
+
+      // Detectar jornadas incompletas: ocurre cuando el orden de equipos en la
+      // regeneración difiere del orden original, haciendo que pares ya jugados
+      // (invertidos local/visitante) queden filtrados dentro de una jornada y
+      // ésta quede con menos partidos de los esperados.
+      // En ese caso redistribuimos TODOS los pares pendientes con el algoritmo
+      // greedy que garantiza floor(n/2) partidos por jornada.
+      if (!ida_y_vuelta) {
+        const expectedSize = Math.floor(equipos.length / 2);
+        const hayIncompletas = jornadasPendientes.some((j) => j.length < expectedSize);
+        if (hayIncompletas) {
+          const paresRestantes = jornadasPendientes.flat();
+          jornadasPendientes.splice(
+            0,
+            jornadasPendientes.length,
+            ...distribuirParesEnJornadas(paresRestantes, equipos.length)
+          );
+        }
       }
 
       if (!jornadasPendientes.length) return [];
