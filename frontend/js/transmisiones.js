@@ -275,6 +275,22 @@
     await cargarCampeonatos();
     initSelector();
     initTabs();
+
+    // Pre-seleccionar campeonato si viene por URL o RouteContext
+    const routeCtx = window.RouteContext?.read?.("transmisiones.html", ["campeonato"]) || {};
+    const urlParams = new URLSearchParams(window.location.search);
+    const preId = Number.parseInt(routeCtx.campeonato || urlParams.get("campeonato") || "", 10);
+    if (Number.isFinite(preId) && preId > 0) {
+      const sel = document.getElementById("tx-campeonato-select");
+      if (sel) {
+        sel.value = String(preId);
+        if (sel.value === String(preId)) {
+          _campeonatoId = preId;
+          await recargarTabla();
+        }
+      }
+    }
+
     await mostrarProximaCard();
 
     // Nav toggle (same pattern as other pages)

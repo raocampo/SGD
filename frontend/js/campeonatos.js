@@ -156,6 +156,9 @@ function renderCampeonatoCard(camp, index = null) {
         <button class="btn btn-primary" onclick="irAEventos(${camp.id})">
           <i class="fas fa-layer-group"></i> Eventos / Categorías
         </button>
+        <button class="btn btn-secondary" onclick="irATransmisiones(${camp.id})" title="Gestionar transmisiones de este campeonato">
+          <i class="fas fa-broadcast-tower"></i> Transmisiones
+        </button>
         <button class="btn btn-warning" onclick="editarCampeonato(${camp.id})">
           <i class="fas fa-edit"></i> Editar
         </button>
@@ -195,6 +198,7 @@ function renderTablaCampeonatos(campeonatos) {
           <td>${meta.carnets}</td>
           <td class="list-table-actions">
             <button class="btn btn-primary" onclick="irAEventos(${camp.id})"><i class="fas fa-layer-group"></i> Eventos</button>
+            <button class="btn btn-secondary" onclick="irATransmisiones(${camp.id})" title="Transmisiones"><i class="fas fa-broadcast-tower"></i></button>
             <button class="btn btn-warning" onclick="editarCampeonato(${camp.id})"><i class="fas fa-edit"></i> Editar</button>
             <button class="btn btn-danger" onclick="eliminarCampeonato(${camp.id})"><i class="fas fa-trash"></i> Eliminar</button>
           </td>
@@ -311,6 +315,14 @@ function irAEventos(campeonatoId) {
     return;
   }
   window.location.href = `eventos.html?campeonato=${campeonatoId}`;
+}
+
+function irATransmisiones(campeonatoId) {
+  if (window.RouteContext?.navigate) {
+    window.RouteContext.navigate("transmisiones.html", { campeonato: Number(campeonatoId) || null });
+    return;
+  }
+  window.location.href = `transmisiones.html?campeonato=${campeonatoId}`;
 }
 
 // ======================
