@@ -405,6 +405,7 @@
       if (btnPago) btnPago.addEventListener("click", guardarFormasPago);
 
       initAuditoria();
+      initComprobantes();
     } catch (err) {
       console.error("dashboardAdmin:", err);
       const loading = document.getElementById("dash-admin-loading");
@@ -593,6 +594,103 @@
       cargarAuditoria();
     });
     cargarAuditoria(true);
+  }
+
+  // ── COMPROBANTES ──────────────────────────────────────────────────────────
+
+  async function cargarComprobantes() {
+    const estado = document.getElementById("dash-comp-estado")?.value ?? "pendiente";
+    const tbody  = document.getElementById("dash-comp-tbody");
+    const msg    = document.getElementById("dash-comp-msg");
+
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="dash-empty-msg">Cargando...</td></tr>`;
+    if (msg) msg.textContent = "";
+
+    try {
+      const params = estado ? `?estado=${encodeURIComponent(estado)}` : "";
+      const data = await window.ApiClient.get(`/comprobantes/admin${params}`);
+      const lista = data?.comprobantes || [];
+
+      if (!lista.length) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="dash-empty-msg">No hay comprobantes${estado === "pendiente" ? " pendientes" : ""}.</td></tr>`;
+        return;
+      }
+
+      const badgeEstado = (e) => {
+        if (e === "aprobado")  return `<span class="dash-comp-badge-apro">Aprobado</span>`;
+        if (e === "rechazado") return `<span class="dash-comp-badge-rech">Rechazado</span>`;
+        return `<span class="dash-comp-badge-pend">Pendiente</span>`;
+      };
+
+      if (tbody) {
+        tbody.innerHTML = lista.map((c) => {
+          const fecha = formatearFecha(c.created_at);
+          const planLabel = PLAN_LABEL[c.plan_codigo] || c.plan_codigo || "—";
+          const archivoUrl = c.archivo_url
+            ? `<a class="btn-comp-ver" href="${c.archivo_url}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> Ver</a>`
+            : "—";
+          const acciones = c.estado === "pendiente"
+            ? `<button class="btn-comp-activar"  data-id="${c.id}"><i class="fas fa-check"></i> Activar</button>
+               <button class="btn-comp-rechazar" data-id="${c.id}"><i class="fas fa-times"></i> Rechazar</button>`
+            : `<span style="font-size:11px;color:#94a3b8;">—</span>`;
+          return `
+            <tr>
+              <td style="font-size:11.5px;white-space:nowrap;">${fecha}</td>
+              <td>
+                <div style="font-size:12px;font-weight:700;color:#2c3e50;">${c.usuario_nombre || "—"}</div>
+                <div style="font-size:10.5px;color:#7f8c8d;">${c.usuario_email || ""}</div>
+              </td>
+              <td><span class="badge-plan-min badge-plan-${c.plan_codigo || 'free'}">${planLabel}</span></td>
+              <td>${badgeEstado(c.estado)}</td>
+              <td class="text-center">${archivoUrl}</td>
+              <td class="text-center">${acciones}</td>
+            </tr>`;
+        }).join("");
+
+        tbody.querySelectorAll(".btn-comp-activar").forEach((btn) => {
+          btn.addEventListener("click", () => activarComprobante(Number(btn.dataset.id)));
+        });
+        tbody.querySelectorAll(".btn-comp-rechazar").forEach((btn) => {
+          btn.addEventListener("click", () => rechazarComprobante(Number(btn.dataset.id)));
+        });
+      }
+    } catch (err) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="dash-empty-msg">Error cargando comprobantes</td></tr>`;
+      console.error("Error comprobantes:", err.message);
+    }
+  }
+
+  async function activarComprobante(id) {
+    const msg = document.getElementById("dash-comp-msg");
+    if (!confirm("¿Activar la cuenta de este organizador?")) return;
+    try {
+      if (msg) { msg.style.color = "#64748b"; msg.textContent = "Activando..."; }
+      await window.ApiClient.put(`/comprobantes/admin/${id}/activar`, {});
+      if (msg) { msg.style.color = "#22c55e"; msg.textContent = "Cuenta activada correctamente."; }
+      setTimeout(() => cargarComprobantes(), 1200);
+    } catch (err) {
+      if (msg) { msg.style.color = "#ef4444"; msg.textContent = err.message || "Error al activar"; }
+    }
+  }
+
+  async function rechazarComprobante(id) {
+    const msg = document.getElementById("dash-comp-msg");
+    const nota = window.prompt("Motivo del rechazo (opcional):") ?? "";
+    if (nota === null) return; // canceló el prompt
+    try {
+      if (msg) { msg.style.color = "#64748b"; msg.textContent = "Rechazando..."; }
+      await window.ApiClient.put(`/comprobantes/admin/${id}/rechazar`, { nota });
+      if (msg) { msg.style.color = "#f59e0b"; msg.textContent = "Comprobante rechazado."; }
+      setTimeout(() => cargarComprobantes(), 1200);
+    } catch (err) {
+      if (msg) { msg.style.color = "#ef4444"; msg.textContent = err.message || "Error al rechazar"; }
+    }
+  }
+
+  function initComprobantes() {
+    document.getElementById("dash-comp-buscar")?.addEventListener("click", cargarComprobantes);
+    document.getElementById("dash-comp-estado")?.addEventListener("change", cargarComprobantes);
+    cargarComprobantes();
   }
 
   // ── INIT ───────────────────────────────────────────────────────────────────

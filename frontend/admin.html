@@ -136,8 +136,20 @@
     .badge-plan-competencia { background: #fdebd0; color: #784212; }
     .badge-plan-premium     { background: #e8daef; color: #6c3483; }
 
-    .badge-estado-activo   { background: #d5f5e3; color: #1e8449; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
-    .badge-estado-inactivo { background: #eaecf0; color: #7f8c8d; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+    .badge-estado-activo    { background: #d5f5e3; color: #1e8449; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+    .badge-estado-inactivo  { background: #eaecf0; color: #7f8c8d; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+    .badge-estado-pendiente { background: #fee2e2; color: #dc2626; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+
+    /* ── Comprobantes ── */
+    .dash-comp-badge-pend { background: #fee2e2; color: #dc2626; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .dash-comp-badge-apro { background: #d5f5e3; color: #1e8449; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .dash-comp-badge-rech { background: #eaecf0; color: #566573; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .btn-comp-activar { background: #27ae60; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; margin-right: 4px; }
+    .btn-comp-activar:hover { background: #229954; }
+    .btn-comp-rechazar { background: #e74c3c; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .btn-comp-rechazar:hover { background: #c0392b; }
+    .btn-comp-ver { background: #3498db; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-comp-ver:hover { background: #2980b9; }
 
     /* Métricas globales */
     .dash-global-row {
@@ -501,6 +513,40 @@
                 <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-next" type="button">Siguiente ›</button>
               </div>
             </div>
+          </div>
+
+          <!-- Comprobantes de pago -->
+          <div class="dash-panel" style="margin-bottom:24px;" id="dash-comp-panel">
+            <div class="dash-panel-title"><i class="fas fa-file-invoice-dollar"></i> Comprobantes de pago</div>
+            <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
+              <select id="dash-comp-estado" class="dash-audit-input">
+                <option value="pendiente">Solo pendientes</option>
+                <option value="">Todos</option>
+                <option value="aprobado">Aprobados</option>
+                <option value="rechazado">Rechazados</option>
+              </select>
+              <button class="btn btn-primary dash-audit-btn" id="dash-comp-buscar" type="button">
+                <i class="fas fa-sync-alt"></i> Actualizar
+              </button>
+            </div>
+            <div class="dash-table-wrap">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Organizador</th>
+                    <th>Plan</th>
+                    <th>Estado comp.</th>
+                    <th class="text-center">Comprobante</th>
+                    <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-comp-tbody">
+                  <tr><td colspan="6" class="dash-empty-msg">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p id="dash-comp-msg" style="font-size:12.5px; margin-top:8px; min-height:16px;"></p>
           </div>
 
         </div><!-- /dash-admin-root -->

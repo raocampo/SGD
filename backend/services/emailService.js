@@ -250,10 +250,42 @@ async function enviarEmailNotificacionContacto({ nombre, telefono, email, mensaj
   }
 }
 
+async function enviarEmailComprobanteRecibido({ nombre, email, plan, archivoUrl }) {
+  const adminEmail = String(process.env.ADMIN_EMAIL || process.env.SMTP_USER || "").trim();
+  if (!adminEmail) return { sent: false, reason: "sin_admin_email" };
+  const planNombre = String(plan?.nombre || plan || "");
+  const ahora = new Date().toLocaleString("es-EC", { timeZone: "America/Guayaquil" });
+  const enlace = String(process.env.FRONTEND_URL || "").replace(/\/$/, "") + "/admin.html";
+  const text = `Comprobante de pago recibido\n\nOrganizador: ${nombre}\nCorreo: ${email}\nPlan: ${planNombre}\nFecha: ${ahora}\nArchivo: ${archivoUrl}\n\nRevisa el comprobante en el panel de administración: ${enlace}`;
+  const html = wrapHtml(`
+    <h2>💳 Comprobante de pago recibido</h2>
+    <p style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;font-size:13px;color:#166534;">
+      Un organizador ha subido su comprobante de pago. Revisa y activa la cuenta cuando confirmes el pago.
+    </p>
+    <div class="data-row"><span class="data-lbl">Organizador:</span><span>${nombre}</span></div>
+    <div class="data-row"><span class="data-lbl">Correo:</span><span>${email}</span></div>
+    <div class="data-row"><span class="data-lbl">Plan:</span><span><span class="badge">${planNombre}</span></span></div>
+    <div class="data-row"><span class="data-lbl">Fecha:</span><span>${ahora}</span></div>
+    <p style="text-align:center;margin-top:18px;">
+      <a href="${enlace}" style="background:#2f5e96;color:#fff;border-radius:9px;padding:11px 22px;text-decoration:none;font-weight:700;font-size:14px;">
+        Ver en panel de administración →
+      </a>
+    </p>
+    <div class="footer">LT&C — notificación automática del sistema</div>
+  `);
+  try {
+    return await enviarEmail({ to: adminEmail, subject: `💳 Comprobante de pago — ${nombre} (${planNombre})`, text, html });
+  } catch (err) {
+    console.warn("[email] Error enviando notificación comprobante:", err.message);
+    return { sent: false, reason: err.message };
+  }
+}
+
 module.exports = {
   enviarEmailRecuperacionPassword,
   enviarEmailBienvenida,
   enviarEmailNotificacionAdminNuevoRegistro,
   enviarEmailNotificacionContacto,
+  enviarEmailComprobanteRecibido,
   construirUrlReset,
 };
