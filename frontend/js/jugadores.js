@@ -1404,6 +1404,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderPlantillaCarnets();
       }
     });
+  document
+    .getElementById("carnet-filtro-jugador")
+    ?.addEventListener("change", () => {
+      if (document.getElementById("bloque-carnets-jugadores")?.style.display === "block") {
+        const idVal = document.getElementById("carnet-filtro-jugador").value;
+        renderPlantillaCarnets(idVal ? [Number(idVal)] : null);
+      }
+    });
 
   if (modoDirecto) {
     await inicializarModoDirecto();
@@ -2462,6 +2470,7 @@ function renderPlantillaCarnets(filtroIds = null) {
       </div>`;
 
   zona.innerHTML = selBar + `<div class="carnets-grid">${cards}</div>`;
+  actualizarDropdownJugadorCarnet();
 }
 
 function toggleSeleccionTodosCarnets(checked) {
@@ -2483,7 +2492,31 @@ function actualizarConteoSelCarnet() {
   }
 }
 
+function actualizarDropdownJugadorCarnet() {
+  const sel = document.getElementById("carnet-filtro-jugador");
+  if (!sel) return;
+  const valorActual = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>';
+  jugadoresActuales.forEach((j) => {
+    const nombre = `${j.nombre || ""} ${j.apellido || ""}`.trim() || `Jugador ${j.id}`;
+    const opt = document.createElement("option");
+    opt.value = j.id;
+    opt.textContent = nombre;
+    sel.appendChild(opt);
+  });
+  // Restaurar selección previa si sigue siendo válida
+  if (valorActual && jugadoresActuales.some((j) => String(j.id) === valorActual)) {
+    sel.value = valorActual;
+  } else {
+    sel.value = "";
+  }
+}
+
 function obtenerIdsCarnetSeleccionados() {
+  // Primero revisar el dropdown de jugador individual
+  const dropJugador = document.getElementById("carnet-filtro-jugador");
+  if (dropJugador && dropJugador.value) return [Number(dropJugador.value)];
+  // Luego checkboxes en la plantilla renderizada
   const checked = document.querySelectorAll("#carnets-jugadores-export .carnet-sel-chk:checked");
   if (!checked.length) return null;
   return Array.from(checked).map((chk) => Number(chk.value));
