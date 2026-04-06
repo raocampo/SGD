@@ -47,6 +47,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   else await cargarPartidosJ();
   construirNavPlantillaJ();
   renderVistaActualJ();
+
+  document.getElementById("jornada-bg-input")?.addEventListener("change", manejarCambioFondoJ);
+  document.getElementById("btn-jornada-clear-bg")?.addEventListener("click", limpiarFondoJ);
+  restaurarFondoJGuardado();
 });
 
 async function cargarContextoJ() {
@@ -590,3 +594,69 @@ window.aplicarTemaJornada = aplicarTemaJornada;
 window.exportarJornadaPNG = exportarJornadaPNG;
 window.exportarJornadaPDF = exportarJornadaPDF;
 window.volverPartidos = volverPartidos;
+
+// ── Fondo personalizado ────────────────────────────────────────────────────
+
+function obtenerClaveFondoJ() {
+  const evento = Number.parseInt(eventoIdJ || "", 10) || "na";
+  return `jornada-bg:${evento}`;
+}
+
+function aplicarFondoJ(url = "") {
+  const poster = document.getElementById("jornada-export");
+  const status = document.getElementById("jornada-bg-status");
+  const clearBtn = document.getElementById("btn-jornada-clear-bg");
+  const limpio = String(url || "").trim();
+
+  if (poster) {
+    if (limpio) {
+      poster.classList.add("has-custom-background");
+      poster.style.setProperty("--poster-custom-bg", `url("${limpio.replace(/"/g, "%22")}")`);
+    } else {
+      poster.classList.remove("has-custom-background");
+      poster.style.removeProperty("--poster-custom-bg");
+    }
+  }
+
+  if (status) {
+    status.textContent = limpio
+      ? "Fondo personalizado cargado."
+      : "Sin fondo personalizado.";
+  }
+  if (clearBtn) clearBtn.disabled = !limpio;
+}
+
+function restaurarFondoJGuardado() {
+  try {
+    const valor = window.localStorage?.getItem?.(obtenerClaveFondoJ()) || "";
+    aplicarFondoJ(valor);
+  } catch (e) {
+    aplicarFondoJ("");
+  }
+}
+
+async function manejarCambioFondoJ(event) {
+  const archivo = event?.target?.files?.[0];
+  if (!archivo) return;
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
+      reader.readAsDataURL(archivo);
+    });
+    window.localStorage?.setItem?.(obtenerClaveFondoJ(), dataUrl);
+    aplicarFondoJ(dataUrl);
+    mostrarNotificacion("Fondo cargado", "success");
+  } catch (e) {
+    mostrarNotificacion("No se pudo cargar el fondo", "error");
+  } finally {
+    if (event?.target) event.target.value = "";
+  }
+}
+
+function limpiarFondoJ() {
+  try { window.localStorage?.removeItem?.(obtenerClaveFondoJ()); } catch {}
+  aplicarFondoJ("");
+  mostrarNotificacion("Fondo eliminado", "info");
+}

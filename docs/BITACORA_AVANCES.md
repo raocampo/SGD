@@ -1,3 +1,13 @@
+## 2026-04-06 - Auditoría fixture/planilla/finanzas + fondo personalizado en plantilla de jornadas
+
+- **`backend/services/auditoria.js`**: 8 nuevas constantes `ACCIONES`: `FIXTURE_GENERADO`, `FIXTURE_REGENERADO`, `FIXTURE_ELIMINADO`, `PLANILLA_GUARDADA`, `RESULTADO_REGISTRADO`, `MOVIMIENTO_FINANCIERO`, `GASTO_CREADO`, `GASTO_ELIMINADO`.
+- **`backend/controllers/partidoController.js`**: `registrarAuditoria` importado + llamadas en `generarFixtureEvento`, `eliminarFixtureEvento`, `regenerarFixturePreservando`, `registrarResultado`, `guardarPlanillaPartido`.
+- **`backend/controllers/finanzaController.js`**: `registrarAuditoria` importado + llamadas en `crearMovimiento`, `crearGasto`, `eliminarGasto`.
+- **`frontend/js/dashboard-admin.js`**: `badgeAuditoria()` extendido con 8 nuevos mapeos (fixture/planilla/finanzas).
+- **`frontend/admin.html`**: 3 nuevas clases CSS `badge-audit-fixture/planilla/finanza` + 8 nuevos `<option>` en `#dash-audit-accion`.
+- **`frontend/jornadasplantilla.html`**: controles de fondo personalizado (`Fondo` / `Quitar fondo` / estado) igual a `fixtureplantilla.html`.
+- **`frontend/js/jornadasplantilla.js`**: `obtenerClaveFondoJ`, `aplicarFondoJ`, `restaurarFondoJGuardado`, `manejarCambioFondoJ`, `limpiarFondoJ` — la imagen se persiste en `localStorage` por `evento_id`.
+
 ## 2026-04-06 - Pestañas en admin.html + carnet individual + módulos editoriales operador
 
 - **`frontend/admin.html`**: layout de pestañas (Dashboard, Planes, Formas de pago, Auditoría, Comprobantes). Dashboard es la pestaña activa por defecto. CSS responsive inline + JS de tabs con soporte de URL hash. Métricas globales (campeonatos/equipos/jugadores) movidas al inicio del tab Dashboard.
