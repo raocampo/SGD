@@ -8655,3 +8655,210 @@ body.page-finanzas {
     justify-self: center;
   }
 }
+
+/* =====================================================================
+   RESPONSIVE MOBILE — PÁGINAS SIN COBERTURA ANTERIOR
+   Sesión 2026-04-06
+   ===================================================================== */
+
+/* ---- PAGE-ADMIN ---- */
+
+/* Las tablas del panel admin siempre scrollean horizontalmente */
+.page-admin .dash-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.page-admin .dash-table {
+  min-width: 540px;
+}
+
+@media (max-width: 768px) {
+  /* Audit filters: stack en 1 columna */
+  .page-admin .dash-audit-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .page-admin .dash-audit-filters input,
+  .page-admin .dash-audit-filters select,
+  .page-admin .dash-audit-filters .btn {
+    width: 100%;
+  }
+  /* Ocultar columnas secundarias de tabla de auditoría */
+  .page-admin .dash-table th:nth-child(5),
+  .page-admin .dash-table td:nth-child(5) {
+    display: none;
+  }
+  /* Precios: grid compacto */
+  .page-admin .dash-precios-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  /* Hero del admin */
+  .page-admin .dash-hero {
+    padding: 1.2rem 1rem;
+  }
+  .page-admin .dash-hero h1 {
+    font-size: 1.3rem;
+  }
+  /* Panels: sin padding horizontal extra */
+  .page-admin .dash-panel {
+    padding: 1rem;
+  }
+  /* Precios: 1 columna */
+  .page-admin .dash-precios-grid {
+    grid-template-columns: 1fr;
+  }
+  /* Ocultar más columnas de tablas en móvil pequeño */
+  .page-admin .dash-table th:nth-child(4),
+  .page-admin .dash-table td:nth-child(4) {
+    display: none;
+  }
+  /* Modal org-estado */
+  .page-admin .modal-box {
+    padding: 1.2rem 1rem;
+    margin: 0.5rem;
+  }
+}
+
+/* ---- PAGE-PORTAL-TECNICO ---- */
+
+@media (max-width: 900px) {
+  .page-portal-tecnico .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .page-portal-tecnico .welcome-card {
+    padding: 1.2rem 1rem;
+  }
+  .page-portal-tecnico .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .page-portal-tecnico .stat-card {
+    padding: 1rem;
+  }
+  .page-portal-tecnico .stat-card i {
+    font-size: 1.6rem;
+  }
+  .page-portal-tecnico .deuda-equipo-banner {
+    font-size: 0.9rem;
+  }
+}
+
+/* ---- PAGE-PORTAL-OPERADOR ---- */
+
+/* Tabla de partidos pendientes: siempre scrolleable */
+.page-portal-operador .section-card {
+  overflow: visible;
+}
+.page-portal-operador .sgd-table-wrap,
+.page-portal-operador table {
+  width: 100%;
+}
+.page-portal-operador .section-card > .table-responsive,
+.page-portal-operador .section-card > div[style*="overflow"],
+.page-portal-operador .section-card > table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .page-portal-operador .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .page-portal-operador .stats-grid-sm {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-portal-operador .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .page-portal-operador .stats-grid-sm {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  /* Ocultar columna Categoría en la tabla de partidos */
+  .page-portal-operador .sgd-table th:nth-child(3),
+  .page-portal-operador .sgd-table td:nth-child(3) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-portal-operador .welcome-card {
+    padding: 1.2rem 1rem;
+  }
+  .page-portal-operador .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .page-portal-operador .stats-grid-sm {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .page-portal-operador .stat-card,
+  .page-portal-operador .stat-card-primary {
+    padding: 1rem;
+  }
+  /* Ocultar columna Fecha/Hora también en móvil pequeño */
+  .page-portal-operador .sgd-table th:nth-child(1),
+  .page-portal-operador .sgd-table td:nth-child(1) {
+    display: none;
+  }
+  .page-portal-operador .section-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* ---- PÁGINAS CMS (noticias, galeria, contacto, contenido, portal-cms, portal-admin) ----
+   Estas páginas comparten patrones de formulario y tabla similares.
+   El CSS ya cubre la mayoría por herencia de .app-layout.
+   Aquí solo se agregan ajustes puntuales de tabla y acciones. */
+
+@media (max-width: 768px) {
+  /* Tablas CMS: scroll horizontal */
+  .page-noticias .table-responsive,
+  .page-galeria-admin .table-responsive,
+  .page-contacto-admin .table-responsive,
+  .page-contenido-portal .table-responsive,
+  .page-portal-cms .table-responsive,
+  .page-portal-admin .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Form grids de CMS: 1 columna */
+  .page-noticias .form-grid,
+  .page-galeria-admin .form-grid,
+  .page-contacto-admin .form-grid,
+  .page-contenido-portal .form-grid,
+  .page-portal-cms .form-grid,
+  .page-portal-admin .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-noticias .action-bar .btn,
+  .page-galeria-admin .action-bar .btn,
+  .page-contacto-admin .action-bar .btn,
+  .page-contenido-portal .action-bar .btn,
+  .page-portal-cms .action-bar .btn,
+  .page-portal-admin .action-bar .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  /* Ocultar columnas secundarias en tablas CMS */
+  .page-noticias table th:nth-child(3),
+  .page-noticias table td:nth-child(3),
+  .page-galeria-admin table th:nth-child(3),
+  .page-galeria-admin table td:nth-child(3),
+  .page-contacto-admin table th:nth-child(4),
+  .page-contacto-admin table td:nth-child(4) {
+    display: none;
+  }
+}
