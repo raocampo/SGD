@@ -10,6 +10,7 @@ const {
   isOrganizador,
   obtenerCampeonatoIdsOrganizador,
 } = require("../services/organizadorScope");
+const { ACCIONES, registrar: registrarAuditoria, extraerIp } = require("../services/auditoria");
 
 function statusParaError(error) {
   const msg = String(error?.message || "").toLowerCase();
@@ -50,6 +51,19 @@ const finanzaController = {
         }
       }
       const movimiento = await Finanza.crearMovimiento(req.body || {});
+      registrarAuditoria({
+        usuarioId: req.user?.id,
+        accion: ACCIONES.MOVIMIENTO_FINANCIERO,
+        entidad: "finanzas",
+        entidadId: movimiento?.id,
+        detalle: {
+          tipo: movimiento?.tipo,
+          concepto: movimiento?.concepto,
+          monto: movimiento?.monto,
+          equipo_id: movimiento?.equipo_id,
+        },
+        ip: extraerIp(req),
+      });
       return res.status(201).json({
         ok: true,
         mensaje: "Movimiento financiero creado",
@@ -334,6 +348,14 @@ const finanzaController = {
       }
 
       const gasto = await Finanza.crearGasto({ ...body, created_by: user.id });
+      registrarAuditoria({
+        usuarioId: user.id,
+        accion: ACCIONES.GASTO_CREADO,
+        entidad: "finanzas_gastos",
+        entidadId: gasto?.id,
+        detalle: { concepto: gasto?.concepto, monto: gasto?.monto, campeonato_id: gasto?.campeonato_id },
+        ip: extraerIp(req),
+      });
       return res.status(201).json({ ok: true, gasto });
     } catch (error) {
       const status = statusParaError(error);
@@ -407,6 +429,14 @@ const finanzaController = {
       }
 
       await Finanza.eliminarGasto(id);
+      registrarAuditoria({
+        usuarioId: user.id,
+        accion: ACCIONES.GASTO_ELIMINADO,
+        entidad: "finanzas_gastos",
+        entidadId: id,
+        detalle: { concepto: existente?.concepto, monto: existente?.monto },
+        ip: extraerIp(req),
+      });
       return res.json({ ok: true });
     } catch (error) {
       return res.status(500).json({ error: error.message });

@@ -34,6 +34,16 @@ const ACCIONES = {
   ELIMINACION_EQUIPO:       "eliminacion_equipo",
   ELIMINACION_JUGADOR:      "eliminacion_jugador",
   CAMBIO_PRECIO_PLAN:       "cambio_precio_plan",
+  // Fixture & planilla
+  FIXTURE_GENERADO:         "fixture_generado",
+  FIXTURE_REGENERADO:       "fixture_regenerado",
+  FIXTURE_ELIMINADO:        "fixture_eliminado",
+  PLANILLA_GUARDADA:        "planilla_guardada",
+  RESULTADO_REGISTRADO:     "resultado_registrado",
+  // Finanzas
+  MOVIMIENTO_FINANCIERO:    "movimiento_financiero",
+  GASTO_CREADO:             "gasto_creado",
+  GASTO_ELIMINADO:          "gasto_eliminado",
 };
 
 // ── Extraer IP del request ────────────────────────────────────────────────────

@@ -512,6 +512,16 @@
       eliminacion_campeonato: ["badge-audit-eliminacion", "Eliminó campeonato"],
       eliminacion_equipo:     ["badge-audit-eliminacion", "Eliminó equipo"],
       eliminacion_jugador:    ["badge-audit-eliminacion", "Eliminó jugador"],
+      // Fixture & planilla
+      fixture_generado:       ["badge-audit-fixture",     "Fixture generado"],
+      fixture_regenerado:     ["badge-audit-fixture",     "Fixture regenerado"],
+      fixture_eliminado:      ["badge-audit-eliminacion", "Fixture eliminado"],
+      planilla_guardada:      ["badge-audit-planilla",    "Planilla guardada"],
+      resultado_registrado:   ["badge-audit-planilla",    "Resultado registrado"],
+      // Finanzas
+      movimiento_financiero:  ["badge-audit-finanza",     "Movimiento financiero"],
+      gasto_creado:           ["badge-audit-finanza",     "Gasto creado"],
+      gasto_eliminado:        ["badge-audit-eliminacion", "Gasto eliminado"],
     };
     const [cls, label] = mapa[accion] || ["badge-audit-otro", accion];
     return `<span class="badge-audit ${cls}">${label}</span>`;

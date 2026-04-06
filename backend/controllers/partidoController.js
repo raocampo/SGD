@@ -2,6 +2,7 @@
 const Partido = require("../models/Partido");
 const Eliminatoria = require("../models/Eliminatoria");
 const pool = require("../config/database");
+const { ACCIONES, registrar: registrarAuditoria, extraerIp } = require("../services/auditoria");
 
 function parseBooleanFlag(value) {
   return value === true || String(value || "").trim().toLowerCase() === "true";
@@ -167,6 +168,15 @@ exports.generarFixtureEvento = async (req, res) => {
     });
     const partidos = Array.isArray(resultado) ? resultado : resultado?.partidos || [];
 
+    registrarAuditoria({
+      usuarioId: req.user?.id,
+      accion: ACCIONES.FIXTURE_GENERADO,
+      entidad: "eventos",
+      entidadId: evento_id,
+      detalle: { total: partidos.length, modo: modoEfectivo },
+      ip: extraerIp(req),
+    });
+
     return res.json({
       ok: true,
       tipo_generacion: "fixture",
@@ -199,6 +209,14 @@ exports.eliminarFixtureEvento = async (req, res) => {
     const force = req.query.force === "true" || req.body?.force === true;
 
     const resultado = await Partido.eliminarFixtureEvento(evento_id, { force });
+    registrarAuditoria({
+      usuarioId: req.user?.id,
+      accion: ACCIONES.FIXTURE_ELIMINADO,
+      entidad: "eventos",
+      entidadId: evento_id,
+      detalle: { eliminados: resultado.eliminados },
+      ip: extraerIp(req),
+    });
     return res.json({
       ok: true,
       mensaje: `Fixture eliminado: ${resultado.eliminados} partido(s) borrados.`,
@@ -241,6 +259,15 @@ exports.regenerarFixturePreservando = async (req, res) => {
       permitir_sobrantes_sin_fecha: modoProgramacion.permitir_sobrantes_sin_fecha,
     });
     const partidos = Array.isArray(resultado) ? resultado : resultado?.partidos || [];
+
+    registrarAuditoria({
+      usuarioId: req.user?.id,
+      accion: ACCIONES.FIXTURE_REGENERADO,
+      entidad: "eventos",
+      entidadId: evento_id,
+      detalle: { total: partidos.length },
+      ip: extraerIp(req),
+    });
 
     return res.json({
       ok: true,
@@ -454,6 +481,15 @@ exports.registrarResultado = async (req, res) => {
       estado
     );
 
+    registrarAuditoria({
+      usuarioId: req.user?.id,
+      accion: ACCIONES.RESULTADO_REGISTRADO,
+      entidad: "partidos",
+      entidadId: id,
+      detalle: { resultado_local, resultado_visitante, estado },
+      ip: extraerIp(req),
+    });
+
     return res.json({ ok: true, partido });
   } catch (error) {
     console.error("Error registrando resultado:", error);
@@ -517,6 +553,20 @@ exports.guardarPlanillaPartido = async (req, res) => {
         usuario_id: req.user?.id || null,
       }
     );
+
+    registrarAuditoria({
+      usuarioId: req.user?.id,
+      accion: ACCIONES.PLANILLA_GUARDADA,
+      entidad: "partidos",
+      entidadId: id,
+      detalle: {
+        resultado_local: planilla?.partido?.resultado_local ?? null,
+        resultado_visitante: planilla?.partido?.resultado_visitante ?? null,
+        estado: planilla?.partido?.estado ?? null,
+      },
+      ip: extraerIp(req),
+    });
+
     return res.json({
       ok: true,
       mensaje: "Planilla guardada correctamente",
