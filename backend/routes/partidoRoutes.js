@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const partidoController = require("../controllers/partidoController");
+const transmisionController = require("../controllers/transmisionController");
 const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 
 // ===============================
@@ -86,6 +87,23 @@ router.put(
   partidoController.registrarResultadoConShootouts
 );
 router.delete("/:id", requireAuth, requireRoles("administrador", "organizador"), partidoController.eliminarPartido);
+
+// ===============================
+// 📡 TRANSMISIONES
+// ===============================
+router.get(
+  "/:id/transmision",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  transmisionController.obtenerTransmision
+);
+router.post(
+  "/:id/transmision",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  transmisionController.crearTransmision
+);
+
 router.get("/:id", partidoController.obtenerPartido);
 
 module.exports = router;

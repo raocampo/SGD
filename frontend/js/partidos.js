@@ -1441,6 +1441,9 @@ function renderPartidoCard(p) {
         <button class="btn btn-warning" onclick="editarPartido(${p.id})">
           <i class="fas fa-edit"></i> Editar
         </button>
+        <button class="btn btn-secondary" onclick="abrirModalTransmision(${p.id})" title="Gestionar transmisión en vivo">
+          <i class="fas fa-broadcast-tower"></i> Transmitir
+        </button>
         <button class="btn btn-danger" onclick="eliminarPartido(${p.id})">
           <i class="fas fa-trash"></i> Eliminar
         </button>
@@ -1492,6 +1495,9 @@ function renderTablaPartidos(partidos) {
             </button>
             <button class="btn btn-warning" onclick="editarPartido(${p.id})">
               <i class="fas fa-edit"></i> Editar
+            </button>
+            <button class="btn btn-secondary" onclick="abrirModalTransmision(${p.id})" title="Gestionar transmisión">
+              <i class="fas fa-broadcast-tower"></i> Transmitir
             </button>
             <button class="btn btn-danger" onclick="eliminarPartido(${p.id})">
               <i class="fas fa-trash"></i> Eliminar

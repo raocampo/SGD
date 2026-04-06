@@ -1,3 +1,16 @@
+## 2026-04-06 - Fase 1: Transmisión de partidos en vivo
+
+- **Migración 061** (`partido_transmisiones`): tabla con `partido_id` (FK única), `campeonato_id`, `evento_id`, `titulo`, `descripcion`, `plataforma`, `url_publica`, `embed_url`, `estado` (`programada/en_vivo/finalizada/cancelada`), `fecha_inicio_programada`, `fecha_inicio_real`, `fecha_fin_real`, `thumbnail_url`, `creado_por` + timestamps.
+- **`backend/models/PartidoTransmision.js`**: `asegurarTabla`, `obtenerPorPartido`, `crear`, `actualizar`, `iniciar`, `finalizar`, `cancelar`, `listarActivas`, `listarActivasPorCampeonato`.
+- **`backend/controllers/transmisionController.js`**: 8 funciones (obtener, crear, actualizar, iniciar, finalizar, cancelar, pública, activas-por-campeonato).
+- **`backend/routes/transmisionRoutes.js`**: PUT `/:id`, POST `/:id/iniciar|finalizar|cancelar` (auth organizador/administrador).
+- **`backend/routes/partidoRoutes.js`**: GET + POST `/:id/transmision` (auth organizador/administrador).
+- **`backend/routes/publicRoutes.js`**: GET `/partidos/:id/transmision` + GET `/campeonatos/:id/transmisiones-activas` (sin auth).
+- **`backend/server.js`**: registro `app.use('/api/transmisiones', transmisionRoutes)`.
+- **`frontend/js/transmision.js`**: modal dinámico con formulario (plataforma, URL, título, descripción, embed, fecha inicio), botones de acción por estado y mensajes de error/éxito.
+- **`frontend/js/partidos.js`**: botón `Transmitir` agregado en vista card y tabla.
+- **`frontend/js/portal.js`**: carga transmisiones activas por campeonato una sola vez; `renderPartidoJornadaPortal` muestra badge `🔴 EN VIVO` + botón `Ver transmisión`.
+
 ## 2026-04-06 - Auditoría fixture/planilla/finanzas + fondo personalizado en plantilla de jornadas
 
 - **`backend/services/auditoria.js`**: 8 nuevas constantes `ACCIONES`: `FIXTURE_GENERADO`, `FIXTURE_REGENERADO`, `FIXTURE_ELIMINADO`, `PLANILLA_GUARDADA`, `RESULTADO_REGISTRADO`, `MOVIMIENTO_FINANCIERO`, `GASTO_CREADO`, `GASTO_ELIMINADO`.

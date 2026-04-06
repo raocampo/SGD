@@ -4,6 +4,7 @@ const galeriaController = require("../controllers/galeriaController");
 const portalContenidoController = require("../controllers/portalContenidoController");
 const contactoController = require("../controllers/contactoController");
 const publicPortalController = require("../controllers/publicPortalController");
+const transmisionController = require("../controllers/transmisionController");
 
 const router = express.Router();
 
@@ -29,5 +30,9 @@ router.get("/noticias/:slug", noticiaController.obtenerPublicaPorSlug);
 router.get("/galeria", galeriaController.listarPublica);
 router.get("/portal-contenido", portalContenidoController.obtener);
 router.post("/contacto", contactoController.enviar);
+
+// 📡 Transmisiones públicas
+router.get("/partidos/:id/transmision", transmisionController.obtenerTransmisionPublica);
+router.get("/campeonatos/:id/transmisiones-activas", transmisionController.listarTransmisionesActivasPorCampeonato);
 
 module.exports = router;

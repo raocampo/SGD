@@ -73,6 +73,7 @@ const organizadorPortalRoutes = require("./routes/organizadorPortalRoutes");
 const contactoRoutes = require("./routes/contactoRoutes");
 const publicRoutes = require("./routes/publicRoutes");
 const comprobanteRoutes = require("./routes/comprobanteRoutes");
+const transmisionRoutes = require("./routes/transmisionRoutes");
 
 app.use("/api/campeonatos", campeonatoRoutes);
 app.use("/api/equipos", equipoRoutes);
@@ -96,6 +97,7 @@ app.use("/api/organizador-portal", organizadorPortalRoutes);
 app.use("/api/contacto", contactoRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/comprobantes", comprobanteRoutes);
+app.use("/api/transmisiones", transmisionRoutes);
 
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {

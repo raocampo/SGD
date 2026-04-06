@@ -1,4 +1,4 @@
-const API = window.resolveApiBaseUrl
+﻿const API = window.resolveApiBaseUrl
   ? window.resolveApiBaseUrl()
   : window.API_BASE_URL || `${window.location.origin}/api`;
 const BACKEND_BASE = API.replace(/\/api\/?$/, "");
@@ -1372,10 +1372,19 @@ function renderPartidoJornadaPortal(partido = {}) {
   const estado = obtenerEstadoPartidoPortal(partido);
   const estadoClass = estadoNormalizado.replace(/[^a-z_]/gi, "_").toLowerCase();
 
+  const transmision = window._portalTransmisionesPorPartido?.get(Number(partido.id));
+  const enVivo = transmision?.estado === "en_vivo";
+  const badgeEnVivo = enVivo
+    ? `<span class="badge-en-vivo" style="background:#e53e3e;color:#fff;font-weight:700;font-size:.8rem;padding:.2em .55em;border-radius:4px;margin-left:.4rem;vertical-align:middle;">&#128308; EN VIVO</span>`
+    : "";
+  const btnVerTransmision = enVivo && transmision?.url_publica
+    ? `<div style="text-align:center;margin-top:.5rem;"><a href="${escPortal(transmision.url_publica)}" target="_blank" rel="noopener noreferrer" class="btn btn-danger" style="font-size:.82rem;padding:.25em .7em;">&#128250; Ver transmision</a></div>`
+    : "";
+
   return `
     <article class="portal-jornada-match">
       <div class="portal-jornada-match-head">
-        <span class="portal-jornada-match-status estado-${estadoClass}">${escPortal(estado)}</span>
+        <span class="portal-jornada-match-status estado-${estadoClass}">${escPortal(estado)}</span>${badgeEnVivo}
         ${meta ? `<span class="portal-jornada-match-meta">${escPortal(meta)}</span>` : ""}
       </div>
       <div class="partido-publico">
@@ -1391,6 +1400,7 @@ function renderPartidoJornadaPortal(partido = {}) {
           <div class="equipo-nombre">${escPortal(partido.equipo_visitante_nombre || "-")}</div>
         </div>
       </div>
+      ${btnVerTransmision}
     </article>
   `;
 }
@@ -2129,6 +2139,14 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
     ]);
     const camp = campRes.campeonato || campRes;
     const eventos = eventosRes.eventos || eventosRes || [];
+
+    // Cargar transmisiones activas para este campeonato (una sola petición)
+    const txRes = await fetch(`${API}/public/campeonatos/${campeonatoId}/transmisiones-activas`)
+      .then((r) => r.json())
+      .catch(() => ({ transmisiones: [] }));
+    window._portalTransmisionesPorPartido = new Map(
+      (txRes.transmisiones || []).map((t) => [Number(t.partido_id), t])
+    );
     const eventoObjetivo = Number.parseInt(options?.eventoId || "", 10);
     const eventosFiltrados =
       Number.isFinite(eventoObjetivo) && eventoObjetivo > 0
