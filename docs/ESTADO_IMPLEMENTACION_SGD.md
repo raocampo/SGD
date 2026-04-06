@@ -1,3 +1,45 @@
+## 2026-04-05 - Estado del sistema (sesión 22)
+
+### Módulo de auditoría — completo
+- Tabla `auditoria` con índices. Panel en `admin.html` con filtros por acción/fecha y paginación.
+- Acciones auditadas: login, logout, registro, cambio de contraseña, cambio de plan/estado, activación de cuenta, cambio de precios, eliminación de campeonatos/equipos/jugadores.
+
+### Activación por pago — Fase A completa
+- Organizadores en estado `pendiente_pago` pueden subir comprobante desde el modal de login/registro.
+- Admin activa la cuenta con 1 clic desde el panel "Comprobantes de pago" en `admin.html`.
+- Migración 060 aplicada. Email de notificación al admin operativo.
+- **Fase B pendiente**: activación automática vía PayPhone webhook y PayPal capture.
+
+### Bug fixture duplicate key — resuelto
+- `Eliminatoria.js` ya incluye `numero_campeonato` en todos los INSERT a `partidos`.
+- `asegurarEsquemaSecuencia` ya es segura ante reinicios con filas NULL preexistentes.
+- Producción (Render) saneada.
+
+## 2026-04-05 - Estado de planes
+
+- El sistema sí tiene restricciones reales entre planes.
+- Planes técnicos activos hoy:
+  - `demo`
+  - `free`
+  - `base`
+  - `competencia`
+  - `premium`
+- Restricciones ya aplicadas por backend según plan:
+  - máximo de campeonatos
+  - máximo de categorías por campeonato
+  - máximo de equipos por campeonato
+  - máximo de equipos por categoría
+  - máximo de jugadores por equipo
+  - habilitación o no de carnés
+- El plan `demo` ya quedó ajustado a `1 campeonato`.
+- La capa pública/comercial quedó separada en:
+  - `free`
+  - `mensual_base`, `mensual_competencia`, `mensual_premium`
+  - `campeonato_base`, `campeonato_competencia`, `campeonato_premium`
+  - `anual_base`, `anual_competencia`, `anual_premium`
+- Estas modalidades comerciales públicas son editables desde administración, pero los límites técnicos del sistema siguen gobernados por `demo/free/base/competencia/premium`.
+- Las modalidades `campeonato` y `anual` todavía no funcionan como `plan_codigo` técnico del usuario; operan como catálogo comercial y flujo de contratación/contacto.
+
 ## 2026-03-31 - Portal público: fix de playoff y tabla pública con planillas
 
 - `frontend/js/portal.js`: se corrigió la referencia rota `formatearRondaPortal(...)` por `formatearRondaPlayoffPortal(...)`, que estaba rompiendo el detalle de torneos con playoff en el portal público.
@@ -472,6 +514,23 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - validar en producción con `Copa Ciudad de Loja -> Abierta`,
   - revisar campeonatos de otros organizadores con jornadas parciales,
   - confirmar que no haya otra vista pública heredando el rotulado viejo de `Sin jornada`.
+
+23. Planilla oficial compacta y BD local alineada:
+- La `planilla de juego` oficial quedó compactada en vista previa y PDF.
+- Ahora la impresión:
+  - reduce espacios entre secciones,
+  - centra mejor logos y nombres del marcador,
+  - usa casillas pequeñas en blanco para `P/S`, `E` y `S`,
+  - imprime solo filas con jugadores realmente cargados.
+- Se dejó lista para casos de planteles altos, apuntando a `30` filas útiles con firmas técnicas incluidas.
+- El bloque fue publicado en `commit 3783216`.
+- Además, la BD local quedó nuevamente realineada con Render usando:
+  - `database/backups/pre-render-sync-20260403-000331.custom.backup`
+  - `database/backups/render-sync-20260403-000331.custom.backup`
+- Estado:
+  - implementado,
+  - publicado,
+  - datos locales alineados con producción.
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`
 - Historial de cambios implementados: `docs/CAMBIOS_IMPLEMENTADOS.md`

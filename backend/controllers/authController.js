@@ -23,11 +23,13 @@ const {
   esPlanPublico,
   esPlanPagado,
   obtenerPlan,
+  obtenerCatalogoPreciosPublicos,
   obtenerPreciosPlanes,
   actualizarPrecioPlan,
   obtenerFormasPago,
   actualizarFormasPago,
 } = require("../services/planLimits");
+const { ACCIONES, registrar: registrarAuditoria, listar: listarAuditoria, extraerIp } = require("../services/auditoria");
 const ROLES_REGISTRO_PUBLICO = new Set(["organizador", "dirigente", "tecnico", "jugador"]);
 
 function esAdministrador(user) {
@@ -208,6 +210,16 @@ const authController = {
         }),
       ]).catch(() => {});
 
+      // Auditoría: registro de nuevo usuario
+      registrarAuditoria({
+        usuarioId: limpio.id,
+        accion: ACCIONES.REGISTRO,
+        entidad: "usuarios",
+        entidadId: limpio.id,
+        detalle: { rol: limpio.rol, plan: planCodigo, plan_estado: planEstadoInicial },
+        ip: extraerIp(req),
+      });
+
       // Plan pagado: NO crear sesión — el acceso se activa cuando el admin confirme el pago
       if (planEstadoInicial === "pendiente_pago") {
         return res.status(201).json({
@@ -269,6 +281,17 @@ const authController = {
         user_agent: req.headers["user-agent"] || null,
         ip_address: req.ip,
       });
+
+      // Auditoría: login exitoso
+      registrarAuditoria({
+        usuarioId: user.id,
+        accion: ACCIONES.LOGIN,
+        entidad: "usuarios",
+        entidadId: user.id,
+        detalle: { rol: user.rol, plan: user.plan_codigo },
+        ip: extraerIp(req),
+      });
+
       return res.json(session);
     } catch (error) {
       console.error("Error login:", error);
@@ -311,6 +334,14 @@ const authController = {
     try {
       const refreshToken = String(req.body?.refreshToken || req.body?.refresh_token || "").trim();
       await cerrarSession(refreshToken);
+      // Auditoría: logout
+      registrarAuditoria({
+        usuarioId: req.user?.id,
+        accion: ACCIONES.LOGOUT,
+        entidad: "usuarios",
+        entidadId: req.user?.id,
+        ip: extraerIp(req),
+      });
       return res.json({ ok: true, mensaje: "Sesión cerrada" });
     } catch (error) {
       console.error("Error logout:", error);
@@ -593,6 +624,26 @@ const authController = {
       }
       const actualizado = await UsuarioAuth.actualizar(usuarioId, payload);
       await sincronizarPerfilOrganizador(actualizado, payload);
+
+      // Auditoría: cambio de plan_estado o plan_codigo desde admin
+      if (esAdministrador(req.user) && (payload.plan_estado || payload.plan_codigo)) {
+        const accion = payload.plan_estado === "activo"
+          ? ACCIONES.ACTIVACION_CUENTA
+          : ACCIONES.CAMBIO_PLAN_ESTADO;
+        registrarAuditoria({
+          usuarioId: req.user.id,
+          accion,
+          entidad: "usuarios",
+          entidadId: usuarioId,
+          detalle: {
+            plan_estado: payload.plan_estado,
+            plan_codigo: payload.plan_codigo,
+            admin: req.user.email,
+          },
+          ip: extraerIp(req),
+        });
+      }
+
       return res.json({ ok: true, usuario: actualizado });
     } catch (error) {
       console.error("Error actualizando usuario:", error);
@@ -724,6 +775,15 @@ const authController = {
         pool
       );
 
+      // Auditoría: cambio de contraseña
+      registrarAuditoria({
+        usuarioId: req.user?.id,
+        accion: ACCIONES.CAMBIO_PASSWORD,
+        entidad: "usuarios",
+        entidadId: req.user?.id,
+        ip: extraerIp(req),
+      });
+
       return res.json({
         ok: true,
         mensaje: "Contraseña actualizada correctamente",
@@ -746,13 +806,18 @@ const authController = {
   async preciosPublicos(req, res) {
     try {
       const precios = await obtenerPreciosPlanes();
-      const planes = Object.entries(PLANES)
-        .filter(([codigo]) => codigo !== "demo")
-        .map(([codigo, plan]) => ({
-          codigo,
-          nombre: plan.nombre,
-          precio_mensual: precios[codigo] ?? plan.precio_mensual ?? 0,
-        }));
+      const catalogo = obtenerCatalogoPreciosPublicos();
+      const planes = Object.values(catalogo).map((item) => ({
+        codigo: item.codigo,
+        nombre: item.nombre,
+        tipo: item.tipo,
+        familia: item.familia || "general",
+        nivel: item.nivel || item.codigo,
+        registrable: item.registrable === true,
+        plan_registro: item.plan_registro || null,
+        periodicidad: item.sufijo_precio || "/ mes",
+        precio_mensual: precios[item.codigo] ?? item.precio_default ?? 0,
+      }));
       return res.json({ ok: true, planes });
     } catch (error) {
       console.error("Error preciosPublicos:", error);
@@ -766,13 +831,18 @@ const authController = {
         return res.status(403).json({ error: "Solo el administrador puede gestionar precios de planes" });
       }
       const precios = await obtenerPreciosPlanes();
-      const planes = Object.entries(PLANES)
-        .filter(([codigo]) => codigo !== "demo")
-        .map(([codigo, plan]) => ({
-          codigo,
-          nombre: plan.nombre,
-          precio_mensual: precios[codigo] ?? plan.precio_mensual ?? 0,
-        }));
+      const catalogo = obtenerCatalogoPreciosPublicos();
+      const planes = Object.values(catalogo).map((item) => ({
+        codigo: item.codigo,
+        nombre: item.nombre,
+        tipo: item.tipo,
+        familia: item.familia || "general",
+        nivel: item.nivel || item.codigo,
+        registrable: item.registrable === true,
+        plan_registro: item.plan_registro || null,
+        periodicidad: item.sufijo_precio || "/ mes",
+        precio_mensual: precios[item.codigo] ?? item.precio_default ?? 0,
+      }));
       return res.json({ ok: true, planes });
     } catch (error) {
       console.error("Error listarPreciosPlanes:", error);
@@ -794,6 +864,14 @@ const authController = {
         const result = await actualizarPrecioPlan(codigo, precio);
         actualizados.push(result);
       }
+      // Auditoría: cambio de precios
+      registrarAuditoria({
+        usuarioId: req.user?.id,
+        accion: ACCIONES.CAMBIO_PRECIO_PLAN,
+        entidad: "configuracion_sistema",
+        detalle: { actualizados },
+        ip: extraerIp(req),
+      });
       return res.json({ ok: true, actualizados });
     } catch (error) {
       console.error("Error actualizarPrecioPlanes:", error);
@@ -925,6 +1003,28 @@ const authController = {
     } catch (error) {
       console.error("Error en dashboardAdmin:", error);
       return res.status(500).json({ error: "No se pudo obtener el dashboard de administrador" });
+    }
+  },
+  // ── Auditoría ───────────────────────────────────────────────────────────────
+
+  async listarAuditoria(req, res) {
+    try {
+      if (!esAdministrador(req.user)) {
+        return res.status(403).json({ error: "Solo el administrador puede consultar la auditoría" });
+      }
+      const { usuario_id, accion, desde, hasta, limit = 100, offset = 0 } = req.query;
+      const resultado = await listarAuditoria({
+        usuarioId: usuario_id ? Number(usuario_id) : null,
+        accion:    accion || null,
+        desde:     desde  || null,
+        hasta:     hasta  || null,
+        limit:     Number(limit)  || 100,
+        offset:    Number(offset) || 0,
+      });
+      return res.json({ ok: true, ...resultado });
+    } catch (error) {
+      console.error("Error listarAuditoria:", error);
+      return res.status(500).json({ error: "No se pudo obtener el registro de auditoría" });
     }
   },
 };

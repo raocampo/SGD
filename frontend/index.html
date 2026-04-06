@@ -33,7 +33,14 @@
       <nav class="ltc-header-nav" id="ltc-nav">
         <a href="#home">Inicio</a>
         <a href="#torneos">Torneos</a>
-        <a href="#precios" id="ltc-nav-link-precios">Precios</a>
+        <div class="ltc-nav-item ltc-nav-item-submenu">
+          <a href="planes.html" id="ltc-nav-link-planes">Planes</a>
+          <div class="ltc-nav-submenu">
+            <a href="planes.html#mensual">Plan mensual</a>
+            <a href="planes.html#campeonato">Plan campeonato</a>
+            <a href="planes.html#anual">Plan anual</a>
+          </div>
+        </div>
         <a href="#galeria">Galería</a>
         <a href="#auspiciantes">Auspiciantes</a>
         <a href="#nosotros">Nosotros</a>
@@ -182,88 +189,85 @@
       <div class="container">
         <div class="ltc-section-title">
           <h2>PLANES Y PRECIOS</h2>
-          <p>Escoge el plan ideal para organizar tus campeonatos con LT&C.</p>
+          <p>Elige la modalidad que mejor se adapta a tu actividad deportiva.</p>
         </div>
-        <div class="ltc-pricing-grid">
-          <article class="ltc-pricing-card">
-            <span class="ltc-plan-chip">Free</span>
+
+        <div class="ltc-plan-summary-grid ltc-plan-summary-grid-4">
+
+          <!-- MENSUAL -->
+          <article class="ltc-pricing-card ltc-pricing-card-summary">
+            <div class="ltc-plan-card-header">
+              <span class="ltc-plan-chip">Mensual</span>
+              <span class="ltc-plan-icon">📅</span>
+            </div>
+            <h3>Plan mensual</h3>
+            <p class="ltc-plan-note">Para ligas con operación continua mes a mes.</p>
+            <p class="ltc-pricing-amount" data-price-family-min="mensual">Desde $20 <span>/ mes</span></p>
+            <ul class="ltc-plan-features">
+              <li><i class="fas fa-check"></i> Básico, Competencia y Premium</li>
+              <li><i class="fas fa-check"></i> Hasta 20 campeonatos activos</li>
+              <li><i class="fas fa-check"></i> Carnés digitales (Competencia+)</li>
+              <li><i class="fas fa-check"></i> Registro directo en la plataforma</li>
+            </ul>
+            <a href="planes.html#mensual" class="ltc-pricing-btn">Ver planes mensuales →</a>
+          </article>
+
+          <!-- CAMPEONATO -->
+          <article class="ltc-pricing-card ltc-pricing-card-commercial ltc-pricing-card-summary">
+            <div class="ltc-plan-card-header">
+              <span class="ltc-plan-chip">Por campeonato</span>
+              <span class="ltc-plan-icon">🏆</span>
+            </div>
+            <h3>Plan campeonato</h3>
+            <p class="ltc-plan-note">Pago único por torneo, sin suscripción mensual.</p>
+            <p class="ltc-pricing-amount" data-price-family-min="campeonato">Desde $200 <span>/ campeonato</span></p>
+            <ul class="ltc-plan-features">
+              <li><i class="fas fa-check"></i> Básico, Competencia y Premium</li>
+              <li><i class="fas fa-check"></i> Sin compromiso de permanencia</li>
+              <li><i class="fas fa-check"></i> Carnés digitales (Competencia+)</li>
+              <li><i class="fas fa-check"></i> Acceso completo durante el torneo</li>
+            </ul>
+            <a href="planes.html#campeonato" class="ltc-pricing-btn">Ver planes por campeonato →</a>
+          </article>
+
+          <!-- ANUAL -->
+          <article class="ltc-pricing-card ltc-pricing-card-highlight ltc-pricing-card-summary">
+            <div class="ltc-plan-card-header">
+              <span class="ltc-plan-chip ltc-plan-chip-hot">⭐ Anual</span>
+              <span class="ltc-plan-icon">🗓️</span>
+            </div>
+            <h3>Plan anual</h3>
+            <p class="ltc-plan-note">El precio más bajo del mercado, un año de gestión completa.</p>
+            <p class="ltc-pricing-amount" data-price-family-min="anual">Desde $49 <span>/ año</span></p>
+            <ul class="ltc-plan-features">
+              <li><i class="fas fa-check"></i> Básico, Competencia y Premium</li>
+              <li><i class="fas fa-check"></i> Hasta 20 campeonatos anuales</li>
+              <li><i class="fas fa-check"></i> Carnés digitales (Competencia+)</li>
+              <li><i class="fas fa-check"></i> Streaming incluido en Premium</li>
+            </ul>
+            <a href="planes.html#anual" class="ltc-pricing-btn">Ver planes anuales →</a>
+          </article>
+
+          <!-- FREE -->
+          <article class="ltc-pricing-card ltc-pricing-card-free ltc-pricing-card-summary">
+            <div class="ltc-plan-card-header">
+              <span class="ltc-plan-chip ltc-plan-chip-free">Free</span>
+              <span class="ltc-plan-icon">🆓</span>
+            </div>
             <h3>Plan Free</h3>
-            <p class="ltc-plan-note">Acceso gratuito para pruebas del sistema.</p>
-            <p class="ltc-pricing-amount" id="precio-plan-free">$0 <span>/ mensual</span></p>
-            <ul>
-              <li>Máximo 2 campeonatos</li>
-              <li>Hasta 3 categorías por campeonato</li>
-              <li>Hasta 32 equipos por categoría</li>
-              <li>Hasta 15 jugadores por equipo</li>
-              <li>Sin generación de carnés</li>
+            <p class="ltc-plan-note">Empieza sin costo, sin tarjeta de crédito.</p>
+            <p class="ltc-pricing-amount ltc-pricing-amount-free">$0 <span>/ siempre gratis</span></p>
+            <ul class="ltc-plan-features">
+              <li><i class="fas fa-check"></i> 2 campeonatos activos</li>
+              <li><i class="fas fa-check"></i> 3 categorías por campeonato</li>
+              <li><i class="fas fa-check"></i> Hasta 32 equipos por categoría</li>
+              <li><i class="fas fa-check"></i> Sin carnés digitales</li>
             </ul>
-            <a href="register.html?plan=free" class="ltc-pricing-btn" target="_blank" rel="noopener noreferrer">Probar plan free</a>
+            <a href="register.html?plan=free" class="ltc-pricing-btn ltc-pricing-btn-free" target="_blank" rel="noopener noreferrer">Empezar gratis →</a>
           </article>
 
-          <article class="ltc-pricing-card">
-            <span class="ltc-plan-chip">Base</span>
-            <h3>Plan Base</h3>
-            <p class="ltc-plan-note">Ideal para iniciar un torneo rápido.</p>
-            <p class="ltc-pricing-amount" id="precio-plan-base">$15 <span>/ mes</span></p>
-            <ul>
-              <li>Gestión de categorías y equipos</li>
-              <li>Fixture y tablas automáticas</li>
-              <li>Portal público básico</li>
-            </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="base" data-plan-nombre="Plan Base" data-precio-id="precio-plan-base">Comenzar</button>
-          </article>
-          <article class="ltc-pricing-card ltc-pricing-card-highlight">
-            <span class="ltc-plan-chip ltc-plan-chip-hot">Recomendado</span>
-            <h3>Plan Competencia</h3>
-            <p class="ltc-plan-note">El balance ideal para ligas activas.</p>
-            <p class="ltc-pricing-amount" id="precio-plan-competencia">$35 <span>/ mes</span></p>
-            <ul>
-              <li>Todo el Plan Base</li>
-              <li>Planillaje y reportes PDF</li>
-              <li>Módulo financiero y estado de cuenta</li>
-            </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="competencia" data-plan-nombre="Plan Competencia" data-precio-id="precio-plan-competencia">Elegir Plan</button>
-          </article>
-          <article class="ltc-pricing-card">
-            <span class="ltc-plan-chip">Premium</span>
-            <h3>Plan Premium</h3>
-            <p class="ltc-plan-note">Para torneos con branding y operación completa.</p>
-            <p class="ltc-pricing-amount" id="precio-plan-premium">$70 <span>/ mes</span></p>
-            <ul>
-              <li>Todo el Plan Competencia</li>
-              <li>Carnés con QR y branding completo</li>
-              <li>Soporte prioritario LT&C</li>
-            </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="premium" data-plan-nombre="Plan Premium" data-precio-id="precio-plan-premium">Solicitar</button>
-          </article>
         </div>
 
-        <!-- Modal: Formas de Pago -->
-        <div id="ltc-pago-modal" class="ltc-pago-modal-overlay" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="ltc-pago-modal-title">
-          <div class="ltc-pago-modal-box">
-            <button class="ltc-pago-modal-close" id="ltc-pago-modal-close" aria-label="Cerrar">&times;</button>
-            <div class="ltc-pago-modal-header">
-              <i class="fas fa-credit-card"></i>
-              <h2 id="ltc-pago-modal-title">Pagar plan</h2>
-            </div>
-
-            <div class="ltc-pago-plan-resumen" id="ltc-pago-plan-resumen">
-              <span class="ltc-pago-plan-nombre" id="ltc-pago-plan-nombre-txt"></span>
-              <span class="ltc-pago-plan-precio" id="ltc-pago-plan-precio-txt"></span>
-            </div>
-
-            <div id="ltc-pago-metodos-wrap">
-              <p class="ltc-pago-cargando"><i class="fas fa-spinner fa-spin"></i> Cargando formas de pago...</p>
-            </div>
-
-            <div class="ltc-pago-modal-footer">
-              <a id="ltc-pago-continuar-btn" href="#" class="ltc-pago-btn-continuar" target="_blank" rel="noopener noreferrer">
-                <i class="fas fa-user-plus"></i> Continuar al registro
-              </a>
-              <button class="ltc-pago-btn-cancelar" id="ltc-pago-cancelar-btn">Cancelar</button>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -369,181 +373,6 @@
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/portal.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const toggle = document.getElementById("ltc-nav-toggle");
-      const nav = document.getElementById("ltc-nav");
-      if (toggle && nav) {
-        toggle.addEventListener("click", () => nav.classList.toggle("open"));
-        nav.querySelectorAll("a").forEach((lnk) =>
-          lnk.addEventListener("click", () => nav.classList.remove("open"))
-        );
-      }
-
-      // Cargar precios desde el CRM
-      (async () => {
-        try {
-          const base = (window.API_BASE_URL || "").replace(/\/$/, "");
-          const url = `${base}/auth/planes/precios`;
-          const resp = await fetch(url);
-          if (!resp.ok) return;
-          const data = await resp.json();
-          if (!data?.ok || !Array.isArray(data.planes)) return;
-          const sufijos = { free: "/ mes", base: "/ mes", competencia: "/ mes", premium: "/ mes" };
-          for (const plan of data.planes) {
-            const el = document.getElementById(`precio-plan-${plan.codigo}`);
-            if (!el) continue;
-            const suf = sufijos[plan.codigo] || "/ mes";
-            el.innerHTML = `$${Number(plan.precio_mensual).toLocaleString("es-EC")} <span>${suf}</span>`;
-          }
-        } catch (e) {
-          // Si falla, los precios por defecto del HTML se mantienen
-        }
-      })();
-
-      // ── Modal Formas de Pago ───────────────────────────────────────────────
-      let _formasPagoCache = null;
-      let _planActual = { codigo: "", nombre: "", precio: "" };
-
-      async function cargarFormasPago() {
-        if (_formasPagoCache) return _formasPagoCache;
-        try {
-          const base = (window.API_BASE_URL || "").replace(/\/$/, "");
-          const resp = await fetch(`${base}/auth/formas-pago`);
-          if (!resp.ok) return null;
-          const data = await resp.json();
-          if (data?.ok) { _formasPagoCache = data.formas; return _formasPagoCache; }
-          return null;
-        } catch (e) {
-          return null;
-        }
-      }
-
-      function renderMetodosPago(formas) {
-        const wrap = document.getElementById("ltc-pago-metodos-wrap");
-        if (!wrap) return;
-
-        const tf  = formas?.transferencia;
-        const ef  = formas?.efectivo;
-        const pp  = formas?.paypal;
-        const tc  = formas?.tarjeta;
-        const instrExtra = formas?.instrucciones_extra || "";
-        const whatsapp   = formas?.whatsapp || "";
-
-        let html = '<p style="font-size:11px;color:#94a3b8;margin:0 0 10px;text-transform:uppercase;font-weight:700;letter-spacing:.5px;">Elige tu forma de pago</p>';
-
-        // ── Tarjeta de crédito / débito ───────────────────────────────────────
-        if (tc?.activo) {
-          const plat = tc.plataforma || "Payphone";
-          const isPP = /payphone/i.test(plat);
-          const iconoCls = isPP ? "fas fa-mobile-alt" : "fas fa-credit-card";
-          html += `
-          <div class="ltc-pago-metodo ltc-pago-metodo-tarjeta">
-            <div class="ltc-pago-metodo-titulo"><i class="${iconoCls}"></i> Tarjeta de crédito / débito</div>
-            <p style="font-size:12.5px;color:#475569;margin:0 0 10px;">${tc.instrucciones || ""}</p>
-            ${tc.enlace ? `<a class="ltc-pago-link-btn ltc-pago-link-btn-tarjeta" href="${tc.enlace}" target="_blank" rel="noopener noreferrer"><i class="fas fa-credit-card"></i> Pagar con ${plat}</a>` : `<p style="font-size:12px;color:#94a3b8;margin:0;">Contacta por WhatsApp para recibir el enlace de pago.</p>`}
-          </div>`;
-        }
-
-        // ── PayPal ────────────────────────────────────────────────────────────
-        if (pp?.activo) {
-          const esLink = pp.enlace && (pp.enlace.startsWith("http") || pp.enlace.startsWith("paypal.me"));
-          const href   = esLink ? (pp.enlace.startsWith("http") ? pp.enlace : `https://${pp.enlace}`) : (pp.enlace ? `mailto:${pp.enlace}` : "#");
-          html += `
-          <div class="ltc-pago-metodo ltc-pago-metodo-paypal">
-            <div class="ltc-pago-metodo-titulo"><i class="fab fa-paypal"></i> PayPal</div>
-            <p style="font-size:12.5px;color:#475569;margin:0 0 10px;">${pp.instrucciones || ""}</p>
-            ${pp.enlace ? `<a class="ltc-pago-link-btn ltc-pago-link-btn-paypal" href="${href}" target="_blank" rel="noopener noreferrer"><i class="fab fa-paypal"></i> Pagar con PayPal</a>` : `<p style="font-size:12px;color:#94a3b8;margin:0;">Consulta el correo PayPal por WhatsApp.</p>`}
-          </div>`;
-        }
-
-        // ── Transferencia bancaria ─────────────────────────────────────────────
-        if (tf?.cuenta) {
-          html += `
-          <div class="ltc-pago-metodo">
-            <div class="ltc-pago-metodo-titulo"><i class="fas fa-university"></i> Transferencia / Depósito bancario</div>
-            <div class="ltc-pago-metodo-fila"><span class="ltc-pago-metodo-lbl">Banco</span><span class="ltc-pago-metodo-val"><strong>${tf.banco || "—"}</strong></span></div>
-            <div class="ltc-pago-metodo-fila"><span class="ltc-pago-metodo-lbl">Cuenta</span><span class="ltc-pago-metodo-val"><strong>${tf.cuenta}</strong></span></div>
-            <div class="ltc-pago-metodo-fila"><span class="ltc-pago-metodo-lbl">Tipo</span><span class="ltc-pago-metodo-val">${tf.tipo || "Ahorro"}</span></div>
-            <div class="ltc-pago-metodo-fila"><span class="ltc-pago-metodo-lbl">Titular</span><span class="ltc-pago-metodo-val">${tf.titular || "—"}</span></div>
-            ${tf.cedula ? `<div class="ltc-pago-metodo-fila"><span class="ltc-pago-metodo-lbl">Cédula / RUC</span><span class="ltc-pago-metodo-val">${tf.cedula}</span></div>` : ""}
-          </div>`;
-        } else {
-          html += `
-          <div class="ltc-pago-metodo">
-            <div class="ltc-pago-metodo-titulo"><i class="fas fa-university"></i> Transferencia / Depósito bancario</div>
-            <p style="font-size:12.5px;color:#64748b;margin:0;">Consulta los datos bancarios por WhatsApp antes de realizar el pago.</p>
-          </div>`;
-        }
-
-        // ── Pago en efectivo (solo si está activo) ────────────────────────────
-        if (ef?.activo) {
-          html += `
-          <div class="ltc-pago-metodo">
-            <div class="ltc-pago-metodo-titulo"><i class="fas fa-money-bill-wave"></i> Pago en efectivo</div>
-            <p style="font-size:12.5px;color:#0f172a;margin:0;">${ef.instrucciones || "Coordina por WhatsApp."}</p>
-          </div>`;
-        }
-
-        // ── WhatsApp (siempre al final) ────────────────────────────────────────
-        if (whatsapp) {
-          const msg = encodeURIComponent(`Hola, quiero contratar el ${_planActual.nombre} (${_planActual.precio}). ¿Cuáles son los pasos para el pago?`);
-          html += `<a class="ltc-pago-whatsapp-btn" href="https://wa.me/${whatsapp}?text=${msg}" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i> Consultar o confirmar pago por WhatsApp</a>`;
-        }
-
-        // ── Instrucciones generales ───────────────────────────────────────────
-        if (instrExtra) {
-          html += `<div class="ltc-pago-instrucciones"><i class="fas fa-info-circle"></i><span>${instrExtra}</span></div>`;
-        }
-
-        wrap.innerHTML = html;
-      }
-
-      async function abrirModalPago(planCodigo, planNombre, precioTxt) {
-        _planActual = { codigo: planCodigo, nombre: planNombre, precio: precioTxt };
-
-        const modal = document.getElementById("ltc-pago-modal");
-        const titleEl = document.getElementById("ltc-pago-modal-title");
-        const nombreEl = document.getElementById("ltc-pago-plan-nombre-txt");
-        const precioEl = document.getElementById("ltc-pago-plan-precio-txt");
-        const continuarBtn = document.getElementById("ltc-pago-continuar-btn");
-        const wrap = document.getElementById("ltc-pago-metodos-wrap");
-
-        if (titleEl) titleEl.textContent = `Pagar ${planNombre}`;
-        if (nombreEl) nombreEl.textContent = planNombre;
-        if (precioEl) precioEl.textContent = precioTxt;
-        if (continuarBtn) continuarBtn.href = `register.html?plan=${planCodigo}`;
-        if (wrap) wrap.innerHTML = '<p class="ltc-pago-cargando"><i class="fas fa-spinner fa-spin"></i> Cargando formas de pago...</p>';
-
-        if (modal) { modal.style.display = "flex"; document.body.style.overflow = "hidden"; }
-
-        const formas = await cargarFormasPago();
-        renderMetodosPago(formas);
-      }
-
-      function cerrarModalPago() {
-        const modal = document.getElementById("ltc-pago-modal");
-        if (modal) { modal.style.display = "none"; document.body.style.overflow = ""; }
-      }
-
-      // Eventos de los botones de planes pagados
-      document.querySelectorAll(".ltc-pricing-btn-pago").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          const plan = btn.dataset.plan;
-          const nombre = btn.dataset.planNombre;
-          const precioEl = document.getElementById(btn.dataset.precioId);
-          const precioTxt = precioEl ? precioEl.textContent.trim() : "";
-          abrirModalPago(plan, nombre, precioTxt);
-        });
-      });
-
-      // Cerrar modal
-      document.getElementById("ltc-pago-modal-close")?.addEventListener("click", cerrarModalPago);
-      document.getElementById("ltc-pago-cancelar-btn")?.addEventListener("click", cerrarModalPago);
-      document.getElementById("ltc-pago-modal")?.addEventListener("click", function (e) {
-        if (e.target === this) cerrarModalPago();
-      });
-    });
-  </script>
+  <script src="js/public-pricing.js"></script>
 </body>
 </html>

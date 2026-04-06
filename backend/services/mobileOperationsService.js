@@ -53,6 +53,14 @@ function parseBoolean(value, fallback = false) {
   return ["1", "true", "si", "sí", "yes", "y", "x"].includes(raw);
 }
 
+function normalizeLineupRole(value) {
+  const raw = String(value ?? "").trim().toUpperCase();
+  if (!raw) return null;
+  if (raw === "PRINCIPAL") return "P";
+  if (raw === "SUPLENTE") return "S";
+  return ["P", "S"].includes(raw) ? raw : null;
+}
+
 function parseDecimalNonNegative(value, fallback = 0) {
   if (value === undefined || value === null || value === "") return fallback;
   const num = Number.parseFloat(String(value).replace(",", "."));
@@ -668,6 +676,7 @@ function countCards(tarjetas = [], equipoId, tipo) {
 
 function mapSquadPlayer(player) {
   const suspension = player?.suspension || null;
+  const registro = player?.planilla_registro || null;
   return {
     id: toId(player.id),
     teamId: toId(player.equipo_id),
@@ -675,6 +684,9 @@ function mapSquadPlayer(player) {
     nationalId: player.cedidentidad || null,
     shirtNumber: player.numero_camiseta == null ? null : toInteger(player.numero_camiseta, null),
     position: player.posicion || "",
+    lineupRole: normalizeLineupRole(registro?.convocatoria),
+    enters: registro?.entra === true,
+    exits: registro?.sale === true,
     suspension: suspension
       ? {
           suspended: suspension.suspendido === true,
@@ -834,12 +846,38 @@ async function guardarPlanillaPartido(user, partidoId, body = {}) {
         .filter((item) => Number.isFinite(item.jugador_id) && item.goles > 0)
     : [];
 
+  const buildSquadRegistration = (items = [], teamId) =>
+    (Array.isArray(items) ? items : [])
+      .map((item) => ({
+        equipo_id: teamId,
+        jugador_id: item.playerId ? Number.parseInt(item.playerId, 10) : item.id ? Number.parseInt(item.id, 10) : null,
+        numero_camiseta:
+          item.shirtNumber === undefined || item.shirtNumber === null || item.shirtNumber === ""
+            ? null
+            : toInteger(item.shirtNumber, null),
+        convocatoria: normalizeLineupRole(item.lineupRole),
+        entra: parseBoolean(item.enters, false),
+        sale: parseBoolean(item.exits, false),
+      }))
+      .filter((item) => Number.isFinite(item.jugador_id) && item.jugador_id > 0);
+
+  const registroJugadoresLocal = buildSquadRegistration(body.homeSquad, partido.equipo_local_id);
+  const registroJugadoresVisitante = buildSquadRegistration(body.awaySquad, partido.equipo_visitante_id);
+  const numerosJugadores = [...registroJugadoresLocal, ...registroJugadoresVisitante].map((item) => ({
+    equipo_id: item.equipo_id,
+    jugador_id: item.jugador_id,
+    numero_camiseta: item.numero_camiseta,
+  }));
+
   const payloadPlanilla = {
     resultado_local: homeScore,
     resultado_visitante: awayScore,
     estado: "finalizado",
     faltas_local_total: Math.max(0, toInteger(body.homeTeamFouls ?? body.fouls?.homeTeamFouls, 0)),
     faltas_visitante_total: Math.max(0, toInteger(body.awayTeamFouls ?? body.fouls?.awayTeamFouls, 0)),
+    numeros_jugadores: numerosJugadores,
+    registro_jugadores_local: registroJugadoresLocal,
+    registro_jugadores_visitante: registroJugadoresVisitante,
     goles,
     tarjetas,
     pagos: {

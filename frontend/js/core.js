@@ -35,7 +35,7 @@
   const ROUTE_CONTEXT_PREFIX = "sgd_route_ctx:";
   const BRAND_FAVICON_SVG = "favicon.svg";
   const BRAND_FAVICON_FALLBACK = "assets/ltc/Logo.jpeg";
-  const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html", "register.html", "blog.html", "noticia.html"]);
+  const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html", "register.html", "blog.html", "noticia.html", "planes.html"]);
   const CMS_PAGES = new Set([
     "portal-cms.html",
     "noticias.html",

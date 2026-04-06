@@ -128,7 +128,11 @@ class UsuarioAuth {
 
         ALTER TABLE usuarios
         ADD CONSTRAINT usuarios_plan_codigo_check
-        CHECK (plan_codigo IN ('demo', 'free', 'base', 'competencia', 'premium'));
+        CHECK (plan_codigo IN (
+          'demo', 'free', 'base', 'competencia', 'premium',
+          'campeonato_base', 'campeonato_competencia', 'campeonato_premium',
+          'anual_base', 'anual_competencia', 'anual_premium'
+        ));
       EXCEPTION WHEN duplicate_object THEN
         NULL;
       END $$;

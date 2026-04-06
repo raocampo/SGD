@@ -141,23 +141,45 @@
       return;
     }
 
-    wrap.innerHTML = `
-      <div class="dash-precios-grid" id="dash-admin-precios-inputs">
-        ${planes.map((p) => `
-          <div class="dash-precio-item">
-            <span class="precio-badge badge-plan-${p.codigo}">${p.nombre}</span>
-            <label>Precio mensual (USD)</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value="${p.precio_mensual}"
-              data-plan-codigo="${p.codigo}"
-              id="precio-plan-${p.codigo}"
-            />
+    const ordenFamilias = ["pruebas", "mensual", "campeonato", "anual"];
+    const titulosFamilia = {
+      pruebas: "Pruebas y acceso gratuito",
+      mensual: "Planes mensuales",
+      campeonato: "Planes por campeonato",
+      anual: "Planes anuales",
+    };
+
+    const grupos = planes.reduce((acc, p) => {
+      const familia = String(p.familia || "general").toLowerCase();
+      if (!acc[familia]) acc[familia] = [];
+      acc[familia].push(p);
+      return acc;
+    }, {});
+
+    wrap.innerHTML = ordenFamilias
+      .filter((familia) => Array.isArray(grupos[familia]) && grupos[familia].length)
+      .map((familia) => `
+        <section class="dash-precios-group">
+          <div class="dash-precios-group-title">${titulosFamilia[familia] || familia}</div>
+          <div class="dash-precios-grid" id="dash-admin-precios-inputs-${familia}">
+            ${grupos[familia].map((p) => `
+              <div class="dash-precio-item">
+                <span class="precio-badge precio-badge-familia-${familia} precio-badge-nivel-${String(p.nivel || "").toLowerCase()}">${p.nombre}</span>
+                <label>Precio ${p.periodicidad || "(USD)"}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="${p.precio_mensual}"
+                  data-plan-codigo="${p.codigo}"
+                  id="precio-plan-${p.codigo}"
+                />
+              </div>
+            `).join("")}
           </div>
-        `).join("")}
-      </div>`;
+        </section>
+      `)
+      .join("");
 
     if (btn) btn.style.display = "";
   }
@@ -381,6 +403,9 @@
       if (btn) btn.addEventListener("click", guardarPrecios);
       const btnPago = document.getElementById("dash-admin-pago-guardar");
       if (btnPago) btnPago.addEventListener("click", guardarFormasPago);
+
+      initAuditoria();
+      initComprobantes();
     } catch (err) {
       console.error("dashboardAdmin:", err);
       const loading = document.getElementById("dash-admin-loading");
@@ -467,6 +492,208 @@
     }
     cargarDashboard();
   }
+
+  // ── AUDITORÍA ──────────────────────────────────────────────────────────────
+
+  const _audit = { offset: 0, limit: 50, total: 0 };
+
+  function badgeAuditoria(accion) {
+    const mapa = {
+      login:                  ["badge-audit-login",       "Login"],
+      logout:                 ["badge-audit-logout",      "Logout"],
+      registro:               ["badge-audit-registro",    "Registro"],
+      cambio_password:        ["badge-audit-password",    "Cambio contraseña"],
+      cambio_plan_estado:     ["badge-audit-plan",        "Cambio plan/estado"],
+      activacion_cuenta:      ["badge-audit-activacion",  "Activación cuenta"],
+      cambio_precio_plan:     ["badge-audit-precio",      "Cambio precio"],
+      eliminacion_campeonato: ["badge-audit-eliminacion", "Eliminó campeonato"],
+      eliminacion_equipo:     ["badge-audit-eliminacion", "Eliminó equipo"],
+      eliminacion_jugador:    ["badge-audit-eliminacion", "Eliminó jugador"],
+    };
+    const [cls, label] = mapa[accion] || ["badge-audit-otro", accion];
+    return `<span class="badge-audit ${cls}">${label}</span>`;
+  }
+
+  function formatFechaAudit(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" }) +
+           " " + d.toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  async function cargarAuditoria(resetOffset = false) {
+    if (resetOffset) _audit.offset = 0;
+    const accion = document.getElementById("dash-audit-accion")?.value || "";
+    const desde  = document.getElementById("dash-audit-desde")?.value  || "";
+    const hasta  = document.getElementById("dash-audit-hasta")?.value  || "";
+
+    const params = new URLSearchParams({ limit: _audit.limit, offset: _audit.offset });
+    if (accion) params.set("accion", accion);
+    if (desde)  params.set("desde",  desde + "T00:00:00");
+    if (hasta)  params.set("hasta",  hasta + "T23:59:59");
+
+    const tbody = document.getElementById("dash-audit-tbody");
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="dash-empty-msg">Cargando...</td></tr>`;
+
+    try {
+      const data = await window.ApiClient.get(`/auth/admin/auditoria?${params.toString()}`);
+      _audit.total = data.total || 0;
+
+      const totalEl = document.getElementById("dash-audit-total");
+      if (totalEl) totalEl.textContent = `${_audit.total} registro${_audit.total !== 1 ? "s" : ""}`;
+
+      const prev = document.getElementById("dash-audit-prev");
+      const next = document.getElementById("dash-audit-next");
+      if (prev) prev.disabled = _audit.offset === 0;
+      if (next) next.disabled = (_audit.offset + _audit.limit) >= _audit.total;
+
+      if (!data.registros?.length) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="dash-empty-msg">Sin registros de auditoría</td></tr>`;
+        return;
+      }
+
+      if (tbody) {
+        tbody.innerHTML = data.registros.map((r) => {
+          const detalleRaw = r.detalle_json ? JSON.stringify(r.detalle_json).replace(/"/g, "") : "—";
+          const detalleCorto = detalleRaw.length > 60 ? detalleRaw.slice(0, 57) + "…" : detalleRaw;
+          return `
+            <tr>
+              <td style="white-space:nowrap;font-size:11.5px;">${formatFechaAudit(r.created_at)}</td>
+              <td>
+                <div style="font-size:12px;font-weight:700;color:#2c3e50;">${r.usuario_nombre || "Sistema"}</div>
+                <div style="font-size:10.5px;color:#7f8c8d;">${r.usuario_email || "—"}</div>
+              </td>
+              <td style="font-size:11.5px;color:#566573;text-transform:capitalize;">${r.usuario_rol || "—"}</td>
+              <td>${badgeAuditoria(r.accion)}</td>
+              <td style="font-size:11.5px;color:#566573;">${r.entidad || "—"}${r.entidad_id ? " #" + r.entidad_id : ""}</td>
+              <td style="font-size:11.5px;color:#566573;">${r.ip || "—"}</td>
+              <td><span class="dash-audit-detalle" title="${detalleRaw}">${detalleCorto}</span></td>
+            </tr>`;
+        }).join("");
+      }
+    } catch (err) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="dash-empty-msg">Error cargando auditoría</td></tr>`;
+      console.error("Error auditoría:", err.message);
+    }
+  }
+
+  function initAuditoria() {
+    document.getElementById("dash-audit-buscar")?.addEventListener("click", () => cargarAuditoria(true));
+    document.getElementById("dash-audit-reset")?.addEventListener("click", () => {
+      document.getElementById("dash-audit-accion").value = "";
+      document.getElementById("dash-audit-desde").value  = "";
+      document.getElementById("dash-audit-hasta").value  = "";
+      cargarAuditoria(true);
+    });
+    document.getElementById("dash-audit-prev")?.addEventListener("click", () => {
+      _audit.offset = Math.max(0, _audit.offset - _audit.limit);
+      cargarAuditoria();
+    });
+    document.getElementById("dash-audit-next")?.addEventListener("click", () => {
+      _audit.offset += _audit.limit;
+      cargarAuditoria();
+    });
+    cargarAuditoria(true);
+  }
+
+  // ── COMPROBANTES ──────────────────────────────────────────────────────────
+
+  async function cargarComprobantes() {
+    const estado = document.getElementById("dash-comp-estado")?.value ?? "pendiente";
+    const tbody  = document.getElementById("dash-comp-tbody");
+    const msg    = document.getElementById("dash-comp-msg");
+
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="dash-empty-msg">Cargando...</td></tr>`;
+    if (msg) msg.textContent = "";
+
+    try {
+      const params = estado ? `?estado=${encodeURIComponent(estado)}` : "";
+      const data = await window.ApiClient.get(`/comprobantes/admin${params}`);
+      const lista = data?.comprobantes || [];
+
+      if (!lista.length) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="dash-empty-msg">No hay comprobantes${estado === "pendiente" ? " pendientes" : ""}.</td></tr>`;
+        return;
+      }
+
+      const badgeEstado = (e) => {
+        if (e === "aprobado")  return `<span class="dash-comp-badge-apro">Aprobado</span>`;
+        if (e === "rechazado") return `<span class="dash-comp-badge-rech">Rechazado</span>`;
+        return `<span class="dash-comp-badge-pend">Pendiente</span>`;
+      };
+
+      if (tbody) {
+        tbody.innerHTML = lista.map((c) => {
+          const fecha = formatearFecha(c.created_at);
+          const planLabel = PLAN_LABEL[c.plan_codigo] || c.plan_codigo || "—";
+          const archivoUrl = c.archivo_url
+            ? `<a class="btn-comp-ver" href="${c.archivo_url}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> Ver</a>`
+            : "—";
+          const acciones = c.estado === "pendiente"
+            ? `<button class="btn-comp-activar"  data-id="${c.id}"><i class="fas fa-check"></i> Activar</button>
+               <button class="btn-comp-rechazar" data-id="${c.id}"><i class="fas fa-times"></i> Rechazar</button>`
+            : `<span style="font-size:11px;color:#94a3b8;">—</span>`;
+          return `
+            <tr>
+              <td style="font-size:11.5px;white-space:nowrap;">${fecha}</td>
+              <td>
+                <div style="font-size:12px;font-weight:700;color:#2c3e50;">${c.usuario_nombre || "—"}</div>
+                <div style="font-size:10.5px;color:#7f8c8d;">${c.usuario_email || ""}</div>
+              </td>
+              <td><span class="badge-plan-min badge-plan-${c.plan_codigo || 'free'}">${planLabel}</span></td>
+              <td>${badgeEstado(c.estado)}</td>
+              <td class="text-center">${archivoUrl}</td>
+              <td class="text-center">${acciones}</td>
+            </tr>`;
+        }).join("");
+
+        tbody.querySelectorAll(".btn-comp-activar").forEach((btn) => {
+          btn.addEventListener("click", () => activarComprobante(Number(btn.dataset.id)));
+        });
+        tbody.querySelectorAll(".btn-comp-rechazar").forEach((btn) => {
+          btn.addEventListener("click", () => rechazarComprobante(Number(btn.dataset.id)));
+        });
+      }
+    } catch (err) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="dash-empty-msg">Error cargando comprobantes</td></tr>`;
+      console.error("Error comprobantes:", err.message);
+    }
+  }
+
+  async function activarComprobante(id) {
+    const msg = document.getElementById("dash-comp-msg");
+    if (!confirm("¿Activar la cuenta de este organizador?")) return;
+    try {
+      if (msg) { msg.style.color = "#64748b"; msg.textContent = "Activando..."; }
+      await window.ApiClient.put(`/comprobantes/admin/${id}/activar`, {});
+      if (msg) { msg.style.color = "#22c55e"; msg.textContent = "Cuenta activada correctamente."; }
+      setTimeout(() => cargarComprobantes(), 1200);
+    } catch (err) {
+      if (msg) { msg.style.color = "#ef4444"; msg.textContent = err.message || "Error al activar"; }
+    }
+  }
+
+  async function rechazarComprobante(id) {
+    const msg = document.getElementById("dash-comp-msg");
+    const nota = window.prompt("Motivo del rechazo (opcional):") ?? "";
+    if (nota === null) return; // canceló el prompt
+    try {
+      if (msg) { msg.style.color = "#64748b"; msg.textContent = "Rechazando..."; }
+      await window.ApiClient.put(`/comprobantes/admin/${id}/rechazar`, { nota });
+      if (msg) { msg.style.color = "#f59e0b"; msg.textContent = "Comprobante rechazado."; }
+      setTimeout(() => cargarComprobantes(), 1200);
+    } catch (err) {
+      if (msg) { msg.style.color = "#ef4444"; msg.textContent = err.message || "Error al rechazar"; }
+    }
+  }
+
+  function initComprobantes() {
+    document.getElementById("dash-comp-buscar")?.addEventListener("click", cargarComprobantes);
+    document.getElementById("dash-comp-estado")?.addEventListener("change", cargarComprobantes);
+    cargarComprobantes();
+  }
+
+  // ── INIT ───────────────────────────────────────────────────────────────────
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);

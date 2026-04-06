@@ -3173,6 +3173,99 @@ body.modal-open {
   font-weight: 700;
 }
 
+.planilla-captura-table .planilla-col-item,
+.planilla-captura-table .planilla-col-numero,
+.planilla-captura-table .planilla-col-convocatoria,
+.planilla-captura-table .planilla-col-goles,
+.planilla-captura-table .planilla-col-ta,
+.planilla-captura-table .planilla-col-tr,
+.planilla-captura-table .planilla-col-entra,
+.planilla-captura-table .planilla-col-sale,
+.planilla-preview-table .planilla-col-item,
+.planilla-preview-table .planilla-col-numero,
+.planilla-preview-table .planilla-col-convocatoria,
+.planilla-preview-table .planilla-col-goles,
+.planilla-preview-table .planilla-col-ta,
+.planilla-preview-table .planilla-col-tr,
+.planilla-preview-table .planilla-col-entra,
+.planilla-preview-table .planilla-col-sale,
+.planilla-oficial-table .planilla-col-item,
+.planilla-oficial-table .planilla-col-numero,
+.planilla-oficial-table .planilla-col-convocatoria,
+.planilla-oficial-table .planilla-col-goles,
+.planilla-oficial-table .planilla-col-ta,
+.planilla-oficial-table .planilla-col-tr,
+.planilla-oficial-table .planilla-col-entra,
+.planilla-oficial-table .planilla-col-sale {
+  text-align: center;
+}
+
+.planilla-captura-table .planilla-col-item,
+.planilla-captura-table .planilla-col-numero,
+.planilla-captura-table .planilla-col-convocatoria,
+.planilla-captura-table .planilla-col-goles,
+.planilla-captura-table .planilla-col-ta,
+.planilla-captura-table .planilla-col-tr,
+.planilla-captura-table .planilla-col-entra,
+.planilla-captura-table .planilla-col-sale {
+  width: 3rem;
+}
+
+.planilla-captura-table .planilla-col-jugador,
+.planilla-preview-table .planilla-col-jugador,
+.planilla-oficial-table .planilla-col-jugador {
+  min-width: 11rem;
+}
+
+.planilla-captura-table .planilla-col-convocatoria select {
+  width: 3.1rem;
+  min-width: 3.1rem;
+  text-align: center;
+  padding: 0.18rem 0.2rem;
+  border-radius: 6px;
+}
+
+.planilla-captura-table .planilla-col-entra input,
+.planilla-captura-table .planilla-col-sale input {
+  width: 1rem;
+  min-width: 1rem;
+  height: 1rem;
+}
+
+.planilla-preview-table .planilla-col-convocatoria,
+.planilla-preview-table .planilla-col-entra,
+.planilla-preview-table .planilla-col-sale {
+  width: 2.35rem;
+}
+
+.planilla-oficial-table .planilla-col-convocatoria,
+.planilla-oficial-table .planilla-col-entra,
+.planilla-oficial-table .planilla-col-sale {
+  width: 1.45rem;
+}
+
+.planilla-cell-blank,
+.planilla-cell-checkblank,
+.planilla-cell-box {
+  display: inline-block;
+  width: 0.78rem;
+  height: 0.78rem;
+  border: 1px solid #94a3b8;
+  border-radius: 2px;
+  background: #ffffff;
+  vertical-align: middle;
+}
+
+.planilla-cell-blank,
+.planilla-cell-box {
+  width: 1rem;
+}
+
+.planilla-cell-box.is-mini {
+  width: 0.66rem;
+  height: 0.66rem;
+}
+
 .planilla-captura-table .planilla-player-row.is-suspended input {
   background: #fee2e2;
   border-color: #fca5a5;
@@ -3517,7 +3610,7 @@ body.modal-open {
   color: #0f172a;
   border: 1px solid #cfd8e3;
   border-radius: 10px;
-  padding: 0.78rem;
+  padding: 0.58rem;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 }
 
@@ -3526,7 +3619,7 @@ body.modal-open {
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: 0.45rem;
-  margin-bottom: 0.62rem;
+  margin-bottom: 0.42rem;
 }
 
 .planilla-oficial-head-text {
@@ -3534,8 +3627,8 @@ body.modal-open {
 }
 
 .planilla-oficial-head-logo-box {
-  width: 56px;
-  min-width: 56px;
+  width: 50px;
+  min-width: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3551,16 +3644,16 @@ body.modal-open {
 
 .planilla-oficial-org-logo {
   display: inline-block;
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
   margin: 0;
 }
 
 .planilla-oficial-head h4 {
-  margin: 0.12rem 0;
+  margin: 0.08rem 0;
   letter-spacing: 0.08em;
-  font-size: 1.08rem;
+  font-size: 0.98rem;
 }
 
 .planilla-oficial-org,
@@ -3568,17 +3661,17 @@ body.modal-open {
   margin: 0.06rem 0;
   font-weight: 700;
   letter-spacing: 0.03em;
-  font-size: 0.84rem;
+  font-size: 0.76rem;
 }
 
 .planilla-oficial-meta {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
-  gap: 0.35rem 0.62rem;
+  grid-template-columns: repeat(4, minmax(132px, 1fr));
+  gap: 0.2rem 0.42rem;
   border: 1px solid #d5deea;
   border-radius: 8px;
-  padding: 0.52rem 0.65rem;
-  font-size: 0.84rem;
+  padding: 0.32rem 0.45rem;
+  font-size: 0.74rem;
 }
 
 .planilla-oficial-meta strong {
@@ -3598,9 +3691,9 @@ body.modal-open {
 .planilla-oficial-score {
   display: grid;
   grid-template-columns: 1fr auto auto auto 1fr;
-  gap: 0.5rem;
+  gap: 0.3rem;
   align-items: center;
-  margin: 0.65rem 0;
+  margin: 0.38rem 0 0.44rem;
 }
 
 .planilla-oficial-score .team {
@@ -3608,24 +3701,29 @@ body.modal-open {
   text-align: center;
   line-height: 1.2;
   text-wrap: balance;
-  font-size: 0.95rem;
+  font-size: 0.84rem;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.22rem;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .planilla-oficial-score .team.is-local {
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .planilla-oficial-score .team.is-visitante {
-  justify-content: flex-end;
+  justify-content: center;
+}
+
+.planilla-oficial-score .team span {
+  text-align: center;
 }
 
 .planilla-oficial-team-logo {
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
   border-radius: 50%;
   border: 1px solid #cbd5e1;
@@ -3634,36 +3732,36 @@ body.modal-open {
 }
 
 .planilla-oficial-score .result {
-  min-width: 2.4rem;
+  min-width: 1.75rem;
   text-align: center;
   border: 1px solid #94a3b8;
   border-radius: 6px;
-  padding: 0.2rem 0.48rem;
-  font-size: 1.04rem;
+  padding: 0.1rem 0.26rem;
+  font-size: 0.9rem;
   font-weight: 800;
 }
 
 .planilla-oficial-score .sep {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 900;
 }
 
 .planilla-oficial-faltas {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
-  margin-bottom: 0.55rem;
+  gap: 0.4rem;
+  margin-bottom: 0.38rem;
 }
 
 .planilla-oficial-faltas-team {
   border: 1px solid #d5deea;
   border-radius: 8px;
-  padding: 0.4rem 0.5rem;
+  padding: 0.28rem 0.36rem;
 }
 
 .planilla-oficial-faltas-team p {
-  margin: 0 0 0.3rem;
-  font-size: 0.75rem;
+  margin: 0 0 0.18rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -3671,12 +3769,12 @@ body.modal-open {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.55rem;
-  margin-bottom: 0.22rem;
+  gap: 0.4rem;
+  margin-bottom: 0.14rem;
 }
 
 .planilla-oficial-faltas-col strong {
-  font-size: 0.72rem;
+  font-size: 0.64rem;
 }
 
 .planilla-oficial-faltas-grid {
@@ -3686,14 +3784,14 @@ body.modal-open {
 }
 
 .planilla-oficial-faltas-grid span {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 0.85rem;
+  height: 0.85rem;
   border: 1px solid #c7d3e2;
   border-radius: 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.63rem;
+  font-size: 0.56rem;
   color: #334155;
   background: #fff;
 }
@@ -3708,7 +3806,7 @@ body.modal-open {
 .planilla-oficial-teams {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
+  gap: 0.42rem;
 }
 
 .planilla-oficial-team {
@@ -3718,23 +3816,23 @@ body.modal-open {
 }
 
 .planilla-oficial-team-title {
-  padding: 0.36rem 0.54rem;
+  padding: 0.25rem 0.4rem;
   border-bottom: 1px solid #d5deea;
   font-weight: 800;
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   background: #f8fbff;
 }
 
 .planilla-oficial-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.76rem;
+  font-size: 0.66rem;
 }
 
 .planilla-oficial-table th,
 .planilla-oficial-table td {
   border-bottom: 1px solid #e1e8f2;
-  padding: 0.24rem 0.28rem;
+  padding: 0.12rem 0.16rem;
 }
 
 .planilla-oficial-table th {
@@ -3776,24 +3874,35 @@ body.modal-open {
 
 .planilla-oficial-team-notes {
   border-top: 1px solid #d5deea;
-  padding: 0.35rem 0.5rem 0.42rem;
+  padding: 0.22rem 0.34rem 0.26rem;
   display: grid;
-  gap: 0.15rem;
-  font-size: 0.78rem;
+  gap: 0.08rem;
+  font-size: 0.68rem;
 }
 
 .planilla-oficial-team-notes p {
   margin: 0;
 }
 
+.planilla-oficial-signature-row {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
 .planilla-oficial-signature-line {
-  margin-top: 0.2rem;
+  margin-top: 0;
+  flex: 1 1 auto;
+  min-width: 4.5rem;
+  display: inline-block;
+  border-bottom: 1px solid #94a3b8;
+  min-height: 0.55rem;
 }
 
 .planilla-oficial-footer {
-  margin-top: 0.62rem;
+  margin-top: 0.36rem;
   display: grid;
-  gap: 0.55rem;
+  gap: 0.3rem;
 }
 
 .planilla-oficial-observ-page {
@@ -3816,8 +3925,8 @@ body.modal-open {
 .planilla-oficial-pagos {
   border: 1px solid #d5deea;
   border-radius: 8px;
-  padding: 0.45rem 0.55rem;
-  font-size: 0.8rem;
+  padding: 0.4rem 0.48rem;
+  font-size: 0.74rem;
 }
 
 .planilla-oficial-observ p {
@@ -3829,6 +3938,124 @@ body.modal-open {
 .planilla-oficial-pagos {
   display: grid;
   gap: 0.25rem;
+}
+
+.planilla-oficial-sheet.is-compact {
+  padding: 0.42rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-head {
+  margin-bottom: 0.26rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-head h4 {
+  font-size: 0.9rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-org,
+.planilla-oficial-sheet.is-compact .planilla-oficial-type {
+  font-size: 0.68rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-meta {
+  grid-template-columns: repeat(4, minmax(116px, 1fr));
+  gap: 0.16rem 0.34rem;
+  padding: 0.22rem 0.32rem;
+  font-size: 0.66rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-score {
+  gap: 0.22rem;
+  margin: 0.28rem 0 0.32rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-score .team {
+  font-size: 0.72rem;
+  gap: 0.16rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-team-logo {
+  width: 16px;
+  height: 16px;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-score .result {
+  min-width: 1.45rem;
+  font-size: 0.8rem;
+  padding: 0.05rem 0.2rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-score .sep {
+  font-size: 0.82rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-faltas {
+  gap: 0.3rem;
+  margin-bottom: 0.28rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-faltas-team {
+  padding: 0.2rem 0.28rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-faltas-team p,
+.planilla-oficial-sheet.is-compact .planilla-oficial-faltas-col strong {
+  font-size: 0.58rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-faltas-grid span {
+  width: 0.7rem;
+  height: 0.7rem;
+  font-size: 0.5rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-teams {
+  gap: 0.32rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-team-title {
+  padding: 0.18rem 0.28rem;
+  font-size: 0.62rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-table {
+  font-size: 0.6rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-table th,
+.planilla-oficial-sheet.is-compact .planilla-oficial-table td {
+  padding: 0.08rem 0.12rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-team-notes {
+  padding: 0.16rem 0.24rem 0.2rem;
+  font-size: 0.6rem;
+}
+
+.planilla-oficial-sheet.is-compact .planilla-oficial-signature-line {
+  min-width: 3.5rem;
+}
+
+.planilla-oficial-sheet.is-ultra-compact .planilla-oficial-meta {
+  grid-template-columns: repeat(4, minmax(104px, 1fr));
+  font-size: 0.62rem;
+}
+
+.planilla-oficial-sheet.is-ultra-compact .planilla-oficial-score .team {
+  font-size: 0.68rem;
+}
+
+.planilla-oficial-sheet.is-ultra-compact .planilla-oficial-table {
+  font-size: 0.56rem;
+}
+
+.planilla-oficial-sheet.is-ultra-compact .planilla-oficial-table th,
+.planilla-oficial-sheet.is-ultra-compact .planilla-oficial-table td {
+  padding: 0.06rem 0.1rem;
+}
+
+.planilla-oficial-sheet.is-ultra-compact .planilla-oficial-team-notes {
+  font-size: 0.56rem;
 }
 
 .planilla-oficial-pagos div {
@@ -8428,4 +8655,3 @@ body.page-finanzas {
     justify-self: center;
   }
 }
-

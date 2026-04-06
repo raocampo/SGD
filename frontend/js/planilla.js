@@ -216,8 +216,131 @@ function actualizarNumeroJugadorEnDataPlanilla(jugadorIdRaw, numeroCamisetaRaw) 
     const jugador = lista.find((item) => Number.parseInt(item?.id, 10) === jugadorId);
     if (jugador) {
       jugador.numero_camiseta = numeroCamiseta || null;
+      const registroActual = jugador.planilla_registro && typeof jugador.planilla_registro === "object"
+        ? jugador.planilla_registro
+        : {};
+      jugador.planilla_registro = {
+        numero_camiseta: numeroCamiseta || null,
+        convocatoria:
+          normalizarConvocatoriaPlanilla(registroActual.convocatoria || "", { permitirVacio: true }) || null,
+        entra: registroActual.entra === true,
+        sale: registroActual.sale === true,
+      };
     }
   });
+}
+
+function normalizarConvocatoriaPlanilla(valor, { permitirVacio = true } = {}) {
+  const raw = String(valor ?? "")
+    .trim()
+    .toUpperCase();
+  if (!raw) return permitirVacio ? "" : null;
+  const normalizada = raw === "PRINCIPAL" ? "P" : raw === "SUPLENTE" ? "S" : raw;
+  if (!["P", "S"].includes(normalizada)) {
+    return permitirVacio ? "" : null;
+  }
+  return normalizada;
+}
+
+function leerBooleanoRegistroPlanilla(valor) {
+  if (typeof valor === "boolean") return valor;
+  const raw = String(valor ?? "")
+    .trim()
+    .toLowerCase();
+  if (!raw) return false;
+  return ["1", "true", "si", "sí", "yes", "y", "x", "on"].includes(raw);
+}
+
+function obtenerRegistroPlanillaJugador(jugador = {}) {
+  const registro = jugador?.planilla_registro && typeof jugador.planilla_registro === "object"
+    ? jugador.planilla_registro
+    : {};
+  return {
+    numero_camiseta:
+      normalizarNumeroCamisetaPlanilla(
+        registro.numero_camiseta ?? jugador?.numero_camiseta ?? "",
+        { permitirVacio: true }
+      ) || "",
+    convocatoria:
+      normalizarConvocatoriaPlanilla(
+        registro.convocatoria ?? registro.lineupRole ?? "",
+        { permitirVacio: true }
+      ) || "",
+    entra: esPlanillaFutbol11() ? leerBooleanoRegistroPlanilla(registro.entra ?? registro.enters) : false,
+    sale: esPlanillaFutbol11() ? leerBooleanoRegistroPlanilla(registro.sale ?? registro.exits) : false,
+  };
+}
+
+function actualizarRegistroJugadorEnDataPlanilla(jugadorIdRaw, equipoIdRaw, cambios = {}) {
+  const jugadorId = Number.parseInt(jugadorIdRaw, 10);
+  const equipoId = Number.parseInt(equipoIdRaw, 10);
+  if (!Number.isFinite(jugadorId) || jugadorId <= 0 || !dataPlanilla) return;
+
+  ["plantel_local", "plantel_visitante"].forEach((key) => {
+    const lista = Array.isArray(dataPlanilla?.[key]) ? dataPlanilla[key] : [];
+    const jugador = lista.find((item) => Number.parseInt(item?.id, 10) === jugadorId);
+    if (!jugador) return;
+    const jugadorEquipoId = Number.parseInt(jugador?.equipo_id, 10);
+    if (Number.isFinite(equipoId) && equipoId > 0 && jugadorEquipoId !== equipoId) return;
+
+    const actual = obtenerRegistroPlanillaJugador(jugador);
+    const siguienteNumero = Object.prototype.hasOwnProperty.call(cambios, "numero_camiseta")
+      ? normalizarNumeroCamisetaPlanilla(cambios.numero_camiseta, { permitirVacio: true }) || ""
+      : actual.numero_camiseta;
+    const siguienteConvocatoria = Object.prototype.hasOwnProperty.call(cambios, "convocatoria")
+      ? normalizarConvocatoriaPlanilla(cambios.convocatoria, { permitirVacio: true }) || ""
+      : actual.convocatoria;
+    const siguienteEntra = Object.prototype.hasOwnProperty.call(cambios, "entra")
+      ? leerBooleanoRegistroPlanilla(cambios.entra)
+      : actual.entra;
+    const siguienteSale = Object.prototype.hasOwnProperty.call(cambios, "sale")
+      ? leerBooleanoRegistroPlanilla(cambios.sale)
+      : actual.sale;
+
+    jugador.numero_camiseta = siguienteNumero || null;
+    jugador.planilla_registro = {
+      numero_camiseta: siguienteNumero || null,
+      convocatoria: siguienteConvocatoria || null,
+      entra: esPlanillaFutbol11() ? siguienteEntra : false,
+      sale: esPlanillaFutbol11() ? siguienteSale : false,
+    };
+  });
+}
+
+function aplicarRegistroPlanillaAPlanteles() {
+  if (!dataPlanilla) return;
+  const registroLocal = Array.isArray(dataPlanilla?.planilla?.registro_jugadores_local)
+    ? dataPlanilla.planilla.registro_jugadores_local
+    : [];
+  const registroVisitante = Array.isArray(dataPlanilla?.planilla?.registro_jugadores_visitante)
+    ? dataPlanilla.planilla.registro_jugadores_visitante
+    : [];
+  const mapaLocal = new Map(registroLocal.map((item) => [Number.parseInt(item?.jugador_id, 10), item]));
+  const mapaVisitante = new Map(registroVisitante.map((item) => [Number.parseInt(item?.jugador_id, 10), item]));
+
+  const aplicar = (key, mapa) => {
+    const lista = Array.isArray(dataPlanilla?.[key]) ? dataPlanilla[key] : [];
+    dataPlanilla[key] = lista.map((jugador) => {
+      const item = mapa.get(Number.parseInt(jugador?.id, 10)) || jugador?.planilla_registro || {};
+      const numero = normalizarNumeroCamisetaPlanilla(
+        item?.numero_camiseta ?? jugador?.numero_camiseta ?? "",
+        { permitirVacio: true }
+      );
+      return {
+        ...jugador,
+        numero_camiseta: numero || null,
+        planilla_registro: {
+          numero_camiseta: numero || null,
+          convocatoria: normalizarConvocatoriaPlanilla(item?.convocatoria, { permitirVacio: true }) || null,
+          entra: esPlanillaFutbol11() ? leerBooleanoRegistroPlanilla(item?.entra) : false,
+          sale: esPlanillaFutbol11() ? leerBooleanoRegistroPlanilla(item?.sale) : false,
+        },
+      };
+    });
+  };
+
+  aplicar("plantel_local", mapaLocal);
+  aplicar("plantel_visitante", mapaVisitante);
 }
 
 function normalizarFechaISO(valor) {
@@ -1694,6 +1817,9 @@ function capturarEstadoFormularioPlanilla() {
     filas: Array.from(document.querySelectorAll(".planilla-player-row")).map((row) => ({
       key: `${row.dataset.equipoId || ""}:${row.dataset.jugadorId || ""}`,
       numero: row.querySelector(".cap-numero")?.value || "",
+      convocatoria: row.querySelector(".cap-convocatoria")?.value || "",
+      entra: row.querySelector(".cap-entra")?.checked ? "1" : "",
+      sale: row.querySelector(".cap-sale")?.checked ? "1" : "",
       goles: row.querySelector(".cap-goles")?.value || "",
       amarillas: row.querySelector(".cap-ta")?.value || "",
       rojas: row.querySelector(".cap-tr")?.value || "",
@@ -1768,13 +1894,31 @@ function restaurarEstadoFormularioPlanilla(snapshot = null) {
     const row = mapRows.get(item.key);
     if (!(row instanceof HTMLElement)) return;
     const inputNumero = row.querySelector(".cap-numero");
+    const inputConvocatoria = row.querySelector(".cap-convocatoria");
+    const inputEntra = row.querySelector(".cap-entra");
+    const inputSale = row.querySelector(".cap-sale");
     const inputGoles = row.querySelector(".cap-goles");
     const inputTa = row.querySelector(".cap-ta");
     const inputTr = row.querySelector(".cap-tr");
+    const numeroNormalizado = normalizarNumeroCamisetaPlanilla(item.numero || "");
+    const convocatoriaNormalizada =
+      normalizarConvocatoriaPlanilla(item.convocatoria, { permitirVacio: true }) || "";
+    const entra = leerBooleanoRegistroPlanilla(item.entra);
+    const sale = leerBooleanoRegistroPlanilla(item.sale);
     if (inputNumero instanceof HTMLInputElement) {
-      inputNumero.value = normalizarNumeroCamisetaPlanilla(item.numero || "");
-      actualizarNumeroJugadorEnDataPlanilla(row.dataset.jugadorId, inputNumero.value);
+      inputNumero.value = numeroNormalizado;
     }
+    if (inputConvocatoria instanceof HTMLSelectElement) {
+      inputConvocatoria.value = convocatoriaNormalizada;
+    }
+    if (inputEntra instanceof HTMLInputElement) inputEntra.checked = entra;
+    if (inputSale instanceof HTMLInputElement) inputSale.checked = sale;
+    actualizarRegistroJugadorEnDataPlanilla(row.dataset.jugadorId, row.dataset.equipoId, {
+      numero_camiseta: numeroNormalizado,
+      convocatoria: convocatoriaNormalizada,
+      entra,
+      sale,
+    });
     if (inputGoles instanceof HTMLInputElement) inputGoles.value = item.goles || "";
     if (inputTa instanceof HTMLInputElement) inputTa.value = item.amarillas || "";
     if (inputTr instanceof HTMLInputElement) inputTr.value = item.rojas || "";
@@ -1797,6 +1941,7 @@ async function refrescarPlanillaPreservandoFormulario() {
   const snapshot = capturarEstadoFormularioPlanilla();
   const resp = await ApiClient.get(`/partidos/${partidoId}/planilla`);
   dataPlanilla = resp;
+  aplicarRegistroPlanillaAPlanteles();
   dataPlanilla.auspiciantes = await cargarAuspiciantesActivosPlanilla(dataPlanilla?.partido?.campeonato_id);
 
   const p = dataPlanilla.partido || {};
@@ -1931,6 +2076,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
     return;
   }
 
+  const esFutbol11 = esPlanillaFutbol11();
   const filas = jugadores
     .map((j, idx) => {
       const suspension = j?.suspension || null;
@@ -1942,7 +2088,8 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
       const rojas = suspendido ? "" : statsIniciales.rojasPorJugador.get(jugadorId) || "";
       const rojasDobles = suspendido ? 0 : statsIniciales.rojasDoblesPorJugador.get(jugadorId) || 0;
       const item = idx + 1;
-      const numero = normalizarNumeroCamisetaPlanilla(j.numero_camiseta || "");
+      const registro = obtenerRegistroPlanillaJugador(j);
+      const numero = normalizarNumeroCamisetaPlanilla(registro.numero_camiseta || j.numero_camiseta || "");
       const nombre = nombreJugador(j) || `Jugador ${idx + 1}`;
       const docs = [];
       if (documentosRequeridos.foto_cedula) docs.push(j.foto_cedula_url ? "Cedula OK" : "Cedula pendiente");
@@ -1965,8 +2112,8 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
           data-rojas-dobles="${rojasDobles}"
           data-tarjetas-preset="${rojasDobles > 0 ? "1" : ""}"
         >
-          <td>${item}</td>
-          <td>
+          <td class="planilla-col-item">${item}</td>
+          <td class="planilla-col-numero">
             <input
               class="cap-numero"
               type="text"
@@ -1977,14 +2124,31 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
               aria-label="Número de camiseta de ${escapeHtml(nombre)}"
             />
           </td>
-          <td>
+          <td class="planilla-col-convocatoria">
+            <select class="cap-convocatoria" aria-label="Convocatoria de ${escapeHtml(nombre)}" ${disabledAttr}>
+              <option value=""></option>
+              <option value="P" ${registro.convocatoria === "P" ? "selected" : ""}>P</option>
+              <option value="S" ${registro.convocatoria === "S" ? "selected" : ""}>S</option>
+            </select>
+          </td>
+          ${
+            esFutbol11
+              ? `<td class="planilla-col-entra"><input class="cap-entra" type="checkbox" aria-label="Entra de ${escapeHtml(
+                  nombre
+                )}" ${registro.entra ? "checked" : ""} ${disabledAttr} /></td>
+                 <td class="planilla-col-sale"><input class="cap-sale" type="checkbox" aria-label="Sale de ${escapeHtml(
+                   nombre
+                 )}" ${registro.sale ? "checked" : ""} ${disabledAttr} /></td>`
+              : ""
+          }
+          <td class="planilla-col-jugador">
             <strong>${escapeHtml(nombre)}</strong>
             ${docsHtml}
             ${suspensionHtml}
           </td>
-          <td><input class="cap-goles" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${goles}" ${disabledAttr} /></td>
-          <td><input class="cap-ta" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${amarillas}" ${disabledAttr} /></td>
-          <td><input class="cap-tr" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${rojas}" ${disabledAttr} /></td>
+          <td class="planilla-col-goles"><input class="cap-goles" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${goles}" ${disabledAttr} /></td>
+          <td class="planilla-col-ta"><input class="cap-ta" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${amarillas}" ${disabledAttr} /></td>
+          <td class="planilla-col-tr"><input class="cap-tr" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${rojas}" ${disabledAttr} /></td>
         </tr>
       `;
     })
@@ -1995,7 +2159,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
     <div class="planilla-captura-table-wrap">
       <table class="planilla-captura-table">
         <thead>
-          <tr><th>Item</th><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+          ${renderCabeceraTablaPlanillaHtml()}
         </thead>
         <tbody>${filas}</tbody>
       </table>
@@ -2065,34 +2229,69 @@ function recalcularResultadoDesdeCaptura(preservarSiSinDatos = false) {
 }
 
 function conectarEventosCaptura() {
-  document.querySelectorAll("#captura-local input, #captura-visitante input").forEach((input) => {
-    input.addEventListener("input", (e) => {
-      const target = e.target;
-      if (!(target instanceof HTMLInputElement)) return;
-      const row = target.closest(".planilla-player-row");
-      if (target.classList.contains("cap-numero")) {
-        const valor = normalizarNumeroCamisetaPlanilla(target.value);
-        target.value = valor;
-        if (row instanceof HTMLElement) {
-          actualizarNumeroJugadorEnDataPlanilla(row.dataset.jugadorId, valor);
-        }
-        actualizarVistaPreviaPlanilla(true);
-        return;
-      }
-      if (
-        row instanceof HTMLElement &&
-        (target.classList.contains("cap-ta") || target.classList.contains("cap-tr"))
-      ) {
-        row.dataset.tarjetasPreset = "";
-      }
+  const controles = document.querySelectorAll(
+    "#captura-local input, #captura-local select, #captura-visitante input, #captura-visitante select"
+  );
+
+  const manejarCambio = (target) => {
+    if (!(target instanceof HTMLElement)) return;
+    const row = target.closest(".planilla-player-row");
+    if (!(row instanceof HTMLElement)) return;
+
+    if (target.classList.contains("cap-numero") && target instanceof HTMLInputElement) {
+      const valor = normalizarNumeroCamisetaPlanilla(target.value);
+      target.value = valor;
+      actualizarNumeroJugadorEnDataPlanilla(row.dataset.jugadorId, valor);
+      actualizarVistaPreviaPlanilla(true);
+      return;
+    }
+
+    if (target.classList.contains("cap-convocatoria") && target instanceof HTMLSelectElement) {
+      const convocatoria =
+        normalizarConvocatoriaPlanilla(target.value, { permitirVacio: true }) || "";
+      target.value = convocatoria;
+      actualizarRegistroJugadorEnDataPlanilla(row.dataset.jugadorId, row.dataset.equipoId, {
+        convocatoria,
+      });
+      actualizarVistaPreviaPlanilla(true);
+      return;
+    }
+
+    if (target.classList.contains("cap-entra") || target.classList.contains("cap-sale")) {
+      actualizarRegistroJugadorEnDataPlanilla(row.dataset.jugadorId, row.dataset.equipoId, {
+        entra: row.querySelector(".cap-entra")?.checked === true,
+        sale: row.querySelector(".cap-sale")?.checked === true,
+      });
+      actualizarVistaPreviaPlanilla(true);
+      return;
+    }
+
+    if (
+      (target.classList.contains("cap-ta") || target.classList.contains("cap-tr")) &&
+      row instanceof HTMLElement
+    ) {
+      row.dataset.tarjetasPreset = "";
+    }
+
+    if (target instanceof HTMLInputElement) {
       const limpio = String(target.value || "").replace(/\D+/g, "").slice(0, 2);
       const valor = valorNoNegativoEntero(limpio, 0, 99);
       target.value = valor ? String(valor) : "";
-      recalcularTotalesCapturaEquipo("captura-local");
-      recalcularTotalesCapturaEquipo("captura-visitante");
-      recalcularResultadoDesdeCaptura(false);
-      actualizarVistaPreviaPlanilla(true);
-    });
+    }
+    recalcularTotalesCapturaEquipo("captura-local");
+    recalcularTotalesCapturaEquipo("captura-visitante");
+    recalcularResultadoDesdeCaptura(false);
+    actualizarVistaPreviaPlanilla(true);
+  };
+
+  controles.forEach((control) => {
+    const evento =
+      control.classList.contains("cap-convocatoria") ||
+      control.classList.contains("cap-entra") ||
+      control.classList.contains("cap-sale")
+        ? "change"
+        : "input";
+    control.addEventListener(evento, (e) => manejarCambio(e.target));
   });
 }
 
@@ -2716,6 +2915,24 @@ function normalizarPartidoPlayoffSelectorPlanilla(slot = {}) {
   };
 }
 
+function normalizarPartidoPlayoffDesdePartidosSelectorPlanilla(partido = {}) {
+  const base = normalizarPartidoRegularSelectorPlanilla(partido);
+  if (!base) return null;
+  return {
+    ...base,
+    origen_fase: "playoff",
+    playoff_ronda: normalizarRondaPlayoffPlanilla(partido?.playoff_ronda || partido?.ronda || ""),
+    ronda: normalizarRondaPlayoffPlanilla(partido?.playoff_ronda || partido?.ronda || ""),
+    partido_numero:
+      Number.parseInt(partido?.playoff_partido_numero, 10)
+      || Number.parseInt(partido?.partido_numero, 10)
+      || null,
+    grupo_id: null,
+    letra_grupo: null,
+    nombre_grupo: null,
+  };
+}
+
 function poblarGruposSelectorPlanilla() {
   const selectGrupo = document.getElementById("select-grupo-planilla");
   if (!selectGrupo) return;
@@ -2881,26 +3098,29 @@ async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
       .map((p) => normalizarPartidoReclasificacionSelectorPlanilla(p))
       .filter(Boolean);
 
+    const playoffDesdePartidos = partidosCrudos
+      .filter((p) => !p?.es_reclasificacion_playoff && esPartidoPlayoffPlanilla(p))
+      .map((p) => normalizarPartidoPlayoffDesdePartidosSelectorPlanilla(p))
+      .filter(Boolean);
+
     const crucesPlayoff = crucesCrudos
       .map((slot) => normalizarPartidoPlayoffSelectorPlanilla(slot))
       .filter(Boolean);
 
-    const idsPlayoff = new Set([
-      ...reclasificaciones.map((item) => Number(item.id)),
-      ...crucesPlayoff.map((item) => Number(item.id)),
-    ]);
+    const mapaPlayoff = new Map();
+    [...playoffDesdePartidos, ...reclasificaciones, ...crucesPlayoff].forEach((item) => {
+      const id = Number(item?.id);
+      if (!Number.isFinite(id) || id <= 0) return;
+      mapaPlayoff.set(id, item);
+    });
+
+    const idsPlayoff = new Set(mapaPlayoff.keys());
 
     partidosSelectorRegularCache = partidosCrudos
       .map((p) => normalizarPartidoRegularSelectorPlanilla(p))
       .filter((p) => p && !idsPlayoff.has(Number(p.id)) && !p.es_reclasificacion_playoff);
 
-    const idsPlayoffAgregados = new Set();
-    partidosSelectorPlayoffCache = [...reclasificaciones, ...crucesPlayoff].filter((item) => {
-      const id = Number(item?.id);
-      if (!Number.isFinite(id) || id <= 0 || idsPlayoffAgregados.has(id)) return false;
-      idsPlayoffAgregados.add(id);
-      return true;
-    });
+    partidosSelectorPlayoffCache = [...mapaPlayoff.values()];
 
     let partidoMatch = null;
     if (Number.isFinite(Number(partidoId))) {
@@ -3269,6 +3489,7 @@ async function cargarPlanilla() {
   try {
     const resp = await ApiClient.get(`/partidos/${partidoId}/planilla`);
     dataPlanilla = resp;
+  aplicarRegistroPlanillaAPlanteles();
     dataPlanilla.auspiciantes = await cargarAuspiciantesActivosPlanilla(dataPlanilla?.partido?.campeonato_id);
 
     const p = dataPlanilla.partido || {};
@@ -3306,6 +3527,8 @@ function recolectarPayloadPlanilla() {
   const goles = [];
   const tarjetas = [];
   const numerosJugadores = [];
+  const registroJugadoresLocal = [];
+  const registroJugadoresVisitante = [];
   const filasCaptura = Array.from(document.querySelectorAll(".planilla-player-row"));
   const faltas = normalizarEstadoFaltasPlanilla(obtenerEstadoFaltasPlanilla());
   if (bloqueados.local) {
@@ -3330,12 +3553,36 @@ function recolectarPayloadPlanilla() {
       const numeroCamiseta = normalizarNumeroCamisetaPlanilla(row.querySelector(".cap-numero")?.value, {
         permitirVacio: true,
       });
-      actualizarNumeroJugadorEnDataPlanilla(jugadorId, numeroCamiseta);
+      const convocatoria =
+        normalizarConvocatoriaPlanilla(row.querySelector(".cap-convocatoria")?.value, {
+          permitirVacio: true,
+        }) || null;
+      const entra = esPlanillaFutbol11() ? row.querySelector(".cap-entra")?.checked === true : false;
+      const sale = esPlanillaFutbol11() ? row.querySelector(".cap-sale")?.checked === true : false;
+      actualizarRegistroJugadorEnDataPlanilla(jugadorId, equipoId, {
+        numero_camiseta: numeroCamiseta,
+        convocatoria,
+        entra,
+        sale,
+      });
       numerosJugadores.push({
         equipo_id: equipoId,
         jugador_id: jugadorId,
         numero_camiseta: numeroCamiseta || null,
       });
+      const registroJugador = {
+        equipo_id: equipoId,
+        jugador_id: jugadorId,
+        numero_camiseta: numeroCamiseta || null,
+        convocatoria,
+        entra,
+        sale,
+      };
+      if (equipoId === Number(equiposPartido.local.id)) {
+        registroJugadoresLocal.push(registroJugador);
+      } else if (equipoId === Number(equiposPartido.visitante.id)) {
+        registroJugadoresVisitante.push(registroJugador);
+      }
 
       const golesNum = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
       const tarjetasNormalizadas = normalizarTarjetasFilaCaptura(row);
@@ -3489,9 +3736,113 @@ function recolectarPayloadPlanilla() {
     faltas_local_total: faltas.local_total,
     faltas_visitante_total: faltas.visitante_total,
     numeros_jugadores: numerosJugadores,
+    registro_jugadores_local: registroJugadoresLocal,
+    registro_jugadores_visitante: registroJugadoresVisitante,
     goles,
     tarjetas,
   };
+}
+
+function obtenerRegistroBasePlanilla() {
+  return {
+    numero_camiseta: "",
+    convocatoria: "",
+    entra: false,
+    sale: false,
+  };
+}
+
+function obtenerColumnasRegistroPlanilla({ encabezadoCompleto = false } = {}) {
+  const columnas = [
+    {
+      key: "item",
+      label: encabezadoCompleto ? "#" : "Item",
+      headerClass: "planilla-col-item",
+      cellClass: "planilla-col-item",
+      pdfWidth: 12,
+    },
+    {
+      key: "numero",
+      label: "N",
+      headerClass: "planilla-col-numero",
+      cellClass: "planilla-col-numero",
+      pdfWidth: 12,
+    },
+    {
+      key: "convocatoria",
+      label: "P/S",
+      headerClass: "planilla-col-convocatoria",
+      cellClass: "planilla-col-convocatoria",
+      pdfWidth: 10,
+    },
+  ];
+  if (esPlanillaFutbol11()) {
+    columnas.push(
+      {
+        key: "entra",
+        label: encabezadoCompleto ? "E" : "Entra",
+        headerClass: "planilla-col-entra",
+        cellClass: "planilla-col-entra",
+        pdfWidth: 9,
+      },
+      {
+        key: "sale",
+        label: encabezadoCompleto ? "S" : "Sale",
+        headerClass: "planilla-col-sale",
+        cellClass: "planilla-col-sale",
+        pdfWidth: 9,
+      }
+    );
+  }
+  columnas.push(
+    {
+      key: "nombre",
+      label: "Jugador",
+      headerClass: "planilla-col-jugador",
+      cellClass: "planilla-col-jugador",
+      pdfWidth: "*",
+    },
+    {
+      key: "goles",
+      label: encabezadoCompleto ? "Gol" : "G",
+      headerClass: "planilla-col-goles",
+      cellClass: "planilla-col-goles",
+      pdfWidth: 12,
+    },
+    {
+      key: "amarillas",
+      label: "TA",
+      headerClass: "planilla-col-ta",
+      cellClass: "planilla-col-ta",
+      pdfWidth: 12,
+    },
+    {
+      key: "rojas",
+      label: "TR",
+      headerClass: "planilla-col-tr",
+      cellClass: "planilla-col-tr",
+      pdfWidth: 12,
+    }
+  );
+  return columnas;
+}
+
+function renderCabeceraTablaPlanillaHtml({ encabezadoCompleto = false } = {}) {
+  return `<tr>${obtenerColumnasRegistroPlanilla({ encabezadoCompleto })
+    .map((col) => `<th class="${col.headerClass}">${col.label}</th>`)
+    .join("")}</tr>`;
+}
+
+function obtenerColumnasPdfPlanilla() {
+  return obtenerColumnasRegistroPlanilla({ encabezadoCompleto: true }).map((col) => col.pdfWidth);
+}
+
+function obtenerJugadoresImpresionPlanilla(jugadores, maxFilas) {
+  const lista = Array.isArray(jugadores) ? jugadores : [];
+  const tope = Number.isFinite(Number(maxFilas)) && Number(maxFilas) > 0 ? Number(maxFilas) : lista.length;
+  return lista
+    .filter((jugador) => jugador && (Number.isFinite(Number(jugador.id)) || Boolean(nombreJugador(jugador))))
+    .slice(0, tope);
 }
 
 function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
@@ -3500,21 +3851,46 @@ function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
     const j = jugadores[i] || null;
     const esArquero = esPosicionArqueroPlanilla(j?.posicion);
     const jugadorId = Number(j?.id);
+    const registro = j ? obtenerRegistroPlanillaJugador(j) : obtenerRegistroBasePlanilla();
     const item = i + 1;
-    const numero = j ? j.numero_camiseta || "" : "";
+    const numero = j ? registro.numero_camiseta || j.numero_camiseta || "" : "";
     const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
+    const convocatoria = j ? normalizarConvocatoriaPlanilla(registro.convocatoria || "") : "";
+    const entra = j && registro.entra ? "X" : "";
+    const sale = j && registro.sale ? "X" : "";
     const goles = j ? stats.golesPorJugador.get(jugadorId) || "" : "";
     const amarillas = j ? stats.amarillasPorJugador.get(jugadorId) || "" : "";
     const rojas = j ? stats.rojasPorJugador.get(jugadorId) || "" : "";
+    const columnas = obtenerColumnasRegistroPlanilla();
+
+    const cells = columnas.map((col) => {
+      switch (col.key) {
+        case "item":
+          return `<td class="${col.cellClass}">${item}</td>`;
+        case "numero":
+          return `<td class="${col.cellClass}">${escapeHtml(String(numero))}</td>`;
+        case "convocatoria":
+          return `<td class="${col.cellClass}">${escapeHtml(convocatoria)}</td>`;
+        case "entra":
+          return `<td class="${col.cellClass}">${escapeHtml(entra)}</td>`;
+        case "sale":
+          return `<td class="${col.cellClass}">${escapeHtml(sale)}</td>`;
+        case "nombre":
+          return `<td class="${col.cellClass}">${escapeHtml(nombre)}</td>`;
+        case "goles":
+          return `<td class="${col.cellClass}">${goles}</td>`;
+        case "amarillas":
+          return `<td class="${col.cellClass}">${amarillas}</td>`;
+        case "rojas":
+          return `<td class="${col.cellClass}">${rojas}</td>`;
+        default:
+          return `<td class="${col.cellClass}"></td>`;
+      }
+    });
 
     filas.push(`
       <tr class="${esArquero ? "is-goalkeeper" : ""}">
-        <td>${item}</td>
-        <td>${numero}</td>
-        <td>${escapeHtml(nombre)}</td>
-        <td>${goles}</td>
-        <td>${amarillas}</td>
-        <td>${rojas}</td>
+        ${cells.join("")}
       </tr>
     `);
   }
@@ -3589,24 +3965,45 @@ function obtenerMaxJugadoresConfiguradoPlanilla(partido = dataPlanilla?.partido 
 
 function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
   const filas = [];
-  for (let i = 0; i < maxFilas; i += 1) {
-    const j = jugadores[i] || null;
+  const jugadoresImpresion = obtenerJugadoresImpresionPlanilla(jugadores, maxFilas);
+  for (let i = 0; i < jugadoresImpresion.length; i += 1) {
+    const j = jugadoresImpresion[i] || null;
     const jugadorId = Number(j?.id);
     const item = i + 1;
-    const numero = j ? j.numero_camiseta || "" : "";
+    const registro = j ? obtenerRegistroPlanillaJugador(j) : obtenerRegistroBasePlanilla();
+    const numero = j ? registro.numero_camiseta || j.numero_camiseta || "" : "";
     const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
     const goles = j ? stats.golesPorJugador.get(jugadorId) || "" : "";
     const amarillas = j ? stats.amarillasPorJugador.get(jugadorId) || "" : "";
     const rojas = j ? stats.rojasPorJugador.get(jugadorId) || "" : "";
+    const columnas = obtenerColumnasRegistroPlanilla({ encabezadoCompleto: true });
+    const cells = columnas.map((col) => {
+      switch (col.key) {
+        case "item":
+          return `<td class="${col.cellClass}">${item}</td>`;
+        case "numero":
+          return `<td class="${col.cellClass}">${escapeHtml(String(numero))}</td>`;
+        case "convocatoria":
+          return `<td class="${col.cellClass}"><span class="planilla-cell-box" aria-hidden="true"></span></td>`;
+        case "entra":
+        case "sale":
+          return `<td class="${col.cellClass}"><span class="planilla-cell-box is-mini" aria-hidden="true"></span></td>`;
+        case "nombre":
+          return `<td class="${col.cellClass}">${escapeHtml(nombre)}</td>`;
+        case "goles":
+          return `<td class="${col.cellClass}">${goles}</td>`;
+        case "amarillas":
+          return `<td class="${col.cellClass}">${amarillas}</td>`;
+        case "rojas":
+          return `<td class="${col.cellClass}">${rojas}</td>`;
+        default:
+          return `<td class="${col.cellClass}"></td>`;
+      }
+    });
 
     filas.push(`
       <tr>
-        <td>${item}</td>
-        <td>${numero}</td>
-        <td>${escapeHtml(nombre)}</td>
-        <td>${goles}</td>
-        <td>${amarillas}</td>
-        <td>${rojas}</td>
+        ${cells.join("")}
       </tr>
     `);
   }
@@ -3664,15 +4061,24 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
   const logosAuspiciantes = renderAuspiciantesHeaderPlanilla("planilla-oficial-head");
   const faltasPayload = normalizarEstadoFaltasPlanilla(payload.faltas || dataPlanilla?.faltas || {});
 
-  const filasLocal = renderFilasVistaPreviaOficialEquipo(dataPlanilla.plantel_local || [], stats, maxFilas);
-  const filasVisit = renderFilasVistaPreviaOficialEquipo(dataPlanilla.plantel_visitante || [], stats, maxFilas);
+  const plantelLocalImpresion = obtenerJugadoresImpresionPlanilla(dataPlanilla.plantel_local || [], maxFilas);
+  const plantelVisitanteImpresion = obtenerJugadoresImpresionPlanilla(dataPlanilla.plantel_visitante || [], maxFilas);
+  const totalFilasImpresion = Math.max(plantelLocalImpresion.length, plantelVisitanteImpresion.length, 0);
+  const clasesCompactacion = [
+    totalFilasImpresion >= 24 ? "is-compact" : "",
+    totalFilasImpresion >= 30 ? "is-ultra-compact" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const filasLocal = renderFilasVistaPreviaOficialEquipo(plantelLocalImpresion, stats, maxFilas);
+  const filasVisit = renderFilasVistaPreviaOficialEquipo(plantelVisitanteImpresion, stats, maxFilas);
   const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
   const marcadorLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
   const marcadorVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
   const resumenPenales = obtenerResumenPenalesPlanilla(payload, p);
 
   cont.innerHTML = `
-    <div class="planilla-oficial-sheet ${modelo}">
+    <div class="planilla-oficial-sheet ${modelo} ${clasesCompactacion}">
       <header class="planilla-oficial-head">
         <div class="planilla-oficial-head-text">
           <p class="planilla-oficial-org">${escapeHtml(p.campeonato_organizador || p.campeonato_nombre || "LT&C")}</p>
@@ -3749,15 +4155,14 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           <div class="planilla-oficial-team-title">EQUIPO: ${escapeHtml(p.equipo_local_nombre || equiposPartido.local.nombre)}</div>
           <table class="planilla-oficial-table">
             <thead>
-              <tr><th>Item</th><th>N</th><th>Nombre</th><th>Gol</th><th>TA</th><th>TR</th></tr>
+              ${renderCabeceraTablaPlanillaHtml({ encabezadoCompleto: true })}
             </thead>
             <tbody>${filasLocal}</tbody>
           </table>
           <div class="planilla-oficial-team-notes">
             <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(p.equipo_local_director_tecnico || "________________")}</p>
-            <p class="planilla-oficial-signature-line"><strong>Firma:</strong> ____________________________</p>
-            <p><strong>Tarjetas amarillas:</strong> ${formatearConteoPlanilla(stats.totalAmarillasLocal, mostrarEnBlanco)}</p>
-            <p><strong>Tarjetas rojas:</strong> ${formatearConteoPlanilla(stats.totalRojasLocal, mostrarEnBlanco)}</p>
+            <div class="planilla-oficial-signature-row"><strong>Firma tecnico:</strong><span class="planilla-oficial-signature-line" aria-hidden="true"></span></div>
+            <p><strong>TA:</strong> ${formatearConteoPlanilla(stats.totalAmarillasLocal, mostrarEnBlanco)} <strong>TR:</strong> ${formatearConteoPlanilla(stats.totalRojasLocal, mostrarEnBlanco)}</p>
           </div>
         </article>
 
@@ -3765,15 +4170,14 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           <div class="planilla-oficial-team-title">EQUIPO: ${escapeHtml(p.equipo_visitante_nombre || equiposPartido.visitante.nombre)}</div>
           <table class="planilla-oficial-table">
             <thead>
-              <tr><th>Item</th><th>N</th><th>Nombre</th><th>Gol</th><th>TA</th><th>TR</th></tr>
+              ${renderCabeceraTablaPlanillaHtml({ encabezadoCompleto: true })}
             </thead>
             <tbody>${filasVisit}</tbody>
           </table>
           <div class="planilla-oficial-team-notes">
             <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(p.equipo_visitante_director_tecnico || "________________")}</p>
-            <p class="planilla-oficial-signature-line"><strong>Firma:</strong> ____________________________</p>
-            <p><strong>Tarjetas amarillas:</strong> ${formatearConteoPlanilla(stats.totalAmarillasVisitante, mostrarEnBlanco)}</p>
-            <p><strong>Tarjetas rojas:</strong> ${formatearConteoPlanilla(stats.totalRojasVisitante, mostrarEnBlanco)}</p>
+            <div class="planilla-oficial-signature-row"><strong>Firma tecnico:</strong><span class="planilla-oficial-signature-line" aria-hidden="true"></span></div>
+            <p><strong>TA:</strong> ${formatearConteoPlanilla(stats.totalAmarillasVisitante, mostrarEnBlanco)} <strong>TR:</strong> ${formatearConteoPlanilla(stats.totalRojasVisitante, mostrarEnBlanco)}</p>
           </div>
         </article>
       </div>
@@ -3905,7 +4309,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
           <h4>Plantel Local</h4>
           <table class="planilla-preview-table">
             <thead>
-              <tr><th>Item</th><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+              ${renderCabeceraTablaPlanillaHtml()}
             </thead>
             <tbody>${filasLocal}</tbody>
           </table>
@@ -3914,7 +4318,7 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
           <h4>Plantel Visitante</h4>
           <table class="planilla-preview-table">
             <thead>
-              <tr><th>Item</th><th>N</th><th>Jugador</th><th>G</th><th>TA</th><th>TR</th></tr>
+              ${renderCabeceraTablaPlanillaHtml()}
             </thead>
             <tbody>${filasVisit}</tbody>
           </table>
@@ -4111,36 +4515,95 @@ async function construirBloqueAuspiciantesPdf() {
   };
 }
 
+function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false, ultra = false } = {}) {
+  const fitLogo = ultra ? [9, 9] : compacto ? [11, 11] : [14, 14];
+  const fontSize = ultra ? 7 : compacto ? 7.8 : 9.2;
+  const body = [[]];
+
+  if (logoDataUrl) {
+    body[0].push({
+      image: logoDataUrl,
+      fit: fitLogo,
+      margin: [0, 0, 3, 0],
+      border: [false, false, false, false],
+    });
+  }
+
+  body[0].push({
+    text: nombre || "Por definir",
+    alignment: "center",
+    bold: true,
+    fontSize,
+    border: [false, false, false, false],
+  });
+
+  return {
+    table: {
+      widths: logoDataUrl ? ["auto", "*"] : ["*"],
+      body,
+    },
+    layout: {
+      hLineWidth: () => 0,
+      vLineWidth: () => 0,
+      paddingLeft: () => 0,
+      paddingRight: () => 0,
+      paddingTop: () => 0,
+      paddingBottom: () => 0,
+    },
+    alignment: "center",
+  };
+}
+
 function construirFilasPlantelPdf(jugadores, stats, maxFilas) {
+  const columnas = obtenerColumnasRegistroPlanilla({ encabezadoCompleto: true });
   const body = [[
-    { text: "Item", style: "thCenter" },
-    { text: "N", style: "thCenter" },
-    { text: "Nombre", style: "thLeft" },
-    { text: "Gol", style: "thCenter" },
-    { text: "TA", style: "thCenter" },
-    { text: "TR", style: "thCenter" },
+    ...columnas.map((col) => ({
+      text: col.label,
+      style:
+        col.key === "nombre"
+          ? "thLeft"
+      : "thCenter",
+    })),
   ]];
 
-  let item = 0;
-  for (let i = 0; i < maxFilas; i += 1) {
-    const j = jugadores[i] || null;
-    if (!j) continue;
-    item += 1;
-    const jugadorId = Number(j.id);
-    const nombre = `${j.apellido || ""} ${j.nombre || ""}`.trim();
-    const numero = String(j.numero_camiseta || "");
-    const goles = String(stats.golesPorJugador.get(jugadorId) || "");
-    const ta = String(stats.amarillasPorJugador.get(jugadorId) || "");
-    const tr = String(stats.rojasPorJugador.get(jugadorId) || "");
+  const jugadoresImpresion = obtenerJugadoresImpresionPlanilla(jugadores, maxFilas);
 
-    body.push([
-      { text: String(item), style: "tdCenter" },
-      { text: numero, style: "tdCenter" },
-      { text: nombre, style: "tdLeft" },
-      { text: goles, style: "tdCenter" },
-      { text: ta, style: "tdCenter" },
-      { text: tr, style: "tdCenter" },
-    ]);
+  for (let i = 0; i < jugadoresImpresion.length; i += 1) {
+    const j = jugadoresImpresion[i] || null;
+    const jugadorId = Number(j?.id);
+    const registro = j ? obtenerRegistroPlanillaJugador(j) : obtenerRegistroBasePlanilla();
+    const item = i + 1;
+    const nombre = j ? `${j.apellido || ""} ${j.nombre || ""}`.trim() : "";
+    const numero = j ? String(registro.numero_camiseta || j.numero_camiseta || "") : "";
+    const goles = j ? String(stats.golesPorJugador.get(jugadorId) || "") : "";
+    const ta = j ? String(stats.amarillasPorJugador.get(jugadorId) || "") : "";
+    const tr = j ? String(stats.rojasPorJugador.get(jugadorId) || "") : "";
+
+    body.push(
+      columnas.map((col) => {
+        switch (col.key) {
+          case "item":
+            return { text: String(item), style: "tdCenter" };
+          case "numero":
+            return { text: numero, style: "tdCenter" };
+          case "convocatoria":
+            return { text: "", style: "tdCenter" };
+          case "entra":
+          case "sale":
+            return { text: "", style: "tdCenter" };
+          case "nombre":
+            return { text: nombre, style: "tdLeft" };
+          case "goles":
+            return { text: goles, style: "tdCenter" };
+          case "amarillas":
+            return { text: ta, style: "tdCenter" };
+          case "rojas":
+            return { text: tr, style: "tdCenter" };
+          default:
+            return { text: "", style: "tdCenter" };
+        }
+      })
+    );
   }
 
   return body;
@@ -4360,11 +4823,24 @@ async function imprimirPDFPlanilla() {
     const localDt = p.equipo_local_director_tecnico || "-";
     const visitDt = p.equipo_visitante_director_tecnico || "-";
     const maxFilas = obtenerMaxJugadoresConfiguradoPlanilla(p);
-    const alturaFilaPlantel =
-      maxFilas >= 25 ? 7.2 : modelo === "futbol_7_5_sala" ? 10 : 9;
-    const alturaCabeceraPlantel = maxFilas >= 25 ? 8 : 10;
-    const bodyLocal = construirFilasPlantelPdf(dataPlanilla.plantel_local || [], stats, maxFilas);
-    const bodyVisit = construirFilasPlantelPdf(dataPlanilla.plantel_visitante || [], stats, maxFilas);
+    const plantelLocalImpresion = obtenerJugadoresImpresionPlanilla(dataPlanilla.plantel_local || [], maxFilas);
+    const plantelVisitanteImpresion = obtenerJugadoresImpresionPlanilla(
+      dataPlanilla.plantel_visitante || [],
+      maxFilas
+    );
+    const totalFilasImpresion = Math.max(plantelLocalImpresion.length, plantelVisitanteImpresion.length, 0);
+    const modoCompactoPdf = totalFilasImpresion >= 24;
+    const modoUltraCompactoPdf = totalFilasImpresion >= 30;
+    const alturaFilaPlantel = modoUltraCompactoPdf
+      ? 4.7
+      : modoCompactoPdf
+        ? 5.3
+        : modelo === "futbol_7_5_sala"
+          ? 8.4
+          : 7.8;
+    const alturaCabeceraPlantel = modoUltraCompactoPdf ? 5.2 : modoCompactoPdf ? 6 : 8;
+    const bodyLocal = construirFilasPlantelPdf(plantelLocalImpresion, stats, maxFilas);
+    const bodyVisit = construirFilasPlantelPdf(plantelVisitanteImpresion, stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
     const logoLocalPdf = await cargarImagenComoDataUrl(p.equipo_local_logo_url);
     const logoVisitantePdf = await cargarImagenComoDataUrl(p.equipo_visitante_logo_url);
@@ -4382,20 +4858,20 @@ async function imprimirPDFPlanilla() {
 
     const docDefinition = {
       pageSize: "A4",
-      pageMargins: [8, 8, 8, 8],
-      defaultStyle: { fontSize: 8.2, color: "#111827" },
+      pageMargins: modoUltraCompactoPdf ? [5, 4, 5, 4] : modoCompactoPdf ? [6, 5, 6, 5] : [8, 6, 8, 6],
+      defaultStyle: { fontSize: modoUltraCompactoPdf ? 6.9 : modoCompactoPdf ? 7.5 : 8.1, color: "#111827" },
       content: [
         {
           columns: [
             logoOrg
               ? {
-                  width: 56,
+                  width: modoCompactoPdf ? 48 : 54,
                   image: logoOrg,
-                  fit: [54, 54],
+                  fit: modoCompactoPdf ? [42, 42] : [50, 50],
                   alignment: "left",
-                  margin: [0, 2, 0, 0],
+                  margin: [0, 1, 0, 0],
                 }
-              : { width: 56, text: "" },
+              : { width: modoCompactoPdf ? 48 : 54, text: "" },
             {
               width: "*",
               stack: [
@@ -4403,15 +4879,21 @@ async function imprimirPDFPlanilla() {
                   text: p.campeonato_organizador || p.campeonato_nombre || "LT&C",
                   alignment: "center",
                   bold: true,
-                  fontSize: 10.5,
+                  fontSize: modoUltraCompactoPdf ? 8.3 : modoCompactoPdf ? 8.9 : 10,
                 },
-                { text: "PLANILLA DE JUEGO", alignment: "center", bold: true, fontSize: 17, margin: [0, 1, 0, 0] },
+                {
+                  text: "PLANILLA DE JUEGO",
+                  alignment: "center",
+                  bold: true,
+                  fontSize: modoUltraCompactoPdf ? 12.8 : modoCompactoPdf ? 13.8 : 16,
+                  margin: [0, 0, 0, 0],
+                },
               ],
-              margin: [0, 3, 0, 0],
+              margin: [0, modoCompactoPdf ? 0 : 2, 0, 0],
             },
             bloqueAuspiciantesPdf || { width: 118, text: "" },
           ],
-          margin: [0, 0, 0, 36],
+          margin: [0, 0, 0, modoUltraCompactoPdf ? 4 : modoCompactoPdf ? 7 : 12],
         },
         {
           table: {
@@ -4474,74 +4956,65 @@ async function imprimirPDFPlanilla() {
             vLineWidth: () => 0.6,
             hLineColor: () => "#cbd5e1",
             vLineColor: () => "#cbd5e1",
-            paddingLeft: () => 4,
-            paddingRight: () => 4,
-            paddingTop: () => 4,
-            paddingBottom: () => 4,
+            paddingLeft: () => (modoCompactoPdf ? 2 : 3),
+            paddingRight: () => (modoCompactoPdf ? 2 : 3),
+            paddingTop: () => (modoCompactoPdf ? 1.4 : 2.2),
+            paddingBottom: () => (modoCompactoPdf ? 1.4 : 2.2),
           },
-          margin: [0, 0, 0, 6],
+          margin: [0, 0, 0, modoCompactoPdf ? 3 : 5],
         },
         {
           table: {
-            widths: ["*", 30, 10, 30, "*"],
+            widths: [
+              "*",
+              modoUltraCompactoPdf ? 16 : modoCompactoPdf ? 18 : 22,
+              modoUltraCompactoPdf ? 6 : modoCompactoPdf ? 7 : 8,
+              modoUltraCompactoPdf ? 16 : modoCompactoPdf ? 18 : 22,
+              "*",
+            ],
             body: [[
+              construirCeldaMarcadorEquipoPdf(localNombre, logoLocalPdf, {
+                compacto: modoCompactoPdf,
+                ultra: modoUltraCompactoPdf,
+              }),
               {
-                columns: [
-                  ...(logoLocalPdf
-                    ? [{
-                        width: 20,
-                        image: logoLocalPdf,
-                        fit: [18, 18],
-                        margin: [0, 10, 4, 0],
-                      }]
-                    : []),
-                  {
-                    width: "*",
-                    text: localNombre,
-                    alignment: logoLocalPdf ? "left" : "center",
-                    bold: true,
-                    fontSize: 11.5,
-                    margin: [0, 10, 0, 0],
-                  },
-                ],
-                border: [false, false, false, false],
+                text: marcadorLocal,
+                alignment: "center",
+                bold: true,
+                fontSize: modoUltraCompactoPdf ? 10.2 : modoCompactoPdf ? 11.1 : 13.8,
+                margin: [0, modoCompactoPdf ? 4 : 6, 0, 0],
               },
-              { text: marcadorLocal, alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
-              { text: ":", alignment: "center", bold: true, fontSize: 16.5, border: [false, false, false, false], margin: [0, 12, 0, 0] },
-              { text: marcadorVisit, alignment: "center", bold: true, fontSize: 16, margin: [0, 12, 0, 0] },
               {
-                columns: [
-                  {
-                    width: "*",
-                    text: visitNombre,
-                    alignment: logoVisitantePdf ? "right" : "center",
-                    bold: true,
-                    fontSize: 11.5,
-                    margin: [0, 10, 0, 0],
-                  },
-                  ...(logoVisitantePdf
-                    ? [{
-                        width: 20,
-                        image: logoVisitantePdf,
-                        fit: [18, 18],
-                        margin: [4, 10, 0, 0],
-                      }]
-                    : []),
-                ],
+                text: ":",
+                alignment: "center",
+                bold: true,
+                fontSize: modoUltraCompactoPdf ? 10.6 : modoCompactoPdf ? 11.6 : 14.4,
                 border: [false, false, false, false],
+                margin: [0, modoCompactoPdf ? 4 : 6, 0, 0],
               },
+              {
+                text: marcadorVisit,
+                alignment: "center",
+                bold: true,
+                fontSize: modoUltraCompactoPdf ? 10.2 : modoCompactoPdf ? 11.1 : 13.8,
+                margin: [0, modoCompactoPdf ? 4 : 6, 0, 0],
+              },
+              construirCeldaMarcadorEquipoPdf(visitNombre, logoVisitantePdf, {
+                compacto: modoCompactoPdf,
+                ultra: modoUltraCompactoPdf,
+              }),
             ]],
-            heights: () => 48,
+            heights: () => (modoUltraCompactoPdf ? 24 : modoCompactoPdf ? 28 : 34),
           },
           layout: {
             hLineWidth: (i) => (i === 0 || i === 1 ? 0 : 0),
             vLineWidth: (i) => (i === 1 || i === 2 || i === 3 || i === 4 ? 0.6 : 0),
             hLineColor: () => "#94a3b8",
             vLineColor: () => "#94a3b8",
-            paddingTop: () => 6,
-            paddingBottom: () => 6,
+            paddingTop: () => (modoCompactoPdf ? 2 : 4),
+            paddingBottom: () => (modoCompactoPdf ? 2 : 4),
           },
-          margin: [0, 0, 0, 6],
+          margin: [0, 0, 0, modoCompactoPdf ? 3 : 5],
         },
         ...(resumenPenales.aplica
           ? [
@@ -4550,8 +5023,8 @@ async function imprimirPDFPlanilla() {
                 alignment: "center",
                 bold: true,
                 color: "#1d4f8c",
-                fontSize: 8.6,
-                margin: [0, -2, 0, 6],
+                fontSize: modoCompactoPdf ? 7.8 : 8.6,
+                margin: [0, -2, 0, modoCompactoPdf ? 4 : 6],
               },
             ]
           : []),
@@ -4572,11 +5045,11 @@ async function imprimirPDFPlanilla() {
             {
               width: "*",
               stack: [
-                { text: `EQUIPO: ${localNombre}`, style: "teamHead" },
+                { text: `EQUIPO: ${localNombre}`, style: "teamHead", margin: [0, 0, 0, modoCompactoPdf ? 1 : 2] },
                 {
                   table: {
                     headerRows: 1,
-                    widths: [20, 20, "*", 18, 18, 18],
+                    widths: obtenerColumnasPdfPlanilla(),
                     body: bodyLocal,
                     heights: (row) => (row === 0 ? alturaCabeceraPlantel : alturaFilaPlantel),
                   },
@@ -4585,31 +5058,32 @@ async function imprimirPDFPlanilla() {
                     vLineWidth: () => 0.5,
                     hLineColor: () => "#cbd5e1",
                     vLineColor: () => "#cbd5e1",
-                    paddingLeft: () => 2,
-                    paddingRight: () => 2,
-                    paddingTop: () => 2,
-                    paddingBottom: () => 2,
+                    paddingLeft: () => (modoCompactoPdf ? 1.4 : 2),
+                    paddingRight: () => (modoCompactoPdf ? 1.4 : 2),
+                    paddingTop: () => (modoCompactoPdf ? 1 : 2),
+                    paddingBottom: () => (modoCompactoPdf ? 1 : 2),
                   },
                 },
-                { text: [{ text: "Dirigente / Director tecnico: ", bold: true }, localDt], margin: [0, 4, 0, 0] },
+                {
+                  text: [{ text: "Dirigente / Director tecnico: ", bold: true }, localDt],
+                  margin: [0, modoCompactoPdf ? 1 : 3, 0, 0],
+                  fontSize: modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 6.8 : 7.8,
+                },
                 {
                   table: {
-                    widths: [26, "*"],
+                    widths: [modoCompactoPdf ? 38 : 44, "*"],
                     body: [
                       [
-                        { text: "Firma:", bold: true, border: [false, false, false, false] },
-                        { text: "", border: [false, false, false, true] },
-                      ],
-                      [
-                        { text: "", border: [false, false, false, false] },
-                        { text: "", border: [false, false, false, true] },
-                      ],
-                      [
-                        { text: "", border: [false, false, false, false] },
+                        {
+                          text: "Firma tecnico:",
+                          bold: true,
+                          border: [false, false, false, false],
+                          fontSize: modoUltraCompactoPdf ? 6 : modoCompactoPdf ? 6.6 : 7.6,
+                        },
                         { text: "", border: [false, false, false, true] },
                       ],
                     ],
-                    heights: (row) => (row === 0 ? 11 : 12),
+                    heights: () => (modoUltraCompactoPdf ? 7 : modoCompactoPdf ? 8 : 10),
                   },
                   layout: {
                     hLineWidth: () => 0,
@@ -4619,7 +5093,7 @@ async function imprimirPDFPlanilla() {
                     paddingTop: () => 0,
                     paddingBottom: () => 0,
                   },
-                  margin: [0, 1, 0, 0],
+                  margin: [0, 0, 0, 0],
                 },
                 {
                   ...construirBloqueTarjetasEquipoPdf(
@@ -4627,7 +5101,7 @@ async function imprimirPDFPlanilla() {
                     Number(stats.totalRojasLocal || 0),
                     mostrarEnBlanco
                   ),
-                  margin: [0, 3, 0, 0],
+                  margin: [0, modoCompactoPdf ? 2 : 3, 0, 0],
                 },
               ],
             },
@@ -4638,11 +5112,11 @@ async function imprimirPDFPlanilla() {
             {
               width: "*",
               stack: [
-                { text: `EQUIPO: ${visitNombre}`, style: "teamHead" },
+                { text: `EQUIPO: ${visitNombre}`, style: "teamHead", margin: [0, 0, 0, modoCompactoPdf ? 1 : 2] },
                 {
                   table: {
                     headerRows: 1,
-                    widths: [20, 20, "*", 18, 18, 18],
+                    widths: obtenerColumnasPdfPlanilla(),
                     body: bodyVisit,
                     heights: (row) => (row === 0 ? alturaCabeceraPlantel : alturaFilaPlantel),
                   },
@@ -4651,31 +5125,32 @@ async function imprimirPDFPlanilla() {
                     vLineWidth: () => 0.5,
                     hLineColor: () => "#cbd5e1",
                     vLineColor: () => "#cbd5e1",
-                    paddingLeft: () => 2,
-                    paddingRight: () => 2,
-                    paddingTop: () => 2,
-                    paddingBottom: () => 2,
+                    paddingLeft: () => (modoCompactoPdf ? 1.4 : 2),
+                    paddingRight: () => (modoCompactoPdf ? 1.4 : 2),
+                    paddingTop: () => (modoCompactoPdf ? 1 : 2),
+                    paddingBottom: () => (modoCompactoPdf ? 1 : 2),
                   },
                 },
-                { text: [{ text: "Dirigente / Director tecnico: ", bold: true }, visitDt], margin: [0, 4, 0, 0] },
+                {
+                  text: [{ text: "Dirigente / Director tecnico: ", bold: true }, visitDt],
+                  margin: [0, modoCompactoPdf ? 1 : 3, 0, 0],
+                  fontSize: modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 6.8 : 7.8,
+                },
                 {
                   table: {
-                    widths: [26, "*"],
+                    widths: [modoCompactoPdf ? 38 : 44, "*"],
                     body: [
                       [
-                        { text: "Firma:", bold: true, border: [false, false, false, false] },
-                        { text: "", border: [false, false, false, true] },
-                      ],
-                      [
-                        { text: "", border: [false, false, false, false] },
-                        { text: "", border: [false, false, false, true] },
-                      ],
-                      [
-                        { text: "", border: [false, false, false, false] },
+                        {
+                          text: "Firma tecnico:",
+                          bold: true,
+                          border: [false, false, false, false],
+                          fontSize: modoUltraCompactoPdf ? 6 : modoCompactoPdf ? 6.6 : 7.6,
+                        },
                         { text: "", border: [false, false, false, true] },
                       ],
                     ],
-                    heights: (row) => (row === 0 ? 11 : 12),
+                    heights: () => (modoUltraCompactoPdf ? 7 : modoCompactoPdf ? 8 : 10),
                   },
                   layout: {
                     hLineWidth: () => 0,
@@ -4685,7 +5160,7 @@ async function imprimirPDFPlanilla() {
                     paddingTop: () => 0,
                     paddingBottom: () => 0,
                   },
-                  margin: [0, 1, 0, 0],
+                  margin: [0, 0, 0, 0],
                 },
                 {
                   ...construirBloqueTarjetasEquipoPdf(
@@ -4693,17 +5168,17 @@ async function imprimirPDFPlanilla() {
                     Number(stats.totalRojasVisitante || 0),
                     mostrarEnBlanco
                   ),
-                  margin: [0, 3, 0, 0],
+                  margin: [0, modoCompactoPdf ? 2 : 3, 0, 0],
                 },
               ],
             },
           ],
-          margin: [0, 0, 0, 6],
+          margin: [0, 0, 0, modoCompactoPdf ? 4 : 6],
         },
         {
           text: "PAGOS",
           style: "sectionTitle",
-          margin: [0, 1, 0, 3],
+          margin: [0, 0, 0, modoCompactoPdf ? 2 : 3],
         },
         {
           ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos, mostrarEnBlanco),
@@ -4807,16 +5282,42 @@ async function imprimirPDFPlanilla() {
         },
       ],
       styles: {
-        sectionTitle: { bold: true, fontSize: 8.8, color: "#0f172a" },
-        teamHead: { bold: true, fontSize: 8.6, margin: [0, 0, 0, 2] },
-        thCenter: { bold: true, alignment: "center", fillColor: "#eef4fb", fontSize: 8 },
-        thLeft: { bold: true, alignment: "left", fillColor: "#eef4fb", fontSize: 8 },
-        tdCenter: { alignment: "center", fontSize: 7.8 },
-        tdLeft: { alignment: "left", fontSize: 7.8 },
-        footTeamTitle: { bold: true, fillColor: "#f3f4f6", fontSize: 8.5 },
-        footLabel: { bold: true, fontSize: 7.8 },
-        footValue: { fontSize: 7.8, alignment: "right" },
-        footValueCenter: { fontSize: 8.2, alignment: "center", bold: true },
+        sectionTitle: {
+          bold: true,
+          fontSize: modoUltraCompactoPdf ? 7.1 : modoCompactoPdf ? 7.6 : 8.6,
+          color: "#0f172a",
+        },
+        teamHead: {
+          bold: true,
+          fontSize: modoUltraCompactoPdf ? 6.7 : modoCompactoPdf ? 7.2 : 8.3,
+          margin: [0, 0, 0, modoCompactoPdf ? 1 : 2],
+        },
+        thCenter: {
+          bold: true,
+          alignment: "center",
+          fillColor: "#eef4fb",
+          fontSize: modoUltraCompactoPdf ? 6.1 : modoCompactoPdf ? 6.6 : 7.6,
+        },
+        thLeft: {
+          bold: true,
+          alignment: "left",
+          fillColor: "#eef4fb",
+          fontSize: modoUltraCompactoPdf ? 6.1 : modoCompactoPdf ? 6.6 : 7.6,
+        },
+        tdCenter: { alignment: "center", fontSize: modoUltraCompactoPdf ? 5.9 : modoCompactoPdf ? 6.4 : 7.3 },
+        tdLeft: { alignment: "left", fontSize: modoUltraCompactoPdf ? 5.9 : modoCompactoPdf ? 6.4 : 7.3 },
+        footTeamTitle: {
+          bold: true,
+          fillColor: "#f3f4f6",
+          fontSize: modoUltraCompactoPdf ? 7.1 : modoCompactoPdf ? 7.6 : 8.3,
+        },
+        footLabel: { bold: true, fontSize: modoUltraCompactoPdf ? 6.3 : modoCompactoPdf ? 6.8 : 7.4 },
+        footValue: { fontSize: modoUltraCompactoPdf ? 6.3 : modoCompactoPdf ? 6.8 : 7.4, alignment: "right" },
+        footValueCenter: {
+          fontSize: modoUltraCompactoPdf ? 6.6 : modoCompactoPdf ? 7.2 : 7.8,
+          alignment: "center",
+          bold: true,
+        },
       },
     };
 
@@ -5211,3 +5712,5 @@ window.volverAPartidos = volverAPartidos;
 window.recargarPlanilla = recargarPlanilla;
 window.abrirModalInscripcionPlanilla = abrirModalInscripcionPlanilla;
 window.cerrarModalInscripcionPlanilla = cerrarModalInscripcionPlanilla;
+
+

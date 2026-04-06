@@ -1,3 +1,61 @@
+## 2026-04-05 - Activación por pago (Fase A) — comprobante manual
+
+- **Migración 060**: tabla `comprobantes_pago` (estado: `pendiente/aprobado/rechazado`). Aplicada en local y Render.
+- **Backend**: `multerComprobantes.js` (PDF + imagen, 10 MB), `comprobanteController.js`, `comprobanteRoutes.js`.
+- **Email**: admin recibe notificación cuando un organizador sube su comprobante.
+- **Login / Register**: modal de pago pendiente ya permite subir el comprobante directamente desde la pantalla de espera.
+- **Admin dashboard**: nuevo panel "Comprobantes de pago" con tabla de pendientes, botón "Activar" (1 clic activa la cuenta) y botón "Rechazar" (con nota opcional). Todo auditado.
+
+## 2026-04-05 - Fix: duplicate key en generación de fixture
+
+- `Eliminatoria.js`: INSERT de partido de slot no incluía `numero_campeonato` → filas NULL en BD → al reiniciar servidor, `asegurarEsquemaSecuencia` colisionaba numerando esas filas desde 1.
+- `Partido.js`: `asegurarEsquemaSecuencia` ahora numera filas NULL desde `MAX(existente)+1` en lugar de desde 1.
+- 16 filas NULL saneadas en Render.
+
+## 2026-04-05 - Planes y precios públicos
+
+- Se añadieron en la landing principal las cards `Plan por torneo` y `Plan anual` junto al bloque existente de planes.
+- Se creó un catálogo público de precios separado del motor de restricciones técnicas para poder mostrar ofertas comerciales sin alterar la lógica de `plan_codigo`.
+- El panel administrativo ya permite editar desde UI los precios públicos de:
+  - `free`
+  - `base`
+  - `competencia`
+  - `premium`
+  - `torneo`
+  - `anual`
+- El modal de contratación en la landing ahora distingue:
+  - planes registrables del sistema (`free/base/competencia/premium`)
+  - ofertas comerciales de contacto (`torneo/anual`)
+
+## 2026-04-05 - Página pública de planes y catálogo por modalidad
+
+- La landing principal ya no muestra cards por plan técnico individual; ahora presenta 3 cards resumen:
+  - `Plan mensual`
+  - `Plan campeonato`
+  - `Plan anual`
+- Se añadió `frontend/planes.html` como página dedicada para detallar planes y precios.
+- El menú principal ahora incorpora `Planes` con submenú a:
+  - `Plan mensual`
+  - `Plan campeonato`
+  - `Plan anual`
+- El catálogo público se reorganizó por modalidad y nivel:
+  - mensual: `básico`, `competencia`, `premium`
+  - campeonato: `básico`, `competencia`, `premium`
+  - anual: `básico`, `competencia`, `premium`
+- `Demo` y `Free` quedaron visibles como bloque de entrada/prueba.
+- `Demo` quedó ajustado a `1 campeonato`, manteniendo:
+  - 3 categorías
+  - 8 equipos por categoría
+  - 15 jugadores por equipo
+  - sin carnés
+- `Free` queda en:
+  - 2 campeonatos
+  - 3 categorías por campeonato
+  - 32 equipos por categoría
+  - 15 jugadores por equipo
+  - sin carnés
+- El `Premium` de las modalidades pagadas ya muestra explícitamente `Módulo de transmisión (servicio streaming)` dentro de la oferta.
+
 ## 2026-03-31 - Portal público: fix de playoff y tabla pública con planillas
 
 - `frontend/js/portal.js`: se corrigió la referencia rota `formatearRondaPortal(...)` por `formatearRondaPlayoffPortal(...)`, que estaba rompiendo el detalle de torneos con playoff en el portal público.
@@ -34,6 +92,18 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 - `backend/models/Eliminatoria.js` sincroniza cruces y reclasificaciones resueltas usando también el marcador de penales.
 - `frontend/js/portal.js` y `frontend/css/portal.css` muestran en el portal público el resumen de penales debajo del resultado del partido cuando aplica.
 - Pendiente operativo documentado: recomponer y validar la llave de playoff de los campeonatos afectados en producción para retomar pruebas E2E desde oficina.
+
+---
+
+## 2026-04-05 - Planes campeonato y anual con restricciones técnicas reales
+
+- `planLimits.js`: 6 nuevos entradas en `PLANES` con límites técnicos operativos.
+  - `campeonato_*`: `max_campeonatos=1`, límites del tier dentro del campeonato.
+  - `anual_*`: mismos límites que su equivalente mensual.
+- `PLANES_PUBLICOS` y `PLANES_PAGADOS` incluyen los 6 nuevos códigos.
+- `CATALOGO_PRECIOS_PUBLICOS`: `registrable: true`, `plan_registro` = código propio.
+- `UsuarioAuth.js` + migración `058`: CHECK constraint ampliado a 11 valores válidos.
+- Migración 058 aplicada en local; pendiente en Render.
 
 ---
 
@@ -1588,3 +1658,28 @@ psql -U postgres -d gestionDeportiva -f migrations/014_pases_jugadores.sql
   - logos de los equipos,
   - resumen de penales si aplica.
 
+---
+
+## 30. Compactación de planilla oficial y realineación local con Render
+- **Ubicación frontend:** `frontend/js/planilla.js`, `frontend/css/style.css`
+- **Ubicación backend asociada:** `backend/models/Eliminatoria.js`
+- Se compactó la `planilla de juego` oficial en vista previa y PDF para aprovechar mejor la hoja:
+  - menor espacio entre bloques,
+  - marcador más corto,
+  - logos y nombres centrados,
+  - casillas `P/S`, `E` y `S` impresas en blanco y en tamaño reducido,
+  - eliminación de filas vacías en impresión/PDF.
+- Se dejó la maquetación preparada para escenarios con planteles grandes, incluyendo el objetivo operativo de `30` filas útiles sin perder las firmas técnicas.
+- En el mismo cierre se incluyó el ajuste de sincronización de partidos operativos de playoff en `backend/models/Eliminatoria.js`.
+- Publicado en:
+  - `commit 3783216`
+  - `feat: compact planilla print layout and playoff match sync`
+- Además, la BD local se volvió a alinear con el estado real de Render:
+  - respaldo local previo: `database/backups/pre-render-sync-20260403-000331.custom.backup`
+  - dump restaurado desde Render: `database/backups/render-sync-20260403-000331.custom.backup`
+  - verificación final:
+    - `campeonatos: 11`
+    - `eventos: 16`
+    - `equipos: 144`
+    - `partidos: 422`
+    - `usuarios: 25`

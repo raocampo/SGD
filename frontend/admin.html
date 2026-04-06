@@ -136,8 +136,20 @@
     .badge-plan-competencia { background: #fdebd0; color: #784212; }
     .badge-plan-premium     { background: #e8daef; color: #6c3483; }
 
-    .badge-estado-activo   { background: #d5f5e3; color: #1e8449; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
-    .badge-estado-inactivo { background: #eaecf0; color: #7f8c8d; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+    .badge-estado-activo    { background: #d5f5e3; color: #1e8449; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+    .badge-estado-inactivo  { background: #eaecf0; color: #7f8c8d; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+    .badge-estado-pendiente { background: #fee2e2; color: #dc2626; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
+
+    /* ── Comprobantes ── */
+    .dash-comp-badge-pend { background: #fee2e2; color: #dc2626; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .dash-comp-badge-apro { background: #d5f5e3; color: #1e8449; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .dash-comp-badge-rech { background: #eaecf0; color: #566573; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .btn-comp-activar { background: #27ae60; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; margin-right: 4px; }
+    .btn-comp-activar:hover { background: #229954; }
+    .btn-comp-rechazar { background: #e74c3c; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .btn-comp-rechazar:hover { background: #c0392b; }
+    .btn-comp-ver { background: #3498db; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-comp-ver:hover { background: #2980b9; }
 
     /* Métricas globales */
     .dash-global-row {
@@ -165,12 +177,31 @@
       grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: 14px;
     }
+    .dash-precios-group {
+      margin-bottom: 18px;
+    }
+    .dash-precios-group-title {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #4b5563;
+      margin-bottom: 10px;
+    }
     .dash-precio-item { display: flex; flex-direction: column; gap: 6px; }
     .dash-precio-item label { font-size: 12px; font-weight: 600; color: #2c3e50; }
     .dash-precio-item .precio-badge {
       display: inline-block; font-size: 11px; font-weight: 700;
       padding: 2px 9px; border-radius: 10px; margin-bottom: 2px;
     }
+    .precio-badge-familia-pruebas { background: #e0f2fe; color: #075985; }
+    .precio-badge-familia-mensual { background: #eef2ff; color: #3730a3; }
+    .precio-badge-familia-campeonato { background: #ecfeff; color: #155e75; }
+    .precio-badge-familia-anual { background: #fef2f2; color: #991b1b; }
+    .precio-badge-nivel-base { box-shadow: inset 0 0 0 1px rgba(16, 185, 129, .25); }
+    .precio-badge-nivel-competencia { box-shadow: inset 0 0 0 1px rgba(245, 158, 11, .25); }
+    .precio-badge-nivel-premium { box-shadow: inset 0 0 0 1px rgba(139, 92, 246, .25); }
+    .precio-badge-nivel-free { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .25); }
     .dash-precio-item input[type="number"] {
       width: 100%; padding: 8px 11px;
       border: 1.5px solid #dde3ec;
@@ -232,6 +263,48 @@
     .dash-forbidden i  { font-size: 48px; color: #e74c3c; margin-bottom: 16px; display: block; }
     .dash-forbidden h2 { font-size: 18px; color: #2c3e50; margin-bottom: 8px; }
     .dash-forbidden p  { font-size: 13px; color: #7f8c8d; margin-bottom: 20px; }
+
+    /* ── Auditoría ── */
+    .dash-audit-filters {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+    }
+    .dash-audit-input {
+      padding: 7px 10px; border: 1.5px solid #dde3ec;
+      border-radius: 7px; font-size: 12.5px; color: #2c3e50;
+      background: #fff; height: 34px;
+    }
+    .dash-audit-input:focus { outline: none; border-color: #3498db; }
+    .dash-audit-btn {
+      height: 34px; padding: 0 14px; font-size: 12.5px;
+      border-radius: 7px; white-space: nowrap;
+    }
+    .dash-audit-btn-reset {
+      background: #f0f4f8; color: #2c3e50;
+      border: 1.5px solid #dde3ec;
+    }
+    .dash-audit-btn-reset:hover { background: #e2e8f0; }
+    .dash-audit-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f4f8;
+    }
+    .badge-audit {
+      display: inline-block; font-size: 10.5px; font-weight: 700;
+      padding: 2px 8px; border-radius: 10px;
+    }
+    .badge-audit-login       { background: #d5f5e3; color: #1e8449; }
+    .badge-audit-logout      { background: #eaecf0; color: #566573; }
+    .badge-audit-registro    { background: #d6eaf8; color: #1a5276; }
+    .badge-audit-password    { background: #fef9e7; color: #7d6608; }
+    .badge-audit-plan        { background: #fdebd0; color: #784212; }
+    .badge-audit-activacion  { background: #d4efdf; color: #1e8449; }
+    .badge-audit-precio      { background: #e8daef; color: #6c3483; }
+    .badge-audit-eliminacion { background: #fadbd8; color: #922b21; }
+    .badge-audit-otro        { background: #f0f4f8; color: #566573; }
+    .dash-audit-detalle {
+      font-size: 11px; color: #7f8c8d; max-width: 200px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      cursor: help;
+    }
   </style>
 </head>
 
@@ -361,7 +434,7 @@
 
           <!-- Precios de planes -->
           <div class="dash-panel" style="margin-bottom:24px;">
-            <div class="dash-panel-title"><i class="fas fa-tag"></i> Precios de planes (USD / mes)</div>
+            <div class="dash-panel-title"><i class="fas fa-tag"></i> Catálogo público de planes y tarifas (USD)</div>
             <div id="dash-admin-precios-wrap">
               <p class="dash-empty-msg">Cargando...</p>
             </div>
@@ -385,6 +458,95 @@
                 <i class="fas fa-save"></i> Guardar formas de pago
               </button>
             </div>
+          </div>
+
+          <!-- Auditoría -->
+          <div class="dash-panel" style="margin-bottom:24px;" id="dash-audit-panel">
+            <div class="dash-panel-title"><i class="fas fa-shield-alt"></i> Registro de Auditoría</div>
+            <!-- Filtros -->
+            <div class="dash-audit-filters">
+              <select id="dash-audit-accion" class="dash-audit-input">
+                <option value="">Todas las acciones</option>
+                <option value="login">Login</option>
+                <option value="logout">Logout</option>
+                <option value="registro">Registro</option>
+                <option value="cambio_password">Cambio de contraseña</option>
+                <option value="cambio_plan_estado">Cambio de estado de plan</option>
+                <option value="activacion_cuenta">Activación de cuenta</option>
+                <option value="cambio_precio_plan">Cambio de precios</option>
+                <option value="eliminacion_campeonato">Eliminación campeonato</option>
+                <option value="eliminacion_equipo">Eliminación equipo</option>
+                <option value="eliminacion_jugador">Eliminación jugador</option>
+              </select>
+              <input type="date" id="dash-audit-desde" class="dash-audit-input" title="Desde" />
+              <input type="date" id="dash-audit-hasta" class="dash-audit-input" title="Hasta" />
+              <button class="btn btn-primary dash-audit-btn" id="dash-audit-buscar" type="button">
+                <i class="fas fa-search"></i> Filtrar
+              </button>
+              <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-reset" type="button">
+                <i class="fas fa-times"></i> Limpiar
+              </button>
+            </div>
+            <!-- Tabla -->
+            <div class="dash-table-wrap" id="dash-audit-wrap">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Acción</th>
+                    <th>Entidad</th>
+                    <th>IP</th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-audit-tbody">
+                  <tr><td colspan="7" class="dash-empty-msg">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="dash-audit-footer">
+              <span id="dash-audit-total" style="font-size:12px;color:#7f8c8d;"></span>
+              <div style="display:flex;gap:6px;">
+                <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-prev" type="button">‹ Anterior</button>
+                <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-next" type="button">Siguiente ›</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Comprobantes de pago -->
+          <div class="dash-panel" style="margin-bottom:24px;" id="dash-comp-panel">
+            <div class="dash-panel-title"><i class="fas fa-file-invoice-dollar"></i> Comprobantes de pago</div>
+            <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
+              <select id="dash-comp-estado" class="dash-audit-input">
+                <option value="pendiente">Solo pendientes</option>
+                <option value="">Todos</option>
+                <option value="aprobado">Aprobados</option>
+                <option value="rechazado">Rechazados</option>
+              </select>
+              <button class="btn btn-primary dash-audit-btn" id="dash-comp-buscar" type="button">
+                <i class="fas fa-sync-alt"></i> Actualizar
+              </button>
+            </div>
+            <div class="dash-table-wrap">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Organizador</th>
+                    <th>Plan</th>
+                    <th>Estado comp.</th>
+                    <th class="text-center">Comprobante</th>
+                    <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-comp-tbody">
+                  <tr><td colspan="6" class="dash-empty-msg">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p id="dash-comp-msg" style="font-size:12.5px; margin-top:8px; min-height:16px;"></p>
           </div>
 
         </div><!-- /dash-admin-root -->

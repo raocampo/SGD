@@ -272,6 +272,43 @@
     mostrarModalPendientePago(planNombre);
   }
 
+  // ── Subir comprobante desde modal pago pendiente ────────────────────────────
+  function initSubirComprobanteLogin() {
+    const btn   = document.getElementById("ltc-pendiente-subir-btn");
+    const input = document.getElementById("ltc-pendiente-archivo");
+    const msg   = document.getElementById("ltc-pendiente-upload-msg");
+    if (!btn || !input) return;
+
+    btn.addEventListener("click", async () => {
+      const file = input.files?.[0];
+      if (!file) { msg.style.color = "#dc2626"; msg.textContent = "Selecciona un archivo."; return; }
+
+      const token = window.Auth?.getToken?.();
+      if (!token) { msg.style.color = "#dc2626"; msg.textContent = "Inicia sesión primero para subir el comprobante."; return; }
+
+      btn.disabled = true;
+      msg.style.color = "#475569"; msg.textContent = "Subiendo...";
+
+      try {
+        const fd = new FormData();
+        fd.append("comprobante", file);
+        const resp = await fetch(`${window.API_BASE_URL}/comprobantes`, {
+          method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          msg.style.color = "#166534";
+          msg.textContent = "✅ Comprobante enviado. Te avisaremos cuando sea revisado.";
+          btn.innerHTML = '<i class="fas fa-check"></i> Enviado';
+          input.disabled = true;
+        } else {
+          msg.style.color = "#dc2626"; msg.textContent = data.error || "No se pudo enviar.";
+          btn.disabled = false;
+        }
+      } catch { msg.style.color = "#dc2626"; msg.textContent = "Error de conexión."; btn.disabled = false; }
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", async () => {
     if (!window.location.pathname.endsWith("login.html")) return;
     document.getElementById("login-form")?.addEventListener("submit", onSubmitLogin);
@@ -283,6 +320,7 @@
     mostrarResetSiExisteToken();
     mostrarAvisoSalidaSesion();
     mostrarModalSiPendientePago();
+    initSubirComprobanteLogin();
     await verificarRegistroInicial();
   });
 })();

@@ -4,7 +4,7 @@ const PLANES = {
   demo: {
     codigo: "demo",
     nombre: "Demo",
-    max_campeonatos: 2,
+    max_campeonatos: 1,
     max_categorias_por_campeonato: 3,
     max_equipos_por_campeonato: 8,
     max_equipos_por_categoria: 8,
@@ -56,10 +56,212 @@ const PLANES = {
     permite_carnets: true,
     precio_mensual: 70,
   },
+  // ── Planes por campeonato (pago único por torneo — max_campeonatos = 1) ─────
+  campeonato_base: {
+    codigo: "campeonato_base",
+    nombre: "Básico por campeonato",
+    max_campeonatos: 1,
+    max_categorias_por_campeonato: 8,
+    max_equipos_por_campeonato: null,
+    max_equipos_por_categoria: 64,
+    max_jugadores_por_equipo: 25,
+    permite_carnets: false,
+    precio_mensual: null,
+  },
+  campeonato_competencia: {
+    codigo: "campeonato_competencia",
+    nombre: "Competencia por campeonato",
+    max_campeonatos: 1,
+    max_categorias_por_campeonato: 20,
+    max_equipos_por_campeonato: null,
+    max_equipos_por_categoria: 128,
+    max_jugadores_por_equipo: 40,
+    permite_carnets: true,
+    precio_mensual: null,
+  },
+  campeonato_premium: {
+    codigo: "campeonato_premium",
+    nombre: "Premium por campeonato",
+    max_campeonatos: 1,
+    max_categorias_por_campeonato: null,
+    max_equipos_por_campeonato: null,
+    max_equipos_por_categoria: null,
+    max_jugadores_por_equipo: null,
+    permite_carnets: true,
+    precio_mensual: null,
+  },
+  // ── Planes anuales (mismos límites que mensual del mismo tier) ────────────
+  anual_base: {
+    codigo: "anual_base",
+    nombre: "Básico anual",
+    max_campeonatos: 6,
+    max_categorias_por_campeonato: 8,
+    max_equipos_por_campeonato: null,
+    max_equipos_por_categoria: 64,
+    max_jugadores_por_equipo: 25,
+    permite_carnets: false,
+    precio_mensual: null,
+  },
+  anual_competencia: {
+    codigo: "anual_competencia",
+    nombre: "Competencia anual",
+    max_campeonatos: 20,
+    max_categorias_por_campeonato: 20,
+    max_equipos_por_campeonato: null,
+    max_equipos_por_categoria: 128,
+    max_jugadores_por_equipo: 40,
+    permite_carnets: true,
+    precio_mensual: null,
+  },
+  anual_premium: {
+    codigo: "anual_premium",
+    nombre: "Premium anual",
+    max_campeonatos: null,
+    max_categorias_por_campeonato: null,
+    max_equipos_por_campeonato: null,
+    max_equipos_por_categoria: null,
+    max_jugadores_por_equipo: null,
+    permite_carnets: true,
+    precio_mensual: null,
+  },
 };
 
-const PLANES_PUBLICOS = new Set(["demo", "free", "base", "competencia", "premium"]);
-const PLANES_PAGADOS = new Set(["base", "competencia", "premium"]);
+const PLANES_PUBLICOS = new Set([
+  "demo", "free", "base", "competencia", "premium",
+  "campeonato_base", "campeonato_competencia", "campeonato_premium",
+  "anual_base", "anual_competencia", "anual_premium",
+]);
+const PLANES_PAGADOS = new Set([
+  "base", "competencia", "premium",
+  "campeonato_base", "campeonato_competencia", "campeonato_premium",
+  "anual_base", "anual_competencia", "anual_premium",
+]);
+const CATALOGO_PRECIOS_PUBLICOS = {
+  free: {
+    codigo: "free",
+    nombre: "Plan Free",
+    tipo: "gratuito",
+    familia: "pruebas",
+    nivel: "free",
+    sufijo_precio: "/ gratis",
+    descripcion_precio: "Precio mensual plan Free (USD)",
+    precio_default: PLANES.free.precio_mensual ?? 0,
+    registrable: true,
+    plan_registro: "free",
+  },
+  mensual_base: {
+    codigo: "mensual_base",
+    nombre: "Básico mensual",
+    tipo: "plan",
+    familia: "mensual",
+    nivel: "base",
+    sufijo_precio: "/ mes",
+    descripcion_precio: "Precio plan básico mensual (USD)",
+    precio_default: 20,
+    registrable: true,
+    plan_registro: "base",
+  },
+  mensual_competencia: {
+    codigo: "mensual_competencia",
+    nombre: "Competencia mensual",
+    tipo: "plan",
+    familia: "mensual",
+    nivel: "competencia",
+    sufijo_precio: "/ mes",
+    descripcion_precio: "Precio plan competencia mensual (USD)",
+    precio_default: 60,
+    registrable: true,
+    plan_registro: "competencia",
+  },
+  mensual_premium: {
+    codigo: "mensual_premium",
+    nombre: "Premium mensual",
+    tipo: "plan",
+    familia: "mensual",
+    nivel: "premium",
+    sufijo_precio: "/ mes",
+    descripcion_precio: "Precio plan premium mensual (USD)",
+    precio_default: 150,
+    registrable: true,
+    plan_registro: "premium",
+  },
+  campeonato_base: {
+    codigo: "campeonato_base",
+    nombre: "Básico por campeonato",
+    tipo: "plan",
+    familia: "campeonato",
+    nivel: "base",
+    sufijo_precio: "/ campeonato",
+    descripcion_precio: "Precio plan básico por campeonato (USD)",
+    precio_default: 200,
+    registrable: true,
+    plan_registro: "campeonato_base",
+  },
+  campeonato_competencia: {
+    codigo: "campeonato_competencia",
+    nombre: "Competencia por campeonato",
+    tipo: "plan",
+    familia: "campeonato",
+    nivel: "competencia",
+    sufijo_precio: "/ campeonato",
+    descripcion_precio: "Precio plan competencia por campeonato (USD)",
+    precio_default: 500,
+    registrable: true,
+    plan_registro: "campeonato_competencia",
+  },
+  campeonato_premium: {
+    codigo: "campeonato_premium",
+    nombre: "Premium por campeonato",
+    tipo: "plan",
+    familia: "campeonato",
+    nivel: "premium",
+    sufijo_precio: "/ campeonato",
+    descripcion_precio: "Precio plan premium por campeonato (USD)",
+    precio_default: 1500,
+    registrable: true,
+    plan_registro: "campeonato_premium",
+  },
+  anual_base: {
+    codigo: "anual_base",
+    nombre: "Básico anual",
+    tipo: "plan",
+    familia: "anual",
+    nivel: "base",
+    sufijo_precio: "/ año",
+    descripcion_precio: "Precio plan básico anual (USD)",
+    precio_default: 49,
+    registrable: true,
+    plan_registro: "anual_base",
+  },
+  anual_competencia: {
+    codigo: "anual_competencia",
+    nombre: "Competencia anual",
+    tipo: "comercial",
+    familia: "anual",
+    nivel: "competencia",
+    sufijo_precio: "/ año",
+    descripcion_precio: "Precio plan competencia anual (USD)",
+    precio_default: 500,
+    registrable: true,
+    plan_registro: "anual_competencia",
+  },
+  anual_premium: {
+    codigo: "anual_premium",
+    nombre: "Premium anual",
+    tipo: "plan",
+    familia: "anual",
+    nivel: "premium",
+    sufijo_precio: "/ año",
+    descripcion_precio: "Precio plan premium anual (USD)",
+    precio_default: 1000,
+    registrable: true,
+    plan_registro: "anual_premium",
+  },
+};
+
+function obtenerCatalogoPreciosPublicos() {
+  return { ...CATALOGO_PRECIOS_PUBLICOS };
+}
 
 function normalizarPlanCodigo(planCodigo, fallback = "demo") {
   const code = String(planCodigo || "").trim().toLowerCase();
@@ -126,11 +328,12 @@ async function asegurarTablaConfiguracion(client = pool) {
   `);
 
   const claves = [
-    ["plan_precio_demo",        "0",  "Precio mensual plan Demo (USD)"],
-    ["plan_precio_free",        "0",  "Precio mensual plan Free (USD)"],
-    ["plan_precio_base",        "15", "Precio mensual plan Base (USD)"],
-    ["plan_precio_competencia", "35", "Precio mensual plan Competencia (USD)"],
-    ["plan_precio_premium",     "70", "Precio mensual plan Premium (USD)"],
+    ["plan_precio_demo", "0", "Precio mensual plan Demo (USD)"],
+    ...Object.values(CATALOGO_PRECIOS_PUBLICOS).map((item) => [
+      `plan_precio_${item.codigo}`,
+      String(item.precio_default ?? 0),
+      item.descripcion_precio,
+    ]),
   ];
   for (const [clave, valor, descripcion] of claves) {
     await client.query(
@@ -157,13 +360,20 @@ async function obtenerPreciosPlanes(client = pool) {
     return precios;
   } catch {
     // fallback a valores hardcodeados
-    return { demo: 0, free: 0, base: 15, competencia: 35, premium: 70 };
+    return {
+      demo: 0,
+      ...Object.values(CATALOGO_PRECIOS_PUBLICOS).reduce((acc, item) => {
+        acc[item.codigo] = Number(item.precio_default) || 0;
+        return acc;
+      }, {}),
+    };
   }
 }
 
 async function actualizarPrecioPlan(planCodigo, precio, client = pool) {
-  const codigo = normalizarPlanCodigo(planCodigo, null);
-  if (!codigo) throw new Error("Plan inválido");
+  const codigo = String(planCodigo || "").trim().toLowerCase();
+  const item = CATALOGO_PRECIOS_PUBLICOS[codigo] || (PLANES[codigo] ? { codigo, nombre: PLANES[codigo]?.nombre || codigo } : null);
+  if (!item?.codigo) throw new Error("Plan inválido");
   const monto = Number(precio);
   if (!Number.isFinite(monto) || monto < 0) throw new Error("Precio inválido: debe ser >= 0");
   await asegurarTablaConfiguracion(client);
@@ -171,7 +381,7 @@ async function actualizarPrecioPlan(planCodigo, precio, client = pool) {
     `INSERT INTO configuracion_sistema (clave, valor, tipo, descripcion)
      VALUES ($1, $2, 'number', $3)
      ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, updated_at = CURRENT_TIMESTAMP`,
-    [`plan_precio_${codigo}`, String(monto), `Precio mensual plan ${PLANES[codigo]?.nombre || codigo} (USD)`]
+    [`plan_precio_${codigo}`, String(monto), item.descripcion_precio || `Precio plan ${item.nombre || codigo} (USD)`]
   );
   return { codigo, precio: monto };
 }
@@ -269,10 +479,12 @@ module.exports = {
   PLANES,
   PLANES_PUBLICOS,
   PLANES_PAGADOS,
+  CATALOGO_PRECIOS_PUBLICOS,
   normalizarPlanCodigo,
   esPlanPublico,
   esPlanPagado,
   obtenerPlan,
+  obtenerCatalogoPreciosPublicos,
   obtenerPlanUsuarioPorId,
   obtenerPlanPorCampeonatoId,
   asegurarTablaConfiguracion,
