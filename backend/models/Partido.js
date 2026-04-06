@@ -1191,21 +1191,23 @@ class Partido {
       ADD COLUMN IF NOT EXISTS numero_campeonato INTEGER
     `);
     await pool.query(`
-      WITH ranked AS (
-        SELECT
-          id,
-          ROW_NUMBER() OVER (
-            PARTITION BY campeonato_id
-            ORDER BY id
-          )::int AS rn
+      WITH max_por_camp AS (
+        SELECT campeonato_id, COALESCE(MAX(numero_campeonato), 0) AS max_num
         FROM partidos
-        WHERE campeonato_id IS NOT NULL
+        WHERE campeonato_id IS NOT NULL AND numero_campeonato IS NOT NULL
+        GROUP BY campeonato_id
+      ),
+      null_rows AS (
+        SELECT p.id, p.campeonato_id,
+          ROW_NUMBER() OVER (PARTITION BY p.campeonato_id ORDER BY p.id)::int AS rn
+        FROM partidos p
+        WHERE p.numero_campeonato IS NULL AND p.campeonato_id IS NOT NULL
       )
       UPDATE partidos p
-      SET numero_campeonato = ranked.rn
-      FROM ranked
-      WHERE p.id = ranked.id
-        AND p.numero_campeonato IS NULL
+      SET numero_campeonato = nr.rn + COALESCE(m.max_num, 0)
+      FROM null_rows nr
+      LEFT JOIN max_por_camp m ON m.campeonato_id = nr.campeonato_id
+      WHERE p.id = nr.id
     `);
     await pool.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_partidos_numero_campeonato

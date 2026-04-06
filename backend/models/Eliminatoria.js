@@ -649,8 +649,8 @@ class Eliminatoria {
            FROM partidos WHERE campeonato_id = $1
          )
          INSERT INTO partidos (campeonato_id, evento_id, equipo_local_id, equipo_visitante_id,
-           fecha_partido, hora_partido, cancha)
-         SELECT $1, $2, $3, $4, $5, $6, $7
+           fecha_partido, hora_partido, cancha, numero_campeonato)
+         SELECT $1, $2, $3, $4, $5, $6, $7, next_num.next_num
          FROM next_num
          RETURNING id`,
         [
