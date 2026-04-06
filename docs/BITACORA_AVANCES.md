@@ -1,3 +1,11 @@
+## 2026-04-06 - Pestañas en admin.html + carnet individual + módulos editoriales operador
+
+- **`frontend/admin.html`**: layout de pestañas (Dashboard, Planes, Formas de pago, Auditoría, Comprobantes). Dashboard es la pestaña activa por defecto. CSS responsive inline + JS de tabs con soporte de URL hash. Métricas globales (campeonatos/equipos/jugadores) movidas al inicio del tab Dashboard.
+- **`frontend/js/dashboard-admin.js`**: cachea `_lastPorPlan` para re-renderizar Chart.js al volver al tab Dashboard. Expone `DashboardAdmin.refreshChart()`.
+- **`frontend/jugadores.html`**: agrega `<select id="carnet-filtro-jugador">` en toolbar de carnés para imprimir/exportar el carné de un jugador individual.
+- **`frontend/js/jugadores.js`**: `actualizarDropdownJugadorCarnet()` popula el dropdown; `obtenerIdsCarnetSeleccionados()` prioriza el dropdown sobre checkboxes; evento `change` del dropdown re-renderiza solo el carné seleccionado.
+- **`frontend/portal-operador.html`**: nueva sección "Módulos editoriales" con tarjetas para Noticias, Galería, Contenido portal y Mensajes de contacto. Sidebar actualizado con sección "Editorial".
+
 ## 2026-04-05 - Activación por pago — Fase A completa (comprobante manual)
 
 - **Migración 060** (`comprobantes_pago`): tabla con columnas `id`, `usuario_id`, `archivo_url`, `estado` (`pendiente/aprobado/rechazado`), `nota_admin`, `revisado_por`, `created_at`, `updated_at`. Aplicada en local y Render.
