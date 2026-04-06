@@ -1,3 +1,20 @@
+## 2026-04-05 - Estado del sistema (sesión 22)
+
+### Módulo de auditoría — completo
+- Tabla `auditoria` con índices. Panel en `admin.html` con filtros por acción/fecha y paginación.
+- Acciones auditadas: login, logout, registro, cambio de contraseña, cambio de plan/estado, activación de cuenta, cambio de precios, eliminación de campeonatos/equipos/jugadores.
+
+### Activación por pago — Fase A completa
+- Organizadores en estado `pendiente_pago` pueden subir comprobante desde el modal de login/registro.
+- Admin activa la cuenta con 1 clic desde el panel "Comprobantes de pago" en `admin.html`.
+- Migración 060 aplicada. Email de notificación al admin operativo.
+- **Fase B pendiente**: activación automática vía PayPhone webhook y PayPal capture.
+
+### Bug fixture duplicate key — resuelto
+- `Eliminatoria.js` ya incluye `numero_campeonato` en todos los INSERT a `partidos`.
+- `asegurarEsquemaSecuencia` ya es segura ante reinicios con filas NULL preexistentes.
+- Producción (Render) saneada.
+
 ## 2026-04-05 - Estado de planes
 
 - El sistema sí tiene restricciones reales entre planes.

@@ -1,3 +1,22 @@
+## 2026-04-05 - Activación por pago — Fase A completa (comprobante manual)
+
+- **Migración 060** (`comprobantes_pago`): tabla con columnas `id`, `usuario_id`, `archivo_url`, `estado` (`pendiente/aprobado/rechazado`), `nota_admin`, `revisado_por`, `created_at`, `updated_at`. Aplicada en local y Render.
+- **`backend/config/multerComprobantes.js`**: config Multer dedicada para comprobantes (acepta `image/*` + `application/pdf`, máx. 10 MB, carpeta `uploads/comprobantes/`).
+- **`backend/controllers/comprobanteController.js`**: endpoints `subirComprobante` (valida `plan_estado='pendiente_pago'`), `listarComprobantes` (admin, filtra por estado), `activarCuenta` (activa la cuenta + aprueba comprobante), `rechazarComprobante`.
+- **`backend/routes/comprobanteRoutes.js`**: `POST /api/comprobantes`, `GET /api/comprobantes/admin`, `PUT /api/comprobantes/admin/:id/activar`, `PUT /api/comprobantes/admin/:id/rechazar`.
+- **`backend/services/emailService.js`**: `enviarEmailComprobanteRecibido` notifica al admin por email cuando llega un comprobante nuevo.
+- **`frontend/login.html`** y **`frontend/register.html`**: modal de pago pendiente ahora incluye sección para subir comprobante (input file + botón + mensaje de estado).
+- **`frontend/js/login.js`** y **`frontend/js/register.js`**: `initSubirComprobanteLogin()` / `initSubirComprobanteRegister()` — upload con FormData + Bearer token al endpoint `/api/comprobantes`.
+- **`frontend/admin.html`** + **`frontend/js/dashboard-admin.js`**: panel "Comprobantes de pago" con tabla, filtro por estado, botones "Activar" (activa la cuenta del organizador en 1 clic) y "Rechazar" (con nota opcional). Todas las acciones quedan registradas en auditoría.
+
+## 2026-04-05 - Fix: duplicate key en idx_partidos_numero_campeonato
+
+- **Root cause**: `Eliminatoria.js` al crear un partido para un slot de llave incluía la CTE `next_num` pero no la usaba en el INSERT (la columna `numero_campeonato` estaba ausente de la lista de columnas). Esas filas quedaban con `numero_campeonato = NULL`.
+- Al reiniciar el servidor (Render resetea la variable estática `_esquemaSecuenciaAsegurado`), `asegurarEsquemaSecuencia` asignaba `ROW_NUMBER()` empezando desde 1 a las filas NULL, colisionando con los valores ya existentes de otras categorías del mismo campeonato → error 500 en cualquier endpoint de partidos.
+- **Fix `Eliminatoria.js`**: el INSERT del slot ahora incluye `numero_campeonato` en la lista de columnas y usa `next_num.next_num` en el SELECT.
+- **Fix `Partido.js`**: `asegurarEsquemaSecuencia` ahora usa `MAX(existente) + ROW_NUMBER()` para las filas NULL en lugar de solo `ROW_NUMBER()`, garantizando que no haya colisión con valores previos.
+- **Render**: 16 filas NULL saneadas directamente en producción con la query corregida.
+
 ## 2026-04-05 - Planes campeonato y anual con restricciones técnicas reales
 
 - `backend/services/planLimits.js`: se agregaron 6 nuevos planes técnicos al objeto `PLANES`:

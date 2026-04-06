@@ -1,3 +1,17 @@
+## 2026-04-05 - Activación por pago (Fase A) — comprobante manual
+
+- **Migración 060**: tabla `comprobantes_pago` (estado: `pendiente/aprobado/rechazado`). Aplicada en local y Render.
+- **Backend**: `multerComprobantes.js` (PDF + imagen, 10 MB), `comprobanteController.js`, `comprobanteRoutes.js`.
+- **Email**: admin recibe notificación cuando un organizador sube su comprobante.
+- **Login / Register**: modal de pago pendiente ya permite subir el comprobante directamente desde la pantalla de espera.
+- **Admin dashboard**: nuevo panel "Comprobantes de pago" con tabla de pendientes, botón "Activar" (1 clic activa la cuenta) y botón "Rechazar" (con nota opcional). Todo auditado.
+
+## 2026-04-05 - Fix: duplicate key en generación de fixture
+
+- `Eliminatoria.js`: INSERT de partido de slot no incluía `numero_campeonato` → filas NULL en BD → al reiniciar servidor, `asegurarEsquemaSecuencia` colisionaba numerando esas filas desde 1.
+- `Partido.js`: `asegurarEsquemaSecuencia` ahora numera filas NULL desde `MAX(existente)+1` en lugar de desde 1.
+- 16 filas NULL saneadas en Render.
+
 ## 2026-04-05 - Planes y precios públicos
 
 - Se añadieron en la landing principal las cards `Plan por torneo` y `Plan anual` junto al bloque existente de planes.
