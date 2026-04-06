@@ -17,6 +17,7 @@
 
   let chartInstance = null;
   let _orgData = []; // caché local de organizadores para el modal
+  let _lastPorPlan = null; // caché para re-renderizar el chart al volver al tab
 
   function fmt(n) {
     return Number(n || 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -38,10 +39,12 @@
   }
 
   function renderChartPlanes(porPlan) {
+    if (porPlan !== undefined) _lastPorPlan = porPlan;
+    const datos = _lastPorPlan;
     const canvas = document.getElementById("dash-admin-chart-planes");
     if (!canvas) return;
 
-    const filas = (porPlan || []).filter((r) => Number(r.total) > 0);
+    const filas = (datos || []).filter((r) => Number(r.total) > 0);
 
     if (chartInstance) {
       chartInstance.destroy();
@@ -701,5 +704,10 @@
     init();
   }
 
-  window.DashboardAdmin = { cargarDashboard };
+  window.DashboardAdmin = {
+    cargarDashboard,
+    refreshChart: function () {
+      if (_lastPorPlan) renderChartPlanes(_lastPorPlan);
+    },
+  };
 })();

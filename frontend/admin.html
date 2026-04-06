@@ -305,6 +305,67 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       cursor: help;
     }
+
+    /* ── Pestañas del panel admin ── */
+    .dash-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: #fff;
+      border: 1px solid #dde3ec;
+      border-radius: 10px;
+      padding: 6px;
+      box-shadow: 0 2px 6px rgba(44,62,80,.07);
+    }
+    .dash-tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .dash-tab-btn:hover {
+      background: #f0f4f8;
+      color: #2c3e50;
+    }
+    .dash-tab-btn.active {
+      background: linear-gradient(135deg, #2c3e50, #3498db);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(52,152,219,.3);
+    }
+    .dash-tab-btn .tab-badge {
+      background: #ef4444;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 10px;
+      min-width: 18px;
+      text-align: center;
+      display: none;
+    }
+    .dash-tab-btn .tab-badge.visible { display: inline-block; }
+    .dash-tab-panel { display: none; }
+    .dash-tab-panel.active { display: block; }
+
+    @media (max-width: 768px) {
+      .dash-tabs { gap: 3px; padding: 5px; }
+      .dash-tab-btn { padding: 8px 10px; font-size: 12px; gap: 5px; }
+      .dash-tab-btn i { font-size: 13px; }
+    }
+    @media (max-width: 480px) {
+      .dash-tab-btn span.tab-label { display: none; }
+      .dash-tab-btn { padding: 9px 11px; font-size: 13px; }
+    }
   </style>
 </head>
 
@@ -345,209 +406,247 @@
         <!-- Dashboard root (admin) -->
         <div id="dash-admin-root" style="display:none;">
 
-          <!-- Hero banner -->
-          <div class="dash-hero">
-            <div class="dash-hero-icon"><i class="fas fa-gauge"></i></div>
-            <div>
-              <div class="dash-hero-title">Dashboard Administrativo — LT&C</div>
-              <div class="dash-hero-sub">Visión comercial de la plataforma: organizadores, planes y métricas globales</div>
-            </div>
-          </div>
+          <!-- Nav de pestañas -->
+          <nav class="dash-tabs" id="dash-tabs-nav" role="tablist" aria-label="Secciones del panel">
+            <button class="dash-tab-btn active" data-tab="dashboard" role="tab" aria-selected="true">
+              <i class="fas fa-gauge"></i>
+              <span class="tab-label">Dashboard</span>
+            </button>
+            <button class="dash-tab-btn" data-tab="planes" role="tab" aria-selected="false">
+              <i class="fas fa-tag"></i>
+              <span class="tab-label">Planes</span>
+            </button>
+            <button class="dash-tab-btn" data-tab="pago" role="tab" aria-selected="false">
+              <i class="fas fa-money-check-alt"></i>
+              <span class="tab-label">Formas de pago</span>
+            </button>
+            <button class="dash-tab-btn" data-tab="auditoria" role="tab" aria-selected="false">
+              <i class="fas fa-shield-alt"></i>
+              <span class="tab-label">Auditoría</span>
+            </button>
+            <button class="dash-tab-btn" data-tab="comprobantes" role="tab" aria-selected="false">
+              <i class="fas fa-file-invoice-dollar"></i>
+              <span class="tab-label">Comprobantes</span>
+              <span class="tab-badge" id="badge-comprobantes-pendientes"></span>
+            </button>
+          </nav>
 
-          <!-- KPIs -->
-          <div class="dash-kpis">
-            <div class="dash-kpi-card">
-              <div class="dash-kpi-icon ltc-noche"><i class="fas fa-building"></i></div>
-              <div class="dash-kpi-body">
-                <div class="dash-kpi-val" id="dash-admin-kpi-orgs">—</div>
-                <div class="dash-kpi-lbl">Organizadores activos</div>
-              </div>
-            </div>
-            <div class="dash-kpi-card">
-              <div class="dash-kpi-icon ltc-verde"><i class="fas fa-user-plus"></i></div>
-              <div class="dash-kpi-body">
-                <div class="dash-kpi-val" id="dash-admin-kpi-nuevos">—</div>
-                <div class="dash-kpi-lbl">Nuevos este mes</div>
-              </div>
-            </div>
-            <div class="dash-kpi-card">
-              <div class="dash-kpi-icon ltc-ambar"><i class="fas fa-dollar-sign"></i></div>
-              <div class="dash-kpi-body">
-                <div class="dash-kpi-val" id="dash-admin-kpi-mrr">—</div>
-                <div class="dash-kpi-lbl">MRR estimado</div>
-              </div>
-            </div>
-            <div class="dash-kpi-card">
-              <div class="dash-kpi-icon ltc-azul"><i class="fas fa-star"></i></div>
-              <div class="dash-kpi-body">
-                <div class="dash-kpi-val" id="dash-admin-kpi-plan-popular">—</div>
-                <div class="dash-kpi-lbl">Plan más popular</div>
-              </div>
-            </div>
-          </div>
+          <!-- ═══ TAB: DASHBOARD ═══ -->
+          <div class="dash-tab-panel active" id="dash-tab-dashboard" role="tabpanel">
 
-          <!-- Gráfico de dona + tabla de orgs -->
-          <div class="dash-row">
-            <div class="dash-panel">
-              <div class="dash-panel-title"><i class="fas fa-chart-pie"></i> Organizadores por plan</div>
-              <div class="dash-chart-wrap">
-                <canvas id="dash-admin-chart-planes"></canvas>
+            <!-- Hero banner -->
+            <div class="dash-hero">
+              <div class="dash-hero-icon"><i class="fas fa-gauge"></i></div>
+              <div>
+                <div class="dash-hero-title">Dashboard Administrativo — LT&C</div>
+                <div class="dash-hero-sub">Visión comercial de la plataforma: organizadores, planes y métricas globales</div>
               </div>
             </div>
-            <div class="dash-panel">
-              <div class="dash-panel-title"><i class="fas fa-list"></i> Organizadores registrados</div>
+
+            <!-- KPIs -->
+            <div class="dash-kpis">
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-icon ltc-noche"><i class="fas fa-building"></i></div>
+                <div class="dash-kpi-body">
+                  <div class="dash-kpi-val" id="dash-admin-kpi-orgs">—</div>
+                  <div class="dash-kpi-lbl">Organizadores activos</div>
+                </div>
+              </div>
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-icon ltc-verde"><i class="fas fa-user-plus"></i></div>
+                <div class="dash-kpi-body">
+                  <div class="dash-kpi-val" id="dash-admin-kpi-nuevos">—</div>
+                  <div class="dash-kpi-lbl">Nuevos este mes</div>
+                </div>
+              </div>
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-icon ltc-ambar"><i class="fas fa-dollar-sign"></i></div>
+                <div class="dash-kpi-body">
+                  <div class="dash-kpi-val" id="dash-admin-kpi-mrr">—</div>
+                  <div class="dash-kpi-lbl">MRR estimado</div>
+                </div>
+              </div>
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-icon ltc-azul"><i class="fas fa-star"></i></div>
+                <div class="dash-kpi-body">
+                  <div class="dash-kpi-val" id="dash-admin-kpi-plan-popular">—</div>
+                  <div class="dash-kpi-lbl">Plan más popular</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gráfico de dona + tabla de orgs -->
+            <div class="dash-row">
+              <div class="dash-panel">
+                <div class="dash-panel-title"><i class="fas fa-chart-pie"></i> Organizadores por plan</div>
+                <div class="dash-chart-wrap">
+                  <canvas id="dash-admin-chart-planes"></canvas>
+                </div>
+              </div>
+              <div class="dash-panel">
+                <div class="dash-panel-title"><i class="fas fa-list"></i> Organizadores registrados</div>
+                <div class="dash-table-wrap">
+                  <table class="dash-table">
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Plan</th>
+                        <th>Estado</th>
+                        <th class="text-center">Torneos</th>
+                        <th>Alta</th>
+                        <th class="text-center">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dash-admin-orgs-tbody">
+                      <tr><td colspan="6" class="dash-empty-msg">Cargando...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Métricas globales -->
+            <div class="dash-global-row">
+              <div class="dash-global-card">
+                <div class="dash-global-val" id="dash-admin-global-camps">—</div>
+                <div class="dash-global-lbl"><i class="fas fa-trophy"></i> Campeonatos totales</div>
+              </div>
+              <div class="dash-global-card">
+                <div class="dash-global-val" id="dash-admin-global-equipos">—</div>
+                <div class="dash-global-lbl"><i class="fas fa-users"></i> Equipos registrados</div>
+              </div>
+              <div class="dash-global-card">
+                <div class="dash-global-val" id="dash-admin-global-jugadores">—</div>
+                <div class="dash-global-lbl"><i class="fas fa-user-friends"></i> Jugadores registrados</div>
+              </div>
+            </div>
+
+          </div><!-- /dash-tab-dashboard -->
+
+          <!-- ═══ TAB: PLANES ═══ -->
+          <div class="dash-tab-panel" id="dash-tab-planes" role="tabpanel">
+            <div class="dash-panel" style="margin-bottom:24px;">
+              <div class="dash-panel-title"><i class="fas fa-tag"></i> Catálogo público de planes y tarifas (USD)</div>
+              <div id="dash-admin-precios-wrap">
+                <p class="dash-empty-msg">Cargando...</p>
+              </div>
+              <div style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
+                <span id="dash-admin-precios-msg" style="font-size:12.5px; align-self:center;"></span>
+                <button class="btn btn-primary" id="dash-admin-precios-guardar" type="button" style="display:none;">
+                  <i class="fas fa-save"></i> Guardar precios
+                </button>
+              </div>
+            </div>
+          </div><!-- /dash-tab-planes -->
+
+          <!-- ═══ TAB: FORMAS DE PAGO ═══ -->
+          <div class="dash-tab-panel" id="dash-tab-pago" role="tabpanel">
+            <div class="dash-panel" style="margin-bottom:24px;">
+              <div class="dash-panel-title"><i class="fas fa-money-check-alt"></i> Formas de pago (mostradas en landing pública)</div>
+              <div id="dash-admin-pago-wrap">
+                <p class="dash-empty-msg">Cargando...</p>
+              </div>
+              <div style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
+                <span id="dash-admin-pago-msg" style="font-size:12.5px; align-self:center;"></span>
+                <button class="btn btn-primary" id="dash-admin-pago-guardar" type="button" style="display:none;">
+                  <i class="fas fa-save"></i> Guardar formas de pago
+                </button>
+              </div>
+            </div>
+          </div><!-- /dash-tab-pago -->
+
+          <!-- ═══ TAB: AUDITORÍA ═══ -->
+          <div class="dash-tab-panel" id="dash-tab-auditoria" role="tabpanel">
+            <div class="dash-panel" style="margin-bottom:24px;" id="dash-audit-panel">
+              <div class="dash-panel-title"><i class="fas fa-shield-alt"></i> Registro de Auditoría</div>
+              <!-- Filtros -->
+              <div class="dash-audit-filters">
+                <select id="dash-audit-accion" class="dash-audit-input">
+                  <option value="">Todas las acciones</option>
+                  <option value="login">Login</option>
+                  <option value="logout">Logout</option>
+                  <option value="registro">Registro</option>
+                  <option value="cambio_password">Cambio de contraseña</option>
+                  <option value="cambio_plan_estado">Cambio de estado de plan</option>
+                  <option value="activacion_cuenta">Activación de cuenta</option>
+                  <option value="cambio_precio_plan">Cambio de precios</option>
+                  <option value="eliminacion_campeonato">Eliminación campeonato</option>
+                  <option value="eliminacion_equipo">Eliminación equipo</option>
+                  <option value="eliminacion_jugador">Eliminación jugador</option>
+                </select>
+                <input type="date" id="dash-audit-desde" class="dash-audit-input" title="Desde" />
+                <input type="date" id="dash-audit-hasta" class="dash-audit-input" title="Hasta" />
+                <button class="btn btn-primary dash-audit-btn" id="dash-audit-buscar" type="button">
+                  <i class="fas fa-search"></i> Filtrar
+                </button>
+                <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-reset" type="button">
+                  <i class="fas fa-times"></i> Limpiar
+                </button>
+              </div>
+              <!-- Tabla -->
+              <div class="dash-table-wrap" id="dash-audit-wrap">
+                <table class="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha / Hora</th>
+                      <th>Usuario</th>
+                      <th>Rol</th>
+                      <th>Acción</th>
+                      <th>Entidad</th>
+                      <th>IP</th>
+                      <th>Detalle</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dash-audit-tbody">
+                    <tr><td colspan="7" class="dash-empty-msg">Cargando...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="dash-audit-footer">
+                <span id="dash-audit-total" style="font-size:12px;color:#7f8c8d;"></span>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-prev" type="button">‹ Anterior</button>
+                  <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-next" type="button">Siguiente ›</button>
+                </div>
+              </div>
+            </div>
+          </div><!-- /dash-tab-auditoria -->
+
+          <!-- ═══ TAB: COMPROBANTES ═══ -->
+          <div class="dash-tab-panel" id="dash-tab-comprobantes" role="tabpanel">
+            <div class="dash-panel" style="margin-bottom:24px;" id="dash-comp-panel">
+              <div class="dash-panel-title"><i class="fas fa-file-invoice-dollar"></i> Comprobantes de pago</div>
+              <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
+                <select id="dash-comp-estado" class="dash-audit-input">
+                  <option value="pendiente">Solo pendientes</option>
+                  <option value="">Todos</option>
+                  <option value="aprobado">Aprobados</option>
+                  <option value="rechazado">Rechazados</option>
+                </select>
+                <button class="btn btn-primary dash-audit-btn" id="dash-comp-buscar" type="button">
+                  <i class="fas fa-sync-alt"></i> Actualizar
+                </button>
+              </div>
               <div class="dash-table-wrap">
                 <table class="dash-table">
                   <thead>
                     <tr>
-                      <th>Nombre</th>
+                      <th>Fecha</th>
+                      <th>Organizador</th>
                       <th>Plan</th>
-                      <th>Estado</th>
-                      <th class="text-center">Torneos</th>
-                      <th>Alta</th>
-                      <th class="text-center">Acción</th>
+                      <th>Estado comp.</th>
+                      <th class="text-center">Comprobante</th>
+                      <th class="text-center">Acciones</th>
                     </tr>
                   </thead>
-                  <tbody id="dash-admin-orgs-tbody">
+                  <tbody id="dash-comp-tbody">
                     <tr><td colspan="6" class="dash-empty-msg">Cargando...</td></tr>
                   </tbody>
                 </table>
               </div>
+              <p id="dash-comp-msg" style="font-size:12.5px; margin-top:8px; min-height:16px;"></p>
             </div>
-          </div>
-
-          <!-- Métricas globales -->
-          <div class="dash-global-row">
-            <div class="dash-global-card">
-              <div class="dash-global-val" id="dash-admin-global-camps">—</div>
-              <div class="dash-global-lbl"><i class="fas fa-trophy"></i> Campeonatos totales</div>
-            </div>
-            <div class="dash-global-card">
-              <div class="dash-global-val" id="dash-admin-global-equipos">—</div>
-              <div class="dash-global-lbl"><i class="fas fa-users"></i> Equipos registrados</div>
-            </div>
-            <div class="dash-global-card">
-              <div class="dash-global-val" id="dash-admin-global-jugadores">—</div>
-              <div class="dash-global-lbl"><i class="fas fa-user-friends"></i> Jugadores registrados</div>
-            </div>
-          </div>
-
-          <!-- Precios de planes -->
-          <div class="dash-panel" style="margin-bottom:24px;">
-            <div class="dash-panel-title"><i class="fas fa-tag"></i> Catálogo público de planes y tarifas (USD)</div>
-            <div id="dash-admin-precios-wrap">
-              <p class="dash-empty-msg">Cargando...</p>
-            </div>
-            <div style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
-              <span id="dash-admin-precios-msg" style="font-size:12.5px; align-self:center;"></span>
-              <button class="btn btn-primary" id="dash-admin-precios-guardar" type="button" style="display:none;">
-                <i class="fas fa-save"></i> Guardar precios
-              </button>
-            </div>
-          </div>
-
-          <!-- Formas de pago -->
-          <div class="dash-panel" style="margin-bottom:24px;">
-            <div class="dash-panel-title"><i class="fas fa-money-check-alt"></i> Formas de pago (mostradas en landing pública)</div>
-            <div id="dash-admin-pago-wrap">
-              <p class="dash-empty-msg">Cargando...</p>
-            </div>
-            <div style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
-              <span id="dash-admin-pago-msg" style="font-size:12.5px; align-self:center;"></span>
-              <button class="btn btn-primary" id="dash-admin-pago-guardar" type="button" style="display:none;">
-                <i class="fas fa-save"></i> Guardar formas de pago
-              </button>
-            </div>
-          </div>
-
-          <!-- Auditoría -->
-          <div class="dash-panel" style="margin-bottom:24px;" id="dash-audit-panel">
-            <div class="dash-panel-title"><i class="fas fa-shield-alt"></i> Registro de Auditoría</div>
-            <!-- Filtros -->
-            <div class="dash-audit-filters">
-              <select id="dash-audit-accion" class="dash-audit-input">
-                <option value="">Todas las acciones</option>
-                <option value="login">Login</option>
-                <option value="logout">Logout</option>
-                <option value="registro">Registro</option>
-                <option value="cambio_password">Cambio de contraseña</option>
-                <option value="cambio_plan_estado">Cambio de estado de plan</option>
-                <option value="activacion_cuenta">Activación de cuenta</option>
-                <option value="cambio_precio_plan">Cambio de precios</option>
-                <option value="eliminacion_campeonato">Eliminación campeonato</option>
-                <option value="eliminacion_equipo">Eliminación equipo</option>
-                <option value="eliminacion_jugador">Eliminación jugador</option>
-              </select>
-              <input type="date" id="dash-audit-desde" class="dash-audit-input" title="Desde" />
-              <input type="date" id="dash-audit-hasta" class="dash-audit-input" title="Hasta" />
-              <button class="btn btn-primary dash-audit-btn" id="dash-audit-buscar" type="button">
-                <i class="fas fa-search"></i> Filtrar
-              </button>
-              <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-reset" type="button">
-                <i class="fas fa-times"></i> Limpiar
-              </button>
-            </div>
-            <!-- Tabla -->
-            <div class="dash-table-wrap" id="dash-audit-wrap">
-              <table class="dash-table">
-                <thead>
-                  <tr>
-                    <th>Fecha / Hora</th>
-                    <th>Usuario</th>
-                    <th>Rol</th>
-                    <th>Acción</th>
-                    <th>Entidad</th>
-                    <th>IP</th>
-                    <th>Detalle</th>
-                  </tr>
-                </thead>
-                <tbody id="dash-audit-tbody">
-                  <tr><td colspan="7" class="dash-empty-msg">Cargando...</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="dash-audit-footer">
-              <span id="dash-audit-total" style="font-size:12px;color:#7f8c8d;"></span>
-              <div style="display:flex;gap:6px;">
-                <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-prev" type="button">‹ Anterior</button>
-                <button class="btn dash-audit-btn dash-audit-btn-reset" id="dash-audit-next" type="button">Siguiente ›</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Comprobantes de pago -->
-          <div class="dash-panel" style="margin-bottom:24px;" id="dash-comp-panel">
-            <div class="dash-panel-title"><i class="fas fa-file-invoice-dollar"></i> Comprobantes de pago</div>
-            <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
-              <select id="dash-comp-estado" class="dash-audit-input">
-                <option value="pendiente">Solo pendientes</option>
-                <option value="">Todos</option>
-                <option value="aprobado">Aprobados</option>
-                <option value="rechazado">Rechazados</option>
-              </select>
-              <button class="btn btn-primary dash-audit-btn" id="dash-comp-buscar" type="button">
-                <i class="fas fa-sync-alt"></i> Actualizar
-              </button>
-            </div>
-            <div class="dash-table-wrap">
-              <table class="dash-table">
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Organizador</th>
-                    <th>Plan</th>
-                    <th>Estado comp.</th>
-                    <th class="text-center">Comprobante</th>
-                    <th class="text-center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody id="dash-comp-tbody">
-                  <tr><td colspan="6" class="dash-empty-msg">Cargando...</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p id="dash-comp-msg" style="font-size:12.5px; margin-top:8px; min-height:16px;"></p>
-          </div>
+          </div><!-- /dash-tab-comprobantes -->
 
         </div><!-- /dash-admin-root -->
 
@@ -620,6 +719,56 @@
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/dashboard-admin.js"></script>
+  <script>
+    // ── Lógica de pestañas del panel admin ──────────────────────────────────
+    (function () {
+      var VALID_TABS = ['dashboard', 'planes', 'pago', 'auditoria', 'comprobantes'];
+
+      function activarTab(tabId) {
+        if (!VALID_TABS.includes(tabId)) tabId = 'dashboard';
+
+        document.querySelectorAll('.dash-tab-btn').forEach(function (btn) {
+          var isActive = btn.dataset.tab === tabId;
+          btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        document.querySelectorAll('.dash-tab-panel').forEach(function (panel) {
+          panel.classList.toggle('active', panel.id === 'dash-tab-' + tabId);
+        });
+
+        history.replaceState(null, '', '#' + tabId);
+
+        // Si se activa Dashboard y el gráfico aún no renderizó, refrescarlo
+        if (tabId === 'dashboard' && window.DashboardAdmin && typeof window.DashboardAdmin.refreshChart === 'function') {
+          window.DashboardAdmin.refreshChart();
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.dash-tab-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () { activarTab(btn.dataset.tab); });
+        });
+
+        // Soporte de URL hash para acceso directo a una pestaña
+        var hash = window.location.hash.replace('#', '');
+        if (hash && VALID_TABS.includes(hash)) {
+          // Esperar a que el panel esté visible antes de activar
+          var observer = new MutationObserver(function (mutations, obs) {
+            var root = document.getElementById('dash-admin-root');
+            if (root && root.style.display !== 'none') {
+              obs.disconnect();
+              activarTab(hash);
+            }
+          });
+          observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+        }
+      });
+
+      // Exponer para uso externo (e.g. desde dashboard-admin.js)
+      window.DashAdminTabs = { activarTab: activarTab };
+    })();
+  </script>
 </body>
 
 </html>
