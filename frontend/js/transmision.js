@@ -8,6 +8,7 @@
   let _partidoIdActual = null;
 
   const ESTADOS_LABEL = {
+    borrador: "Borrador",
     programada: "Programada",
     en_vivo: "🔴 EN VIVO",
     finalizada: "Finalizada",
@@ -15,6 +16,7 @@
   };
 
   const ESTADOS_CLASS = {
+    borrador: "badge-secondary",
     programada: "badge-secondary",
     en_vivo: "badge-danger",
     finalizada: "badge-success",
@@ -113,8 +115,12 @@
           </div>
 
           <div id="transmision-modal-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;">
-            <button type="submit" class="btn btn-primary">
+            <input type="hidden" id="tx-estado-destino" value="" />
+            <button type="submit" class="btn btn-primary" onclick="document.getElementById('tx-estado-destino').value=''">
               <i class="fas fa-save"></i> Guardar
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-tx-borrador">
+              <i class="fas fa-file-alt"></i> Guardar como borrador
             </button>
             <button type="button" id="btn-tx-iniciar" class="btn btn-success" style="display:none;">
               <i class="fas fa-play"></i> Iniciar transmisión
@@ -138,6 +144,10 @@
     modal.addEventListener("click", (e) => { if (e.target === modal) cerrarModalTransmision(); });
     document.getElementById("form-transmision").addEventListener("submit", (e) => {
       e.preventDefault();
+      guardarTransmision();
+    });
+    document.getElementById("btn-tx-borrador").addEventListener("click", () => {
+      document.getElementById("tx-estado-destino").value = "borrador";
       guardarTransmision();
     });
     document.getElementById("btn-tx-iniciar").addEventListener("click", () => iniciarTransmision());
@@ -167,7 +177,10 @@
     if (!transmision) return;
 
     const estado = transmision.estado;
-    if (estado === "programada") {
+    if (estado === "borrador") {
+      btnIniciar.style.display = "";
+      btnCancelar.style.display = "";
+    } else if (estado === "programada") {
       btnIniciar.style.display = "";
       btnCancelar.style.display = "";
     } else if (estado === "en_vivo") {
@@ -249,6 +262,7 @@
 
   async function guardarTransmision() {
     limpiarMensajes();
+    const estadoDestino = (document.getElementById("tx-estado-destino")?.value || "").trim();
     const payload = {
       plataforma: document.getElementById("tx-plataforma").value || null,
       url_publica: document.getElementById("tx-url-publica").value || null,
@@ -257,6 +271,7 @@
       embed_url: document.getElementById("tx-embed-url").value || null,
       fecha_inicio_programada: document.getElementById("tx-fecha-inicio").value || null,
     };
+    if (estadoDestino) payload.estado = estadoDestino;
 
     try {
       let data;

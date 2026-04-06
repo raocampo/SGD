@@ -6,6 +6,7 @@ const CAMPOS_EDITABLES = [
   "plataforma",
   "url_publica",
   "embed_url",
+  "estado",
   "fecha_inicio_programada",
   "thumbnail_url",
   "campeonato_id",
@@ -64,6 +65,7 @@ class PartidoTransmision {
       fecha_inicio_real: row.fecha_inicio_real,
       fecha_fin_real: row.fecha_fin_real,
       thumbnail_url: row.thumbnail_url,
+      destacado: row.destacado === true || row.destacado === 'true',
       creado_por: row.creado_por,
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -88,6 +90,7 @@ class PartidoTransmision {
       plataforma = null,
       url_publica = null,
       embed_url = null,
+      estado = 'programada',
       fecha_inicio_programada = null,
       thumbnail_url = null,
       creado_por = null,
@@ -96,12 +99,12 @@ class PartidoTransmision {
     const result = await pool.query(
       `INSERT INTO partido_transmisiones
         (partido_id, campeonato_id, evento_id, titulo, descripcion, plataforma,
-         url_publica, embed_url, fecha_inicio_programada, thumbnail_url, creado_por)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         url_publica, embed_url, estado, fecha_inicio_programada, thumbnail_url, creado_por)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         partido_id, campeonato_id, evento_id, titulo, descripcion, plataforma,
-        url_publica, embed_url, fecha_inicio_programada, thumbnail_url, creado_por,
+        url_publica, embed_url, estado, fecha_inicio_programada, thumbnail_url, creado_por,
       ]
     );
     return PartidoTransmision.limpiar(result.rows[0]);
@@ -180,6 +183,52 @@ class PartidoTransmision {
        WHERE estado = 'en_vivo' AND campeonato_id = $1
        ORDER BY fecha_inicio_real DESC`,
       [campeonatoId]
+    );
+    return result.rows.map(PartidoTransmision.limpiar);
+  }
+
+  static async listarPorCampeonato(campeonatoId) {
+    const result = await pool.query(
+      `SELECT t.*,
+        p.jornada, p.fecha_partido, p.estado AS partido_estado,
+        p.equipo_local_id, p.equipo_visitante_id,
+        el.nombre AS equipo_local_nombre,
+        ev2.nombre AS equipo_visitante_nombre
+       FROM partido_transmisiones t
+       LEFT JOIN partidos p ON p.id = t.partido_id
+       LEFT JOIN equipos el ON el.id = p.equipo_local_id
+       LEFT JOIN equipos ev2 ON ev2.id = p.equipo_visitante_id
+       WHERE t.campeonato_id = $1
+       ORDER BY t.created_at DESC`,
+      [campeonatoId]
+    );
+    return result.rows.map((row) => ({
+      ...PartidoTransmision.limpiar(row),
+      jornada: row.jornada,
+      fecha_partido: row.fecha_partido,
+      partido_estado: row.partido_estado,
+      equipo_local_id: row.equipo_local_id,
+      equipo_visitante_id: row.equipo_visitante_id,
+      equipo_local_nombre: row.equipo_local_nombre,
+      equipo_visitante_nombre: row.equipo_visitante_nombre,
+    }));
+  }
+
+  static async toggleDestacado(id) {
+    const result = await pool.query(
+      `UPDATE partido_transmisiones
+       SET destacado = NOT destacado, updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    return result.rows.length ? PartidoTransmision.limpiar(result.rows[0]) : null;
+  }
+
+  static async listarDestacadas() {
+    const result = await pool.query(
+      `SELECT * FROM partido_transmisiones
+       WHERE destacado = TRUE AND estado IN ('en_vivo', 'programada')
+       ORDER BY fecha_inicio_programada ASC NULLS LAST`
     );
     return result.rows.map(PartidoTransmision.limpiar);
   }

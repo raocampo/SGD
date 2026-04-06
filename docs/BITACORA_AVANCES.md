@@ -1,3 +1,16 @@
+## 2026-04-06 - Fase 2: Panel operativo de transmisiones + destacado en portal
+
+- **Migración 062**: `ALTER TABLE partido_transmisiones ADD COLUMN destacado BOOLEAN DEFAULT FALSE` + índice parcial.
+- **`PartidoTransmision.js`**: `listarPorCampeonato()` (JOIN con partidos/equipos), `toggleDestacado()`, `listarDestacadas()`; `limpiar()` incluye `destacado`; `crear()` acepta `estado`.
+- **`transmisionController.js`**: `listarTransmisionesPorCampeonato`, `toggleDestacado`, `listarDestacadasPublicas`.
+- **`transmisionRoutes.js`**: GET `/` (listar por campeonato) y POST `/:id/destacar`.
+- **`publicRoutes.js`**: GET `/public/transmisiones/destacadas`.
+- **`frontend/transmisiones.html`** (nuevo): página de gestión con selector de campeonato, tabs Activas/Todas/Programadas, tabla con badge de estado y botón ⭐ para destacar.
+- **`frontend/js/transmisiones.js`** (nuevo): lógica completa de gestión de transmisiones.
+- **`frontend/js/transmision.js`**: soporte de estado `borrador` (label, badge, botones modal).
+- **`frontend/js/portal.js`**: `renderProximaTransmisionPortal()` — card de "Próxima transmisión/En vivo" en detalle de campeonato.
+- **`frontend/partidos.html`** y **`frontend/campeonatos.html`**: link "Transmisiones" en sidebar.
+
 ## 2026-04-06 - Fase 1: Transmisión de partidos en vivo
 
 - **Migración 061** (`partido_transmisiones`): tabla con `partido_id` (FK única), `campeonato_id`, `evento_id`, `titulo`, `descripcion`, `plataforma`, `url_publica`, `embed_url`, `estado` (`programada/en_vivo/finalizada/cancelada`), `fecha_inicio_programada`, `fecha_inicio_real`, `fecha_fin_real`, `thumbnail_url`, `creado_por` + timestamps.

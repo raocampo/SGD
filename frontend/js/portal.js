@@ -1883,6 +1883,56 @@ function renderCategoriaPanelPortal(data, index = 0) {
   `;
 }
 
+function renderProximaTransmisionPortal(contenedor) {
+  if (!contenedor) return;
+  fetch(`${API}/public/transmisiones/destacadas`)
+    .then((r) => r.json())
+    .catch(() => ({ transmisiones: [] }))
+    .then((data) => {
+      const lista = Array.isArray(data.transmisiones) ? data.transmisiones : [];
+      if (!lista.length) return;
+      const tx = lista[0];
+      const enVivo = tx.estado === "en_vivo";
+      const dotHtml = enVivo
+        ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e53e3e;margin-right:6px;vertical-align:middle;animation:ptPulse 1s infinite;"></span>`
+        : "";
+      const label = enVivo ? "🔴 En vivo ahora" : "📅 Próxima transmisión";
+      const plat = escPortal(tx.plataforma || "");
+      const titulo = escPortal(tx.titulo || tx.plataforma || "Transmisión");
+      let fechaHtml = "";
+      if (!enVivo && tx.fecha_inicio_programada) {
+        try {
+          fechaHtml = `<span style="font-size:.82rem;opacity:.8;margin-left:.5rem;">${new Date(tx.fecha_inicio_programada).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short" })}</span>`;
+        } catch (_) {}
+      }
+      const verBtn = tx.url_publica
+        ? `<a href="${escPortal(tx.url_publica)}" target="_blank" rel="noopener noreferrer" style="background:${enVivo ? "#e53e3e" : "#3182ce"};color:#fff;padding:.35em .85em;border-radius:6px;text-decoration:none;font-weight:700;font-size:.88rem;white-space:nowrap;">${enVivo ? "📺 Ver en vivo" : "Ver →"}</a>`
+        : "";
+      const card = document.createElement("div");
+      card.id = "portal-proxima-tx-card";
+      card.style.cssText = "margin-bottom:1rem;padding:.85rem 1.1rem;border-radius:9px;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%);color:#fff;box-shadow:0 3px 14px rgba(0,0,0,.22);display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;";
+      card.innerHTML = `
+        <span style="font-size:1.35rem;">📡</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.75;">${dotHtml}${label}</div>
+          <div style="font-weight:700;font-size:.97rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${titulo}${plat ? `<span style="font-weight:400;opacity:.75;font-size:.85rem;margin-left:.4rem;">· ${plat}</span>` : ""}</div>
+          ${fechaHtml}
+        </div>
+        ${verBtn}
+      `;
+      if (!document.getElementById("portal-proxima-tx-style")) {
+        const s = document.createElement("style");
+        s.id = "portal-proxima-tx-style";
+        s.textContent = "@keyframes ptPulse{0%,100%{opacity:1}50%{opacity:.25}}";
+        document.head.appendChild(s);
+      }
+      const existente = contenedor.querySelector("#portal-proxima-tx-card");
+      if (existente) existente.remove();
+      contenedor.insertAdjacentElement("afterbegin", card);
+    })
+    .catch(() => {});
+}
+
 function renderDetalleCampeonatoPortal(campeonato, eventosData = []) {
   const nombre = limpiarCodigoTorneo(campeonato?.nombre) || "Torneo";
   const base = `
@@ -2204,6 +2254,7 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
 
     cont.innerHTML = renderDetalleCampeonatoPortal(camp, eventosData);
     prepararVistaDetallePortal(camp, options);
+    renderProximaTransmisionPortal(cont);
     if (options?.cargarAuspiciantes !== false) {
       await cargarAuspiciantesCampeonatoPublico(campeonatoId, limpiarCodigoTorneo(camp?.nombre || ""));
     }

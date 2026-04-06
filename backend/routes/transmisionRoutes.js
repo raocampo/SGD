@@ -6,6 +6,14 @@ const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 // ===============================
 // 🔒 RUTAS AUTENTICADAS
 // ===============================
+
+router.get(
+  "/",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  transmisionController.listarTransmisionesPorCampeonato
+);
+
 router.put(
   "/:id",
   requireAuth,
@@ -32,6 +40,13 @@ router.post(
   requireAuth,
   requireRoles("administrador", "organizador"),
   transmisionController.cancelarTransmision
+);
+
+router.post(
+  "/:id/destacar",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  transmisionController.toggleDestacado
 );
 
 module.exports = router;

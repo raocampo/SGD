@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LT&amp;C Transmisiones</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/grupos.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body class="app-layout page-transmisiones">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">⚽ LT&amp;C</div>
+      <nav class="sidebar-nav">
+        <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+        <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+        <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
+        <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+        <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+        <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+        <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+        <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+        <a class="nav-btn active" href="transmisiones.html"><i class="fas fa-broadcast-tower"></i> Transmisiones</a>
+        <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+        <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+        <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+      </nav>
+    </aside>
+
+    <div class="app-content">
+      <header class="top-bar">
+        <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+        <h1>📡 Transmisiones</h1>
+      </header>
+
+      <main class="main">
+        <section class="section active">
+          <div class="container">
+            <h2>📡 Gestión de Transmisiones</h2>
+
+            <!-- Próxima transmisión card -->
+            <div id="tx-proxima-card" style="display:none; margin-bottom:1.5rem; padding:1rem 1.25rem; border-radius:10px; background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%); color:#fff; box-shadow:0 4px 18px rgba(0,0,0,.25);">
+              <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+                <span style="font-size:1.5rem;">📡</span>
+                <div style="flex:1;">
+                  <span id="tx-proxima-label" style="font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;opacity:.8;"></span>
+                  <div style="font-weight:700;font-size:1rem;" id="tx-proxima-titulo"></div>
+                  <div style="font-size:.85rem;opacity:.85;" id="tx-proxima-meta"></div>
+                </div>
+                <a id="tx-proxima-link" href="#" target="_blank" rel="noopener noreferrer"
+                   style="background:#e53e3e;color:#fff;padding:.4em .9em;border-radius:6px;text-decoration:none;font-weight:700;font-size:.9rem;white-space:nowrap;">
+                  Ver →
+                </a>
+              </div>
+            </div>
+
+            <!-- Campeonato selector -->
+            <div class="form-group" style="max-width:380px;margin-bottom:1.25rem;">
+              <label for="tx-campeonato-select"><i class="fas fa-trophy"></i> Campeonato</label>
+              <select id="tx-campeonato-select" class="form-control">
+                <option value="">— Selecciona un campeonato —</option>
+              </select>
+            </div>
+
+            <!-- Tabs -->
+            <div class="partidos-main-tabs" id="tx-tabs" style="margin-bottom:1rem;">
+              <button type="button" class="partidos-main-tab active" data-tx-tab="activas">Activas 🔴</button>
+              <button type="button" class="partidos-main-tab" data-tx-tab="todas">Todas</button>
+              <button type="button" class="partidos-main-tab" data-tx-tab="programadas">Programadas</button>
+            </div>
+
+            <!-- Tabla de transmisiones -->
+            <div id="tx-tabla-wrap">
+              <p class="empty-msg" id="tx-empty-msg">Selecciona un campeonato para ver sus transmisiones.</p>
+              <div class="table-responsive" id="tx-table-container" style="display:none;">
+                <table class="table" id="tx-tabla">
+                  <thead>
+                    <tr>
+                      <th>Partido</th>
+                      <th>Jornada</th>
+                      <th>Plataforma</th>
+                      <th>Estado</th>
+                      <th>Fecha Programada</th>
+                      <th>Destacado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tx-tabla-body">
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="js/core.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/transmision.js"></script>
+    <script src="js/transmisiones.js"></script>
+  </body>
+</html>

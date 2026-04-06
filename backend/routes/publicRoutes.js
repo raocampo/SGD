@@ -34,5 +34,6 @@ router.post("/contacto", contactoController.enviar);
 // 📡 Transmisiones públicas
 router.get("/partidos/:id/transmision", transmisionController.obtenerTransmisionPublica);
 router.get("/campeonatos/:id/transmisiones-activas", transmisionController.listarTransmisionesActivasPorCampeonato);
+router.get("/transmisiones/destacadas", transmisionController.listarDestacadasPublicas);
 
 module.exports = router;
