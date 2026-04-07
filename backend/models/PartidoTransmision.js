@@ -32,10 +32,22 @@ class PartidoTransmision {
         fecha_inicio_real TIMESTAMPTZ,
         fecha_fin_real TIMESTAMPTZ,
         thumbnail_url TEXT,
+        destacado BOOLEAN NOT NULL DEFAULT FALSE,
         creado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
+    `);
+    // Migración: agregar destacado si ya existe la tabla sin esa columna
+    await db.query(`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'partido_transmisiones' AND column_name = 'destacado'
+        ) THEN
+          ALTER TABLE partido_transmisiones ADD COLUMN destacado BOOLEAN NOT NULL DEFAULT FALSE;
+        END IF;
+      END $$;
     `);
     await db.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_transmisiones_partido ON partido_transmisiones(partido_id)
