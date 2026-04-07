@@ -129,7 +129,7 @@ const CONFIGS = {
     suspensiones: {
       maxFaltasPersonalesPorPartido: null,
       maxFaltasTecnicasPorPartido: null,
-      umbralInfraccionesLeves: 4,
+      umbralInfraccionesLeves: 0,    // retrocompat: solo futbol_11 tenía acumulación de amarillas
       umbralInfraccionesGraves: 1,
     },
     labelCostoInfraccionLeve: "Costo tarjeta amarilla",
@@ -167,7 +167,7 @@ const CONFIGS = {
     suspensiones: {
       maxFaltasPersonalesPorPartido: null,
       maxFaltasTecnicasPorPartido: null,
-      umbralInfraccionesLeves: 4,
+      umbralInfraccionesLeves: 0,
       umbralInfraccionesGraves: 1,
     },
     labelCostoInfraccionLeve: "Costo tarjeta amarilla",
@@ -204,7 +204,7 @@ const CONFIGS = {
     suspensiones: {
       maxFaltasPersonalesPorPartido: null,
       maxFaltasTecnicasPorPartido: null,
-      umbralInfraccionesLeves: 4,
+      umbralInfraccionesLeves: 0,
       umbralInfraccionesGraves: 1,
     },
     labelCostoInfraccionLeve: "Costo tarjeta amarilla",
@@ -241,7 +241,7 @@ const CONFIGS = {
     suspensiones: {
       maxFaltasPersonalesPorPartido: null,
       maxFaltasTecnicasPorPartido: null,
-      umbralInfraccionesLeves: 4,
+      umbralInfraccionesLeves: 0,
       umbralInfraccionesGraves: 1,
     },
     labelCostoInfraccionLeve: "Costo tarjeta amarilla",
