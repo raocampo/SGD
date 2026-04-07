@@ -52,6 +52,9 @@ function formatearTipoFutbolEtiqueta(valor) {
     basquetbol: "Básquetbol",
     basquetball: "Básquetbol",
     basketball: "Básquetbol",
+    basquetbol_3x3: "Básquetbol 3x3",
+    basquetbol_minibasket: "Minibasket",
+    basquetbol_callejero: "Básquetbol Callejero",
   };
   if (mapa[raw]) return mapa[raw];
   return String(valor || "").replaceAll("_", " ");
@@ -414,7 +417,7 @@ async function editarCampeonato(id) {
       camp.organizador || "";
 
     document.getElementById("campeonato-tipo").value =
-      camp.tipo_futbol || "futbol_11";
+      camp.tipo_deporte || camp.tipo_futbol || "futbol_11";
 
     document.getElementById("campeonato-sistema").value =
       camp.sistema_puntuacion || "tradicional";
