@@ -33,6 +33,7 @@
       <nav class="ltc-header-nav" id="ltc-nav">
         <a href="#home">Inicio</a>
         <a href="#torneos">Torneos</a>
+        <a href="torneos.html">Ver todos</a>
         <div class="ltc-nav-item ltc-nav-item-submenu">
           <a href="planes.html" id="ltc-nav-link-planes">Planes</a>
           <div class="ltc-nav-submenu">
@@ -132,6 +133,11 @@
           <div id="portal-lista-campeonatos" class="portal-campeonatos-grid">
             <p class="empty-msg">Cargando torneos...</p>
           </div>
+          <div class="ltc-ver-todos-wrap">
+            <a id="ltc-ver-todos-torneos" href="torneos.html" class="ltc-btn ltc-btn-ver-todos" style="display:none;">
+              <i class="fas fa-th-large"></i> Ver todos los torneos
+            </a>
+          </div>
         </section>
 
         <section id="portal-detalle" class="portal-section">
@@ -220,6 +226,61 @@
         </article>
         <div class="ltc-about-banner">
           <img id="ltc-about-image" src="assets/ltc/bannerLTC.jpg" alt="Banner LT&C" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SERVICIO DE STREAMING ────────────────────────────────────── -->
+    <section class="ltc-stream-section" id="streaming">
+      <div class="container">
+        <div class="ltc-stream-inner">
+          <div class="ltc-stream-copy">
+            <span class="ltc-stream-chip"><i class="fas fa-circle ltc-live-dot"></i> EN VIVO</span>
+            <h2>Transmisión en vivo de tus partidos</h2>
+            <p>
+              LT&C ahora ofrece servicio de transmisión en directo para tus campeonatos.
+              Conecta YouTube, Facebook Live o cualquier plataforma y lleva cada partido
+              a tus hinchas en tiempo real.
+            </p>
+            <ul class="ltc-stream-features">
+              <li><i class="fas fa-play-circle"></i> Compatible con YouTube, Facebook Live y más</li>
+              <li><i class="fas fa-link"></i> Enlace de transmisión vinculado a cada partido</li>
+              <li><i class="fas fa-eye"></i> Badge <em>🔴 EN VIVO</em> visible en el portal público</li>
+              <li><i class="fas fa-star"></i> Transmisiones destacadas en portada</li>
+            </ul>
+            <a href="#contacto" class="ltc-btn ltc-btn-stream">Solicitar el servicio</a>
+          </div>
+          <div class="ltc-stream-media">
+            <div class="ltc-stream-screen">
+              <div class="ltc-stream-screen-bar">
+                <span class="ltc-stream-dot ltc-stream-dot-red"></span>
+                <span class="ltc-stream-dot ltc-stream-dot-yellow"></span>
+                <span class="ltc-stream-dot ltc-stream-dot-green"></span>
+              </div>
+              <div class="ltc-stream-screen-body">
+                <div class="ltc-stream-live-badge"><i class="fas fa-circle"></i> EN VIVO</div>
+                <div class="ltc-stream-score">
+                  <span class="ltc-stream-team">EQUIPO A</span>
+                  <span class="ltc-stream-result">2 — 1</span>
+                  <span class="ltc-stream-team">EQUIPO B</span>
+                </div>
+                <div class="ltc-stream-bar-line"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── NUESTROS CLIENTES ─────────────────────────────────────────── -->
+    <section class="ltc-clientes-section" id="clientes">
+      <div class="container">
+        <div class="ltc-section-title">
+          <h2>NUESTROS CLIENTES</h2>
+          <p>Organizadores que confían en LT&C para gestionar sus campeonatos.</p>
+        </div>
+        <div id="ltc-clientes-grid" class="ltc-clientes-grid">
+          <p class="empty-msg">Cargando clientes...</p>
         </div>
       </div>
     </section>

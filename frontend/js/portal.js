@@ -724,7 +724,19 @@ async function portalCargarCampeonatos(listaForzada = null, options = {}) {
       return;
     }
 
-    cont.innerHTML = activos.map((t) => renderCardTorneoPrincipal(t)).join("");
+    // En landing (index.html) mostrar solo los 4 más recientes/activos
+    const esLanding = document.body.classList.contains("ltc-landing");
+    const limite = esLanding ? 4 : activos.length;
+    const visibles = activos.slice(0, limite);
+
+    cont.innerHTML = visibles.map((t) => renderCardTorneoPrincipal(t)).join("");
+
+    // Botón "Ver todos" si hay más de 4 y estamos en landing
+    const btnVerTodos = document.getElementById("ltc-ver-todos-torneos");
+    if (btnVerTodos) {
+      btnVerTodos.style.display = activos.length > 4 ? "inline-flex" : "none";
+      btnVerTodos.textContent = `Ver todos los torneos (${activos.length})`;
+    }
   } catch (err) {
     console.error(err);
     cont.innerHTML = '<p class="empty-msg">Error cargando torneos.</p>';
@@ -2390,7 +2402,57 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await cargarNoticiasPublicasPortal();
   await portalCargarCampeonatos();
+  await cargarClientesPortal();
   if (contexto.campeonatoId) {
     portalVerCampeonato(contexto.campeonatoId, { eventoId: contexto.eventoId });
   }
 });
+
+async function cargarClientesPortal() {
+  const cont = document.getElementById("ltc-clientes-grid");
+  if (!cont) return;
+  try {
+    const data = await fetch(`${API}/public/campeonatos`).then((r) => r.json());
+    const campeonatos = Array.isArray(data.campeonatos) ? data.campeonatos : [];
+
+    // Agrupar por organizador único
+    const mapaOrg = new Map();
+    for (const c of campeonatos) {
+      const nombre = String(c.organizador || "").trim();
+      if (!nombre) continue;
+      if (!mapaOrg.has(nombre)) {
+        mapaOrg.set(nombre, {
+          nombre,
+          logo: c.organizador_logo_url || null,
+          total: 0,
+        });
+      }
+      mapaOrg.get(nombre).total += 1;
+    }
+
+    const lista = [...mapaOrg.values()].sort((a, b) => b.total - a.total);
+
+    if (!lista.length) {
+      cont.innerHTML = '<p class="empty-msg">Próximamente.</p>';
+      return;
+    }
+
+    cont.innerHTML = lista
+      .map(
+        (org) => `
+        <div class="ltc-cliente-card">
+          ${
+            org.logo
+              ? `<img src="${org.logo}" alt="${escPortal(org.nombre)}" class="ltc-cliente-logo" />`
+              : `<div class="ltc-cliente-avatar"><i class="fas fa-users"></i></div>`
+          }
+          <p class="ltc-cliente-nombre">${escPortal(org.nombre)}</p>
+          <span class="ltc-cliente-torneos">${org.total} torneo${org.total !== 1 ? "s" : ""}</span>
+        </div>`
+      )
+      .join("");
+  } catch (err) {
+    console.error("Error cargando clientes:", err);
+    if (cont) cont.innerHTML = "";
+  }
+}

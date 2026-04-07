@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Torneos | LT&C</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Sora:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/portal.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+<body class="ltc-landing ltc-torneos-page">
+
+  <header class="ltc-site-header">
+    <div class="container ltc-header-inner">
+      <a class="ltc-header-brand" href="index.html">
+        <img src="assets/ltc/Logo.jpeg" alt="LT&C" />
+        <span>LT&C</span>
+        <span class="ltc-header-brand-sub">(Loja Torneos &amp; Competencias)</span>
+      </a>
+
+      <button class="ltc-nav-toggle" id="ltc-nav-toggle" aria-label="Abrir menu">
+        <i class="fas fa-bars"></i>
+      </button>
+
+      <nav class="ltc-header-nav" id="ltc-nav">
+        <a href="index.html">Inicio</a>
+        <a href="torneos.html" class="ltc-nav-active">Torneos</a>
+        <a href="index.html#nosotros">Nosotros</a>
+        <a href="index.html#contacto">Contacto</a>
+        <a href="register.html?plan=demo" class="ltc-nav-auth-link ltc-nav-auth-link-ghost" target="_blank" rel="noopener noreferrer">Registrarse</a>
+        <a href="login.html" class="ltc-nav-auth-link ltc-nav-auth-link-solid" target="_blank" rel="noopener noreferrer">Ingresar</a>
+      </nav>
+
+      <div class="ltc-header-actions">
+        <a href="register.html?plan=demo" class="ltc-head-btn ltc-head-btn-ghost" target="_blank" rel="noopener noreferrer">Registrarse</a>
+        <a href="login.html" class="ltc-head-btn ltc-head-btn-solid" target="_blank" rel="noopener noreferrer">Ingresar</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="ltc-main ltc-torneos-main">
+
+    <!-- Hero compacto -->
+    <section class="ltc-torneos-hero">
+      <div class="container">
+        <div class="ltc-torneos-hero-copy">
+          <a href="index.html" class="ltc-torneos-back">
+            <i class="fas fa-arrow-left"></i> Inicio
+          </a>
+          <h1>Todos los torneos</h1>
+          <p>Campeonatos activos, en inscripción, próximos y finalizados de todos los organizadores.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filtros -->
+    <section class="ltc-torneos-filtros-section">
+      <div class="container">
+        <div class="ltc-torneos-filtros">
+          <div class="ltc-torneos-search-wrap">
+            <i class="fas fa-search"></i>
+            <input
+              id="torneos-search"
+              type="text"
+              placeholder="Buscar torneo u organizador..."
+              autocomplete="off"
+            />
+          </div>
+          <div class="ltc-torneos-chips" id="torneos-chips" role="group" aria-label="Filtrar por estado">
+            <button class="ltc-chip ltc-chip-active" data-estado="">Todos</button>
+            <button class="ltc-chip" data-estado="en_curso">En curso</button>
+            <button class="ltc-chip" data-estado="inscripcion">Inscripción</button>
+            <button class="ltc-chip" data-estado="planificacion">Próximos</button>
+            <button class="ltc-chip" data-estado="finalizado">Finalizados</button>
+          </div>
+          <div class="ltc-torneos-sport-wrap">
+            <select id="torneos-deporte" class="ltc-torneos-select">
+              <option value="">Todos los deportes</option>
+              <option value="futbol">Fútbol</option>
+              <option value="basquetbol">Básquetbol</option>
+            </select>
+          </div>
+        </div>
+        <p class="ltc-torneos-count" id="torneos-count">Cargando...</p>
+      </div>
+    </section>
+
+    <!-- Grid de torneos -->
+    <section class="ltc-torneos-grid-section">
+      <div class="container">
+        <div id="torneos-grid" class="portal-campeonatos-grid ltc-torneos-grid">
+          <p class="empty-msg">Cargando torneos...</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="ltc-footer">
+    <div class="container ltc-footer-inner">
+      <div class="ltc-footer-social">
+        <a href="https://www.facebook.com/LojaTorneosCompetencia" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+        <a href="https://www.instagram.com/lojatorneoycompetencia" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        <a href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+      </div>
+      <p class="ltc-footer-copy">LT&C &copy; Derechos reservados 2026</p>
+      <p class="ltc-footer-copy">
+        Desarrollado por
+        <a href="https://www.corpsimtelec.com" target="_blank" rel="noopener noreferrer">CorpSimtelec</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/portal.js"></script>
+  <script>
+    // ── Página dedicada de torneos ────────────────────────────────────
+    (function () {
+      const API_BASE = window.API_BASE_URL || "/api";
+      let todosLosTorneos = [];
+
+      const grid = document.getElementById("torneos-grid");
+      const searchInput = document.getElementById("torneos-search");
+      const chips = document.querySelectorAll(".ltc-chip");
+      const deporteSelect = document.getElementById("torneos-deporte");
+      const countEl = document.getElementById("torneos-count");
+
+      let filtroEstado = "";
+      let filtroDeporte = "";
+      let filtroTexto = "";
+
+      function etiquetaEstado(estado) {
+        const mapa = {
+          en_curso: "En curso",
+          inscripcion: "Inscripción",
+          planificacion: "Próximo",
+          borrador: "Borrador",
+          finalizado: "Finalizado",
+        };
+        return mapa[String(estado || "").toLowerCase()] || estado;
+      }
+
+      function claseBadgeEstado(estado) {
+        const mapa = {
+          en_curso: "badge-encurso",
+          inscripcion: "badge-inscripcion",
+          planificacion: "badge-planificacion",
+          borrador: "badge-borrador",
+          finalizado: "badge-finalizado",
+        };
+        return mapa[String(estado || "").toLowerCase()] || "";
+      }
+
+      function tipoDeporteNombre(tipo) {
+        const t = String(tipo || "").toLowerCase();
+        if (t.includes("basquet")) return "🏀 Básquetbol";
+        return "⚽ Fútbol";
+      }
+
+      function aplicarFiltros() {
+        let lista = todosLosTorneos;
+
+        if (filtroEstado) {
+          lista = lista.filter((c) => String(c.estado || "").toLowerCase() === filtroEstado);
+        }
+        if (filtroDeporte) {
+          lista = lista.filter((c) => {
+            const tipo = String(c.tipo_deporte || c.tipo_futbol || "").toLowerCase();
+            if (filtroDeporte === "basquetbol") return tipo.includes("basquet");
+            if (filtroDeporte === "futbol") return !tipo.includes("basquet");
+            return true;
+          });
+        }
+        if (filtroTexto) {
+          const q = filtroTexto.toLowerCase();
+          lista = lista.filter(
+            (c) =>
+              String(c.nombre || "").toLowerCase().includes(q) ||
+              String(c.organizador || "").toLowerCase().includes(q)
+          );
+        }
+
+        renderGrid(lista);
+        countEl.textContent = `${lista.length} torneo${lista.length !== 1 ? "s" : ""} encontrado${lista.length !== 1 ? "s" : ""}`;
+      }
+
+      function renderGrid(lista) {
+        if (!lista.length) {
+          grid.innerHTML = '<p class="empty-msg">No se encontraron torneos con esos filtros.</p>';
+          return;
+        }
+        grid.innerHTML = lista
+          .map((t) => {
+            const img = t.card_image_url || t.logo_url || "assets/ltc/bannerLTC.jpg";
+            const fechas =
+              t.fecha_inicio
+                ? `${new Date(t.fecha_inicio).toLocaleDateString("es-EC", { month: "short", day: "numeric", year: "numeric" })}${t.fecha_fin ? " — " + new Date(t.fecha_fin).toLocaleDateString("es-EC", { month: "short", day: "numeric", year: "numeric" }) : ""}`
+                : "";
+            const deporte = tipoDeporteNombre(t.tipo_deporte || t.tipo_futbol);
+            return `
+              <article class="portal-campeonato-card" onclick="window.location.href='index.html?campeonato=${t.id}'" style="cursor:pointer;">
+                <div class="portal-card-media">
+                  <img src="${img}" alt="${t.nombre}" loading="lazy" onerror="this.src='assets/ltc/bannerLTC.jpg'" />
+                  <span class="portal-card-estado ${claseBadgeEstado(t.estado)}">${etiquetaEstado(t.estado)}</span>
+                </div>
+                <div class="portal-card-body">
+                  <p class="portal-card-organizador">${t.organizador || ""}</p>
+                  <h3 class="portal-card-nombre">${t.nombre}</h3>
+                  ${fechas ? `<p class="portal-card-fechas"><i class="fas fa-calendar-alt"></i> ${fechas}</p>` : ""}
+                  <p class="portal-card-deporte-tag">${deporte}</p>
+                </div>
+              </article>`;
+          })
+          .join("");
+      }
+
+      async function cargar() {
+        grid.innerHTML = '<p class="empty-msg">Cargando torneos...</p>';
+        try {
+          const resp = await fetch(`${API_BASE}/public/campeonatos`);
+          const data = await resp.json();
+          // Mostrar TODOS los estados (no solo los visibles)
+          todosLosTorneos = (data.campeonatos || []).sort((a, b) => {
+            const orden = { en_curso: 0, inscripcion: 1, planificacion: 2, borrador: 3, finalizado: 4 };
+            return (orden[a.estado] ?? 5) - (orden[b.estado] ?? 5);
+          });
+          aplicarFiltros();
+        } catch (e) {
+          console.error(e);
+          grid.innerHTML = '<p class="empty-msg">Error cargando torneos.</p>';
+        }
+      }
+
+      chips.forEach((chip) => {
+        chip.addEventListener("click", () => {
+          chips.forEach((c) => c.classList.remove("ltc-chip-active"));
+          chip.classList.add("ltc-chip-active");
+          filtroEstado = chip.dataset.estado;
+          aplicarFiltros();
+        });
+      });
+
+      deporteSelect.addEventListener("change", () => {
+        filtroDeporte = deporteSelect.value;
+        aplicarFiltros();
+      });
+
+      let debounceTimer;
+      searchInput.addEventListener("input", () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          filtroTexto = searchInput.value.trim();
+          aplicarFiltros();
+        }, 300);
+      });
+
+      document.addEventListener("DOMContentLoaded", cargar);
+    })();
+  </script>
+</body>
+</html>

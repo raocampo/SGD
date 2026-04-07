@@ -2658,3 +2658,364 @@ body.ltc-landing {
   font-size: 1rem;
   line-height: 1;
 }
+
+/* ========================================================
+   SECCIÓN STREAMING
+   ======================================================== */
+.ltc-stream-section {
+  padding: 80px 0;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+  overflow: hidden;
+}
+.ltc-stream-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+.ltc-stream-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(239,68,68,.15);
+  border: 1px solid rgba(239,68,68,.4);
+  color: #fca5a5;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+.ltc-live-dot {
+  color: #ef4444;
+  animation: ltc-blink 1.2s infinite;
+}
+@keyframes ltc-blink {
+  0%,100%{opacity:1} 50%{opacity:.3}
+}
+.ltc-stream-copy h2 {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 800;
+  color: #f1f5f9;
+  margin-bottom: 0.8rem;
+  line-height: 1.2;
+}
+.ltc-stream-copy p {
+  font-size: 1rem;
+  color: #94a3b8;
+  margin-bottom: 1.4rem;
+  line-height: 1.7;
+}
+.ltc-stream-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.ltc-stream-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+.ltc-stream-features li i {
+  color: #22c55e;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.ltc-btn-stream {
+  background: #ef4444;
+  color: #fff !important;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  display: inline-block;
+  transition: background .2s, transform .15s;
+}
+.ltc-btn-stream:hover { background: #dc2626; transform: translateY(-1px); }
+
+/* Pantalla animada */
+.ltc-stream-screen {
+  background: #1e293b;
+  border: 2px solid #334155;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,.5);
+  max-width: 420px;
+  margin: 0 auto;
+}
+.ltc-stream-screen-bar {
+  background: #334155;
+  padding: 10px 14px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.ltc-stream-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+.ltc-stream-dot-red    { background: #ef4444; }
+.ltc-stream-dot-yellow { background: #eab308; }
+.ltc-stream-dot-green  { background: #22c55e; }
+.ltc-stream-screen-body {
+  padding: 24px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+}
+.ltc-stream-live-badge {
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ltc-stream-live-badge i { animation: ltc-blink 1.2s infinite; }
+.ltc-stream-score {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+.ltc-stream-team {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+.ltc-stream-result {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+.ltc-stream-bar-line {
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .ltc-stream-inner { grid-template-columns: 1fr; }
+  .ltc-stream-media { order: -1; }
+}
+
+/* ========================================================
+   SECCIÓN NUESTROS CLIENTES
+   ======================================================== */
+.ltc-clientes-section {
+  padding: 70px 0;
+  background: #f8fafc;
+}
+.ltc-clientes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1.2rem;
+  margin-top: 2.5rem;
+}
+.ltc-cliente-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.4rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  transition: transform .2s, box-shadow .2s;
+  text-align: center;
+}
+.ltc-cliente-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0,0,0,.1);
+}
+.ltc-cliente-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.ltc-cliente-avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.5rem;
+}
+.ltc-cliente-nombre {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.3;
+}
+.ltc-cliente-torneos {
+  font-size: 0.72rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+/* ========================================================
+   PÁGINA TORNEOS (torneos.html)
+   ======================================================== */
+.ltc-torneos-hero {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+  padding: 56px 0 40px;
+  color: #f1f5f9;
+}
+.ltc-torneos-hero-copy { max-width: 640px; }
+.ltc-torneos-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-decoration: none;
+  margin-bottom: 1rem;
+  transition: color .2s;
+}
+.ltc-torneos-back:hover { color: #e2e8f0; }
+.ltc-torneos-hero h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+.ltc-torneos-hero p { color: #94a3b8; font-size: 1rem; }
+
+/* Filtros */
+.ltc-torneos-filtros-section {
+  padding: 24px 0 0;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.ltc-torneos-filtros {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.ltc-torneos-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  flex: 1;
+  min-width: 200px;
+}
+.ltc-torneos-search-wrap i { color: #94a3b8; font-size: 0.85rem; }
+.ltc-torneos-search-wrap input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.9rem;
+  color: #1e293b;
+  width: 100%;
+}
+.ltc-torneos-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.ltc-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all .2s;
+}
+.ltc-chip:hover { border-color: #16a34a; color: #16a34a; }
+.ltc-chip.ltc-chip-active {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+.ltc-torneos-select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  font-size: 0.85rem;
+  color: #1e293b;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+}
+.ltc-torneos-count {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 8px 0 12px;
+}
+
+.ltc-torneos-grid-section {
+  padding: 32px 0 60px;
+  background: #f1f5f9;
+  min-height: 60vh;
+}
+.ltc-torneos-grid {
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+.ltc-torneos-main { padding-top: 0; }
+
+/* ========================================================
+   BOTON VER TODOS (landing)
+   ======================================================== */
+.ltc-ver-todos-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+.ltc-btn-ver-todos {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: 2px solid #16a34a;
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 10px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background .2s, color .2s;
+}
+.ltc-btn-ver-todos:hover {
+  background: #16a34a;
+  color: #fff;
+}
+
+/* Badge deporte en tarjetas */
+.portal-card-deporte-tag {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.3rem;
+}
