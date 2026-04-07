@@ -1412,6 +1412,119 @@ body.ltc-landing {
   color: #4b5c70;
 }
 
+/* ── Sección Deportes Soportados ──────────────────────────────────── */
+.ltc-sports-section {
+  padding: 2.5rem 0 1.5rem;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e8f0fe 100%);
+}
+
+.ltc-sports-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.ltc-sport-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid rgba(47, 60, 79, 0.1);
+  border-radius: 20px;
+  padding: 2rem 1.75rem;
+  box-shadow: 0 8px 28px rgba(31, 52, 81, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ltc-sport-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(31, 52, 81, 0.15);
+}
+
+.ltc-sport-card--new {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fffbeb 0%, #fff 60%);
+}
+
+.ltc-sport-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 0.22rem 0.6rem;
+  border-radius: 20px;
+}
+
+.ltc-sport-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  margin-bottom: 1rem;
+}
+
+.ltc-sport-icon--futbol {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.ltc-sport-icon--basket {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.ltc-sport-card h3 {
+  margin: 0 0 0.3rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a2942;
+}
+
+.ltc-sport-card > p {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+.ltc-sport-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.ltc-sport-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.ltc-sport-features li i {
+  color: #2f5e96;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.ltc-sport-card--new .ltc-sport-features li i {
+  color: #e65100;
+}
+
+@media (max-width: 640px) {
+  .ltc-sports-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .ltc-news-section {
   padding: 2rem 0;
 }
