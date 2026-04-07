@@ -3019,3 +3019,70 @@ body.ltc-landing {
   color: #64748b;
   margin-top: 0.3rem;
 }
+
+/* ========================================================
+   MOBILE IMPROVEMENTS — TORNEOS PAGE & GENERAL
+   ======================================================== */
+
+/* Torneos: filtros apilados en móvil */
+@media (max-width: 640px) {
+  .ltc-torneos-filtros {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ltc-torneos-search-wrap {
+    min-width: 0;
+  }
+  .ltc-torneos-sport-wrap {
+    width: 100%;
+  }
+  .ltc-torneos-select {
+    width: 100%;
+  }
+  .ltc-torneos-chips {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .ltc-torneos-chips::-webkit-scrollbar { display: none; }
+  /* Filtros ya no sticky en mobile para no ocupar espacio */
+  .ltc-torneos-filtros-section {
+    position: static;
+  }
+  .ltc-torneos-hero {
+    padding: 36px 0 24px;
+  }
+}
+
+/* Stream: ajustes en pantallas muy pequeñas */
+@media (max-width: 480px) {
+  .ltc-stream-section {
+    padding: 48px 0;
+  }
+  .ltc-stream-score {
+    gap: 0.5rem;
+  }
+  .ltc-stream-result {
+    font-size: 1.8rem;
+  }
+  .ltc-stream-team {
+    font-size: 0.82rem;
+  }
+}
+
+/* Clientes: min 2 columnas en móvil */
+@media (max-width: 480px) {
+  .ltc-clientes-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Botón "Ver todos" */
+@media (max-width: 480px) {
+  .ltc-btn-ver-todos {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -8862,3 +8862,95 @@ body.page-finanzas {
     display: none;
   }
 }
+
+/* ========================================================
+   MOBILE IMPROVEMENTS BLOCK — Pantallas pequeñas (≤480px)
+   ======================================================== */
+@media (max-width: 480px) {
+  /* Top bar: ocultar textos largos del usuario */
+  .top-user-badge {
+    display: none;
+  }
+
+  /* Top bar titulo más pequeño */
+  .top-bar h1 {
+    font-size: 0.9rem;
+  }
+
+  /* Botones de acción: stack completo */
+  .action-bar {
+    flex-direction: column;
+  }
+  .action-bar .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Inputs de búsqueda en action-bar: full width */
+  .action-bar input[type="text"],
+  .action-bar input[type="search"],
+  .action-bar select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Tablas: hint de scroll horizontal */
+  .list-table-wrap {
+    -webkit-overflow-scrolling: touch;
+  }
+  .list-table-wrap::after {
+    content: '';
+    display: block;
+  }
+
+  /* Modal full screen en móvil muy pequeño */
+  .modal-content {
+    width: 100vw;
+    max-width: 100vw;
+    margin: 0;
+    border-radius: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  /* Tabs de categorías: scroll horizontal */
+  .categorias-tabs,
+  .evento-tabs-nav,
+  .tabs-bar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .categorias-tabs::-webkit-scrollbar,
+  .evento-tabs-nav::-webkit-scrollbar,
+  .tabs-bar::-webkit-scrollbar { display: none; }
+}
+
+/* ========================================================
+   MOBILE — Páginas app ≤768px mejoras adicionales
+   ======================================================== */
+@media (max-width: 768px) {
+  /* Fixture: header de categoría */
+  .fixture-categoria-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  /* Cards de campeonato en lista */
+  .campeonato-card {
+    flex-direction: column;
+  }
+
+  /* Stats inline: 2 cols */
+  .stats-inline {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Tabla stats jugadores: ocultar columnas menos importantes */
+  .jugadores-stats-table th:nth-child(n+8),
+  .jugadores-stats-table td:nth-child(n+8) {
+    display: none;
+  }
+}
