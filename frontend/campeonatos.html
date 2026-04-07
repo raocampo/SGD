@@ -112,9 +112,14 @@
         </div>
 
           <div class="form-group">
-            <label for="campeonato-tipo">Tipo de Deporte:</label>
-            <select id="campeonato-tipo" required>
-              <optgroup label="⚽ Fútbol">
+            <label>Tipo de Deporte:</label>
+            <input type="hidden" id="campeonato-tipo" value="futbol_11" />
+            <div class="sport-tabs">
+              <button type="button" class="sport-tab-btn sport-tab-active" data-sport="futbol" onclick="switchSportTab(this,'futbol')">⚽ Fútbol</button>
+              <button type="button" class="sport-tab-btn" data-sport="basquetbol" onclick="switchSportTab(this,'basquetbol')">🏀 Básquetbol</button>
+            </div>
+            <div id="sport-panel-futbol" class="sport-panel">
+              <select id="campeonato-tipo-futbol" class="sport-subselect" onchange="document.getElementById('campeonato-tipo').value=this.value">
                 <option value="futbol_11">Fútbol 11</option>
                 <option value="futbol_9">Fútbol 9</option>
                 <option value="futbol_8">Fútbol 8</option>
@@ -123,14 +128,16 @@
                 <option value="futbol_5">Fútbol 5</option>
                 <option value="futsala">Futsala</option>
                 <option value="indor">Indor</option>
-              </optgroup>
-              <optgroup label="🏀 Básquetbol">
+              </select>
+            </div>
+            <div id="sport-panel-basquetbol" class="sport-panel" style="display:none;">
+              <select id="campeonato-tipo-basquetbol" class="sport-subselect" onchange="document.getElementById('campeonato-tipo').value=this.value">
                 <option value="basquetbol">Básquetbol</option>
                 <option value="basquetbol_minibasket">Minibasket</option>
                 <option value="basquetbol_3x3">Básquetbol 3x3</option>
                 <option value="basquetbol_callejero">Básquetbol Callejero</option>
-              </optgroup>
-            </select>
+              </select>
+            </div>
           </div>
 
         <div class="form-group">
@@ -208,9 +215,14 @@
           </div>
 
           <div class="form-group">
-            <label for="campeonato-tipo">Tipo de Deporte:</label>
-            <select id="campeonato-tipo" required>
-              <optgroup label="⚽ Fútbol">
+            <label>Tipo de Deporte:</label>
+            <input type="hidden" id="campeonato-tipo" value="futbol_11" />
+            <div class="sport-tabs">
+              <button type="button" class="sport-tab-btn sport-tab-active" data-sport="futbol" onclick="switchSportTab(this,'futbol')">⚽ Fútbol</button>
+              <button type="button" class="sport-tab-btn" data-sport="basquetbol" onclick="switchSportTab(this,'basquetbol')">🏀 Básquetbol</button>
+            </div>
+            <div id="sport-panel-futbol" class="sport-panel">
+              <select id="campeonato-tipo-futbol" class="sport-subselect" onchange="document.getElementById('campeonato-tipo').value=this.value">
                 <option value="futbol_11">Fútbol 11</option>
                 <option value="futbol_9">Fútbol 9</option>
                 <option value="futbol_8">Fútbol 8</option>
@@ -219,14 +231,16 @@
                 <option value="futbol_5">Fútbol 5</option>
                 <option value="futsala">Futsala</option>
                 <option value="indor">Indor</option>
-              </optgroup>
-              <optgroup label="🏀 Básquetbol">
+              </select>
+            </div>
+            <div id="sport-panel-basquetbol" class="sport-panel" style="display:none;">
+              <select id="campeonato-tipo-basquetbol" class="sport-subselect" onchange="document.getElementById('campeonato-tipo').value=this.value">
                 <option value="basquetbol">Básquetbol</option>
                 <option value="basquetbol_minibasket">Minibasket</option>
                 <option value="basquetbol_3x3">Básquetbol 3x3</option>
                 <option value="basquetbol_callejero">Básquetbol Callejero</option>
-              </optgroup>
-            </select>
+              </select>
+            </div>
           </div>
           <div class="form-group">
             <label for="campeonato-sistema">Sistema de Puntuación:</label>

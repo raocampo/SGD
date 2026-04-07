@@ -6,7 +6,15 @@ document.addEventListener("DOMContentLoaded", () => {
   cargarCampeonatos();
 });
 
-const BACKEND_BASE = (
+function switchSportTab(btn, sport) {
+  document.querySelectorAll('.sport-tab-btn').forEach(b => b.classList.remove('sport-tab-active'));
+  btn.classList.add('sport-tab-active');
+  document.querySelectorAll('.sport-panel').forEach(p => p.style.display = 'none');
+  const panel = document.getElementById('sport-panel-' + sport);
+  if (panel) panel.style.display = '';
+  const sel = document.getElementById('campeonato-tipo-' + sport);
+  if (sel) document.getElementById('campeonato-tipo').value = sel.value;
+} = (
   window.resolveApiBaseUrl
     ? window.resolveApiBaseUrl()
     : window.API_BASE_URL || `${window.location.origin}/api`
@@ -416,8 +424,19 @@ async function editarCampeonato(id) {
     document.getElementById("campeonato-organizador").value =
       camp.organizador || "";
 
-    document.getElementById("campeonato-tipo").value =
-      camp.tipo_deporte || camp.tipo_futbol || "futbol_11";
+    const tipoVal = camp.tipo_deporte || camp.tipo_futbol || "futbol_11";
+    document.getElementById("campeonato-tipo").value = tipoVal;
+    if (tipoVal.includes("basquet")) {
+      const tabBasq = document.querySelector('.sport-tab-btn[data-sport="basquetbol"]');
+      if (tabBasq) switchSportTab(tabBasq, "basquetbol");
+      const sel = document.getElementById("campeonato-tipo-basquetbol");
+      if (sel) sel.value = tipoVal;
+    } else {
+      const tabFut = document.querySelector('.sport-tab-btn[data-sport="futbol"]');
+      if (tabFut) switchSportTab(tabFut, "futbol");
+      const sel = document.getElementById("campeonato-tipo-futbol");
+      if (sel) sel.value = tipoVal;
+    }
 
     document.getElementById("campeonato-sistema").value =
       camp.sistema_puntuacion || "tradicional";
