@@ -1738,10 +1738,10 @@ function renderEliminatoriasPortal(payload = []) {
   `;
 }
 
-function renderGoleadoresPortal(goleadores = []) {
+function renderGoleadoresPortal(goleadores = [], esBasquetbol = false) {
   const rows = Array.isArray(goleadores) ? goleadores.slice(0, 10) : [];
   if (!rows.length) {
-    return '<p class="empty-msg">No hay datos de goleadores para esta categoría.</p>';
+    return `<p class="empty-msg">No hay datos de ${esBasquetbol ? "anotadores" : "goleadores"} para esta categoría.</p>`;
   }
 
   const rowsHtml = rows
@@ -1758,20 +1758,25 @@ function renderGoleadoresPortal(goleadores = []) {
   return `
     <div class="portal-table-wrap">
       <table class="tabla-posicion">
-        <tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Goles</th></tr>
+        <tr><th>#</th><th>Jugador</th><th>Equipo</th><th>${esBasquetbol ? "Pts" : "Goles"}</th></tr>
         ${rowsHtml}
       </table>
     </div>
   `;
 }
 
-function renderTarjetasPortal(tarjetas = [], tipo = "amarillas") {
+function renderTarjetasPortal(tarjetas = [], tipo = "amarillas", esBasquetbol = false) {
   const rows = Array.isArray(tarjetas) ? [...tarjetas] : [];
+  const labelVacio = esBasquetbol
+    ? (tipo === "rojas" ? "faltas técnicas" : "faltas personales")
+    : (tipo === "rojas" ? "tarjetas rojas" : "tarjetas amarillas");
   if (!rows.length) {
-    return `<p class="empty-msg">No hay datos de tarjetas ${tipo === "rojas" ? "rojas" : "amarillas"} para esta categoría.</p>`;
+    return `<p class="empty-msg">No hay datos de ${labelVacio} para esta categoría.</p>`;
   }
 
-  const labelColumna = tipo === "rojas" ? "TR" : "TA";
+  const labelColumna = esBasquetbol
+    ? (tipo === "rojas" ? "F.Téc" : "Faltas")
+    : (tipo === "rojas" ? "TR" : "TA");
   rows.sort((a, b) => {
     const valorA = Number(a?.[tipo] || 0);
     const valorB = Number(b?.[tipo] || 0);
@@ -1832,6 +1837,9 @@ function renderFairPlayPortal(fairPlay = []) {
 }
 
 function renderResumenCategoriaPortal(evento, data) {
+  const tipoDeporte = String(evento?.tipo_deporte || evento?.tipo_futbol || "").toLowerCase();
+  const esBasquetbol = tipoDeporte.includes("basquet");
+  const labelGoleadores = esBasquetbol ? "Anotadores activos" : "Goleadores activos";
   const resumen = [
     evento?.modalidad ? `Modalidad: ${formatearModalidadPortal(evento.modalidad)}` : "",
     evento?.metodo_competencia
@@ -1840,7 +1848,7 @@ function renderResumenCategoriaPortal(evento, data) {
     `Equipos: ${Number(evento?.total_equipos || 0)}`,
     Number(evento?.total_grupos || 0) > 0 ? `Grupos: ${Number(evento.total_grupos || 0)}` : "",
     `Partidos: ${Number(evento?.partidos_finalizados || 0)}/${Number(evento?.total_partidos || 0)}`,
-    Number(data?.goleadores?.length || 0) > 0 ? `Goleadores activos: ${Number(data.goleadores.length)}` : "",
+    Number(data?.goleadores?.length || 0) > 0 ? `${labelGoleadores}: ${Number(data.goleadores.length)}` : "",
   ].filter(Boolean);
 
   return `
@@ -1856,14 +1864,16 @@ function renderResumenCategoriaPortal(evento, data) {
 function renderCategoriaPanelPortal(data, index = 0) {
   const evento = data?.evento || {};
   const panelId = `portal-category-panel-${evento.id}`;
+  const tipoDeporte = String(evento.tipo_deporte || evento.tipo_futbol || "").toLowerCase();
+  const esBasquetbol = tipoDeporte.includes("basquet");
   const subtabs = [
     { key: "jornadas", label: "Jornadas", html: renderJornadasPortal(data?.jornadas || [], data?.partidos || [], "proximas") },
     { key: "resultados", label: "Resultados", html: renderResultadosPortal(data?.jornadas || [], data?.partidos || []) },
-    { key: "posiciones", label: "Tabla de posiciones", html: renderTablasPortal(data?.tablas || [], data?.evento?.tipo_deporte || data?.evento?.tipo_futbol || "") },
-    { key: "goleadores", label: "Goleadores", html: renderGoleadoresPortal(data?.goleadores || []) },
+    { key: "posiciones", label: "Tabla de posiciones", html: renderTablasPortal(data?.tablas || [], tipoDeporte) },
+    { key: "goleadores", label: esBasquetbol ? "Anotadores" : "Goleadores", html: renderGoleadoresPortal(data?.goleadores || [], esBasquetbol) },
     { key: "fair-play", label: "Fair play", html: renderFairPlayPortal(data?.fairPlay || []) },
-    { key: "tarjetas-amarillas", label: "Tarjetas amarillas", html: renderTarjetasPortal(data?.tarjetas || [], "amarillas") },
-    { key: "tarjetas-rojas", label: "Tarjetas rojas", html: renderTarjetasPortal(data?.tarjetas || [], "rojas") },
+    { key: "tarjetas-amarillas", label: esBasquetbol ? "Faltas personales" : "Tarjetas amarillas", html: renderTarjetasPortal(data?.tarjetas || [], "amarillas", esBasquetbol) },
+    { key: "tarjetas-rojas", label: esBasquetbol ? "Faltas técnicas" : "Tarjetas rojas", html: renderTarjetasPortal(data?.tarjetas || [], "rojas", esBasquetbol) },
     { key: "playoff", label: "Playoff", html: renderEliminatoriasPortal(data?.eliminatorias || []) },
   ];
 

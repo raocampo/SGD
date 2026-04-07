@@ -56,6 +56,7 @@ let campeonatoMeta = {
   color_acento: "#22C55E",
   requiere_cedula_jugador: false,
   genera_carnets: false,
+  tipo_deporte: "",
 };
 
 let jugadoresActuales = [];
@@ -271,6 +272,7 @@ function renderEstadoDocumento(url, etiqueta) {
 
 function obtenerEstadoDisciplinarioJugador(jugador = {}) {
   const suspension = jugador?.suspension || null;
+  const esBasquetbol = String(campeonatoMeta?.tipo_deporte || "").includes("basquet");
   if (!suspension) {
     return {
       css: "estado-borrador",
@@ -292,8 +294,10 @@ function obtenerEstadoDisciplinarioJugador(jugador = {}) {
   if (amarillas > 0) {
     return {
       css: "estado-disciplina-alerta",
-      texto: `Acumula ${amarillas} TA`,
-      titulo: "Tarjetas amarillas acumuladas en la categoría actual",
+      texto: esBasquetbol ? `Acumula ${amarillas} falta${amarillas === 1 ? "" : "s"}` : `Acumula ${amarillas} TA`,
+      titulo: esBasquetbol
+        ? "Faltas personales acumuladas en la categoría actual"
+        : "Tarjetas amarillas acumuladas en la categoría actual",
     };
   }
 
@@ -1469,6 +1473,7 @@ async function cargarConfigCampeonato() {
       color_acento: "#22C55E",
       requiere_cedula_jugador: false,
       genera_carnets: false,
+      tipo_deporte: "",
     };
     minJugadoresPorEquipo = null;
     maxJugadoresPorEquipo = null;
@@ -1500,6 +1505,7 @@ async function cargarConfigCampeonato() {
         camp.requiere_cedula_jugador === 1 ||
         camp.requiere_cedula_jugador === "1",
       genera_carnets: camp.genera_carnets === true || camp.genera_carnets === "true",
+      tipo_deporte: String(camp.tipo_deporte || camp.tipo_futbol || "").toLowerCase(),
     };
 
     minJugadoresPorEquipo = camp.min_jugador || null;
