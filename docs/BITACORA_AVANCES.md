@@ -1,3 +1,27 @@
+## 2026-04-07 - Baloncesto: Planilla UI + Portal + Jugadores (Fases 3, 5, 6)
+
+### Planilla baloncesto (Fase 3 — `219708d`)
+- **`planilla.html`**: nueva sección `#grupo-overtime-planilla` (amber card, hidden) con campos de puntos en tiempo extra local/visitante.
+- **`planilla.js`**:
+  - `renderTablaCapturaEquipo`: detecta `esBasquetbol`; agrega selector `cap-tipo-punto` (2pts/3pts/1pt) por fila cuando es baloncesto.
+  - `obtenerColumnasRegistroPlanilla`: cabeceras adaptadas → G/Gol → P/Pts, TA → Falt, TR → F.Téc para baloncesto.
+  - `recolectarPayloadPlanilla`: lee `cap-tipo-punto`, incluye `tipo_punto` + `tipo_gol` en payload de goles; incluye `overtime_utilizado`, `overtime_puntos_local/visitante`.
+  - `actualizarVisibilidadOvertimePlanilla` (nueva): muestra/oculta sección overtime cuando hay empate en baloncesto.
+  - `adaptarLabelsBasquetbol` (nueva): renombra etiquetas del footer (Tarjetas → Faltas personales/técnicas).
+- **`style.css`**: `.cap-goles-basquet` (flex selector + input), `.planilla-overtime-grid` (amber card).
+
+### Portal baloncesto (Fase 5 — `8631034`)
+- **`portal.js`**:
+  - `renderCategoriaPanelPortal`: deriva `esBasquetbol` y pasa a subtabs → Goleadores → Anotadores, Tarjetas → Faltas personales/Faltas técnicas.
+  - `renderGoleadoresPortal(esBasquetbol)`: columna Goles → Pts; mensaje vacío sport-aware.
+  - `renderTarjetasPortal(esBasquetbol)`: columnas TA/TR → Faltas/F.Téc; mensaje sport-aware.
+  - `renderResumenCategoriaPortal`: "Goleadores activos" → "Anotadores activos" para baloncesto.
+
+### Jugadores baloncesto (Fase 6 — `8631034`)
+- **`jugadores.js`**:
+  - `campeonatoMeta`: agrega campo `tipo_deporte` (leído de API).
+  - `obtenerEstadoDisciplinarioJugador`: badge "Acumula X TA" → "Acumula X falta(s)" para baloncesto.
+
 ## 2026-04-06 - Fase 2: Panel operativo de transmisiones + destacado en portal
 
 - **Migración 062**: `ALTER TABLE partido_transmisiones ADD COLUMN destacado BOOLEAN DEFAULT FALSE` + índice parcial.
