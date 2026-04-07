@@ -2548,3 +2548,52 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - `playoff`,
   - `planillas` ya registradas en cruces.
 - Si aparece otro caso legacy sin `playoff_ronda`, revisar si conviene mover esta normalización a una capa compartida del backend público y no solo al enriquecimiento del frontend.
+
+
+## 2026-04-07 - Correcciones de bugs y revisión sistema de transmisiones
+
+### Bugs corregidos
+
+1. **campeonatos.js — error de sintaxis crítico**
+   - La edición del widget de pestañas deportivas fusionó accidentalmente el cierre de switchSportTab con la declaración const BACKEND_BASE = (, generando SyntaxError: Unexpected token '=' que rompía toda la página de campeonatos.
+   - Corregido: } separado de const BACKEND_BASE.
+   - Commit: 58cc57
+
+2. **dashboard-admin.js — ruta PUT incorrecta para cambio de plan**
+   - guardarEstadoOrg llamaba a /usuarios/:id sin el prefijo /auth/, produciendo Cannot PUT /api/usuarios/17.
+   - Corregido a /auth/usuarios/:id.
+   - Commit: 58cc57
+
+3. **campeonatos.html — widget de pestañas de tipo deporte**
+   - Reemplazado el <select> con <optgroup> por un widget de dos pestañas (⚽ Fútbol | 🏀 Básquetbol), cada una con su propio <select>.
+   - Un <input type="hidden" id="campeonato-tipo"> mantiene el valor en sync para el submit.
+   - En modo edición, switchSportTab activa la pestaña correcta según el tipo guardado.
+   - Commit: ef2fd9
+
+4. **PartidoTransmision.js — columna destacado faltante en CREATE TABLE**
+   - El schema CREATE TABLE IF NOT EXISTS no incluía la columna destacado, que sí existe en la migración  62_transmisiones_destacado_borrador.sql.
+   - Agregada como defensa en el modelo: se incluye en CREATE TABLE y se añade un bloque DO ___BEGIN___COMMAND_DONE_MARKER___$LASTEXITCODE con ALTER TABLE ... ADD COLUMN IF NOT EXISTS.
+   - Commit: 74db898
+
+### Sistema de transmisiones — auditoría completa
+
+Se auditó el sistema de transmisiones y se confirmó que está implementado al **95%** (Fase 1 y 2 del plan completas):
+
+**Backend:**
+- ackend/models/PartidoTransmision.js — modelo con CRUD, estado machine, destacados
+- ackend/controllers/transmisionController.js — 10 funciones (create, update, iniciar, finalizar, cancelar, destacar, public/private)
+- ackend/routes/transmisionRoutes.js — rutas autenticadas (/api/transmisiones)
+- ackend/routes/publicRoutes.js — rutas públicas (/api/public/campeonatos/:id/transmisiones-activas, /api/public/transmisiones/destacadas)
+- ackend/routes/partidoRoutes.js — integrado: GET/POST /api/partidos/:id/transmision
+- Migrations:  61 (tabla base) y  62 (columna destacado + estado borrador)
+
+**Frontend:**
+- rontend/transmisiones.html — página de gestión con selector de campeonato y 3 tabs (Activas/Todas/Programadas)
+- rontend/js/transmisiones.js — lógica completa de tabla, filtros, acciones
+- rontend/js/transmision.js — modal flotante para editar/iniciar/finalizar transmisión desde partidos
+- rontend/campeonatos.html — botón "📡 Transmisiones" en cada tarjeta de campeonato con irATransmisiones(id)
+- rontend/js/campeonatos.js — función irATransmisiones() navega a 	ransmisiones.html?campeonato=ID
+- rontend/js/portal.js — muestra badge EN VIVO en cada partido y card de próxima transmisión destacada
+- rontend/index.html — sección de servicio de streaming en la landing page
+
+**Pendiente Fase 3 y 4** (restream a redes sociales / ingesta propia de video) — requiere infraestructura externa.
