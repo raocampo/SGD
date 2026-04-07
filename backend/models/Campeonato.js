@@ -1,5 +1,6 @@
 const pool = require("../config/database");
 const OrganizadorPortal = require("./OrganizadorPortal");
+const { getSportConfig } = require("../config/sportsConfig");
 
 // Estados del torneo según propuesta SGD
 const ESTADOS_TORNEO = ["borrador", "inscripcion", "en_curso", "finalizado", "archivado"];
@@ -24,8 +25,14 @@ class Campeonato {
       ADD COLUMN IF NOT EXISTS costo_carnet NUMERIC(12,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS bloquear_morosos BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS bloqueo_morosidad_monto NUMERIC(12,2) DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS carnet_fondo_url TEXT
+      ADD COLUMN IF NOT EXISTS carnet_fondo_url TEXT,
+      ADD COLUMN IF NOT EXISTS tipo_deporte VARCHAR(30)
     `);
+    // Propagar tipo_futbol → tipo_deporte para campeonatos existentes
+    await pool.query(`
+      UPDATE campeonatos SET tipo_deporte = tipo_futbol
+      WHERE tipo_deporte IS NULL AND tipo_futbol IS NOT NULL
+    `);;
     await pool.query(`
       UPDATE campeonatos
       SET
@@ -169,11 +176,12 @@ class Campeonato {
         bloquear_morosos,
         bloqueo_morosidad_monto,
         carnet_fondo_url,
+        tipo_deporte,
         estado,
         numero_organizador
       )
       SELECT
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,'borrador',
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,'borrador',
         next_num.next_num
       FROM next_num
       RETURNING *
@@ -205,6 +213,8 @@ class Campeonato {
       bloquear_morosos === true || bloquear_morosos === "true",
       this.parseDecimalNoNegativo(bloqueo_morosidad_monto, 0),
       carnet_fondo_url || null,
+      // tipo_deporte: usar el valor explícito o heredar de tipo_futbol
+      String(tipo_futbol || "futbol_11").trim().toLowerCase(),
     ];
 
     const result = await pool.query(query, values);
@@ -267,7 +277,7 @@ class Campeonato {
     const valores = [];
     let contador = 1;
     const allowed = new Set([
-      "nombre", "organizador", "fecha_inicio", "fecha_fin", "tipo_futbol",
+      "nombre", "organizador", "fecha_inicio", "fecha_fin", "tipo_futbol", "tipo_deporte",
       "sistema_puntuacion", "max_equipos", "min_jugador", "max_jugador",
       "color_primario", "color_secundario", "color_acento", "logo_url", "carnet_fondo_url", "estado",
       "reglas_desempate", "requiere_cedula_jugador", "requiere_foto_cedula", "requiere_foto_carnet", "genera_carnets",
@@ -295,6 +305,25 @@ class Campeonato {
         if (key === "bloquear_morosos") {
           campos.push(`${key} = $${contador}`);
           valores.push(value === true || String(value).toLowerCase() === "true");
+          contador++;
+          continue;
+        }
+        // Sincronización bidireccional tipo_futbol ↔ tipo_deporte
+        if (key === "tipo_deporte") {
+          campos.push(`tipo_deporte = $${contador}`);
+          valores.push(value);
+          contador++;
+          campos.push(`tipo_futbol = $${contador}`);
+          valores.push(value);
+          contador++;
+          continue;
+        }
+        if (key === "tipo_futbol") {
+          campos.push(`tipo_futbol = $${contador}`);
+          valores.push(value);
+          contador++;
+          campos.push(`tipo_deporte = $${contador}`);
+          valores.push(value);
           contador++;
           continue;
         }

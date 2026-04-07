@@ -49,6 +49,9 @@ function formatearTipoFutbolEtiqueta(valor) {
     futbol_5: "Fútbol 5",
     futsala: "Futsala",
     indor: "Indor",
+    basquetbol: "Básquetbol",
+    basquetball: "Básquetbol",
+    basketball: "Básquetbol",
   };
   if (mapa[raw]) return mapa[raw];
   return String(valor || "").replaceAll("_", " ");
@@ -574,6 +577,7 @@ document
     fd.append("nombre", nombre);
     fd.append("organizador", organizador);
     fd.append("tipo_futbol", tipo);
+    fd.append("tipo_deporte", tipo);  // campo unificado para soporte de múltiples deportes
     fd.append("sistema_puntuacion", sistema);
     fd.append("fecha_inicio", fechaInicio);
     fd.append("fecha_fin", fechaFin);

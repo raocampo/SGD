@@ -595,13 +595,31 @@ function normalizarFaltasPlanillaPayload(faltas = {}) {
       faltas?.faltas_visitante_2do
   );
 
+  // Cuartos 3 y 4 (baloncesto) — backward compatible con 0 para fútbol
+  const localTercerCuarto = normalizarConteoFaltasPlanilla(
+    faltas?.local_3er ?? faltas?.local_3 ?? faltas?.faltas_local_3er ?? 0
+  );
+  const localCuartoCuarto = normalizarConteoFaltasPlanilla(
+    faltas?.local_4to ?? faltas?.local_4 ?? faltas?.faltas_local_4to ?? 0
+  );
+  const visitanteTercerCuarto = normalizarConteoFaltasPlanilla(
+    faltas?.visitante_3er ?? faltas?.visitante_3 ?? faltas?.faltas_visitante_3er ?? 0
+  );
+  const visitanteCuartoCuarto = normalizarConteoFaltasPlanilla(
+    faltas?.visitante_4to ?? faltas?.visitante_4 ?? faltas?.faltas_visitante_4to ?? 0
+  );
+
   return {
     local_1er: localPrimerTiempo,
     local_2do: localSegundoTiempo,
+    local_3er: localTercerCuarto,
+    local_4to: localCuartoCuarto,
     visitante_1er: visitantePrimerTiempo,
     visitante_2do: visitanteSegundoTiempo,
-    local_total: localPrimerTiempo + localSegundoTiempo,
-    visitante_total: visitantePrimerTiempo + visitanteSegundoTiempo,
+    visitante_3er: visitanteTercerCuarto,
+    visitante_4to: visitanteCuartoCuarto,
+    local_total: localPrimerTiempo + localSegundoTiempo + localTercerCuarto + localCuartoCuarto,
+    visitante_total: visitantePrimerTiempo + visitanteSegundoTiempo + visitanteTercerCuarto + visitanteCuartoCuarto,
   };
 }
 
@@ -779,9 +797,10 @@ function resolverTarjetasDisciplinariasPartido({
 }
 
 function obtenerUmbralAmarillasSuspension(tipoFutbol = "") {
-  const tipo = String(tipoFutbol || "").trim().toLowerCase();
-  if (tipo.includes("11")) return 4;
-  return 0;
+  // Mantiene la firma original para retrocompatibilidad
+  // Delega a sportsConfig internamente
+  const { obtenerUmbralAmarillasSuspension: umbralConfig } = require("../config/sportsConfig");
+  return umbralConfig(tipoFutbol);
 }
 
 function tarjetaEsRojaPorDobleAmarilla(item = {}) {
@@ -841,7 +860,7 @@ async function calcularEstadoDisciplinarioEquipo({
            p.fecha_partido,
            p.hora_partido,
            p.estado,
-           COALESCE(c.tipo_futbol, '') AS tipo_futbol
+           COALESCE(c.tipo_deporte, c.tipo_futbol, '') AS tipo_futbol
     FROM partidos p
     LEFT JOIN campeonatos c ON c.id = p.campeonato_id
     WHERE p.evento_id = $1

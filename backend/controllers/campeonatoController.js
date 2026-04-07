@@ -68,6 +68,7 @@ const campeonatoController = {
         fecha_inicio,
         fecha_fin,
         tipo_futbol,
+        tipo_deporte,  // nuevo campo — si viene, tiene prioridad sobre tipo_futbol
         sistema_puntuacion,
         max_equipos,
         min_jugador,
@@ -86,6 +87,8 @@ const campeonatoController = {
         bloquear_morosos = false,
         bloqueo_morosidad_monto = 0,
       } = req.body;
+      // Normalizar: tipo_deporte tiene prioridad; si no viene, usar tipo_futbol
+      const tipoDeporteNormalizado = String(tipo_deporte || tipo_futbol || "futbol_11").trim().toLowerCase();
       const userId = Number.parseInt(req.user?.id, 10);
       const plan = Number.isFinite(userId) && userId > 0
         ? await obtenerPlanUsuarioPorId(userId)
@@ -190,7 +193,7 @@ const campeonatoController = {
         organizadorFinal,
         fecha_inicio,
         fecha_fin,
-        tipo_futbol,
+        tipoDeporteNormalizado,  // pasa como tipo_futbol (retrocompat) y tipo_deporte
         sistema_puntuacion,
         max_equipos,
         min_jugador,
@@ -339,6 +342,14 @@ const campeonatoController = {
         datos.requiere_foto_cedula =
           datos.requiere_foto_cedula === true ||
           String(datos.requiere_foto_cedula).toLowerCase() === "true";
+      }
+
+      // Normalizar tipo_deporte / tipo_futbol (sincronización bidireccional)
+      if (datos.tipo_deporte !== undefined) {
+        datos.tipo_deporte = String(datos.tipo_deporte || "").trim().toLowerCase() || undefined;
+      }
+      if (datos.tipo_futbol !== undefined) {
+        datos.tipo_futbol = String(datos.tipo_futbol || "").trim().toLowerCase() || undefined;
       }
       if (datos.requiere_cedula_jugador !== undefined) {
         datos.requiere_cedula_jugador =

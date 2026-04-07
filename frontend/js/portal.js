@@ -1124,10 +1124,15 @@ function initFormularioContactoPublico() {
   });
 }
 
-function renderTablasPortal(tablas = []) {
+function renderTablasPortal(tablas = [], tipoDeporte = "") {
   if (!Array.isArray(tablas) || !tablas.length) {
     return '<p class="empty-msg">No hay tablas de posicion disponibles.</p>';
   }
+
+  const esBasquetbol = String(tipoDeporte || "").toLowerCase().includes("basquet");
+  const labelGF = esBasquetbol ? "PF" : "GF";
+  const labelGC = esBasquetbol ? "PC" : "GC";
+  const labelDG = esBasquetbol ? "DP" : "DG";
 
   const bloques = tablas
     .map((grupoData) => {
@@ -1180,7 +1185,7 @@ function renderTablasPortal(tablas = []) {
           <div class="portal-table-wrap">
             <table class="tabla-posicion portal-tabla-posiciones">
               <thead>
-                <tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr>
+                <tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>${labelGF}</th><th>${labelGC}</th><th>${labelDG}</th><th>PTS</th></tr>
               </thead>
               <tbody>
                 ${rowsHtml}
@@ -1842,7 +1847,7 @@ function renderCategoriaPanelPortal(data, index = 0) {
   const subtabs = [
     { key: "jornadas", label: "Jornadas", html: renderJornadasPortal(data?.jornadas || [], data?.partidos || [], "proximas") },
     { key: "resultados", label: "Resultados", html: renderResultadosPortal(data?.jornadas || [], data?.partidos || []) },
-    { key: "posiciones", label: "Tabla de posiciones", html: renderTablasPortal(data?.tablas || []) },
+    { key: "posiciones", label: "Tabla de posiciones", html: renderTablasPortal(data?.tablas || [], data?.evento?.tipo_deporte || data?.evento?.tipo_futbol || "") },
     { key: "goleadores", label: "Goleadores", html: renderGoleadoresPortal(data?.goleadores || []) },
     { key: "fair-play", label: "Fair play", html: renderFairPlayPortal(data?.fairPlay || []) },
     { key: "tarjetas-amarillas", label: "Tarjetas amarillas", html: renderTarjetasPortal(data?.tarjetas || [], "amarillas") },

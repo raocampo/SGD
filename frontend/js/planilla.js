@@ -558,11 +558,12 @@ function obtenerEstadoFaltasPlanilla() {
 
 function actualizarEstadoFaltasPlanilla(lado, tiempo, valor) {
   const faltas = obtenerEstadoFaltasPlanilla();
-  const clave = `${lado}_${tiempo === 1 ? "1er" : "2do"}`;
+  const claveMap = { 1: "1er", 2: "2do", 3: "3er", 4: "4to" };
+  const clave = `${lado}_${claveMap[tiempo] || "1er"}`;
   const siguienteValor = normalizarConteoFaltasPlanilla(valor, 0);
   faltas[clave] = faltas[clave] === siguienteValor ? 0 : siguienteValor;
-  faltas.local_total = faltas.local_1er + faltas.local_2do;
-  faltas.visitante_total = faltas.visitante_1er + faltas.visitante_2do;
+  faltas.local_total = (faltas.local_1er || 0) + (faltas.local_2do || 0) + (faltas.local_3er || 0) + (faltas.local_4to || 0);
+  faltas.visitante_total = (faltas.visitante_1er || 0) + (faltas.visitante_2do || 0) + (faltas.visitante_3er || 0) + (faltas.visitante_4to || 0);
   dataPlanilla.faltas = faltas;
 }
 
@@ -1096,7 +1097,8 @@ function formatearTipoFutbolTexto(tipo) {
 }
 
 function obtenerTipoFutbolPlanilla() {
-  const tipo = String(dataPlanilla?.partido?.tipo_futbol || "").toLowerCase();
+  const tipo = String(dataPlanilla?.partido?.tipo_deporte || dataPlanilla?.partido?.tipo_futbol || "").toLowerCase();
+  if (tipo.includes("basquet")) return "basquetbol";
   if (tipo.includes("11")) return "futbol_11";
   if (tipo.includes("9")) return "futbol_11";
   if (tipo.includes("8")) return "futbol_11";
@@ -1110,7 +1112,13 @@ function obtenerTipoFutbolPlanilla() {
 }
 
 function esPlanillaFutbol11() {
-  return String(dataPlanilla?.partido?.tipo_futbol || "").toLowerCase().includes("11");
+  const tipo = String(dataPlanilla?.partido?.tipo_deporte || dataPlanilla?.partido?.tipo_futbol || "").toLowerCase();
+  return tipo.includes("11");
+}
+
+function esPlanillaBasquetbol() {
+  const tipo = String(dataPlanilla?.partido?.tipo_deporte || dataPlanilla?.partido?.tipo_futbol || "").toLowerCase();
+  return tipo.includes("basquet");
 }
 
 function obtenerDatosArbitrajePlanilla(partido = dataPlanilla?.partido || {}) {
@@ -1713,7 +1721,7 @@ function conectarEventosFaltasPlanilla() {
       const lado = String(btn.dataset.lado || "").trim();
       const tiempo = Number.parseInt(btn.dataset.tiempo, 10);
       const valor = Number.parseInt(btn.dataset.valor, 10);
-      if (!["local", "visitante"].includes(lado) || ![1, 2].includes(tiempo) || !Number.isFinite(valor)) {
+      if (!["local", "visitante"].includes(lado) || ![1, 2, 3, 4].includes(tiempo) || !Number.isFinite(valor)) {
         return;
       }
       actualizarEstadoFaltasPlanilla(lado, tiempo, valor);
@@ -1727,8 +1735,9 @@ function renderFaltasVisual() {
   const cont = document.getElementById("planilla-faltas-visual");
   if (!cont || !dataPlanilla?.partido) return;
 
+  const esBasquet = esPlanillaBasquetbol();
   const modelo = obtenerModeloPlanillaOficial();
-  if (modelo !== "futbol_7_5_sala") {
+  if (modelo !== "futbol_7_5_sala" && !esBasquet) {
     cont.innerHTML = "";
     cont.style.display = "none";
     return;
@@ -1739,22 +1748,45 @@ function renderFaltasVisual() {
   const visit = escapeHtml(dataPlanilla.partido.equipo_visitante_nombre || "Visitante");
 
   cont.style.display = "grid";
-  cont.innerHTML = `
-    <div class="planilla-faltas-team">
-      <p>${local}</p>
-      <div class="planilla-faltas-cols">
-        <div><strong>FALTAS 1ER</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("local", 1, faltas.local_1er)}</div></div>
-        <div><strong>FALTAS 2DO</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("local", 2, faltas.local_2do)}</div></div>
+  if (esBasquet) {
+    cont.innerHTML = `
+      <div class="planilla-faltas-team">
+        <p>${local}</p>
+        <div class="planilla-faltas-cols">
+          <div><strong>FALTAS 1ER C</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("local", 1, faltas.local_1er)}</div></div>
+          <div><strong>FALTAS 2DO C</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("local", 2, faltas.local_2do)}</div></div>
+          <div><strong>FALTAS 3ER C</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("local", 3, faltas.local_3er || 0)}</div></div>
+          <div><strong>FALTAS 4TO C</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("local", 4, faltas.local_4to || 0)}</div></div>
+        </div>
       </div>
-    </div>
-    <div class="planilla-faltas-team">
-      <p>${visit}</p>
-      <div class="planilla-faltas-cols">
-        <div><strong>FALTAS 1ER</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("visitante", 1, faltas.visitante_1er)}</div></div>
-        <div><strong>FALTAS 2DO</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("visitante", 2, faltas.visitante_2do)}</div></div>
+      <div class="planilla-faltas-team">
+        <p>${visit}</p>
+        <div class="planilla-faltas-cols">
+          <div><strong>FALTAS 1ER C</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("visitante", 1, faltas.visitante_1er)}</div></div>
+          <div><strong>FALTAS 2DO C</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("visitante", 2, faltas.visitante_2do)}</div></div>
+          <div><strong>FALTAS 3ER C</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("visitante", 3, faltas.visitante_3er || 0)}</div></div>
+          <div><strong>FALTAS 4TO C</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("visitante", 4, faltas.visitante_4to || 0)}</div></div>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  } else {
+    cont.innerHTML = `
+      <div class="planilla-faltas-team">
+        <p>${local}</p>
+        <div class="planilla-faltas-cols">
+          <div><strong>FALTAS 1ER</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("local", 1, faltas.local_1er)}</div></div>
+          <div><strong>FALTAS 2DO</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("local", 2, faltas.local_2do)}</div></div>
+        </div>
+      </div>
+      <div class="planilla-faltas-team">
+        <p>${visit}</p>
+        <div class="planilla-faltas-cols">
+          <div><strong>FALTAS 1ER</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("visitante", 1, faltas.visitante_1er)}</div></div>
+          <div><strong>FALTAS 2DO</strong><div class="planilla-faltas-numbers">${renderBotonesFaltasPlanilla("visitante", 2, faltas.visitante_2do)}</div></div>
+        </div>
+      </div>
+    `;
+  }
   conectarEventosFaltasPlanilla();
 }
 
