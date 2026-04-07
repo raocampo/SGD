@@ -51,6 +51,7 @@ function resumirCampeonato(campeonato, extras = {}) {
     fecha_fin: campeonato.fecha_fin || null,
     estado: campeonato.estado || "borrador",
     tipo_futbol: campeonato.tipo_futbol || null,
+    tipo_deporte: campeonato.tipo_deporte || campeonato.tipo_futbol || null,
     sistema_puntuacion: campeonato.sistema_puntuacion || null,
     logo_url: campeonato.logo_url || null,
     color_primario: campeonato.color_primario || null,
@@ -109,6 +110,7 @@ function resumirEvento(evento) {
     numero_campeonato: normalizarEntero(evento.numero_campeonato),
     costo_inscripcion: Number(evento.costo_inscripcion || 0),
     tipo_futbol: evento.tipo_futbol || evento.campeonato_tipo_futbol || null,
+    tipo_deporte: evento.tipo_deporte || evento.campeonato_tipo_deporte || evento.tipo_futbol || evento.campeonato_tipo_futbol || null,
     sistema_puntuacion: evento.sistema_puntuacion || evento.campeonato_sistema_puntuacion || null,
     total_equipos: normalizarEntero(evento.total_equipos) || 0,
     total_grupos: normalizarEntero(evento.total_grupos) || 0,
@@ -277,6 +279,7 @@ async function obtenerEventoPublico(eventoId) {
       c.fecha_inicio AS campeonato_fecha_inicio,
       c.fecha_fin AS campeonato_fecha_fin,
       c.tipo_futbol AS campeonato_tipo_futbol,
+      COALESCE(c.tipo_deporte, c.tipo_futbol) AS campeonato_tipo_deporte,
       c.sistema_puntuacion AS campeonato_sistema_puntuacion
     FROM eventos e
     JOIN campeonatos c ON c.id = e.campeonato_id
@@ -353,6 +356,7 @@ async function listarEventosPublicosPorCampeonato(campeonatoId) {
       c.fecha_inicio AS campeonato_fecha_inicio,
       c.fecha_fin AS campeonato_fecha_fin,
       c.tipo_futbol AS campeonato_tipo_futbol,
+      COALESCE(c.tipo_deporte, c.tipo_futbol) AS campeonato_tipo_deporte,
       c.sistema_puntuacion AS campeonato_sistema_puntuacion,
       COUNT(DISTINCT ee.equipo_id)::int AS total_equipos,
       COUNT(DISTINCT g.id)::int AS total_grupos,
@@ -370,7 +374,7 @@ async function listarEventosPublicosPorCampeonato(campeonatoId) {
     LEFT JOIN partido_planillas pp ON pp.partido_id = p.id
     WHERE e.campeonato_id = $1
       AND ${SQL_FILTRO_PUBLICO_CAMPEONATO}
-    GROUP BY e.id, c.nombre, c.organizador, c.fecha_inicio, c.fecha_fin, c.tipo_futbol, c.sistema_puntuacion
+    GROUP BY e.id, c.nombre, c.organizador, c.fecha_inicio, c.fecha_fin, c.tipo_futbol, c.tipo_deporte, c.sistema_puntuacion
     ORDER BY COALESCE(e.numero_campeonato, 999999), e.id
   `;
   const result = await pool.query(q, [campeonatoId]);
@@ -452,6 +456,7 @@ async function obtenerTablasPublicasPorEvento(eventoId) {
       ...data.evento,
       metodo_competencia: evento.metodo_competencia || "grupos",
       tipo_futbol: evento.tipo_futbol || null,
+      tipo_deporte: evento.tipo_deporte || evento.tipo_futbol || null,
       sistema_puntuacion: evento.sistema_puntuacion || null,
     },
   };
