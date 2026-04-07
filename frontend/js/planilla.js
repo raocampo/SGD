@@ -711,6 +711,43 @@ function actualizarVisibilidadPenalesPlanilla() {
   hint.textContent = "Solo para playoff: si el partido termina empatado, registra aquí la definición por penales.";
 }
 
+function actualizarVisibilidadOvertimePlanilla() {
+  const grupo = document.getElementById("grupo-overtime-planilla");
+  if (!(grupo instanceof HTMLElement)) return;
+  if (!esPlanillaBasquetbol()) {
+    grupo.hidden = true;
+    return;
+  }
+  const local = aEntero(document.getElementById("resultado-local")?.value, 0);
+  const visitante = aEntero(document.getElementById("resultado-visitante")?.value, 0);
+  const empate = local === visitante;
+  grupo.hidden = !empate;
+  const hint = grupo.querySelector(".planilla-overtime-hint");
+  if (hint instanceof HTMLElement) {
+    hint.textContent = empate
+      ? "Empate detectado. Registra los puntos del tiempo extra si aplica."
+      : "Baloncesto: si el partido termina empatado, registra los puntos del tiempo extra (overtime).";
+  }
+}
+
+function adaptarLabelsBasquetbol() {
+  if (!esPlanillaBasquetbol()) return;
+  // Cambiar etiquetas del footer para baloncesto
+  const labelsTa = document.querySelectorAll("label[for='resumen-ta-local'], label[for='resumen-ta-visitante']");
+  const labelsTr = document.querySelectorAll("label[for='resumen-tr-local'], label[for='resumen-tr-visitante']");
+  const labelsPagoTa = document.querySelectorAll("label[for='pago-ta-local'], label[for='pago-ta-visitante']");
+  const labelsPagoTr = document.querySelectorAll("label[for='pago-tr-local'], label[for='pago-tr-visitante']");
+  labelsTa.forEach((el) => { el.textContent = "Faltas personales"; });
+  labelsTr.forEach((el) => { el.textContent = "Faltas técnicas"; });
+  labelsPagoTa.forEach((el) => { el.textContent = "Faltas (pago)"; });
+  labelsPagoTr.forEach((el) => { el.textContent = "Faltas técnicas (pago)"; });
+  // Cambiar etiqueta de goles en la sección de captura
+  const hintResultado = document.querySelector("#planilla-form .form-hint");
+  if (hintResultado) {
+    hintResultado.textContent = "El puntaje se calcula automáticamente desde la tabla de jugadores y se refleja en la cabecera.";
+  }
+}
+
 function actualizarHeaderPenales(payload = null) {
   const head = document.getElementById("head-penales");
   if (!(head instanceof HTMLElement)) return;
@@ -1964,7 +2001,9 @@ function restaurarEstadoFormularioPlanilla(snapshot = null) {
   recalcularTotalesCapturaEquipo("captura-visitante");
   recalcularResultadoDesdeCaptura(false);
   actualizarVisibilidadPenalesPlanilla();
+  actualizarVisibilidadOvertimePlanilla();
   actualizarHeaderPenales();
+  adaptarLabelsBasquetbol();
   actualizarVistaPreviaPlanilla(true);
 }
 
@@ -2109,6 +2148,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
   }
 
   const esFutbol11 = esPlanillaFutbol11();
+  const esBasquetbol = esPlanillaBasquetbol();
   const filas = jugadores
     .map((j, idx) => {
       const suspension = j?.suspension || null;
@@ -2178,7 +2218,15 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
             ${docsHtml}
             ${suspensionHtml}
           </td>
-          <td class="planilla-col-goles"><input class="cap-goles" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${goles}" ${disabledAttr} /></td>
+          <td class="planilla-col-goles">${esBasquetbol ? `
+            <div class="cap-goles-basquet">
+              <select class="cap-tipo-punto" aria-label="Tipo de punto de ${escapeHtml(nombre)}" ${disabledAttr}>
+                <option value="canasta">2pts</option>
+                <option value="triple">3pts</option>
+                <option value="libre">1pt</option>
+              </select>
+              <input class="cap-goles" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${goles}" ${disabledAttr} aria-label="Puntos de ${escapeHtml(nombre)}" />
+            </div>` : `<input class="cap-goles" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${goles}" ${disabledAttr} />`}</td>
           <td class="planilla-col-ta"><input class="cap-ta" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${amarillas}" ${disabledAttr} /></td>
           <td class="planilla-col-tr"><input class="cap-tr" type="text" inputmode="numeric" maxlength="2" pattern="[0-9]*" value="${rojas}" ${disabledAttr} /></td>
         </tr>
@@ -2257,6 +2305,7 @@ function recalcularResultadoDesdeCaptura(preservarSiSinDatos = false) {
   if (inputVisitante) inputVisitante.value = String(golesVisitante);
   actualizarHeaderResultado(golesLocal, golesVisitante);
   actualizarVisibilidadPenalesPlanilla();
+  actualizarVisibilidadOvertimePlanilla();
   actualizarResumenFooterDesdeCaptura();
 }
 
@@ -3617,6 +3666,9 @@ function recolectarPayloadPlanilla() {
       }
 
       const golesNum = valorNoNegativoEntero(row.querySelector(".cap-goles")?.value, 0, 99);
+      const tipoPuntoBasquet = esPlanillaBasquetbol()
+        ? String(row.querySelector(".cap-tipo-punto")?.value || "canasta").trim()
+        : null;
       const tarjetasNormalizadas = normalizarTarjetasFilaCaptura(row);
       const amarillasNum = tarjetasNormalizadas.amarillas;
       const rojasDirectasNum = tarjetasNormalizadas.rojasDirectas;
@@ -3627,7 +3679,8 @@ function recolectarPayloadPlanilla() {
           equipo_id: equipoId,
           jugador_id: jugadorId,
           goles: golesNum,
-          tipo_gol: "campo",
+          tipo_gol: tipoPuntoBasquet || "campo",
+          tipo_punto: tipoPuntoBasquet || null,
           minuto: null,
         });
       }
@@ -3767,6 +3820,15 @@ function recolectarPayloadPlanilla() {
     faltas,
     faltas_local_total: faltas.local_total,
     faltas_visitante_total: faltas.visitante_total,
+    overtime_utilizado: esPlanillaBasquetbol()
+      ? !!(document.getElementById("resultado-overtime-local")?.value || document.getElementById("resultado-overtime-visitante")?.value)
+      : false,
+    overtime_puntos_local: esPlanillaBasquetbol()
+      ? (aEntero(document.getElementById("resultado-overtime-local")?.value, null) ?? null)
+      : null,
+    overtime_puntos_visitante: esPlanillaBasquetbol()
+      ? (aEntero(document.getElementById("resultado-overtime-visitante")?.value, null) ?? null)
+      : null,
     numeros_jugadores: numerosJugadores,
     registro_jugadores_local: registroJugadoresLocal,
     registro_jugadores_visitante: registroJugadoresVisitante,
@@ -3836,21 +3898,21 @@ function obtenerColumnasRegistroPlanilla({ encabezadoCompleto = false } = {}) {
     },
     {
       key: "goles",
-      label: encabezadoCompleto ? "Gol" : "G",
+      label: esPlanillaBasquetbol() ? (encabezadoCompleto ? "Pts" : "P") : (encabezadoCompleto ? "Gol" : "G"),
       headerClass: "planilla-col-goles",
       cellClass: "planilla-col-goles",
-      pdfWidth: 12,
+      pdfWidth: esPlanillaBasquetbol() ? 28 : 12,
     },
     {
       key: "amarillas",
-      label: "TA",
+      label: esPlanillaBasquetbol() ? "Falt" : "TA",
       headerClass: "planilla-col-ta",
       cellClass: "planilla-col-ta",
       pdfWidth: 12,
     },
     {
       key: "rojas",
-      label: "TR",
+      label: esPlanillaBasquetbol() ? "F.Téc" : "TR",
       headerClass: "planilla-col-tr",
       cellClass: "planilla-col-tr",
       pdfWidth: 12,
@@ -5648,11 +5710,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   formPlanilla?.addEventListener("submit", guardarPlanilla);
   formPlanilla?.addEventListener("input", () => {
     actualizarVisibilidadPenalesPlanilla();
+    actualizarVisibilidadOvertimePlanilla();
     actualizarHeaderPenales();
     actualizarVistaPreviaPlanilla(true);
   });
   formPlanilla?.addEventListener("change", () => {
     actualizarVisibilidadPenalesPlanilla();
+    actualizarVisibilidadOvertimePlanilla();
     actualizarHeaderPenales();
     actualizarVistaPreviaPlanilla(true);
   });

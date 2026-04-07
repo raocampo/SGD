@@ -8984,3 +8984,39 @@ body.page-finanzas {
 .sport-panel select.sport-subselect {
   width: 100%;
 }
+
+/* ── Baloncesto: planilla tipo punto + overtime ── */
+.cap-goles-basquet {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.cap-goles-basquet .cap-tipo-punto {
+  font-size: 0.72rem;
+  padding: 2px 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #f9fafb;
+  min-width: 52px;
+  flex-shrink: 0;
+}
+.cap-goles-basquet .cap-goles {
+  width: 36px;
+  flex-shrink: 0;
+}
+.planilla-overtime-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+.planilla-overtime-grid .form-group { margin-bottom: 0; }
+.planilla-overtime-grid p.form-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #92400e;
+}
