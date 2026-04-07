@@ -14,7 +14,9 @@ function switchSportTab(btn, sport) {
   if (panel) panel.style.display = '';
   const sel = document.getElementById('campeonato-tipo-' + sport);
   if (sel) document.getElementById('campeonato-tipo').value = sel.value;
-} = (
+}
+
+const BACKEND_BASE = (
   window.resolveApiBaseUrl
     ? window.resolveApiBaseUrl()
     : window.API_BASE_URL || `${window.location.origin}/api`

@@ -456,7 +456,7 @@
       if (btn) btn.disabled = true;
       if (msg) { msg.style.color = "#64748b"; msg.textContent = "Guardando..."; }
 
-      await window.ApiClient.put(`/usuarios/${org.id}`, {
+      await window.ApiClient.put(`/auth/usuarios/${org.id}`, {
         plan_codigo: planCodigo,
         plan_estado: planEstado,
         activo,
