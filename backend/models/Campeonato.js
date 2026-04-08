@@ -1,6 +1,5 @@
 const pool = require("../config/database");
 const OrganizadorPortal = require("./OrganizadorPortal");
-const { getSportConfig } = require("../config/sportsConfig");
 
 // Estados del torneo según propuesta SGD
 const ESTADOS_TORNEO = ["borrador", "inscripcion", "en_curso", "finalizado", "archivado"];
@@ -285,7 +284,11 @@ class Campeonato {
       "bloquear_morosos", "bloqueo_morosidad_monto"
     ]);
 
+    // Evitar columnas duplicadas cuando el frontend envía ambos tipo_deporte y tipo_futbol
+    const camposYaAgregados = new Set();
+
     for (const [key, value] of Object.entries(datos)) {
+      if (camposYaAgregados.has(key)) continue;
       if (value !== undefined && allowed.has(key)) {
         if (key === "estado" && !ESTADOS_TORNEO.includes(value)) {
           throw new Error(`Estado inválido. Valores permitidos: ${ESTADOS_TORNEO.join(", ")}`);
@@ -300,36 +303,32 @@ class Campeonato {
           campos.push(`${key} = $${contador}`);
           valores.push(this.parseDecimalNoNegativo(value, 0));
           contador++;
+          camposYaAgregados.add(key);
           continue;
         }
         if (key === "bloquear_morosos") {
           campos.push(`${key} = $${contador}`);
           valores.push(value === true || String(value).toLowerCase() === "true");
           contador++;
+          camposYaAgregados.add(key);
           continue;
         }
-        // Sincronización bidireccional tipo_futbol ↔ tipo_deporte
-        if (key === "tipo_deporte") {
+        // Sincronización tipo_futbol ↔ tipo_deporte: procesamos ambas columnas de una sola vez
+        if (key === "tipo_deporte" || key === "tipo_futbol") {
           campos.push(`tipo_deporte = $${contador}`);
           valores.push(value);
           contador++;
           campos.push(`tipo_futbol = $${contador}`);
           valores.push(value);
           contador++;
-          continue;
-        }
-        if (key === "tipo_futbol") {
-          campos.push(`tipo_futbol = $${contador}`);
-          valores.push(value);
-          contador++;
-          campos.push(`tipo_deporte = $${contador}`);
-          valores.push(value);
-          contador++;
+          camposYaAgregados.add("tipo_deporte");
+          camposYaAgregados.add("tipo_futbol");
           continue;
         }
         campos.push(`${key} = $${contador}`);
         valores.push(value);
         contador++;
+        camposYaAgregados.add(key);
       }
     }
 
