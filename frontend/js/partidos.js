@@ -489,14 +489,19 @@ function actualizarUIPorMetodoCompetencia() {
   if (metodoCompetenciaActivo === "mixto") {
     if (titulo) titulo.textContent = "Generación de Fixture (Fase de Grupos)";
   } else if (metodoCompetenciaActivo === "liga") {
+    grupoSeleccionado = null;
     if (titulo) titulo.textContent = "Generación de Fixture (Liga)";
+    if (selectGrupo) {
+      selectGrupo.value = "";
+      selectGrupo.disabled = true;
+    }
   } else {
     if (titulo) titulo.textContent = "Generación de Fixture";
   }
 
   if (opciones) opciones.style.display = "";
   if (btn) btn.innerHTML = '<i class="fas fa-calendar-plus"></i> Generar Fixture (categoría)';
-  if (selectGrupo) selectGrupo.disabled = false;
+  if (selectGrupo && metodoCompetenciaActivo !== "liga") selectGrupo.disabled = false;
   if (selectJornada) selectJornada.disabled = false;
   if (inputFecha) inputFecha.disabled = false;
 }
@@ -691,6 +696,7 @@ async function cargarEventos(campeonatoId = campeonatoSeleccionado) {
 async function cargarGruposPorEvento(eventoId) {
   const select = document.getElementById("select-grupo");
   select.innerHTML = '<option value="">- Todos -</option>';
+  grupoSeleccionado = null;
 
   if (!eventoId) return;
 
@@ -710,6 +716,14 @@ async function cargarGruposPorEvento(eventoId) {
       cargarPartidos();
       actualizarCabeceraFixture();
     };
+
+    if (metodoCompetenciaActivo === "liga") {
+      select.value = "";
+      select.disabled = true;
+    } else {
+      select.value = "";
+      select.disabled = false;
+    }
   } catch (error) {
     mostrarNotificacion("Error cargando grupos", "error");
     console.error(error);
@@ -802,9 +816,9 @@ async function cargarPartidos() {
       return;
     }
 
-    const url = grupoSeleccionado
-      ? `/partidos/grupo/${grupoSeleccionado}`
-      : `/partidos/evento/${eventoSeleccionado}`;
+    const url = metodoCompetenciaActivo === "liga" || !grupoSeleccionado
+      ? `/partidos/evento/${eventoSeleccionado}`
+      : `/partidos/grupo/${grupoSeleccionado}`;
 
     const data = await ApiClient.get(url);
 
