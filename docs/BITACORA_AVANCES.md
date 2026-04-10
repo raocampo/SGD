@@ -2674,3 +2674,61 @@ Se auditó el sistema de transmisiones y se confirmó que está implementado al 
   - abrir grupos,
   - y generar fixture verificando que el selector ya ofrezca `Grupo Liga`.
 - Cuando se limpie el árbol local de cambios ajenos, recién ahí evaluar `pull/rebase` contra `origin/main`.
+
+## 2026-04-10 - Contexto persistente entre módulos + planilla por deporte afinada
+
+### Navegación con contexto persistente
+
+- Se ajustó la navegación entre módulos administrativos para conservar el contexto ya seleccionado:
+  - si el administrador ya escogió un campeonato, al entrar a `Categorías`, `Equipos` o `Grupos` ese campeonato queda precargado;
+  - si además ya estaba seleccionada una categoría, también se arrastra hacia `Equipos` y `Grupos`;
+  - si no hay selección previa válida, el sistema limpia el contexto y obliga a escoger manualmente.
+- Implementado en:
+  - `frontend/js/core.js`
+  - `frontend/js/eventos.js`
+  - `frontend/js/equipos.js`
+
+### Planilla: separación real entre fútbol y baloncesto
+
+- Se reforzó `frontend/js/planilla.js` para normalizar el tipo de deporte con fallback entre `tipo_futbol` y `tipo_deporte`.
+- Ahora la captura por jugador se comporta así:
+  - `futbol_11` e `indor`: sin columna `P/S`,
+  - otros modelos de fútbol: mantienen `P/S`,
+  - baloncesto: conserva su lógica propia de puntos/faltas y no reutiliza labels ni bloques de fútbol.
+- También se corrigió el reseteo de labels y visibilidad al cambiar entre deportes en la misma pantalla:
+  - el bloque `Tiempo extra local/visitante` ya no queda visible en fútbol,
+  - los textos del footer vuelven a sus etiquetas de fútbol cuando no es baloncesto.
+
+### Planilla: ajuste visual de captura en pantalla
+
+- Se afinó `frontend/css/style.css` para la tabla de captura:
+  - `P/S`, `E` y `S` quedaron como columnas compactas solo en pantalla,
+  - en fútbol 11 el encabezado ya muestra solo `E` y `S`,
+  - el input del número de camiseta ya no invade la columna vecina,
+  - se eliminó el cruce visual entre `N` con `P/S` o con `E/S`.
+- El formato de impresión/PDF se dejó intacto donde ya estaba correcto.
+
+### Estado validado al cierre
+
+- `portal` y `playoff / llave eliminatoria` quedaron validados correctamente tanto en local como en Render.
+- Baloncesto sigue pendiente de pruebas funcionales completas con datos reales.
+
+### Verificación realizada
+
+- `node --check frontend/js/core.js`
+- `node --check frontend/js/eventos.js`
+- `node --check frontend/js/equipos.js`
+- `node --check frontend/js/planilla.js`
+
+### Pendiente para continuar desde casa
+
+- Probar en UI:
+  - planilla `futbol_11`,
+  - planilla `indor`,
+  - planilla de un modelo con `P/S`,
+  - y planilla de baloncesto.
+- Confirmar especialmente:
+  - encabezados `E` / `S` en fútbol 11,
+  - ausencia total de overtime en fútbol,
+  - no superposición visual entre `N` y `P/S`,
+  - y consistencia del guardado/recarga de la captura por jugador.

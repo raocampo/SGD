@@ -413,6 +413,104 @@
     window.location.href = normalizeRoutePage(target) || target;
   }
 
+  const NAV_CONTEXT_SELECTOR_MAP = Object.freeze({
+    campeonato: [
+      "#select-campeonato",
+      "#select-campeonato-grupos",
+      "#select-campeonato-tablas",
+      "#select-campeonato-planilla",
+      "#select-campeonato-jugador",
+    ],
+    evento: [
+      "#select-evento",
+      "#select-evento-grupos",
+      "#select-evento-tablas",
+      "#select-evento-planilla",
+      "#select-evento-jugador",
+    ],
+  });
+
+  const NAV_CONTEXT_TARGET_FIELDS = Object.freeze({
+    "eventos.html": ["campeonato"],
+    "equipos.html": ["campeonato", "evento"],
+    "gruposgen.html": ["campeonato", "evento"],
+  });
+
+  function readPositiveIntFromSelectors(selectors = []) {
+    for (const selector of Array.isArray(selectors) ? selectors : []) {
+      const control = document.querySelector(selector);
+      if (!control) continue;
+      const parsed = Number.parseInt(String(control.value || "").trim(), 10);
+      return {
+        hasControl: true,
+        value: Number.isFinite(parsed) && parsed > 0 ? parsed : null,
+      };
+    }
+
+    return { hasControl: false, value: null };
+  }
+
+  function getCurrentNavigationContext() {
+    const campeonato = readPositiveIntFromSelectors(NAV_CONTEXT_SELECTOR_MAP.campeonato);
+    const evento = readPositiveIntFromSelectors(NAV_CONTEXT_SELECTOR_MAP.evento);
+    return {
+      campeonato: campeonato.value,
+      evento: evento.value,
+      hasCampeonatoControl: campeonato.hasControl,
+      hasEventoControl: evento.hasControl,
+    };
+  }
+
+  function buildRouteContextForTargetPage(page = "") {
+    const target = normalizeRoutePage(page);
+    const fields = NAV_CONTEXT_TARGET_FIELDS[target];
+    if (!Array.isArray(fields)) return null;
+
+    const currentContext = getCurrentNavigationContext();
+    const hasRelevantControls =
+      (fields.includes("campeonato") && currentContext.hasCampeonatoControl) ||
+      (fields.includes("evento") && currentContext.hasEventoControl);
+
+    if (!hasRelevantControls) return null;
+    if (fields.includes("campeonato") && !currentContext.campeonato) return {};
+
+    const payload = {};
+    if (fields.includes("campeonato")) payload.campeonato = currentContext.campeonato;
+    if (fields.includes("evento")) payload.evento = currentContext.evento || null;
+    return payload;
+  }
+
+  function handleManagedRouteContextNavigation(event) {
+    if (event.defaultPrevented) return;
+    if (event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    const link = event.target?.closest?.("a[href]");
+    if (!link) return;
+    if (String(link.target || "").toLowerCase() === "_blank") return;
+
+    const href = String(link.getAttribute("href") || "").trim();
+    if (!href || href.startsWith("#") || /^(mailto:|tel:|javascript:)/i.test(href)) return;
+
+    const targetPage = normalizeRoutePage(href);
+    if (!NAV_CONTEXT_TARGET_FIELDS[targetPage]) return;
+
+    const payload = buildRouteContextForTargetPage(targetPage);
+    if (payload && Object.keys(payload).length > 0) {
+      saveRouteContext(targetPage, payload);
+      return;
+    }
+
+    clearRouteContext(targetPage);
+  }
+
+  function bindManagedRouteContextNavigation() {
+    if (!document?.addEventListener) return;
+    if (document.documentElement?.dataset?.routeContextNavBound === "true") return;
+    document.documentElement.dataset.routeContextNavBound = "true";
+    document.addEventListener("click", handleManagedRouteContextNavigation, true);
+  }
+
   function cancelAuthIdleTimer() {
     if (authIdleTimer) {
       clearTimeout(authIdleTimer);
@@ -741,6 +839,8 @@
     navigate: navigateWithRouteContext,
     cleanUrl: cleanCurrentRouteQuery,
   };
+
+  bindManagedRouteContextNavigation();
 
   async function solicitarCambioPassword(opciones = {}) {
     const forced = opciones?.forced === true;

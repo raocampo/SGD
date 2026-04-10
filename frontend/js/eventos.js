@@ -286,14 +286,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const routeContext = window.RouteContext?.read?.("eventos.html", ["campeonato"]) || {};
   const cId = routeContext.campeonato;
-  if (cId) {
+  const sel = document.getElementById("select-campeonato");
+  const campeonatoDisponible =
+    cId &&
+    Array.from(sel?.options || []).some((option) => Number(option.value) === Number.parseInt(cId, 10));
+
+  if (campeonatoDisponible) {
     campeonatoSeleccionado = parseInt(cId, 10);
-    const sel = document.getElementById("select-campeonato");
     sel.value = String(campeonatoSeleccionado);
     window.RouteContext?.save?.("eventos.html", { campeonato: campeonatoSeleccionado });
     aplicarFechasDesdeCampeonato();
     await cargarEventos();
     return;
+  }
+
+  if (cId && !campeonatoDisponible) {
+    campeonatoSeleccionado = null;
+    if (sel) sel.value = "";
+    window.RouteContext?.clear?.("eventos.html");
   }
 
   if (campeonatoSeleccionado) {
@@ -316,22 +326,12 @@ async function cargarCampeonatosSelect() {
       select.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
     });
 
-    if (!campeonatoSeleccionado && lista.length) {
-      const ultimo = [...lista]
-        .sort((a, b) => Number(b.id || 0) - Number(a.id || 0))[0];
-      if (ultimo?.id) {
-      campeonatoSeleccionado = Number.parseInt(ultimo.id, 10);
-      select.value = String(campeonatoSeleccionado);
+    select.onchange = async () => {
+      campeonatoSeleccionado = select.value ? parseInt(select.value, 10) : null;
       window.RouteContext?.save?.("eventos.html", { campeonato: campeonatoSeleccionado });
-    }
-  }
-
-  select.onchange = async () => {
-    campeonatoSeleccionado = select.value ? parseInt(select.value, 10) : null;
-    window.RouteContext?.save?.("eventos.html", { campeonato: campeonatoSeleccionado });
-    aplicarFechasDesdeCampeonato();
-    eventosCache = [];
-    document.getElementById("lista-eventos").innerHTML = "";
+      aplicarFechasDesdeCampeonato();
+      eventosCache = [];
+      document.getElementById("lista-eventos").innerHTML = "";
       if (campeonatoSeleccionado) {
         await cargarEventos();
       }

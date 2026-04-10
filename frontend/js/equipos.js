@@ -590,6 +590,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("select-evento").value = String(eventoIdSeleccionado);
   }
 
+  const btnVolverCategorias = document.querySelector('button[onclick="window.location.href=\'eventos.html\'"]');
+  if (btnVolverCategorias && !usuarioEsTecnico()) {
+    btnVolverCategorias.onclick = () => {
+      if (window.RouteContext?.navigate) {
+        window.RouteContext.navigate("eventos.html", {
+          campeonato: Number(campeonatoId) || null,
+        });
+        return;
+      }
+      window.location.href = campeonatoId ? `eventos.html?campeonato=${campeonatoId}` : "eventos.html";
+    };
+  }
+
   // Si hay contexto, cargar equipos
   if (campeonatoId) {
     await cargarInfoContexto();
