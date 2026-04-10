@@ -1,5 +1,6 @@
 // controllers/eventoController.js
 const pool = require("../config/database");
+const Grupo = require("../models/Grupo");
 const { obtenerEquiposPermitidosTecnico } = require("../services/roleScope");
 const {
   isOrganizador,
@@ -629,6 +630,7 @@ const eventoController = {
       ];
 
       const result = await pool.query(query, values);
+      await Grupo.asegurarGrupoLigaPorEvento(result.rows[0]?.id);
       return res.json({ evento: result.rows[0] });
     } catch (error) {
       console.error("Error crearEvento:", error);
@@ -997,6 +999,7 @@ const eventoController = {
       if (!result.rows.length)
         return res.status(404).json({ error: "Evento no encontrado." });
       await sincronizarConfigPlayoffExistente(result.rows[0]);
+      await Grupo.asegurarGrupoLigaPorEvento(result.rows[0]?.id);
       return res.json({ evento: result.rows[0] });
     } catch (error) {
       console.error("Error actualizarEvento:", error);
@@ -1146,6 +1149,7 @@ const eventoController = {
 
   // POST /eventos/:evento_id/equipos  body: { equipo_id: 123 }
   async asignarEquipoAEvento(req, res) {
+    const client = await pool.connect();
     try {
       await asegurarEsquemaEventos();
       const evento_id = parseInt(req.params.evento_id, 10);
@@ -1157,8 +1161,8 @@ const eventoController = {
           .json({ message: "evento_id y equipo_id son obligatorios" });
       }
 
-      const eventoR = await pool.query(
-        `SELECT id, campeonato_id FROM eventos WHERE id = $1 LIMIT 1`,
+      const eventoR = await client.query(
+        `SELECT id, campeonato_id, metodo_competencia FROM eventos WHERE id = $1 LIMIT 1`,
         [evento_id]
       );
       if (!eventoR.rows.length) {
@@ -1173,7 +1177,7 @@ const eventoController = {
         }
       }
 
-      const equipoR = await pool.query(
+      const equipoR = await client.query(
         `SELECT id, campeonato_id FROM equipos WHERE id = $1 LIMIT 1`,
         [equipo_id]
       );
@@ -1187,15 +1191,16 @@ const eventoController = {
         });
       }
 
-      const yaExisteR = await pool.query(
+      const yaExisteR = await client.query(
         `SELECT 1 FROM evento_equipos WHERE evento_id = $1 AND equipo_id = $2 LIMIT 1`,
         [evento_id, equipo_id]
       );
       if (yaExisteR.rows.length) {
+        await Grupo.asegurarGrupoLigaPorEvento(evento_id, client);
         return res.json({ ok: true, message: "Equipo ya estaba asignado al evento" });
       }
 
-      const nombreDuplicadoR = await pool.query(
+      const nombreDuplicadoR = await client.query(
         `
           SELECT e2.id, e2.nombre
           FROM evento_equipos ee
@@ -1219,7 +1224,7 @@ const eventoController = {
           plan?.max_equipos_por_categoria !== null &&
           plan?.max_equipos_por_categoria !== undefined
         ) {
-          const countR = await pool.query(
+          const countR = await client.query(
             `SELECT COUNT(*)::int AS total FROM evento_equipos WHERE evento_id = $1`,
             [evento_id]
           );
@@ -1232,7 +1237,9 @@ const eventoController = {
         }
       }
 
-      await pool.query(
+      await client.query("BEGIN");
+
+      await client.query(
         `
         INSERT INTO evento_equipos (evento_id, equipo_id)
         VALUES ($1, $2)
@@ -1241,12 +1248,22 @@ const eventoController = {
         [evento_id, equipo_id]
       );
 
+      await Grupo.asegurarGrupoLigaPorEvento(evento_id, client);
+      await client.query("COMMIT");
+
       return res.json({ ok: true, message: "Equipo asignado al evento" });
     } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (_) {
+        // no-op
+      }
       console.error("asignarEquipoAEvento:", error);
       return res
         .status(500)
         .json({ message: "Error asignando equipo al evento" });
+    } finally {
+      client.release();
     }
   },
 
@@ -1428,6 +1445,7 @@ const eventoController = {
 
   // DELETE /eventos/:evento_id/equipos/:equipo_id
   async quitarEquipoDeEvento(req, res) {
+    const client = await pool.connect();
     try {
       await asegurarEsquemaEventos();
       const evento_id = parseInt(req.params.evento_id, 10);
@@ -1439,7 +1457,7 @@ const eventoController = {
           .json({ message: "evento_id y equipo_id inválidos" });
       }
 
-      const eventoR = await pool.query(
+      const eventoR = await client.query(
         `SELECT id, campeonato_id FROM eventos WHERE id = $1 LIMIT 1`,
         [evento_id]
       );
@@ -1454,17 +1472,27 @@ const eventoController = {
       );
       if (!autorizado) return;
 
-      await pool.query(
+      await client.query("BEGIN");
+      await Grupo.removerEquipoDeEvento(evento_id, equipo_id, client);
+      await client.query(
         `DELETE FROM evento_equipos WHERE evento_id = $1 AND equipo_id = $2`,
         [evento_id, equipo_id]
       );
+      await client.query("COMMIT");
 
       return res.json({ ok: true, message: "Equipo quitado del evento" });
     } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (_) {
+        // no-op
+      }
       console.error("quitarEquipoDeEvento:", error);
       return res
         .status(500)
         .json({ message: "Error quitando equipo del evento" });
+    } finally {
+      client.release();
     }
   },
 };

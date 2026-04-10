@@ -37,13 +37,136 @@ class Grupo {
     }
   }
 
+  static normalizarMetodoCompetencia(value) {
+    const raw = String(value || "").trim().toLowerCase();
+    if (!raw) return "grupos";
+    if (["liga", "todos", "todos_contra_todos"].includes(raw)) return "liga";
+    return raw;
+  }
+
+  static async obtenerEventoBasico(evento_id, client = pool) {
+    const eventoId = Number.parseInt(evento_id, 10);
+    if (!Number.isFinite(eventoId) || eventoId <= 0) {
+      throw new Error("Evento no encontrado");
+    }
+
+    const eventoR = await client.query(
+      `SELECT id, metodo_competencia
+       FROM eventos
+       WHERE id = $1
+       LIMIT 1`,
+      [eventoId]
+    );
+    if (!eventoR.rows.length) throw new Error("Evento no encontrado");
+    return eventoR.rows[0];
+  }
+
+  static async asegurarGrupoLigaPorEvento(evento_id, client = pool) {
+    const evento = await this.obtenerEventoBasico(evento_id, client);
+    if (this.normalizarMetodoCompetencia(evento.metodo_competencia) !== "liga") {
+      return { aplica: false, evento, grupo: null, sincronizados: 0 };
+    }
+
+    const gruposR = await client.query(
+      `SELECT id, nombre_grupo, letra_grupo
+       FROM grupos
+       WHERE evento_id = $1
+       ORDER BY
+         CASE
+           WHEN UPPER(COALESCE(letra_grupo, '')) = 'L' THEN 0
+           WHEN LOWER(COALESCE(nombre_grupo, '')) = 'grupo liga' THEN 0
+           ELSE 1
+         END,
+         letra_grupo ASC NULLS LAST,
+         id ASC`,
+      [evento.id]
+    );
+
+    let grupo = gruposR.rows[0] || null;
+    if (!grupo) {
+      const insertR = await client.query(
+        `INSERT INTO grupos (evento_id, nombre_grupo, letra_grupo)
+         VALUES ($1, $2, $3)
+         RETURNING *`,
+        [evento.id, "Grupo Liga", "L"]
+      );
+      grupo = insertR.rows[0];
+    } else if (gruposR.rows.length === 1) {
+      const nombreActual = String(grupo.nombre_grupo || "").trim();
+      const letraActual = String(grupo.letra_grupo || "").trim().toUpperCase();
+      if (nombreActual !== "Grupo Liga" || letraActual !== "L") {
+        const updateR = await client.query(
+          `UPDATE grupos
+           SET nombre_grupo = $2,
+               letra_grupo = $3
+           WHERE id = $1
+           RETURNING *`,
+          [grupo.id, "Grupo Liga", "L"]
+        );
+        grupo = updateR.rows[0];
+      }
+    }
+
+    const syncR = await client.query(
+      `INSERT INTO grupo_equipos (grupo_id, equipo_id, orden_sorteo)
+       SELECT $1, ee.equipo_id, ee.orden_sorteo
+       FROM evento_equipos ee
+       WHERE ee.evento_id = $2
+         AND NOT EXISTS (
+           SELECT 1
+           FROM grupo_equipos ge
+           JOIN grupos g2 ON g2.id = ge.grupo_id
+           WHERE g2.evento_id = $2
+             AND ge.equipo_id = ee.equipo_id
+         )
+       ON CONFLICT (grupo_id, equipo_id) DO NOTHING`,
+      [grupo.id, evento.id]
+    );
+
+    if (gruposR.rows.length <= 1) {
+      await client.query(
+        `UPDATE grupo_equipos ge
+         SET orden_sorteo = ee.orden_sorteo
+         FROM evento_equipos ee
+         WHERE ge.grupo_id = $1
+           AND ee.evento_id = $2
+           AND ee.equipo_id = ge.equipo_id
+           AND ge.orden_sorteo IS DISTINCT FROM ee.orden_sorteo`,
+        [grupo.id, evento.id]
+      );
+    }
+
+    return {
+      aplica: true,
+      evento,
+      grupo,
+      sincronizados: syncR.rowCount || 0,
+      multiples_grupos: gruposR.rows.length > 1,
+    };
+  }
+
+  static async removerEquipoDeEvento(evento_id, equipo_id, client = pool) {
+    const r = await client.query(
+      `DELETE FROM grupo_equipos ge
+       USING grupos g
+       WHERE ge.grupo_id = g.id
+         AND g.evento_id = $1
+         AND ge.equipo_id = $2
+       RETURNING ge.grupo_id, ge.equipo_id`,
+      [evento_id, equipo_id]
+    );
+    return r.rowCount || 0;
+  }
+
   // ===========================
   // CREATE - Crear grupos por EVENTO
   // ===========================
   static async crearGruposPorEvento(evento_id, cantidad_grupos, nombres_grupos = null) {
-    // Verificar que el evento exista
-    const ev = await pool.query("SELECT id FROM eventos WHERE id=$1", [evento_id]);
-    if (ev.rows.length === 0) throw new Error("Evento no encontrado");
+    const evento = await this.obtenerEventoBasico(evento_id);
+    if (this.normalizarMetodoCompetencia(evento.metodo_competencia) === "liga") {
+      const resultado = await this.asegurarGrupoLigaPorEvento(evento.id);
+      return resultado.grupo ? [resultado.grupo] : [];
+    }
 
     const letras = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
     if (cantidad_grupos > letras.length) {

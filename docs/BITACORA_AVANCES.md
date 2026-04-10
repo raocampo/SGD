@@ -2621,3 +2621,56 @@ Se auditó el sistema de transmisiones y se confirmó que está implementado al 
 - rontend/index.html — sección de servicio de streaming en la landing page
 
 **Pendiente Fase 3 y 4** (restream a redes sociales / ingesta propia de video) — requiere infraestructura externa.
+
+## 2026-04-10 - Auto generación de Grupo Liga para fixture
+
+### Contexto
+
+- Antes de continuar se revisó la bitácora y se hizo `git fetch` para validar el estado de `origin/main`.
+- No se ejecutó `git pull` porque el árbol local ya tenía cambios abiertos en el módulo de transmisiones y el remoto también avanzó; mezclar ambos frentes en este punto era riesgoso.
+- Se retomó el pendiente funcional de categorías con `metodo_competencia = liga`.
+
+### Problema detectado
+
+- Cuando una categoría se configuraba como `liga`, la UI cambiaba a modo liga, pero backend no garantizaba la existencia de un grupo real asociado al evento.
+- Eso dejaba inconsistencias entre:
+  - pantalla de grupos,
+  - selector de grupos en fixture,
+  - y sincronización de equipos dentro de `grupo_equipos`.
+- En la práctica, el sistema podía funcionar "sin grupos" para algunos cálculos de fixture, pero otros flujos seguían esperando un grupo válido y persistido.
+
+### Implementación aplicada
+
+- `backend/models/Grupo.js`
+  - se agregó `asegurarGrupoLigaPorEvento(evento_id)`,
+  - crea automáticamente `Grupo Liga` (`letra_grupo = L`) si la categoría es liga y todavía no tiene grupo,
+  - sincroniza a ese grupo los equipos de `evento_equipos`,
+  - actualiza `orden_sorteo` cuando la categoría trabaja con un único grupo,
+  - y expone `removerEquipoDeEvento()` para limpiar asignaciones de grupo al sacar un equipo de la categoría.
+- `backend/controllers/grupoController.js`
+  - al consultar grupos por evento ahora primero asegura el `Grupo Liga` cuando corresponde.
+- `backend/controllers/eventoController.js`
+  - al crear o actualizar una categoría se asegura el `Grupo Liga` si el método competitivo quedó en liga,
+  - al asignar un equipo a la categoría también se sincroniza automáticamente en el grupo liga,
+  - al quitar un equipo se eliminan sus asignaciones en `grupo_equipos` para no dejar basura relacional.
+
+### Resultado esperado
+
+- Si se escoge `liga` para una categoría, al entrar a los flujos de grupos/fixture ya existirá un `Grupo Liga` utilizable.
+- Los equipos inscritos quedarán sincronizados con ese grupo sin pasos manuales extra.
+- El selector de grupos en fixture podrá mostrar el grupo de liga desde backend de forma consistente.
+
+### Validación realizada
+
+- `node --check backend/models/Grupo.js`
+- `node --check backend/controllers/grupoController.js`
+- `node --check backend/controllers/eventoController.js`
+
+### Pendiente siguiente
+
+- Probar en UI con una categoría real en `liga`:
+  - crear o cambiar la categoría a liga,
+  - inscribir equipos,
+  - abrir grupos,
+  - y generar fixture verificando que el selector ya ofrezca `Grupo Liga`.
+- Cuando se limpie el árbol local de cambios ajenos, recién ahí evaluar `pull/rebase` contra `origin/main`.

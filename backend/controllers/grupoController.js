@@ -41,7 +41,9 @@ exports.crearGruposPorEvento = async (req, res) => {
 exports.obtenerGruposPorEvento = async (req, res) => {
   try {
     const { evento_id } = req.params;
-    const grupos = await Grupo.obtenerPorEvento(parseInt(evento_id));
+    const eventoId = parseInt(evento_id, 10);
+    await Grupo.asegurarGrupoLigaPorEvento(eventoId);
+    const grupos = await Grupo.obtenerPorEvento(eventoId);
     res.json({ ok: true, grupos });
   } catch (err) {
     console.error("obtenerGruposPorEvento:", err);
@@ -52,7 +54,9 @@ exports.obtenerGruposPorEvento = async (req, res) => {
 exports.obtenerGruposPorEventoCompleto = async (req, res) => {
   try {
     const { evento_id } = req.params;
-    const grupos = await Grupo.obtenerConEquiposPorEvento(parseInt(evento_id));
+    const eventoId = parseInt(evento_id, 10);
+    await Grupo.asegurarGrupoLigaPorEvento(eventoId);
+    const grupos = await Grupo.obtenerConEquiposPorEvento(eventoId);
     res.json({ ok: true, grupos });
   } catch (err) {
     console.error("obtenerGruposPorEventoCompleto:", err);
