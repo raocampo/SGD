@@ -3697,9 +3697,22 @@ body.modal-open {
   grid-template-columns: 1fr;
 }
 
+.planilla-oficial-observ-compact {
+  display: grid;
+  gap: 0.18rem;
+  margin-top: 0.12rem;
+}
+
+.planilla-oficial-observ-compact-title {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #0b2a4a;
+  letter-spacing: 0.03em;
+}
+
 .planilla-oficial-score {
   display: grid;
-  grid-template-columns: 1fr auto auto auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
   gap: 0.3rem;
   align-items: center;
   margin: 0.38rem 0 0.44rem;
@@ -3711,11 +3724,14 @@ body.modal-open {
   line-height: 1.2;
   text-wrap: balance;
   font-size: 0.84rem;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.22rem;
+  gap: 0.12rem;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: fit-content;
+  max-width: 100%;
+  justify-self: center;
 }
 
 .planilla-oficial-score .team.is-local {
@@ -3728,11 +3744,12 @@ body.modal-open {
 
 .planilla-oficial-score .team span {
   text-align: center;
+  display: inline-block;
 }
 
 .planilla-oficial-team-logo {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
   border-radius: 50%;
   border: 1px solid #cbd5e1;
@@ -3944,6 +3961,16 @@ body.modal-open {
   min-height: 1.8rem;
 }
 
+.planilla-oficial-observ.is-compact {
+  padding: 0.24rem 0.34rem;
+  font-size: 0.66rem;
+}
+
+.planilla-oficial-observ.is-compact p {
+  margin: 0.16rem 0 0;
+  min-height: 1.1rem;
+}
+
 .planilla-oficial-pagos {
   display: grid;
   gap: 0.25rem;
@@ -3980,12 +4007,12 @@ body.modal-open {
 
 .planilla-oficial-sheet.is-compact .planilla-oficial-score .team {
   font-size: 0.72rem;
-  gap: 0.16rem;
+  gap: 0.1rem;
 }
 
 .planilla-oficial-sheet.is-compact .planilla-oficial-team-logo {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
 }
 
 .planilla-oficial-sheet.is-compact .planilla-oficial-score .result {
@@ -4332,6 +4359,15 @@ body.modal-open {
     margin: 0.35rem 0 !important;
   }
 
+  body.page-planilla.print-planilla-preview .planilla-oficial-score .team {
+    gap: 0.1rem !important;
+  }
+
+  body.page-planilla.print-planilla-preview .planilla-oficial-team-logo {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
   body.page-planilla.print-planilla-preview .planilla-oficial-table {
     font-size: 0.62rem !important;
   }
@@ -4346,11 +4382,30 @@ body.modal-open {
     padding: 0.18rem 0.2rem !important;
   }
 
+  body.page-planilla.print-planilla-preview .planilla-oficial-observ-compact {
+    gap: 0.14rem !important;
+    margin-top: 0.08rem !important;
+  }
+
+  body.page-planilla.print-planilla-preview .planilla-oficial-observ-compact-title {
+    font-size: 0.7rem !important;
+  }
+
   body.page-planilla.print-planilla-preview .planilla-oficial-team-notes,
   body.page-planilla.print-planilla-preview .planilla-oficial-observ,
   body.page-planilla.print-planilla-preview .planilla-oficial-pagos {
     font-size: 0.7rem !important;
     padding: 0.3rem 0.4rem !important;
+  }
+
+  body.page-planilla.print-planilla-preview .planilla-oficial-observ.is-compact {
+    padding: 0.22rem 0.28rem !important;
+    font-size: 0.64rem !important;
+  }
+
+  body.page-planilla.print-planilla-preview .planilla-oficial-observ.is-compact p {
+    min-height: 0.9rem !important;
+    margin-top: 0.12rem !important;
   }
 
   body.page-planilla .config-card,

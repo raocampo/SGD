@@ -4468,26 +4468,41 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           </article>
         </div>
       </div>
+      ${
+        esPlanillaFutbol11(p)
+          ? renderBloqueObservacionesCompactoHtml(
+              observacionesLocal,
+              observacionesVisitante,
+              observacionesArbitro
+            )
+          : ""
+      }
     </div>
-    <div class="planilla-oficial-sheet ${modelo} planilla-oficial-sheet--page2">
-      <div class="planilla-oficial-observ-page">
-        <h5 class="planilla-oficial-observ-page-title">OBSERVACIONES</h5>
-        <div class="planilla-oficial-observ-grid is-stacked">
-          <div class="planilla-oficial-observ">
-            <strong>OBSERVACION LOCAL</strong>
-            <p>${escapeHtml(observacionesLocal || "")}</p>
+    ${
+      !esPlanillaFutbol11(p)
+        ? `
+          <div class="planilla-oficial-sheet ${modelo} planilla-oficial-sheet--page2">
+            <div class="planilla-oficial-observ-page">
+              <h5 class="planilla-oficial-observ-page-title">OBSERVACIONES</h5>
+              <div class="planilla-oficial-observ-grid is-stacked">
+                <div class="planilla-oficial-observ">
+                  <strong>OBSERVACION LOCAL</strong>
+                  <p>${escapeHtml(observacionesLocal || "")}</p>
+                </div>
+                <div class="planilla-oficial-observ">
+                  <strong>OBSERVACION VISITANTE</strong>
+                  <p>${escapeHtml(observacionesVisitante || "")}</p>
+                </div>
+                <div class="planilla-oficial-observ">
+                  <strong>OBSERVACIONES DEL ARBITRO</strong>
+                  <p>${escapeHtml(observacionesArbitro || "")}</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="planilla-oficial-observ">
-            <strong>OBSERVACION VISITANTE</strong>
-            <p>${escapeHtml(observacionesVisitante || "")}</p>
-          </div>
-          <div class="planilla-oficial-observ">
-            <strong>OBSERVACIONES DEL ARBITRO</strong>
-            <p>${escapeHtml(observacionesArbitro || "")}</p>
-          </div>
-        </div>
-      </div>
-    </div>
+        `
+        : ""
+    }
   `;
 }
 
@@ -5023,6 +5038,99 @@ function construirBloqueFaltasPdf() {
   };
 }
 
+function renderBloqueObservacionesCompactoHtml(
+  observacionesLocal = "",
+  observacionesVisitante = "",
+  observacionesArbitro = ""
+) {
+  return `
+    <div class="planilla-oficial-observ-compact">
+      <strong class="planilla-oficial-observ-compact-title">OBSERVACIONES</strong>
+      <div class="planilla-oficial-observ-grid">
+        <div class="planilla-oficial-observ is-compact">
+          <strong>OBSERVACION LOCAL</strong>
+          <p>${escapeHtml(observacionesLocal || "")}</p>
+        </div>
+        <div class="planilla-oficial-observ is-compact">
+          <strong>OBSERVACION VISITANTE</strong>
+          <p>${escapeHtml(observacionesVisitante || "")}</p>
+        </div>
+        <div class="planilla-oficial-observ is-compact">
+          <strong>OBSERVACIONES DEL ARBITRO</strong>
+          <p>${escapeHtml(observacionesArbitro || "")}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function construirCajaObservacionPdf(texto = "", modoCompactoPdf = false, modoUltraCompactoPdf = false) {
+  return {
+    table: {
+      widths: ["*"],
+      body: [[{ text: texto || "" }], [{ text: " " }], [{ text: " " }]],
+      heights: () => (modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 7 : 8),
+    },
+    layout: {
+      hLineWidth: () => 0.6,
+      vLineWidth: () => 0.6,
+      hLineColor: () => "#cbd5e1",
+      vLineColor: () => "#cbd5e1",
+      paddingLeft: () => (modoCompactoPdf ? 3 : 4),
+      paddingRight: () => (modoCompactoPdf ? 3 : 4),
+      paddingTop: () => (modoCompactoPdf ? 1.5 : 2),
+      paddingBottom: () => (modoCompactoPdf ? 1.5 : 2),
+    },
+    margin: [0, 0, 0, 0],
+  };
+}
+
+function construirBloqueObservacionesCompactoPdf(
+  observacionesLocal = "",
+  observacionesVisitante = "",
+  observacionesArbitro = "",
+  modoCompactoPdf = false,
+  modoUltraCompactoPdf = false
+) {
+  const gap = modoCompactoPdf ? 6 : 8;
+  return {
+    stack: [
+      {
+        text: "OBSERVACIONES",
+        style: "sectionTitle",
+        margin: [0, 0, 0, modoCompactoPdf ? 2 : 3],
+      },
+      {
+        columns: [
+          {
+            width: "*",
+            stack: [
+              { text: "OBSERVACION LOCAL", style: "sectionTitle", margin: [0, 0, 0, 2] },
+              construirCajaObservacionPdf(observacionesLocal, modoCompactoPdf, modoUltraCompactoPdf),
+            ],
+          },
+          { width: gap, text: "" },
+          {
+            width: "*",
+            stack: [
+              { text: "OBSERVACION VISITANTE", style: "sectionTitle", margin: [0, 0, 0, 2] },
+              construirCajaObservacionPdf(observacionesVisitante, modoCompactoPdf, modoUltraCompactoPdf),
+            ],
+          },
+          { width: gap, text: "" },
+          {
+            width: "*",
+            stack: [
+              { text: "OBSERVACIONES DEL ARBITRO", style: "sectionTitle", margin: [0, 0, 0, 2] },
+              construirCajaObservacionPdf(observacionesArbitro, modoCompactoPdf, modoUltraCompactoPdf),
+            ],
+          },
+        ],
+      },
+    ],
+    margin: [0, 0, 0, modoCompactoPdf ? 0 : 2],
+  };
+}
 async function imprimirPDFPlanilla() {
   if (!dataPlanilla?.partido) {
     mostrarNotificacion("Carga primero una planilla para exportar PDF", "warning");
@@ -5427,104 +5535,116 @@ async function imprimirPDFPlanilla() {
         },
         {
           ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos, mostrarEnBlanco),
-          margin: [0, 0, 0, 4],
+          margin: [0, 0, 0, esPlanillaFutbol11(p) ? 2 : 4],
         },
-        {
-          text: "OBSERVACIONES",
-          style: "sectionTitle",
-          pageBreak: "before",
-          margin: [0, 2, 0, 6],
-        },
-        {
-          stack: [
-            {
-              text: "OBSERVACION LOCAL",
-              style: "sectionTitle",
-              margin: [0, 1, 0, 2],
-            },
-            {
-              table: {
-                widths: ["*"],
-                body: [
-                  [{ text: observacionesLocal || "" }],
-                  [{ text: " " }],
-                  [{ text: " " }],
-                  [{ text: " " }],
-                  [{ text: " " }],
+        ...(esPlanillaFutbol11(p)
+          ? [
+              construirBloqueObservacionesCompactoPdf(
+                observacionesLocal,
+                observacionesVisitante,
+                observacionesArbitro,
+                modoCompactoPdf,
+                modoUltraCompactoPdf
+              ),
+            ]
+          : [
+              {
+                text: "OBSERVACIONES",
+                style: "sectionTitle",
+                pageBreak: "before",
+                margin: [0, 2, 0, 6],
+              },
+              {
+                stack: [
+                  {
+                    text: "OBSERVACION LOCAL",
+                    style: "sectionTitle",
+                    margin: [0, 1, 0, 2],
+                  },
+                  {
+                    table: {
+                      widths: ["*"],
+                      body: [
+                        [{ text: observacionesLocal || "" }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                      ],
+                      heights: () => 9,
+                    },
+                    layout: {
+                      hLineWidth: () => 0.6,
+                      vLineWidth: () => 0.6,
+                      hLineColor: () => "#cbd5e1",
+                      vLineColor: () => "#cbd5e1",
+                      paddingLeft: () => 4,
+                      paddingRight: () => 4,
+                      paddingTop: () => 2,
+                      paddingBottom: () => 2,
+                    },
+                    margin: [0, 0, 0, 8],
+                  },
+                  {
+                    text: "OBSERVACION VISITANTE",
+                    style: "sectionTitle",
+                    margin: [0, 1, 0, 2],
+                  },
+                  {
+                    table: {
+                      widths: ["*"],
+                      body: [
+                        [{ text: observacionesVisitante || "" }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                      ],
+                      heights: () => 9,
+                    },
+                    layout: {
+                      hLineWidth: () => 0.6,
+                      vLineWidth: () => 0.6,
+                      hLineColor: () => "#cbd5e1",
+                      vLineColor: () => "#cbd5e1",
+                      paddingLeft: () => 4,
+                      paddingRight: () => 4,
+                      paddingTop: () => 2,
+                      paddingBottom: () => 2,
+                    },
+                    margin: [0, 0, 0, 8],
+                  },
+                  {
+                    text: "OBSERVACIONES DEL ARBITRO",
+                    style: "sectionTitle",
+                    margin: [0, 1, 0, 2],
+                  },
+                  {
+                    table: {
+                      widths: ["*"],
+                      body: [
+                        [{ text: observacionesArbitro || "" }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                      ],
+                      heights: () => 9,
+                    },
+                    layout: {
+                      hLineWidth: () => 0.6,
+                      vLineWidth: () => 0.6,
+                      hLineColor: () => "#cbd5e1",
+                      vLineColor: () => "#cbd5e1",
+                      paddingLeft: () => 4,
+                      paddingRight: () => 4,
+                      paddingTop: () => 2,
+                      paddingBottom: () => 2,
+                    },
+                  },
                 ],
-                heights: () => 9,
               },
-              layout: {
-                hLineWidth: () => 0.6,
-                vLineWidth: () => 0.6,
-                hLineColor: () => "#cbd5e1",
-                vLineColor: () => "#cbd5e1",
-                paddingLeft: () => 4,
-                paddingRight: () => 4,
-                paddingTop: () => 2,
-                paddingBottom: () => 2,
-              },
-              margin: [0, 0, 0, 8],
-            },
-            {
-              text: "OBSERVACION VISITANTE",
-              style: "sectionTitle",
-              margin: [0, 1, 0, 2],
-            },
-            {
-              table: {
-                widths: ["*"],
-                body: [
-                  [{ text: observacionesVisitante || "" }],
-                  [{ text: " " }],
-                  [{ text: " " }],
-                  [{ text: " " }],
-                  [{ text: " " }],
-                ],
-                heights: () => 9,
-              },
-              layout: {
-                hLineWidth: () => 0.6,
-                vLineWidth: () => 0.6,
-                hLineColor: () => "#cbd5e1",
-                vLineColor: () => "#cbd5e1",
-                paddingLeft: () => 4,
-                paddingRight: () => 4,
-                paddingTop: () => 2,
-                paddingBottom: () => 2,
-              },
-              margin: [0, 0, 0, 8],
-            },
-            {
-              text: "OBSERVACIONES DEL ARBITRO",
-              style: "sectionTitle",
-              margin: [0, 1, 0, 2],
-            },
-            {
-              table: {
-                widths: ["*"],
-                body: [
-                  [{ text: observacionesArbitro || "" }],
-                  [{ text: " " }],
-                  [{ text: " " }],
-                  [{ text: " " }],
-                  [{ text: " " }],
-                ],
-                heights: () => 9,
-              },
-              layout: {
-                hLineWidth: () => 0.6,
-                vLineWidth: () => 0.6,
-                hLineColor: () => "#cbd5e1",
-                vLineColor: () => "#cbd5e1",
-                paddingLeft: () => 4,
-                paddingRight: () => 4,
-                paddingTop: () => 2,
-                paddingBottom: () => 2,
-              },
-            },
-          ],
-        },
+            ]),
       ],
       styles: {
         sectionTitle: {
@@ -5959,3 +6079,4 @@ window.volverAPartidos = volverAPartidos;
 window.recargarPlanilla = recargarPlanilla;
 window.abrirModalInscripcionPlanilla = abrirModalInscripcionPlanilla;
 window.cerrarModalInscripcionPlanilla = cerrarModalInscripcionPlanilla;
+
