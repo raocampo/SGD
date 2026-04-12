@@ -5194,7 +5194,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     const _margenVertical = modoUltraCompactoPdf ? 8 : modoCompactoPdf ? 10 : 44;
     // Espacio estimado para todo el contenido fijo (header + info + score + DT/firma + tarjetas + pagos)
     // Incluye buffer de seguridad para evitar overflow.
-    const _espacioFijo = modoUltraCompactoPdf ? 320 : modoCompactoPdf ? 320 : 490;
+    const _espacioFijo = modoUltraCompactoPdf ? 382 : modoCompactoPdf ? 320 : 490;
     const _espacioParaFilas = _alturaA4 - _margenVertical - _espacioFijo;
     const _totalFilasConCabecera = totalFilasImpresion + 1; // +1 por la fila de encabezado
     const _alturaFilaMin = modoUltraCompactoPdf ? 5 : modoCompactoPdf ? 6 : 8;
