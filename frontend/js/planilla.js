@@ -4779,24 +4779,37 @@ function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false
   const fitLogo = ultra ? [22, 22] : compacto ? [28, 28] : [36, 36];
   const fontSize = ultra ? 7.8 : compacto ? 9 : 10.5;
 
-  const stackItems = [];
+  const innerBody = [];
   if (logoDataUrl) {
-    stackItems.push({
+    innerBody.push([{
       image: logoDataUrl,
       fit: fitLogo,
       alignment: "center",
+      border: [false, false, false, false],
       margin: [0, 0, 0, ultra ? 1 : 2],
-    });
+    }]);
   }
-  stackItems.push({
+  innerBody.push([{
     text: nombre || "Por definir",
     alignment: "center",
     bold: true,
     fontSize,
-  });
+    border: [false, false, false, false],
+  }]);
 
   return {
-    stack: stackItems,
+    table: {
+      widths: ["*"],
+      body: innerBody,
+    },
+    layout: {
+      hLineWidth: () => 0,
+      vLineWidth: () => 0,
+      paddingLeft: () => 3,
+      paddingRight: () => 3,
+      paddingTop: () => 0,
+      paddingBottom: () => 0,
+    },
     alignment: "center",
   };
 }
@@ -5180,9 +5193,9 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
       : modoCompactoPdf
         ? 7.0
         : modelo === "futbol_7_5_sala"
-          ? 10.5
-          : 10.0;
-    const alturaCabeceraPlantel = modoUltraCompactoPdf ? 6.5 : modoCompactoPdf ? 7.5 : 11;
+          ? 18
+          : 22;
+    const alturaCabeceraPlantel = modoUltraCompactoPdf ? 6.5 : modoCompactoPdf ? 7.5 : 15;
     const bodyLocal = construirFilasPlantelPdf(plantelLocalImpresion, stats, maxFilas);
     const bodyVisit = construirFilasPlantelPdf(plantelVisitanteImpresion, stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
@@ -5202,7 +5215,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
 
     const docDefinition = {
       pageSize: "A4",
-      pageMargins: modoUltraCompactoPdf ? [5, 4, 5, 4] : modoCompactoPdf ? [6, 5, 6, 5] : [8, 6, 8, 6],
+      pageMargins: modoUltraCompactoPdf ? [5, 4, 5, 4] : modoCompactoPdf ? [6, 5, 6, 5] : [10, 22, 10, 22],
       defaultStyle: { fontSize: modoUltraCompactoPdf ? 7.4 : modoCompactoPdf ? 8.0 : 8.8, color: "#111827" },
       content: [
         {
@@ -5237,7 +5250,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
             },
             bloqueAuspiciantesPdf || { width: 118, text: "" },
           ],
-          margin: [0, 0, 0, modoUltraCompactoPdf ? 4 : modoCompactoPdf ? 7 : 12],
+          margin: [0, 0, 0, modoUltraCompactoPdf ? 4 : modoCompactoPdf ? 7 : 20],
         },
         {
           table: {
@@ -5300,12 +5313,12 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
             vLineWidth: () => 0.6,
             hLineColor: () => "#cbd5e1",
             vLineColor: () => "#cbd5e1",
-            paddingLeft: () => (modoCompactoPdf ? 2 : 3),
-            paddingRight: () => (modoCompactoPdf ? 2 : 3),
-            paddingTop: () => (modoCompactoPdf ? 1.4 : 2.2),
-            paddingBottom: () => (modoCompactoPdf ? 1.4 : 2.2),
+            paddingLeft: () => (modoCompactoPdf ? 2 : 4),
+            paddingRight: () => (modoCompactoPdf ? 2 : 4),
+            paddingTop: () => (modoCompactoPdf ? 1.4 : 4),
+            paddingBottom: () => (modoCompactoPdf ? 1.4 : 4),
           },
-          margin: [0, 0, 0, modoCompactoPdf ? 3 : 5],
+          margin: [0, 0, 0, modoCompactoPdf ? 3 : 14],
           alignment: "center",
         },
         {
@@ -5352,17 +5365,17 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                 ultra: modoUltraCompactoPdf,
               }),
             ]],
-            heights: () => (modoUltraCompactoPdf ? 38 : modoCompactoPdf ? 46 : 58),
+            heights: () => (modoUltraCompactoPdf ? 38 : modoCompactoPdf ? 46 : 72),
           },
           layout: {
             hLineWidth: (i) => (i === 0 || i === 1 ? 0 : 0),
             vLineWidth: (i) => (i === 1 || i === 2 || i === 3 || i === 4 ? 0.6 : 0),
             hLineColor: () => "#94a3b8",
             vLineColor: () => "#94a3b8",
-            paddingTop: () => (modoCompactoPdf ? 2 : 4),
-            paddingBottom: () => (modoCompactoPdf ? 2 : 4),
+            paddingTop: () => (modoCompactoPdf ? 2 : 6),
+            paddingBottom: () => (modoCompactoPdf ? 2 : 6),
           },
-          margin: [0, 0, 0, modoCompactoPdf ? 3 : 5],
+          margin: [0, 0, 0, modoCompactoPdf ? 3 : 16],
         },
         ...(resumenPenales.aplica
           ? [
@@ -5406,15 +5419,15 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                     vLineWidth: () => 0.5,
                     hLineColor: () => "#cbd5e1",
                     vLineColor: () => "#cbd5e1",
-                    paddingLeft: () => (modoCompactoPdf ? 1.4 : 2),
-                    paddingRight: () => (modoCompactoPdf ? 1.4 : 2),
-                    paddingTop: () => (modoCompactoPdf ? 1 : 2),
-                    paddingBottom: () => (modoCompactoPdf ? 1 : 2),
+                    paddingLeft: () => (modoCompactoPdf ? 1.4 : 3),
+                    paddingRight: () => (modoCompactoPdf ? 1.4 : 3),
+                    paddingTop: () => (modoCompactoPdf ? 1 : 3),
+                    paddingBottom: () => (modoCompactoPdf ? 1 : 3),
                   },
                 },
                 {
                   text: [{ text: "Dirigente / Director tecnico: ", bold: true }, localDt],
-                  margin: [0, modoCompactoPdf ? 1 : 3, 0, 0],
+                  margin: [0, modoCompactoPdf ? 1 : 5, 0, 0],
                   fontSize: modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 6.8 : 7.8,
                 },
                 {
@@ -5431,7 +5444,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                         { text: "", border: [false, false, false, true] },
                       ],
                     ],
-                    heights: () => (modoUltraCompactoPdf ? 7 : modoCompactoPdf ? 8 : 10),
+                    heights: () => (modoUltraCompactoPdf ? 7 : modoCompactoPdf ? 8 : 14),
                   },
                   layout: {
                     hLineWidth: () => 0,
@@ -5473,15 +5486,15 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                     vLineWidth: () => 0.5,
                     hLineColor: () => "#cbd5e1",
                     vLineColor: () => "#cbd5e1",
-                    paddingLeft: () => (modoCompactoPdf ? 1.4 : 2),
-                    paddingRight: () => (modoCompactoPdf ? 1.4 : 2),
-                    paddingTop: () => (modoCompactoPdf ? 1 : 2),
-                    paddingBottom: () => (modoCompactoPdf ? 1 : 2),
+                    paddingLeft: () => (modoCompactoPdf ? 1.4 : 3),
+                    paddingRight: () => (modoCompactoPdf ? 1.4 : 3),
+                    paddingTop: () => (modoCompactoPdf ? 1 : 3),
+                    paddingBottom: () => (modoCompactoPdf ? 1 : 3),
                   },
                 },
                 {
                   text: [{ text: "Dirigente / Director tecnico: ", bold: true }, visitDt],
-                  margin: [0, modoCompactoPdf ? 1 : 3, 0, 0],
+                  margin: [0, modoCompactoPdf ? 1 : 5, 0, 0],
                   fontSize: modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 6.8 : 7.8,
                 },
                 {
@@ -5498,7 +5511,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                         { text: "", border: [false, false, false, true] },
                       ],
                     ],
-                    heights: () => (modoUltraCompactoPdf ? 7 : modoCompactoPdf ? 8 : 10),
+                    heights: () => (modoUltraCompactoPdf ? 7 : modoCompactoPdf ? 8 : 14),
                   },
                   layout: {
                     hLineWidth: () => 0,
@@ -5521,16 +5534,16 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
               ],
             },
           ],
-          margin: [0, 0, 0, modoCompactoPdf ? 4 : 6],
+          margin: [0, 0, 0, modoCompactoPdf ? 4 : 18],
         },
         {
           text: "PAGOS",
           style: "sectionTitle",
-          margin: [0, 0, 0, modoCompactoPdf ? 2 : 3],
+          margin: [0, 0, 0, modoCompactoPdf ? 2 : 5],
         },
         {
           ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos, mostrarEnBlanco),
-          margin: [0, 0, 0, modoCompactoPdf ? 2 : 4],
+          margin: [0, 0, 0, modoCompactoPdf ? 2 : 6],
         },
         ...(conObservaciones
           ? [
