@@ -50,8 +50,11 @@
               <button class="btn btn-outline" onclick="toggleVistaPreviaPlanilla()">
                 <i class="fas fa-eye"></i> Vista Previa (Opcional)
               </button>
-              <button class="btn btn-danger" onclick="imprimirPDFPlanilla()">
-                <i class="fas fa-file-pdf"></i> Imprimir / PDF
+              <button class="btn btn-danger" onclick="exportarPlanillaPDFSinObservaciones()">
+                <i class="fas fa-file-pdf"></i> PDF sin observaciones
+              </button>
+              <button class="btn btn-outline" style="color:#b91c1c;border-color:#b91c1c;" onclick="exportarPlanillaPDF()">
+                <i class="fas fa-file-pdf"></i> PDF con observaciones
               </button>
               <button class="btn btn-success" onclick="exportarPlanillaXLSX()">
                 <i class="fas fa-file-excel"></i> Exportar XLSX
@@ -330,8 +333,11 @@
                   </button>
                 </div>
                 <div class="planilla-preview-toolbar-actions">
-                  <button type="button" class="btn btn-warning btn-xs" onclick="imprimirPDFPlanilla()">
-                    <i class="fas fa-file-pdf"></i> Imprimir / PDF
+                  <button type="button" class="btn btn-warning btn-xs" onclick="exportarPlanillaPDFSinObservaciones()">
+                    <i class="fas fa-file-pdf"></i> PDF sin obs.
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-xs" onclick="exportarPlanillaPDF()">
+                    <i class="fas fa-file-pdf"></i> PDF con obs.
                   </button>
                   <button type="button" class="btn btn-secondary btn-xs" onclick="toggleVistaPreviaPlanilla()">
                     <i class="fas fa-times"></i> Ocultar

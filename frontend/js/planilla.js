@@ -4776,57 +4776,27 @@ async function construirBloqueAuspiciantesPdf() {
 }
 
 function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false, ultra = false } = {}) {
-  const fitLogo = ultra ? [14, 14] : compacto ? [18, 18] : [22, 22];
-  const fontSize = ultra ? 7.2 : compacto ? 8 : 9.4;
-  const body = [[]];
+  const fitLogo = ultra ? [22, 22] : compacto ? [28, 28] : [36, 36];
+  const fontSize = ultra ? 7.8 : compacto ? 9 : 10.5;
 
+  const stackItems = [];
   if (logoDataUrl) {
-    body[0].push({
+    stackItems.push({
       image: logoDataUrl,
       fit: fitLogo,
-      margin: [0, 0, 3, 0],
-      border: [false, false, false, false],
+      alignment: "center",
+      margin: [0, 0, 0, ultra ? 1 : 2],
     });
   }
-
-  body[0].push({
+  stackItems.push({
     text: nombre || "Por definir",
     alignment: "center",
     bold: true,
     fontSize,
-    border: [false, false, false, false],
-    margin: [0, ultra ? 0 : 0.2, 0, 0],
   });
 
   return {
-    table: {
-      widths: ["*"],
-      body: [[
-        {
-          table: {
-            widths: logoDataUrl ? ["auto", "auto"] : ["auto"],
-            body,
-          },
-          layout: {
-            hLineWidth: () => 0,
-            vLineWidth: () => 0,
-            paddingLeft: () => 0,
-            paddingRight: () => 0,
-            paddingTop: () => 0,
-            paddingBottom: () => 0,
-          },
-          alignment: "center",
-        },
-      ]],
-    },
-    layout: {
-      hLineWidth: () => 0,
-      vLineWidth: () => 0,
-      paddingLeft: () => 0,
-      paddingRight: () => 0,
-      paddingTop: () => 0,
-      paddingBottom: () => 0,
-    },
+    stack: stackItems,
     alignment: "center",
   };
 }
@@ -5152,7 +5122,7 @@ function construirBloqueObservacionesCompactoPdf(
     margin: [0, 0, 0, modoCompactoPdf ? 0 : 2],
   };
 }
-async function imprimirPDFPlanilla() {
+async function imprimirPDFPlanilla(conObservaciones = true) {
   if (!dataPlanilla?.partido) {
     mostrarNotificacion("Carga primero una planilla para exportar PDF", "warning");
     return;
@@ -5206,13 +5176,13 @@ async function imprimirPDFPlanilla() {
     const modoCompactoPdf = totalFilasImpresion >= 24;
     const modoUltraCompactoPdf = totalFilasImpresion >= 30;
     const alturaFilaPlantel = modoUltraCompactoPdf
-      ? 4.7
+      ? 5.8
       : modoCompactoPdf
-        ? 5.3
+        ? 7.0
         : modelo === "futbol_7_5_sala"
-          ? 8.4
-          : 7.8;
-    const alturaCabeceraPlantel = modoUltraCompactoPdf ? 5.2 : modoCompactoPdf ? 6 : 8;
+          ? 10.5
+          : 10.0;
+    const alturaCabeceraPlantel = modoUltraCompactoPdf ? 6.5 : modoCompactoPdf ? 7.5 : 11;
     const bodyLocal = construirFilasPlantelPdf(plantelLocalImpresion, stats, maxFilas);
     const bodyVisit = construirFilasPlantelPdf(plantelVisitanteImpresion, stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
@@ -5233,7 +5203,7 @@ async function imprimirPDFPlanilla() {
     const docDefinition = {
       pageSize: "A4",
       pageMargins: modoUltraCompactoPdf ? [5, 4, 5, 4] : modoCompactoPdf ? [6, 5, 6, 5] : [8, 6, 8, 6],
-      defaultStyle: { fontSize: modoUltraCompactoPdf ? 6.9 : modoCompactoPdf ? 7.5 : 8.1, color: "#111827" },
+      defaultStyle: { fontSize: modoUltraCompactoPdf ? 7.4 : modoCompactoPdf ? 8.0 : 8.8, color: "#111827" },
       content: [
         {
           columns: [
@@ -5355,31 +5325,34 @@ async function imprimirPDFPlanilla() {
               {
                 text: marcadorLocal,
                 alignment: "center",
+                verticalAlignment: "middle",
                 bold: true,
-                fontSize: modoUltraCompactoPdf ? 10.2 : modoCompactoPdf ? 11.1 : 13.8,
-                margin: [0, modoCompactoPdf ? 4 : 6, 0, 0],
+                fontSize: modoUltraCompactoPdf ? 11 : modoCompactoPdf ? 13 : 16,
+                margin: [0, 0, 0, 0],
               },
               {
                 text: ":",
                 alignment: "center",
+                verticalAlignment: "middle",
                 bold: true,
-                fontSize: modoUltraCompactoPdf ? 10.6 : modoCompactoPdf ? 11.6 : 14.4,
+                fontSize: modoUltraCompactoPdf ? 11.5 : modoCompactoPdf ? 13.5 : 16.5,
                 border: [false, false, false, false],
-                margin: [0, modoCompactoPdf ? 4 : 6, 0, 0],
+                margin: [0, 0, 0, 0],
               },
               {
                 text: marcadorVisit,
                 alignment: "center",
+                verticalAlignment: "middle",
                 bold: true,
-                fontSize: modoUltraCompactoPdf ? 10.2 : modoCompactoPdf ? 11.1 : 13.8,
-                margin: [0, modoCompactoPdf ? 4 : 6, 0, 0],
+                fontSize: modoUltraCompactoPdf ? 11 : modoCompactoPdf ? 13 : 16,
+                margin: [0, 0, 0, 0],
               },
               construirCeldaMarcadorEquipoPdf(visitNombre, logoVisitantePdf, {
                 compacto: modoCompactoPdf,
                 ultra: modoUltraCompactoPdf,
               }),
             ]],
-            heights: () => (modoUltraCompactoPdf ? 24 : modoCompactoPdf ? 28 : 34),
+            heights: () => (modoUltraCompactoPdf ? 38 : modoCompactoPdf ? 46 : 58),
           },
           layout: {
             hLineWidth: (i) => (i === 0 || i === 1 ? 0 : 0),
@@ -5557,19 +5530,10 @@ async function imprimirPDFPlanilla() {
         },
         {
           ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos, mostrarEnBlanco),
-          margin: [0, 0, 0, esPlanillaFutbol11(p) ? 2 : 4],
+          margin: [0, 0, 0, modoCompactoPdf ? 2 : 4],
         },
-        ...(esPlanillaFutbol11(p)
+        ...(conObservaciones
           ? [
-              construirBloqueObservacionesCompactoPdf(
-                observacionesLocal,
-                observacionesVisitante,
-                observacionesArbitro,
-                modoCompactoPdf,
-                modoUltraCompactoPdf
-              ),
-            ]
-          : [
               {
                 text: "OBSERVACIONES",
                 style: "sectionTitle",
@@ -5666,7 +5630,8 @@ async function imprimirPDFPlanilla() {
                   },
                 ],
               },
-            ]),
+            ]
+          : []),
       ],
       styles: {
         sectionTitle: {
@@ -5683,16 +5648,16 @@ async function imprimirPDFPlanilla() {
           bold: true,
           alignment: "center",
           fillColor: "#eef4fb",
-          fontSize: modoUltraCompactoPdf ? 6.1 : modoCompactoPdf ? 6.6 : 7.6,
+          fontSize: modoUltraCompactoPdf ? 6.8 : modoCompactoPdf ? 7.6 : 8.8,
         },
         thLeft: {
           bold: true,
           alignment: "left",
           fillColor: "#eef4fb",
-          fontSize: modoUltraCompactoPdf ? 6.1 : modoCompactoPdf ? 6.6 : 7.6,
+          fontSize: modoUltraCompactoPdf ? 6.8 : modoCompactoPdf ? 7.6 : 8.8,
         },
-        tdCenter: { alignment: "center", fontSize: modoUltraCompactoPdf ? 5.9 : modoCompactoPdf ? 6.4 : 7.3 },
-        tdLeft: { alignment: "left", fontSize: modoUltraCompactoPdf ? 5.9 : modoCompactoPdf ? 6.4 : 7.3 },
+        tdCenter: { alignment: "center", fontSize: modoUltraCompactoPdf ? 6.6 : modoCompactoPdf ? 7.4 : 8.5 },
+        tdLeft: { alignment: "left", fontSize: modoUltraCompactoPdf ? 6.6 : modoCompactoPdf ? 7.4 : 8.5 },
         footTeamTitle: {
           bold: true,
           fillColor: "#f3f4f6",
@@ -5734,11 +5699,15 @@ async function imprimirPDFPlanilla() {
 }
 
 async function exportarPlanillaPDF() {
-  await imprimirPDFPlanilla();
+  await imprimirPDFPlanilla(true);
+}
+
+async function exportarPlanillaPDFSinObservaciones() {
+  await imprimirPDFPlanilla(false);
 }
 
 function imprimirVistaPrevia() {
-  imprimirPDFPlanilla();
+  imprimirPDFPlanilla(true);
 }
 
 async function guardarPlanilla(e) {
@@ -6094,6 +6063,7 @@ window.agregarFilaTarjeta = agregarFilaTarjeta;
 window.cargarPlanillaDesdeSelector = cargarPlanillaDesdeSelector;
 window.exportarPlanillaXLSX = exportarPlanillaXLSX;
 window.exportarPlanillaPDF = exportarPlanillaPDF;
+window.exportarPlanillaPDFSinObservaciones = exportarPlanillaPDFSinObservaciones;
 window.imprimirVistaPrevia = imprimirVistaPrevia;
 window.imprimirPDFPlanilla = imprimirPDFPlanilla;
 window.toggleVistaPreviaPlanilla = toggleVistaPreviaPlanilla;
