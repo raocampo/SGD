@@ -4774,30 +4774,31 @@ async function construirBloqueAuspiciantesPdf() {
 }
 
 function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false, ultra = false } = {}) {
-  const fitLogo = ultra ? [9, 9] : compacto ? [11, 11] : [14, 14];
-  const fontSize = ultra ? 7 : compacto ? 7.8 : 9.2;
+  const fitLogo = ultra ? [12, 12] : compacto ? [14, 14] : [18, 18];
+  const fontSize = ultra ? 7.2 : compacto ? 8 : 9.4;
   const body = [[]];
 
   if (logoDataUrl) {
     body[0].push({
       image: logoDataUrl,
       fit: fitLogo,
-      margin: [0, 0, 3, 0],
+      margin: [0, 0, 2, 0],
       border: [false, false, false, false],
     });
   }
 
   body[0].push({
     text: nombre || "Por definir",
-    alignment: "center",
+    alignment: "left",
     bold: true,
     fontSize,
     border: [false, false, false, false],
+    margin: [0, ultra ? 0 : 0.2, 0, 0],
   });
 
   return {
     table: {
-      widths: logoDataUrl ? ["auto", "*"] : ["*"],
+      widths: logoDataUrl ? ["auto", "auto"] : ["auto"],
       body,
     },
     layout: {
@@ -5046,7 +5047,7 @@ function renderBloqueObservacionesCompactoHtml(
   return `
     <div class="planilla-oficial-observ-compact">
       <strong class="planilla-oficial-observ-compact-title">OBSERVACIONES</strong>
-      <div class="planilla-oficial-observ-grid">
+      <div class="planilla-oficial-observ-grid is-stacked">
         <div class="planilla-oficial-observ is-compact">
           <strong>OBSERVACION LOCAL</strong>
           <p>${escapeHtml(observacionesLocal || "")}</p>
@@ -5092,7 +5093,7 @@ function construirBloqueObservacionesCompactoPdf(
   modoCompactoPdf = false,
   modoUltraCompactoPdf = false
 ) {
-  const gap = modoCompactoPdf ? 6 : 8;
+  const bottomGap = modoCompactoPdf ? 3 : 4;
   return {
     stack: [
       {
@@ -5101,32 +5102,29 @@ function construirBloqueObservacionesCompactoPdf(
         margin: [0, 0, 0, modoCompactoPdf ? 2 : 3],
       },
       {
-        columns: [
-          {
-            width: "*",
-            stack: [
-              { text: "OBSERVACION LOCAL", style: "sectionTitle", margin: [0, 0, 0, 2] },
-              construirCajaObservacionPdf(observacionesLocal, modoCompactoPdf, modoUltraCompactoPdf),
-            ],
-          },
-          { width: gap, text: "" },
-          {
-            width: "*",
-            stack: [
-              { text: "OBSERVACION VISITANTE", style: "sectionTitle", margin: [0, 0, 0, 2] },
-              construirCajaObservacionPdf(observacionesVisitante, modoCompactoPdf, modoUltraCompactoPdf),
-            ],
-          },
-          { width: gap, text: "" },
-          {
-            width: "*",
-            stack: [
-              { text: "OBSERVACIONES DEL ARBITRO", style: "sectionTitle", margin: [0, 0, 0, 2] },
-              construirCajaObservacionPdf(observacionesArbitro, modoCompactoPdf, modoUltraCompactoPdf),
-            ],
-          },
-        ],
+        text: "OBSERVACION LOCAL",
+        style: "sectionTitle",
+        margin: [0, 0, 0, 2],
       },
+      {
+        ...construirCajaObservacionPdf(observacionesLocal, modoCompactoPdf, modoUltraCompactoPdf),
+        margin: [0, 0, 0, bottomGap],
+      },
+      {
+        text: "OBSERVACION VISITANTE",
+        style: "sectionTitle",
+        margin: [0, 0, 0, 2],
+      },
+      {
+        ...construirCajaObservacionPdf(observacionesVisitante, modoCompactoPdf, modoUltraCompactoPdf),
+        margin: [0, 0, 0, bottomGap],
+      },
+      {
+        text: "OBSERVACIONES DEL ARBITRO",
+        style: "sectionTitle",
+        margin: [0, 0, 0, 2],
+      },
+      construirCajaObservacionPdf(observacionesArbitro, modoCompactoPdf, modoUltraCompactoPdf),
     ],
     margin: [0, 0, 0, modoCompactoPdf ? 0 : 2],
   };
