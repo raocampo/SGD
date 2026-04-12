@@ -5084,11 +5084,16 @@ function renderBloqueObservacionesCompactoHtml(
 }
 
 function construirCajaObservacionPdf(texto = "", modoCompactoPdf = false, modoUltraCompactoPdf = false) {
+  const filas = modoUltraCompactoPdf
+    ? [[{ text: texto || "" }], [{ text: " " }], [{ text: " " }], [{ text: " " }]]
+    : modoCompactoPdf
+      ? [[{ text: texto || "" }], [{ text: " " }], [{ text: " " }], [{ text: " " }], [{ text: " " }]]
+      : [[{ text: texto || "" }], [{ text: " " }], [{ text: " " }], [{ text: " " }], [{ text: " " }]];
   return {
     table: {
       widths: ["*"],
-      body: [[{ text: texto || "" }], [{ text: " " }], [{ text: " " }]],
-      heights: () => (modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 7 : 8),
+      body: filas,
+      heights: () => (modoUltraCompactoPdf ? 7.4 : modoCompactoPdf ? 8.8 : 10),
     },
     layout: {
       hLineWidth: () => 0.6,
@@ -5331,15 +5336,16 @@ async function imprimirPDFPlanilla() {
             paddingBottom: () => (modoCompactoPdf ? 1.4 : 2.2),
           },
           margin: [0, 0, 0, modoCompactoPdf ? 3 : 5],
+          alignment: "center",
         },
         {
           table: {
             widths: [
-              "*",
+              modoUltraCompactoPdf ? 118 : modoCompactoPdf ? 132 : 150,
               modoUltraCompactoPdf ? 16 : modoCompactoPdf ? 18 : 22,
               modoUltraCompactoPdf ? 6 : modoCompactoPdf ? 7 : 8,
               modoUltraCompactoPdf ? 16 : modoCompactoPdf ? 18 : 22,
-              "*",
+              modoUltraCompactoPdf ? 118 : modoCompactoPdf ? 132 : 150,
             ],
             body: [[
               construirCeldaMarcadorEquipoPdf(localNombre, logoLocalPdf, {

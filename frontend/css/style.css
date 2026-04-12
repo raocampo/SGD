@@ -3699,8 +3699,8 @@ body.modal-open {
 
 .planilla-oficial-observ-compact {
   display: grid;
-  gap: 0.18rem;
-  margin-top: 0.12rem;
+  gap: 0.14rem;
+  margin-top: 0.08rem;
 }
 
 .planilla-oficial-observ-compact-title {
@@ -3714,9 +3714,11 @@ body.modal-open {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0.36rem;
-  margin: 0.34rem 0 0.42rem;
+  gap: 0.28rem;
+  margin: 0.28rem auto 0.36rem;
   flex-wrap: nowrap;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .planilla-oficial-score .team {
@@ -3727,12 +3729,12 @@ body.modal-open {
   font-size: 0.84rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.18rem;
+  gap: 0.14rem;
   justify-content: center;
   flex-wrap: nowrap;
   flex: 0 1 auto;
   min-width: 0;
-  max-width: 34%;
+  max-width: 14rem;
 }
 
 .planilla-oficial-score .team.is-local,
@@ -3966,8 +3968,8 @@ body.modal-open {
 }
 
 .planilla-oficial-observ.is-compact p {
-  margin: 0.16rem 0 0;
-  min-height: 1.1rem;
+  margin: 0.14rem 0 0;
+  min-height: 2.6rem;
 }
 
 .planilla-oficial-pagos {
@@ -4355,7 +4357,9 @@ body.modal-open {
   }
 
   body.page-planilla.print-planilla-preview .planilla-oficial-score {
-    margin: 0.35rem 0 !important;
+    margin: 0.28rem auto 0.32rem !important;
+    width: fit-content !important;
+    max-width: 100% !important;
   }
 
   body.page-planilla.print-planilla-preview .planilla-oficial-score .team {
@@ -4403,8 +4407,8 @@ body.modal-open {
   }
 
   body.page-planilla.print-planilla-preview .planilla-oficial-observ.is-compact p {
-    min-height: 0.9rem !important;
-    margin-top: 0.12rem !important;
+    min-height: 2.7rem !important;
+    margin-top: 0.1rem !important;
   }
 
   body.page-planilla .config-card,
