@@ -1,3 +1,79 @@
+## 2026-04-11 - Planilla PDF: dual-mode sin/con observaciones + layout A4 completo
+
+### Objetivos de la sesión
+El usuario compartió el PDF de planillaje de Fútbol 11 y solicitó:
+1. Versión **sin observaciones**: toda el acta en una hoja A4, mejor uso del espacio, logo más grande
+2. Versión **con observaciones**: mismas mejoras + observaciones en página 2
+3. Dos botones PDF para elegir versión
+4. Logo y nombre del equipo **centrados juntos** en la sección del marcador
+5. Font size de jugadores más grande
+
+### Commits de esta sesión
+- `37a9901` — feat: planilla PDF dual mode — sin/con observaciones, logo+nombre centrado apilado
+- `bce2cfc` — fix: centrado logo+nombre planilla y ocupar hoja A4 completa
+- `dcff480` — fix: altura de filas planilla dinámica para llenar A4 en todos los modos
+- `86c4763` — fix: centrado marcador y ajuste espacioFijo para evitar overflow
+- `99ee6e6` — fix: reducir 1pt altura filas ultra compact (30 jugadores)
+- `4188473` — fix: restar 2pt altura filas ultra compact para entrar en 1 pagina
+- `7804c71` — fix: espacio firma tecnico y evitar corte de texto en ultra compact
+
+### Cambios en `frontend/js/planilla.js`
+
+#### `construirCeldaMarcadorEquipoPdf()` (línea ~4778)
+- **Antes**: logo + nombre en tabla horizontal lado a lado, logo pequeño [22/18/14]
+- **Ahora**: tabla vertical (`widths: ["*"]`), logo arriba centrado [36/28/22], nombre centrado debajo
+- Centrado real: tabla con `widths: ["*"]` para que `alignment: "center"` funcione en celdas de pdfMake
+
+#### `imprimirPDFPlanilla(conObservaciones = true)` — nuevo parámetro
+- `conObservaciones = false` → omite sección de observaciones (toda la planilla en 1 A4)
+- `conObservaciones = true` → observaciones en **página 2** con `pageBreak: "before"` (aplica a todos los deportes, incluyendo Fútbol 11 que antes las ponía en la misma página)
+
+#### Tabla del marcador
+- `widths`: columnas de equipo cambiadas de `[150, ..., 150]` → `["*", ..., "*"]` → la tabla ocupa el ancho completo de la página y ambos equipos quedan perfectamente centrados y simétricos
+- Altura de fila marcador: 34/28/24 → **72/46/38** pt
+- Score digits: `verticalAlignment: "middle"` + `margin: [0,0,0,0]` (antes con top-margin fijo)
+
+#### Fuentes de jugadores (aumentadas)
+- `defaultStyle.fontSize`: 8.1/7.5/6.9 → **8.8/8.0/7.4**
+- `tdCenter/tdLeft`: 7.3/6.4/5.9 → **8.5/7.4/6.6**
+- `thCenter/thLeft`: 7.6/6.6/6.1 → **8.8/7.6/6.8**
+
+#### Alturas de filas — cálculo dinámico (clave de la solución)
+- **Problema original**: alturas hardcodeadas (5.8pt ultra, 7pt compact, 10pt normal) dejaban mucho espacio vacío porque `modoUltraCompactoPdf` se activa si `totalFilasImpresion >= 30` — incluso cuando hay solo 5 jugadores reales pero maxFilas=30
+- **Solución**: cálculo dinámico que distribuye el espacio disponible:
+  ```javascript
+  const _espacioFijo = modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 320 : 490;
+  const _espacioParaFilas = 841 - margenVertical - _espacioFijo;
+  const alturaFilaPlantel = clamp(min, max, _espacioParaFilas / (totalFilas + 1));
+  ```
+- Resultado: con 30 filas ultra compact → ~14.4pt/fila, la planilla llena ~97% de A4
+
+#### Márgenes de página (modo normal < 24 jugadores)
+- `pageMargins`: `[8,6,8,6]` → `[10,22,10,22]`
+
+#### Separación entre bloques (modo normal)
+- Header→info: 12 → 20pt
+- Info→score: 5 → 14pt
+- Score→plantel: 5 → 16pt
+- Plantel→pagos: 6 → 18pt
+
+#### Firma técnico (ultra compact)
+- Columna label: 38 → **56pt** (evita que "Firma tecnico:" se parta en 2 líneas)
+- Altura fila firma: 7 → **10pt**
+- Margen DT arriba: 1 → **3pt** (respiro entre plantel y línea del director técnico)
+
+### Cambios en `frontend/planilla.html`
+- Reemplazado el botón único "Imprimir / PDF" por **dos botones**:
+  - `PDF sin observaciones` (btn-danger) → `exportarPlanillaPDFSinObservaciones()`
+  - `PDF con observaciones` (btn-outline rojo) → `exportarPlanillaPDF()`
+- Mismo patrón en la barra de la vista previa (botones xs)
+
+### Nuevas funciones JS expuestas en `window`
+- `exportarPlanillaPDFSinObservaciones()` → llama `imprimirPDFPlanilla(false)`
+- `exportarPlanillaPDF()` → llama `imprimirPDFPlanilla(true)`
+
+---
+
 ## 2026-04-07 - Baloncesto: Planilla UI + Portal + Jugadores (Fases 3, 5, 6)
 
 ### Planilla baloncesto (Fase 3 — `219708d`)
