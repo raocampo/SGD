@@ -307,6 +307,7 @@ async function asegurarEsquemaEventos() {
   await pool.query(`
     ALTER TABLE eventos
     ADD COLUMN IF NOT EXISTS carnet_estilo VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS limite_inscripcion_jornada INTEGER,
     ADD COLUMN IF NOT EXISTS carnet_color_primario VARCHAR(20),
     ADD COLUMN IF NOT EXISTS carnet_color_secundario VARCHAR(20),
     ADD COLUMN IF NOT EXISTS carnet_color_acento VARCHAR(20),
@@ -427,6 +428,7 @@ const eventoController = {
         modalidad,
         horarios,
         costo_inscripcion,
+        limite_inscripcion_jornada,
         clasificados_por_grupo,
         metodo_competencia,
         eliminatoria_equipos,
@@ -485,6 +487,10 @@ const eventoController = {
       const sunStart = parseTimeHHMM(horarios?.weekend?.sun_start, "08:00:00");
       const sunEnd = parseTimeHHMM(horarios?.weekend?.sun_end, "17:00:00");
       const costoInscripcion = parseDecimalNonNegative(costo_inscripcion, 0);
+      const limiteInscripcionJornada =
+        limite_inscripcion_jornada === undefined || limite_inscripcion_jornada === null || limite_inscripcion_jornada === ""
+          ? null
+          : Number.parseInt(limite_inscripcion_jornada, 10);
       const clasificadosPorGrupo = normalizarClasificadosPorGrupo(clasificados_por_grupo, null);
       const bloquearMorososValor =
         bloquear_morosos === undefined || bloquear_morosos === null || bloquear_morosos === ""
@@ -538,6 +544,16 @@ const eventoController = {
           error: "clasificados_por_grupo invalido. Debe ser un entero mayor a 0.",
         });
       }
+      if (
+        limite_inscripcion_jornada !== undefined &&
+        limite_inscripcion_jornada !== null &&
+        limite_inscripcion_jornada !== "" &&
+        (!Number.isFinite(limiteInscripcionJornada) || limiteInscripcionJornada < 0)
+      ) {
+        return res.status(400).json({
+          error: "limite_inscripcion_jornada debe ser un entero mayor o igual a 0.",
+        });
+      }
       const clasificadosFinal = requiereClasificadosPorGrupo(metodoCompetenciaVisible)
         ? clasificadosPorGrupo || 2
         : null;
@@ -582,7 +598,7 @@ const eventoController = {
           modalidad,
           metodo_competencia, eliminatoria_equipos,
           playoff_plantilla, playoff_tercer_puesto,
-          costo_inscripcion, clasificados_por_grupo, clasificacion_tabla_acumulada,
+          costo_inscripcion, limite_inscripcion_jornada, clasificados_por_grupo, clasificacion_tabla_acumulada,
           bloquear_morosos, bloqueo_morosidad_monto,
           carnet_estilo, carnet_color_primario, carnet_color_secundario, carnet_color_acento,
           categoria_juvenil, categoria_juvenil_cupos, categoria_juvenil_max_diferencia, carnet_mostrar_edad,
@@ -592,7 +608,7 @@ const eventoController = {
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -609,6 +625,7 @@ const eventoController = {
         playoffPlantilla || "estandar",
         playoffTercerPuesto === true,
         costoInscripcion,
+        limiteInscripcionJornada,
         clasificadosFinal,
         clasificacionTablaAcumulada,
         bloquearMorososValor,
@@ -827,6 +844,21 @@ const eventoController = {
           }
           campos.push(`${k} = $${i}`);
           valores.push(costoParseado);
+          i++;
+          continue;
+        }
+        if (k === "limite_inscripcion_jornada") {
+          const limite =
+            v === null || v === "" || v === undefined
+              ? null
+              : Number.parseInt(v, 10);
+          if (v !== null && v !== "" && v !== undefined && (!Number.isFinite(limite) || limite < 0)) {
+            return res.status(400).json({
+              error: "limite_inscripcion_jornada debe ser un entero mayor o igual a 0.",
+            });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(limite);
           i++;
           continue;
         }

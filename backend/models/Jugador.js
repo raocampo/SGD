@@ -334,6 +334,102 @@ class Jugador {
         return Number.isFinite(numero) && numero > 0 ? numero : null;
     }
 
+
+    static normalizarLimiteInscripcionJornada(valor, fallback = null) {
+        if (valor === undefined || valor === null || valor === "") return fallback;
+        const numero = Number.parseInt(String(valor), 10);
+        return Number.isFinite(numero) && numero >= 0 ? numero : fallback;
+    }
+
+    static async resolverEventoInscripcionJornada(equipo_id, evento_id_contexto = null) {
+        const eventoContextoId = this.normalizarEventoId(evento_id_contexto);
+        if (eventoContextoId) return eventoContextoId;
+
+        const result = await pool.query(
+            `
+                SELECT ARRAY_AGG(DISTINCT evento_id) FILTER (WHERE evento_id IS NOT NULL) AS eventos
+                FROM evento_equipos
+                WHERE equipo_id = $1
+            `,
+            [equipo_id]
+        );
+        const eventos = Array.isArray(result.rows[0]?.eventos)
+            ? result.rows[0].eventos.map((item) => Number.parseInt(item, 10)).filter((item) => Number.isFinite(item) && item > 0)
+            : [];
+        return eventos.length === 1 ? eventos[0] : null;
+    }
+
+    static async obtenerEstadoInscripcionPorJornada(equipo_id, evento_id_contexto = null) {
+        const eventoId = await this.resolverEventoInscripcionJornada(equipo_id, evento_id_contexto);
+        if (!eventoId) {
+            return { eventoId: null, limite: null, jornadaActual: 0, bloqueado: false, nombreEvento: null };
+        }
+
+        const eventoResult = await pool.query(
+            `
+                SELECT
+                    nombre,
+                    COALESCE(limite_inscripcion_jornada, NULL)::int AS limite_inscripcion_jornada
+                FROM eventos
+                WHERE id = $1
+                LIMIT 1
+            `,
+            [eventoId]
+        );
+        if (!eventoResult.rows.length) {
+            return { eventoId, limite: null, jornadaActual: 0, bloqueado: false, nombreEvento: null };
+        }
+
+        const evento = eventoResult.rows[0];
+        const limite = this.normalizarLimiteInscripcionJornada(evento.limite_inscripcion_jornada, null);
+        if (!Number.isFinite(limite) || limite <= 0) {
+            return {
+                eventoId,
+                limite: null,
+                jornadaActual: 0,
+                bloqueado: false,
+                nombreEvento: evento.nombre || null,
+            };
+        }
+
+        const jornadaResult = await pool.query(
+            `
+                SELECT COALESCE(MAX(p.jornada), 0)::int AS jornada_actual
+                FROM partidos p
+                WHERE p.evento_id = $1
+                  AND p.jornada IS NOT NULL
+                  AND p.jornada > 0
+                  AND (
+                    p.estado IN ('finalizado', 'no_presentaron_ambos', 'en_curso')
+                    OR EXISTS (
+                      SELECT 1
+                      FROM partido_planillas pp
+                      WHERE pp.partido_id = p.id
+                    )
+                  )
+            `,
+            [eventoId]
+        );
+        const jornadaActual = Number(jornadaResult.rows[0]?.jornada_actual || 0);
+        return {
+            eventoId,
+            limite,
+            jornadaActual,
+            bloqueado: jornadaActual > limite,
+            nombreEvento: evento.nombre || null,
+        };
+    }
+
+    static async validarInscripcionPorJornada(equipo_id, evento_id_contexto = null) {
+        const estado = await this.obtenerEstadoInscripcionPorJornada(equipo_id, evento_id_contexto);
+        if (estado.bloqueado) {
+            throw new Error(
+                `La inscripción de jugadores se cerró al superar la jornada ${estado.limite}${estado.nombreEvento ? ` de la categoría ${estado.nombreEvento}` : ''}. Jornada actual: ${estado.jornadaActual}.`
+            );
+        }
+        return estado;
+    }
+
     static async asegurarColumnasDocumentos() {
         if (this._columnasDocumentosAseguradas) return;
         await pool.query(`
@@ -531,6 +627,7 @@ class Jugador {
         const fotoCarnetZoom = this.normalizarZoomFoto(foto_carnet_zoom, 1);
         const eventoContextoId = this.normalizarEventoId(evento_id_contexto);
         const contextoRoster = await this.resolverContextoRosterEquipo(equipo_id, eventoContextoId);
+        await this.validarInscripcionPorJornada(equipo_id, eventoContextoId ?? contextoRoster.eventoId);
 
         // Verificar límites de jugadores en el equipo
         const equipo = await this.obtenerEquipoConLimites(equipo_id);

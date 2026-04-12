@@ -4077,11 +4077,13 @@ function obtenerColumnasPdfPlanilla() {
 }
 
 function obtenerJugadoresImpresionPlanilla(jugadores, maxFilas) {
-  const lista = Array.isArray(jugadores) ? jugadores : [];
+  const lista = Array.isArray(jugadores)
+    ? jugadores.filter((jugador) => jugador && (Number.isFinite(Number(jugador.id)) || Boolean(nombreJugador(jugador))))
+    : [];
   const tope = Number.isFinite(Number(maxFilas)) && Number(maxFilas) > 0 ? Number(maxFilas) : lista.length;
-  return lista
-    .filter((jugador) => jugador && (Number.isFinite(Number(jugador.id)) || Boolean(nombreJugador(jugador))))
-    .slice(0, tope);
+  const filas = lista.slice(0, tope);
+  while (filas.length < tope) filas.push(null);
+  return filas;
 }
 
 function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
@@ -4774,7 +4776,7 @@ async function construirBloqueAuspiciantesPdf() {
 }
 
 function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false, ultra = false } = {}) {
-  const fitLogo = ultra ? [12, 12] : compacto ? [14, 14] : [18, 18];
+  const fitLogo = ultra ? [14, 14] : compacto ? [18, 18] : [22, 22];
   const fontSize = ultra ? 7.2 : compacto ? 8 : 9.4;
   const body = [[]];
 
@@ -4782,14 +4784,14 @@ function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false
     body[0].push({
       image: logoDataUrl,
       fit: fitLogo,
-      margin: [0, 0, 2, 0],
+      margin: [0, 0, 3, 0],
       border: [false, false, false, false],
     });
   }
 
   body[0].push({
     text: nombre || "Por definir",
-    alignment: "left",
+    alignment: "center",
     bold: true,
     fontSize,
     border: [false, false, false, false],
@@ -4798,8 +4800,24 @@ function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false
 
   return {
     table: {
-      widths: logoDataUrl ? ["auto", "auto"] : ["auto"],
-      body,
+      widths: ["*"],
+      body: [[
+        {
+          table: {
+            widths: logoDataUrl ? ["auto", "auto"] : ["auto"],
+            body,
+          },
+          layout: {
+            hLineWidth: () => 0,
+            vLineWidth: () => 0,
+            paddingLeft: () => 0,
+            paddingRight: () => 0,
+            paddingTop: () => 0,
+            paddingBottom: () => 0,
+          },
+          alignment: "center",
+        },
+      ]],
     },
     layout: {
       hLineWidth: () => 0,

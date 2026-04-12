@@ -3711,35 +3711,34 @@ body.modal-open {
 }
 
 .planilla-oficial-score {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
-  gap: 0.3rem;
+  display: flex;
+  justify-content: center;
   align-items: center;
-  margin: 0.38rem 0 0.44rem;
+  gap: 0.36rem;
+  margin: 0.34rem 0 0.42rem;
+  flex-wrap: nowrap;
 }
 
 .planilla-oficial-score .team {
   font-weight: 800;
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.15;
   text-wrap: balance;
   font-size: 0.84rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.12rem;
+  gap: 0.18rem;
   justify-content: center;
   flex-wrap: nowrap;
-  width: fit-content;
-  max-width: 100%;
-  justify-self: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 34%;
 }
 
-.planilla-oficial-score .team.is-local {
-  justify-content: center;
-}
-
+.planilla-oficial-score .team.is-local,
 .planilla-oficial-score .team.is-visitante {
   justify-content: center;
+  margin: 0;
 }
 
 .planilla-oficial-score .team span {
@@ -3748,8 +3747,8 @@ body.modal-open {
 }
 
 .planilla-oficial-team-logo {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
   border-radius: 50%;
   border: 1px solid #cbd5e1;
@@ -4360,12 +4359,12 @@ body.modal-open {
   }
 
   body.page-planilla.print-planilla-preview .planilla-oficial-score .team {
-    gap: 0.1rem !important;
+    gap: 0.12rem !important;
   }
 
   body.page-planilla.print-planilla-preview .planilla-oficial-team-logo {
-    width: 24px !important;
-    height: 24px !important;
+    width: 28px !important;
+    height: 28px !important;
   }
 
   body.page-planilla.print-planilla-preview .planilla-oficial-table {

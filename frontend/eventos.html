@@ -161,6 +161,18 @@
             </div>
 
             <div class="form-group">
+              <label>Permitir inscribir jugadores hasta jornada:</label>
+              <input
+                id="evt-limite-inscripcion-jornada"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="Vacío = sin límite"
+              />
+              <small class="form-hint">Si se supera esa jornada, ya no se podrán registrar más jugadores en esta categoría.</small>
+            </div>
+
+            <div class="form-group">
               <label>Bloqueo por morosidad (override de categoría):</label>
               <select id="evt-bloquear-morosos">
                 <option value="">Heredar de campeonato</option>

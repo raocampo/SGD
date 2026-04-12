@@ -528,6 +528,11 @@ async function crearEvento() {
     document.getElementById("evt-costo-inscripcion").value,
     0
   );
+  const limite_inscripcion_jornada_raw = document.getElementById("evt-limite-inscripcion-jornada")?.value || "";
+  const limite_inscripcion_jornada =
+    String(limite_inscripcion_jornada_raw).trim() === ""
+      ? null
+      : Number.parseInt(limite_inscripcion_jornada_raw, 10);
   const bloqueoMorososRaw = document.getElementById("evt-bloquear-morosos")?.value ?? "";
   const bloqueoMorosos =
     bloqueoMorososRaw === "" ? null : bloqueoMorososRaw === "true";
@@ -591,6 +596,10 @@ async function crearEvento() {
     mostrarNotificacion("Indica cuántos juveniles permite la categoría.", "warning");
     return;
   }
+  if (limite_inscripcion_jornada !== null && (!Number.isFinite(limite_inscripcion_jornada) || limite_inscripcion_jornada < 0)) {
+    mostrarNotificacion("La jornada límite de inscripción debe ser un entero mayor o igual a 0.", "warning");
+    return;
+  }
 
   try {
     await EventosAPI.crear({
@@ -605,6 +614,7 @@ async function crearEvento() {
       fecha_inicio,
       fecha_fin,
       costo_inscripcion,
+      limite_inscripcion_jornada,
       bloquear_morosos: bloqueoMorosos,
       bloqueo_morosidad_monto: bloqueoMorosidadMonto,
       carnet_estilo: personalizaCarnetCategoria ? carnet_estilo : null,
@@ -619,6 +629,8 @@ async function crearEvento() {
     mostrarNotificacion("Categoría creada", "success");
     document.getElementById("evt-nombre").value = "";
     document.getElementById("evt-costo-inscripcion").value = "";
+    const inputLimiteInscripcionJornada = document.getElementById("evt-limite-inscripcion-jornada");
+    if (inputLimiteInscripcionJornada) inputLimiteInscripcionJornada.value = "";
     const inputClasificados = document.getElementById("evt-clasificados-por-grupo");
     const selectMetodo = document.getElementById("evt-metodo-competencia");
     const selectElim = document.getElementById("evt-eliminatoria-equipos");
@@ -718,6 +730,21 @@ async function editarEvento(id) {
         value: String(costoActual ?? 0),
         min: 0,
         step: "0.01",
+      },
+      {
+        name: "limite_inscripcion_jornada",
+        label: "Permitir inscribir jugadores hasta jornada",
+        type: "number",
+        value: evento?.limite_inscripcion_jornada ? String(evento.limite_inscripcion_jornada) : "",
+        min: 0,
+        step: 1,
+        validate: (value) => {
+          if (String(value || "").trim() === "") return "";
+          const numero = Number.parseInt(value, 10);
+          return Number.isFinite(numero) && numero >= 0
+            ? ""
+            : "Usa un entero mayor o igual a 0.";
+        },
       },
       {
         name: "metodo_competencia",
@@ -897,6 +924,9 @@ async function editarEvento(id) {
   const nuevaPlantillaPlayoff = String(form.playoff_plantilla || "estandar").trim();
   const nuevoTercerPuesto = String(form.playoff_tercer_puesto || "false").trim().toLowerCase() === "true";
   const costo_inscripcion = normalizarCostoInscripcion(form.costo_inscripcion, null);
+  const limiteInscripcionJornadaRaw = String(form.limite_inscripcion_jornada || "").trim();
+  const limiteInscripcionJornada =
+    limiteInscripcionJornadaRaw === "" ? null : Number.parseInt(limiteInscripcionJornadaRaw, 10);
   const nuevoBloqueo = String(form.bloquear_morosos || bloqueoActual).trim().toLowerCase();
   const nuevoMontoBloqueoRaw = String(form.bloqueo_morosidad_monto || "").trim();
   const nuevoMontoBloqueo = normalizarCostoInscripcion(nuevoMontoBloqueoRaw, null);
@@ -923,6 +953,10 @@ async function editarEvento(id) {
   }
   if (String(form.costo_inscripcion || "").trim() !== "" && costo_inscripcion === null) {
     mostrarNotificacion("Costo inválido. Usa solo números.", "warning");
+    return;
+  }
+  if (limiteInscripcionJornada !== null && (!Number.isFinite(limiteInscripcionJornada) || limiteInscripcionJornada < 0)) {
+    mostrarNotificacion("La jornada límite de inscripción debe ser un entero mayor o igual a 0.", "warning");
     return;
   }
   if (!["heredar", "activar", "desactivar"].includes(nuevoBloqueo)) {
@@ -952,6 +986,7 @@ async function editarEvento(id) {
     payload.playoff_plantilla = nuevaPlantillaPlayoff || "estandar";
     payload.playoff_tercer_puesto = nuevoTercerPuesto;
     if (costo_inscripcion !== null) payload.costo_inscripcion = costo_inscripcion;
+    payload.limite_inscripcion_jornada = limiteInscripcionJornada;
     payload.bloquear_morosos =
       nuevoBloqueo === "heredar" ? null : nuevoBloqueo === "activar";
     payload.bloqueo_morosidad_monto =
