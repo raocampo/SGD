@@ -5188,14 +5188,20 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     const totalFilasImpresion = Math.max(plantelLocalImpresion.length, plantelVisitanteImpresion.length, 0);
     const modoCompactoPdf = totalFilasImpresion >= 24;
     const modoUltraCompactoPdf = totalFilasImpresion >= 30;
-    const alturaFilaPlantel = modoUltraCompactoPdf
-      ? 5.8
-      : modoCompactoPdf
-        ? 7.0
-        : modelo === "futbol_7_5_sala"
-          ? 18
-          : 22;
-    const alturaCabeceraPlantel = modoUltraCompactoPdf ? 6.5 : modoCompactoPdf ? 7.5 : 15;
+    // Altura dinámica: calcular cuánto espacio queda en A4 después del contenido fijo
+    // y distribuirlo entre todas las filas del plantel para llenar la hoja.
+    const _alturaA4 = 841; // puntos pdfMake (1pt = 1/72 inch)
+    const _margenVertical = modoUltraCompactoPdf ? 8 : modoCompactoPdf ? 10 : 44;
+    // Espacio estimado para todo el contenido excepto las filas del plantel
+    const _espacioFijo = modoUltraCompactoPdf ? 215 : modoCompactoPdf ? 245 : 430;
+    const _espacioParaFilas = _alturaA4 - _margenVertical - _espacioFijo;
+    const _totalFilasConCabecera = totalFilasImpresion + 1; // +1 por la fila de encabezado
+    const _alturaFilaMin = modoUltraCompactoPdf ? 5 : modoCompactoPdf ? 6 : 8;
+    const _alturaFilaMax = modoUltraCompactoPdf ? 22 : modoCompactoPdf ? 26 : 40;
+    const alturaFilaPlantel = _totalFilasConCabecera > 0
+      ? Math.max(_alturaFilaMin, Math.min(_alturaFilaMax, _espacioParaFilas / _totalFilasConCabecera))
+      : _alturaFilaMax;
+    const alturaCabeceraPlantel = Math.max(_alturaFilaMin + 1, alturaFilaPlantel * 0.85);
     const bodyLocal = construirFilasPlantelPdf(plantelLocalImpresion, stats, maxFilas);
     const bodyVisit = construirFilasPlantelPdf(plantelVisitanteImpresion, stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
