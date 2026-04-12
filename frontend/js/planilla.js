@@ -5192,8 +5192,9 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     // y distribuirlo entre todas las filas del plantel para llenar la hoja.
     const _alturaA4 = 841; // puntos pdfMake (1pt = 1/72 inch)
     const _margenVertical = modoUltraCompactoPdf ? 8 : modoCompactoPdf ? 10 : 44;
-    // Espacio estimado para todo el contenido excepto las filas del plantel
-    const _espacioFijo = modoUltraCompactoPdf ? 215 : modoCompactoPdf ? 245 : 430;
+    // Espacio estimado para todo el contenido fijo (header + info + score + DT/firma + tarjetas + pagos)
+    // Incluye buffer de seguridad para evitar overflow.
+    const _espacioFijo = modoUltraCompactoPdf ? 290 : modoCompactoPdf ? 320 : 490;
     const _espacioParaFilas = _alturaA4 - _margenVertical - _espacioFijo;
     const _totalFilasConCabecera = totalFilasImpresion + 1; // +1 por la fila de encabezado
     const _alturaFilaMin = modoUltraCompactoPdf ? 5 : modoCompactoPdf ? 6 : 8;
@@ -5330,11 +5331,11 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
         {
           table: {
             widths: [
-              modoUltraCompactoPdf ? 118 : modoCompactoPdf ? 132 : 150,
+              "*",
               modoUltraCompactoPdf ? 16 : modoCompactoPdf ? 18 : 22,
               modoUltraCompactoPdf ? 6 : modoCompactoPdf ? 7 : 8,
               modoUltraCompactoPdf ? 16 : modoCompactoPdf ? 18 : 22,
-              modoUltraCompactoPdf ? 118 : modoCompactoPdf ? 132 : 150,
+              "*",
             ],
             body: [[
               construirCeldaMarcadorEquipoPdf(localNombre, logoLocalPdf, {
