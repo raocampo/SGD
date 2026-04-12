@@ -5194,7 +5194,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     const _margenVertical = modoUltraCompactoPdf ? 8 : modoCompactoPdf ? 10 : 44;
     // Espacio estimado para todo el contenido fijo (header + info + score + DT/firma + tarjetas + pagos)
     // Incluye buffer de seguridad para evitar overflow.
-    const _espacioFijo = modoUltraCompactoPdf ? 382 : modoCompactoPdf ? 320 : 490;
+    const _espacioFijo = modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 320 : 490;
     const _espacioParaFilas = _alturaA4 - _margenVertical - _espacioFijo;
     const _totalFilasConCabecera = totalFilasImpresion + 1; // +1 por la fila de encabezado
     const _alturaFilaMin = modoUltraCompactoPdf ? 5 : modoCompactoPdf ? 6 : 8;
@@ -5434,12 +5434,12 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                 },
                 {
                   text: [{ text: "Dirigente / Director tecnico: ", bold: true }, localDt],
-                  margin: [0, modoCompactoPdf ? 1 : 5, 0, 0],
+                  margin: [0, modoUltraCompactoPdf ? 3 : modoCompactoPdf ? 1 : 5, 0, 0],
                   fontSize: modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 6.8 : 7.8,
                 },
                 {
                   table: {
-                    widths: [modoCompactoPdf ? 38 : 44, "*"],
+                    widths: [modoUltraCompactoPdf ? 56 : modoCompactoPdf ? 38 : 44, "*"],
                     body: [
                       [
                         {
@@ -5451,7 +5451,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                         { text: "", border: [false, false, false, true] },
                       ],
                     ],
-                    heights: () => (modoUltraCompactoPdf ? 7 : modoCompactoPdf ? 8 : 14),
+                    heights: () => (modoUltraCompactoPdf ? 10 : modoCompactoPdf ? 8 : 14),
                   },
                   layout: {
                     hLineWidth: () => 0,
@@ -5501,12 +5501,12 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                 },
                 {
                   text: [{ text: "Dirigente / Director tecnico: ", bold: true }, visitDt],
-                  margin: [0, modoCompactoPdf ? 1 : 5, 0, 0],
+                  margin: [0, modoUltraCompactoPdf ? 3 : modoCompactoPdf ? 1 : 5, 0, 0],
                   fontSize: modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 6.8 : 7.8,
                 },
                 {
                   table: {
-                    widths: [modoCompactoPdf ? 38 : 44, "*"],
+                    widths: [modoUltraCompactoPdf ? 56 : modoCompactoPdf ? 38 : 44, "*"],
                     body: [
                       [
                         {
@@ -5518,7 +5518,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                         { text: "", border: [false, false, false, true] },
                       ],
                     ],
-                    heights: () => (modoUltraCompactoPdf ? 7 : modoCompactoPdf ? 8 : 14),
+                    heights: () => (modoUltraCompactoPdf ? 10 : modoCompactoPdf ? 8 : 14),
                   },
                   layout: {
                     hLineWidth: () => 0,
