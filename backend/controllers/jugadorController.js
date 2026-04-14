@@ -564,6 +564,17 @@ const jugadorController = {
 
         } catch (error) {
             console.error('Error actualizando jugador:', error);
+            if (error.message.includes('Límite') ||
+                error.message.includes('Equipo no encontrado') ||
+                error.message.includes('cédula') ||
+                error.message.includes('Cedula') ||
+                error.message.includes('número de camiseta') ||
+                error.message.includes('no puede estar en dos equipos') ||
+                error.message.includes('Solo se permite bajar jugadores')) {
+                return res.status(400).json({
+                    error: error.message
+                });
+            }
             res.status(500).json({
                 error: 'Error interno del servidor',
                 detalle: error.message

@@ -5634,6 +5634,43 @@ body.modal-open {
   display: block;
 }
 
+.jugadores-superior-card {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.jugadores-superior-contexto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid #d9e5f2;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef5fd 100%);
+  color: #1f2937;
+}
+
+.jugadores-superior-grid {
+  align-items: end;
+}
+
+.jugadores-superior-actions {
+  margin-top: -0.15rem;
+}
+
+#jugadores-superior-hint.is-warning {
+  color: #92400e;
+}
+
+#jugadores-superior-hint.is-error {
+  color: #b91c1c;
+}
+
+#jugadores-superior-hint.is-success {
+  color: #166534;
+}
+
 .reportes-jugadores-col {
   border: 1px solid #dbe4ef;
   border-radius: 10px;

@@ -24,6 +24,100 @@ const CONVOCATORIAS_PLANILLA_VALIDAS = new Set(["P", "S"]);
 const GOLES_WALKOVER = 3;
 const MAX_FALTAS_PLANILLA = 6;
 let _schemaOverrideCompeticion = null;
+const ESTADOS_BLOQUEAN_RESULTADO = new Set(["pendiente", "suspendido", "aplazado"]);
+const ESTADOS_RESULTADO_COMPUTABLE = new Set(["finalizado", "no_presentaron_ambos", "programado"]);
+const SQL_PARTIDO_RESULTADO_COMPUTABLE =
+  "(estado IN ('finalizado', 'no_presentaron_ambos', 'programado') AND resultado_local IS NOT NULL AND resultado_visitante IS NOT NULL)";
+
+function normalizarEstadoResultadoPartido(valor) {
+  return String(valor || "").trim().toLowerCase();
+}
+
+function estadoBloqueaResultadoPartido(valor) {
+  return ESTADOS_BLOQUEAN_RESULTADO.has(normalizarEstadoResultadoPartido(valor));
+}
+
+function normalizarMarcadorNullablePartido(valor) {
+  if (valor === null || valor === undefined || String(valor).trim() === "") return null;
+  const numero = Number.parseInt(String(valor), 10);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function partidoTieneMarcadorComputable(partido = {}) {
+  const resultadoLocal = normalizarMarcadorNullablePartido(partido?.resultado_local);
+  const resultadoVisitante = normalizarMarcadorNullablePartido(partido?.resultado_visitante);
+  return Number.isFinite(resultadoLocal) && Number.isFinite(resultadoVisitante);
+}
+
+function partidoCuentaComoResultadoComputable(partido = {}) {
+  const estado = normalizarEstadoResultadoPartido(partido?.estado);
+  if (!ESTADOS_RESULTADO_COMPUTABLE.has(estado)) return false;
+  if (estadoBloqueaResultadoPartido(estado)) return false;
+  return partidoTieneMarcadorComputable(partido);
+}
+
+function sanitizarMarcadoresLecturaPartido(partido = {}) {
+  if (!partido || typeof partido !== "object") return partido;
+  if (!estadoBloqueaResultadoPartido(partido?.estado)) return partido;
+  return {
+    ...partido,
+    resultado_local: null,
+    resultado_visitante: null,
+    resultado_local_shootouts: null,
+    resultado_visitante_shootouts: null,
+    shootouts: false,
+  };
+}
+
+function prepararMarcadoresPorEstado({
+  estado,
+  resultadoLocal,
+  resultadoVisitante,
+  resultadoLocalShootouts = null,
+  resultadoVisitanteShootouts = null,
+  fallbackCero = false,
+} = {}) {
+  const estadoNormalizado = normalizarEstadoResultadoPartido(estado) || "finalizado";
+  if (estadoBloqueaResultadoPartido(estadoNormalizado)) {
+    return {
+      estado: estadoNormalizado,
+      resultado_local: null,
+      resultado_visitante: null,
+      resultado_local_shootouts: null,
+      resultado_visitante_shootouts: null,
+      shootouts: false,
+    };
+  }
+
+  const marcadorLocalNormalizado = normalizarMarcadorNullablePartido(resultadoLocal);
+  const marcadorVisitanteNormalizado = normalizarMarcadorNullablePartido(resultadoVisitante);
+  const marcadorLocal =
+    Number.isFinite(marcadorLocalNormalizado) ? marcadorLocalNormalizado : fallbackCero ? 0 : null;
+  const marcadorVisitante =
+    Number.isFinite(marcadorVisitanteNormalizado) ? marcadorVisitanteNormalizado : fallbackCero ? 0 : null;
+
+  const shootoutsLocalNormalizado = normalizarMarcadorShootoutsPartido(resultadoLocalShootouts, {
+    permitirVacio: true,
+  });
+  const shootoutsVisitanteNormalizado = normalizarMarcadorShootoutsPartido(resultadoVisitanteShootouts, {
+    permitirVacio: true,
+  });
+  const shootoutsActivos =
+    Number.isFinite(marcadorLocal) &&
+    Number.isFinite(marcadorVisitante) &&
+    marcadorLocal === marcadorVisitante &&
+    Number.isFinite(shootoutsLocalNormalizado) &&
+    Number.isFinite(shootoutsVisitanteNormalizado);
+
+  return {
+    estado: estadoNormalizado,
+    resultado_local: marcadorLocal,
+    resultado_visitante: marcadorVisitante,
+    resultado_local_shootouts: shootoutsActivos ? shootoutsLocalNormalizado : null,
+    resultado_visitante_shootouts: shootoutsActivos ? shootoutsVisitanteNormalizado : null,
+    shootouts: shootoutsActivos,
+  };
+}
 
 function normalizarInasistenciaEquipoPlanilla(valor) {
   const raw = String(valor || "ninguno").trim().toLowerCase();
@@ -217,18 +311,33 @@ async function aplicarNumerosCamisetaDesdePlanilla(client, partido, cambios = []
 }
 
 function resultadosImpactanTabla(previo = {}, siguiente = {}) {
-  const normalizar = (valor) => {
-    if (valor === null || valor === undefined || valor === "") return null;
-    const n = Number.parseInt(valor, 10);
-    return Number.isFinite(n) ? n : null;
+  const normalizarComparable = (payload = {}) => {
+    const normalizado = prepararMarcadoresPorEstado({
+      estado: payload?.estado,
+      resultadoLocal: payload?.resultado_local,
+      resultadoVisitante: payload?.resultado_visitante,
+      resultadoLocalShootouts: payload?.resultado_local_shootouts,
+      resultadoVisitanteShootouts: payload?.resultado_visitante_shootouts,
+      fallbackCero: false,
+    });
+    return {
+      estado: normalizado.estado,
+      resultado_local: normalizado.resultado_local,
+      resultado_visitante: normalizado.resultado_visitante,
+      resultado_local_shootouts: normalizado.resultado_local_shootouts,
+      resultado_visitante_shootouts: normalizado.resultado_visitante_shootouts,
+      shootouts: Boolean(normalizado.shootouts),
+    };
   };
+  const previoNormalizado = normalizarComparable(previo);
+  const siguienteNormalizado = normalizarComparable(siguiente);
   return (
-    String(previo?.estado || "") !== String(siguiente?.estado || "") ||
-    normalizar(previo?.resultado_local) !== normalizar(siguiente?.resultado_local) ||
-    normalizar(previo?.resultado_visitante) !== normalizar(siguiente?.resultado_visitante) ||
-    normalizar(previo?.resultado_local_shootouts) !== normalizar(siguiente?.resultado_local_shootouts) ||
-    normalizar(previo?.resultado_visitante_shootouts) !== normalizar(siguiente?.resultado_visitante_shootouts) ||
-    Boolean(previo?.shootouts) !== Boolean(siguiente?.shootouts)
+    String(previoNormalizado?.estado || "") !== String(siguienteNormalizado?.estado || "") ||
+    previoNormalizado?.resultado_local !== siguienteNormalizado?.resultado_local ||
+    previoNormalizado?.resultado_visitante !== siguienteNormalizado?.resultado_visitante ||
+    previoNormalizado?.resultado_local_shootouts !== siguienteNormalizado?.resultado_local_shootouts ||
+    previoNormalizado?.resultado_visitante_shootouts !== siguienteNormalizado?.resultado_visitante_shootouts ||
+    Boolean(previoNormalizado?.shootouts) !== Boolean(siguienteNormalizado?.shootouts)
   );
 }
 
@@ -2004,7 +2113,7 @@ class Partido {
       ORDER BY p.jornada, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST
     `;
     const r = await pool.query(q, [grupo_id]);
-    return r.rows;
+    return r.rows.map((row) => sanitizarMarcadoresLecturaPartido(row));
   }
 
   static async obtenerPorEvento(evento_id) {
@@ -2037,7 +2146,7 @@ class Partido {
       ORDER BY p.jornada, g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
     const r = await pool.query(q, [evento_id]);
-    return r.rows;
+    return r.rows.map((row) => sanitizarMarcadoresLecturaPartido(row));
   }
 
   static async obtenerPorEventoYJornada(evento_id, jornada) {
@@ -2070,7 +2179,7 @@ class Partido {
       ORDER BY g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
     const r = await pool.query(q, [evento_id, jornada]);
-    return r.rows;
+    return r.rows.map((row) => sanitizarMarcadoresLecturaPartido(row));
   }
 
   static async obtenerPorCampeonato(campeonato_id) {
@@ -2103,7 +2212,7 @@ class Partido {
       ORDER BY p.jornada, g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
     const r = await pool.query(q, [campeonato_id]);
-    return r.rows;
+    return r.rows.map((row) => sanitizarMarcadoresLecturaPartido(row));
   }
 
   static async obtenerPorCampeonatoYJornada(campeonato_id, jornada) {
@@ -2136,7 +2245,7 @@ class Partido {
       ORDER BY g.letra_grupo, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.numero_campeonato NULLS LAST, p.id
     `;
     const r = await pool.query(q, [campeonato_id, jornada]);
-    return r.rows;
+    return r.rows.map((row) => sanitizarMarcadoresLecturaPartido(row));
   }
 
   static async obtenerPorId(id) {
@@ -2166,6 +2275,12 @@ class Partido {
   // ===============================
   static async actualizarResultado(id, resultado_local, resultado_visitante, estado = "finalizado") {
     const previo = await this.obtenerPorId(id);
+    const marcador = prepararMarcadoresPorEstado({
+      estado,
+      resultadoLocal: resultado_local,
+      resultadoVisitante: resultado_visitante,
+      fallbackCero: !estadoBloqueaResultadoPartido(estado),
+    });
     const columnaTs = await this.obtenerColumnaTimestampActualizacion();
     const setTs = columnaTs ? `,\n          ${columnaTs} = CURRENT_TIMESTAMP` : "";
 
@@ -2178,7 +2293,12 @@ class Partido {
       WHERE id = $4
       RETURNING *
     `;
-    const r = await pool.query(q, [resultado_local, resultado_visitante, estado, id]);
+    const r = await pool.query(q, [
+      marcador.resultado_local,
+      marcador.resultado_visitante,
+      marcador.estado,
+      id,
+    ]);
     const actualizado = r.rows[0] || null;
     if (actualizado && resultadosImpactanTabla(previo, actualizado)) {
       await invalidarOverridesCompeticionPorResultado(actualizado, {
@@ -2197,6 +2317,14 @@ class Partido {
     estado = "finalizado"
   ) {
     const previo = await this.obtenerPorId(id);
+    const marcador = prepararMarcadoresPorEstado({
+      estado,
+      resultadoLocal: resultado_local,
+      resultadoVisitante: resultado_visitante,
+      resultadoLocalShootouts: shootouts_local,
+      resultadoVisitanteShootouts: shootouts_visitante,
+      fallbackCero: !estadoBloqueaResultadoPartido(estado),
+    });
     const columnaTs = await this.obtenerColumnaTimestampActualizacion();
     const setTs = columnaTs ? `,\n          ${columnaTs} = CURRENT_TIMESTAMP` : "";
 
@@ -2206,18 +2334,19 @@ class Partido {
           resultado_visitante = $2,
           resultado_local_shootouts = $3,
           resultado_visitante_shootouts = $4,
-          shootouts = true,
-          estado = $5
+          shootouts = $5,
+          estado = $6
           ${setTs}
-      WHERE id = $6
+      WHERE id = $7
       RETURNING *
     `;
     const r = await pool.query(q, [
-      resultado_local,
-      resultado_visitante,
-      shootouts_local,
-      shootouts_visitante,
-      estado,
+      marcador.resultado_local,
+      marcador.resultado_visitante,
+      marcador.resultado_local_shootouts,
+      marcador.resultado_visitante_shootouts,
+      marcador.shootouts,
+      marcador.estado,
       id,
     ]);
     const actualizado = r.rows[0] || null;
@@ -2230,6 +2359,17 @@ class Partido {
   }
 
   static async actualizar(id, datos) {
+    if (Object.prototype.hasOwnProperty.call(datos, "estado")) {
+      const estadoNormalizado = normalizarEstadoResultadoPartido(datos.estado);
+      datos.estado = estadoNormalizado || datos.estado;
+      if (estadoBloqueaResultadoPartido(estadoNormalizado)) {
+        datos.resultado_local = null;
+        datos.resultado_visitante = null;
+        datos.resultado_local_shootouts = null;
+        datos.resultado_visitante_shootouts = null;
+        datos.shootouts = false;
+      }
+    }
     const campos = [];
     const valores = [];
     let i = 1;
@@ -2269,7 +2409,7 @@ class Partido {
   // ===============================
   static async eliminarFixtureEvento(evento_id, { force = false } = {}) {
     const jugadosR = await pool.query(
-      `SELECT COUNT(*)::int AS total FROM partidos WHERE evento_id = $1 AND estado = 'finalizado'`,
+      `SELECT COUNT(*)::int AS total FROM partidos WHERE evento_id = $1 AND ${SQL_PARTIDO_RESULTADO_COMPUTABLE}`,
       [evento_id]
     );
     const jugados = jugadosR.rows[0]?.total || 0;
@@ -2651,14 +2791,16 @@ class Partido {
         COALESCE(SUM(CASE WHEN equipo_local_id = $1 AND (COALESCE(resultado_local,0) > COALESCE(resultado_visitante,0) OR (COALESCE(shootouts,false) AND COALESCE(resultado_local_shootouts,0) > COALESCE(resultado_visitante_shootouts,0))) THEN 1
                  WHEN equipo_visitante_id = $1 AND (COALESCE(resultado_visitante,0) > COALESCE(resultado_local,0) OR (COALESCE(shootouts,false) AND COALESCE(resultado_visitante_shootouts,0) > COALESCE(resultado_local_shootouts,0))) THEN 1 ELSE 0 END), 0)::int as victorias_tiempo,
         COALESCE(SUM(CASE WHEN COALESCE(shootouts,false) AND ((equipo_local_id = $1 AND COALESCE(resultado_local_shootouts,0) > COALESCE(resultado_visitante_shootouts,0)) OR (equipo_visitante_id = $1 AND COALESCE(resultado_visitante_shootouts,0) > COALESCE(resultado_local_shootouts,0))) THEN 1 ELSE 0 END), 0)::int as victorias_shootouts,
-        COALESCE(SUM(CASE WHEN COALESCE(resultado_local,0) = COALESCE(resultado_visitante,0) AND estado = 'finalizado' AND (NOT COALESCE(shootouts,false)) THEN 1 ELSE 0 END), 0)::int as empates,
+        COALESCE(SUM(CASE WHEN COALESCE(resultado_local,0) = COALESCE(resultado_visitante,0) AND (NOT COALESCE(shootouts,false)) THEN 1 ELSE 0 END), 0)::int as empates,
         COALESCE(SUM(CASE WHEN equipo_local_id = $1 AND (COALESCE(resultado_local,0) < COALESCE(resultado_visitante,0) OR (COALESCE(shootouts,false) AND COALESCE(resultado_local_shootouts,0) < COALESCE(resultado_visitante_shootouts,0))) THEN 1
                  WHEN equipo_visitante_id = $1 AND (COALESCE(resultado_visitante,0) < COALESCE(resultado_local,0) OR (COALESCE(shootouts,false) AND COALESCE(resultado_visitante_shootouts,0) < COALESCE(resultado_local_shootouts,0))) THEN 1 ELSE 0 END), 0)::int as derrotas_tiempo,
         COALESCE(SUM(CASE WHEN COALESCE(shootouts,false) AND ((equipo_local_id = $1 AND COALESCE(resultado_local_shootouts,0) < COALESCE(resultado_visitante_shootouts,0)) OR (equipo_visitante_id = $1 AND COALESCE(resultado_visitante_shootouts,0) < COALESCE(resultado_local_shootouts,0))) THEN 1 ELSE 0 END), 0)::int as derrotas_shootouts,
         COALESCE(SUM(CASE WHEN equipo_local_id = $1 THEN COALESCE(resultado_local,0) ELSE COALESCE(resultado_visitante,0) END), 0)::int as goles_favor,
         COALESCE(SUM(CASE WHEN equipo_local_id = $1 THEN COALESCE(resultado_visitante,0) ELSE COALESCE(resultado_local,0) END), 0)::int as goles_contra
       FROM partidos
-      WHERE grupo_id = $2 AND (equipo_local_id = $1 OR equipo_visitante_id = $1) AND estado = 'finalizado'
+      WHERE grupo_id = $2
+        AND (equipo_local_id = $1 OR equipo_visitante_id = $1)
+        AND ${SQL_PARTIDO_RESULTADO_COMPUTABLE}
     `;
     try {
       const r = await pool.query(q, [equipo_id, grupo_id]);
@@ -2674,12 +2816,14 @@ class Partido {
   static async obtenerEstadisticasEquipoPorEvento(equipo_id, evento_id) {
     const q = `
       SELECT 
-        COUNT(CASE WHEN estado = 'finalizado' THEN 1 END) as partidos_jugados,
-        COUNT(CASE WHEN estado = 'finalizado' THEN 1 END) as partidos_completados,
-        SUM(CASE WHEN estado = 'finalizado' AND equipo_local_id = $1 THEN COALESCE(resultado_local,0) WHEN estado = 'finalizado' THEN COALESCE(resultado_visitante,0) ELSE 0 END) as goles_favor,
-        SUM(CASE WHEN estado = 'finalizado' AND equipo_local_id = $1 THEN COALESCE(resultado_visitante,0) WHEN estado = 'finalizado' THEN COALESCE(resultado_local,0) ELSE 0 END) as goles_contra
+        COUNT(*) as partidos_jugados,
+        COUNT(*) as partidos_completados,
+        SUM(CASE WHEN equipo_local_id = $1 THEN COALESCE(resultado_local,0) ELSE COALESCE(resultado_visitante,0) END) as goles_favor,
+        SUM(CASE WHEN equipo_local_id = $1 THEN COALESCE(resultado_visitante,0) ELSE COALESCE(resultado_local,0) END) as goles_contra
       FROM partidos
-      WHERE evento_id = $2 AND (equipo_local_id = $1 OR equipo_visitante_id = $1)
+      WHERE evento_id = $2
+        AND (equipo_local_id = $1 OR equipo_visitante_id = $1)
+        AND ${SQL_PARTIDO_RESULTADO_COMPUTABLE}
     `;
     const r = await pool.query(q, [equipo_id, evento_id]);
     return r.rows[0];
@@ -2688,13 +2832,14 @@ class Partido {
   static async obtenerEstadisticasEquipo(equipo_id, campeonato_id) {
     const q = `
       SELECT
-        COUNT(CASE WHEN estado = 'finalizado' THEN 1 END) as partidos_jugados,
-        COUNT(CASE WHEN estado = 'finalizado' THEN 1 END) as partidos_completados,
-        COALESCE(SUM(CASE WHEN estado = 'finalizado' AND equipo_local_id = $1 THEN COALESCE(resultado_local,0) WHEN estado = 'finalizado' THEN COALESCE(resultado_visitante,0) ELSE 0 END),0)::int as goles_favor,
-        COALESCE(SUM(CASE WHEN estado = 'finalizado' AND equipo_local_id = $1 THEN COALESCE(resultado_visitante,0) WHEN estado = 'finalizado' THEN COALESCE(resultado_local,0) ELSE 0 END),0)::int as goles_contra
+        COUNT(*) as partidos_jugados,
+        COUNT(*) as partidos_completados,
+        COALESCE(SUM(CASE WHEN equipo_local_id = $1 THEN COALESCE(resultado_local,0) ELSE COALESCE(resultado_visitante,0) END),0)::int as goles_favor,
+        COALESCE(SUM(CASE WHEN equipo_local_id = $1 THEN COALESCE(resultado_visitante,0) ELSE COALESCE(resultado_local,0) END),0)::int as goles_contra
       FROM partidos
       WHERE campeonato_id = $2
         AND (equipo_local_id = $1 OR equipo_visitante_id = $1)
+        AND ${SQL_PARTIDO_RESULTADO_COMPUTABLE}
     `;
     const r = await pool.query(q, [equipo_id, campeonato_id]);
     return r.rows[0];
@@ -3340,13 +3485,15 @@ class Partido {
       : normalizarInasistenciaEquipoPlanilla(datos.inasistencia_equipo);
     const resultadoAutomatico = obtenerResultadoPorInasistenciaEquipo(inasistenciaEquipo);
     const hayInasistencia = inasistenciaEquipo !== "ninguno";
-    const resultadoLocal = hayInasistencia
+    const estado = normalizarEstadoResultadoPartido(
+      hayInasistencia ? resultadoAutomatico.estado || "finalizado" : datos.estado || "finalizado"
+    ) || "finalizado";
+    const resultadoLocalBase = hayInasistencia
       ? resultadoAutomatico.resultadoLocal
-      : Number.parseInt(datos.resultado_local, 10) || 0;
-    const resultadoVisitante = hayInasistencia
+      : normalizarMarcadorNullablePartido(datos.resultado_local);
+    const resultadoVisitanteBase = hayInasistencia
       ? resultadoAutomatico.resultadoVisitante
-      : Number.parseInt(datos.resultado_visitante, 10) || 0;
-    const estado = hayInasistencia ? resultadoAutomatico.estado || "finalizado" : datos.estado || "finalizado";
+      : normalizarMarcadorNullablePartido(datos.resultado_visitante);
     const arbitro = Object.prototype.hasOwnProperty.call(datos, "arbitro")
       ? (datos.arbitro ?? "").toString().trim()
       : null;
@@ -3458,13 +3605,19 @@ class Partido {
         : normalizarMarcadorShootoutsPartido(datos.resultado_visitante_shootouts ?? datos.shootouts_visitante, {
             permitirVacio: true,
           });
-      const shootoutsActivos =
-        !hayInasistencia &&
-        resultadoLocal === resultadoVisitante &&
-        Number.isFinite(resultadoLocalShootoutsRaw) &&
-        Number.isFinite(resultadoVisitanteShootoutsRaw);
-      const resultadoLocalShootouts = shootoutsActivos ? resultadoLocalShootoutsRaw : null;
-      const resultadoVisitanteShootouts = shootoutsActivos ? resultadoVisitanteShootoutsRaw : null;
+      const marcadorPreparado = prepararMarcadoresPorEstado({
+        estado,
+        resultadoLocal: resultadoLocalBase,
+        resultadoVisitante: resultadoVisitanteBase,
+        resultadoLocalShootouts: resultadoLocalShootoutsRaw,
+        resultadoVisitanteShootouts: resultadoVisitanteShootoutsRaw,
+        fallbackCero: hayInasistencia,
+      });
+      const resultadoLocal = marcadorPreparado.resultado_local;
+      const resultadoVisitante = marcadorPreparado.resultado_visitante;
+      const resultadoLocalShootouts = marcadorPreparado.resultado_local_shootouts;
+      const resultadoVisitanteShootouts = marcadorPreparado.resultado_visitante_shootouts;
+      const shootoutsActivos = marcadorPreparado.shootouts === true;
       const esPlayoff = Boolean(enlacePlayoff?.slot || enlacePlayoff?.reclasificacion);
       if (esPlayoff) {
         const resolucionPlayoff = resolverGanadorPlayoffDesdeMarcador(partido, {

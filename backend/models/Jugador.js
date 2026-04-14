@@ -50,6 +50,36 @@ class Jugador {
         return Number.isFinite(edad) && edad >= 30 && edad <= 60 ? edad : null;
     }
 
+    static inferirNivelCategoriaMovimiento(nombreEvento) {
+        const raw = String(nombreEvento ?? "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim();
+        if (!raw) {
+            return { aplica: false, nivel: null, tipo: null };
+        }
+
+        const edadBase = this.inferirEdadBaseCategoria(raw);
+        if (Number.isFinite(edadBase)) {
+            return {
+                aplica: true,
+                nivel: edadBase,
+                tipo: "master",
+            };
+        }
+
+        if (/\b(abierta|libre|open)\b/.test(raw)) {
+            return {
+                aplica: true,
+                nivel: 0,
+                tipo: "abierta",
+            };
+        }
+
+        return { aplica: false, nivel: null, tipo: null };
+    }
+
     static calcularEdadDesdeFechaNacimiento(valor, referencia = new Date()) {
         const texto = this.normalizarFechaNacimiento(valor);
         if (!texto) return null;
@@ -305,6 +335,86 @@ class Jugador {
         }
 
         return evaluacion;
+    }
+
+    static async validarDireccionCategoriaPorCedula({
+        cedula,
+        equipoId,
+        eventoId,
+        excluirJugadorId = null,
+    }) {
+        const cedulaNormalizada = this.validarCedidentidad(this.normalizarCedidentidad(cedula));
+        const eventoDestinoId = this.normalizarEventoId(eventoId);
+        const equipoDestinoId = Number.parseInt(equipoId, 10);
+        if (!cedulaNormalizada || !eventoDestinoId || !Number.isFinite(equipoDestinoId) || equipoDestinoId <= 0) {
+            return null;
+        }
+
+        const destinoResult = await pool.query(
+            `
+                SELECT
+                    ev.id,
+                    ev.nombre,
+                    ev.campeonato_id,
+                    c.nombre AS campeonato_nombre
+                FROM eventos ev
+                JOIN campeonatos c ON c.id = ev.campeonato_id
+                JOIN equipos e ON e.campeonato_id = ev.campeonato_id
+                WHERE ev.id = $1
+                  AND e.id = $2
+                LIMIT 1
+            `,
+            [eventoDestinoId, equipoDestinoId]
+        );
+        const destino = destinoResult.rows[0];
+        if (!destino) return null;
+
+        const nivelDestino = this.inferirNivelCategoriaMovimiento(destino.nombre);
+        if (!nivelDestino.aplica) return null;
+
+        const params = [cedulaNormalizada, destino.campeonato_id, eventoDestinoId];
+        const excluirId = Number.parseInt(excluirJugadorId, 10);
+        const jugadoresResult = await pool.query(
+            `
+                SELECT DISTINCT
+                    ev.id AS evento_id,
+                    ev.nombre AS evento_nombre
+                FROM jugadores j
+                JOIN equipos e ON e.id = j.equipo_id
+                JOIN eventos ev ON ev.id = j.evento_id
+                WHERE j.cedidentidad = $1
+                  AND e.campeonato_id = $2
+                  AND j.evento_id IS NOT NULL
+                  AND ev.id <> $3
+                  ${Number.isFinite(excluirId) ? "AND j.id <> $4" : ""}
+            `,
+            Number.isFinite(excluirId) ? [...params, excluirId] : params
+        );
+
+        const conflicto = jugadoresResult.rows
+            .map((row) => ({
+                ...row,
+                nivel: this.inferirNivelCategoriaMovimiento(row.evento_nombre),
+            }))
+            .filter((row) => row.nivel?.aplica === true && Number.isFinite(row.nivel?.nivel))
+            .sort((a, b) => Number(a.nivel.nivel) - Number(b.nivel.nivel))
+            .find((row) => Number(row.nivel.nivel) < Number(nivelDestino.nivel));
+
+        if (conflicto) {
+            throw new Error(
+                `No se puede inscribir la cédula en la categoría "${destino.nombre}" porque ya participa en la categoría "${conflicto.evento_nombre}" del campeonato "${destino.campeonato_nombre}". Solo se permite bajar jugadores desde categorías más altas hacia categorías más bajas.`
+            );
+        }
+
+        return {
+            destino: {
+                id: destino.id,
+                nombre: destino.nombre,
+                campeonato_id: destino.campeonato_id,
+                campeonato_nombre: destino.campeonato_nombre,
+                nivel: nivelDestino.nivel,
+            },
+        };
     }
 
     static normalizarNumeroCamiseta(valor) {
@@ -664,6 +774,11 @@ class Jugador {
             eventoId: contextoRoster.eventoId,
             fechaNacimiento: fechaNacimientoNormalizada,
         });
+        await this.validarDireccionCategoriaPorCedula({
+            cedula: cedulaNormalizada,
+            equipoId: equipo_id,
+            eventoId: contextoRoster.eventoId,
+        });
 
         // Verificar si la cédula ya existe en otro equipo de la misma categoría/evento
         await this.verificarJugadorUnicoPorEvento(
@@ -929,6 +1044,21 @@ class Jugador {
                 equipoId: equipoDestinoId,
                 eventoId: contextoRoster.eventoId,
                 fechaNacimiento: datos.fecha_nacimiento ?? jugadorActual.fecha_nacimiento,
+                excluirJugadorId: id,
+            });
+        }
+
+        const cedulaActualNormalizada = this.normalizarCedidentidad(jugadorActual.cedidentidad);
+        const cedulaDestinoNormalizada = this.normalizarCedidentidad(datos.cedidentidad ?? jugadorActual.cedidentidad);
+        const eventoActualId = this.normalizarEventoId(jugadorActual.evento_id);
+        const categoriaCambiaRealmente = Number(contextoRoster.eventoId || 0) !== Number(eventoActualId || 0);
+        const cedulaCambiaRealmente = cedulaDestinoNormalizada !== cedulaActualNormalizada;
+
+        if (categoriaCambiaRealmente || cedulaCambiaRealmente) {
+            await this.validarDireccionCategoriaPorCedula({
+                cedula: cedulaDestinoNormalizada,
+                equipoId: equipoDestinoId,
+                eventoId: contextoRoster.eventoId,
                 excluirJugadorId: id,
             });
         }

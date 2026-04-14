@@ -2861,3 +2861,115 @@ Se auditó el sistema de transmisiones y se confirmó que está implementado al 
   - `tablas.html` para la misma categoría,
   - y alguna categoría `liga` adicional de otro organizador.
 - Confirmar también que al regenerar nuevos fixtures de liga, los partidos recién creados ya queden guardados con `grupo_id = Grupo Liga`.
+
+## 2026-04-14 - Inscripción cruzada de jugadores: solo se permite bajar de categoría
+
+### Necesidad operativa
+
+- Se solicitó permitir que un jugador ya inscrito en una categoría mayor pueda jugar también en una categoría menor del mismo campeonato.
+- Ejemplos válidos:
+  - `U 50 -> U 40`
+  - `U 50 -> U 35`
+  - `U 50 -> Abierta`
+- Ejemplos que deben bloquearse:
+  - `U 35 -> U 40`
+  - `U 40 -> U 50`
+  - `Abierta -> U 35`
+
+### Implementación aplicada
+
+- `backend/models/Jugador.js`
+  - se agregó `inferirNivelCategoriaMovimiento()` para traducir la categoría a una jerarquía operativa:
+    - `U/Sub +XX` usa el número de edad como nivel,
+    - `Abierta/Libre/Open` usa nivel `0`.
+  - se agregó `validarDireccionCategoriaPorCedula()`:
+    - busca otras categorías donde ya participa la misma cédula dentro del mismo campeonato,
+    - y bloquea la inscripción si el destino intenta subir respecto a una categoría ya registrada.
+  - la validación se ejecuta tanto en `crear()` como en `actualizar()`.
+- `backend/controllers/jugadorController.js`
+  - `actualizarJugador` ahora devuelve `400` para este tipo de validación operativa en vez de degradarla a error `500`.
+
+### Verificación realizada
+
+- `node --check backend/models/Jugador.js`
+- `node --check backend/controllers/jugadorController.js`
+- Pruebas reales sobre `Copa Velocity Máster`:
+  - cédula `1102905237`:
+    - `U 40 -> U 50`: bloqueado
+    - `U 50 -> U 40`: permitido
+  - cédula `1103774251`:
+    - `U 35 -> U 40`: bloqueado
+
+### Notas
+
+- La regla se apoya en la cédula para identificar que es el mismo jugador.
+- Si el campeonato no exige cédula, esta restricción no puede inferirse de forma confiable con nombre/apellido solamente.
+- La edición normal de una ficha ya existente no se bloquea si el jugador permanece en la misma categoría; la restricción se dispara al crear una nueva inscripción o al mover realmente la cédula a otra categoría.
+
+## 2026-04-14 - Resultados válidos en tablas/portal y pestaña para traer jugadores desde categoría superior
+
+### Problema detectado
+
+- Se reportó que algunas categorías mostraban partidos `pendiente` o `suspendido` con marcador `0-0` en la pestaña de resultados del portal.
+- Ese mismo tipo de registros podía contaminar:
+  - la tabla de posiciones,
+  - goleadores,
+  - tarjetas,
+  - faltas/fair play,
+  - y los contadores públicos de jornadas ya jugadas.
+- Además se pidió una forma operativa en `jugadores.html` para cargar en la inscripción actual a un jugador que ya exista en una categoría superior del mismo campeonato.
+
+### Implementación aplicada
+
+- `backend/models/Partido.js`
+  - se unificó una regla de resultado computable:
+    - solo cuentan `finalizado`, `no_presentaron_ambos` y `programado` con ambos marcadores presentes,
+    - `pendiente`, `suspendido` y `aplazado` limpian marcador y shootouts.
+  - `guardarPlanilla()` dejó de forzar `0-0` cuando los inputs llegan vacíos.
+  - las lecturas públicas/admin (`obtenerPorEvento`, `obtenerPorGrupo`, etc.) ahora saneán marcadores en estados bloqueados aunque la BD vieja todavía tenga `0-0`.
+  - las estadísticas de equipo ya no suman partidos bloqueados.
+- `backend/controllers/tablaController.js`
+  - tabla, goleadores, tarjetas y faltas/fair play ahora usan la misma condición de “resultado computable”, en vez de tomar cualquier partido con planilla.
+- `backend/services/publicPortalService.js`
+  - el contador `partidos_finalizados` público ya no depende de `partido_planillas`; ahora exige estado válido + marcador real.
+- `frontend/js/planilla.js`
+  - el payload de planilla dejó de serializar marcador vacío como `0`.
+- `frontend/js/portal.js`
+  - la pestaña `Resultados` dejó de usar `tiene_planilla_publicada` como sinónimo de resultado.
+  - solo se muestran marcadores cuando el partido realmente califica como resultado válido.
+  - los partidos `pendiente/suspendido/aplazado` ya no aparecen como resultados aunque históricamente hayan quedado con `0-0`.
+- `frontend/jugadores.html`
+  - se agregó la pestaña `Desde categoría superior`.
+- `frontend/js/jugadores.js`
+  - la nueva pestaña filtra solo categorías superiores del mismo campeonato,
+  - permite escoger categoría origen, equipo origen y jugador origen,
+  - y carga sus datos al formulario normal de inscripción del equipo/categoría destino.
+- `frontend/css/style.css`
+  - se añadieron estilos para la nueva pestaña de movimiento entre categorías.
+
+### Verificación realizada
+
+- `node --check backend/models/Partido.js`
+- `node --check backend/controllers/tablaController.js`
+- `node --check backend/services/publicPortalService.js`
+- `node --check frontend/js/portal.js`
+- `node --check frontend/js/planilla.js`
+- `node --check frontend/js/jugadores.js`
+- Validación real local:
+  - se detectaron partidos `pendiente/suspendido/aplazado` con marcador persistido en BD,
+  - ejemplo: partido `4383`, `evento 9`, estado `pendiente`, guardado como `0-0`,
+  - al leerlo por modelo ya sale saneado como `resultado_local = null`, `resultado_visitante = null`.
+
+### Estado operativo
+
+- Portal/playoff:
+  - el usuario confirmó que la llave eliminatoria ya está correcta tanto en local como en Render.
+- Baloncesto:
+  - la implementación base sigue pendiente de pruebas funcionales reales.
+
+### Pendiente siguiente
+
+- Probar en Render:
+  - una categoría con partidos suspendidos/pedientes para confirmar que desaparecen de `Resultados`,
+  - y la nueva pestaña `Desde categoría superior` en un flujo real de inscripción.
+- Si la revisión visual queda conforme, hacer commit y push de este bloque.

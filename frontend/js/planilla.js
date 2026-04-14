@@ -166,6 +166,15 @@ function aEntero(valor, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function normalizarMarcadorPrincipalPlanilla(valor, { permitirVacio = true } = {}) {
+  if (valor === undefined || valor === null) return permitirVacio ? null : 0;
+  const texto = String(valor).trim();
+  if (!texto) return permitirVacio ? null : 0;
+  const numero = Number.parseInt(texto, 10);
+  if (!Number.isFinite(numero)) return permitirVacio ? null : 0;
+  return numero;
+}
+
 function aDecimal(valor, fallback = 0) {
   const n = Number.parseFloat(valor);
   return Number.isFinite(n) ? n : fallback;
@@ -3897,10 +3906,14 @@ function recolectarPayloadPlanilla() {
     ),
     resultado_local: hayInasistencia
       ? resultadoAutomatico.local
-      : aEntero(document.getElementById("resultado-local")?.value, 0),
+      : normalizarMarcadorPrincipalPlanilla(document.getElementById("resultado-local")?.value, {
+          permitirVacio: true,
+        }),
     resultado_visitante: hayInasistencia
       ? resultadoAutomatico.visitante
-      : aEntero(document.getElementById("resultado-visitante")?.value, 0),
+      : normalizarMarcadorPrincipalPlanilla(document.getElementById("resultado-visitante")?.value, {
+          permitirVacio: true,
+        }),
     estado: hayInasistencia
       ? resultadoAutomatico.estado || "finalizado"
       : String(document.getElementById("estado-partido")?.value || "finalizado"),
@@ -6091,4 +6104,3 @@ window.volverAPartidos = volverAPartidos;
 window.recargarPlanilla = recargarPlanilla;
 window.abrirModalInscripcionPlanilla = abrirModalInscripcionPlanilla;
 window.cerrarModalInscripcionPlanilla = cerrarModalInscripcionPlanilla;
-

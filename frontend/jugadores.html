@@ -106,6 +106,14 @@
             Jugadores
           </button>
           <button
+            id="btn-tab-jugadores-superior"
+            class="jugadores-main-tab"
+            type="button"
+            onclick="cambiarPestanaJugadores('tab-jugadores-superior')"
+          >
+            Desde categoría superior
+          </button>
+          <button
             id="btn-tab-jugadores-reportes"
             class="jugadores-main-tab"
             type="button"
@@ -113,6 +121,47 @@
           >
             Reportes e Importaciones
           </button>
+        </div>
+
+        <div id="tab-jugadores-superior" class="jugadores-tab-panel">
+          <div class="config-card jugadores-superior-card">
+            <h3><i class="fas fa-arrow-down"></i> Inscribir desde categoría superior</h3>
+            <p class="form-hint">
+              Usa esta pestaña para traer un jugador ya inscrito en una categoría superior del mismo campeonato hacia la categoría inferior actual.
+            </p>
+            <div id="jugadores-superior-contexto" class="jugadores-superior-contexto"></div>
+            <div class="form-grid jugadores-superior-grid">
+              <div class="form-group">
+                <label for="select-evento-superior-jugador">Categoría superior:</label>
+                <select id="select-evento-superior-jugador">
+                  <option value="">— Selecciona una categoría superior —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="select-equipo-superior-jugador">Equipo de origen:</label>
+                <select id="select-equipo-superior-jugador">
+                  <option value="">— Selecciona un equipo de origen —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="select-jugador-superior-jugador">Jugador de origen:</label>
+                <select id="select-jugador-superior-jugador">
+                  <option value="">— Selecciona un jugador —</option>
+                </select>
+              </div>
+            </div>
+            <div class="partidos-busqueda-actions jugadores-superior-actions">
+              <button
+                class="btn btn-primary"
+                id="btn-cargar-jugador-superior"
+                type="button"
+                onclick="cargarJugadorDesdeCategoriaSuperior()"
+              >
+                <i class="fas fa-user-plus"></i> Cargar al formulario
+              </button>
+            </div>
+            <div id="jugadores-superior-hint" class="form-hint"></div>
+          </div>
         </div>
 
         <div id="tab-jugadores-reportes" class="jugadores-tab-panel">

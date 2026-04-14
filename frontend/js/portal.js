@@ -1322,7 +1322,6 @@ function normalizarJornadasPortal(jornadas = [], partidos = []) {
 function resolverEstadoNormalizadoPortal(partido = {}) {
   const estado = String(partido?.estado || "").trim().toLowerCase();
   if (estado) return estado;
-  if (partido?.tiene_planilla_publicada === true) return "finalizado";
   const resultadoLocal = Number(partido?.resultado_local);
   const resultadoVisitante = Number(partido?.resultado_visitante);
   const tieneResultado = Number.isFinite(resultadoLocal) && Number.isFinite(resultadoVisitante);
@@ -1350,6 +1349,36 @@ function resolverEstadoNormalizadoPortal(partido = {}) {
     return "programado";
   }
   return tienePartidoReal ? "programado" : "pendiente";
+}
+
+function esEstadoBloqueadoPortal(estado = "") {
+  return ["pendiente", "suspendido", "aplazado"].includes(String(estado || "").trim().toLowerCase());
+}
+
+function normalizarMarcadorPortal(valor) {
+  if (valor === null || valor === undefined || String(valor).trim() === "") return null;
+  const numero = Number.parseInt(String(valor), 10);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function tieneMarcadorComputablePortal(partido = {}) {
+  const resultadoLocal = normalizarMarcadorPortal(partido?.resultado_local);
+  const resultadoVisitante = normalizarMarcadorPortal(partido?.resultado_visitante);
+  return Number.isFinite(resultadoLocal) && Number.isFinite(resultadoVisitante);
+}
+
+function esPartidoConResultadoPortal(partido = {}) {
+  const estado = resolverEstadoNormalizadoPortal(partido);
+  if (esEstadoBloqueadoPortal(estado)) return false;
+  if (!["finalizado", "no_presentaron_ambos", "programado"].includes(estado)) return false;
+  return tieneMarcadorComputablePortal(partido);
+}
+
+function obtenerMarcadorVisiblePortal(partido = {}) {
+  if (!esPartidoConResultadoPortal(partido)) return "vs";
+  const resultadoLocal = normalizarMarcadorPortal(partido?.resultado_local) ?? 0;
+  const resultadoVisitante = normalizarMarcadorPortal(partido?.resultado_visitante) ?? 0;
+  return `${resultadoLocal} - ${resultadoVisitante}`;
 }
 
 function obtenerEstadoPartidoPortal(partido) {
@@ -1380,12 +1409,7 @@ function renderPartidoJornadaPortal(partido = {}) {
   const cancha = String(partido.cancha || partido.escenario || "").trim();
   const meta = [fecha, hora ? `Hora ${hora}` : "", cancha].filter(Boolean).join(" • ");
   const estadoNormalizado = resolverEstadoNormalizadoPortal(partido);
-  const finalizado = estadoNormalizado === "finalizado" || estadoNormalizado === "no_presentaron_ambos";
-  const tieneMarcador =
-    Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante));
-  const marcador = finalizado || tieneMarcador
-    ? `${partido.resultado_local ?? 0} - ${partido.resultado_visitante ?? 0}`
-    : "vs";
+  const marcador = obtenerMarcadorVisiblePortal(partido);
   const estado = obtenerEstadoPartidoPortal(partido);
   const estadoClass = estadoNormalizado.replace(/[^a-z_]/gi, "_").toLowerCase();
 
@@ -1432,11 +1456,6 @@ function extraerFechasJornada(partidos = []) {
   return fechas;
 }
 
-function esPartidoConResultadoPortal(partido = {}) {
-  const st = String(partido.estado || "").toLowerCase();
-  return st === "finalizado" || st === "no_presentaron_ambos" || partido?.tiene_planilla_publicada === true;
-}
-
 function esJornadaFinalizada(partidos = []) {
   if (!partidos.length) return false;
   return partidos.every((p) => esPartidoConResultadoPortal(p));
@@ -1445,10 +1464,7 @@ function esJornadaFinalizada(partidos = []) {
 function renderBadgeJornadaPortal(partidos = []) {
   const total = partidos.length;
   if (!total) return "";
-  const finalizados = partidos.filter((p) => String(p.estado || "").toLowerCase() === "finalizado").length;
-  const noPresentaron = partidos.filter((p) => String(p.estado || "").toLowerCase() === "no_presentaron_ambos").length;
-  const conPlanilla = partidos.filter((p) => p?.tiene_planilla_publicada === true).length;
-  const jugados = Math.max(finalizados + noPresentaron, conPlanilla);
+  const jugados = partidos.filter((p) => esPartidoConResultadoPortal(p)).length;
   const enCurso = partidos.some((p) => String(p.estado || "").toLowerCase() === "en_curso");
   if (enCurso) return '<span class="portal-jornada-badge badge-en-curso">En curso</span>';
   if (jugados === total) return '<span class="portal-jornada-badge badge-finalizada">Finalizada</span>';
@@ -1677,7 +1693,7 @@ function renderEliminatoriasPortal(payload = []) {
               const estadoNormalizado = resolverEstadoNormalizadoPortal(partido);
               const marcador =
                 Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante))
-                  ? `${partido.resultado_local ?? 0} - ${partido.resultado_visitante ?? 0}`
+                  ? obtenerMarcadorVisiblePortal(partido)
                   : "vs";
               const fecha = formatearFechaPortal(partido.fecha_partido || null);
               const hora = formatearHoraPortal(partido.hora_partido || null);

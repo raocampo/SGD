@@ -580,7 +580,10 @@ function aplicarEstadoClasificacionTabla(tabla, clasificadosPorGrupo = null) {
   });
 }
 
-const SQL_PARTIDO_PUBLICADO_TABLA = "(estado IN ('finalizado', 'no_presentaron_ambos') OR EXISTS (SELECT 1 FROM partido_planillas pp WHERE pp.partido_id = partidos.id))";
+function sqlPartidoResultadoComputable(alias = "") {
+  const prefijo = alias ? `${alias}.` : "";
+  return `(${prefijo}estado IN ('finalizado', 'no_presentaron_ambos', 'programado') AND ${prefijo}resultado_local IS NOT NULL AND ${prefijo}resultado_visitante IS NOT NULL)`;
+}
 
 async function calcularPuntosEquipoEnGrupo(equipoId, grupoId, sistema) {
   try {
@@ -589,7 +592,7 @@ async function calcularPuntosEquipoEnGrupo(equipoId, grupoId, sistema) {
       FROM partidos
       WHERE grupo_id = $1
         AND (equipo_local_id = $2 OR equipo_visitante_id = $2)
-        AND ${SQL_PARTIDO_PUBLICADO_TABLA}
+        AND ${sqlPartidoResultadoComputable()}
     `;
     const r = await pool.query(q, [grupoId, equipoId]);
     let puntos = 0;
@@ -612,7 +615,7 @@ async function calcularPuntosEquipoEnGrupo(equipoId, grupoId, sistema) {
       FROM partidos
       WHERE grupo_id = $1
         AND (equipo_local_id = $2 OR equipo_visitante_id = $2)
-        AND ${SQL_PARTIDO_PUBLICADO_TABLA}
+        AND ${sqlPartidoResultadoComputable()}
     `;
     const r = await pool.query(qLegacy, [grupoId, equipoId]);
     let puntos = 0;
@@ -633,7 +636,7 @@ async function calcularResumenEvento(equipoId, eventoId, sistema) {
     FROM partidos
     WHERE evento_id = $1
       AND (equipo_local_id = $2 OR equipo_visitante_id = $2)
-      AND ${SQL_PARTIDO_PUBLICADO_TABLA}
+      AND ${sqlPartidoResultadoComputable()}
   `;
   const r = await pool.query(q, [eventoId, equipoId]);
 
@@ -997,6 +1000,7 @@ async function obtenerGoleadoresEventoInterno(eventoId) {
     JOIN jugadores j ON j.id = g.${jugadorCol}
     LEFT JOIN equipos e ON e.id = j.equipo_id
     WHERE p.evento_id = $1
+      AND ${sqlPartidoResultadoComputable("p")}
     GROUP BY j.id, j.nombre, j.apellido, j.numero_camiseta, e.id, e.nombre
     ORDER BY goles DESC, jugador_nombre ASC
   `;
@@ -1059,6 +1063,7 @@ async function obtenerTarjetasEventoInterno(eventoId) {
         ${joinJugador}
         JOIN equipos e ON e.id = ${equipoExpr}
         WHERE p.evento_id = $1
+          AND ${sqlPartidoResultadoComputable("p")}
         GROUP BY e.id, e.nombre
       `;
       const r = await pool.query(q, [eventoId]);
@@ -1122,6 +1127,7 @@ async function obtenerTarjetasEventoInterno(eventoId) {
           FROM partidos p
           JOIN equipos el ON el.id = p.equipo_local_id
           WHERE p.evento_id = $1
+            AND ${sqlPartidoResultadoComputable("p")}
           UNION ALL
           SELECT
             ev.id AS equipo_id,
@@ -1131,6 +1137,7 @@ async function obtenerTarjetasEventoInterno(eventoId) {
           FROM partidos p
           JOIN equipos ev ON ev.id = p.equipo_visitante_id
           WHERE p.evento_id = $1
+            AND ${sqlPartidoResultadoComputable("p")}
         ) t
         GROUP BY t.equipo_id, t.equipo_nombre
       `;
@@ -1248,6 +1255,7 @@ async function obtenerFaltasEventoInterno(eventoId) {
       FROM partidos p
       JOIN equipos el ON el.id = p.equipo_local_id
       WHERE p.evento_id = $1
+        AND ${sqlPartidoResultadoComputable("p")}
       UNION ALL
       SELECT
         ev.id AS equipo_id,
@@ -1256,6 +1264,7 @@ async function obtenerFaltasEventoInterno(eventoId) {
       FROM partidos p
       JOIN equipos ev ON ev.id = p.equipo_visitante_id
       WHERE p.evento_id = $1
+        AND ${sqlPartidoResultadoComputable("p")}
     ) t
     GROUP BY t.equipo_id, t.equipo_nombre
   `;

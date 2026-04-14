@@ -60,6 +60,9 @@ let campeonatoMeta = {
 };
 
 let jugadoresActuales = [];
+let categoriasMovimientoSuperior = [];
+let equiposMovimientoSuperior = [];
+let jugadoresMovimientoSuperior = [];
 let vistaJugadores = localStorage.getItem("sgd_vista_jugadores") || "cards";
 vistaJugadores = vistaJugadores === "table" ? "table" : "cards";
 
@@ -403,6 +406,42 @@ function inferirEdadBaseCategoriaJugador(nombreEvento) {
   return Number.isFinite(edad) && edad >= 30 && edad <= 60 ? edad : null;
 }
 
+function inferirNivelMovimientoCategoriaJugador(nombreEvento) {
+  const raw = String(nombreEvento ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  if (!raw) return { aplica: false, nivel: null, tipo: null };
+
+  const edadBase = inferirEdadBaseCategoriaJugador(raw);
+  if (Number.isFinite(edadBase)) {
+    return {
+      aplica: true,
+      nivel: edadBase,
+      tipo: "master",
+    };
+  }
+
+  if (/\b(abierta|libre|open)\b/.test(raw)) {
+    return {
+      aplica: true,
+      nivel: 0,
+      tipo: "abierta",
+    };
+  }
+
+  return { aplica: false, nivel: null, tipo: null };
+}
+
+function esCategoriaSuperiorPermitidaJugador(origenNombre, destinoNombre) {
+  const origen = inferirNivelMovimientoCategoriaJugador(origenNombre);
+  const destino = inferirNivelMovimientoCategoriaJugador(destinoNombre);
+  if (!origen.aplica || !destino.aplica) return false;
+  if (!Number.isFinite(origen.nivel) || !Number.isFinite(destino.nivel)) return false;
+  return origen.nivel > destino.nivel;
+}
+
 function normalizarCuposJuvenilEvento(valor, fallback = 0) {
   const numero = Number.parseInt(valor, 10);
   if (!Number.isFinite(numero) || numero < 0) return fallback;
@@ -602,6 +641,7 @@ function cambiarPestanaJugadores(tabId = "tab-jugadores-gestion") {
 
   const tabs = [
     { buttonId: "btn-tab-jugadores-gestion", panelId: "tab-jugadores-gestion" },
+    { buttonId: "btn-tab-jugadores-superior", panelId: "tab-jugadores-superior" },
     { buttonId: "btn-tab-jugadores-reportes", panelId: "tab-jugadores-reportes" },
   ];
 
@@ -613,6 +653,244 @@ function cambiarPestanaJugadores(tabId = "tab-jugadores-gestion") {
     if (btn) btn.classList.toggle("active", activo);
     if (panel) panel.classList.toggle("active", activo);
   });
+
+  if (tabId === "tab-jugadores-superior") {
+    void refrescarPestanaJugadorSuperior();
+  }
+}
+
+function actualizarResumenMovimientoSuperior(html = "", tipo = "") {
+  const el = document.getElementById("jugadores-superior-hint");
+  if (!el) return;
+  el.classList.remove("is-success", "is-warning", "is-error");
+  if (tipo) el.classList.add(`is-${tipo}`);
+  el.innerHTML = html;
+}
+
+function resetearSelectMovimientoSuperior(id, placeholder) {
+  const select = document.getElementById(id);
+  if (!select) return null;
+  select.innerHTML = `<option value="">${placeholder}</option>`;
+  select.value = "";
+  select.disabled = true;
+  return select;
+}
+
+function actualizarResumenContextoMovimientoSuperior() {
+  const el = document.getElementById("jugadores-superior-contexto");
+  if (!el) return;
+  const campeonato = campeonatoMeta?.nombre || "—";
+  const categoria = obtenerNombreEventoActual() || "—";
+  const equipo = equipoActual?.nombre || "—";
+  el.innerHTML = `
+    <strong>Destino actual:</strong> ${escapeHtml(campeonato)}
+    <span>•</span>
+    <strong>Categoría:</strong> ${escapeHtml(categoria)}
+    <span>•</span>
+    <strong>Equipo:</strong> ${escapeHtml(equipo)}
+  `;
+}
+
+async function obtenerCategoriasMovimientoSuperior() {
+  if (!campeonatoId) {
+    categoriasMovimientoSuperior = [];
+    return [];
+  }
+  if (categoriasMovimientoSuperior.length && categoriasMovimientoSuperior.every((item) => Number(item?.campeonato_id) === Number(campeonatoId))) {
+    return categoriasMovimientoSuperior;
+  }
+  const data = await (window.EventosAPI?.obtenerPorCampeonato?.(campeonatoId) || window.ApiClient?.get?.(`/eventos/campeonato/${campeonatoId}`));
+  const lista = Array.isArray(data) ? data : (data.eventos || data.data || []);
+  categoriasMovimientoSuperior = lista.map((item) => ({
+    ...item,
+    campeonato_id: Number(item?.campeonato_id || campeonatoId) || null,
+  }));
+  return categoriasMovimientoSuperior;
+}
+
+async function cargarEquiposMovimientoSuperior(origenEventoId, mantenerEquipoId = null) {
+  const selectEquipo = resetearSelectMovimientoSuperior(
+    "select-equipo-superior-jugador",
+    "— Selecciona un equipo de origen —"
+  );
+  const selectJugador = resetearSelectMovimientoSuperior(
+    "select-jugador-superior-jugador",
+    "— Selecciona un jugador —"
+  );
+  equiposMovimientoSuperior = [];
+  jugadoresMovimientoSuperior = [];
+
+  if (!selectEquipo || !selectJugador || !Number.isFinite(Number(origenEventoId)) || Number(origenEventoId) <= 0) {
+    return;
+  }
+
+  try {
+    const data = await window.ApiClient.get(`/eventos/${Number(origenEventoId)}/equipos`);
+    const equipos = Array.isArray(data?.equipos) ? data.equipos : [];
+    equiposMovimientoSuperior = equipos;
+
+    equipos.forEach((equipo) => {
+      selectEquipo.innerHTML += `<option value="${equipo.id}">${escapeHtml(equipo.nombre || "Equipo")}</option>`;
+    });
+
+    selectEquipo.disabled = equipos.length === 0;
+    if (mantenerEquipoId && equipos.some((equipo) => Number(equipo.id) === Number(mantenerEquipoId))) {
+      selectEquipo.value = String(mantenerEquipoId);
+    }
+  } catch (error) {
+    console.error("Error cargando equipos de categoría superior:", error);
+    actualizarResumenMovimientoSuperior("No se pudieron cargar los equipos de la categoría superior seleccionada.", "error");
+  }
+}
+
+async function cargarJugadoresMovimientoSuperior(origenEventoId, origenEquipoId, mantenerJugadorId = null) {
+  const selectJugador = resetearSelectMovimientoSuperior(
+    "select-jugador-superior-jugador",
+    "— Selecciona un jugador —"
+  );
+  jugadoresMovimientoSuperior = [];
+  if (!selectJugador || !Number.isFinite(Number(origenEventoId)) || Number(origenEventoId) <= 0 || !Number.isFinite(Number(origenEquipoId)) || Number(origenEquipoId) <= 0) {
+    return;
+  }
+
+  try {
+    const data = await window.ApiClient.get(
+      `/jugadores/equipo/${Number(origenEquipoId)}?evento_id=${Number(origenEventoId)}`
+    );
+    const jugadores = Array.isArray(data) ? data : (data.jugadores || data.data || []);
+    jugadoresMovimientoSuperior = jugadores;
+
+    jugadores.forEach((jugador) => {
+      const nombre = `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "Jugador";
+      const cedula = String(jugador.cedidentidad || "").trim();
+      const extra = [
+        jugador.numero_camiseta ? `#${jugador.numero_camiseta}` : "",
+        cedula ? `CI ${cedula}` : "",
+      ].filter(Boolean).join(" • ");
+      selectJugador.innerHTML += `<option value="${jugador.id}">${escapeHtml(nombre)}${extra ? ` · ${escapeHtml(extra)}` : ""}</option>`;
+    });
+
+    selectJugador.disabled = jugadores.length === 0;
+    if (mantenerJugadorId && jugadores.some((jugador) => Number(jugador.id) === Number(mantenerJugadorId))) {
+      selectJugador.value = String(mantenerJugadorId);
+    }
+  } catch (error) {
+    console.error("Error cargando jugadores de categoría superior:", error);
+    actualizarResumenMovimientoSuperior("No se pudieron cargar los jugadores del equipo de origen.", "error");
+  }
+}
+
+async function refrescarPestanaJugadorSuperior() {
+  actualizarResumenContextoMovimientoSuperior();
+
+  const selectCategoria = resetearSelectMovimientoSuperior(
+    "select-evento-superior-jugador",
+    "— Selecciona una categoría superior —"
+  );
+  const selectEquipo = resetearSelectMovimientoSuperior(
+    "select-equipo-superior-jugador",
+    "— Selecciona un equipo de origen —"
+  );
+  const selectJugador = resetearSelectMovimientoSuperior(
+    "select-jugador-superior-jugador",
+    "— Selecciona un jugador —"
+  );
+  const btn = document.getElementById("btn-cargar-jugador-superior");
+  if (btn) btn.disabled = true;
+
+  if (!selectCategoria || !selectEquipo || !selectJugador) return;
+
+  if (!campeonatoId || !eventoId || !equipoId) {
+    actualizarResumenMovimientoSuperior(
+      "Selecciona primero campeonato, categoría destino y equipo destino para habilitar este flujo.",
+      "warning"
+    );
+    return;
+  }
+
+  try {
+    const categorias = await obtenerCategoriasMovimientoSuperior();
+    const categoriaDestino =
+      categorias.find((item) => Number(item.id) === Number(eventoId)) ||
+      { id: eventoId, nombre: obtenerNombreEventoActual() };
+
+    const superiores = categorias.filter((item) => {
+      if (Number(item.id) === Number(eventoId)) return false;
+      return esCategoriaSuperiorPermitidaJugador(item.nombre, categoriaDestino?.nombre);
+    });
+
+    if (!superiores.length) {
+      actualizarResumenMovimientoSuperior(
+        "La categoría actual no tiene categorías superiores habilitadas para tomar jugadores en este campeonato.",
+        "warning"
+      );
+      return;
+    }
+
+    superiores.forEach((categoria) => {
+      selectCategoria.innerHTML += `<option value="${categoria.id}">${escapeHtml(categoria.nombre || "Categoría")}</option>`;
+    });
+    selectCategoria.disabled = false;
+
+    const valorPrevioCategoria = selectCategoria.dataset.valorPrevio || "";
+    if (valorPrevioCategoria && superiores.some((item) => String(item.id) === valorPrevioCategoria)) {
+      selectCategoria.value = valorPrevioCategoria;
+    }
+
+    selectCategoria.onchange = async () => {
+      selectCategoria.dataset.valorPrevio = String(selectCategoria.value || "");
+      selectEquipo.dataset.valorPrevio = "";
+      selectJugador.dataset.valorPrevio = "";
+      if (btn) btn.disabled = true;
+      await cargarEquiposMovimientoSuperior(selectCategoria.value ? Number(selectCategoria.value) : null);
+      actualizarResumenMovimientoSuperior(
+        selectCategoria.value
+          ? "Selecciona el equipo de origen y luego el jugador que quieres traer a esta categoría inferior."
+          : "Selecciona una categoría superior para continuar.",
+        selectCategoria.value ? "" : "warning"
+      );
+    };
+
+    selectEquipo.onchange = async () => {
+      selectEquipo.dataset.valorPrevio = String(selectEquipo.value || "");
+      selectJugador.dataset.valorPrevio = "";
+      if (btn) btn.disabled = true;
+      await cargarJugadoresMovimientoSuperior(
+        selectCategoria.value ? Number(selectCategoria.value) : null,
+        selectEquipo.value ? Number(selectEquipo.value) : null
+      );
+    };
+
+    selectJugador.onchange = () => {
+      selectJugador.dataset.valorPrevio = String(selectJugador.value || "");
+      if (btn) btn.disabled = !selectJugador.value || usuarioSoloLecturaJugadores();
+    };
+
+    if (selectCategoria.value) {
+      await cargarEquiposMovimientoSuperior(
+        Number(selectCategoria.value),
+        selectEquipo.dataset.valorPrevio || null
+      );
+      if (selectEquipo.value) {
+        await cargarJugadoresMovimientoSuperior(
+          Number(selectCategoria.value),
+          Number(selectEquipo.value),
+          selectJugador.dataset.valorPrevio || null
+        );
+      }
+    }
+
+    actualizarResumenMovimientoSuperior(
+      usuarioSoloLecturaJugadores()
+        ? "Puedes consultar jugadores de categorías superiores, pero tu perfil no puede inscribir nuevos registros."
+        : "Solo se muestran categorías superiores del mismo campeonato. El alta final se hace en el formulario normal.",
+      usuarioSoloLecturaJugadores() ? "warning" : ""
+    );
+    if (btn) btn.disabled = !selectJugador.value || usuarioSoloLecturaJugadores();
+  } catch (error) {
+    console.error("Error preparando pestaña de jugador superior:", error);
+    actualizarResumenMovimientoSuperior("No se pudo preparar la pestaña para traer jugadores desde categorías superiores.", "error");
+  }
 }
 
 function aplicarRestriccionesRolEnJugadores() {
@@ -1152,14 +1430,82 @@ async function buscarJugadorPorCedulaEnBaseLocal() {
   }
 }
 
+function obtenerJugadorSuperiorSeleccionado() {
+  const jugadorId = Number.parseInt(
+    document.getElementById("select-jugador-superior-jugador")?.value || "",
+    10
+  );
+  if (!Number.isFinite(jugadorId) || jugadorId <= 0) return null;
+  return jugadoresMovimientoSuperior.find((jugador) => Number(jugador.id) === jugadorId) || null;
+}
+
+async function cargarJugadorDesdeCategoriaSuperior() {
+  if (usuarioSoloLecturaJugadores()) {
+    mostrarNotificacion("Tu perfil es solo lectura en jugadores", "warning");
+    return;
+  }
+  if (!equipoId || !eventoId) {
+    mostrarNotificacion("Selecciona primero la categoría y el equipo destino", "warning");
+    return;
+  }
+
+  let jugador = obtenerJugadorSuperiorSeleccionado();
+  if (!jugador) {
+    mostrarNotificacion("Selecciona un jugador de la categoría superior", "warning");
+    return;
+  }
+
+  if (jugador?.cedidentidad) {
+    const yaInscrito = jugadoresActuales.some(
+      (item) => String(item?.cedidentidad || "").trim() && String(item?.cedidentidad || "").trim() === String(jugador.cedidentidad || "").trim()
+    );
+    if (yaInscrito) {
+      mostrarNotificacion("Ese jugador ya está inscrito en el equipo destino actual", "warning");
+      return;
+    }
+  }
+
+  try {
+    const data = await ApiClient.get(`/jugadores/${jugador.id}`);
+    jugador = data?.jugador || data || jugador;
+  } catch (error) {
+    console.warn("No se pudo refrescar el jugador seleccionado, se usará el perfil listado:", error);
+  }
+
+  const categoriaOrigenId = Number.parseInt(
+    document.getElementById("select-evento-superior-jugador")?.value || "",
+    10
+  );
+  const equipoOrigenId = Number.parseInt(
+    document.getElementById("select-equipo-superior-jugador")?.value || "",
+    10
+  );
+  const categoriaOrigen = categoriasMovimientoSuperior.find((item) => Number(item.id) === categoriaOrigenId);
+  const equipoOrigen = equiposMovimientoSuperior.find((item) => Number(item.id) === equipoOrigenId);
+
+  mostrarModalCrearJugador();
+  jugadorEncontradoPorCedula = jugador;
+  rellenarFormularioJugadorDesdePerfil(jugador);
+  actualizarEstadoRequisitosEnModal(null);
+  actualizarResultadoBusquedaCedula(
+    `Se cargaron datos desde <strong>${escapeHtml(categoriaOrigen?.nombre || "categoría superior")}</strong> / ${escapeHtml(
+      equipoOrigen?.nombre || "equipo de origen"
+    )}. Revisa número de camiseta y documentos antes de guardar la nueva inscripción.`,
+    "success"
+  );
+  document.getElementById("jugador-numero")?.focus();
+}
+
 function limpiarVistaSinEquipo() {
   const info = document.getElementById("info-equipo");
   const lista = document.getElementById("lista-jugadores");
   jugadoresActuales = [];
+  equipoActual = null;
   if (info) info.style.display = "none";
   mostrarBloqueReportesJugador("");
   renderPlanillaJugador();
   actualizarEstadoPanelReportes();
+  void refrescarPestanaJugadorSuperior();
   if (lista) {
     lista.innerHTML = `
       <div class="empty-state">
@@ -1210,6 +1556,9 @@ async function cargarCampeonatosSelectDirecto() {
       eventoId = null;
       equipoId = null;
       campeonatoMeta = null;
+      categoriasMovimientoSuperior = [];
+      equiposMovimientoSuperior = [];
+      jugadoresMovimientoSuperior = [];
       eventoCarnetMeta = {
         ...construirMetaEventoCarnet({}),
       };
@@ -1219,6 +1568,7 @@ async function cargarCampeonatosSelectDirecto() {
       await cargarConfigCampeonato();
       limpiarVistaSinEquipo();
       actualizarEstadoPanelReportes();
+      void refrescarPestanaJugadorSuperior();
     };
   } catch (error) {
     console.error(error);
@@ -1263,6 +1613,7 @@ async function cargarEventosSelectDirecto(campId) {
       await cargarEquiposSelectDirecto(campId, eventoId);
       limpiarVistaSinEquipo();
       actualizarEstadoPanelReportes();
+      void refrescarPestanaJugadorSuperior();
     };
   } catch (error) {
     console.error(error);
@@ -1302,6 +1653,7 @@ async function cargarEquiposSelectDirecto(campId, evtId = null) {
       equipoId = select.value ? Number.parseInt(select.value, 10) : null;
       guardarContextoJugadoresEnSesion();
       actualizarEstadoPanelReportes();
+      void refrescarPestanaJugadorSuperior();
     };
   } catch (error) {
     console.error(error);
@@ -1360,6 +1712,7 @@ async function cargarContextoEquipo() {
   guardarContextoJugadoresEnSesion();
   actualizarEstadoRequisitosEnModal(null);
   actualizarEstadoPanelReportes();
+  await refrescarPestanaJugadorSuperior();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -1425,6 +1778,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await cargarNombreEventoActual();
   await cargarContextoEquipo();
   actualizarEstadoPanelReportes();
+  await refrescarPestanaJugadorSuperior();
 });
 
 async function cargarInfoEquipo() {
@@ -4168,6 +4522,7 @@ function descargarPlantillaJugadores() {
 window.cargarJugadoresDesdeSeleccion = cargarJugadoresDesdeSeleccion;
 window.cambiarPestanaJugadores = cambiarPestanaJugadores;
 window.cambiarVistaJugadores = cambiarVistaJugadores;
+window.cargarJugadorDesdeCategoriaSuperior = cargarJugadorDesdeCategoriaSuperior;
 window.mostrarModalCrearJugador = mostrarModalCrearJugador;
 window.editarJugador = editarJugador;
 window.eliminarJugador = eliminarJugador;
