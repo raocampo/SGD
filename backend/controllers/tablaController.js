@@ -715,6 +715,7 @@ async function generarTablaGrupoInterna(grupoId, options = {}) {
   const qGrupo = `
     SELECT g.id, g.nombre_grupo, g.letra_grupo, g.evento_id,
            e.nombre AS evento_nombre,
+           LOWER(COALESCE(e.metodo_competencia, 'grupos')) AS metodo_competencia,
            COALESCE(
              e.clasificados_por_grupo,
              CASE WHEN LOWER(COALESCE(e.metodo_competencia, 'grupos')) IN ('grupos', 'mixto') THEN 2 ELSE NULL END
@@ -733,6 +734,7 @@ async function generarTablaGrupoInterna(grupoId, options = {}) {
   if (!grupoR.rows.length) throw new Error("Grupo no encontrado");
 
   const grupo = grupoR.rows[0];
+  const esTablaLiga = String(grupo.metodo_competencia || "").trim().toLowerCase() === "liga";
   const sistema = grupo.sistema_puntuacion || "tradicional";
   const reglas = parsearReglas(grupo.reglas_desempate);
   const equipos = await obtenerEquiposGrupo(grupo.id);
@@ -740,14 +742,26 @@ async function generarTablaGrupoInterna(grupoId, options = {}) {
   const tabla = [];
 
   for (const equipo of equipos) {
-    const est = await Partido.obtenerEstadisticasEquipoAvanzado(equipo.id, grupo.id);
-    const puntos = await calcularPuntosEquipoEnGrupo(equipo.id, grupo.id, sistema);
+    const est = esTablaLiga
+      ? await calcularResumenEvento(equipo.id, grupo.evento_id, sistema)
+      : await Partido.obtenerEstadisticasEquipoAvanzado(equipo.id, grupo.id);
+    const puntos = esTablaLiga
+      ? aEntero(est.puntos, 0)
+      : await calcularPuntosEquipoEnGrupo(equipo.id, grupo.id, sistema);
 
     const victoriasTiempo = aEntero(est.victorias_tiempo, 0);
     const victoriasShootouts = aEntero(est.victorias_shootouts, 0);
     const derrotasTiempo = aEntero(est.derrotas_tiempo, 0);
     const derrotasShootouts = aEntero(est.derrotas_shootouts, 0);
-    const empates = Math.max(aEntero(est.empates, 0) - victoriasShootouts - derrotasShootouts, 0);
+    const empates = esTablaLiga
+      ? aEntero(est.partidos_empatados, 0)
+      : Math.max(aEntero(est.empates, 0) - victoriasShootouts - derrotasShootouts, 0);
+    const partidosGanados = esTablaLiga
+      ? aEntero(est.partidos_ganados, 0)
+      : victoriasTiempo + victoriasShootouts;
+    const partidosPerdidos = esTablaLiga
+      ? aEntero(est.partidos_perdidos, 0)
+      : derrotasTiempo + derrotasShootouts;
     const gf = aEntero(est.goles_favor, 0);
     const gc = aEntero(est.goles_contra, 0);
     const estadoEquipo = estadosEquipos.get(Number(equipo.id)) || {
@@ -769,9 +783,9 @@ async function generarTablaGrupoInterna(grupoId, options = {}) {
       },
       estadisticas: {
         partidos_jugados: aEntero(est.partidos_jugados, 0),
-        partidos_ganados: victoriasTiempo + victoriasShootouts,
+        partidos_ganados: partidosGanados,
         partidos_empatados: empates,
-        partidos_perdidos: derrotasTiempo + derrotasShootouts,
+        partidos_perdidos: partidosPerdidos,
         goles_favor: gf,
         goles_contra: gc,
         diferencia_goles: gf - gc,

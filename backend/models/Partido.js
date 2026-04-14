@@ -2,6 +2,7 @@
 const pool = require("../config/database");
 const Finanza = require("./Finanza");
 const Jugador = require("./Jugador");
+const Grupo = require("./Grupo");
 
 // ===============================
 // Helpers (NO se redeclaran)
@@ -1809,6 +1810,16 @@ class Partido {
     await this.asegurarEsquemaEventoEquiposOrden();
     const evento_id = evento.id;
     const campeonato_id = evento.campeonato_id;
+    const metodoCompetencia = String(evento?.metodo_competencia || "")
+      .trim()
+      .toLowerCase();
+    let grupoLigaId = null;
+
+    if (["liga", "todos", "todos_contra_todos"].includes(metodoCompetencia)) {
+      const grupoLiga = await Grupo.asegurarGrupoLigaPorEvento(evento_id);
+      const grupoIdNormalizado = Number.parseInt(grupoLiga?.grupo?.id, 10);
+      grupoLigaId = Number.isFinite(grupoIdNormalizado) && grupoIdNormalizado > 0 ? grupoIdNormalizado : null;
+    }
 
     if (reemplazar) {
       await pool.query(`DELETE FROM partidos WHERE evento_id = $1`, [evento_id]);
@@ -1855,7 +1866,17 @@ class Partido {
       let jornada = 1;
       for (const jf of jornadas) {
         for (const [local, visitante] of jf) {
-          const p = await this.crear(campeonato_id, null, local, visitante, null, null, null, jornada, evento_id);
+          const p = await this.crear(
+            campeonato_id,
+            grupoLigaId,
+            local,
+            visitante,
+            null,
+            null,
+            null,
+            jornada,
+            evento_id
+          );
           creados.push(p);
         }
         jornada++;
@@ -1910,7 +1931,7 @@ class Partido {
             const [local, visitante] = jf[idx];
             const creado = await this.crear(
               campeonato_id,
-              null,
+              grupoLigaId,
               local,
               visitante,
               null,
@@ -1929,7 +1950,7 @@ class Partido {
           const [local, visitante] = jf[idx++];
           const creado = await this.crear(
             campeonato_id,
-            null,
+            grupoLigaId,
             local,
             visitante,
             formatYMD(slot.dateObj),
@@ -4120,4 +4141,3 @@ class Partido {
 }
 
 module.exports = Partido;
-

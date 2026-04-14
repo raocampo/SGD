@@ -2808,3 +2808,56 @@ Se auditó el sistema de transmisiones y se confirmó que está implementado al 
   - ausencia total de overtime en fútbol,
   - no superposición visual entre `N` y `P/S`,
   - y consistencia del guardado/recarga de la captura por jugador.
+
+## 2026-04-14 - Tabla de posiciones liga: resultados ya reflejan PJ/PTS aunque exista Grupo Liga
+
+### Problema detectado
+
+- En categorías `liga` de terceros organizadores se detectó un caso real donde:
+  - los partidos y goleadores sí estaban registrados,
+  - pero la `Tabla de posiciones` seguía saliendo completamente en cero.
+- El caso observado fue:
+  - campeonato `Copa Velocity Máster`
+  - categoría `U 35`
+  - con partidos históricos creados por fixture `todos contra todos`.
+
+### Causa raíz
+
+- El fixture `liga` todavía generaba partidos con `grupo_id = NULL`.
+- Después de introducir `Grupo Liga`, algunas vistas pasaron a calcular posiciones por grupo al detectar que el evento ya tenía un grupo asociado.
+- Eso producía una inconsistencia:
+  - los partidos históricos seguían colgados al `evento`,
+  - pero la tabla intentaba leer estadísticas desde `grupo_id`,
+  - por eso `PJ`, `PG`, `GF`, `PTS`, etc. quedaban en `0`.
+
+### Implementación aplicada
+
+- `backend/models/Partido.js`
+  - `generarFixtureEventoTodosContraTodos()` ahora asegura `Grupo Liga` cuando la categoría está en modo liga,
+  - y los nuevos partidos se crean con `grupo_id` apuntando a ese grupo.
+- `backend/controllers/tablaController.js`
+  - `generarTablaGrupoInterna()` ahora detecta cuando el grupo pertenece a una categoría `liga`,
+  - y en ese caso calcula la tabla usando el resumen por `evento` en vez de depender de `grupo_id`.
+- Con esto quedan cubiertos ambos escenarios:
+  - fixtures nuevos de liga ya salen ligados a `Grupo Liga`,
+  - fixtures viejos con `grupo_id = NULL` siguen alimentando correctamente la tabla de posiciones.
+
+### Verificación realizada
+
+- `node --check backend/models/Partido.js`
+- `node --check backend/controllers/tablaController.js`
+- Prueba real local:
+  - se aseguró `Grupo Liga` para `evento 16` (`U 35`),
+  - y la tabla dejó de salir en cero.
+- Resultado observado en local tras la corrección:
+  - `BOCHA'S F.C.` → `PJ 1`, `PTS 3`
+  - `ROMA F.C.` → `PJ 1`, `PTS 3`
+  - `ALFARO VIVE CARAJO` → `PJ 1`, `PTS 1`
+
+### Pendiente siguiente
+
+- Validar en UI:
+  - `portal` de `Copa Velocity Máster -> U 35`,
+  - `tablas.html` para la misma categoría,
+  - y alguna categoría `liga` adicional de otro organizador.
+- Confirmar también que al regenerar nuevos fixtures de liga, los partidos recién creados ya queden guardados con `grupo_id = Grupo Liga`.
