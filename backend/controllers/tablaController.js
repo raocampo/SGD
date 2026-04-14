@@ -582,7 +582,7 @@ function aplicarEstadoClasificacionTabla(tabla, clasificadosPorGrupo = null) {
 
 function sqlPartidoResultadoComputable(alias = "") {
   const prefijo = alias ? `${alias}.` : "";
-  return `(${prefijo}estado IN ('finalizado', 'no_presentaron_ambos', 'programado') AND ${prefijo}resultado_local IS NOT NULL AND ${prefijo}resultado_visitante IS NOT NULL)`;
+  return `(${prefijo}estado IN ('finalizado', 'no_presentaron_ambos') AND ${prefijo}resultado_local IS NOT NULL AND ${prefijo}resultado_visitante IS NOT NULL)`;
 }
 
 async function calcularPuntosEquipoEnGrupo(equipoId, grupoId, sistema) {

@@ -362,7 +362,7 @@ async function listarEventosPublicosPorCampeonato(campeonatoId) {
       COUNT(DISTINCT g.id)::int AS total_grupos,
       COUNT(DISTINCT p.id)::int AS total_partidos,
       COUNT(DISTINCT CASE
-        WHEN p.estado IN ('finalizado', 'no_presentaron_ambos', 'programado')
+        WHEN p.estado IN ('finalizado', 'no_presentaron_ambos')
           AND p.resultado_local IS NOT NULL
           AND p.resultado_visitante IS NOT NULL
         THEN p.id

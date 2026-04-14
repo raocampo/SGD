@@ -1370,7 +1370,7 @@ function tieneMarcadorComputablePortal(partido = {}) {
 function esPartidoConResultadoPortal(partido = {}) {
   const estado = resolverEstadoNormalizadoPortal(partido);
   if (esEstadoBloqueadoPortal(estado)) return false;
-  if (!["finalizado", "no_presentaron_ambos", "programado"].includes(estado)) return false;
+  if (!["finalizado", "no_presentaron_ambos"].includes(estado)) return false;
   return tieneMarcadorComputablePortal(partido);
 }
 

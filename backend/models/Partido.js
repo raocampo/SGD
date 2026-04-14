@@ -24,10 +24,10 @@ const CONVOCATORIAS_PLANILLA_VALIDAS = new Set(["P", "S"]);
 const GOLES_WALKOVER = 3;
 const MAX_FALTAS_PLANILLA = 6;
 let _schemaOverrideCompeticion = null;
-const ESTADOS_BLOQUEAN_RESULTADO = new Set(["pendiente", "suspendido", "aplazado"]);
-const ESTADOS_RESULTADO_COMPUTABLE = new Set(["finalizado", "no_presentaron_ambos", "programado"]);
+const ESTADOS_BLOQUEAN_RESULTADO = new Set(["pendiente", "suspendido", "aplazado", "programado"]);
+const ESTADOS_RESULTADO_COMPUTABLE = new Set(["finalizado", "no_presentaron_ambos"]);
 const SQL_PARTIDO_RESULTADO_COMPUTABLE =
-  "(estado IN ('finalizado', 'no_presentaron_ambos', 'programado') AND resultado_local IS NOT NULL AND resultado_visitante IS NOT NULL)";
+  "(estado IN ('finalizado', 'no_presentaron_ambos') AND resultado_local IS NOT NULL AND resultado_visitante IS NOT NULL)";
 
 function normalizarEstadoResultadoPartido(valor) {
   return String(valor || "").trim().toLowerCase();
