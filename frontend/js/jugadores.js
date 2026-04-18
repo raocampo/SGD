@@ -4181,14 +4181,14 @@ async function procesarArchivoImportacionJugadores(file) {
   }
 
   const arrayBuffer = await leerArchivoComoArrayBuffer(file);
-  const wb = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+  const wb = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true, cellText: true });
   const sheetName = wb.SheetNames[0];
   const sheet = wb.Sheets[sheetName];
   if (!sheet) throw new Error("El archivo no contiene hojas válidas");
 
   const filasRaw = window.XLSX.utils.sheet_to_json(sheet, {
     defval: "",
-    raw: true,
+    raw: false, // usa .w (texto formateado) para preservar ceros iniciales en cédulas
   });
 
   if (!filasRaw.length) {
@@ -4489,6 +4489,25 @@ function descargarPlantillaJugadores() {
     { wch: 38 },
     { wch: 38 },
   ];
+
+  // Pre-formatear columna cedidentidad (col 2) como texto para 50 filas.
+  // Esto evita que Excel convierta cédulas con cero inicial (ej: 0102030405)
+  // a número y pierda el cero cuando el usuario agrega filas nuevas.
+  for (let r = 1; r <= 50; r++) {
+    const addr = window.XLSX.utils.encode_cell({ r, c: 2 });
+    if (wsDatos[addr]) {
+      wsDatos[addr].t = "s";
+      wsDatos[addr].z = "@";
+    } else {
+      wsDatos[addr] = { t: "s", v: "", z: "@" };
+    }
+  }
+  // Actualizar el rango de referencia para incluir las filas pre-formateadas
+  const refActual = window.XLSX.utils.decode_range(wsDatos["!ref"] || "A1:I2");
+  if (refActual.e.r < 50) {
+    refActual.e.r = 50;
+    wsDatos["!ref"] = window.XLSX.utils.encode_range(refActual);
+  }
 
   const instrucciones = [
     ["INSTRUCCIONES PARA IMPORTAR JUGADORES"],

@@ -384,7 +384,7 @@ async function procesarArchivoImportacionEquipos(file) {
   if (!window.XLSX) throw new Error("No se cargó la librería XLSX para importar");
 
   const arrayBuffer = await leerArchivoComoArrayBufferEquipos(file);
-  const wb = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+  const wb = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true, cellText: true });
   const sheetName = wb.SheetNames[0];
   const sheet = wb.Sheets[sheetName];
   if (!sheet) throw new Error("El archivo no contiene hojas válidas");
@@ -535,6 +535,23 @@ function descargarPlantillaEquipos() {
     { wch: 14 },
     { wch: 42 },
   ];
+
+  // Pre-formatear columna telefono (col 4) como texto para 50 filas.
+  // Evita que Excel elimine el cero inicial de números celulares (ej: 0999999999).
+  for (let r = 1; r <= 50; r++) {
+    const addr = window.XLSX.utils.encode_cell({ r, c: 4 });
+    if (wsDatos[addr]) {
+      wsDatos[addr].t = "s";
+      wsDatos[addr].z = "@";
+    } else {
+      wsDatos[addr] = { t: "s", v: "", z: "@" };
+    }
+  }
+  const refActualEq = window.XLSX.utils.decode_range(wsDatos["!ref"] || "A1:K2");
+  if (refActualEq.e.r < 50) {
+    refActualEq.e.r = 50;
+    wsDatos["!ref"] = window.XLSX.utils.encode_range(refActualEq);
+  }
 
   const instrucciones = [
     ["INSTRUCCIONES PARA IMPORTAR EQUIPOS"],
