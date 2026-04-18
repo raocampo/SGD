@@ -49,6 +49,27 @@ class PartidoTransmision {
         END IF;
       END $$;
     `);
+    // Migración: overlay_token + director_token (tokens para Socket.io overlay)
+    await db.query(`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'partido_transmisiones' AND column_name = 'overlay_token'
+        ) THEN
+          ALTER TABLE partido_transmisiones ADD COLUMN overlay_token UUID DEFAULT gen_random_uuid() UNIQUE;
+        END IF;
+      END $$;
+    `);
+    await db.query(`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'partido_transmisiones' AND column_name = 'director_token'
+        ) THEN
+          ALTER TABLE partido_transmisiones ADD COLUMN director_token UUID DEFAULT gen_random_uuid() UNIQUE;
+        END IF;
+      END $$;
+    `);
     await db.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_transmisiones_partido ON partido_transmisiones(partido_id)
     `);
@@ -78,6 +99,8 @@ class PartidoTransmision {
       fecha_fin_real: row.fecha_fin_real,
       thumbnail_url: row.thumbnail_url,
       destacado: row.destacado === true || row.destacado === 'true',
+      overlay_token: row.overlay_token,
+      director_token: row.director_token,
       creado_por: row.creado_por,
       created_at: row.created_at,
       updated_at: row.updated_at,

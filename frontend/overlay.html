@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Overlay OBS — Marcador en Vivo</title>
+  <style>
+    /* Fondo transparente para OBS Browser Source */
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    #overlay-root {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 16px;
+      pointer-events: none;
+    }
+
+    /* ===== MARCADOR PRINCIPAL ===== */
+    #marcador {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: rgba(10, 10, 10, 0.82);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+      min-width: 380px;
+      transition: opacity 0.3s;
+    }
+    #marcador.oculto { opacity: 0; }
+
+    .equipo-bloque {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 120px;
+    }
+    .equipo-logo {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      margin-bottom: 4px;
+    }
+    .equipo-logo-placeholder {
+      width: 40px;
+      height: 40px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 50%;
+      margin-bottom: 4px;
+    }
+    .equipo-nombre {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      max-width: 110px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .marcador-centro {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 20px;
+      border-left: 1px solid rgba(255,255,255,0.1);
+      border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .marcador-goles {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .gol {
+      color: #fff;
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1;
+      min-width: 32px;
+      text-align: center;
+    }
+    .marcador-separador {
+      color: rgba(255,255,255,0.5);
+      font-size: 28px;
+      font-weight: 300;
+    }
+    .marcador-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .periodo-badge {
+      background: #dc2626;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .minuto {
+      color: rgba(255,255,255,0.75);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .minuto.oculto { display: none; }
+
+    /* ===== TEXTO EVENTO ===== */
+    #texto-evento {
+      margin-top: 12px;
+      background: rgba(220, 38, 38, 0.88);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 8px 20px;
+      border-radius: 6px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.5);
+      text-align: center;
+      max-width: 500px;
+      animation: slideIn 0.3s ease;
+      transition: opacity 0.3s;
+    }
+    #texto-evento.oculto { opacity: 0; pointer-events: none; }
+
+    @keyframes slideIn {
+      from { transform: translateY(-8px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* ===== INDICADOR CONEXIÓN ===== */
+    #conn-dot {
+      position: fixed;
+      bottom: 10px;
+      right: 12px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #6b7280;
+      transition: background 0.3s;
+    }
+    #conn-dot.conectado  { background: #22c55e; }
+    #conn-dot.error      { background: #ef4444; }
+  </style>
+</head>
+<body>
+
+<div id="overlay-root">
+  <div id="marcador">
+    <!-- Equipo Local -->
+    <div class="equipo-bloque" id="bloque-local">
+      <div class="equipo-logo-placeholder" id="logo-local-wrap"></div>
+      <span class="equipo-nombre" id="nombre-local">LOCAL</span>
+    </div>
+
+    <!-- Centro -->
+    <div class="marcador-centro">
+      <div class="marcador-goles">
+        <span class="gol" id="gol-local">0</span>
+        <span class="marcador-separador">–</span>
+        <span class="gol" id="gol-visitante">0</span>
+      </div>
+      <div class="marcador-info">
+        <span class="periodo-badge" id="periodo-badge">1T</span>
+        <span class="minuto" id="minuto-display">0'</span>
+      </div>
+    </div>
+
+    <!-- Equipo Visitante -->
+    <div class="equipo-bloque" id="bloque-visitante">
+      <div class="equipo-logo-placeholder" id="logo-visitante-wrap"></div>
+      <span class="equipo-nombre" id="nombre-visitante">VISITANTE</span>
+    </div>
+  </div>
+
+  <div id="texto-evento" class="oculto">GOL!</div>
+</div>
+
+<div id="conn-dot" title="Conexión Socket.io"></div>
+
+<!-- Socket.io client -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  // ── Leer overlay_token desde la URL: /overlay.html?token=xxx
+  const params = new URLSearchParams(location.search);
+  const overlayToken = params.get("token");
+
+  const API_BASE = location.origin;
+
+  const elGolLocal      = document.getElementById("gol-local");
+  const elGolVisitante  = document.getElementById("gol-visitante");
+  const elPeriodo       = document.getElementById("periodo-badge");
+  const elMinuto        = document.getElementById("minuto-display");
+  const elMarcador      = document.getElementById("marcador");
+  const elTextoEvento   = document.getElementById("texto-evento");
+  const elNombreLocal   = document.getElementById("nombre-local");
+  const elNombreVisit   = document.getElementById("nombre-visitante");
+  const elLogoLocalWrap = document.getElementById("logo-local-wrap");
+  const elLogoVisitWrap = document.getElementById("logo-visitante-wrap");
+  const connDot         = document.getElementById("conn-dot");
+
+  let transmisionId = null;
+
+  function aplicarState(state) {
+    elGolLocal.textContent     = state.goles_local ?? 0;
+    elGolVisitante.textContent = state.goles_visitante ?? 0;
+    elPeriodo.textContent      = state.periodo ?? "1T";
+    elMinuto.textContent       = (state.minuto ?? 0) + "'";
+
+    elMarcador.classList.toggle("oculto", !state.mostrar_marcador);
+    elMinuto.classList.toggle("oculto", !state.mostrar_cronometro);
+
+    const textoVisible = state.mostrar_texto_evento && state.texto_evento;
+    elTextoEvento.classList.toggle("oculto", !textoVisible);
+    if (textoVisible) elTextoEvento.textContent = state.texto_evento;
+  }
+
+  function setLogo(wrapper, logoUrl) {
+    wrapper.innerHTML = "";
+    if (logoUrl) {
+      const img = document.createElement("img");
+      img.className = "equipo-logo";
+      img.src = logoUrl.startsWith("http") ? logoUrl : (API_BASE + "/" + logoUrl.replace(/^\//, ""));
+      img.onerror = () => { wrapper.innerHTML = '<div class="equipo-logo-placeholder"></div>'; };
+      wrapper.appendChild(img);
+    } else {
+      wrapper.innerHTML = '<div class="equipo-logo-placeholder"></div>';
+    }
+  }
+
+  async function cargarEstadoInicial() {
+    if (!overlayToken) {
+      console.warn("overlay.html: falta ?token=xxx en la URL");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/public/overlay/${overlayToken}`);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      transmisionId = data.transmision_id;
+      elNombreLocal.textContent  = data.equipo_local?.nombre  || "LOCAL";
+      elNombreVisit.textContent  = data.equipo_visitante?.nombre || "VISITANTE";
+      setLogo(elLogoLocalWrap, data.equipo_local?.logo_url);
+      setLogo(elLogoVisitWrap, data.equipo_visitante?.logo_url);
+
+      if (data.overlay) aplicarState(data.overlay);
+
+      // Conectar Socket.io y unirse a la sala
+      conectarSocket();
+    } catch (err) {
+      console.error("Error cargando overlay inicial:", err);
+      connDot.className = "error";
+    }
+  }
+
+  function conectarSocket() {
+    const socket = io(API_BASE, { transports: ["websocket", "polling"] });
+
+    socket.on("connect", () => {
+      connDot.className = "conectado";
+      socket.emit("join:overlay", { transmision_id: transmisionId });
+    });
+
+    socket.on("disconnect", () => {
+      connDot.className = "";
+    });
+
+    socket.on("overlay:state", (state) => {
+      aplicarState(state);
+    });
+
+    socket.on("connect_error", () => {
+      connDot.className = "error";
+    });
+  }
+
+  cargarEstadoInicial();
+</script>
+</body>
+</html>

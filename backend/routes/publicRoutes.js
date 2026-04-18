@@ -5,6 +5,7 @@ const portalContenidoController = require("../controllers/portalContenidoControl
 const contactoController = require("../controllers/contactoController");
 const publicPortalController = require("../controllers/publicPortalController");
 const transmisionController = require("../controllers/transmisionController");
+const overlayController = require("../controllers/overlayController");
 
 const router = express.Router();
 
@@ -35,5 +36,8 @@ router.post("/contacto", contactoController.enviar);
 router.get("/partidos/:id/transmision", transmisionController.obtenerTransmisionPublica);
 router.get("/campeonatos/:id/transmisiones-activas", transmisionController.listarTransmisionesActivasPorCampeonato);
 router.get("/transmisiones/destacadas", transmisionController.listarDestacadasPublicas);
+
+// 🔴 Overlay público por token (OBS Browser Source — sin auth)
+router.get("/overlay/:overlay_token", overlayController.getOverlayPublico);
 
 module.exports = router;

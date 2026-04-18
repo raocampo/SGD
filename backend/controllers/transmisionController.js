@@ -210,8 +210,40 @@ async function listarDestacadasPublicas(req, res) {
   }
 }
 
+async function obtenerTransmisionPorId(req, res) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: "ID inválido" });
+    const result = await require("../config/database").query(
+      `SELECT t.*,
+        p.equipo_local_id, p.equipo_visitante_id,
+        el.nombre AS equipo_local_nombre, el.logo_url AS equipo_local_logo,
+        ev2.nombre AS equipo_visitante_nombre, ev2.logo_url AS equipo_visitante_logo
+       FROM partido_transmisiones t
+       LEFT JOIN partidos p ON p.id = t.partido_id
+       LEFT JOIN equipos el ON el.id = p.equipo_local_id
+       LEFT JOIN equipos ev2 ON ev2.id = p.equipo_visitante_id
+       WHERE t.id = $1`,
+      [id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: "Transmisión no encontrada" });
+    const row = result.rows[0];
+    const tx = PartidoTransmision.limpiar(row);
+    return res.json({
+      ...tx,
+      equipo_local_nombre: row.equipo_local_nombre,
+      equipo_local_logo: row.equipo_local_logo,
+      equipo_visitante_nombre: row.equipo_visitante_nombre,
+      equipo_visitante_logo: row.equipo_visitante_logo,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   obtenerTransmision,
+  obtenerTransmisionPorId,
   crearTransmision,
   actualizarTransmision,
   iniciarTransmision,

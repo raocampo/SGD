@@ -1,13 +1,16 @@
+const { createServer } = require("http");
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const multer = require("multer");
 const pool = require("./config/database");
 const { uploadsDir, ensureUploadsRoot } = require("./config/uploads");
+const { initSocket } = require("./services/socketService");
 
 require("dotenv").config();
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 5000;
 const corsOrigins = String(process.env.CORS_ORIGINS || "*")
   .split(",")
@@ -74,6 +77,7 @@ const contactoRoutes = require("./routes/contactoRoutes");
 const publicRoutes = require("./routes/publicRoutes");
 const comprobanteRoutes = require("./routes/comprobanteRoutes");
 const transmisionRoutes = require("./routes/transmisionRoutes");
+const overlayRoutes = require("./routes/overlayRoutes");
 
 app.use("/api/campeonatos", campeonatoRoutes);
 app.use("/api/equipos", equipoRoutes);
@@ -98,6 +102,7 @@ app.use("/api/contacto", contactoRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/comprobantes", comprobanteRoutes);
 app.use("/api/transmisiones", transmisionRoutes);
+app.use("/api/transmisiones/:id/overlay", overlayRoutes);
 
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
@@ -223,7 +228,9 @@ app.use((req, res, next) => {
 // =====================
 // Iniciar servidor
 // =====================
-app.listen(PORT, () => {
+initSocket(httpServer);
+
+httpServer.listen(PORT, () => {
   console.log(`⚽ Servidor corriendo en http://localhost:${PORT}`);
   console.log(`🔗 Endpoints disponibles:`);
   console.log(`   http://localhost:${PORT}/`);

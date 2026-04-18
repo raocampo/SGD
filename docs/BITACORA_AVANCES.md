@@ -1,3 +1,76 @@
+## 2026-04-17 - Módulo de Transmisión en Vivo Phase 1: Socket.io Overlay para OBS
+
+### Objetivos de la sesión
+Implementar el módulo de transmisión en vivo Phase 1 (Pendiente 2):
+- Panel de director (`director.html`) para controlar marcador en tiempo real
+- Overlay para OBS Browser Source (`overlay.html`) con fondo transparente
+- Backend Socket.io para broadcast instantáneo del estado del marcador
+- API REST para persistir estado en BD (PostgreSQL)
+- Tokens únicos por transmisión para acceso público sin auth al overlay
+
+### Archivos creados
+
+#### Base de datos
+- `database/migrations/064_transmision_overlay.sql` — tabla `transmision_overlay_state` (goles, minuto, período, toggles)
+- `database/migrations/065_transmisiones_overlay_token.sql` — columnas `overlay_token` + `director_token` en `partido_transmisiones`
+
+#### Backend
+- `backend/services/socketService.js` — inicializa Socket.io 4.8.3, gestiona salas `overlay:{id}`, expone `emitOverlayState()`
+- `backend/models/TransmisionOverlay.js` — CRUD para `transmision_overlay_state` con `obtenerOCrear`, `actualizar`, `reset`
+- `backend/controllers/overlayController.js` — GET/PUT overlay (auth) + GET público por token (sin auth para OBS)
+- `backend/routes/overlayRoutes.js` — monta rutas en `/api/transmisiones/:id/overlay`
+
+#### Frontend
+- `frontend/overlay.html` — Browser Source para OBS (fondo transparente, socket.io client, marcador animado)
+- `frontend/director.html` — Panel de control completo: ajuste de goles +/-, cronómetro, período, toggles, presets de texto, URL overlay para copiar
+
+### Cambios en archivos existentes
+
+#### `backend/server.js`
+- `app.listen` → `httpServer = createServer(app)` + `httpServer.listen`
+- `initSocket(httpServer)` llamado justo antes de listen
+- `require('./services/socketService')` + `require('./routes/overlayRoutes')`
+- Nueva ruta: `app.use('/api/transmisiones/:id/overlay', overlayRoutes)`
+
+#### `backend/models/PartidoTransmision.js`
+- `asegurarTabla()`: agrega inline migration para `overlay_token` y `director_token`
+- `limpiar()`: expone `overlay_token` y `director_token` en el JSON de respuesta
+
+#### `backend/controllers/transmisionController.js`
+- Nueva función `obtenerTransmisionPorId(req, res)` — GET transmisión por su propio ID (incluye nombres de equipo y tokens)
+
+#### `backend/routes/transmisionRoutes.js`
+- `GET /:id` → `obtenerTransmisionPorId` (para que el director panel pueda cargar datos de la transmisión)
+
+#### `backend/routes/publicRoutes.js`
+- `GET /api/public/overlay/:overlay_token` → `overlayController.getOverlayPublico` (sin auth, para overlay.html en OBS)
+
+### Arquitectura Socket.io
+
+```
+Director Panel (director.html)
+  │  PUT /api/transmisiones/:id/overlay (HTTP REST → persiste en BD)
+  │  socket.emit("overlay:update", { transmision_id, state })
+  ▼
+Backend Socket.io (socketService.js)
+  │  socket.to(`overlay:${id}`).emit("overlay:state", state)
+  ▼
+OBS Browser Source (overlay.html)
+  socket.on("overlay:state", aplicarState)
+```
+
+### Flujo de uso
+1. Organizador va a `director.html`, ingresa el ID de la transmisión y hace clic en "Conectar"
+2. El sistema muestra el marcador 0-0, nombres de equipos y genera la URL del overlay
+3. Copia la URL del overlay → la pega en OBS como Browser Source (1280×180px, fondo transparente)
+4. Controla goles (+/-), minuto, período, toggles y texto de evento
+5. Hace clic en "Enviar ahora" → el overlay en OBS se actualiza en tiempo real via Socket.io
+
+### npm
+- `socket.io@4.8.3` instalado en `backend/`
+
+---
+
 ## 2026-04-11 - Planilla PDF: dual-mode sin/con observaciones + layout A4 completo
 
 ### Objetivos de la sesión

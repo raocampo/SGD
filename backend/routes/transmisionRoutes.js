@@ -14,6 +14,14 @@ router.get(
   transmisionController.listarTransmisionesPorCampeonato
 );
 
+// GET /api/transmisiones/:id — obtener una transmisión por su ID (para director panel)
+router.get(
+  "/:id",
+  requireAuth,
+  requireRoles("administrador", "organizador", "operador"),
+  transmisionController.obtenerTransmisionPorId
+);
+
 router.put(
   "/:id",
   requireAuth,
