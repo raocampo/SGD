@@ -4016,6 +4016,21 @@ function valorTextoImportacion(valor) {
   return String(valor).trim();
 }
 
+// Función específica para leer cédulas desde Excel.
+// Con raw:true, Excel puede haber convertido "0102030405" al número 102030405
+// (perdiendo el cero inicial). Si detectamos un valor numérico, intentamos
+// restaurar el cero: en Ecuador la cédula siempre tiene 10 dígitos, por lo que
+// un número de 9 dígitos implica que se perdió un cero al inicio.
+function valorCedulaImportacion(valor) {
+  if (valor === null || valor === undefined) return "";
+  if (typeof valor === "number") {
+    const str = String(Math.round(valor));
+    // Cédula ecuatoriana = 10 dígitos; 9 dígitos → se perdió un cero inicial
+    return str.length === 9 ? "0" + str : str;
+  }
+  return String(valor).trim();
+}
+
 function valorBooleanoImportacion(valor) {
   const normalizado = normalizarClaveImportacion(valor);
   return ["si", "s", "true", "1", "x", "yes"].includes(normalizado);
@@ -4111,7 +4126,7 @@ function normalizarFilaImportacionJugador(fila) {
       nombreFinal = nombreCompleto;
     }
   }
-  const cedidentidad = valorTextoImportacion(
+  const cedidentidad = valorCedulaImportacion(
     obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.cedidentidad)
   );
   const fecha_nacimiento = valorFechaImportacion(
@@ -4181,14 +4196,17 @@ async function procesarArchivoImportacionJugadores(file) {
   }
 
   const arrayBuffer = await leerArchivoComoArrayBuffer(file);
-  const wb = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true, cellText: true });
+  // cellDates:true convierte fechas a objetos Date (necesario para valorFechaImportacion).
+  // raw:true preserva esos objetos Date; raw:false los convertiría a texto en formato
+  // locale (MM/DD/YY en SheetJS), rompiendo el parser de fechas DD/MM.
+  const wb = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true });
   const sheetName = wb.SheetNames[0];
   const sheet = wb.Sheets[sheetName];
   if (!sheet) throw new Error("El archivo no contiene hojas válidas");
 
   const filasRaw = window.XLSX.utils.sheet_to_json(sheet, {
     defval: "",
-    raw: false, // usa .w (texto formateado) para preservar ceros iniciales en cédulas
+    raw: true,
   });
 
   if (!filasRaw.length) {
