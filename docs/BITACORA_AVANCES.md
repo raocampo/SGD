@@ -3046,3 +3046,45 @@ Se auditó el sistema de transmisiones y se confirmó que está implementado al 
   - una categoría con partidos suspendidos/pedientes para confirmar que desaparecen de `Resultados`,
   - y la nueva pestaña `Desde categoría superior` en un flujo real de inscripción.
 - Si la revisión visual queda conforme, hacer commit y push de este bloque.
+
+## 2026-04-18 - Git pull seguro y ajuste PDF de planilla para fútbol 7 en una sola hoja
+
+### Sincronización previa
+
+- Se ejecutó `git pull --ff-only` sobre `main` antes de tocar la planilla.
+- Como había trabajo local abierto, primero se resguardó temporalmente con `git stash`.
+- El `pull` avanzó de `5aa40af` a `64ea8ef` e incorporó el bloque reciente de overlays/transmisiones.
+- El stash quedó conservado como respaldo porque el remoto ya traía varios de esos archivos y no fue necesario reinyectar nada al árbol para continuar con este ajuste.
+
+### Problema reportado
+
+- El PDF oficial de la planilla para `fútbol 7` debía salir en una sola hoja.
+- El cambio no debía afectar la exportación actual de:
+  - `fútbol 11`
+  - `fútbol 9`
+  - `fútbol 8`
+
+### Implementación aplicada
+
+- `frontend/js/planilla.js`
+  - se agregó `esPlanillaFutbol7()` para detectar ese caso de manera explícita.
+  - en `imprimirPDFPlanilla()`:
+    - `fútbol 7` ahora activa observaciones compactas dentro de la primera hoja,
+    - se fuerza el modo compacto solo para ese escenario,
+    - y se ajusta el cálculo de altura disponible para filas considerando ese bloque adicional.
+  - para el resto de formatos:
+    - `fútbol 11`, `fútbol 9` y `fútbol 8` mantienen su flujo anterior,
+    - incluyendo el comportamiento existente de observaciones/paginación.
+
+### Verificación realizada
+
+- `node --check frontend/js/planilla.js`
+- Revisión del diff funcional:
+  - el ajuste quedó encapsulado en la rama PDF y condicionado a `fútbol 7`,
+  - sin tocar las reglas de columnas, observaciones ni paginación de `fútbol 8/9/11`.
+
+### Pendiente siguiente
+
+- Probar visualmente en UI:
+  - una planilla real de `fútbol 7` exportada a PDF,
+  - y comparar contra `fútbol 8`, `fútbol 9` y `fútbol 11` para confirmar que no cambian.

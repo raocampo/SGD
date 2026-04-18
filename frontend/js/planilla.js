@@ -1259,6 +1259,10 @@ function esPlanillaFutbol11(partido = dataPlanilla?.partido || {}) {
   return obtenerTipoDeportePlanillaNormalizado(partido) === "futbol_11";
 }
 
+function esPlanillaFutbol7(partido = dataPlanilla?.partido || {}) {
+  return obtenerTipoDeportePlanillaNormalizado(partido) === "futbol_7";
+}
+
 function esPlanillaBasquetbol(partido = dataPlanilla?.partido || {}) {
   return obtenerTipoDeportePlanillaNormalizado(partido).startsWith("basquetbol");
 }
@@ -5188,6 +5192,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     const observacionesVisitante = obtenerObservacionesVisitantePlanilla(payload);
     const observacionesArbitro = obtenerObservacionesArbitroPlanilla(payload);
     const modelo = obtenerModeloPlanillaOficial();
+    const esFutbol7 = esPlanillaFutbol7(p);
     const localNombre = p.equipo_local_nombre || equiposPartido.local.nombre;
     const visitNombre = p.equipo_visitante_nombre || equiposPartido.visitante.nombre;
     const localDt = p.equipo_local_director_tecnico || "-";
@@ -5199,15 +5204,19 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
       maxFilas
     );
     const totalFilasImpresion = Math.max(plantelLocalImpresion.length, plantelVisitanteImpresion.length, 0);
-    const modoCompactoPdf = totalFilasImpresion >= 24;
-    const modoUltraCompactoPdf = totalFilasImpresion >= 30;
+    const usarObservacionesCompactasPdf = conObservaciones && esFutbol7;
+    const modoCompactoPdf = usarObservacionesCompactasPdf || totalFilasImpresion >= 24;
+    const modoUltraCompactoPdf = !usarObservacionesCompactasPdf && totalFilasImpresion >= 30;
     // Altura dinámica: calcular cuánto espacio queda en A4 después del contenido fijo
     // y distribuirlo entre todas las filas del plantel para llenar la hoja.
     const _alturaA4 = 841; // puntos pdfMake (1pt = 1/72 inch)
     const _margenVertical = modoUltraCompactoPdf ? 8 : modoCompactoPdf ? 10 : 44;
     // Espacio estimado para todo el contenido fijo (header + info + score + DT/firma + tarjetas + pagos)
     // Incluye buffer de seguridad para evitar overflow.
-    const _espacioFijo = modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 320 : 490;
+    const _espacioObservacionesCompactas = usarObservacionesCompactasPdf
+      ? (modoUltraCompactoPdf ? 62 : 92)
+      : 0;
+    const _espacioFijo = (modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 320 : 490) + _espacioObservacionesCompactas;
     const _espacioParaFilas = _alturaA4 - _margenVertical - _espacioFijo;
     const _totalFilasConCabecera = totalFilasImpresion + 1; // +1 por la fila de encabezado
     const _alturaFilaMin = modoUltraCompactoPdf ? 5 : modoCompactoPdf ? 6 : 8;
@@ -5566,104 +5575,117 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
           margin: [0, 0, 0, modoCompactoPdf ? 2 : 6],
         },
         ...(conObservaciones
-          ? [
-              {
-                text: "OBSERVACIONES",
-                style: "sectionTitle",
-                pageBreak: "before",
-                margin: [0, 2, 0, 6],
-              },
-              {
-                stack: [
-                  {
-                    text: "OBSERVACION LOCAL",
-                    style: "sectionTitle",
-                    margin: [0, 1, 0, 2],
-                  },
-                  {
-                    table: {
-                      widths: ["*"],
-                      body: [
-                        [{ text: observacionesLocal || "" }],
-                        [{ text: " " }],
-                        [{ text: " " }],
-                        [{ text: " " }],
-                        [{ text: " " }],
-                      ],
-                      heights: () => 9,
+          ? usarObservacionesCompactasPdf
+            ? [
+                {
+                  ...construirBloqueObservacionesCompactoPdf(
+                    observacionesLocal,
+                    observacionesVisitante,
+                    observacionesArbitro,
+                    true,
+                    false
+                  ),
+                  margin: [0, 0, 0, 0],
+                },
+              ]
+            : [
+                {
+                  text: "OBSERVACIONES",
+                  style: "sectionTitle",
+                  pageBreak: "before",
+                  margin: [0, 2, 0, 6],
+                },
+                {
+                  stack: [
+                    {
+                      text: "OBSERVACION LOCAL",
+                      style: "sectionTitle",
+                      margin: [0, 1, 0, 2],
                     },
-                    layout: {
-                      hLineWidth: () => 0.6,
-                      vLineWidth: () => 0.6,
-                      hLineColor: () => "#cbd5e1",
-                      vLineColor: () => "#cbd5e1",
-                      paddingLeft: () => 4,
-                      paddingRight: () => 4,
-                      paddingTop: () => 2,
-                      paddingBottom: () => 2,
+                    {
+                      table: {
+                        widths: ["*"],
+                        body: [
+                          [{ text: observacionesLocal || "" }],
+                          [{ text: " " }],
+                          [{ text: " " }],
+                          [{ text: " " }],
+                          [{ text: " " }],
+                        ],
+                        heights: () => 9,
+                      },
+                      layout: {
+                        hLineWidth: () => 0.6,
+                        vLineWidth: () => 0.6,
+                        hLineColor: () => "#cbd5e1",
+                        vLineColor: () => "#cbd5e1",
+                        paddingLeft: () => 4,
+                        paddingRight: () => 4,
+                        paddingTop: () => 2,
+                        paddingBottom: () => 2,
+                      },
+                      margin: [0, 0, 0, 8],
                     },
-                    margin: [0, 0, 0, 8],
-                  },
-                  {
-                    text: "OBSERVACION VISITANTE",
-                    style: "sectionTitle",
-                    margin: [0, 1, 0, 2],
-                  },
-                  {
-                    table: {
-                      widths: ["*"],
-                      body: [
-                        [{ text: observacionesVisitante || "" }],
-                        [{ text: " " }],
-                        [{ text: " " }],
-                        [{ text: " " }],
-                        [{ text: " " }],
-                      ],
-                      heights: () => 9,
+                    {
+                      text: "OBSERVACION VISITANTE",
+                      style: "sectionTitle",
+                      margin: [0, 1, 0, 2],
                     },
-                    layout: {
-                      hLineWidth: () => 0.6,
-                      vLineWidth: () => 0.6,
-                      hLineColor: () => "#cbd5e1",
-                      vLineColor: () => "#cbd5e1",
-                      paddingLeft: () => 4,
-                      paddingRight: () => 4,
-                      paddingTop: () => 2,
-                      paddingBottom: () => 2,
+                    {
+                      table: {
+                        widths: ["*"],
+                        body: [
+                          [{ text: observacionesVisitante || "" }],
+                          [{ text: " " }],
+                          [{ text: " " }],
+                          [{ text: " " }],
+                          [{ text: " " }],
+                        ],
+                        heights: () => 9,
+                      },
+                      layout: {
+                        hLineWidth: () => 0.6,
+                        vLineWidth: () => 0.6,
+                        hLineColor: () => "#cbd5e1",
+                        vLineColor: () => "#cbd5e1",
+                        paddingLeft: () => 4,
+                        paddingRight: () => 4,
+                        paddingTop: () => 2,
+                        paddingBottom: () => 2,
+                      },
+                      margin: [0, 0, 0, 8],
                     },
-                    margin: [0, 0, 0, 8],
-                  },
-                  {
-                    text: "OBSERVACIONES DEL ARBITRO",
-                    style: "sectionTitle",
-                    margin: [0, 1, 0, 2],
-                  },
-                  {
-                    table: {
-                      widths: ["*"],
-                      body: [
-                        [{ text: observacionesArbitro || "" }],
-                        [{ text: " " }],
-                        [{ text: " " }],
-                        [{ text: " " }],
-                        [{ text: " " }],
-                      ],
-                      heights: () => 9,
+                    {
+                      text: "OBSERVACIONES DEL ARBITRO",
+                      style: "sectionTitle",
+                      margin: [0, 1, 0, 2],
                     },
-                    layout: {
-                      hLineWidth: () => 0.6,
-                      vLineWidth: () => 0.6,
-                      hLineColor: () => "#cbd5e1",
-                      vLineColor: () => "#cbd5e1",
-                      paddingLeft: () => 4,
-                      paddingRight: () => 4,
-                      paddingTop: () => 2,
-                      paddingBottom: () => 2,
+                    {
+                      table: {
+                        widths: ["*"],
+                        body: [
+                          [{ text: observacionesArbitro || "" }],
+                          [{ text: " " }],
+                          [{ text: " " }],
+                          [{ text: " " }],
+                          [{ text: " " }],
+                        ],
+                        heights: () => 9,
+                      },
+                      layout: {
+                        hLineWidth: () => 0.6,
+                        vLineWidth: () => 0.6,
+                        hLineColor: () => "#cbd5e1",
+                        vLineColor: () => "#cbd5e1",
+                        paddingLeft: () => 4,
+                        paddingRight: () => 4,
+                        paddingTop: () => 2,
+                        paddingBottom: () => 2,
+                      },
                     },
-                  },
-                ],
-              },
-            ]
+                  ],
+                },
+              ]
           : []),
       ],
       styles: {
