@@ -1,3 +1,40 @@
+## 2026-04-18 - Planilla PDF fútbol 8/9: modo compacto para todos los formatos no-fútbol11
+
+### Objetivos de la sesión
+Corregir desbordamiento de página en planillas PDF de fútbol 8 y fútbol 9:
+- Ambos formatos usaban modo NORMAL (márgenes amplios, `_espacioFijo=490`) con < 24 filas
+- En modo normal la estimación de espacio fijo era incorrecta → filas se derramaban a pág 2
+- Solución: cualquier formato que no sea fútbol 11 usa siempre modo compacto
+
+### Cambios en `frontend/js/planilla.js`
+
+#### Modo compacto — cobertura extendida (línea ~5207)
+- **Antes**: `modoCompactoPdf = esFutbol7 || totalFilasImpresion >= 24`
+  → Fútbol 8/9 con 18 filas (< 24) caía en modo NORMAL → overflow
+- **Ahora**: `modoCompactoPdf = !arbitraje.esFutbol11 || totalFilasImpresion >= 24`
+  → Todos los formatos no-fútbol11 (f7, f8, f9, f6, f5, sala, indor, basquetbol) siempre compactos
+  → Fútbol 11 con < 24 filas conserva modo NORMAL (comportamiento anterior)
+
+#### `_alturaFilaMax` unificado
+- **Antes**: compact → 20, normal → 30 (distinción compact/normal)
+- **Ahora**: no-ultra → **28** (cap único; ultra sigue en 22)
+- Razón: cap de 20pt dejaba ~134pt vacíos en fútbol 8/9 con 18 filas (fórmula calculaba 26.9pt → capado a 20)
+- Con cap 28: fútbol 8/9 → 26.9pt × 19 filas = ~511pt → página llena correctamente
+
+#### Verificación matemática (modo compacto, _espacioFijo=320, _margenVertical=10)
+| Formato | Filas | alturaFila | Total |
+|---------|-------|-----------|-------|
+| Fútbol 7  | 14 | 28.0pt | 746/841pt |
+| Fútbol 8/9 | 18 | 26.9pt | 837/841pt |
+| Fútbol 11 custom (≤23f) | 17 | 17.1pt | 838/841pt (modo normal) |
+
+### Formatos NO afectados
+- Fútbol 11 custom (≤23 filas): sigue en modo NORMAL
+- Fútbol 11 estándar (24-29 filas): modo COMPACTO (sin cambio en lógica)
+- Fútbol 11 ultra (30+ filas): modo ULTRA-COMPACTO (sin cambio)
+
+---
+
 ## 2026-04-18 - Planilla PDF fútbol 7: modo compacto, filas angostas, obs en pág 2
 
 ### Objetivos de la sesión

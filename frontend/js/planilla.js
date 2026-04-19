@@ -5204,9 +5204,10 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
       maxFilas
     );
     const totalFilasImpresion = Math.max(plantelLocalImpresion.length, plantelVisitanteImpresion.length, 0);
-    // Fútbol 7 → siempre compacto (1 hoja sin obs, obs en pág 2 con pageBreak)
-    // 24+ filas → compacto; 30+ filas → ultra-compacto
-    const modoCompactoPdf = esFutbol7 || totalFilasImpresion >= 24;
+    // Fútbol 11 custom (< 24 filas) → modo normal (márgenes amplios, preservar comportamiento actual).
+    // Todos los demás formatos (f7, f8, f9, f6, f5, sala, indor, basquetbol) → siempre compacto.
+    // 24+ filas → compacto; 30+ filas → ultra-compacto.
+    const modoCompactoPdf = !arbitraje.esFutbol11 || totalFilasImpresion >= 24;
     const modoUltraCompactoPdf = totalFilasImpresion >= 30;
     // Altura dinámica: calcular cuánto espacio queda en A4 después del contenido fijo
     // y distribuirlo entre todas las filas del plantel para llenar la hoja.
@@ -5217,7 +5218,9 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     const _espacioParaFilas = _alturaA4 - _margenVertical - _espacioFijo;
     const _totalFilasConCabecera = totalFilasImpresion + 1; // +1 por la fila de encabezado
     const _alturaFilaMin = modoUltraCompactoPdf ? 5 : modoCompactoPdf ? 6 : 8;
-    const _alturaFilaMax = modoUltraCompactoPdf ? 22 : modoCompactoPdf ? 20 : 30;
+    // Cap compartido compact/normal: la fórmula dinámica distribuye el espacio disponible;
+    // el cap solo evita que juegos con muy pocas filas tengan filas gigantescas.
+    const _alturaFilaMax = modoUltraCompactoPdf ? 22 : 28;
     const alturaFilaPlantel = _totalFilasConCabecera > 0
       ? Math.max(_alturaFilaMin, Math.min(_alturaFilaMax, _espacioParaFilas / _totalFilasConCabecera))
       : _alturaFilaMax;
