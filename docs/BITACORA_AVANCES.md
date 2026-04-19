@@ -1,3 +1,49 @@
+## 2026-04-18 - Planilla PDF fútbol 7: modo compacto, filas angostas, obs en pág 2
+
+### Objetivos de la sesión
+Ajustes a la generación de PDF de planilla para fútbol 7 (Liga y otros formatos):
+1. Modo compacto siempre activo para fútbol 7 → 1 hoja sin obs, filas angostas
+2. Observaciones siempre en página 2 con `pageBreak: "before"` (no más inline compacto)
+3. `_alturaFilaMax` reducido (compact: 26→20, normal: 40→30) para filas más angostas
+4. Fila 3 de la tabla de info: eliminar duplicación de Partido/Jornada para formatos no-fútbol11
+
+### Cambios en `frontend/js/planilla.js`
+
+#### Modo compacto (línea ~5207)
+- **Antes**: `modoCompactoPdf = usarObservacionesCompactasPdf || totalFilasImpresion >= 24`
+  (`usarObservacionesCompactasPdf` activaba modo compacto Y obs inline para fútbol 7)
+- **Ahora**: `modoCompactoPdf = esFutbol7 || totalFilasImpresion >= 24`
+  Fútbol 7 siempre compacto; obs nunca inline.
+- `modoUltraCompactoPdf = totalFilasImpresion >= 30` (simplificado, mismo resultado)
+- `_espacioFijo = modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 320 : 490` (sin delta obs compactas)
+
+#### Altura de filas (línea ~5220)
+- `_alturaFilaMax`: compact 26→**20**, normal 40→**30**
+- Efecto para fútbol 7 compacto con 14 filas: ~20pt por fila (más angosta que antes)
+
+#### Tabla de información — fila 3 (línea ~5337)
+- **Antes**: fila 3 col1=Partido, col3=Jornada para TODOS los formatos (duplicado con fila 2 en no-futbol11)
+- **Ahora**: fila 3 col1 y col3 solo se llenan si `arbitraje.esFutbol11 = true`
+- Para fútbol 7: fila 3 = `"" | "" | "" | "Liga: X"` → sin duplicación
+
+#### Observaciones (línea ~5582)
+- **Antes**: `if usarObservacionesCompactasPdf → obs inline (misma hoja)` else `pageBreak`
+- **Ahora**: siempre `pageBreak: "before"` para todos los formatos
+- Resultado: **sin obs = 1 hoja**, **con obs = 2 hojas** para fútbol 7 y fútbol 11
+
+### Nota sobre etiquetas de árbitro (Árbitro central / Línea 1 / Línea 2)
+Estas etiquetas solo aparecen cuando `esFutbol11 = true` (código correcto).
+Si un campeonato de fútbol 7 Liga muestra etiquetas de fútbol 11, es porque su
+`tipo_futbol` o `tipo_deporte` en BD tiene el valor `"futbol_11"` (default al crear sin especificar).
+**Solución**: editar el campeonato y cambiar el tipo de deporte a `"futbol_7"`.
+
+### Formatos NO afectados
+- Fútbol 11 (≤23 filas custom): sigue en modo NORMAL (sin cambio)
+- Fútbol 11 (24-29 filas): sigue en modo COMPACTO (misma lógica anterior, alturaFilaMax era 26, ahora 20 — filas ligeramente más angostas)
+- Fútbol 11 (30+ filas): modo ULTRA-COMPACTO (sin cambio)
+
+---
+
 ## 2026-04-17 - Módulo de Transmisión en Vivo Phase 1: Socket.io Overlay para OBS
 
 ### Objetivos de la sesión

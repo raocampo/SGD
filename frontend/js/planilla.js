@@ -5204,23 +5204,20 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
       maxFilas
     );
     const totalFilasImpresion = Math.max(plantelLocalImpresion.length, plantelVisitanteImpresion.length, 0);
-    const usarObservacionesCompactasPdf = conObservaciones && esFutbol7;
-    const modoCompactoPdf = usarObservacionesCompactasPdf || totalFilasImpresion >= 24;
-    const modoUltraCompactoPdf = !usarObservacionesCompactasPdf && totalFilasImpresion >= 30;
+    // Fútbol 7 → siempre compacto (1 hoja sin obs, obs en pág 2 con pageBreak)
+    // 24+ filas → compacto; 30+ filas → ultra-compacto
+    const modoCompactoPdf = esFutbol7 || totalFilasImpresion >= 24;
+    const modoUltraCompactoPdf = totalFilasImpresion >= 30;
     // Altura dinámica: calcular cuánto espacio queda en A4 después del contenido fijo
     // y distribuirlo entre todas las filas del plantel para llenar la hoja.
     const _alturaA4 = 841; // puntos pdfMake (1pt = 1/72 inch)
     const _margenVertical = modoUltraCompactoPdf ? 8 : modoCompactoPdf ? 10 : 44;
     // Espacio estimado para todo el contenido fijo (header + info + score + DT/firma + tarjetas + pagos)
-    // Incluye buffer de seguridad para evitar overflow.
-    const _espacioObservacionesCompactas = usarObservacionesCompactasPdf
-      ? (modoUltraCompactoPdf ? 62 : 92)
-      : 0;
-    const _espacioFijo = (modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 320 : 490) + _espacioObservacionesCompactas;
+    const _espacioFijo = modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 320 : 490;
     const _espacioParaFilas = _alturaA4 - _margenVertical - _espacioFijo;
     const _totalFilasConCabecera = totalFilasImpresion + 1; // +1 por la fila de encabezado
     const _alturaFilaMin = modoUltraCompactoPdf ? 5 : modoCompactoPdf ? 6 : 8;
-    const _alturaFilaMax = modoUltraCompactoPdf ? 22 : modoCompactoPdf ? 26 : 40;
+    const _alturaFilaMax = modoUltraCompactoPdf ? 22 : modoCompactoPdf ? 20 : 30;
     const alturaFilaPlantel = _totalFilasConCabecera > 0
       ? Math.max(_alturaFilaMin, Math.min(_alturaFilaMax, _espacioParaFilas / _totalFilasConCabecera))
       : _alturaFilaMax;
@@ -5325,9 +5322,17 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                 },
               ],
               [
-                { text: [{ text: "Partido: ", bold: true }, `#${numeroPartidoVisible}`] },
+                // Fútbol 11: fila 3 col 1 = Partido (no está en fila 2)
+                // Otros formatos: fila 2 ya tiene Partido → omitir aquí
+                arbitraje.esFutbol11
+                  ? { text: [{ text: "Partido: ", bold: true }, `#${numeroPartidoVisible}`] }
+                  : { text: "" },
                 { text: "" },
-                jornada ? { text: [{ text: "Jornada: ", bold: true }, jornada] } : { text: "" },
+                // Fútbol 11: fila 3 col 3 = Jornada (no está en fila 2)
+                // Otros formatos: fila 2 ya tiene Jornada → omitir aquí
+                arbitraje.esFutbol11 && jornada
+                  ? { text: [{ text: "Jornada: ", bold: true }, jornada] }
+                  : { text: "" },
                 {
                   text: [
                     { text: `${contextoCompetencia.etiqueta}: `, bold: true },
@@ -5574,118 +5579,107 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
           ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos, mostrarEnBlanco),
           margin: [0, 0, 0, modoCompactoPdf ? 2 : 6],
         },
+        // Observaciones siempre en página 2 (pageBreak) para todos los formatos.
+        // Sin observaciones: solo 1 hoja. Con observaciones: hoja 1 planilla, hoja 2 obs.
         ...(conObservaciones
-          ? usarObservacionesCompactasPdf
-            ? [
-                {
-                  ...construirBloqueObservacionesCompactoPdf(
-                    observacionesLocal,
-                    observacionesVisitante,
-                    observacionesArbitro,
-                    true,
-                    false
-                  ),
-                  margin: [0, 0, 0, 0],
-                },
-              ]
-            : [
-                {
-                  text: "OBSERVACIONES",
-                  style: "sectionTitle",
-                  pageBreak: "before",
-                  margin: [0, 2, 0, 6],
-                },
-                {
-                  stack: [
-                    {
-                      text: "OBSERVACION LOCAL",
-                      style: "sectionTitle",
-                      margin: [0, 1, 0, 2],
+          ? [
+              {
+                text: "OBSERVACIONES",
+                style: "sectionTitle",
+                pageBreak: "before",
+                margin: [0, 2, 0, 6],
+              },
+              {
+                stack: [
+                  {
+                    text: "OBSERVACION LOCAL",
+                    style: "sectionTitle",
+                    margin: [0, 1, 0, 2],
+                  },
+                  {
+                    table: {
+                      widths: ["*"],
+                      body: [
+                        [{ text: observacionesLocal || "" }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                      ],
+                      heights: () => 9,
                     },
-                    {
-                      table: {
-                        widths: ["*"],
-                        body: [
-                          [{ text: observacionesLocal || "" }],
-                          [{ text: " " }],
-                          [{ text: " " }],
-                          [{ text: " " }],
-                          [{ text: " " }],
-                        ],
-                        heights: () => 9,
-                      },
-                      layout: {
-                        hLineWidth: () => 0.6,
-                        vLineWidth: () => 0.6,
-                        hLineColor: () => "#cbd5e1",
-                        vLineColor: () => "#cbd5e1",
-                        paddingLeft: () => 4,
-                        paddingRight: () => 4,
-                        paddingTop: () => 2,
-                        paddingBottom: () => 2,
-                      },
-                      margin: [0, 0, 0, 8],
+                    layout: {
+                      hLineWidth: () => 0.6,
+                      vLineWidth: () => 0.6,
+                      hLineColor: () => "#cbd5e1",
+                      vLineColor: () => "#cbd5e1",
+                      paddingLeft: () => 4,
+                      paddingRight: () => 4,
+                      paddingTop: () => 2,
+                      paddingBottom: () => 2,
                     },
-                    {
-                      text: "OBSERVACION VISITANTE",
-                      style: "sectionTitle",
-                      margin: [0, 1, 0, 2],
+                    margin: [0, 0, 0, 8],
+                  },
+                  {
+                    text: "OBSERVACION VISITANTE",
+                    style: "sectionTitle",
+                    margin: [0, 1, 0, 2],
+                  },
+                  {
+                    table: {
+                      widths: ["*"],
+                      body: [
+                        [{ text: observacionesVisitante || "" }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                      ],
+                      heights: () => 9,
                     },
-                    {
-                      table: {
-                        widths: ["*"],
-                        body: [
-                          [{ text: observacionesVisitante || "" }],
-                          [{ text: " " }],
-                          [{ text: " " }],
-                          [{ text: " " }],
-                          [{ text: " " }],
-                        ],
-                        heights: () => 9,
-                      },
-                      layout: {
-                        hLineWidth: () => 0.6,
-                        vLineWidth: () => 0.6,
-                        hLineColor: () => "#cbd5e1",
-                        vLineColor: () => "#cbd5e1",
-                        paddingLeft: () => 4,
-                        paddingRight: () => 4,
-                        paddingTop: () => 2,
-                        paddingBottom: () => 2,
-                      },
-                      margin: [0, 0, 0, 8],
+                    layout: {
+                      hLineWidth: () => 0.6,
+                      vLineWidth: () => 0.6,
+                      hLineColor: () => "#cbd5e1",
+                      vLineColor: () => "#cbd5e1",
+                      paddingLeft: () => 4,
+                      paddingRight: () => 4,
+                      paddingTop: () => 2,
+                      paddingBottom: () => 2,
                     },
-                    {
-                      text: "OBSERVACIONES DEL ARBITRO",
-                      style: "sectionTitle",
-                      margin: [0, 1, 0, 2],
+                    margin: [0, 0, 0, 8],
+                  },
+                  {
+                    text: "OBSERVACIONES DEL ARBITRO",
+                    style: "sectionTitle",
+                    margin: [0, 1, 0, 2],
+                  },
+                  {
+                    table: {
+                      widths: ["*"],
+                      body: [
+                        [{ text: observacionesArbitro || "" }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                        [{ text: " " }],
+                      ],
+                      heights: () => 9,
                     },
-                    {
-                      table: {
-                        widths: ["*"],
-                        body: [
-                          [{ text: observacionesArbitro || "" }],
-                          [{ text: " " }],
-                          [{ text: " " }],
-                          [{ text: " " }],
-                          [{ text: " " }],
-                        ],
-                        heights: () => 9,
-                      },
-                      layout: {
-                        hLineWidth: () => 0.6,
-                        vLineWidth: () => 0.6,
-                        hLineColor: () => "#cbd5e1",
-                        vLineColor: () => "#cbd5e1",
-                        paddingLeft: () => 4,
-                        paddingRight: () => 4,
-                        paddingTop: () => 2,
-                        paddingBottom: () => 2,
-                      },
+                    layout: {
+                      hLineWidth: () => 0.6,
+                      vLineWidth: () => 0.6,
+                      hLineColor: () => "#cbd5e1",
+                      vLineColor: () => "#cbd5e1",
+                      paddingLeft: () => 4,
+                      paddingRight: () => 4,
+                      paddingTop: () => 2,
+                      paddingBottom: () => 2,
                     },
-                  ],
-                },
-              ]
+                  },
+                ],
+              },
+            ]
           : []),
       ],
       styles: {
