@@ -3228,3 +3228,83 @@ Se auditó el sistema de transmisiones y se confirmó que está implementado al 
 | Transmisión BD | `database/migrations/064_transmision_overlay.sql`, `database/migrations/065_transmisiones_overlay_token.sql` |
 | Jugadores categoría superior | `frontend/js/jugadores.js`, `frontend/jugadores.html` |
 | Resultados / tabla pública | `frontend/js/portal.js`, `backend/models/Partido.js`, `backend/controllers/tablaController.js` |
+
+---
+
+## 2026-04-21 — Ajustes PDF planilla no-F11: columnas, fuente dinámica y una sola hoja
+
+### Problema reportado (con PDFs de prueba)
+
+Se revisaron dos PDFs (con y sin observaciones) de una categoría no-F11 y se detectaron:
+1. Nombres de jugadores ocupando 2 líneas → fuente demasiado grande.
+2. Planilla desbordando a una segunda hoja (pagos cortados).
+3. Columnas P y S presentes en fútbol 7/8/9/indor/sala cuando no deben estar.
+4. Títulos de columna muy grandes ocupando espacio excesivo en el encabezado.
+
+### Causa raíz
+
+- La fórmula de escala de fuente usaba `alturaFilaPlantel * 0.38` → con 17 filas el cap de 28pt ya se alcanzaba y la fuente subía a 10.5pt, desbordando los nombres.
+- `_espacioFijo = 320pt` subestimaba el contenido fijo real (~343–367pt dependiendo del modelo).
+- `usaConvocatoriaPlanilla()` retorna `true` para futbol_7/8/9/sala → las columnas P/S aparecían en el PDF.
+- `totalFilasImpresion` siempre es igual a `maxFilas` (las filas se rellenan con null) → el ratio de fuente siempre daba 1.0, sin escala real.
+
+### Cambios en `frontend/js/planilla.js`
+
+#### 1. P/S eliminados del PDF para todos los formatos no-F11
+```javascript
+// Antes:
+if (usaConvocatoria) { ... añade P/S ... }
+// Ahora:
+if (usaConvocatoria && modo !== "pdf") { ... añade P/S ... }
+```
+La UI (captura y vista previa) conserva P/S sin cambios; solo el PDF los omite.
+
+#### 2. Fuente basada en jugadores reales (no filas de relleno)
+```javascript
+const totalJugadoresReales = Math.max(
+  plantelLocalImpresion.filter(j => j !== null).length,
+  plantelVisitanteImpresion.filter(j => j !== null).length, 0
+);
+const _filasRatio = maxFilas > 0 ? Math.min(1, totalJugadoresReales / maxFilas) : 1;
+const _fontScaleNoF11 = !arbitraje.esFutbol11 ? (1 + (1 - _filasRatio) * 0.35) : 1.0;
+const fontCeldaJugador = Math.min(9.0, _fontCeldaBase * _fontScaleNoF11);
+```
+- Lleno (ratio=1): fuente base (7.4pt) → nombres en 1 línea.
+- Mitad (ratio=0.5): 8.7pt.
+- Muy pocos (ratio~0): máx 9.0pt.
+
+#### 3. `_espacioFijo` diferenciado por modelo
+- `futbol_7_5_sala` (fútbol 7, sala): 345 + 22 = **367pt** (incluye bloque de faltas).
+- `futbol_11_indor` (fútbol 8, 9, indor): **345pt**.
+- Ultra-compacto (≥30 filas): **387pt** sin cambio.
+
+#### 4. `_alturaFilaMax` aumentado de 28 → **32pt**
+Da mayor altura visual a las filas cuando hay pocas inscripciones (cap se alcanza con ≤14 filas).
+
+### Garantía 1 hoja hasta 30 jugadores
+
+| Formato / Caso | Fila(pt) | Fuente | Resultado |
+|----------------|----------|--------|-----------|
+| f7 maxFilas=14, lleno | 30.9 | 7.4pt | 1 pág ✅ |
+| f7 maxFilas=14, 7 reales | 30.9 | 8.7pt | 1 pág ✅ |
+| sala maxFilas=20, lleno | 22.1 | 7.4pt | 1 pág ✅ |
+| f9 maxFilas=18, lleno | 25.6 | 7.4pt | 1 pág ✅ |
+| f8 maxFilas=17, 15 reales | 27.0 | 7.7pt | 1 pág ✅ |
+| Cualquier formato maxFilas=30 | 14.4 | 6.6pt | 1 pág ✅ |
+
+### Commits de esta sesión
+
+| Hash | Descripción |
+|------|-------------|
+| `033b47a` | fix: PDF planilla no-F11 — fuente dinámica y observaciones adaptativas |
+| `d8209ce` | fix: PDF planilla no-F11 — sin P/S, fuente conservadora y sin overflow |
+| `69b2b40` | fix: PDF planilla no-F11 — fuente real, espacio por modelo, hasta 30 filas |
+
+### Pendiente siguiente
+
+- Probar en Render con un partido real de cada formato:
+  - **Fútbol 7** (maxFilas=14 aprox): verificar que P/S no aparecen, nombres en 1 línea, 1 hoja.
+  - **Fútbol 8/9** (maxFilas=17-18): verificar 1 hoja sin overflow.
+  - **Con observaciones**: confirmar que van a página 2 cuando no caben en la primera.
+  - **Pocos jugadores** (mitad del max): verificar que la fuente es visiblemente más grande.
+- Si todo está correcto, cerrar este bloque de ajustes PDF.
