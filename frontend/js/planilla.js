@@ -5225,6 +5225,20 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
       ? Math.max(_alturaFilaMin, Math.min(_alturaFilaMax, _espacioParaFilas / _totalFilasConCabecera))
       : _alturaFilaMax;
     const alturaCabeceraPlantel = Math.max(_alturaFilaMin + 1, alturaFilaPlantel * 0.85);
+    // Para no-F11: la fuente de celdas escala con la altura real de fila (más filas → fuente base,
+    // menos filas → fuente mayor). Factor 0.38 calibrado para que a 28pt de fila quede ~10.5pt.
+    const _fontCeldaBase = modoUltraCompactoPdf ? 6.6 : 7.4;
+    const _fontHeaderBase = modoUltraCompactoPdf ? 6.8 : 7.6;
+    const fontCeldaJugador = !arbitraje.esFutbol11
+      ? Math.min(10.5, Math.max(_fontCeldaBase, alturaFilaPlantel * 0.38))
+      : (modoUltraCompactoPdf ? 6.6 : modoCompactoPdf ? 7.4 : 8.5);
+    const fontHeaderTabla = !arbitraje.esFutbol11
+      ? Math.min(11.0, Math.max(_fontHeaderBase, alturaFilaPlantel * 0.40))
+      : (modoUltraCompactoPdf ? 6.8 : modoCompactoPdf ? 7.6 : 8.8);
+    // Observaciones en misma página si el espacio restante alcanza; si no, página 2.
+    const _espacioRestante = _espacioParaFilas - alturaFilaPlantel * _totalFilasConCabecera;
+    const _alturaObsEstimada = 200; // pt: 3 secciones de observaciones en modo compacto
+    const obsEnMismaPagina = !arbitraje.esFutbol11 && conObservaciones && _espacioRestante >= _alturaObsEstimada;
     const bodyLocal = construirFilasPlantelPdf(plantelLocalImpresion, stats, maxFilas);
     const bodyVisit = construirFilasPlantelPdf(plantelVisitanteImpresion, stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
@@ -5582,14 +5596,15 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
           ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos, mostrarEnBlanco),
           margin: [0, 0, 0, modoCompactoPdf ? 2 : 6],
         },
-        // Observaciones siempre en página 2 (pageBreak) para todos los formatos.
-        // Sin observaciones: solo 1 hoja. Con observaciones: hoja 1 planilla, hoja 2 obs.
+        // Sin observaciones: 1 hoja siempre.
+        // Con observaciones (no-F11): misma página si el espacio alcanza; página 2 si no.
+        // Con observaciones (F11): siempre página 2.
         ...(conObservaciones
           ? [
               {
                 text: "OBSERVACIONES",
                 style: "sectionTitle",
-                pageBreak: "before",
+                ...(obsEnMismaPagina ? {} : { pageBreak: "before" }),
                 margin: [0, 2, 0, 6],
               },
               {
@@ -5700,16 +5715,16 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
           bold: true,
           alignment: "center",
           fillColor: "#eef4fb",
-          fontSize: modoUltraCompactoPdf ? 6.8 : modoCompactoPdf ? 7.6 : 8.8,
+          fontSize: fontHeaderTabla,
         },
         thLeft: {
           bold: true,
           alignment: "left",
           fillColor: "#eef4fb",
-          fontSize: modoUltraCompactoPdf ? 6.8 : modoCompactoPdf ? 7.6 : 8.8,
+          fontSize: fontHeaderTabla,
         },
-        tdCenter: { alignment: "center", fontSize: modoUltraCompactoPdf ? 6.6 : modoCompactoPdf ? 7.4 : 8.5 },
-        tdLeft: { alignment: "left", fontSize: modoUltraCompactoPdf ? 6.6 : modoCompactoPdf ? 7.4 : 8.5 },
+        tdCenter: { alignment: "center", fontSize: fontCeldaJugador },
+        tdLeft: { alignment: "left", fontSize: fontCeldaJugador },
         footTeamTitle: {
           bold: true,
           fillColor: "#f3f4f6",
