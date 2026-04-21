@@ -3168,6 +3168,63 @@ Se auditó el sistema de transmisiones y se confirmó que está implementado al 
 
 ### Pendiente siguiente
 
-- Probar visualmente en UI:
-  - una planilla real de `fútbol 7` exportada a PDF,
-  - y comparar contra `fútbol 8`, `fútbol 9` y `fútbol 11` para confirmar que no cambian.
+- Probar visualmente en Render:
+  - una planilla real de `fútbol 7` exportada a PDF y confirmar que sale en **1 hoja**,
+  - comparar contra `fútbol 8`, `fútbol 9` y `fútbol 11` para confirmar que no cambiaron.
+
+---
+
+## 2026-04-18 — Estado del repositorio y hoja de ruta para próxima sesión
+
+### Rama `main` sincronizada — commits en producción (Render)
+
+| Hash | Descripción |
+|------|-------------|
+| `40bb99e` | fix: modo compacto para todos los formatos no-fútbol11 (f8, f9, etc.) |
+| `f48070d` | fix: planilla PDF fútbol 7 — modo compacto, filas angostas, obs en pág 2 |
+| `f5d39a4` | fix: PDF planilla fútbol 7 en una sola hoja con observaciones compactas |
+| `64ea8ef` | feat: módulo transmisión Phase 1 — Socket.io overlay para OBS |
+| `9f1fac8` | feat: valid-result filter + jugadores from superior category |
+
+### Estado de módulos en Render
+
+| Módulo | Estado |
+|--------|--------|
+| Portal público (resultados, tabla, goleadores) | Operativo |
+| Planilla PDF fútbol 11 / 9 / 8 | Operativo |
+| Planilla PDF fútbol 7 (1 hoja, modo compacto) | Subido — **pendiente prueba visual** |
+| Planilla PDF todos los formatos no-fútbol11 (modo compacto) | Subido — **pendiente prueba visual** |
+| Importación Excel (cédulas/teléfonos con cero inicial) | Operativo |
+| Pestaña "Desde categoría superior" en jugadores | Subido — **pendiente prueba funcional** |
+| Resultados filtrados (suspendidos/pendientes ocultos) | Subido — **pendiente prueba en Render** |
+| Módulo transmisión Phase 1 (Socket.io overlay OBS) | Subido — **pendiente prueba de integración** |
+| Baloncesto | Base implementada — pendiente pruebas funcionales |
+
+### Pendientes priorizados para próxima sesión
+
+1. **Planilla fútbol 7 y otros formatos** — exportar PDF de categorías reales:
+   - fútbol 7: confirmar 1 hoja, observaciones en pág 2
+   - fútbol 8/9: confirmar que también quedan en 1 hoja (modo compacto extendido)
+   - fútbol 11 < 24 filas: confirmar que sigue en modo normal sin cambios
+
+2. **Resultados filtrados** — buscar categoría con partidos `suspendido`/`pendiente` que antes aparecían en pestaña `Resultados` y confirmar que ya no salen.
+
+3. **Jugadores desde categoría superior** — flujo real de inscripción en un campeonato activo.
+
+4. **Módulo transmisión Phase 1** — prueba de integración completa:
+   - Crear transmisión desde panel de administración
+   - Abrir `frontend/director.html` con `director_token`
+   - Abrir `frontend/overlay.html` como Browser Source en OBS
+   - Ajustar marcador y confirmar actualización en tiempo real vía Socket.io
+
+5. **Baloncesto** — prueba funcional básica: registro de partido y generación de planilla.
+
+### Archivos clave por módulo
+
+| Módulo | Archivos principales |
+|--------|----------------------|
+| Planilla PDF | `frontend/js/planilla.js` |
+| Transmisión / Overlay | `frontend/director.html`, `frontend/overlay.html`, `backend/services/socketService.js`, `backend/controllers/overlayController.js`, `backend/models/TransmisionOverlay.js`, `backend/routes/overlayRoutes.js` |
+| Transmisión BD | `database/migrations/064_transmision_overlay.sql`, `database/migrations/065_transmisiones_overlay_token.sql` |
+| Jugadores categoría superior | `frontend/js/jugadores.js`, `frontend/jugadores.html` |
+| Resultados / tabla pública | `frontend/js/portal.js`, `backend/models/Partido.js`, `backend/controllers/tablaController.js` |
