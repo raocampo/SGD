@@ -5205,6 +5205,13 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
       maxFilas
     );
     const totalFilasImpresion = Math.max(plantelLocalImpresion.length, plantelVisitanteImpresion.length, 0);
+    // Jugadores reales (no-null) de ambos equipos — para escalar la fuente sin que las
+    // filas vacías de relleno cuenten como "llenas".
+    const totalJugadoresReales = Math.max(
+      plantelLocalImpresion.filter((j) => j !== null).length,
+      plantelVisitanteImpresion.filter((j) => j !== null).length,
+      0
+    );
     // Fútbol 11 custom (< 24 filas) → modo normal (márgenes amplios, preservar comportamiento actual).
     // Todos los demás formatos (f7, f8, f9, f6, f5, sala, indor, basquetbol) → siempre compacto.
     // 24+ filas → compacto; 30+ filas → ultra-compacto.
@@ -5214,23 +5221,24 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     // y distribuirlo entre todas las filas del plantel para llenar la hoja.
     const _alturaA4 = 841; // puntos pdfMake (1pt = 1/72 inch)
     const _margenVertical = modoUltraCompactoPdf ? 8 : modoCompactoPdf ? 10 : 44;
-    // Espacio estimado para todo el contenido fijo (header + info + score + DT/firma + tarjetas + pagos)
-    // 345pt para compacto (ajustado +25pt vs 320 para evitar overflow por subestimación previa).
-    const _espacioFijo = modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 345 : 490;
+    // futbol_7_5_sala añade un bloque de faltas (~22pt) que futbol_11_indor no tiene.
+    const _extraFaltas = (!arbitraje.esFutbol11 && modelo === "futbol_7_5_sala" && !modoUltraCompactoPdf) ? 22 : 0;
+    const _espacioFijo = modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 345 + _extraFaltas : 490;
     const _espacioParaFilas = _alturaA4 - _margenVertical - _espacioFijo;
     const _totalFilasConCabecera = totalFilasImpresion + 1; // +1 por la fila de encabezado
     const _alturaFilaMin = modoUltraCompactoPdf ? 5 : modoCompactoPdf ? 6 : 8;
-    // Cap 32pt para no-ultra: da altura visual cómoda cuando hay pocas filas (7-14).
+    // Cap 32pt para no-ultra: da altura visual cómoda cuando hay pocas filas.
     const _alturaFilaMax = modoUltraCompactoPdf ? 22 : 32;
     const alturaFilaPlantel = _totalFilasConCabecera > 0
       ? Math.max(_alturaFilaMin, Math.min(_alturaFilaMax, _espacioParaFilas / _totalFilasConCabecera))
       : _alturaFilaMax;
     const alturaCabeceraPlantel = Math.max(_alturaFilaMin + 1, alturaFilaPlantel * 0.85);
-    // Para no-F11: la fuente escala según el ratio de filas reales vs máximo configurado.
-    // Al estar lleno (ratio≈1) usa la fuente base; con pocas filas sube hasta ×1.35.
+    // Para no-F11: la fuente escala según el ratio de jugadores REALES vs máximo configurado.
+    // totalFilasImpresion siempre es maxFilas (filas vacías rellenadas), por eso se usan
+    // totalJugadoresReales para que la fuente suba cuando hay pocas inscripciones.
     const _fontCeldaBase = modoUltraCompactoPdf ? 6.6 : 7.4;
     const _fontHeaderBase = modoUltraCompactoPdf ? 6.8 : 7.6;
-    const _filasRatio = maxFilas > 0 ? Math.min(1, totalFilasImpresion / maxFilas) : 1;
+    const _filasRatio = maxFilas > 0 ? Math.min(1, totalJugadoresReales / maxFilas) : 1;
     const _fontScaleNoF11 = !arbitraje.esFutbol11 ? (1 + (1 - _filasRatio) * 0.35) : 1.0;
     const fontCeldaJugador = !arbitraje.esFutbol11
       ? Math.min(9.0, _fontCeldaBase * _fontScaleNoF11)
