@@ -4004,7 +4004,8 @@ function obtenerColumnasRegistroPlanilla({ encabezadoCompleto = false, modo = "r
       pdfWidth: 12,
     },
   ];
-  if (usaConvocatoria) {
+  // En PDF no se muestran columnas P/S para formatos no-F11 (fútbol 7, 8, sala, etc.)
+  if (usaConvocatoria && modo !== "pdf") {
     if (esCaptura) {
       columnas.push({
         key: "convocatoria",
@@ -5214,26 +5215,28 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     const _alturaA4 = 841; // puntos pdfMake (1pt = 1/72 inch)
     const _margenVertical = modoUltraCompactoPdf ? 8 : modoCompactoPdf ? 10 : 44;
     // Espacio estimado para todo el contenido fijo (header + info + score + DT/firma + tarjetas + pagos)
-    const _espacioFijo = modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 320 : 490;
+    // 345pt para compacto (ajustado +25pt vs 320 para evitar overflow por subestimación previa).
+    const _espacioFijo = modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 345 : 490;
     const _espacioParaFilas = _alturaA4 - _margenVertical - _espacioFijo;
     const _totalFilasConCabecera = totalFilasImpresion + 1; // +1 por la fila de encabezado
     const _alturaFilaMin = modoUltraCompactoPdf ? 5 : modoCompactoPdf ? 6 : 8;
-    // Cap compartido compact/normal: la fórmula dinámica distribuye el espacio disponible;
-    // el cap solo evita que juegos con muy pocas filas tengan filas gigantescas.
-    const _alturaFilaMax = modoUltraCompactoPdf ? 22 : 28;
+    // Cap 32pt para no-ultra: da altura visual cómoda cuando hay pocas filas (7-14).
+    const _alturaFilaMax = modoUltraCompactoPdf ? 22 : 32;
     const alturaFilaPlantel = _totalFilasConCabecera > 0
       ? Math.max(_alturaFilaMin, Math.min(_alturaFilaMax, _espacioParaFilas / _totalFilasConCabecera))
       : _alturaFilaMax;
     const alturaCabeceraPlantel = Math.max(_alturaFilaMin + 1, alturaFilaPlantel * 0.85);
-    // Para no-F11: la fuente de celdas escala con la altura real de fila (más filas → fuente base,
-    // menos filas → fuente mayor). Factor 0.38 calibrado para que a 28pt de fila quede ~10.5pt.
+    // Para no-F11: la fuente escala según el ratio de filas reales vs máximo configurado.
+    // Al estar lleno (ratio≈1) usa la fuente base; con pocas filas sube hasta ×1.35.
     const _fontCeldaBase = modoUltraCompactoPdf ? 6.6 : 7.4;
     const _fontHeaderBase = modoUltraCompactoPdf ? 6.8 : 7.6;
+    const _filasRatio = maxFilas > 0 ? Math.min(1, totalFilasImpresion / maxFilas) : 1;
+    const _fontScaleNoF11 = !arbitraje.esFutbol11 ? (1 + (1 - _filasRatio) * 0.35) : 1.0;
     const fontCeldaJugador = !arbitraje.esFutbol11
-      ? Math.min(10.5, Math.max(_fontCeldaBase, alturaFilaPlantel * 0.38))
+      ? Math.min(9.0, _fontCeldaBase * _fontScaleNoF11)
       : (modoUltraCompactoPdf ? 6.6 : modoCompactoPdf ? 7.4 : 8.5);
     const fontHeaderTabla = !arbitraje.esFutbol11
-      ? Math.min(11.0, Math.max(_fontHeaderBase, alturaFilaPlantel * 0.40))
+      ? Math.min(9.5, _fontHeaderBase * _fontScaleNoF11)
       : (modoUltraCompactoPdf ? 6.8 : modoCompactoPdf ? 7.6 : 8.8);
     // Observaciones en misma página si el espacio restante alcanza; si no, página 2.
     const _espacioRestante = _espacioParaFilas - alturaFilaPlantel * _totalFilasConCabecera;
