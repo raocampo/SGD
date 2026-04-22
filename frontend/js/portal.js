@@ -261,8 +261,26 @@ function enriquecerColeccionesPortal(partidos = [], eliminatoriasPayload = []) {
     }),
   }));
 
+  // Slots de playoff que no tienen un partido en el endpoint regular (evento_id diferente).
+  // Se agregan como partidos virtuales para que aparezcan en el tab Resultados.
+  const slotsHuerfanos = rondasEnriquecidas.flatMap((ronda) =>
+    (Array.isArray(ronda?.partidos) ? ronda.partidos : [])
+      .filter((slot) => {
+        const pid = Number.parseInt(slot?.partido_id, 10);
+        return !Number.isFinite(pid) || !partidosPorId.has(pid);
+      })
+      .map((slot) => ({
+        ...slot,
+        id: Number.isFinite(Number.parseInt(slot?.partido_id, 10))
+          ? Number.parseInt(slot.partido_id, 10)
+          : null,
+        equipo_local_logo_url: slot?.equipo_local_logo_url || slot?.equipo_local_logo || null,
+        equipo_visitante_logo_url: slot?.equipo_visitante_logo_url || slot?.equipo_visitante_logo || null,
+      }))
+  );
+
   return {
-    partidos: partidosEnriquecidos,
+    partidos: [...partidosEnriquecidos, ...slotsHuerfanos],
     eliminatorias: {
       ...eliminatoriasData,
       rondas: rondasEnriquecidas,
