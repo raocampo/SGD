@@ -36,8 +36,11 @@
 
   function formatearFecha(f) {
     if (!f) return "—";
-    const d = new Date(String(f).includes("T") ? f : f + "T00:00:00");
-    return d.toLocaleDateString("es-EC", { weekday: "short", day: "2-digit", month: "short" });
+    // Extraer YYYY-MM-DD y construir como hora local para evitar desfase UTC-5
+    const ymd = String(f).slice(0, 10);
+    const [y, m, d] = ymd.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString("es-EC", { weekday: "short", day: "2-digit", month: "short" });
   }
 
   function formatearHora(h) {
