@@ -3205,6 +3205,24 @@ class Eliminatoria {
       await this.sincronizarMejoresPerdedores12vos(evento_id, db);
     }
 
+    // Sincronización inversa: si partidos_eliminatoria ya tiene ganador_id resuelto
+    // pero el partido vinculado sigue 'pendiente', lo finaliza automáticamente.
+    await db.query(
+      `UPDATE partidos p
+       SET estado             = 'finalizado',
+           resultado_local    = pe.resultado_local,
+           resultado_visitante = pe.resultado_visitante,
+           updated_at         = NOW()
+       FROM partidos_eliminatoria pe
+       WHERE pe.partido_id          = p.id
+         AND pe.evento_id           = $1
+         AND pe.ganador_id          IS NOT NULL
+         AND pe.resultado_local     IS NOT NULL
+         AND pe.resultado_visitante IS NOT NULL
+         AND p.estado               = 'pendiente'`,
+      [evento_id]
+    );
+
     await this.asegurarPartidosOperativosPlayoff(evento_id, db);
 
     return { actualizados };
