@@ -1,3 +1,46 @@
+## 2026-04-21 — Fix: fechas de partidos en portal organizador (desfase UTC-5)
+
+### Síntoma
+En el dashboard del organizador (`portal-admin.html`), los partidos mostraban
+la fecha un día anterior a la fecha real.
+
+### Causa raíz
+`frontend/js/dashboard-organizador.js` — función `formatearFecha()`:
+
+```javascript
+// ANTES (buggy)
+const d = new Date(String(f).includes("T") ? f : f + "T00:00:00");
+```
+
+El campo `fecha_partido` (`DATE` en PostgreSQL) es serializado por el driver `pg`
+como `"2025-12-27T00:00:00.000Z"`. Al contener `"T"`, el código usaba el string
+completo con zona UTC (`Z`). `new Date("...Z")` = UTC medianoche = **día anterior
+a las 19:00 en Ecuador (UTC-5)** → `toLocaleDateString` mostraba el día incorrecto.
+
+### Fix (`frontend/js/dashboard-organizador.js`, commit `ebadd78`)
+
+```javascript
+// AHORA (correcto)
+const ymd = String(f).slice(0, 10);           // extrae "YYYY-MM-DD" ignorando la parte T y Z
+const [y, m, d] = ymd.split("-").map(Number);
+const dt = new Date(y, m - 1, d);             // hora local, sin desfase UTC
+return dt.toLocaleDateString("es-EC", { weekday: "short", day: "2-digit", month: "short" });
+```
+
+### Por qué solo este archivo
+- `portal.js` ya tenía `parseFechaLocalPortal()` con regex que extrae `YYYY-MM-DD` → correcto.
+- `partidos.js` usa `normalizarFechaISO()` que retorna el string sin construir `Date` → correcto.
+- Solo `dashboard-organizador.js` tenía el patrón incorrecto.
+
+### Patrón correcto para fechas DATE de PostgreSQL en frontend (UTC-5 Ecuador)
+```javascript
+// ✅ Siempre extraer YYYY-MM-DD antes de construir un Date
+const [y, m, d] = String(fecha).slice(0, 10).split("-").map(Number);
+const dt = new Date(y, m - 1, d); // hora local
+```
+
+---
+
 ## 2026-04-18 - Planilla PDF fútbol 8/9: modo compacto para todos los formatos no-fútbol11
 
 ### Objetivos de la sesión
