@@ -1,3 +1,57 @@
+## 2026-04-21 — Fix: portal Copa Ciudad de Loja — 8vos pendientes y Sub+40 sin resultados
+
+### Síntoma 1 — Abierta: 8vos de final se mostraban como "pendientes"
+- En el portal, la categoría Abierta (evento 8) mostraba los 8 partidos de 8vos con `estado=pendiente`
+  aunque los resultados ya estaban registrados.
+- Causa: los slots en `partidos_eliminatoria` tenían `ganador_id` y resultados correctos,
+  pero los registros correspondientes en `partidos` (IDs 4368-4375) seguían con `estado='pendiente'` y 0-0.
+- El portal usa `partidos.estado` para decidir si mostrar como "finalizado" o "pendiente".
+
+### Fix — migración 066 (`database/migrations/066_fix_bracket_slots_finalizado.sql`)
+```sql
+UPDATE partidos p
+SET estado = 'finalizado',
+    resultado_local = pe.resultado_local,
+    resultado_visitante = pe.resultado_visitante,
+    updated_at = NOW()
+FROM partidos_eliminatoria pe
+WHERE pe.partido_id = p.id
+  AND pe.ganador_id IS NOT NULL
+  AND pe.resultado_local IS NOT NULL
+  AND pe.resultado_visitante IS NOT NULL
+  AND p.estado = 'pendiente';
+```
+- Idempotente: solo actualiza partidos que aún estén `pendiente` con slot ya resuelto.
+- En producción actualizará los 8 slots de Abierta 8vos (IDs 4368-4375).
+
+### Síntoma 2 — Sub+40: tab "Resultados" no mostraba 8vos ni 4tos
+- Los slots del bracket de Sub+40 (evento 9) tienen `partido_id` apuntando a registros
+  de `partidos` con `evento_id` distinto de 9.
+- Por eso, `/api/public/eventos/9/partidos` devuelve solo las 9 jornadas regulares (86 partidos).
+- El tab "Resultados" usaba solo esos 86 partidos → no veía los 8vos/4tos finalizados.
+- El tab "Playoff" SÍ los mostraba (endpoint `/eliminatorias` usa `partidos_eliminatoria.evento_id`).
+
+### Fix — `frontend/js/portal.js` — `enriquecerColeccionesPortal` (commit `a3d9359`)
+Después de construir `rondasEnriquecidas`, se recogen los slots cuyo `partido_id` no
+está en el endpoint regular y se agregan como "partidos virtuales" al array de partidos:
+```javascript
+const slotsHuerfanos = rondasEnriquecidas.flatMap(ronda =>
+  ronda.partidos
+    .filter(slot => !partidosPorId.has(Number.parseInt(slot?.partido_id, 10)))
+    .map(slot => ({ ...slot, id: slot?.partido_id, equipo_local_logo_url: slot?.equipo_local_logo, ... }))
+);
+return { partidos: [...partidosEnriquecidos, ...slotsHuerfanos], ... };
+```
+- Los slots con `estado='finalizado'` pasan el filtro `esPartidoConResultadoPortal` → aparecen en Resultados.
+- Los slots `pendiente` (semifinal futura, etc.) también aparecen en Jornadas como partidos próximos.
+
+### Commits de esta sesión
+| Hash | Descripción |
+|------|-------------|
+| `a3d9359` | fix: portal Copa Loja — 8vos pendientes y resultados Sub+40 |
+
+---
+
 ## 2026-04-21 — Fix: fechas de partidos en portal organizador (desfase UTC-5)
 
 ### Síntoma
