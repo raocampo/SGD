@@ -178,6 +178,21 @@ function inferirEdadBaseCategoria(nombreEvento) {
   return Number.isFinite(edad) && edad >= 30 && edad <= 60 ? edad : null;
 }
 
+// Detecta categorías Sub-4 a Sub-19 (fútbol juvenil).
+// Retorna el número (4,6,8,10,12,14,16,17,18,19) o null.
+const SUB_JUVENIL_VALIDAS = new Set([4, 6, 8, 10, 12, 14, 16, 17, 18, 19]);
+function inferirSubJuvenilEdad(nombreEvento) {
+  const raw = String(nombreEvento ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+  if (!raw) return null;
+  const match = raw.match(/\b(?:sub|u)\s*-?\s*(4|6|8|10|12|14|16|17|18|19)\b/);
+  if (!match) return null;
+  const edad = Number.parseInt(match[1], 10);
+  return SUB_JUVENIL_VALIDAS.has(edad) ? edad : null;
+}
+
 function normalizarCategoriaJuvenilCupos(value, fallback = 0) {
   if (value === undefined || value === null || value === "") return fallback;
   const numero = Number.parseInt(value, 10);
@@ -314,7 +329,8 @@ async function asegurarEsquemaEventos() {
     ADD COLUMN IF NOT EXISTS categoria_juvenil BOOLEAN DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS categoria_juvenil_cupos INTEGER DEFAULT 0,
     ADD COLUMN IF NOT EXISTS categoria_juvenil_max_diferencia INTEGER DEFAULT 1,
-    ADD COLUMN IF NOT EXISTS carnet_mostrar_edad BOOLEAN DEFAULT FALSE
+    ADD COLUMN IF NOT EXISTS carnet_mostrar_edad BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS fecha_corte_edad DATE
   `);
 
   await pool.query(`
@@ -444,6 +460,7 @@ const eventoController = {
         categoria_juvenil_cupos,
         categoria_juvenil_max_diferencia,
         carnet_mostrar_edad,
+        fecha_corte_edad,
       } = req.body;
 
       if (!campeonato_id || !nombre || !fecha_inicio || !fecha_fin) {
@@ -572,6 +589,13 @@ const eventoController = {
         categoriaJuvenil ? 2 : 1
       );
       const carnetMostrarEdad = normalizarBooleanFlexible(carnet_mostrar_edad, false) === true;
+      const edadSubJuvenil = inferirSubJuvenilEdad(nombre);
+      const fechaCorteEdad = fecha_corte_edad ? String(fecha_corte_edad).slice(0, 10) : null;
+      if (edadSubJuvenil && !fechaCorteEdad) {
+        return res.status(400).json({
+          error: `La categoría Sub-${edadSubJuvenil} requiere una fecha de corte de edad (fecha_corte_edad).`,
+        });
+      }
       if (categoriaJuvenil && !edadBaseCategoria) {
         return res.status(400).json({
           error: "La opción juvenil solo aplica a categorías Sub 30 a Sub 60; ajusta el nombre de la categoría o desactiva esta opción.",
@@ -602,13 +626,14 @@ const eventoController = {
           bloquear_morosos, bloqueo_morosidad_monto,
           carnet_estilo, carnet_color_primario, carnet_color_secundario, carnet_color_acento,
           categoria_juvenil, categoria_juvenil_cupos, categoria_juvenil_max_diferencia, carnet_mostrar_edad,
+          fecha_corte_edad,
           horario_weekday_inicio, horario_weekday_fin,
           horario_sab_inicio, horario_sab_fin,
           horario_dom_inicio, horario_dom_fin,
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -638,6 +663,7 @@ const eventoController = {
         categoriaJuvenil ? categoriaJuvenilCupos : 0,
         categoriaJuvenil ? categoriaJuvenilMaxDiferencia : 1,
         carnetMostrarEdad,
+        fechaCorteEdad,
         wkStart,
         wkEnd,
         satStart,
@@ -957,6 +983,13 @@ const eventoController = {
           }
           campos.push(`${k} = $${i}`);
           valores.push(valorBool === true);
+          i++;
+          continue;
+        }
+        if (k === "fecha_corte_edad") {
+          const fecha = v ? String(v).slice(0, 10) : null;
+          campos.push(`${k} = $${i}`);
+          valores.push(fecha);
           i++;
           continue;
         }

@@ -50,6 +50,20 @@ class Jugador {
         return Number.isFinite(edad) && edad >= 30 && edad <= 60 ? edad : null;
     }
 
+    static _SUB_JUVENIL_VALIDAS = new Set([4, 6, 8, 10, 12, 14, 16, 17, 18, 19]);
+
+    static inferirSubJuvenilEdad(nombreEvento) {
+        const raw = String(nombreEvento ?? '')
+            .normalize('NFD')
+            .replace(/[̀-ͯ]/g, '')
+            .toLowerCase();
+        if (!raw) return null;
+        const match = raw.match(/(?:sub|u)s*-?s*(4|6|8|10|12|14|16|17|18|19)/);
+        if (!match) return null;
+        const edad = Number.parseInt(match[1], 10);
+        return Jugador._SUB_JUVENIL_VALIDAS.has(edad) ? edad : null;
+    }
+
     static inferirNivelCategoriaMovimiento(nombreEvento) {
         const raw = String(nombreEvento ?? "")
             .normalize("NFD")
@@ -160,7 +174,8 @@ class Jugador {
                     COALESCE(categoria_juvenil, false) AS categoria_juvenil,
                     COALESCE(categoria_juvenil_cupos, 0) AS categoria_juvenil_cupos,
                     COALESCE(categoria_juvenil_max_diferencia, 1) AS categoria_juvenil_max_diferencia,
-                    COALESCE(carnet_mostrar_edad, false) AS carnet_mostrar_edad
+                    COALESCE(carnet_mostrar_edad, false) AS carnet_mostrar_edad,
+                    fecha_corte_edad
                 FROM eventos
                 WHERE id = $1
                 LIMIT 1
@@ -179,10 +194,54 @@ class Jugador {
                 1
             ),
             carnet_mostrar_edad: row.carnet_mostrar_edad === true,
+            fecha_corte_edad: row.fecha_corte_edad ? String(row.fecha_corte_edad).slice(0, 10) : null,
+            edad_sub_juvenil: Jugador.inferirSubJuvenilEdad(row.nombre),
         };
     }
 
-    static evaluarCondicionJuvenilEvento(fechaNacimiento, configEvento = {}) {
+    static evaluarCondicionSubJuvenilEvento(fechaNacimiento, configEvento = {}) {
+        const edadLimite = Number.parseInt(configEvento?.edad_sub_juvenil, 10);
+        if (!Jugador._SUB_JUVENIL_VALIDAS.has(edadLimite)) {
+            return { controlaEdad: false, permitido: true, esSubJuvenil: false, edad: null, edadLimite: null, mensaje: '' };
+        }
+
+        const fechaCorteRaw = configEvento?.fecha_corte_edad;
+        if (!fechaCorteRaw) {
+            return {
+                controlaEdad: true, permitido: false, esSubJuvenil: true, edad: null, edadLimite,
+                mensaje: `La categoría Sub-${edadLimite} no tiene fecha de corte configurada.`,
+            };
+        }
+
+        const [cy, cm, cd] = String(fechaCorteRaw).slice(0, 10).split('-').map(Number);
+        const fechaCorte = new Date(cy, cm - 1, cd);
+
+        if (!this.normalizarFechaNacimiento(fechaNacimiento)) {
+            return {
+                controlaEdad: true, permitido: false, esSubJuvenil: true, edad: null, edadLimite,
+                mensaje: `La categoría Sub-${edadLimite} requiere fecha de nacimiento.`,
+            };
+        }
+
+        const edad = this.calcularEdadDesdeFechaNacimiento(fechaNacimiento, fechaCorte);
+        if (!Number.isFinite(edad)) {
+            return {
+                controlaEdad: true, permitido: false, esSubJuvenil: true, edad: null, edadLimite,
+                mensaje: 'No se pudo validar la fecha de nacimiento del jugador.',
+            };
+        }
+
+        if (edad < edadLimite) {
+            return { controlaEdad: true, permitido: true, esSubJuvenil: true, edad, edadLimite, mensaje: '' };
+        }
+
+        return {
+            controlaEdad: true, permitido: false, esSubJuvenil: true, edad, edadLimite,
+            mensaje: `El jugador tiene ${edad} año(s) en la fecha de corte (${String(fechaCorteRaw).slice(0,10)}) y ya supera el límite de la categoría Sub-${edadLimite}.`,
+        };
+    }
+
+        static evaluarCondicionJuvenilEvento(fechaNacimiento, configEvento = {}) {
         const edadBase = Number.parseInt(configEvento?.edad_base_categoria, 10);
         if (!Number.isFinite(edadBase) || edadBase < 30 || edadBase > 60) {
             return {
@@ -308,6 +367,16 @@ class Jugador {
         const evento = await this.obtenerConfiguracionEtariaEvento(eventoId);
         if (!evento) return null;
 
+        // Ruta Sub-4..19: límite duro por edad exacta en fecha de corte
+        if (Jugador._SUB_JUVENIL_VALIDAS.has(evento.edad_sub_juvenil)) {
+            const evaluacion = this.evaluarCondicionSubJuvenilEvento(fechaNacimiento, evento);
+            if (!evaluacion.permitido) {
+                throw new Error(evaluacion.mensaje);
+            }
+            return evaluacion;
+        }
+
+        // Ruta Sub-30..60: año calendario + cupos juveniles
         const evaluacion = this.evaluarCondicionJuvenilEvento(fechaNacimiento, evento);
         if (!evaluacion.controlaEdad) return evaluacion;
         if (!evaluacion.permitido) {
