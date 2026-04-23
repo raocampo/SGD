@@ -82,7 +82,10 @@
           <div class="tblp-bg-selector">
             <span class="tblp-bg-label">Fondo:</span>
             <div class="tblp-bg-swatches" id="tblp-bg-swatches">
-              <button class="tblp-bg-swatch active" data-fondo="nocturno" title="Nocturno" type="button">
+              <button class="tblp-bg-swatch active" data-fondo="deportivo" title="Deportivo" type="button">
+                <span class="swatch-preview swatch-deportivo"></span>Deportivo
+              </button>
+              <button class="tblp-bg-swatch" data-fondo="nocturno" title="Nocturno" type="button">
                 <span class="swatch-preview swatch-nocturno"></span>Nocturno
               </button>
               <button class="tblp-bg-swatch" data-fondo="clasico" title="Clásico" type="button">
@@ -125,7 +128,7 @@
         </div>
 
         <!-- ── Zona exportable (poster) ───────────────────────────────── -->
-        <div id="tblp-poster" class="tblp-poster fondo-nocturno">
+        <div id="tblp-poster" class="tblp-poster fondo-deportivo">
 
           <div class="tblp-poster-header">
             <img id="tblp-org-logo" class="tblp-org-logo" alt="Logo" style="display:none;" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -134,14 +137,20 @@
               <div id="tblp-titulo" class="tblp-title">TORNEO</div>
               <div id="tblp-detalle" class="tblp-detail">Categoría</div>
             </div>
-            <div id="tblp-tipo-badge" class="tblp-tipo-badge">Posiciones</div>
+            <div id="tblp-year" class="tblp-year">2026</div>
           </div>
+
+          <div id="tblp-title-strip" class="tblp-title-strip">Tabla General</div>
 
           <div id="tblp-poster-content" class="tblp-poster-content">
             <div class="tblp-empty-state">
               <i class="fas fa-table"></i>
               <p>Selecciona un campeonato y categoría para previsualizar la postal.</p>
             </div>
+          </div>
+
+          <div class="tblp-field-deco">
+            <div class="tblp-field-ball"></div>
           </div>
 
           <div id="tblp-poster-footer" class="tblp-poster-footer" style="display:none;">

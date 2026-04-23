@@ -31,7 +31,7 @@
   let campeonatoActual = null;
   let eventoActual = null;
   let tipoActual = "posiciones";
-  let fondoActual = "nocturno";
+  let fondoActual = "deportivo";
   let exportEnCurso = false;
 
   let dataPosiciones = null;
@@ -99,14 +99,13 @@
         const eliminado = row.eliminado_competencia === true || row.eliminado_manual === true;
         const fuera = row.fuera_clasificacion === true;
         const claseTr = eliminado ? "tblp-eliminado" : fuera ? "tblp-fuera" : idx < clasifican ? "tblp-clasifica" : "";
-        const logoSrc = normalizarLogoUrl(row?.equipo?.logo_url || null);
         const nombre = row?.equipo?.nombre || "-";
         return `
           <tr class="${claseTr}">
-            <td class="tblp-col-pos">${Number(row.posicion || idx + 1)}</td>
+            <td class="col-pos"><span class="tblp-pos-badge">${Number(row.posicion || idx + 1)}</span></td>
             <td class="col-equipo">
               <div class="tblp-equipo-cell">
-                ${logoEquipoHtml(logoSrc, nombre)}
+                ${logoEquipoHtml(row?.equipo?.logo_url || null, nombre)}
                 <span class="tblp-equipo-nombre">${esc(nombre)}</span>
               </div>
             </td>
@@ -114,26 +113,28 @@
             <td>${Number(est.partidos_ganados || 0)}</td>
             <td>${Number(est.partidos_empatados || 0)}</td>
             <td>${Number(est.partidos_perdidos || 0)}</td>
-            <td>${Number(est.goles_favor || 0)}</td>
-            <td>${Number(est.goles_contra || 0)}</td>
-            <td>${Number(est.diferencia_goles || 0)}</td>
-            <td class="tblp-col-pts">${Number(row.puntos || 0)}</td>
+            <td class="col-gf">${Number(est.goles_favor || 0)}</td>
+            <td class="col-gc">${Number(est.goles_contra || 0)}</td>
+            <td class="col-dg">${Number(est.diferencia_goles || 0)}</td>
+            <td class="col-pts">${Number(row.puntos || 0)}</td>
           </tr>`;
       }).join("");
 
       const tituloGrupo = grupos.length > 1 ? g.nombre || `Grupo ${g.grupo_letra || ""}` : "";
 
       return `
-        <div class="tblp-group-card">
-          ${tituloGrupo ? `<div class="tblp-group-head">${esc(tituloGrupo)}</div>` : ""}
+        ${tituloGrupo ? `<div class="tblp-group-label">${esc(tituloGrupo)}</div>` : ""}
+        <div class="tblp-tabla-wrap">
           <table class="tblp-tabla">
             <thead>
               <tr>
-                <th class="tblp-col-pos">#</th>
+                <th class="col-pos">#</th>
                 <th class="col-equipo">Equipo</th>
                 <th>PJ</th><th>PG</th><th>PE</th><th>PP</th>
-                <th>GF</th><th>GC</th><th>DG</th>
-                <th class="tblp-col-pts">PTS</th>
+                <th class="col-gf">GF</th>
+                <th class="col-gc">GC</th>
+                <th class="col-dg">DG</th>
+                <th class="col-pts">PTS</th>
               </tr>
             </thead>
             <tbody>${filas}</tbody>
@@ -141,7 +142,7 @@
         </div>`;
     }).join("");
 
-    return gruposHtml;
+    return `<div class="tblp-poster-body">${gruposHtml}</div>`;
   }
 
   // ── Render goleadores ─────────────────────────────────────────────────────
@@ -152,32 +153,34 @@
 
     const filas = lista.map((g, idx) => `
       <tr>
-        <td>${rankHtml(idx)}</td>
+        <td class="col-pos">${rankHtml(idx)}</td>
         <td class="col-equipo">
           <div class="tblp-equipo-cell">
-            ${logoEquipoHtml(g.logo_url || null, g.equipo_nombre || "")}
+            ${logoEquipoHtml(g.logo_url || null, g.jugador_nombre || "")}
             <span class="tblp-equipo-nombre">${esc(g.jugador_nombre || "-")}</span>
           </div>
         </td>
         <td>${esc(g.equipo_nombre || "-")}</td>
-        <td class="tblp-col-pts">${Number(g.goles || 0)}</td>
+        <td class="col-pts">${Number(g.goles || 0)}</td>
         <td>${Number(g.partidos_con_gol || 0)}</td>
       </tr>`).join("");
 
     return `
-      <div class="tblp-group-card">
-        <table class="tblp-tabla">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th class="col-equipo">Jugador</th>
-              <th>Equipo</th>
-              <th class="tblp-col-pts">Goles</th>
-              <th>PG</th>
-            </tr>
-          </thead>
-          <tbody>${filas}</tbody>
-        </table>
+      <div class="tblp-poster-body">
+        <div class="tblp-tabla-wrap">
+          <table class="tblp-tabla">
+            <thead>
+              <tr>
+                <th class="col-pos">#</th>
+                <th class="col-equipo">Jugador</th>
+                <th>Equipo</th>
+                <th class="col-pts">Goles</th>
+                <th>PG</th>
+              </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>
       </div>`;
   }
 
@@ -189,30 +192,32 @@
 
     const filas = lista.map((t, idx) => `
       <tr>
-        <td>${rankHtml(idx)}</td>
+        <td class="col-pos">${rankHtml(idx)}</td>
         <td class="col-equipo">
           <div class="tblp-equipo-cell">
             ${logoEquipoHtml(t.logo_url || null, t.equipo_nombre || "")}
             <span class="tblp-equipo-nombre">${esc(t.equipo_nombre || "-")}</span>
           </div>
         </td>
-        <td style="color:#facc15;font-weight:700;">${Number(t.amarillas || 0)}</td>
-        <td style="color:#ef4444;font-weight:700;">${Number(t.rojas || 0)}</td>
+        <td class="col-gf">${Number(t.amarillas || 0)}</td>
+        <td class="col-gc">${Number(t.rojas || 0)}</td>
       </tr>`).join("");
 
     return `
-      <div class="tblp-group-card">
-        <table class="tblp-tabla">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th class="col-equipo">Equipo</th>
-              <th>🟡 Amarillas</th>
-              <th>🔴 Rojas</th>
-            </tr>
-          </thead>
-          <tbody>${filas}</tbody>
-        </table>
+      <div class="tblp-poster-body">
+        <div class="tblp-tabla-wrap">
+          <table class="tblp-tabla">
+            <thead>
+              <tr>
+                <th class="col-pos">#</th>
+                <th class="col-equipo">Equipo</th>
+                <th class="col-gf">Amarillas</th>
+                <th class="col-gc">Rojas</th>
+              </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>
       </div>`;
   }
 
@@ -224,32 +229,34 @@
 
     const filas = lista.map((f, idx) => `
       <tr>
-        <td>${rankHtml(idx)}</td>
+        <td class="col-pos">${rankHtml(idx)}</td>
         <td class="col-equipo">
           <div class="tblp-equipo-cell">
             ${logoEquipoHtml(f.logo_url || null, f.equipo_nombre || "")}
             <span class="tblp-equipo-nombre">${esc(f.equipo_nombre || "-")}</span>
           </div>
         </td>
-        <td style="color:#facc15;">${Number(f.amarillas || 0)}</td>
-        <td style="color:#ef4444;">${Number(f.rojas || 0)}</td>
-        <td class="tblp-col-pts">${Number(f.puntaje_fair_play || 0).toFixed(1)}</td>
+        <td class="col-gf">${Number(f.amarillas || 0)}</td>
+        <td class="col-gc">${Number(f.rojas || 0)}</td>
+        <td class="col-pts">${Number(f.puntaje_fair_play || 0).toFixed(1)}</td>
       </tr>`).join("");
 
     return `
-      <div class="tblp-group-card">
-        <table class="tblp-tabla">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th class="col-equipo">Equipo</th>
-              <th>🟡</th>
-              <th>🔴</th>
-              <th class="tblp-col-pts">Puntaje</th>
-            </tr>
-          </thead>
-          <tbody>${filas}</tbody>
-        </table>
+      <div class="tblp-poster-body">
+        <div class="tblp-tabla-wrap">
+          <table class="tblp-tabla">
+            <thead>
+              <tr>
+                <th class="col-pos">#</th>
+                <th class="col-equipo">Equipo</th>
+                <th class="col-gf">Amarillas</th>
+                <th class="col-gc">Rojas</th>
+                <th class="col-pts">Puntaje</th>
+              </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>
       </div>`;
   }
 
@@ -261,17 +268,17 @@
 
   function actualizarContenidoPoster() {
     const cont = document.getElementById("tblp-poster-content");
-    const badge = document.getElementById("tblp-tipo-badge");
     if (!cont) return;
 
     const labels = {
-      posiciones: "Posiciones",
-      goleadores: "Goleadores",
-      tarjetas:   "Tarjetas",
-      fair_play:  "Fair Play",
+      posiciones: "Tabla General",
+      goleadores: "Tabla de Goleadores",
+      tarjetas:   "Tabla de Tarjetas",
+      fair_play:  "Tabla Fair Play",
     };
 
-    if (badge) badge.textContent = labels[tipoActual] || tipoActual;
+    const strip = document.getElementById("tblp-title-strip");
+    if (strip) strip.textContent = labels[tipoActual] || tipoActual;
 
     if (!eventoActual) {
       cont.innerHTML = emptyMsg("Selecciona campeonato y categoría.");
@@ -304,6 +311,15 @@
     const detalleCamp = `${tipo}${fi || ff ? ` · ${fi}${ff ? " – " + ff : ""}` : ""}`;
     const detalleEvento = eventoNombre ? `CATEGORÍA: ${String(eventoNombre).toUpperCase()}` : "";
     document.getElementById("tblp-detalle").textContent = [detalleCamp, detalleEvento].filter(Boolean).join(" · ");
+
+    // Año del campeonato
+    const yearEl = document.getElementById("tblp-year");
+    if (yearEl) {
+      const yearStr = camp.fecha_inicio
+        ? new Date(camp.fecha_inicio).getFullYear()
+        : new Date().getFullYear();
+      yearEl.textContent = yearStr;
+    }
 
     // Colores para tema Torneo
     poster.style.setProperty("--t-primario", camp.color_primario || "#1e3a5f");
@@ -395,7 +411,7 @@
   function aplicarFondo(fondo) {
     const poster = document.getElementById("tblp-poster");
     if (!poster) return;
-    const fondos = ["fondo-nocturno", "fondo-clasico", "fondo-azul", "fondo-vinotinto", "fondo-verde", "fondo-torneo"];
+    const fondos = ["fondo-deportivo", "fondo-nocturno", "fondo-clasico", "fondo-azul", "fondo-vinotinto", "fondo-verde", "fondo-torneo"];
     fondos.forEach((f) => poster.classList.remove(f));
     if (fondo !== "limpiar") poster.classList.add(`fondo-${fondo}`);
     fondoActual = fondo;
@@ -635,7 +651,7 @@
           }
           document.getElementById("tblp-btn-clear-bg").style.display = "none";
           document.getElementById("tblp-bg-custom-label").classList.remove("active");
-          aplicarFondo(fondoActual === "custom" ? "nocturno" : fondoActual);
+          aplicarFondo(fondoActual === "custom" ? "deportivo" : fondoActual);
         } else {
           aplicarFondo(fondo);
         }
