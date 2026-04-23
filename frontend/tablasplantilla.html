@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LT&C - Postales de Tablas</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/tablasplantilla.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+
+<body class="app-layout page-tablasplantilla">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ LT&C</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+      <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+      <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+      <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+      <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+      <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+      <a class="nav-btn active" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menu"><i class="fas fa-bars"></i></button>
+      <h1><i class="fas fa-image"></i> Postales de Tablas</h1>
+    </header>
+
+    <main class="main">
+      <div class="container tblp-layout">
+
+        <!-- ── Controles ─────────────────────────────────────────────── -->
+        <div class="card tblp-controls-card">
+          <div class="tblp-selectors">
+            <div class="form-group">
+              <label for="tblp-select-campeonato">Campeonato</label>
+              <select id="tblp-select-campeonato">
+                <option value="">— Selecciona un campeonato —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="tblp-select-evento">Categoría</label>
+              <select id="tblp-select-evento" disabled>
+                <option value="">— Selecciona una categoría —</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-primary" id="tblp-btn-cargar">
+              <i class="fas fa-search"></i> Cargar
+            </button>
+            <a href="tablas.html" class="btn btn-secondary">
+              <i class="fas fa-arrow-left"></i> Volver a Tablas
+            </a>
+          </div>
+
+          <!-- Tipo de tabla -->
+          <div class="tblp-tipo-tabs" id="tblp-tipo-tabs">
+            <button class="tblp-tipo-tab active" data-tipo="posiciones" type="button">
+              <i class="fas fa-list-ol"></i> Posiciones
+            </button>
+            <button class="tblp-tipo-tab" data-tipo="goleadores" type="button">
+              <i class="fas fa-futbol"></i> Goleadores
+            </button>
+            <button class="tblp-tipo-tab" data-tipo="tarjetas" type="button">
+              <i class="fas fa-square"></i> Tarjetas
+            </button>
+            <button class="tblp-tipo-tab" data-tipo="fair_play" type="button">
+              <i class="fas fa-star"></i> Fair Play
+            </button>
+          </div>
+
+          <!-- Fondos predefinidos -->
+          <div class="tblp-bg-selector">
+            <span class="tblp-bg-label">Fondo:</span>
+            <div class="tblp-bg-swatches" id="tblp-bg-swatches">
+              <button class="tblp-bg-swatch active" data-fondo="nocturno" title="Nocturno" type="button">
+                <span class="swatch-preview swatch-nocturno"></span>Nocturno
+              </button>
+              <button class="tblp-bg-swatch" data-fondo="clasico" title="Clásico" type="button">
+                <span class="swatch-preview swatch-clasico"></span>Clásico
+              </button>
+              <button class="tblp-bg-swatch" data-fondo="azul" title="Azul profundo" type="button">
+                <span class="swatch-preview swatch-azul"></span>Azul
+              </button>
+              <button class="tblp-bg-swatch" data-fondo="vinotinto" title="Vinotinto" type="button">
+                <span class="swatch-preview swatch-vinotinto"></span>Vinotinto
+              </button>
+              <button class="tblp-bg-swatch" data-fondo="verde" title="Verde campo" type="button">
+                <span class="swatch-preview swatch-verde"></span>Verde
+              </button>
+              <button class="tblp-bg-swatch" data-fondo="torneo" title="Colores del torneo" type="button">
+                <span class="swatch-preview swatch-torneo"></span>Torneo
+              </button>
+              <label class="tblp-bg-swatch" title="Imagen personalizada" id="tblp-bg-custom-label">
+                <input type="file" id="tblp-bg-input" accept="image/*" hidden />
+                <span class="swatch-preview swatch-custom"><i class="fas fa-image"></i></span>
+                Personalizado
+              </label>
+              <button class="tblp-bg-swatch" data-fondo="limpiar" title="Sin fondo personalizado"
+                id="tblp-btn-clear-bg" type="button" style="display:none;">
+                <span class="swatch-preview swatch-clear"><i class="fas fa-trash-alt"></i></span>
+                Quitar
+              </button>
+            </div>
+          </div>
+
+          <!-- Acciones export -->
+          <div class="tblp-export-actions">
+            <button type="button" class="btn btn-secondary" id="tblp-btn-png">
+              <i class="fas fa-image"></i> Exportar imagen
+            </button>
+            <button type="button" class="btn btn-danger" id="tblp-btn-pdf">
+              <i class="fas fa-file-pdf"></i> Exportar PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Zona exportable (poster) ───────────────────────────────── -->
+        <div id="tblp-poster" class="tblp-poster fondo-nocturno">
+
+          <div class="tblp-poster-header">
+            <img id="tblp-org-logo" class="tblp-org-logo" alt="Logo" style="display:none;" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <div class="tblp-poster-titles">
+              <div id="tblp-organizador" class="tblp-subtitle">ORGANIZA</div>
+              <div id="tblp-titulo" class="tblp-title">TORNEO</div>
+              <div id="tblp-detalle" class="tblp-detail">Categoría</div>
+            </div>
+            <div id="tblp-tipo-badge" class="tblp-tipo-badge">Posiciones</div>
+          </div>
+
+          <div id="tblp-poster-content" class="tblp-poster-content">
+            <div class="tblp-empty-state">
+              <i class="fas fa-table"></i>
+              <p>Selecciona un campeonato y categoría para previsualizar la postal.</p>
+            </div>
+          </div>
+
+          <div id="tblp-poster-footer" class="tblp-poster-footer" style="display:none;">
+            <div class="tblp-footer-label">Auspician</div>
+            <div id="tblp-sponsors-grid" class="tblp-sponsors-grid"></div>
+          </div>
+
+        </div><!-- /tblp-poster -->
+
+      </div><!-- /container -->
+    </main>
+  </div>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/api.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="js/tablasplantilla.js"></script>
+</body>
+</html>

@@ -1,0 +1,534 @@
+/* frontend/css/tablasplantilla.css */
+/* Postales de Tablas */
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.tblp-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.tblp-controls-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tblp-selectors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: flex-end;
+}
+
+.tblp-selectors .form-group {
+  flex: 1 1 180px;
+  min-width: 150px;
+  margin: 0;
+}
+
+/* ── Tipo tabs ────────────────────────────────────────────────────────────── */
+.tblp-tipo-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
+.tblp-tipo-tab {
+  padding: .42rem .9rem;
+  border: 1.5px solid var(--border-color, #cbd5e1);
+  background: transparent;
+  border-radius: 6px;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+  color: inherit;
+}
+
+.tblp-tipo-tab:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.tblp-tipo-tab.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+/* ── Selector de fondo ────────────────────────────────────────────────────── */
+.tblp-bg-selector {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.tblp-bg-label {
+  font-weight: 700;
+  font-size: .85rem;
+  white-space: nowrap;
+}
+
+.tblp-bg-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
+.tblp-bg-swatch {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .3rem .65rem;
+  border: 1.5px solid var(--border-color, #cbd5e1);
+  background: transparent;
+  border-radius: 6px;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  color: inherit;
+}
+
+.tblp-bg-swatch:hover,
+.tblp-bg-swatch.active {
+  border-color: #3b82f6;
+}
+
+.tblp-bg-swatch.active {
+  background: rgba(59,130,246,.12);
+}
+
+.swatch-preview {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,.15);
+  flex-shrink: 0;
+}
+
+.swatch-nocturno  { background: radial-gradient(circle, #0b2b3a, #000); }
+.swatch-clasico   { background: linear-gradient(135deg, #f0f4fa, #d8e2f0); }
+.swatch-azul      { background: linear-gradient(135deg, #1e3c72, #2a5298); }
+.swatch-vinotinto { background: linear-gradient(135deg, #6b2737, #3d1520); }
+.swatch-verde     { background: linear-gradient(135deg, #1a4f2e, #0d2c19); }
+.swatch-torneo    { background: linear-gradient(135deg, #1e3a5f, #facc15 180%); }
+.swatch-custom    { background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: .7rem; color: #64748b; }
+.swatch-clear     { background: #fee2e2; display: flex; align-items: center; justify-content: center; font-size: .7rem; color: #dc2626; }
+
+/* ── Export actions ───────────────────────────────────────────────────────── */
+.tblp-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+/* ── Variables por fondo ──────────────────────────────────────────────────── */
+.tblp-poster {
+  --p-bg: radial-gradient(circle at top, #0b2b3a 0%, #041018 60%, #000 100%);
+  --p-color: #fff;
+  --p-card-bg: rgba(255,255,255,.08);
+  --p-card-border: rgba(255,255,255,.14);
+  --p-card-text: #fff;
+  --p-header-bg: rgba(255,255,255,.08);
+  --p-accent: #facc15;
+  --p-muted: rgba(255,255,255,.55);
+  --p-row-alt: rgba(255,255,255,.04);
+  --p-row-hover: rgba(255,255,255,.06);
+  --p-rank1: #facc15;
+  --p-rank2: #94a3b8;
+  --p-rank3: #d97706;
+}
+
+.tblp-poster.fondo-clasico {
+  --p-bg: linear-gradient(150deg, #f0f4fa 0%, #e4eaf4 60%, #d8e2f0 100%);
+  --p-color: #1a2b4a;
+  --p-card-bg: rgba(255,255,255,.85);
+  --p-card-border: rgba(30,58,95,.15);
+  --p-card-text: #1a2b4a;
+  --p-header-bg: rgba(30,58,95,.08);
+  --p-accent: #1e3a5f;
+  --p-muted: rgba(26,43,74,.55);
+  --p-row-alt: rgba(30,58,95,.04);
+  --p-row-hover: rgba(30,58,95,.07);
+}
+
+.tblp-poster.fondo-azul {
+  --p-bg: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #0a1f4a 100%);
+  --p-color: #fff;
+  --p-card-bg: rgba(255,255,255,.10);
+  --p-card-border: rgba(255,255,255,.18);
+  --p-card-text: #fff;
+  --p-header-bg: rgba(0,0,0,.25);
+  --p-accent: #60a5fa;
+  --p-muted: rgba(255,255,255,.55);
+  --p-row-alt: rgba(255,255,255,.05);
+}
+
+.tblp-poster.fondo-vinotinto {
+  --p-bg: linear-gradient(135deg, #6b2737 0%, #4a1525 50%, #2d0b14 100%);
+  --p-color: #fff;
+  --p-card-bg: rgba(255,255,255,.10);
+  --p-card-border: rgba(255,255,255,.18);
+  --p-card-text: #fff;
+  --p-header-bg: rgba(0,0,0,.25);
+  --p-accent: #fda4af;
+  --p-muted: rgba(255,255,255,.55);
+  --p-row-alt: rgba(255,255,255,.05);
+}
+
+.tblp-poster.fondo-verde {
+  --p-bg: linear-gradient(135deg, #1a4f2e 0%, #0f3320 50%, #061a10 100%);
+  --p-color: #fff;
+  --p-card-bg: rgba(255,255,255,.10);
+  --p-card-border: rgba(255,255,255,.18);
+  --p-card-text: #fff;
+  --p-header-bg: rgba(0,0,0,.25);
+  --p-accent: #86efac;
+  --p-muted: rgba(255,255,255,.55);
+  --p-row-alt: rgba(255,255,255,.05);
+}
+
+.tblp-poster.fondo-torneo {
+  --p-bg: linear-gradient(140deg, var(--t-primario, #1e3a5f) 0%, var(--t-secundario, #0b1f35) 100%);
+  --p-color: #fff;
+  --p-card-bg: rgba(255,255,255,.10);
+  --p-card-border: rgba(255,255,255,.20);
+  --p-card-text: #fff;
+  --p-header-bg: rgba(0,0,0,.20);
+  --p-accent: var(--t-acento, #facc15);
+  --p-muted: rgba(255,255,255,.55);
+  --p-row-alt: rgba(255,255,255,.05);
+}
+
+/* ── Poster base ──────────────────────────────────────────────────────────── */
+.tblp-poster {
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: clamp(1.25rem, 2.5vw, 2.5rem);
+  background: var(--p-bg);
+  color: var(--p-color);
+  border-radius: 18px;
+  box-sizing: border-box;
+  transition: background .35s, color .35s;
+  overflow: hidden;
+}
+
+.tblp-poster.has-custom-bg {
+  background-image:
+    linear-gradient(rgba(4,16,24,.52), rgba(4,16,24,.52)),
+    var(--p-custom-bg);
+  background-size: cover, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+}
+
+.tblp-poster.fondo-clasico.has-custom-bg {
+  background-image:
+    linear-gradient(rgba(240,244,250,.72), rgba(240,244,250,.72)),
+    var(--p-custom-bg);
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.tblp-poster-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: clamp(1rem, 2vw, 1.75rem);
+  padding-bottom: clamp(.75rem, 1.5vw, 1.25rem);
+  border-bottom: 2px solid var(--p-accent);
+}
+
+.tblp-org-logo {
+  width: clamp(48px, 6vw, 80px);
+  height: clamp(48px, 6vw, 80px);
+  object-fit: contain;
+  border-radius: 10px;
+  background: rgba(255,255,255,.10);
+  padding: 4px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.tblp-poster-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.tblp-subtitle {
+  font-size: clamp(.65rem, .8vw, .8rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  opacity: .7;
+}
+
+.tblp-title {
+  font-size: clamp(1.15rem, 2.2vw, 2rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1.1;
+}
+
+.tblp-detail {
+  font-size: clamp(.7rem, .9vw, .9rem);
+  opacity: .75;
+  margin-top: .2rem;
+}
+
+.tblp-tipo-badge {
+  padding: .35rem .9rem;
+  border-radius: 999px;
+  background: var(--p-accent);
+  color: #000;
+  font-size: clamp(.72rem, .85vw, .9rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fondo-clasico .tblp-tipo-badge { color: #fff; background: var(--p-accent); }
+
+/* ── Content área ─────────────────────────────────────────────────────────── */
+.tblp-poster-content {
+  min-height: 200px;
+}
+
+.tblp-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  padding: 3rem 1rem;
+  opacity: .45;
+  font-size: 1rem;
+}
+
+.tblp-empty-state i {
+  font-size: 2.5rem;
+}
+
+/* ── Tabla de posiciones ──────────────────────────────────────────────────── */
+.tblp-section-title {
+  font-size: clamp(.8rem, 1vw, 1rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--p-accent);
+  margin: 0 0 .6rem;
+}
+
+.tblp-group-card {
+  background: var(--p-card-bg);
+  border: 1px solid var(--p-card-border);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.tblp-group-card:last-child {
+  margin-bottom: 0;
+}
+
+.tblp-group-head {
+  background: var(--p-header-bg);
+  padding: .55rem .9rem;
+  font-weight: 800;
+  font-size: clamp(.78rem, .9vw, .95rem);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--p-card-text);
+  border-bottom: 1px solid var(--p-card-border);
+}
+
+.tblp-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(.72rem, .85vw, .9rem);
+  color: var(--p-card-text);
+}
+
+.tblp-tabla thead tr {
+  background: var(--p-header-bg);
+}
+
+.tblp-tabla thead th {
+  padding: .45rem .5rem;
+  text-align: center;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: clamp(.62rem, .72vw, .78rem);
+  letter-spacing: .04em;
+  color: var(--p-card-text);
+  opacity: .8;
+  border-bottom: 1px solid var(--p-card-border);
+  white-space: nowrap;
+}
+
+.tblp-tabla thead th.col-equipo {
+  text-align: left;
+  padding-left: .75rem;
+}
+
+.tblp-tabla tbody tr:nth-child(even) {
+  background: var(--p-row-alt);
+}
+
+.tblp-tabla tbody td {
+  padding: .48rem .5rem;
+  text-align: center;
+  border-bottom: 1px solid var(--p-card-border);
+  color: var(--p-card-text);
+}
+
+.tblp-tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tblp-tabla tbody td.col-equipo {
+  text-align: left;
+  padding-left: .75rem;
+}
+
+.tblp-col-pos {
+  width: 2rem;
+  font-weight: 800;
+}
+
+.tblp-col-pts {
+  font-weight: 800;
+  color: var(--p-accent) !important;
+}
+
+/* ── Equipo cell ──────────────────────────────────────────────────────────── */
+.tblp-equipo-cell {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+}
+
+.tblp-equipo-logo {
+  width: clamp(20px, 1.8vw, 30px);
+  height: clamp(20px, 1.8vw, 30px);
+  object-fit: contain;
+  border-radius: 4px;
+  background: rgba(255,255,255,.08);
+  padding: 2px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.tblp-equipo-logo-placeholder {
+  width: clamp(20px, 1.8vw, 30px);
+  height: clamp(20px, 1.8vw, 30px);
+  border-radius: 4px;
+  background: rgba(255,255,255,.10);
+  flex-shrink: 0;
+}
+
+.tblp-equipo-nombre {
+  font-weight: 700;
+  font-size: clamp(.7rem, .82vw, .88rem);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+/* Ranking badges en goleadores/tarjetas */
+.tblp-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  font-size: .68rem;
+  font-weight: 900;
+}
+
+.tblp-rank-1 { background: var(--p-rank1, #facc15); color: #000; }
+.tblp-rank-2 { background: var(--p-rank2, #94a3b8); color: #fff; }
+.tblp-rank-3 { background: var(--p-rank3, #d97706); color: #fff; }
+.tblp-rank-n { background: rgba(255,255,255,.12); color: var(--p-card-text); }
+
+/* Clasificados highlight */
+.tblp-tabla tbody tr.tblp-clasifica td {
+  background: rgba(16,185,129,.10);
+}
+.tblp-tabla tbody tr.tblp-fuera td {
+  opacity: .6;
+}
+.tblp-tabla tbody tr.tblp-eliminado td {
+  opacity: .4;
+  text-decoration: line-through;
+}
+
+/* ── Footer (auspiciantes) ────────────────────────────────────────────────── */
+.tblp-poster-footer {
+  margin-top: clamp(1rem, 2vw, 1.75rem);
+  padding-top: .75rem;
+  border-top: 1px solid var(--p-card-border);
+}
+
+.tblp-footer-label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  opacity: .6;
+  margin-bottom: .5rem;
+}
+
+.tblp-sponsors-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
+}
+
+.tblp-sponsor-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  filter: brightness(1.1) contrast(.95);
+  opacity: .88;
+}
+
+/* ── Clásico overrides ───────────────────────────────────────────────────── */
+.tblp-poster.fondo-clasico .tblp-org-logo {
+  background: rgba(255,255,255,.6);
+}
+
+.tblp-poster.fondo-clasico .tblp-equipo-logo {
+  background: rgba(30,58,95,.07);
+}
+
+.tblp-poster.fondo-clasico .tblp-equipo-logo-placeholder {
+  background: rgba(30,58,95,.10);
+}
+
+.tblp-poster.fondo-clasico .tblp-tipo-badge {
+  color: #fff;
+}
+
+.tblp-poster.fondo-clasico .tblp-rank-n {
+  background: rgba(30,58,95,.12);
+  color: #1a2b4a;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .tblp-selectors { flex-direction: column; }
+  .tblp-export-actions { flex-direction: column; }
+  .tblp-poster-header { flex-wrap: wrap; }
+  .tblp-tipo-badge { width: 100%; text-align: center; }
+}
