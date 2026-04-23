@@ -614,10 +614,60 @@ body {
 }
 
 /* ══ Modo Liga (todos los equipos en un bloque) ══ */
+.poster-liga-card {
+  background: var(--poster-card-bg, rgba(255,255,255,.08));
+  border: 1px solid var(--poster-card-border, rgba(255,255,255,.15));
+  border-radius: 18px;
+  overflow: hidden;
+  color: var(--poster-card-text, #fff);
+}
+
+.poster-liga-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .75rem .9rem;
+  font-weight: 900;
+  font-size: clamp(1rem, 1.1vw, 1.3rem);
+  background: rgba(255,255,255,.08);
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+.poster-liga-card-head span:last-child {
+  font-size: .82rem;
+  font-weight: 600;
+  opacity: .7;
+  text-transform: none;
+}
+
 .poster-liga-equipos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: clamp(.5rem, 1vw, 1rem);
+  gap: 0;
+  padding: .5rem .85rem .85rem;
+}
+
+/* team-row dentro del poster usa CSS variables del tema */
+.poster .team-row {
+  border-bottom-color: var(--poster-card-border, rgba(255,255,255,.08));
+  color: var(--poster-card-text, inherit);
+}
+
+.poster .team-logo {
+  background: rgba(255,255,255,.06);
+}
+
+.poster.tema-clasico .team-logo {
+  background: rgba(30,58,95,.08);
+}
+
+.poster.tema-clasico .team-logo.placeholder {
+  background: rgba(30,58,95,.10);
+}
+
+.poster.tema-clasico .poster-liga-card-head {
+  background: rgba(30,58,95,.07);
 }
 
 @media (max-width: 780px) {

@@ -1,3 +1,23 @@
+## 2026-04-23 — Módulo Liga: poster con temas visuales + verificación backlog
+
+### Cambios implementados
+- **`frontend/gruposgen.html`**: agrega card wrapper (`poster-liga-card`) con header "Equipos inscritos" y `<span id="poster-liga-count">` dentro de `poster-liga`. La exportación PNG/PDF existente (`zona-grupos-export`) ya captura esta sección sin cambios adicionales.
+- **`frontend/js/gruposgen.js`** (`cargarEquiposLiga`): actualiza el contador `poster-liga-count` con el número de equipos cargados.
+- **`frontend/css/grupos.css`**: añade estilos para `.poster-liga-card` y `.poster-liga-card-head` usando CSS variables del tema (`--poster-card-bg`, `--poster-card-border`, `--poster-card-text`). Agrega overrides `.poster .team-row` y `.poster .team-logo` para que los bordes y fondos sean theme-aware en los tres temas (oscuro, clásico, torneo).
+
+### Verificaciones de backlog (sin cambio de código)
+| Ítem | Estado |
+|------|--------|
+| auto-programar slots sin partido_id | ✅ `programarSlot` crea el registro y lo vincula |
+| Playoff fecha/hora/cancha en portal | ✅ `renderEliminatoriasPortal` líneas 1716-1721 |
+| Tema visual `jornadasplantilla.html` | ✅ `aplicarTemaJornada()` + CSS variables |
+| Exportación PNG/PDF bracket | ✅ `exportarEliminatoriaPNG/PDF` + html2canvas/jspdf |
+
+### Commits
+`feat: poster de liga con card wrapper, conteo y temas visuales theme-aware`
+
+---
+
 ## 2026-04-22 — Sesión 2 (noche): UX Transmisiones + fix categorías Infanto-Juveniles
 
 ### 1. Mejora UX módulo Transmisiones (`e5a864a`)
@@ -843,21 +863,21 @@ Ultima actualizacion: 2026-03-30 (sesión 19)
 
 ### Playoff / Eliminatorias
 - [ ] Validación operativa del nuevo sembrado interleaved con datos reales de campeonato activo (confirmar que la semif siempre cruza grupos distintos).
-- [ ] Verificar que `auto-programar` funciona correctamente cuando hay slots sin partido_id en rounds 2+ (endpoint nuevo `/programar` debe crearlos).
+- [x] Verificar que `auto-programar` funciona correctamente cuando hay slots sin partido_id en rounds 2+ — `programarSlot` ya crea el registro `partidos` si `partido_id` es null (verificado 2026-04-23).
 - [ ] Plantilla `balanceada_8vos` con 4 grupos × 2 clasificados: actualmente cae al algoritmo estándar (interleaved). Evaluar si el usuario quiere un sembrado específico distinto para ese caso también.
 - [ ] Cierre de formatos no potencia de 2 adicionales (ej: 6, 10, 12 equipos) si el cliente los confirma.
 
 ### Portal público
 - [ ] Revisar subtab **Playoff** en portal: validación de llave contra clasificación vigente (equipos eliminados, vacantes pendientes).
-- [ ] Programación de partidos de playoff visible en portal (fecha/hora/cancha) cuando estén asignados.
+- [x] Programación de partidos de playoff visible en portal (fecha/hora/cancha) — ya implementado en `renderEliminatoriasPortal` líneas 1716-1721 (verificado 2026-04-23).
 
 ### Plantillas de publicación
-- [ ] Aplicar selector de tema visual (`tema-oscuro`, `tema-clasico`, `tema-torneo`) a la nueva página `jornadasplantilla.html` (ya implementado, pendiente verificar integración de colores del campeonato).
-- [ ] Exportación PNG/PDF de llaves eliminatorias en la sección "Plantilla para Publicar" del bracket.
+- [x] Aplicar selector de tema visual a `jornadasplantilla.html` — implementado y verificado: `aplicarTemaJornada()` aplica `--t-primario/secundario/acento` (verificado 2026-04-23).
+- [x] Exportación PNG/PDF de llaves eliminatorias en "Plantilla para Publicar" — implementado (`exportarEliminatoriaPNG/PDF`) con html2canvas + jspdf (verificado 2026-04-23).
 
 ### Módulo Liga
-- [ ] Verificar que la tab **Liga** en `gruposgen.html` carga correctamente los equipos cuando se selecciona una categoría con `metodo_competencia='liga'`.
-- [ ] Exportación de plantilla de liga (poster con equipos inscritos) con temas visuales.
+- [ ] Verificar que la tab **Liga** en `gruposgen.html` carga correctamente los equipos (requiere test en browser con categoría liga real).
+- [x] Exportación de plantilla de liga con temas visuales — implementado 2026-04-23: card wrapper (`poster-liga-card`) con header y conteo, CSS variables de tema aplicadas a `team-row`/`team-logo`, exporta vía `zona-grupos-export` existente.
 
 ### General / Infraestructura
 - [ ] Pruebas integrales de flujo real con carga de datos de campeonato completo.

@@ -471,10 +471,13 @@ async function cargarEquiposLiga(eventoId) {
   try {
     const resp = await ApiClient.get(`/evento_equipos/${eventoId}`);
     const equipos = resp.equipos || resp || [];
+    const countEl = document.getElementById("poster-liga-count");
     if (!equipos.length) {
       zona.innerHTML = "<div class='empty-state'><p>No hay equipos inscritos.</p></div>";
+      if (countEl) countEl.textContent = "";
       return;
     }
+    if (countEl) countEl.textContent = `${equipos.length} equipo${equipos.length !== 1 ? "s" : ""}`;
     zona.innerHTML = equipos
       .map((eq, i) => {
         const logo = normalizarLogoUrl(eq.logo_url || eq.logo || null);
