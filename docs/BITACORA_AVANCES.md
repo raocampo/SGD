@@ -1,3 +1,49 @@
+## 2026-04-22 — Sesión 2 (noche): UX Transmisiones + fix categorías Infanto-Juveniles
+
+### 1. Mejora UX módulo Transmisiones (`e5a864a`)
+
+**Problema reportado:** la página `transmisiones.html` abría en el tab "En vivo" (vacío el 99% del tiempo), no había explicación del flujo, no había botón para crear ni guía.
+
+**Cambios en `frontend/transmisiones.html` + `frontend/js/transmisiones.js`:**
+
+- **Guía colapsable** al inicio: explica el flujo de 3 pasos (1. Configurar desde Partidos → 2. Panel Director → 3. Overlay OBS).
+- **Tab por defecto cambiado a "Todas"** (antes era "Activas" / En vivo).
+- **Contadores de badge** en cada tab: Todas / 🔴 En vivo / Programadas, se actualizan al cargar datos.
+- **Botón "Nueva transmisión"** junto al selector de campeonato; enlaza a `partidos.html?campeonato=ID` con el campeonato ya cargado.
+- **Auto-selección de campeonato** si solo existe uno en el sistema.
+- **Href del botón "Nueva transmisión"** se actualiza dinámicamente al cambiar el campeonato.
+- **Estados vacíos enriquecidos**: icono + título + mensaje y botón de acción contextual por tab (Todas / En vivo / Programadas).
+- **Estado vacío inicial**: si no hay campeonato seleccionado, muestra mensaje claro "Selecciona un campeonato".
+
+### 2. Fix crítico + UX: categorías Infanto-Juveniles (`8a30eea`)
+
+**Problema reportado:** al crear una categoría "SUB 4", el campo "Fecha de corte de edad" no aparecía en el formulario. El backend rechazaba la creación con error 400.
+
+**Causa raíz (doble bug en `frontend/js/eventos.js` línea 130):**
+- Los bytes `\b` (word boundary) estaban almacenados como `0x08` (carácter de control backspace) en el archivo.
+- Los `\s` (whitespace) estaban como `s` sin backslash.
+- Resultado: la regex `/\b(?:sub|u)s*-?s*(4|6|8|...)\b/` nunca detectaba "SUB 4" (con espacio).
+
+**Fix del regex:** reescritura byte a byte para dejar `/\b(?:sub|u)\s*-?\s*(4|6|8|10|12|14|16|17|18|19)\b/`.
+
+**Reemplazo del enfoque de auto-detección por nombre → selector explícito:**
+
+- **Nuevo selector "Tipo de categoría por edad"** al inicio del formulario:
+  - `Libre / Sin restricción de edad`
+  - `Infanto-Juvenil (Sub-4 a Sub-19)` → despliega sub-selector + fecha de corte
+  - `Veteranos (Sub-30 a Sub-60)` → muestra cupos/diferencia juvenil
+- **Selector Sub-N** (Sub-4, Sub-6, Sub-8, Sub-10, Sub-12, Sub-14, Sub-16, Sub-17, Sub-18, Sub-19): al elegir, auto-rellena el nombre con "Sub N". El usuario puede añadir sufijo (ej: "Sub 8 Varones").
+- **Campo "Fecha de corte"** ahora aparece visible e inmediatamente debajo del selector Sub-N (marcada con `*` de requerido).
+- Al crear exitosamente, el formulario resetea tipo, sub-edad y fecha de corte.
+
+### Commits de esta sesión
+| Hash | Descripción |
+|------|-------------|
+| `e5a864a` | feat: mejora UX módulo transmisiones — guía, tabs, contadores y estados vacíos |
+| `8a30eea` | fix: categorías infanto-juveniles — selector explícito, regex corregida |
+
+---
+
 ## 2026-04-22 — Transmisiones Fase 1: navegación director ↔ lista
 
 ### Cambios
