@@ -1,3 +1,21 @@
+## 2026-04-22 — Transmisiones Fase 1: navegación director ↔ lista
+
+### Cambios
+- **`frontend/js/transmisiones.js`**: botón morado (ícono `fa-sliders-h`) en la tabla de transmisiones que abre `director.html?tx=ID` para estados `programada`, `borrador` o `en_vivo`.
+- **`frontend/director.html`**: flecha de regreso (`fa-arrow-left`) en el header que navega a `transmisiones.html`.
+
+### Verificación de arquitectura (sin cambios de código)
+- Socket.io (`socket.io@^4.8.3`) está en las dependencias del backend.
+- `overlay.html` se sirve como archivo estático sin barrera de auth.
+- `/api/public/overlay/:token` registrado en `publicRoutes.js` (sin auth).
+- `director.html` lee `?tx=` desde la URL y llama `cargarTransmision()` automáticamente en `DOMContentLoaded`.
+- `programarSlot` crea un registro en `partidos` cuando `partido_id` es null (ítem 782 del backlog cubierto).
+- La función `esPartidoConResultadoPortal` excluye correctamente `suspendido`, `pendiente` y `aplazado` del tab Resultados (ítem de filtrado verificado).
+
+### Commit
+`871b7ee` feat: acceso directo al panel de director desde lista de transmisiones
+
+---
 ## 2026-04-21 — Fix: portal Copa Ciudad de Loja — 8vos pendientes y Sub+40 sin resultados
 
 ### Síntoma 1 — Abierta: 8vos de final se mostraban como "pendientes"

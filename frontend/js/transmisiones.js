@@ -117,6 +117,11 @@
 
       const btnEditar = `<button type="button" class="btn btn-sm btn-primary" title="Editar" onclick="window._txEditar(${tx.partido_id})"><i class="fas fa-edit"></i></button>`;
 
+      const canDirector = tx.estado === "programada" || tx.estado === "borrador" || tx.estado === "en_vivo";
+      const btnDirector = canDirector
+        ? `<a href="director.html?tx=${tx.id}" class="btn btn-sm" style="background:#7c3aed;color:#fff;" title="Panel de director"><i class="fas fa-sliders-h"></i></a>`
+        : "";
+
       let btnAccion = "";
       if (tx.estado === "programada" || tx.estado === "borrador") {
         btnAccion = `<button type="button" class="btn btn-sm btn-success" title="Iniciar" onclick="window._txCambiarEstado(${tx.id},'iniciar')"><i class="fas fa-play"></i></button>`;
@@ -135,7 +140,7 @@
         <td>${badgeEstado(tx.estado)}</td>
         <td style="white-space:nowrap;">${fecha}</td>
         <td style="text-align:center;">${destacadoIcon}</td>
-        <td style="white-space:nowrap;display:flex;gap:.25rem;flex-wrap:wrap;">${btnVer}${btnEditar}${btnAccion}${btnCancelar}</td>
+        <td style="white-space:nowrap;display:flex;gap:.25rem;flex-wrap:wrap;">${btnVer}${btnDirector}${btnEditar}${btnAccion}${btnCancelar}</td>
       </tr>`;
     }).join("");
   }
