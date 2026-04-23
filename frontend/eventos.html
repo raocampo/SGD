@@ -64,11 +64,43 @@
             <h3>Crear Categoría</h3>
 
             <div class="form-group">
+              <label>Tipo de categoría por edad:</label>
+              <select id="evt-tipo-edad">
+                <option value="libre">Libre / Sin restricción de edad</option>
+                <option value="infanto">Infanto-Juvenil (Sub-4 a Sub-19)</option>
+                <option value="veteranos">Veteranos (Sub-30 a Sub-60)</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="evt-wrap-sub-edad" style="display:none;">
+              <label>Sub-categoría (edad límite):</label>
+              <select id="evt-sub-edad">
+                <option value="4">Sub-4</option>
+                <option value="6">Sub-6</option>
+                <option value="8">Sub-8</option>
+                <option value="10">Sub-10</option>
+                <option value="12">Sub-12</option>
+                <option value="14">Sub-14</option>
+                <option value="16">Sub-16</option>
+                <option value="17">Sub-17</option>
+                <option value="18">Sub-18</option>
+                <option value="19">Sub-19</option>
+              </select>
+              <small class="form-hint">El nombre se actualizará automáticamente. Puedes personalizarlo añadiendo sufijo (ej: "Sub 8 Varones").</small>
+            </div>
+
+            <div class="form-group" id="evt-wrap-fecha-corte-edad" style="display:none;">
+              <label>Fecha de corte de edad: <span style="color:#e53e3e;">*</span></label>
+              <input id="evt-fecha-corte-edad" type="date" />
+              <small class="form-hint" id="evt-fecha-corte-edad-hint">El jugador debe tener menos de N años en esta fecha para participar.</small>
+            </div>
+
+            <div class="form-group">
               <label>Nombre de la categoría:</label>
               <input
                 id="evt-nombre"
                 type="text"
-                placeholder="Ej: Abierta / +40 / Femenino"
+                placeholder="Ej: Abierta / +40 / Sub 8 Varones"
               />
             </div>
 
@@ -217,12 +249,6 @@
               <label>Color acento carné:</label>
               <input id="evt-carnet-color-acento" type="color" value="#22C55E" />
               <small class="form-hint">Estos colores solo afectan el carné de esta categoría si se definen aquí.</small>
-            </div>
-
-            <div class="form-group" id="evt-wrap-fecha-corte-edad" style="display:none;">
-              <label>Fecha de corte de edad:</label>
-              <input id="evt-fecha-corte-edad" type="date" />
-              <small class="form-hint" id="evt-fecha-corte-edad-hint">El jugador debe tener menos de N años en esta fecha para participar.</small>
             </div>
 
             <div class="form-group">

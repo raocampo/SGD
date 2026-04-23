@@ -127,7 +127,7 @@ function inferirSubJuvenilEdad(nombreEvento) {
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase();
   if (!raw) return null;
-  const match = raw.match(/(?:sub|u)s*-?s*(4|6|8|10|12|14|16|17|18|19)/);
+  const match = raw.match(/\b(?:sub|u)\s*-?\s*(4|6|8|10|12|14|16|17|18|19)\b/);
   if (!match) return null;
   const edad = Number.parseInt(match[1], 10);
   return _SUB_JUVENIL_VALIDAS.has(edad) ? edad : null;
@@ -155,43 +155,51 @@ function formatearConfiguracionJuvenil(evento = {}) {
   return `Sí • ${cupos || 0} cupo${cupos === 1 ? "" : "s"} • hasta ${diferencia} año${diferencia === 1 ? "" : "s"} menor`;
 }
 
-function actualizarVisibilidadConfigJuvenil() {
+function actualizarNombreDesdeSubEdad() {
+  const selectTipo = document.getElementById("evt-tipo-edad");
+  const selectSub  = document.getElementById("evt-sub-edad");
   const inputNombre = document.getElementById("evt-nombre");
-  const selectJuvenil = document.getElementById("evt-categoria-juvenil");
-  const wrapCupos = document.getElementById("evt-wrap-categoria-juvenil-cupos");
-  const wrapDif = document.getElementById("evt-wrap-categoria-juvenil-diferencia");
+  if (!selectTipo || !selectSub || !inputNombre) return;
+  if (selectTipo.value !== "infanto") return;
+  inputNombre.value = `Sub ${selectSub.value}`;
+}
+
+function actualizarVisibilidadConfigJuvenil() {
+  const selectTipoEdad = document.getElementById("evt-tipo-edad");
+  const selectJuvenil  = document.getElementById("evt-categoria-juvenil");
+  const wrapSubEdad    = document.getElementById("evt-wrap-sub-edad");
+  const wrapCupos      = document.getElementById("evt-wrap-categoria-juvenil-cupos");
+  const wrapDif        = document.getElementById("evt-wrap-categoria-juvenil-diferencia");
   const wrapFechaCorte = document.getElementById("evt-wrap-fecha-corte-edad");
   const hintFechaCorte = document.getElementById("evt-fecha-corte-edad-hint");
-  const hint = document.getElementById("evt-categoria-juvenil-hint");
+  const hint           = document.getElementById("evt-categoria-juvenil-hint");
 
-  const nombre = inputNombre?.value || "";
-  const edadBase = inferirEdadBaseCategoria(nombre);
-  const edadSubJuvenil = inferirSubJuvenilEdad(nombre);
-  const esCategoriaEtaria = Number.isFinite(edadBase);
-  const esSubJuvenil = Number.isFinite(edadSubJuvenil);
+  const tipoEdad   = selectTipoEdad?.value || "libre";
+  const esInfanto  = tipoEdad === "infanto";
+  const esVeterano = tipoEdad === "veteranos";
   const juvenilActivo = selectJuvenil?.value === "true";
 
-  if (wrapFechaCorte) wrapFechaCorte.style.display = esSubJuvenil ? "" : "none";
-  if (wrapCupos) wrapCupos.style.display = esCategoriaEtaria && juvenilActivo ? "" : "none";
-  if (wrapDif) wrapDif.style.display = esCategoriaEtaria && juvenilActivo ? "" : "none";
+  if (wrapSubEdad)    wrapSubEdad.style.display    = esInfanto ? "" : "none";
+  if (wrapFechaCorte) wrapFechaCorte.style.display = esInfanto ? "" : "none";
+  if (wrapCupos)      wrapCupos.style.display      = esVeterano && juvenilActivo ? "" : "none";
+  if (wrapDif)        wrapDif.style.display        = esVeterano && juvenilActivo ? "" : "none";
 
-  if (hintFechaCorte && esSubJuvenil) {
-    hintFechaCorte.textContent = `Sub-${edadSubJuvenil}: el jugador debe tener menos de ${edadSubJuvenil} anos en esta fecha para participar.`;
-  }
-
-  if (hint) {
-    if (esSubJuvenil) {
-      hint.textContent = `Categoria Sub-${edadSubJuvenil}: configura la fecha de corte arriba. Los cupos juveniles no aplican para esta categoria.`;
-      if (selectJuvenil) selectJuvenil.value = "false";
-    } else if (esCategoriaEtaria) {
-      hint.textContent = `Categoria ${edadBase}+: puedes habilitar juveniles de hasta 1 o 2 anos menores y definir cuantos cupos admite el equipo.`;
-    } else {
-      hint.textContent = "Disponible solo para categorias Sub 30 a Sub 60 detectadas por el nombre.";
+  if (esInfanto) {
+    const subEdad = document.getElementById("evt-sub-edad")?.value;
+    if (hintFechaCorte && subEdad) {
+      hintFechaCorte.textContent = `Sub-${subEdad}: el jugador debe tener menos de ${subEdad} años en esta fecha para participar.`;
     }
-  }
-
-  if (!esCategoriaEtaria && !esSubJuvenil && selectJuvenil) {
-    selectJuvenil.value = "false";
+    if (hint) hint.textContent = "Las categorías infanto-juveniles usan fecha de corte de edad exacta (año, mes y día).";
+    if (selectJuvenil) selectJuvenil.value = "false";
+  } else if (esVeterano) {
+    const nombre = document.getElementById("evt-nombre")?.value || "";
+    const edadBase = inferirEdadBaseCategoria(nombre);
+    if (hint) hint.textContent = edadBase
+      ? `Categoría +${edadBase}: puedes habilitar cupos juveniles de hasta 1 o 2 años menores.`
+      : "Disponible para categorías Sub-30 a Sub-60 detectadas en el nombre.";
+  } else {
+    if (hint) hint.textContent = "Sin restricción de edad.";
+    if (selectJuvenil) selectJuvenil.value = "false";
   }
 }
 
@@ -301,13 +309,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   toggleFormularioCategoria(false);
 
   const selectMetodo = document.getElementById("evt-metodo-competencia");
-  const inputNombreEvento = document.getElementById("evt-nombre");
   const selectCategoriaJuvenil = document.getElementById("evt-categoria-juvenil");
+  const selectTipoEdad = document.getElementById("evt-tipo-edad");
+  const selectSubEdad  = document.getElementById("evt-sub-edad");
   if (selectMetodo) {
     selectMetodo.addEventListener("change", actualizarVisibilidadConfigEliminatoria);
   }
-  inputNombreEvento?.addEventListener("input", actualizarVisibilidadConfigJuvenil);
   selectCategoriaJuvenil?.addEventListener("change", actualizarVisibilidadConfigJuvenil);
+  selectTipoEdad?.addEventListener("change", () => {
+    actualizarVisibilidadConfigJuvenil();
+    actualizarNombreDesdeSubEdad();
+  });
+  selectSubEdad?.addEventListener("change", () => {
+    actualizarNombreDesdeSubEdad();
+    actualizarVisibilidadConfigJuvenil();
+  });
 
   await cargarCampeonatosSelect();
 
@@ -591,8 +607,10 @@ async function crearEvento() {
   );
   const carnet_mostrar_edad = document.getElementById("evt-carnet-mostrar-edad")?.value === "true";
   const fecha_corte_edad = document.getElementById("evt-fecha-corte-edad")?.value || null;
+  const tipoEdad = document.getElementById("evt-tipo-edad")?.value || "libre";
+  const subEdadVal = document.getElementById("evt-sub-edad")?.value;
+  const edadSubJuvenil = tipoEdad === "infanto" && subEdadVal ? Number(subEdadVal) : null;
   const edadBaseCategoria = inferirEdadBaseCategoria(nombre);
-  const edadSubJuvenil = inferirSubJuvenilEdad(nombre);
   const coloresCamp = obtenerColoresCarnetCampeonatoSeleccionado();
   const personalizaCarnetCategoria =
     Boolean(carnet_estilo) ||
@@ -679,6 +697,12 @@ async function crearEvento() {
     const inputBloqMonto = document.getElementById("evt-bloqueo-morosidad-monto");
     if (selectBloqMorosos) selectBloqMorosos.value = "";
     if (inputBloqMonto) inputBloqMonto.value = "";
+    const selectTipoEdadEl  = document.getElementById("evt-tipo-edad");
+    const selectSubEdadEl   = document.getElementById("evt-sub-edad");
+    const inputFechaCorteEl = document.getElementById("evt-fecha-corte-edad");
+    if (selectTipoEdadEl)  selectTipoEdadEl.value  = "libre";
+    if (selectSubEdadEl)   selectSubEdadEl.value   = "4";
+    if (inputFechaCorteEl) inputFechaCorteEl.value = "";
     const selectCarnetEstilo = document.getElementById("evt-carnet-estilo");
     const selectCategoriaJuvenil = document.getElementById("evt-categoria-juvenil");
     const inputCategoriaJuvenilCupos = document.getElementById("evt-categoria-juvenil-cupos");
