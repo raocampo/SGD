@@ -9,10 +9,124 @@
     <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/grupos.css" />
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-      rel="stylesheet"
-    />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <style>
+      .tx-guia {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+        color: #fff;
+        border-radius: 12px;
+        padding: 1.1rem 1.4rem;
+        margin-bottom: 1.5rem;
+      }
+      .tx-guia-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+        gap: .5rem;
+      }
+      .tx-guia-title {
+        font-weight: 700;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+      }
+      .tx-guia-toggle {
+        font-size: .85rem;
+        opacity: .7;
+        transition: transform .2s;
+      }
+      .tx-guia-toggle.open { transform: rotate(180deg); }
+      .tx-guia-body {
+        margin-top: 1rem;
+        display: none;
+      }
+      .tx-guia-body.open { display: block; }
+      .tx-pasos {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: .5rem;
+      }
+      .tx-paso {
+        flex: 1;
+        min-width: 180px;
+        background: rgba(255,255,255,.07);
+        border-radius: 8px;
+        padding: .75rem 1rem;
+      }
+      .tx-paso-num {
+        font-size: 1.5rem;
+        font-weight: 800;
+        opacity: .5;
+        line-height: 1;
+      }
+      .tx-paso-titulo {
+        font-weight: 700;
+        margin: .25rem 0 .2rem;
+        font-size: .95rem;
+      }
+      .tx-paso-desc {
+        font-size: .82rem;
+        opacity: .8;
+        line-height: 1.4;
+      }
+      .tx-empty-guide {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        color: #64748b;
+      }
+      .tx-empty-guide .tx-empty-icon {
+        font-size: 3rem;
+        margin-bottom: .75rem;
+      }
+      .tx-empty-guide h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: .4rem;
+        color: #374151;
+      }
+      .tx-empty-guide p {
+        font-size: .9rem;
+        margin-bottom: 1rem;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .tx-tab-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 99px;
+        font-size: .7rem;
+        font-weight: 700;
+        background: rgba(0,0,0,.15);
+        color: inherit;
+        margin-left: .35rem;
+        vertical-align: middle;
+      }
+      .partidos-main-tab.active .tx-tab-count {
+        background: rgba(255,255,255,.25);
+      }
+      .tx-top-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.25rem;
+      }
+      .tx-top-bar .form-group {
+        flex: 1;
+        min-width: 200px;
+        max-width: 380px;
+        margin: 0;
+      }
+    </style>
   </head>
 
   <body class="app-layout page-transmisiones">
@@ -43,7 +157,33 @@
       <main class="main">
         <section class="section active">
           <div class="container">
-            <h2>📡 Gestión de Transmisiones</h2>
+
+            <!-- Guía de uso -->
+            <div class="tx-guia">
+              <div class="tx-guia-header" id="tx-guia-header">
+                <span class="tx-guia-title"><i class="fas fa-info-circle"></i> ¿Cómo funciona el módulo de transmisiones?</span>
+                <i class="fas fa-chevron-down tx-guia-toggle" id="tx-guia-toggle"></i>
+              </div>
+              <div class="tx-guia-body" id="tx-guia-body">
+                <div class="tx-pasos">
+                  <div class="tx-paso">
+                    <div class="tx-paso-num">1</div>
+                    <div class="tx-paso-titulo"><i class="fas fa-futbol"></i> Configurar desde Partidos</div>
+                    <div class="tx-paso-desc">Ve a <strong>Partidos</strong>, abre un partido y usa el botón <i class="fas fa-broadcast-tower"></i> para crear o editar su transmisión (plataforma, título, fecha programada, URL pública).</div>
+                  </div>
+                  <div class="tx-paso">
+                    <div class="tx-paso-num">2</div>
+                    <div class="tx-paso-titulo"><i class="fas fa-sliders-h"></i> Controlar en vivo</div>
+                    <div class="tx-paso-desc">Usa el botón <span style="background:#7c3aed;color:#fff;padding:1px 6px;border-radius:4px;font-size:.75rem;"><i class="fas fa-sliders-h"></i></span> de esta tabla para abrir el <strong>Panel de Director</strong>: controla el marcador, el cronómetro y el período en tiempo real.</div>
+                  </div>
+                  <div class="tx-paso">
+                    <div class="tx-paso-num">3</div>
+                    <div class="tx-paso-titulo"><i class="fas fa-tv"></i> Overlay para OBS</div>
+                    <div class="tx-paso-desc">El Panel de Director te muestra la <strong>URL del overlay</strong>. Pégala en OBS Studio como <em>Browser Source</em> (1280×180 px, fondo transparente) para mostrar el marcador en tu transmisión.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <!-- Próxima transmisión card -->
             <div id="tx-proxima-card" style="display:none; margin-bottom:1.5rem; padding:1rem 1.25rem; border-radius:10px; background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%); color:#fff; box-shadow:0 4px 18px rgba(0,0,0,.25);">
@@ -61,24 +201,35 @@
               </div>
             </div>
 
-            <!-- Campeonato selector -->
-            <div class="form-group" style="max-width:380px;margin-bottom:1.25rem;">
-              <label for="tx-campeonato-select"><i class="fas fa-trophy"></i> Campeonato</label>
-              <select id="tx-campeonato-select" class="form-control">
-                <option value="">— Selecciona un campeonato —</option>
-              </select>
+            <!-- Selector campeonato + botón crear -->
+            <div class="tx-top-bar">
+              <div class="form-group">
+                <label for="tx-campeonato-select"><i class="fas fa-trophy"></i> Campeonato</label>
+                <select id="tx-campeonato-select" class="form-control">
+                  <option value="">— Selecciona un campeonato —</option>
+                </select>
+              </div>
+              <a id="tx-btn-crear" href="partidos.html" class="btn btn-primary" style="white-space:nowrap;align-self:flex-end;">
+                <i class="fas fa-plus"></i> Nueva transmisión
+              </a>
             </div>
 
-            <!-- Tabs -->
+            <!-- Tabs con contadores -->
             <div class="partidos-main-tabs" id="tx-tabs" style="margin-bottom:1rem;">
-              <button type="button" class="partidos-main-tab active" data-tx-tab="activas">Activas 🔴</button>
-              <button type="button" class="partidos-main-tab" data-tx-tab="todas">Todas</button>
-              <button type="button" class="partidos-main-tab" data-tx-tab="programadas">Programadas</button>
+              <button type="button" class="partidos-main-tab" data-tx-tab="todas">
+                Todas <span class="tx-tab-count" id="tx-count-todas">0</span>
+              </button>
+              <button type="button" class="partidos-main-tab" data-tx-tab="activas">
+                🔴 En vivo <span class="tx-tab-count" id="tx-count-activas">0</span>
+              </button>
+              <button type="button" class="partidos-main-tab" data-tx-tab="programadas">
+                Programadas <span class="tx-tab-count" id="tx-count-programadas">0</span>
+              </button>
             </div>
 
-            <!-- Tabla de transmisiones -->
+            <!-- Tabla / estados vacíos -->
             <div id="tx-tabla-wrap">
-              <p class="empty-msg" id="tx-empty-msg">Selecciona un campeonato para ver sus transmisiones.</p>
+              <div id="tx-empty-msg" style="display:none;"></div>
               <div class="table-responsive" id="tx-table-container" style="display:none;">
                 <table class="table" id="tx-tabla">
                   <thead>
@@ -87,13 +238,12 @@
                       <th>Jornada</th>
                       <th>Plataforma</th>
                       <th>Estado</th>
-                      <th>Fecha Programada</th>
-                      <th>Destacado</th>
+                      <th>Fecha programada</th>
+                      <th>Dest.</th>
                       <th>Acciones</th>
                     </tr>
                   </thead>
-                  <tbody id="tx-tabla-body">
-                  </tbody>
+                  <tbody id="tx-tabla-body"></tbody>
                 </table>
               </div>
             </div>
