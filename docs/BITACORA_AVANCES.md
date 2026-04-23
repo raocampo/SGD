@@ -1,3 +1,51 @@
+## 2026-04-23 — Sesión 2: Postales de Tablas — diseño deportivo completo
+
+### Objetivo
+Implementar página `tablasplantilla.html` para crear y exportar postales visuales (PNG/PDF) de las tablas de posiciones, goleadores, tarjetas y fair play, replicando un diseño "deportivo" con fondo amarillo, banner pill, badges de posición y decoración cancha de fútbol.
+
+### Archivos modificados
+
+#### `frontend/tablasplantilla.html`
+- Fondo inicial del poster cambiado de `fondo-nocturno` a **`fondo-deportivo`** (amarillo).
+- Swatch "Deportivo" agregado como **primera opción** en el selector de fondos.
+- Columna derecha del header poster: reemplazado `tblp-tipo-badge` por **`tblp-year`** (año del campeonato, llenado dinámicamente por JS).
+- Añadido **`tblp-title-strip`** estático (banner pill) entre header y contenido; el JS actualiza su texto al cambiar de tab.
+- Añadida **decoración cancha CSS** (`tblp-field-deco` + `tblp-field-ball`) entre contenido y footer de auspiciantes.
+
+#### `frontend/css/tablasplantilla.css` — reescritura completa
+- **7 temas** definidos con CSS variables: `deportivo` (amarillo, predeterminado), `nocturno`, `clasico`, `azul`, `vinotinto`, `verde`, `torneo`.
+- Variables por tema: `--p-bg`, `--p-color`, `--p-card-bg/border/text`, `--p-accent`, `--p-row-even/odd`, `--p-badge-bg/color`, `--p-title-bg/color`, `--p-col-gf/gc/pts/dg`, `--p-sponsors-bg/color`.
+- **Header 3 columnas** (logo | títulos | año): `grid-template-columns: auto 1fr auto`.
+- **`.tblp-year`**: año grande en la columna derecha.
+- **`.tblp-title-strip`**: franja pill `border-radius:999px` para nombre de tabla.
+- **`.tblp-pos-badge`**: ovalo con `--p-badge-bg/color` en columna de posición.
+- **Columnas con tono diferenciado**: `.col-gf`, `.col-gc`, `.col-pts`, `.col-dg`.
+- **`.tblp-field-deco`**: campo verde CSS con líneas (gradients lineales/radiales) y círculo central.
+- **`.tblp-field-ball`**: pelota de fútbol CSS centrada en la cancha.
+- **`.tblp-poster-footer`**: franja auspiciantes con `--p-sponsors-bg`.
+
+#### `frontend/js/tablasplantilla.js`
+- `fondoActual` inicializado a `"deportivo"`.
+- `aplicarFondo()`: array de fondos incluye `fondo-deportivo`; fallback al quitar imagen custom usa `"deportivo"`.
+- `actualizarContenidoPoster()`: actualiza el texto del `#tblp-title-strip` según tab activo (`Tabla General`, `Tabla de Goleadores`, etc.).
+- `actualizarHeaderPoster()`: extrae año de `camp.fecha_inicio` y rellena `#tblp-year`.
+- `renderPosterPosiciones()`: usa `tblp-pos-badge`, `tblp-poster-body`, `tblp-tabla-wrap`, clases `col-pos/col-equipo/col-gf/col-gc/col-dg/col-pts`.
+- `renderPosterGoleadores()`, `renderPosterTarjetas()`, `renderPosterFairPlay()`: idem — envueltos en `tblp-poster-body` + `tblp-tabla-wrap`, columnas con clases semánticas.
+
+### Commits
+| Hash | Descripción |
+|------|-------------|
+| `a528798` | feat: página de postales exportables de tablas (tablasplantilla) |
+| `538a6df` | feat: postales de tablas con diseño deportivo completo |
+
+### Pendientes próxima sesión
+- [ ] Probar en browser con datos reales (campeonato + categoría cargada).
+- [ ] Validar export PNG y PDF con los 4 tipos de tabla.
+- [ ] Verificar tema "Torneo" con colores reales del campeonato (`color_primario/secundario/acento`).
+- [ ] Playoff/Eliminatorias: validación operativa del sembrado interleaved con datos reales.
+
+---
+
 ## 2026-04-23 — Módulo Liga: poster con temas visuales + verificación backlog
 
 ### Cambios implementados
