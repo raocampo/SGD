@@ -23,6 +23,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   await cargarCampeonatos(campeonatoDesdeURL, eventoDesdeURL);
   await cargarEventos(eventoDesdeURL);
 
+  actualizarBotonPostales();
+
   if (tablasEventoSeleccionado) {
     await cargarConfiguracionCompetenciaCompartida();
     await buscarTablasEvento();
@@ -34,6 +36,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 function parsePositiveInt(value) {
   const parsed = Number.parseInt(String(value || "").trim(), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function actualizarBotonPostales() {
+  const btn = document.getElementById("btn-ir-postales");
+  if (!btn) return;
+  const params = new URLSearchParams();
+  if (tablasCampeonatoSeleccionado) params.set("campeonato", tablasCampeonatoSeleccionado);
+  if (tablasEventoSeleccionado)    params.set("evento", tablasEventoSeleccionado);
+  const qs = params.toString();
+  btn.href = qs ? `tablasplantilla.html?${qs}` : "tablasplantilla.html";
 }
 
 function obtenerMetodoCompetenciaVisibleTablas(evento = {}) {
@@ -159,6 +171,7 @@ function inicializarAcciones() {
         campeonato: tablasCampeonatoSeleccionado,
         evento: null,
       });
+      actualizarBotonPostales();
       await cargarEventos(null);
       limpiarPaneles();
     });
@@ -178,6 +191,7 @@ function inicializarAcciones() {
         campeonato: tablasCampeonatoSeleccionado,
         evento: tablasEventoSeleccionado,
       });
+      actualizarBotonPostales();
       actualizarFormularioFormato(eventoSel || null);
       await cargarConfiguracionCompetenciaCompartida();
     });
@@ -674,6 +688,7 @@ async function buscarTablasEvento() {
     renderTarjetas(tarjetas);
     renderFairPlay(fairPlay);
 
+    actualizarBotonPostales();
     mostrarNotificacion("Tablas actualizadas", "success");
   } catch (error) {
     console.error(error);
