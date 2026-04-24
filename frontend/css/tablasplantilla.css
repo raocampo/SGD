@@ -446,8 +446,8 @@
   border-bottom: 2px solid var(--p-accent);
 }
 
-.tblp-tabla thead th.col-equipo { text-align: left; }
-.tblp-tabla thead th.col-pos    { width: 2.8rem; }
+.tblp-tabla thead th.col-equipo { text-align: left; width: clamp(160px, 30%, 260px); }
+.tblp-tabla thead th.col-pos    { width: 3rem; }
 
 /* Columnas con tono de color */
 .tblp-tabla thead th.col-gf,
@@ -536,7 +536,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
+  max-width: clamp(130px, 24vw, 280px);
   color: var(--p-card-text);
 }
 
@@ -558,63 +558,21 @@
 .tblp-rank-3 { background: #d97706; color: #fff; }
 .tblp-rank-n { background: var(--p-badge-bg); color: var(--p-badge-color); opacity: .8; }
 
-/* ── Decoración cancha de fútbol ──────────────────────────────────────────── */
+/* ── Imagen de cancha / estadio ───────────────────────────────────────────── */
 .tblp-field-deco {
   margin-top: clamp(.6rem, 1.2vw, 1rem);
-  height: clamp(70px, 10vw, 120px);
-  background: linear-gradient(180deg, #2d8a2d 0%, #1e6b1e 55%, #165216 100%);
+  height: clamp(160px, 20vw, 260px);
+  background: linear-gradient(180deg, #1a6b1a 0%, #0d4a0d 100%); /* fallback color */
   position: relative;
   overflow: hidden;
 }
 
-/* Líneas de la cancha via pseudo-elementos */
-.tblp-field-deco::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    /* Línea central vertical */
-    linear-gradient(90deg, transparent calc(50% - .8px), rgba(255,255,255,.55) calc(50% - .8px), rgba(255,255,255,.55) calc(50% + .8px), transparent calc(50% + .8px)),
-    /* Círculo central */
-    radial-gradient(circle at 50% 50%, transparent 10%, rgba(255,255,255,.55) 10%, rgba(255,255,255,.55) 11.5%, transparent 11.5%),
-    /* Punto central */
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,.7) 1.5%, transparent 1.5%),
-    /* Área izquierda */
-    linear-gradient(90deg, transparent 12%, rgba(255,255,255,.45) 12%, rgba(255,255,255,.45) 12.8%, transparent 12.8%),
-    /* Área derecha */
-    linear-gradient(90deg, transparent 87.2%, rgba(255,255,255,.45) 87.2%, rgba(255,255,255,.45) 88%, transparent 88%),
-    /* Borde */
-    linear-gradient(180deg, rgba(255,255,255,.45) 0 1.2px, transparent 1.2px),
-    linear-gradient(0deg, rgba(255,255,255,.45) 0 1.2px, transparent 1.2px);
-}
-
-/* Pelota de fútbol en el centro */
-.tblp-field-ball {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: clamp(28px, 4vw, 48px);
-  height: clamp(28px, 4vw, 48px);
-  background:
-    radial-gradient(circle at 38% 38%, #fff 0%, #ddd 100%);
-  border-radius: 50%;
-  border: 2.5px solid #222;
-  box-shadow: 2px 4px 12px rgba(0,0,0,.5);
-  overflow: hidden;
-}
-
-.tblp-field-ball::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 50% 50%, #222 0%, #222 20%, transparent 20%),
-    radial-gradient(circle at 20% 30%, #222 0%, #222 18%, transparent 18%),
-    radial-gradient(circle at 80% 30%, #222 0%, #222 18%, transparent 18%),
-    radial-gradient(circle at 20% 70%, #222 0%, #222 18%, transparent 18%),
-    radial-gradient(circle at 80% 70%, #222 0%, #222 18%, transparent 18%);
-  border-radius: 50%;
+.tblp-field-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+  display: block;
 }
 
 /* ── Footer (auspiciantes) ────────────────────────────────────────────────── */
@@ -674,5 +632,6 @@
   .tblp-export-actions { flex-direction: column; }
   .tblp-poster-header { grid-template-columns: auto 1fr; }
   .tblp-year { display: none; }
-  .tblp-equipo-nombre { max-width: 110px; }
+  .tblp-equipo-nombre { max-width: 130px; }
+  .tblp-field-deco { height: 130px; }
 }
