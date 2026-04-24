@@ -347,20 +347,23 @@
 
     try {
       const resp = await apiGet(`/auspiciantes/campeonato/${campeonatoId}`);
-      const lista = (resp.auspiciantes || resp || []).filter((a) => a.logo_url);
+      const lista = resp.auspiciantes || resp || [];
       if (!lista.length) { footer.style.display = "none"; return; }
 
-      grid.innerHTML = lista
-        .map((a) => {
-          const src = normalizarLogoUrl(a.logo_url);
-          return src
-            ? `<img src="${esc(src)}" alt="${esc(a.nombre || "")}" class="tblp-sponsor-logo"
-                    crossorigin="anonymous" referrerpolicy="no-referrer"
-                    onerror="this.style.display='none'">`
-            : "";
-        })
-        .join("");
-      footer.style.display = lista.length ? "" : "none";
+      grid.innerHTML = lista.map((a) => {
+        const src = normalizarLogoUrl(a.logo_url);
+        if (src) {
+          return `<img src="${esc(src)}" alt="${esc(a.nombre || "")}" class="tblp-sponsor-logo"
+                      crossorigin="anonymous" referrerpolicy="no-referrer"
+                      onerror="this.style.display='none'">`;
+        }
+        if (a.nombre) {
+          return `<span class="tblp-sponsor-nombre">${esc(a.nombre)}</span>`;
+        }
+        return "";
+      }).filter(Boolean).join("");
+
+      footer.style.display = "";
     } catch (_) {
       if (footer) footer.style.display = "none";
     }

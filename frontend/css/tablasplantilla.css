@@ -426,7 +426,7 @@
 .tblp-tabla {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto; /* auto para que equipo tome el espacio restante */
 }
 
 /* Cabeceras */
@@ -444,9 +444,10 @@
   color: var(--p-color);
   opacity: .75;
   border-bottom: 2px solid var(--p-accent);
+  white-space: nowrap; /* cabeceras numéricas no rompen */
 }
 
-.tblp-tabla thead th.col-equipo { text-align: left; width: clamp(160px, 30%, 260px); }
+.tblp-tabla thead th.col-equipo { text-align: left; white-space: normal; }
 .tblp-tabla thead th.col-pos    { width: 3rem; }
 
 /* Columnas con tono de color */
@@ -476,7 +477,6 @@
 }
 
 .tblp-tabla tbody tr:last-child td { border-bottom: none; }
-.tblp-tabla tbody td.col-equipo    { text-align: left; padding-left: .3rem; }
 
 /* Puntos destacados */
 .tblp-tabla tbody td.col-pts {
@@ -502,10 +502,17 @@
 }
 
 /* ── Equipo cell ──────────────────────────────────────────────────────────── */
+.tblp-tabla tbody td.col-equipo {
+  text-align: left;
+  padding-left: .3rem;
+  max-width: 1px; /* fuerza al flex a ceder el exceso al overflow */
+}
+
 .tblp-equipo-cell {
   display: flex;
   align-items: center;
   gap: .4rem;
+  min-width: 0; /* permite que el flex container se comprima */
 }
 
 .tblp-equipo-logo {
@@ -536,7 +543,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: clamp(130px, 24vw, 280px);
+  flex: 1;       /* ocupa todo el espacio disponible del flex */
+  min-width: 0;  /* permite que flex lo comprima si es necesario */
   color: var(--p-card-text);
 }
 
@@ -571,7 +579,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 35%;
+  object-position: center 65%; /* muestra el campo/pelota, no el cielo */
   display: block;
 }
 
@@ -610,6 +618,19 @@
   object-fit: contain;
   filter: brightness(1.15) contrast(.92);
   opacity: .9;
+}
+
+.tblp-sponsor-nombre {
+  font-size: clamp(.65rem, .85vw, .9rem);
+  font-weight: 700;
+  color: var(--p-sponsors-color);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  opacity: .9;
+  white-space: nowrap;
+  padding: .2rem .5rem;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 6px;
 }
 
 /* ── Estado vacío ─────────────────────────────────────────────────────────── */
