@@ -116,6 +116,27 @@
             </div>
           </div>
 
+          <!-- Cancha personalizada -->
+          <div class="tblp-bg-selector">
+            <span class="tblp-bg-label">Cancha:</span>
+            <div class="tblp-bg-swatches">
+              <button class="tblp-bg-swatch active" id="tblp-cancha-default" type="button" title="Cancha predeterminada">
+                <span class="swatch-preview swatch-verde" style="font-size:.6rem;display:flex;align-items:center;justify-content:center;"><i class="fas fa-futbol"></i></span>
+                Predeterminada
+              </button>
+              <label class="tblp-bg-swatch" title="Subir imagen de cancha personalizada" id="tblp-cancha-custom-label">
+                <input type="file" id="tblp-cancha-input" accept="image/*" hidden />
+                <span class="swatch-preview swatch-custom"><i class="fas fa-upload"></i></span>
+                Personalizar
+              </label>
+              <button class="tblp-bg-swatch" id="tblp-cancha-clear" type="button"
+                title="Volver a cancha predeterminada" style="display:none;">
+                <span class="swatch-preview swatch-clear"><i class="fas fa-rotate-left"></i></span>
+                Restablecer
+              </button>
+            </div>
+          </div>
+
           <!-- Acciones export -->
           <div class="tblp-export-actions">
             <button type="button" class="btn btn-secondary" id="tblp-btn-png">
