@@ -332,10 +332,10 @@
       const src = normalizarLogoUrl(camp.logo_url || null);
       if (src) {
         logoEl.src = src;
-        logoEl.style.display = "block";
+        logoEl.classList.remove("sin-logo");
       } else {
         logoEl.removeAttribute("src");
-        logoEl.style.display = "none";
+        logoEl.classList.add("sin-logo");
       }
     }
   }
