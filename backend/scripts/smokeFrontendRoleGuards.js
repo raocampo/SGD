@@ -27,17 +27,52 @@ function createStorage() {
   };
 }
 
+function createElementStub(extra = {}) {
+  const attributes = new Map();
+  return {
+    dataset: {},
+    style: {},
+    classList: {
+      add() {},
+      remove() {},
+      toggle() {},
+      contains() {
+        return false;
+      },
+    },
+    setAttribute(name, value) {
+      attributes.set(String(name), String(value));
+    },
+    getAttribute(name) {
+      return attributes.get(String(name)) || null;
+    },
+    removeAttribute(name) {
+      attributes.delete(String(name));
+    },
+    appendChild(child) {
+      return child;
+    },
+    addEventListener() {},
+    removeEventListener() {},
+    remove() {},
+    querySelector() {
+      return null;
+    },
+    querySelectorAll() {
+      return [];
+    },
+    innerHTML: "",
+    href: "",
+    ...extra,
+  };
+}
+
 function loadCoreGuards() {
   const corePath = path.resolve(__dirname, "../../frontend/js/core.js");
   let source = fs.readFileSync(corePath, "utf8");
   source = source.replace(/\}\)\(\);\s*$/, "window.__qa = { canAccessPage, getDefaultPageByRole };})();");
 
-  const documentHead = {
-    querySelector() {
-      return null;
-    },
-    appendChild() {},
-  };
+  const documentHead = createElementStub();
 
   const context = {
     console,
@@ -53,29 +88,11 @@ function loadCoreGuards() {
       fetch: async () => ({ ok: false }),
     },
     document: {
+      documentElement: createElementStub(),
       head: documentHead,
-      body: {
-        classList: {
-          add() {},
-          remove() {},
-        },
-        appendChild() {},
-      },
+      body: createElementStub(),
       createElement() {
-        return {
-          setAttribute() {},
-          classList: {
-            add() {},
-            remove() {},
-            toggle() {},
-          },
-          style: {},
-          appendChild() {},
-          addEventListener() {},
-          remove() {},
-          innerHTML: "",
-          href: "",
-        };
+        return createElementStub();
       },
       querySelector() {
         return null;
@@ -171,7 +188,7 @@ function runAssertions(qa) {
   });
 
   const defaultPageChecks = [
-    { role: "administrador", expected: "portal-admin.html" },
+    { role: "administrador", expected: "admin.html" },
     { role: "organizador", expected: "portal-admin.html" },
     { role: "operador", expected: "portal-cms.html" },
     { role: "tecnico", expected: "portal-tecnico.html" },

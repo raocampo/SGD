@@ -949,7 +949,10 @@ class Jugador {
                 JOIN equipos e ON j.equipo_id = e.id 
                 JOIN campeonatos c ON e.campeonato_id = c.id 
                 WHERE j.equipo_id = $1 
-                ORDER BY j.es_capitan DESC, j.apellido, j.nombre
+                ORDER BY
+                    LOWER(COALESCE(NULLIF(TRIM(j.apellido), ''), TRIM(j.nombre), '')),
+                    LOWER(COALESCE(TRIM(j.nombre), '')),
+                    j.id
             `;
             const result = await pool.query(query, [equipo_id]);
             return result.rows;
@@ -977,7 +980,7 @@ class Jugador {
                         candidatos.*,
                         ROW_NUMBER() OVER (
                             PARTITION BY candidatos.dedupe_key
-                            ORDER BY candidatos.prioridad_evento, candidatos.es_capitan DESC, candidatos.apellido, candidatos.nombre, candidatos.id DESC
+                            ORDER BY candidatos.prioridad_evento, candidatos.id DESC
                         ) AS rn
                     FROM candidatos
                 ) base
@@ -985,7 +988,10 @@ class Jugador {
             )
             SELECT *
             FROM dedupe
-            ORDER BY es_capitan DESC, apellido, nombre
+            ORDER BY
+                LOWER(COALESCE(NULLIF(TRIM(apellido), ''), TRIM(nombre), '')),
+                LOWER(COALESCE(TRIM(nombre), '')),
+                id
         `;
         const result = await pool.query(query, [equipo_id, contextoRoster.eventoId]);
         return result.rows;

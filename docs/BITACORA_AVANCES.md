@@ -1,3 +1,170 @@
+## 2026-05-02 — Planillas: orden alfabético por apellido en todos los deportes
+
+### Objetivo
+
+Ordenar los planteles de las planillas en forma alfabética por `apellido` para todos los tipos de deporte/formato disponibles, sin priorizar capitán ni número de camiseta.
+
+### Implementación aplicada
+
+- `backend/models/Jugador.js`
+  - `obtenerPorEquipo()` ahora devuelve jugadores ordenados por:
+    - apellido normalizado,
+    - nombre,
+    - `id` como desempate estable.
+  - Se eliminó la prioridad visual previa de `es_capitan DESC` para que el orden de planilla sea estrictamente alfabético por apellido.
+- `frontend/js/planilla.js`
+  - Se agregó comparador `compararJugadoresPorApellidoPlanilla()`.
+  - Se agregó `ordenarJugadoresPorApellidoPlanilla()` y `ordenarPlantelesPlanilla()`.
+  - El orden se refuerza en:
+    - plantel lateral,
+    - tabla de captura oficial,
+    - vista previa resumen,
+    - vista previa oficial,
+    - PDF,
+    - Excel/lista de jugadores.
+
+### Verificación
+
+- `node --check backend/models/Jugador.js`
+- `node --check frontend/js/planilla.js`
+
+---
+
+## 2026-05-01 — Continuidad: planilla PDF, documentación y checks rápidos
+
+### Contexto
+
+Se retomó el proyecto revisando documentación, pendientes y cambios locales abiertos. La continuidad inmediata quedó centrada en `frontend/js/planilla.js`, con dos PDFs de prueba generados:
+
+- `docs/planillaConObservaciones.pdf`
+- `docs/planillaSinObservaciones.pdf`
+
+### Estado revisado
+
+- `frontend/js/planilla.js` tiene cambios locales acotados a:
+  - mostrar `Categoría` en encabezado web, vista previa oficial/resumen y PDF,
+  - imprimir valores reales de convocatoria (`P/S`) en vista previa/PDF cuando el formato lo permite,
+  - mantener helper único `obtenerCategoriaPlanilla()` para evitar diferencias entre vistas.
+- Los PDFs nuevos tienen cabecera válida `%PDF-1.3`, pero en el entorno local no hay herramientas PDF instaladas (`pdfinfo`, `pdftotext`, `mutool`, `magick` o navegador headless en PATH) para extraer texto o hacer comparación visual automatizada desde consola.
+- Se validó sintaxis con:
+  - `node --check frontend/js/planilla.js`
+  - `node --check frontend/js/tablasplantilla.js`
+  - `node --check frontend/js/transmisiones.js`
+- Se reparó el smoke frontend de roles:
+  - `backend/scripts/smokeFrontendRoleGuards.js` ahora simula `document.documentElement` con APIs DOM suficientes para el `core.js` actual,
+  - la página por defecto del rol `administrador` se actualizó a `admin.html`,
+  - verificación final: `npm run smoke:frontend` con `38/38` aserciones correctas.
+
+### Limpieza documental aplicada
+
+- `docs/ESTADO_IMPLEMENTACION_SGD.md` tenía 2 bytes nulos y `rg` lo detectaba como archivo binario.
+- Se eliminaron esos bytes y se corrigieron las referencias dañadas:
+  - `056_gastos_operativos.sql`
+  - `057_fix_fk_on_delete_set_null.sql`
+- Verificación posterior: 0 bytes nulos.
+
+### Pendientes inmediatos
+
+- [ ] Validar visualmente en navegador/Render los PDFs con y sin observaciones:
+  - categoría visible,
+  - columnas `P/S` según formato,
+  - fútbol 7/8/9 en una hoja cuando corresponde,
+  - fútbol 11 sin regresión visual.
+- [ ] Decidir si los PDFs de prueba deben versionarse como evidencia o mantenerse solo como artefactos locales.
+- [ ] Ejecutar QA real de postales de tablas:
+  - export PNG/PDF,
+  - auspiciantes reales,
+  - Goleadores / Tarjetas / Fair Play,
+  - tema `Torneo`.
+- [ ] Probar integración real de transmisiones Fase 1:
+  - crear transmisión,
+  - abrir `director.html`,
+  - abrir `overlay.html` como Browser Source,
+  - confirmar actualización por Socket.io.
+
+---
+
+## 2026-04-24 — Postales de Tablas: fixes visuales y UX completos
+
+### Contexto
+Sesión de prueba y corrección del módulo de postales (`tablasplantilla.html`) en producción (`ltyc.conrender.com`). Se detectaron y corrigieron 7 problemas distintos.
+
+### Fixes implementados
+
+#### 1. Botón "Postales" en `tablas.html` sin parámetros (`858c033`)
+**Problema:** al hacer clic en "Postales" desde `tablas.html`, se abría `tablasplantilla.html` en blanco; el usuario tenía que re-seleccionar campeonato y categoría manualmente.
+**Fix (`frontend/js/tablas.js`):** nueva función `actualizarBotonPostales()` que actualiza el `href` del botón con `?campeonato=X&evento=Y`. Se llama al cambiar campeonato, al cambiar categoría, al terminar de cargar tablas y en `DOMContentLoaded`. `tablasplantilla.js` ya leía URL params para pre-seleccionar.
+
+#### 2. Layout header roto cuando no hay logo (`e0a30f3`)
+**Problema:** el logo del campeonato arrancaba con `style="display:none"`, lo que sacaba el elemento del flujo CSS Grid. Los títulos y el año se desplazaban a las columnas incorrectas.
+**Fix:** nueva clase CSS `.sin-logo` con `visibility:hidden; border:transparent` en lugar de `display:none`. Se agregaron `grid-column` explícitos al logo (col 1), títulos (col 2) y año (col 3). JS usa `classList.toggle("sin-logo")`. `onerror` en el img también aplica `.sin-logo`.
+
+#### 3. Márgenes del banner "TABLA GENERAL" (`e0a30f3`)
+**Fix:** `margin: .4rem [sides] .6rem` en `.tblp-title-strip` para separar visualmente el banner del header y del contenido.
+
+#### 4. Nombres de equipos truncados (`cc63a4c` → `7103e90`)
+**Problema:** `table-layout:fixed` + `max-width` en px fijo aplastaba la columna Equipo a ~2-3 caracteres visibles.
+**Fix final:**
+- `table-layout: auto` → el browser calcula anchos; columnas numéricas con `white-space:nowrap` son compactas
+- `.tblp-equipo-nombre`: eliminado `max-width`, reemplazado por `flex:1; min-width:0`
+- `.tblp-equipo-cell`: `min-width:0` para que el flex container pueda comprimirse
+- `td.col-equipo`: `max-width:1px` activa el overflow del flex
+
+#### 5. Imagen de cancha — perspectiva incorrecta (`cc63a4c` → `7103e90`)
+**Problema:** `object-position: center 35%` mostraba el cielo y graderías, no el campo/pelota.
+**Fix:** `object-position: center 65%` → muestra el campo verde en perspectiva con arco y pelota.
+
+#### 6. Imagen de cancha personalizable por el organizador (`a160d67`, `7f77b67`)
+- Commiteado `frontend/assets/ltc/cancha_fondo.jpg` como imagen predeterminada
+- Reemplazada decoración CSS dibujada por `<img class="tblp-field-img">` con fallback `onerror`
+- Nueva fila "**Cancha:**" en controles con 3 opciones:
+  - **Predeterminada** → restaura `assets/ltc/cancha_fondo.jpg`
+  - **Personalizar** → upload de cualquier imagen (aplicada vía `createObjectURL`)
+  - **Restablecer** → aparece tras subir imagen custom; vuelve a la predeterminada
+
+#### 7. Auspiciantes no aparecían (`7103e90`)
+**Problema:** `cargarAuspiciantes` filtraba `.filter((a) => a.logo_url)` — si los auspiciantes del campeonato no tienen logo subido, el footer quedaba oculto.
+**Fix:**
+- Eliminado el filtro; se itera toda la lista
+- Con logo → `<img class="tblp-sponsor-logo">`
+- Sin logo, con nombre → `<span class="tblp-sponsor-nombre">` (borde suave, tipografía del tema)
+- Footer visible con cualquier combinación de sponsors
+
+### Archivos modificados
+| Archivo | Cambios |
+|---|---|
+| `frontend/js/tablas.js` | `actualizarBotonPostales()` — link dinámico a postales |
+| `frontend/tablasplantilla.html` | clase `sin-logo`, fila "Cancha:", `<img>` estadio |
+| `frontend/js/tablasplantilla.js` | logo visibility, cancha personalizable, sponsors sin logo |
+| `frontend/css/tablasplantilla.css` | grid-column header, table-layout:auto, flex nombres, object-position, `.tblp-sponsor-nombre` |
+| `frontend/assets/ltc/cancha_fondo.jpg` | imagen de estadio predeterminada (nueva) |
+
+### Commits de la sesión
+| Hash | Descripción |
+|---|---|
+| `858c033` | feat: botón Postales pasa campeonato+evento a tablasplantilla |
+| `e0a30f3` | fix: layout header con/sin logo y márgenes title strip |
+| `a160d67` | asset: imagen estadio fondo cancha |
+| `cc63a4c` | fix: nombres equipo + imagen estadio desde archivo |
+| `7f77b67` | feat: cancha personalizable por el organizador |
+| `7103e90` | fix: nombres completos, cancha en perspectiva, auspiciantes |
+
+### Estado al cierre
+- Poster funcional en producción con: fondo amarillo/deportivo, logo campeonato, año, banner "TABLA GENERAL", tabla con nombres completos, imagen estadio en perspectiva, auspiciantes (logo o nombre)
+- 7 fondos predefinidos + fondo personalizado (imagen)
+- Cancha predeterminada + cancha personalizable
+- Export PNG y PDF operativos
+
+### Pendientes próxima sesión
+- [ ] **Probar export PNG/PDF** con datos reales y verificar que la imagen de cancha y los logos se incrustan correctamente en el archivo descargado
+- [ ] **Validar con auspiciantes reales** — confirmar que el footer de sponsors aparece al cargar el campeonato "Interjorgas Financiero"
+- [ ] **Probar Goleadores, Tarjetas y Fair Play** — verificar que los 4 tipos de tabla se renderizan bien en el poster
+- [ ] **Tema "Torneo"** — probar con un campeonato que tenga `color_primario/secundario/acento` configurados
+- [ ] **Playoff/Eliminatorias** — validación operativa del sembrado interleaved con datos reales
+- [ ] Pruebas integrales del flujo completo: `tablas.html` → Buscar → Postales → Exportar
+
+---
+
 ## 2026-04-23 — Sesión 2: Postales de Tablas — diseño deportivo completo
 
 ### Objetivo
