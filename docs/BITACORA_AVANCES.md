@@ -1,3 +1,35 @@
+## 2026-05-02 — Planilla PDF: separación visual entre etiqueta y valor
+
+### Problema detectado
+
+- Al quitar líneas y placeholders, algunas celdas de cabecera quedaban con el texto pegado:
+  - `Categoria:SENIOR`
+  - `Jornada:Jornada 4`
+- Además, en la vista previa HTML el criterio visual no estaba centralizado.
+
+### Implementación aplicada
+
+- `frontend/js/planilla.js`
+  - Se agregó `etiquetaReportePlanilla()` para normalizar el rótulo con `:`.
+  - Se agregó `renderCampoMetaReportePlanilla()` para renderizar campos de cabecera como:
+    - etiqueta,
+    - separación fija,
+    - valor o espacio libre.
+  - La cabecera oficial y la vista previa resumen ahora usan el mismo patrón de campo.
+  - En el PDF, `celdaMetaPdf()` ahora:
+    - alinea etiqueta y valor a la izquierda,
+    - agrega separación real entre columnas internas,
+    - deja el área restante de la celda disponible para llenado manual.
+- `frontend/css/style.css`
+  - Se agregó `.planilla-meta-field` para mantener rótulo y área de valor alineados sin pegarse.
+
+### Verificación
+
+- `node --check frontend/js/planilla.js`
+- `git diff --check`
+
+---
+
 ## 2026-05-02 — Planillas: campos no llenados salen vacíos en reportes
 
 ### Objetivo

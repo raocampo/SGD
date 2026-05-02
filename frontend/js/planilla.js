@@ -460,6 +460,22 @@ function valorReportePlanilla(valor) {
   return texto;
 }
 
+function etiquetaReportePlanilla(etiqueta) {
+  const texto = String(etiqueta ?? "").trim();
+  if (!texto) return "";
+  return texto.endsWith(":") ? texto : `${texto}:`;
+}
+
+function renderCampoMetaReportePlanilla(etiqueta, valor, clase = "") {
+  const clases = ["planilla-meta-field", clase].filter(Boolean).join(" ");
+  return `
+    <div class="${clases}">
+      <strong>${escapeHtml(etiquetaReportePlanilla(etiqueta))}</strong>
+      <span>${escapeHtml(valorReportePlanilla(valor))}</span>
+    </div>
+  `;
+}
+
 function numeroPartidoReportePlanilla(partido) {
   const numero = obtenerNumeroPartidoVisible(partido);
   return numero ? `#${numero}` : "";
@@ -4442,20 +4458,20 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
       </header>
 
       <div class="planilla-oficial-meta">
-        <div><strong>Fecha:</strong> ${escapeHtml(fechaReporte)}</div>
-        <div><strong>Hora:</strong> ${escapeHtml(horaReporte)}</div>
-        <div><strong>Cancha:</strong> ${escapeHtml(canchaReporte)}</div>
-        <div><strong>Ciudad:</strong> ${escapeHtml(ciudadReporte)}</div>
-        <div><strong>${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}:</strong> ${escapeHtml(arbitroCentralReporte)}</div>
+        ${renderCampoMetaReportePlanilla("Fecha", fechaReporte)}
+        ${renderCampoMetaReportePlanilla("Hora", horaReporte)}
+        ${renderCampoMetaReportePlanilla("Cancha", canchaReporte)}
+        ${renderCampoMetaReportePlanilla("Ciudad", ciudadReporte)}
+        ${renderCampoMetaReportePlanilla(arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro", arbitroCentralReporte)}
         ${
           arbitraje.esFutbol11
-            ? `<div><strong>Linea 1:</strong> ${escapeHtml(linea1Reporte)}</div>
-               <div><strong>Linea 2:</strong> ${escapeHtml(linea2Reporte)}</div>`
+            ? `${renderCampoMetaReportePlanilla("Linea 1", linea1Reporte)}
+               ${renderCampoMetaReportePlanilla("Linea 2", linea2Reporte)}`
             : ""
         }
-        <div><strong>Delegado:</strong> ${escapeHtml(delegadoReporte)}</div>
-        <div><strong>Partido:</strong> ${escapeHtml(numeroPartidoReporte)}</div>
-        <div><strong>Categoria:</strong> ${escapeHtml(categoria)}</div>
+        ${renderCampoMetaReportePlanilla("Delegado", delegadoReporte)}
+        ${renderCampoMetaReportePlanilla("Partido", numeroPartidoReporte)}
+        ${renderCampoMetaReportePlanilla("Categoria", categoria)}
         <div><strong>${escapeHtml(resumenCompetencia)}</strong></div>
       </div>
 
@@ -4644,19 +4660,19 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
       </div>
 
       <div class="planilla-preview-meta">
-        <div class="meta-item"><strong>Partido</strong>${escapeHtml(numeroPartidoReporte)}</div>
-        <div class="meta-item"><strong>Fecha</strong>${escapeHtml(fechaReporte)}</div>
-        <div class="meta-item"><strong>Hora</strong>${escapeHtml(horaReporte)}</div>
-        <div class="meta-item"><strong>Cancha</strong>${escapeHtml(canchaReporte)}</div>
-        <div class="meta-item"><strong>Ciudad</strong>${escapeHtml(ciudadReporte)}</div>
-        <div class="meta-item"><strong>${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}</strong>${escapeHtml(arbitroCentralReporte)}</div>
+        ${renderCampoMetaReportePlanilla("Partido", numeroPartidoReporte, "meta-item")}
+        ${renderCampoMetaReportePlanilla("Fecha", fechaReporte, "meta-item")}
+        ${renderCampoMetaReportePlanilla("Hora", horaReporte, "meta-item")}
+        ${renderCampoMetaReportePlanilla("Cancha", canchaReporte, "meta-item")}
+        ${renderCampoMetaReportePlanilla("Ciudad", ciudadReporte, "meta-item")}
+        ${renderCampoMetaReportePlanilla(arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro", arbitroCentralReporte, "meta-item")}
         ${
           arbitraje.esFutbol11
-            ? `<div class="meta-item"><strong>Linea 1</strong>${escapeHtml(linea1Reporte)}</div>
-               <div class="meta-item"><strong>Linea 2</strong>${escapeHtml(linea2Reporte)}</div>`
+            ? `${renderCampoMetaReportePlanilla("Linea 1", linea1Reporte, "meta-item")}
+               ${renderCampoMetaReportePlanilla("Linea 2", linea2Reporte, "meta-item")}`
             : ""
         }
-        <div class="meta-item"><strong>Delegado</strong>${escapeHtml(delegadoReporte)}</div>
+        ${renderCampoMetaReportePlanilla("Delegado", delegadoReporte, "meta-item")}
       </div>
 
       <div class="planilla-preview-score">
@@ -5377,9 +5393,9 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     const celdaMetaPdf = (etiqueta, valor) => ({
       columns: [
         {
-          text: etiqueta,
+          text: etiquetaReportePlanilla(etiqueta),
           bold: true,
-          width: anchoEtiquetaMetaPdf(etiqueta),
+          width: anchoEtiquetaMetaPdf(etiquetaReportePlanilla(etiqueta)),
           noWrap: true,
           alignment: "left",
         },
@@ -5387,9 +5403,10 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
           text: valorReportePlanilla(valor),
           width: "*",
           alignment: "left",
+          margin: [modoUltraCompactoPdf ? 2 : modoCompactoPdf ? 3 : 4, 0, 0, 0],
         },
       ],
-      columnGap: modoUltraCompactoPdf ? 0.5 : 1,
+      columnGap: modoUltraCompactoPdf ? 2 : modoCompactoPdf ? 3 : 4,
       alignment: "left",
     });
 
@@ -5443,20 +5460,20 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                 celdaMetaPdf("Ciudad:", ciudadReporte),
               ],
               [
-                celdaMetaPdf(`${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}:`, arbitroCentralReporte),
-                celdaMetaPdf(`${arbitraje.esFutbol11 ? "Linea 1" : "Delegado"}:`, arbitraje.esFutbol11 ? linea1Reporte : delegadoReporte),
-                celdaMetaPdf(`${arbitraje.esFutbol11 ? "Linea 2" : "Partido"}:`, arbitraje.esFutbol11 ? linea2Reporte : numeroPartidoReporte),
-                celdaMetaPdf(`${arbitraje.esFutbol11 ? "Delegado" : "Jornada"}:`, arbitraje.esFutbol11 ? delegadoReporte : jornadaReporte),
+                celdaMetaPdf(arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro", arbitroCentralReporte),
+                celdaMetaPdf(arbitraje.esFutbol11 ? "Linea 1" : "Delegado", arbitraje.esFutbol11 ? linea1Reporte : delegadoReporte),
+                celdaMetaPdf(arbitraje.esFutbol11 ? "Linea 2" : "Partido", arbitraje.esFutbol11 ? linea2Reporte : numeroPartidoReporte),
+                celdaMetaPdf(arbitraje.esFutbol11 ? "Delegado" : "Jornada", arbitraje.esFutbol11 ? delegadoReporte : jornadaReporte),
               ],
               [
-                celdaMetaPdf("Categoria:", categoria),
+                celdaMetaPdf("Categoria", categoria),
                 arbitraje.esFutbol11
-                  ? celdaMetaPdf("Partido:", numeroPartidoReporte)
+                  ? celdaMetaPdf("Partido", numeroPartidoReporte)
                   : { text: "" },
                 arbitraje.esFutbol11 && jornadaReporte
-                  ? celdaMetaPdf("Jornada:", jornadaReporte)
+                  ? celdaMetaPdf("Jornada", jornadaReporte)
                   : { text: "" },
-                celdaMetaPdf(`${contextoCompetencia.etiqueta}:`, contextoCompetencia.valor),
+                celdaMetaPdf(contextoCompetencia.etiqueta, contextoCompetencia.valor),
               ],
             ],
           },

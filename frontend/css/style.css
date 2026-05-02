@@ -3471,10 +3471,29 @@ body.modal-open {
   font-size: 0.82rem;
 }
 
+.planilla-meta-field {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  min-height: 1.05em;
+  text-align: left;
+}
+
+.planilla-meta-field strong {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.planilla-meta-field span {
+  flex: 1 1 auto;
+  min-width: 2.4rem;
+}
+
 .planilla-preview-meta .meta-item strong {
-  display: block;
+  display: inline-block;
   color: #9ec6eb;
-  margin-bottom: 0.15rem;
+  margin-bottom: 0;
   font-size: 0.73rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -3685,6 +3704,10 @@ body.modal-open {
 
 .planilla-oficial-meta strong {
   color: #0b2a4a;
+}
+
+.planilla-oficial-meta .planilla-meta-field span {
+  min-width: 4.2rem;
 }
 
 .planilla-oficial-observ-grid {
