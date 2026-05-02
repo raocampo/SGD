@@ -452,6 +452,19 @@ function formatearFecha(valor) {
   return `${d}/${m}/${y}`;
 }
 
+function valorReportePlanilla(valor) {
+  const texto = String(valor ?? "").trim();
+  const normalizado = texto.toLowerCase();
+  if (!texto || texto === "-" || texto === "--:--" || texto === "#-" || normalizado === "por definir") return "";
+  if (/^jornada\s*-\s*$/i.test(texto)) return "";
+  return texto;
+}
+
+function numeroPartidoReportePlanilla(partido) {
+  const numero = obtenerNumeroPartidoVisible(partido);
+  return numero ? `#${numero}` : "";
+}
+
 function obtenerNumeroPartidoVisible(partido) {
   const n = Number.parseInt(partido?.numero_campeonato, 10);
   if (Number.isFinite(n) && n > 0) return n;
@@ -4395,6 +4408,15 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
   const marcadorLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
   const marcadorVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
   const resumenPenales = obtenerResumenPenalesPlanilla(payload, p);
+  const fechaReporte = valorReportePlanilla(fecha);
+  const horaReporte = valorReportePlanilla(hora);
+  const canchaReporte = valorReportePlanilla(p.cancha);
+  const ciudadReporte = valorReportePlanilla(ciudad);
+  const arbitroCentralReporte = valorReportePlanilla(arbitraje.central);
+  const linea1Reporte = valorReportePlanilla(arbitraje.linea1);
+  const linea2Reporte = valorReportePlanilla(arbitraje.linea2);
+  const delegadoReporte = valorReportePlanilla(delegado);
+  const numeroPartidoReporte = numeroPartidoReportePlanilla(p);
 
   cont.innerHTML = `
     <div class="planilla-oficial-sheet ${modelo} ${clasesCompactacion}">
@@ -4420,19 +4442,19 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
       </header>
 
       <div class="planilla-oficial-meta">
-        <div><strong>Fecha:</strong> ${fecha}</div>
-        <div><strong>Hora:</strong> ${escapeHtml(hora)}</div>
-        <div><strong>Cancha:</strong> ${escapeHtml(p.cancha || "Por definir")}</div>
-        <div><strong>Ciudad:</strong> ${escapeHtml(ciudad || "Por definir")}</div>
-        <div><strong>${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}:</strong> ${escapeHtml(arbitraje.central || "________________")}</div>
+        <div><strong>Fecha:</strong> ${escapeHtml(fechaReporte)}</div>
+        <div><strong>Hora:</strong> ${escapeHtml(horaReporte)}</div>
+        <div><strong>Cancha:</strong> ${escapeHtml(canchaReporte)}</div>
+        <div><strong>Ciudad:</strong> ${escapeHtml(ciudadReporte)}</div>
+        <div><strong>${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}:</strong> ${escapeHtml(arbitroCentralReporte)}</div>
         ${
           arbitraje.esFutbol11
-            ? `<div><strong>Linea 1:</strong> ${escapeHtml(arbitraje.linea1 || "________________")}</div>
-               <div><strong>Linea 2:</strong> ${escapeHtml(arbitraje.linea2 || "________________")}</div>`
+            ? `<div><strong>Linea 1:</strong> ${escapeHtml(linea1Reporte)}</div>
+               <div><strong>Linea 2:</strong> ${escapeHtml(linea2Reporte)}</div>`
             : ""
         }
-        <div><strong>Delegado:</strong> ${escapeHtml(delegado || "________________")}</div>
-        <div><strong>Partido:</strong> #${obtenerNumeroPartidoVisible(p) || "-"}</div>
+        <div><strong>Delegado:</strong> ${escapeHtml(delegadoReporte)}</div>
+        <div><strong>Partido:</strong> ${escapeHtml(numeroPartidoReporte)}</div>
         <div><strong>Categoria:</strong> ${escapeHtml(categoria)}</div>
         <div><strong>${escapeHtml(resumenCompetencia)}</strong></div>
       </div>
@@ -4480,7 +4502,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
             <tbody>${filasLocal}</tbody>
           </table>
           <div class="planilla-oficial-team-notes">
-            <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(p.equipo_local_director_tecnico || "________________")}</p>
+            <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(valorReportePlanilla(p.equipo_local_director_tecnico))}</p>
             <div class="planilla-oficial-signature-row"><strong>Firma tecnico:</strong><span class="planilla-oficial-signature-line" aria-hidden="true"></span></div>
             <p><strong>TA:</strong> ${formatearConteoPlanilla(stats.totalAmarillasLocal, mostrarEnBlanco)} <strong>TR:</strong> ${formatearConteoPlanilla(stats.totalRojasLocal, mostrarEnBlanco)}</p>
           </div>
@@ -4495,7 +4517,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
             <tbody>${filasVisit}</tbody>
           </table>
           <div class="planilla-oficial-team-notes">
-            <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(p.equipo_visitante_director_tecnico || "________________")}</p>
+            <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(valorReportePlanilla(p.equipo_visitante_director_tecnico))}</p>
             <div class="planilla-oficial-signature-row"><strong>Firma tecnico:</strong><span class="planilla-oficial-signature-line" aria-hidden="true"></span></div>
             <p><strong>TA:</strong> ${formatearConteoPlanilla(stats.totalAmarillasVisitante, mostrarEnBlanco)} <strong>TR:</strong> ${formatearConteoPlanilla(stats.totalRojasVisitante, mostrarEnBlanco)}</p>
           </div>
@@ -4604,6 +4626,15 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
   const scoreLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
   const scoreVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
   const resumenPenales = obtenerResumenPenalesPlanilla(payload, p);
+  const fechaReporte = valorReportePlanilla(fecha);
+  const horaReporte = valorReportePlanilla(hora);
+  const canchaReporte = valorReportePlanilla(p.cancha);
+  const ciudadReporte = valorReportePlanilla(ciudad);
+  const arbitroCentralReporte = valorReportePlanilla(arbitraje.central);
+  const linea1Reporte = valorReportePlanilla(arbitraje.linea1);
+  const linea2Reporte = valorReportePlanilla(arbitraje.linea2);
+  const delegadoReporte = valorReportePlanilla(delegado);
+  const numeroPartidoReporte = numeroPartidoReportePlanilla(p);
 
   cont.innerHTML = `
     <div class="planilla-preview-sheet">
@@ -4613,19 +4644,19 @@ function renderVistaPreviaResumen(p, payload, stats, maxFilas, fecha, hora) {
       </div>
 
       <div class="planilla-preview-meta">
-        <div class="meta-item"><strong>Partido</strong>#${obtenerNumeroPartidoVisible(p) || "-"}</div>
-        <div class="meta-item"><strong>Fecha</strong>${fecha}</div>
-        <div class="meta-item"><strong>Hora</strong>${hora}</div>
-        <div class="meta-item"><strong>Cancha</strong>${escapeHtml(p.cancha || "Por definir")}</div>
-        <div class="meta-item"><strong>Ciudad</strong>${escapeHtml(ciudad || "Por definir")}</div>
-        <div class="meta-item"><strong>${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}</strong>${escapeHtml(arbitraje.central || "________________")}</div>
+        <div class="meta-item"><strong>Partido</strong>${escapeHtml(numeroPartidoReporte)}</div>
+        <div class="meta-item"><strong>Fecha</strong>${escapeHtml(fechaReporte)}</div>
+        <div class="meta-item"><strong>Hora</strong>${escapeHtml(horaReporte)}</div>
+        <div class="meta-item"><strong>Cancha</strong>${escapeHtml(canchaReporte)}</div>
+        <div class="meta-item"><strong>Ciudad</strong>${escapeHtml(ciudadReporte)}</div>
+        <div class="meta-item"><strong>${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}</strong>${escapeHtml(arbitroCentralReporte)}</div>
         ${
           arbitraje.esFutbol11
-            ? `<div class="meta-item"><strong>Linea 1</strong>${escapeHtml(arbitraje.linea1 || "________________")}</div>
-               <div class="meta-item"><strong>Linea 2</strong>${escapeHtml(arbitraje.linea2 || "________________")}</div>`
+            ? `<div class="meta-item"><strong>Linea 1</strong>${escapeHtml(linea1Reporte)}</div>
+               <div class="meta-item"><strong>Linea 2</strong>${escapeHtml(linea2Reporte)}</div>`
             : ""
         }
-        <div class="meta-item"><strong>Delegado</strong>${escapeHtml(delegado || "________________")}</div>
+        <div class="meta-item"><strong>Delegado</strong>${escapeHtml(delegadoReporte)}</div>
       </div>
 
       <div class="planilla-preview-score">
@@ -4865,7 +4896,7 @@ function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false
     }]);
   }
   innerBody.push([{
-    text: nombre || "Por definir",
+    text: valorReportePlanilla(nombre),
     alignment: "center",
     bold: true,
     fontSize,
@@ -5257,8 +5288,8 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     const categoria = obtenerCategoriaPlanilla(p);
     const localNombre = p.equipo_local_nombre || equiposPartido.local.nombre;
     const visitNombre = p.equipo_visitante_nombre || equiposPartido.visitante.nombre;
-    const localDt = p.equipo_local_director_tecnico || "-";
-    const visitDt = p.equipo_visitante_director_tecnico || "-";
+    const localDt = valorReportePlanilla(p.equipo_local_director_tecnico);
+    const visitDt = valorReportePlanilla(p.equipo_visitante_director_tecnico);
     const maxFilas = obtenerMaxJugadoresConfiguradoPlanilla(p);
     const plantelLocalImpresion = obtenerJugadoresImpresionPlanilla(dataPlanilla.plantel_local || [], maxFilas);
     const plantelVisitanteImpresion = obtenerJugadoresImpresionPlanilla(
@@ -5322,11 +5353,21 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
         permitirVacio: true,
       }) ||
       obtenerNumeroPartidoVisible(p) ||
-      "-";
+      "";
     const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
     const marcadorLocal = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_local);
     const marcadorVisit = mostrarEnBlanco ? "" : formatearMarcadorPlanilla(payload.resultado_visitante);
     const resumenPenales = obtenerResumenPenalesPlanilla(payload, p);
+    const fechaReporte = valorReportePlanilla(fecha);
+    const horaReporte = valorReportePlanilla(hora);
+    const canchaReporte = valorReportePlanilla(p.cancha);
+    const ciudadReporte = valorReportePlanilla(ciudad);
+    const arbitroCentralReporte = valorReportePlanilla(arbitraje.central);
+    const linea1Reporte = valorReportePlanilla(arbitraje.linea1);
+    const linea2Reporte = valorReportePlanilla(arbitraje.linea2);
+    const delegadoReporte = valorReportePlanilla(delegado);
+    const numeroPartidoReporte = numeroPartidoVisible ? `#${numeroPartidoVisible}` : "";
+    const jornadaReporte = valorReportePlanilla(jornada);
 
     const docDefinition = {
       pageSize: "A4",
@@ -5372,10 +5413,10 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
             widths: ["*", "*", "*", "*"],
             body: [
               [
-                { text: [{ text: "Fecha: ", bold: true }, fecha] },
-                { text: [{ text: "Hora: ", bold: true }, hora] },
-                { text: [{ text: "Cancha: ", bold: true }, p.cancha || "Por definir"] },
-                { text: [{ text: "Ciudad: ", bold: true }, ciudad || "Por definir"] },
+                { text: [{ text: "Fecha: ", bold: true }, fechaReporte] },
+                { text: [{ text: "Hora: ", bold: true }, horaReporte] },
+                { text: [{ text: "Cancha: ", bold: true }, canchaReporte] },
+                { text: [{ text: "Ciudad: ", bold: true }, ciudadReporte] },
               ],
               [
                 {
@@ -5384,39 +5425,35 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                       text: `${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}: `,
                       bold: true,
                     },
-                    arbitraje.central || "________________",
+                    arbitroCentralReporte,
                   ],
                 },
                 {
                   text: [
                     { text: `${arbitraje.esFutbol11 ? "Linea 1" : "Delegado"}: `, bold: true },
-                    arbitraje.esFutbol11
-                      ? arbitraje.linea1 || "________________"
-                      : delegado || "________________",
+                    arbitraje.esFutbol11 ? linea1Reporte : delegadoReporte,
                   ],
                 },
                 {
                   text: [
                     { text: `${arbitraje.esFutbol11 ? "Linea 2" : "Partido"}: `, bold: true },
-                    arbitraje.esFutbol11
-                      ? arbitraje.linea2 || "________________"
-                      : `#${numeroPartidoVisible}`,
+                    arbitraje.esFutbol11 ? linea2Reporte : numeroPartidoReporte,
                   ],
                 },
                 {
                   text: [
                     { text: `${arbitraje.esFutbol11 ? "Delegado" : "Jornada"}: `, bold: true },
-                    arbitraje.esFutbol11 ? delegado || "________________" : jornada,
+                    arbitraje.esFutbol11 ? delegadoReporte : jornadaReporte,
                   ],
                 },
               ],
               [
                 { text: [{ text: "Categoria: ", bold: true }, categoria] },
                 arbitraje.esFutbol11
-                  ? { text: [{ text: "Partido: ", bold: true }, `#${numeroPartidoVisible}`] }
+                  ? { text: [{ text: "Partido: ", bold: true }, numeroPartidoReporte] }
                   : { text: "" },
-                arbitraje.esFutbol11 && jornada
-                  ? { text: [{ text: "Jornada: ", bold: true }, jornada] }
+                arbitraje.esFutbol11 && jornadaReporte
+                  ? { text: [{ text: "Jornada: ", bold: true }, jornadaReporte] }
                   : { text: "" },
                 {
                   text: [

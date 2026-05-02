@@ -1,3 +1,32 @@
+## 2026-05-02 — Planillas: campos no llenados salen vacíos en reportes
+
+### Objetivo
+
+Evitar que los reportes de planilla impriman líneas de relleno o textos de placeholder cuando no se llenan datos operativos.
+
+### Implementación aplicada
+
+- `frontend/js/planilla.js`
+  - Se agregó `valorReportePlanilla()` para normalizar valores vacíos en reportes.
+  - En vista previa oficial, vista previa resumen y PDF, ahora quedan vacíos:
+    - fecha/hora no definidas,
+    - cancha/ciudad no definidas,
+    - árbitro central,
+    - línea 1 / línea 2,
+    - delegado,
+    - número visible de partido,
+    - jornada sin dato,
+    - dirigente/director técnico.
+  - Se eliminaron placeholders visibles tipo `________________`, `Por definir`, `--:--`, `#-`, `Jornada -` y `-` en la salida del reporte.
+  - Las líneas de firma se conservan porque son espacios operativos para firma, no datos faltantes.
+
+### Verificación
+
+- `node --check frontend/js/planilla.js`
+- `git diff --check`
+
+---
+
 ## 2026-05-02 — Planillas: orden alfabético por apellido en todos los deportes
 
 ### Objetivo
