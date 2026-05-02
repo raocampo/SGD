@@ -5368,6 +5368,30 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     const delegadoReporte = valorReportePlanilla(delegado);
     const numeroPartidoReporte = numeroPartidoVisible ? `#${numeroPartidoVisible}` : "";
     const jornadaReporte = valorReportePlanilla(jornada);
+    const anchoEtiquetaMetaPdf = (etiqueta = "") => {
+      const min = modoUltraCompactoPdf ? 28 : modoCompactoPdf ? 31 : 36;
+      const max = modoUltraCompactoPdf ? 62 : modoCompactoPdf ? 68 : 76;
+      const factor = modoUltraCompactoPdf ? 3.2 : modoCompactoPdf ? 3.55 : 3.9;
+      return Math.min(max, Math.max(min, String(etiqueta || "").length * factor));
+    };
+    const celdaMetaPdf = (etiqueta, valor) => ({
+      columns: [
+        {
+          text: etiqueta,
+          bold: true,
+          width: anchoEtiquetaMetaPdf(etiqueta),
+          noWrap: true,
+          alignment: "left",
+        },
+        {
+          text: valorReportePlanilla(valor),
+          width: "*",
+          alignment: "left",
+        },
+      ],
+      columnGap: modoUltraCompactoPdf ? 0.5 : 1,
+      alignment: "left",
+    });
 
     const docDefinition = {
       pageSize: "A4",
@@ -5413,54 +5437,26 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
             widths: ["*", "*", "*", "*"],
             body: [
               [
-                { text: [{ text: "Fecha: ", bold: true }, fechaReporte] },
-                { text: [{ text: "Hora: ", bold: true }, horaReporte] },
-                { text: [{ text: "Cancha: ", bold: true }, canchaReporte] },
-                { text: [{ text: "Ciudad: ", bold: true }, ciudadReporte] },
+                celdaMetaPdf("Fecha:", fechaReporte),
+                celdaMetaPdf("Hora:", horaReporte),
+                celdaMetaPdf("Cancha:", canchaReporte),
+                celdaMetaPdf("Ciudad:", ciudadReporte),
               ],
               [
-                {
-                  text: [
-                    {
-                      text: `${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}: `,
-                      bold: true,
-                    },
-                    arbitroCentralReporte,
-                  ],
-                },
-                {
-                  text: [
-                    { text: `${arbitraje.esFutbol11 ? "Linea 1" : "Delegado"}: `, bold: true },
-                    arbitraje.esFutbol11 ? linea1Reporte : delegadoReporte,
-                  ],
-                },
-                {
-                  text: [
-                    { text: `${arbitraje.esFutbol11 ? "Linea 2" : "Partido"}: `, bold: true },
-                    arbitraje.esFutbol11 ? linea2Reporte : numeroPartidoReporte,
-                  ],
-                },
-                {
-                  text: [
-                    { text: `${arbitraje.esFutbol11 ? "Delegado" : "Jornada"}: `, bold: true },
-                    arbitraje.esFutbol11 ? delegadoReporte : jornadaReporte,
-                  ],
-                },
+                celdaMetaPdf(`${arbitraje.esFutbol11 ? "Arbitro central" : "Arbitro"}:`, arbitroCentralReporte),
+                celdaMetaPdf(`${arbitraje.esFutbol11 ? "Linea 1" : "Delegado"}:`, arbitraje.esFutbol11 ? linea1Reporte : delegadoReporte),
+                celdaMetaPdf(`${arbitraje.esFutbol11 ? "Linea 2" : "Partido"}:`, arbitraje.esFutbol11 ? linea2Reporte : numeroPartidoReporte),
+                celdaMetaPdf(`${arbitraje.esFutbol11 ? "Delegado" : "Jornada"}:`, arbitraje.esFutbol11 ? delegadoReporte : jornadaReporte),
               ],
               [
-                { text: [{ text: "Categoria: ", bold: true }, categoria] },
+                celdaMetaPdf("Categoria:", categoria),
                 arbitraje.esFutbol11
-                  ? { text: [{ text: "Partido: ", bold: true }, numeroPartidoReporte] }
+                  ? celdaMetaPdf("Partido:", numeroPartidoReporte)
                   : { text: "" },
                 arbitraje.esFutbol11 && jornadaReporte
-                  ? { text: [{ text: "Jornada: ", bold: true }, jornadaReporte] }
+                  ? celdaMetaPdf("Jornada:", jornadaReporte)
                   : { text: "" },
-                {
-                  text: [
-                    { text: `${contextoCompetencia.etiqueta}: `, bold: true },
-                    contextoCompetencia.valor,
-                  ],
-                },
+                celdaMetaPdf(`${contextoCompetencia.etiqueta}:`, contextoCompetencia.valor),
               ],
             ],
           },
@@ -5475,7 +5471,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
             paddingBottom: () => (modoCompactoPdf ? 1.4 : 4),
           },
           margin: [0, 0, 0, modoCompactoPdf ? 3 : 14],
-          alignment: "center",
+          alignment: "left",
         },
         {
           table: {

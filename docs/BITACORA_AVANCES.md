@@ -18,6 +18,7 @@ Evitar que los reportes de planilla impriman líneas de relleno o textos de plac
     - jornada sin dato,
     - dirigente/director técnico.
   - Se eliminaron placeholders visibles tipo `________________`, `Por definir`, `--:--`, `#-`, `Jornada -` y `-` en la salida del reporte.
+  - Ajuste posterior: en el PDF los rótulos de la cabecera quedan alineados a la izquierda y el resto de cada celda queda libre para llenado manual en cancha, sin imprimir líneas de relleno.
   - Las líneas de firma se conservan porque son espacios operativos para firma, no datos faltantes.
 
 ### Verificación
