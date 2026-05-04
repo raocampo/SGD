@@ -1,3 +1,105 @@
+## 2026-05-03 — Transmisiones Fase 2: WebRTC broadcaster + viewer público
+
+### Objetivo
+
+Permitir transmitir video en vivo directamente desde el navegador (cámara o pantalla compartida) sin necesidad de OBS ni software externo. Cualquier persona con el enlace puede ver el stream en tiempo real.
+
+### Implementación aplicada
+
+**Backend — `backend/services/socketService.js`:**
+- Se añadió el mapa `webrtcBroadcasters` (transmision_id → socket.id) para rastrear al broadcaster activo por transmisión.
+- Nuevos handlers Socket.io para señalización WebRTC:
+  - `webrtc:broadcaster-join` — el broadcaster anuncia presencia; el servidor notifica a viewers ya conectados.
+  - `webrtc:viewer-join` — el viewer entra; el servidor notifica al broadcaster para que cree oferta y confirma al viewer si hay broadcaster.
+  - `webrtc:offer / webrtc:answer / webrtc:ice` — relay genérico dirigido a socket.id destino.
+  - `disconnect` — limpia el mapa y emite `webrtc:broadcaster-left` a la sala.
+- `actualizarConteoViewers(transmision_id)` calcula la cantidad de viewers reales (total sala − 1 broadcaster).
+
+**Backend — `backend/controllers/transmisionController.js`:**
+- Nueva función `obtenerTransmisionViewer(req, res)` — endpoint público que devuelve únicamente datos seguros (sin overlay_token, sin director_token): id, título, descripción, plataforma, url_publica, estado, fechas, nombres y logos de equipos.
+
+**Backend — `backend/routes/publicRoutes.js`:**
+- Nueva ruta `GET /api/public/transmisiones/:id` → `obtenerTransmisionViewer`.
+- Puesta ANTES de `/transmisiones/destacadas` para evitar colisión de rutas.
+
+**Frontend — `frontend/broadcast.html`** (nuevo, requiere auth organizador/operador/administrador):
+- Selector de fuente: cámara (`getUserMedia`) o pantalla (`getDisplayMedia`) con toggle de audio.
+- Vista previa local en `<video>`.
+- Gestión multi-peer: Map `peerConns` (viewer_id → RTCPeerConnection); para cada viewer nuevo se crea oferta independiente.
+- ICE servers: STUN Google público (`stun.l.google.com:19302`).
+- Al detener: cierra todos los PeerConnections, libera tracks del stream.
+- Muestra URL pública de viewer (`viewer.html?tx=ID`) con botón copiar.
+- Enlace de vuelta al director (`director.html?tx=ID`).
+
+**Frontend — `frontend/viewer.html`** (nuevo, público sin auth):
+- Carga info del partido vía `/api/public/transmisiones/:id` (equipos, título, plataforma).
+- Badge "EN VIVO" animado cuando el stream está activo.
+- Se conecta a Socket.io y emite `webrtc:viewer-join`.
+- Cuando recibe oferta WebRTC: crea `RTCPeerConnection`, asigna `srcObject` al `<video>`.
+- Fallback YouTube: si el broadcaster se desconecta y la transmisión tiene `url_publica` válida (YouTube), convierte a embed URL y muestra iframe automáticamente.
+- `convertirAEmbed(url)` extrae el ID de video de YouTube y genera la URL de embed.
+
+**Frontend — `frontend/director.html`** (modificado):
+- Card nueva "Transmitir video en vivo" con botón `btn-ir-broadcast` → `broadcast.html?tx=ID`.
+- El ID se rellena automáticamente al conectar la transmisión.
+
+**Frontend — `frontend/js/transmisiones.js`** (modificado):
+- `btnViewer`: botón rojo (ojo) que aparece únicamente en filas con estado `en_vivo`; abre `viewer.html?tx=ID` en pestaña nueva.
+
+### Verificación
+
+- `node -e "require('./backend/services/socketService.js')"` — OK
+- `node -e "require('./backend/controllers/transmisionController.js')"` — OK (obtenerTransmisionViewer exportado)
+- `node -e "require('./backend/routes/publicRoutes.js')"` — OK
+
+---
+
+## 2026-05-03 — Transmisiones Fase 3: instrucciones OBS + compartir en redes
+
+### Objetivo
+
+Añadir al panel de director dos funcionalidades complementarias: una guía colapsable para configurar OBS y botones para compartir la transmisión en redes sociales con texto auto-generado.
+
+### Implementación aplicada
+
+**`frontend/director.html`:**
+- Card **"¿Cómo agregar a OBS?"** (colapsable):
+  - Lista `<ol>` con 7 pasos: abrir OBS → Sources → Browser Source → pegar URL → dimensión 1280×180 → activar "Shutdown when not visible" → OK.
+  - Nota: el overlay se actualiza automáticamente sin reiniciar OBS.
+  - `toggleInstrucciones()` con chevron animado (CSS `transform: rotate(180deg)`).
+- Card **"Compartir"**:
+  - `actualizarSharePreview(tx)` construye el mensaje con nombre de equipos, título y URL pública (`tx.url_publica` o `location.origin`).
+  - `compartir(red)` abre las URLs de share de WhatsApp, Facebook, Twitter/X, o copia al portapapeles.
+  - Vista previa del texto en una `div.share-preview` que el organizador puede leer antes de compartir.
+- Variable global `txInfoGlobal` para acceso desde funciones de compartir sin pasar parámetros.
+
+---
+
+## 2026-05-03 — Fix: parámetro `tipo` en botón "Postales" de tablas.html
+
+### Problema detectado
+
+Al hacer clic en el botón "Postales" en `tablas.html`, `tablasplantilla.html` siempre abría en el tab "Posiciones" sin importar en cuál de los cuatro tabs estaba el usuario (Posiciones / Goleadores / Tarjetas / Fair Play).
+
+### Causa
+
+`actualizarBotonPostales()` en `tablas.js` construía la URL con parámetros `campeonato` y `evento` pero no incluía el tab activo. `tablasplantilla.js` no leía ningún parámetro `tipo` en su bloque de inicialización.
+
+### Implementación aplicada
+
+**`frontend/js/tablas.js`:**
+- Nueva variable `let tablasTabActual = "tab-posiciones"`.
+- Nuevo mapa `TABLAS_TAB_A_TIPO` que convierte IDs de tab a valores `tipo` (`"tab-goleadores"` → `"goleadores"`, etc.).
+- `cambiarTablasTab(tabId)` ahora actualiza `tablasTabActual` y llama `actualizarBotonPostales()` en cada cambio de tab.
+- `actualizarBotonPostales()` añade `tipo` a los parámetros de la URL si no es el valor por defecto (`"posiciones"` se omite para URLs más limpias).
+
+**`frontend/js/tablasplantilla.js`:**
+- Bloque de init ahora lee `tipo` de `RouteContext` y `URLSearchParams`.
+- Si el tipo es válido (`posiciones/goleadores/tarjetas/fair_play`), activa el tab correspondiente (`data-tipo="..."`) y actualiza `tipoActual` antes de cargar datos.
+- La activación del tab ocurre antes de `cargarDatos()` para que `actualizarContenidoPoster()` renderice el tipo correcto desde el primer ciclo.
+
+---
+
 ## 2026-05-02 — Planilla PDF: separación visual entre etiqueta y valor
 
 ### Problema detectado

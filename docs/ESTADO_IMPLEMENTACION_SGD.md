@@ -1,3 +1,32 @@
+## 2026-05-03 — Estado módulo Transmisiones en vivo
+
+### Fase 1 — Overlay tiempo real (OBS): COMPLETO
+- Socket.io + sala `overlay:{id}` operativa.
+- `overlay.html` servido como estático sin auth, para OBS Browser Source.
+- `director.html` panel de control: marcador, cronómetro, período, texto evento, visibilidad, presets.
+- Migraciones 064 + 065 aplicadas en local y Render.
+- Navegación director ↔ lista de transmisiones.
+
+### Fase 2 — WebRTC broadcaster/viewer: IMPLEMENTADO (pendiente prueba en Render)
+- `socketService.js`: señalización WebRTC via Socket.io (broadcaster-join, viewer-join, offer/answer/ICE relay, conteo viewers, limpieza en disconnect).
+- `broadcast.html` (auth requerida): cámara o pantalla, multi-peer, vista previa local, URL para espectadores.
+- `viewer.html` (público): recibe stream WebRTC, fallback YouTube embed si broadcaster se desconecta.
+- `GET /api/public/transmisiones/:id` endpoint público sin tokens para que viewer.html cargue info del partido.
+- Botón "Transmitir video" en `director.html` → `broadcast.html?tx=ID`.
+- Botón rojo "Ver" (ojo) en `transmisiones.html` para filas `en_vivo` → `viewer.html?tx=ID`.
+- ICE servers: STUN Google público. TURN pendiente para redes NAT estricto.
+
+### Fase 3 — UX director: COMPLETO
+- Card instrucciones OBS (colapsable, 7 pasos).
+- Card "Compartir": WhatsApp, Facebook, Twitter/X, Copiar texto. Preview auto-generado con nombres de equipos y URL pública.
+- UX lista transmisiones: guía 3 pasos, tab "Todas" por defecto, badges contadores, estados vacíos contextuales, auto-select campeonato único.
+
+### Fase 4 — WebRTC STUN/TURN avanzado + social Fase 3: pendiente
+- TURN server (Metered.ca free tier) para redes con NAT simétrico.
+- Botones de redes sociales también en `viewer.html` para que espectadores compartan.
+
+---
+
 ## 2026-04-05 - Estado del sistema (sesión 22)
 
 ### Módulo de auditoría — completo
@@ -485,12 +514,12 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - implementado y validado en local.
 
 20. Servicio de transmisión de partidos:
-- Ya existe plan funcional/documental inicial en `docs/PLAN_TRANSMISION_PARTIDOS.md`.
-- Estado:
-  - diseño funcional listo,
-  - sin implementación de backend/frontend todavía.
-- Siguiente fase recomendada:
-  - Fase 1 operativa con tabla `partido_transmisiones`, endpoints básicos y bloque público `Próxima transmisión`.
+- Plan funcional en `docs/PLAN_TRANSMISION_PARTIDOS.md`.
+- Estado al 2026-05-03:
+  - **Fase 1 COMPLETA**: `partido_transmisiones`, endpoints CRUD, Socket.io overlay, `director.html`, `overlay.html`, migraciones 064+065, UX lista transmisiones, navegación director↔lista.
+  - **Fase 2 IMPLEMENTADA (pendiente prueba en Render)**: WebRTC broadcaster (`broadcast.html`) + viewer público (`viewer.html`), señalización Socket.io, endpoint público `/api/public/transmisiones/:id`, botón "Ver" en lista, botón "Transmitir" en director.
+  - **Fase 3 COMPLETA**: instrucciones OBS colapsables, compartir en redes (WhatsApp/Facebook/Twitter/Copiar) con texto auto-generado.
+  - **Pendiente**: prueba end-to-end en Render, TURN server para NAT estricto (Metered.ca).
 
 21. Fixture / sincronización de fechas:
 - Ya quedó corregida la sincronización de fechas de campeonato a categorías que seguían heredando esas fechas.

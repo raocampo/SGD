@@ -159,6 +159,46 @@ async function obtenerTransmisionPublica(req, res) {
   }
 }
 
+async function obtenerTransmisionViewer(req, res) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.json({ transmision: null });
+    const result = await require("../config/database").query(
+      `SELECT t.id, t.titulo, t.descripcion, t.plataforma, t.url_publica,
+              t.estado, t.fecha_inicio_programada, t.fecha_inicio_real,
+              p.equipo_local_id, p.equipo_visitante_id,
+              el.nombre AS equipo_local_nombre,  el.logo_url AS equipo_local_logo,
+              ev2.nombre AS equipo_visitante_nombre, ev2.logo_url AS equipo_visitante_logo
+       FROM partido_transmisiones t
+       LEFT JOIN partidos p    ON p.id   = t.partido_id
+       LEFT JOIN equipos  el   ON el.id  = p.equipo_local_id
+       LEFT JOIN equipos  ev2  ON ev2.id = p.equipo_visitante_id
+       WHERE t.id = $1`,
+      [id]
+    );
+    if (!result.rows.length) return res.json({ transmision: null });
+    const row = result.rows[0];
+    return res.json({
+      transmision: {
+        id: row.id,
+        titulo: row.titulo,
+        descripcion: row.descripcion,
+        plataforma: row.plataforma,
+        url_publica: row.url_publica,
+        estado: row.estado,
+        fecha_inicio_programada: row.fecha_inicio_programada,
+        fecha_inicio_real: row.fecha_inicio_real,
+        equipo_local_nombre: row.equipo_local_nombre,
+        equipo_local_logo: row.equipo_local_logo,
+        equipo_visitante_nombre: row.equipo_visitante_nombre,
+        equipo_visitante_logo: row.equipo_visitante_logo,
+      },
+    });
+  } catch (_err) {
+    return res.json({ transmision: null });
+  }
+}
+
 async function listarTransmisionesActivasPorCampeonato(req, res) {
   try {
     const campeonatoId = Number.parseInt(req.params.id, 10);
@@ -244,6 +284,7 @@ async function obtenerTransmisionPorId(req, res) {
 module.exports = {
   obtenerTransmision,
   obtenerTransmisionPorId,
+  obtenerTransmisionViewer,
   crearTransmision,
   actualizarTransmision,
   iniciarTransmision,

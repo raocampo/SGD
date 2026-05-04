@@ -725,10 +725,21 @@
     document.getElementById("tblp-btn-pdf")?.addEventListener("click", exportarPDF);
 
     // Pre-seleccionar desde RouteContext o URL params
-    const routeCtx = window.RouteContext?.read?.("tablasplantilla.html", ["campeonato", "evento"]) || {};
+    const routeCtx = window.RouteContext?.read?.("tablasplantilla.html", ["campeonato", "evento", "tipo"]) || {};
     const urlParams = new URLSearchParams(window.location.search);
     const preCamp = Number.parseInt(routeCtx.campeonato || urlParams.get("campeonato") || "", 10);
     const preEvento = Number.parseInt(routeCtx.evento || urlParams.get("evento") || "", 10);
+    const preTipo = routeCtx.tipo || urlParams.get("tipo") || null;
+
+    const TIPOS_VALIDOS = ["posiciones", "goleadores", "tarjetas", "fair_play"];
+    if (preTipo && TIPOS_VALIDOS.includes(preTipo)) {
+      const tabBtn = document.querySelector(`.tblp-tipo-tab[data-tipo="${preTipo}"]`);
+      if (tabBtn) {
+        document.querySelectorAll(".tblp-tipo-tab").forEach((b) => b.classList.remove("active"));
+        tabBtn.classList.add("active");
+        tipoActual = preTipo;
+      }
+    }
 
     if (Number.isFinite(preCamp) && preCamp > 0) {
       const selCamp = document.getElementById("tblp-select-campeonato");

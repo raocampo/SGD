@@ -10,6 +10,15 @@ const TABLAS_TAB_IDS = ["tab-posiciones", "tab-goleadores", "tab-tarjetas", "tab
 const TABLAS_STORAGE_CAMPEONATO = "sgd_tablas_camp";
 const TABLAS_STORAGE_EVENTO = "sgd_tablas_evento";
 
+let tablasTabActual = "tab-posiciones";
+
+const TABLAS_TAB_A_TIPO = {
+  "tab-posiciones": "posiciones",
+  "tab-goleadores": "goleadores",
+  "tab-tarjetas":   "tarjetas",
+  "tab-fair-play":  "fair_play",
+};
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("tablas.html")) return;
 
@@ -44,6 +53,8 @@ function actualizarBotonPostales() {
   const params = new URLSearchParams();
   if (tablasCampeonatoSeleccionado) params.set("campeonato", tablasCampeonatoSeleccionado);
   if (tablasEventoSeleccionado)    params.set("evento", tablasEventoSeleccionado);
+  const tipo = TABLAS_TAB_A_TIPO[tablasTabActual];
+  if (tipo && tipo !== "posiciones") params.set("tipo", tipo);
   const qs = params.toString();
   btn.href = qs ? `tablasplantilla.html?${qs}` : "tablasplantilla.html";
 }
@@ -699,6 +710,7 @@ async function buscarTablasEvento() {
 
 function cambiarTablasTab(tabId) {
   const objetivo = TABLAS_TAB_IDS.includes(tabId) ? tabId : "tab-posiciones";
+  tablasTabActual = objetivo;
 
   document.querySelectorAll("#tablas-main-tabs .partidos-main-tab").forEach((btn) => {
     btn.classList.toggle("active", btn.getAttribute("data-tablas-target") === objetivo);
@@ -707,6 +719,8 @@ function cambiarTablasTab(tabId) {
   document.querySelectorAll(".page-tablas .partidos-tab-panel").forEach((panel) => {
     panel.classList.toggle("active", panel.id === objetivo);
   });
+
+  actualizarBotonPostales();
 }
 
 function setCargandoPaneles() {

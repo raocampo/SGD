@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transmitir en Vivo</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    body { background: #0f172a; color: #e2e8f0; }
+
+    .bcast-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+
+    .bcast-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .bcast-header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0;
+      color: #f1f5f9;
+    }
+
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #94a3b8;
+      margin: 0 0 14px;
+    }
+
+    /* ── Previsualización ── */
+    #video-preview {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #0f172a;
+      border-radius: 8px;
+      object-fit: contain;
+      display: block;
+      border: 1px solid #334155;
+    }
+    #video-preview.active { border-color: #dc2626; }
+
+    /* ── Fuente de video ── */
+    .source-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .btn-source {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      border: 2px solid #334155;
+      background: transparent;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn-source.active {
+      border-color: #2563eb;
+      background: #1e3a5f;
+      color: #93c5fd;
+    }
+    .btn-source:hover { border-color: #475569; }
+
+    /* ── Controles de audio ── */
+    .audio-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .audio-row label { font-size: 13px; color: #cbd5e1; flex: 1; }
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #334155;
+      border-radius: 24px;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      width: 18px; height: 18px;
+      left: 3px; bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: #16a34a; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    /* ── Acciones principales ── */
+    .main-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-action {
+      padding: 11px 24px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-start  { background: #dc2626; color: #fff; }
+    .btn-start:hover:not(:disabled)  { background: #b91c1c; }
+    .btn-stop   { background: #334155; color: #e2e8f0; }
+    .btn-stop:hover:not(:disabled)   { background: #475569; }
+
+    /* ── Estado / Viewers ── */
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #475569;
+      flex-shrink: 0;
+    }
+    .status-dot.live    { background: #dc2626; animation: pulse 1.4s infinite; }
+    .status-dot.ready   { background: #22c55e; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .status-label { font-size: 13px; color: #94a3b8; }
+    .viewers-badge {
+      margin-left: auto;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 14px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── URL de viewer ── */
+    .url-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #94a3b8;
+      word-break: break-all;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .url-box span { flex: 1; }
+    .btn-copy {
+      background: #334155;
+      border: none;
+      color: #e2e8f0;
+      padding: 5px 12px;
+      border-radius: 5px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-copy:hover { background: #475569; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.5);
+      transform: translateY(60px);
+      opacity: 0;
+      transition: transform .25s, opacity .25s;
+      z-index: 9999;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div class="bcast-wrap">
+  <div class="bcast-header">
+    <a href="director.html" id="btn-volver" style="color:#94a3b8;font-size:1.1rem;text-decoration:none;margin-right:4px;" title="Volver al director"><i class="fas fa-arrow-left"></i></a>
+    <i class="fas fa-video" style="font-size:1.4rem;color:#dc2626;"></i>
+    <h1>Transmitir en Vivo</h1>
+  </div>
+
+  <!-- Estado + viewers -->
+  <div class="card">
+    <div class="status-row">
+      <div class="status-dot" id="status-dot"></div>
+      <span class="status-label" id="status-label">Inactivo — configura la fuente y presiona Iniciar</span>
+      <div class="viewers-badge">
+        <i class="fas fa-eye"></i>
+        <span id="viewer-count">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Previsualización -->
+  <div class="card">
+    <h2><i class="fas fa-film" style="margin-right:6px;"></i>Previsualización</h2>
+    <video id="video-preview" autoplay muted playsinline></video>
+  </div>
+
+  <!-- Fuente -->
+  <div class="card">
+    <h2><i class="fas fa-sliders-h" style="margin-right:6px;"></i>Fuente de Video</h2>
+    <div class="source-row">
+      <button class="btn-source active" id="btn-camara" onclick="seleccionarFuente('camara')">
+        <i class="fas fa-camera"></i> Cámara
+      </button>
+      <button class="btn-source" id="btn-pantalla" onclick="seleccionarFuente('pantalla')">
+        <i class="fas fa-desktop"></i> Pantalla
+      </button>
+    </div>
+    <div class="audio-row">
+      <label>Incluir audio del micrófono</label>
+      <label class="toggle">
+        <input type="checkbox" id="tog-audio" checked />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Controles -->
+  <div class="card">
+    <h2><i class="fas fa-broadcast-tower" style="margin-right:6px;"></i>Transmisión</h2>
+    <div class="main-actions">
+      <button class="btn-action btn-start" id="btn-iniciar" onclick="iniciarTransmision()">
+        <i class="fas fa-play"></i> Iniciar transmisión
+      </button>
+      <button class="btn-action btn-stop" id="btn-detener" disabled onclick="detenerTransmision()">
+        <i class="fas fa-stop"></i> Detener
+      </button>
+    </div>
+  </div>
+
+  <!-- URL para espectadores -->
+  <div class="card" id="card-viewer-url" style="display:none;">
+    <h2><i class="fas fa-link" style="margin-right:6px;"></i>URL para Espectadores</h2>
+    <div class="url-box">
+      <span id="viewer-url-text">—</span>
+      <button class="btn-copy" onclick="copiarViewerUrl()"><i class="fas fa-copy"></i> Copiar</button>
+    </div>
+    <p style="font-size:12px;color:#64748b;margin:8px 0 0;">
+      Comparte este enlace con quienes quieras que vean la transmisión.
+    </p>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/core.js"></script>
+<script>
+  const ICE_SERVERS = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+  ];
+
+  let transmisionId  = null;
+  let localStream    = null;
+  let socket         = null;
+  let fuenteActual   = "camara";
+  let broadcasting   = false;
+  const peerConns    = {};  // viewer_id → RTCPeerConnection
+
+  const API_BASE = location.origin;
+
+  // ── Auth ────────────────────────────────────────────────────────
+  document.addEventListener("DOMContentLoaded", () => {
+    const token = localStorage.getItem("token");
+    const rol   = localStorage.getItem("rol");
+    if (!token) { location.href = "login.html"; return; }
+    if (!["administrador", "organizador", "operador"].includes(rol)) {
+      location.href = "index.html"; return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    const txParam = parseInt(params.get("tx"), 10);
+    if (txParam) {
+      transmisionId = txParam;
+      // Actualizar enlace de vuelta al director
+      document.getElementById("btn-volver").href = `director.html?tx=${txParam}`;
+      // Mostrar URL viewer
+      const viewerUrl = `${API_BASE}/viewer.html?tx=${txParam}`;
+      document.getElementById("viewer-url-text").textContent = viewerUrl;
+      document.getElementById("card-viewer-url").style.display = "block";
+    }
+    conectarSocket();
+  });
+
+  // ── Helpers ─────────────────────────────────────────────────────
+  function toast(msg, ms = 2500) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), ms);
+  }
+
+  function setStatus(estado, texto) {
+    const dot = document.getElementById("status-dot");
+    const lbl = document.getElementById("status-label");
+    dot.className = "status-dot " + (estado || "");
+    lbl.textContent = texto;
+  }
+
+  // ── Fuente ──────────────────────────────────────────────────────
+  function seleccionarFuente(fuente) {
+    fuenteActual = fuente;
+    document.getElementById("btn-camara").classList.toggle("active",   fuente === "camara");
+    document.getElementById("btn-pantalla").classList.toggle("active", fuente === "pantalla");
+  }
+
+  async function obtenerStream() {
+    const audio = document.getElementById("tog-audio").checked;
+    if (fuenteActual === "pantalla") {
+      const screen = await navigator.mediaDevices.getDisplayMedia({ video: true, audio });
+      return screen;
+    }
+    return navigator.mediaDevices.getUserMedia({ video: true, audio });
+  }
+
+  // ── Iniciar / Detener ────────────────────────────────────────────
+  async function iniciarTransmision() {
+    if (broadcasting) return;
+    try {
+      localStream = await obtenerStream();
+    } catch (err) {
+      toast("No se pudo acceder a la cámara/pantalla: " + err.message);
+      return;
+    }
+
+    const preview = document.getElementById("video-preview");
+    preview.srcObject = localStream;
+    preview.classList.add("active");
+    broadcasting = true;
+
+    // Manejar cierre de pantalla compartida desde el navegador
+    localStream.getVideoTracks()[0]?.addEventListener("ended", detenerTransmision);
+
+    document.getElementById("btn-iniciar").disabled = true;
+    document.getElementById("btn-detener").disabled = false;
+    setStatus("live", "⬤ En vivo");
+
+    if (transmisionId && socket?.connected) {
+      socket.emit("webrtc:broadcaster-join", { transmision_id: transmisionId });
+    }
+  }
+
+  function detenerTransmision() {
+    broadcasting = false;
+    localStream?.getTracks().forEach((t) => t.stop());
+    localStream = null;
+
+    const preview = document.getElementById("video-preview");
+    preview.srcObject = null;
+    preview.classList.remove("active");
+
+    Object.values(peerConns).forEach((pc) => pc.close());
+    for (const k in peerConns) delete peerConns[k];
+
+    document.getElementById("btn-iniciar").disabled = false;
+    document.getElementById("btn-detener").disabled = true;
+    setStatus("", "Transmisión detenida");
+    document.getElementById("viewer-count").textContent = "0";
+  }
+
+  // ── Crear oferta para un viewer ──────────────────────────────────
+  async function crearOferta(viewerId) {
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    peerConns[viewerId] = pc;
+
+    localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+
+    pc.onicecandidate = ({ candidate }) => {
+      if (candidate) socket.emit("webrtc:ice", { to: viewerId, candidate });
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (["failed", "disconnected", "closed"].includes(pc.connectionState)) {
+        pc.close();
+        delete peerConns[viewerId];
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    socket.emit("webrtc:offer", { to: viewerId, offer: pc.localDescription });
+  }
+
+  // ── Socket.io ────────────────────────────────────────────────────
+  function conectarSocket() {
+    socket = io(API_BASE, { transports: ["websocket", "polling"] });
+
+    socket.on("connect", () => {
+      if (broadcasting && transmisionId) {
+        socket.emit("webrtc:broadcaster-join", { transmision_id: transmisionId });
+      }
+    });
+
+    // Un viewer nuevo quiere ver la transmisión
+    socket.on("webrtc:viewer-request", ({ viewer_id }) => {
+      if (!broadcasting || !localStream) return;
+      crearOferta(viewer_id).catch(console.error);
+    });
+
+    // Respuesta del viewer a nuestra oferta
+    socket.on("webrtc:answer", ({ answer, from }) => {
+      const pc = peerConns[from];
+      if (pc) pc.setRemoteDescription(new RTCSessionDescription(answer)).catch(console.warn);
+    });
+
+    // ICE candidate del viewer
+    socket.on("webrtc:ice", ({ candidate, from }) => {
+      const pc = peerConns[from];
+      if (pc) pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.warn);
+    });
+
+    // Actualización de conteo
+    socket.on("webrtc:viewer-count", ({ count }) => {
+      document.getElementById("viewer-count").textContent = count;
+    });
+  }
+
+  function copiarViewerUrl() {
+    const url = document.getElementById("viewer-url-text").textContent;
+    navigator.clipboard.writeText(url).then(() => toast("URL copiada")).catch(() => {
+      prompt("Copia este enlace:", url);
+    });
+  }
+</script>
+</body>
+</html>

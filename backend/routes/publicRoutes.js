@@ -32,10 +32,11 @@ router.get("/galeria", galeriaController.listarPublica);
 router.get("/portal-contenido", portalContenidoController.obtener);
 router.post("/contacto", contactoController.enviar);
 
-// 📡 Transmisiones públicas
+// 📡 Transmisiones públicas (destacadas antes de /:id para que no colisione)
+router.get("/transmisiones/destacadas", transmisionController.listarDestacadasPublicas);
+router.get("/transmisiones/:id", transmisionController.obtenerTransmisionViewer);
 router.get("/partidos/:id/transmision", transmisionController.obtenerTransmisionPublica);
 router.get("/campeonatos/:id/transmisiones-activas", transmisionController.listarTransmisionesActivasPorCampeonato);
-router.get("/transmisiones/destacadas", transmisionController.listarDestacadasPublicas);
 
 // 🔴 Overlay público por token (OBS Browser Source — sin auth)
 router.get("/overlay/:overlay_token", overlayController.getOverlayPublico);

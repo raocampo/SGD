@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ver transmisión en vivo</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100dvh;
+    }
+
+    .viewer-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px 16px 48px;
+    }
+
+    /* ── Header ── */
+    .viewer-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .site-logo {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #facc15;
+      text-decoration: none;
+    }
+    .live-badge {
+      background: #dc2626;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+      animation: pulse 1.4s infinite;
+      display: none;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* ── Video ── */
+    .video-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    #video-stream {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: none;
+    }
+    .video-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: #000;
+    }
+    .video-overlay.hidden { display: none; }
+    .overlay-icon { font-size: 2.5rem; color: #475569; }
+    .overlay-title { font-size: 1rem; font-weight: 600; color: #94a3b8; }
+    .overlay-sub   { font-size: 13px; color: #64748b; max-width: 340px; text-align: center; }
+
+    /* ── Fallback YouTube embed ── */
+    #iframe-fallback {
+      width: 100%;
+      aspect-ratio: 16/9;
+      border: none;
+      border-radius: 10px;
+      display: none;
+      margin-bottom: 16px;
+    }
+
+    /* ── Info del partido ── */
+    .match-card {
+      background: #1e293b;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 14px;
+    }
+    .match-teams {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 8px;
+    }
+    .team-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      text-align: center;
+    }
+    .vs-sep { color: #475569; font-size: 1.1rem; font-weight: 300; }
+    .match-meta {
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    /* ── Viewers ── */
+    .viewers-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+
+    /* ── Footer ── */
+    .viewer-footer {
+      text-align: center;
+      font-size: 12px;
+      color: #334155;
+      margin-top: 32px;
+    }
+    .viewer-footer a { color: #475569; text-decoration: none; }
+    .viewer-footer a:hover { color: #94a3b8; }
+  </style>
+</head>
+<body>
+
+<div class="viewer-wrap">
+  <!-- Header -->
+  <div class="viewer-header">
+    <a class="site-logo" href="index.html">⚽ LT&C</a>
+    <span class="live-badge" id="live-badge">EN VIVO</span>
+  </div>
+
+  <!-- Info del partido -->
+  <div class="match-card" id="match-info" style="display:none;">
+    <div class="match-teams">
+      <span class="team-name" id="team-local">—</span>
+      <span class="vs-sep">vs</span>
+      <span class="team-name" id="team-visitante">—</span>
+    </div>
+    <div class="match-meta" id="match-meta"></div>
+  </div>
+
+  <!-- Viewers -->
+  <div class="viewers-info" id="viewers-info" style="display:none;">
+    <i class="fas fa-eye"></i>
+    <span id="viewer-count">0</span> espectadores conectados
+  </div>
+
+  <!-- Video WebRTC -->
+  <div class="video-container" id="video-container">
+    <video id="video-stream" autoplay playsinline></video>
+    <div class="video-overlay" id="video-overlay">
+      <div class="overlay-icon"><i class="fas fa-satellite-dish"></i></div>
+      <div class="overlay-title" id="overlay-title">Conectando…</div>
+      <div class="overlay-sub"  id="overlay-sub">Espera mientras se establece la transmisión.</div>
+    </div>
+  </div>
+
+  <!-- Fallback YouTube/embed -->
+  <iframe id="iframe-fallback" allow="autoplay; fullscreen" allowfullscreen></iframe>
+
+  <!-- Footer -->
+  <div class="viewer-footer">
+    <a href="index.html">← Volver al portal</a>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const ICE_SERVERS = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+  ];
+
+  const API_BASE = location.origin;
+  let transmisionId = null;
+  let socket = null;
+  let pc = null;
+  let broadcasterSocketId = null;
+
+  // ── Init ────────────────────────────────────────────────────────
+  document.addEventListener("DOMContentLoaded", async () => {
+    const params = new URLSearchParams(location.search);
+    const txParam = parseInt(params.get("tx"), 10);
+    if (!txParam) {
+      setOverlay("error", "Enlace inválido", "No se especificó ninguna transmisión.");
+      return;
+    }
+    transmisionId = txParam;
+
+    // Cargar info pública de la transmisión
+    await cargarInfoTransmision(txParam);
+    conectarSocket();
+  });
+
+  // ── Info pública ─────────────────────────────────────────────────
+  async function cargarInfoTransmision(id) {
+    try {
+      const res = await fetch(`${API_BASE}/api/public/transmisiones/${id}`);
+      const data = await res.json();
+      const tx = data?.transmision;
+      if (!tx) return;
+
+      document.title = tx.titulo || `${tx.equipo_local_nombre || "Local"} vs ${tx.equipo_visitante_nombre || "Visitante"} — En vivo`;
+
+      document.getElementById("team-local").textContent     = tx.equipo_local_nombre     || "Local";
+      document.getElementById("team-visitante").textContent = tx.equipo_visitante_nombre || "Visitante";
+
+      const metaParts = [];
+      if (tx.titulo) metaParts.push(tx.titulo);
+      if (tx.plataforma) metaParts.push(tx.plataforma);
+      document.getElementById("match-meta").textContent = metaParts.join(" · ") || "";
+      document.getElementById("match-info").style.display = "block";
+
+      // Si hay URL pública de YouTube/Twitch como fallback
+      if (tx.url_publica && tx.estado === "en_vivo") {
+        const embedUrl = convertirAEmbed(tx.url_publica);
+        if (embedUrl) {
+          document.getElementById("iframe-fallback").src = embedUrl;
+        }
+      }
+    } catch (_) { /* continuar sin info */ }
+  }
+
+  function convertirAEmbed(url) {
+    // YouTube
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`;
+    // Si ya es un embed URL, devolver tal cual
+    if (url.includes("/embed/")) return url;
+    return null;
+  }
+
+  // ── Overlay UI ───────────────────────────────────────────────────
+  function setOverlay(tipo, titulo, sub) {
+    const overlay = document.getElementById("video-overlay");
+    const titleEl = document.getElementById("overlay-title");
+    const subEl   = document.getElementById("overlay-sub");
+    const iconEl  = overlay.querySelector(".overlay-icon i");
+
+    const icons = {
+      conectando: "fas fa-satellite-dish",
+      espera:     "fas fa-clock",
+      error:      "fas fa-exclamation-triangle",
+      offline:    "fas fa-wifi-slash",
+    };
+    iconEl.className = icons[tipo] || icons.conectando;
+    titleEl.textContent = titulo || "";
+    subEl.textContent   = sub    || "";
+    overlay.classList.remove("hidden");
+    document.getElementById("video-stream").style.display = "none";
+  }
+
+  function mostrarVideo() {
+    document.getElementById("video-overlay").classList.add("hidden");
+    const v = document.getElementById("video-stream");
+    v.style.display = "block";
+    document.getElementById("live-badge").style.display = "inline-block";
+    document.getElementById("viewers-info").style.display = "flex";
+  }
+
+  // ── WebRTC ───────────────────────────────────────────────────────
+  async function manejarOferta(offer, desde) {
+    broadcasterSocketId = desde;
+    pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+    pc.ontrack = ({ streams }) => {
+      const v = document.getElementById("video-stream");
+      v.srcObject = streams[0];
+      mostrarVideo();
+    };
+
+    pc.onicecandidate = ({ candidate }) => {
+      if (candidate) socket.emit("webrtc:ice", { to: desde, candidate });
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "connected") {
+        mostrarVideo();
+      } else if (["failed", "disconnected"].includes(pc.connectionState)) {
+        setOverlay("error", "Conexión perdida", "Intenta recargar la página.");
+      }
+    };
+
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit("webrtc:answer", { to: desde, answer: pc.localDescription });
+  }
+
+  // ── Socket.io ────────────────────────────────────────────────────
+  function conectarSocket() {
+    socket = io(API_BASE, { transports: ["websocket", "polling"] });
+
+    socket.on("connect", () => {
+      setOverlay("conectando", "Buscando transmisión…", "Conectando con el broadcaster.");
+      socket.emit("webrtc:viewer-join", { transmision_id: transmisionId });
+    });
+
+    socket.on("disconnect", () => {
+      setOverlay("error", "Desconectado", "Se perdió la conexión con el servidor.");
+    });
+
+    // El broadcaster ya estaba en línea cuando nos unimos
+    socket.on("webrtc:broadcaster-ready", () => {
+      setOverlay("espera", "Broadcaster conectado", "Recibiendo stream…");
+    });
+
+    // Broadcaster nos envía una oferta
+    socket.on("webrtc:offer", ({ offer, from }) => {
+      manejarOferta(offer, from).catch(console.error);
+    });
+
+    // ICE del broadcaster
+    socket.on("webrtc:ice", ({ candidate }) => {
+      if (pc) pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.warn);
+    });
+
+    // Broadcaster se fue
+    socket.on("webrtc:broadcaster-left", () => {
+      pc?.close();
+      pc = null;
+      const iframe = document.getElementById("iframe-fallback");
+      if (iframe.src && iframe.src !== "about:blank") {
+        // Hay un stream externo disponible
+        document.getElementById("video-container").style.display = "none";
+        iframe.style.display = "block";
+      } else {
+        setOverlay("offline", "Transmisión finalizada", "El broadcaster ha detenido la transmisión.");
+        document.getElementById("live-badge").style.display = "none";
+      }
+    });
+
+    // Conteo de espectadores
+    socket.on("webrtc:viewer-count", ({ count }) => {
+      document.getElementById("viewer-count").textContent = count;
+    });
+  }
+</script>
+</body>
+</html>

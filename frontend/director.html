@@ -275,6 +275,73 @@
     .conn-dot.conectado { background: #22c55e; }
     .conn-dot.error     { background: #ef4444; }
 
+    /* ── Instrucciones OBS ── */
+    .obs-toggle-hdr {
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .obs-toggle-hdr .chevron {
+      transition: transform 0.2s;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .obs-toggle-hdr.open .chevron { transform: rotate(180deg); }
+    .obs-steps {
+      margin: 12px 0 0;
+      padding: 0 0 0 20px;
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.9;
+    }
+    .obs-steps li { margin-bottom: 2px; }
+    .obs-steps strong { color: #f1f5f9; }
+    .obs-note {
+      margin: 12px 0 0;
+      font-size: 12px;
+      color: #64748b;
+      background: #0f172a;
+      border-radius: 6px;
+      padding: 8px 12px;
+    }
+
+    /* ── Compartir ── */
+    .share-preview {
+      font-size: 13px;
+      color: #94a3b8;
+      background: #0f172a;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .share-btns {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn-share {
+      padding: 9px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: opacity 0.15s;
+    }
+    .btn-share:hover { opacity: 0.82; }
+    .btn-wa   { background: #25d366; color: #fff; }
+    .btn-fb   { background: #1877f2; color: #fff; }
+    .btn-tw   { background: #111; color: #fff; }
+    .btn-copy-share { background: #334155; color: #e2e8f0; }
+
     /* ── Toast ── */
     #toast {
       position: fixed;
@@ -447,6 +514,59 @@
       </p>
     </div>
 
+    <!-- Cámara WebRTC -->
+    <div class="card">
+      <h2><i class="fas fa-video" style="margin-right:6px;"></i>Transmitir video en vivo</h2>
+      <p style="font-size:13px;color:#94a3b8;margin:0 0 14px;">
+        Retransmite tu cámara o pantalla directamente desde el navegador. Los espectadores verán el stream en tiempo real sin necesidad de OBS.
+      </p>
+      <a id="btn-ir-broadcast" href="broadcast.html" class="btn-action btn-enviar" style="text-decoration:none;display:inline-flex;">
+        <i class="fas fa-play-circle"></i> Abrir panel de transmisión
+      </a>
+    </div>
+
+    <!-- Instrucciones OBS -->
+    <div class="card">
+      <h2 class="obs-toggle-hdr" id="obs-hdr" onclick="toggleInstrucciones()">
+        <span><i class="fas fa-video" style="margin-right:6px;"></i>¿Cómo agregar a OBS?</span>
+        <i class="fas fa-chevron-down chevron"></i>
+      </h2>
+      <div id="obs-body" style="display:none;">
+        <ol class="obs-steps">
+          <li>Abre <strong>OBS Studio</strong> y ve a la sección <strong>Sources (Fuentes)</strong>.</li>
+          <li>Haz clic en <strong>"+"</strong> y selecciona <strong>Browser (Navegador)</strong>.</li>
+          <li>Ponle un nombre (ej: <em>Overlay Marcador</em>) y haz clic en <strong>OK</strong>.</li>
+          <li>Pega la URL del overlay en el campo <strong>URL</strong>.</li>
+          <li>Configura el tamaño: <strong>Ancho 1280 px — Alto 180 px</strong>.</li>
+          <li>Activa <strong>"Shutdown source when not visible"</strong> para liberar recursos.</li>
+          <li>Haz clic en <strong>OK</strong>. El overlay aparecerá en tu escena.</li>
+        </ol>
+        <div class="obs-note">
+          ✅ El overlay se actualiza automáticamente cada vez que presionas <strong>"Enviar ahora"</strong> — no necesitas reiniciar OBS.
+        </div>
+      </div>
+    </div>
+
+    <!-- Compartir transmisión -->
+    <div class="card">
+      <h2><i class="fas fa-share-alt" style="margin-right:6px;"></i>Compartir</h2>
+      <div class="share-preview" id="share-preview-text">⚽ En vivo | LOCAL vs VISITANTE</div>
+      <div class="share-btns">
+        <button class="btn-share btn-wa"  onclick="compartir('whatsapp')">
+          <i class="fab fa-whatsapp"></i> WhatsApp
+        </button>
+        <button class="btn-share btn-fb"  onclick="compartir('facebook')">
+          <i class="fab fa-facebook"></i> Facebook
+        </button>
+        <button class="btn-share btn-tw"  onclick="compartir('twitter')">
+          <i class="fab fa-x-twitter"></i> Twitter/X
+        </button>
+        <button class="btn-share btn-copy-share" onclick="compartir('copy')">
+          <i class="fas fa-copy"></i> Copiar texto
+        </button>
+      </div>
+    </div>
+
   </div><!-- /panel-principal -->
 </div>
 
@@ -460,6 +580,7 @@
   let transmisionId    = null;
   let overlayToken     = null;
   let socket           = null;
+  let txInfoGlobal     = null;
   let estadoLocal = {
     goles_local:          0,
     goles_visitante:      0,
@@ -530,6 +651,7 @@
       const overlayData = await overlayRes.json();
 
       transmisionId = id;
+      txInfoGlobal  = txData;
       sincronizarDesdeServidor(overlayData);
 
       // Mostrar nombres de equipo
@@ -545,6 +667,13 @@
         document.getElementById("overlay-url-text").textContent =
           `${API_BASE}/overlay.html?token=… (recarga)`;
       }
+
+      // Actualizar vista previa de compartir
+      actualizarSharePreview(txData);
+
+      // Actualizar enlace al broadcaster WebRTC
+      const btnBcast = document.getElementById("btn-ir-broadcast");
+      if (btnBcast) btnBcast.href = `broadcast.html?tx=${id}`;
 
       document.getElementById("panel-seleccion").style.display = "none";
       document.getElementById("panel-principal").style.display  = "block";
@@ -654,6 +783,51 @@
     navigator.clipboard.writeText(url).then(() => toast("URL copiada")).catch(() => {
       prompt("Copia esta URL:", url);
     });
+  }
+
+  // ── Instrucciones OBS (collapsible) ─────────────────────────
+  function toggleInstrucciones() {
+    const body = document.getElementById("obs-body");
+    const hdr  = document.getElementById("obs-hdr");
+    const open = body.style.display === "block";
+    body.style.display = open ? "none" : "block";
+    hdr.classList.toggle("open", !open);
+  }
+
+  // ── Compartir ────────────────────────────────────────────────
+  function actualizarSharePreview(tx) {
+    const local     = tx.equipo_local_nombre     || "LOCAL";
+    const visitante = tx.equipo_visitante_nombre || "VISITANTE";
+    const titulo    = tx.titulo ? `"${tx.titulo}" — ` : "";
+    const portal    = tx.url_publica || location.origin;
+    const texto     = `⚽ En vivo | ${local} vs ${visitante}\n${titulo}¡Sigue el marcador en tiempo real!\n${portal}`;
+    const el = document.getElementById("share-preview-text");
+    if (el) el.textContent = texto;
+  }
+
+  function compartir(red) {
+    const el = document.getElementById("share-preview-text");
+    const mensaje = el ? el.textContent.trim() : "";
+    const tx     = txInfoGlobal || {};
+    const enlace = tx.url_publica || location.origin;
+    const encodedMsg  = encodeURIComponent(mensaje);
+    const encodedLink = encodeURIComponent(enlace);
+
+    if (red === "whatsapp") {
+      window.open(`https://wa.me/?text=${encodedMsg}`, "_blank", "noopener");
+    } else if (red === "facebook") {
+      window.open(
+        `https://www.facebook.com/sharer/sharer.php?u=${encodedLink}&quote=${encodeURIComponent(mensaje.split("\n")[0])}`,
+        "_blank", "noopener,width=600,height=500"
+      );
+    } else if (red === "twitter") {
+      const tweetText = encodeURIComponent(mensaje.split("\n").slice(0, 2).join(" ") + " " + enlace);
+      window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, "_blank", "noopener,width=600,height=400");
+    } else if (red === "copy") {
+      navigator.clipboard.writeText(mensaje).then(() => toast("Texto copiado")).catch(() => {
+        prompt("Copia este texto:", mensaje);
+      });
+    }
   }
 
   // ── Socket.io ───────────────────────────────────────────────

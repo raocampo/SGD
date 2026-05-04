@@ -146,7 +146,11 @@
         : `<span title="Destacar" style="cursor:pointer;font-size:1.2rem;opacity:.4;" onclick="window._txToggleDestacado(${tx.id})">☆</span>`;
 
       const btnVer = tx.url_publica
-        ? `<a href="${tx.url_publica}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" title="Ver transmisión"><i class="fas fa-external-link-alt"></i></a>`
+        ? `<a href="${tx.url_publica}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" title="Ver en plataforma externa"><i class="fas fa-external-link-alt"></i></a>`
+        : "";
+
+      const btnViewer = tx.estado === "en_vivo"
+        ? `<a href="viewer.html?tx=${tx.id}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background:#dc2626;color:#fff;" title="Ver transmisión en vivo"><i class="fas fa-eye"></i></a>`
         : "";
 
       const btnEditar = `<button type="button" class="btn btn-sm btn-primary" title="Editar" onclick="window._txEditar(${tx.partido_id})"><i class="fas fa-edit"></i></button>`;
@@ -174,7 +178,7 @@
         <td>${badgeEstado(tx.estado)}</td>
         <td style="white-space:nowrap;">${fecha}</td>
         <td style="text-align:center;">${destacadoIcon}</td>
-        <td style="white-space:nowrap;display:flex;gap:.25rem;flex-wrap:wrap;">${btnVer}${btnDirector}${btnEditar}${btnAccion}${btnCancelar}</td>
+        <td style="white-space:nowrap;display:flex;gap:.25rem;flex-wrap:wrap;">${btnViewer}${btnVer}${btnDirector}${btnEditar}${btnAccion}${btnCancelar}</td>
       </tr>`;
     }).join("");
   }

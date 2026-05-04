@@ -2,17 +2,27 @@
 
 /**
  * socketService.js
- * Inicializa Socket.io y gestiona las salas de overlay en vivo.
- *
- * Sala por transmisión: `overlay:{transmision_id}`
- *  - Director y overlay OBS se unen a la misma sala.
- *  - El director emite "overlay:update" → el servidor hace broadcast
- *    a los demás clientes de la sala.
+ * Inicializa Socket.io:
+ *  - Salas overlay: `overlay:{id}` — director OBS
+ *  - Salas WebRTC:  `broadcast:{id}` — broadcaster → viewers
  */
 
 const { Server } = require("socket.io");
 
 let io = null;
+
+// Mapa broadcaster activo por transmisión: transmision_id → socket.id
+const webrtcBroadcasters = new Map();
+
+function actualizarConteoViewers(transmision_id) {
+  if (!io) return;
+  const room = `broadcast:${transmision_id}`;
+  const roomSet = io.sockets.adapter.rooms.get(room);
+  const total = roomSet ? roomSet.size : 0;
+  const bId = webrtcBroadcasters.get(String(transmision_id));
+  const viewers = (bId && roomSet && roomSet.has(bId)) ? Math.max(0, total - 1) : total;
+  io.to(room).emit("webrtc:viewer-count", { count: viewers });
+}
 
 /**
  * Inicializar Socket.io sobre el httpServer de Express.
@@ -28,23 +38,56 @@ function initSocket(httpServer) {
   });
 
   io.on("connection", (socket) => {
-    // El cliente envía { transmision_id } para unirse a la sala
+    // ── Overlay OBS ────────────────────────────────────────────────
     socket.on("join:overlay", ({ transmision_id }) => {
       if (!transmision_id) return;
-      const room = `overlay:${transmision_id}`;
-      socket.join(room);
+      socket.join(`overlay:${transmision_id}`);
     });
 
-    // El director envía el estado completo; se rebroadcast a la sala
     socket.on("overlay:update", ({ transmision_id, state }) => {
       if (!transmision_id || !state) return;
-      const room = `overlay:${transmision_id}`;
-      // Emitir a todos los demás en la sala (incluido overlay OBS)
-      socket.to(room).emit("overlay:state", state);
+      socket.to(`overlay:${transmision_id}`).emit("overlay:state", state);
     });
 
+    // ── WebRTC Broadcaster ─────────────────────────────────────────
+    socket.on("webrtc:broadcaster-join", ({ transmision_id }) => {
+      if (!transmision_id) return;
+      const room = `broadcast:${transmision_id}`;
+      socket.join(room);
+      webrtcBroadcasters.set(String(transmision_id), socket.id);
+      // Avisar a viewers que ya estaban esperando
+      socket.to(room).emit("webrtc:broadcaster-ready", { broadcaster_id: socket.id });
+      actualizarConteoViewers(transmision_id);
+    });
+
+    // ── WebRTC Viewer ──────────────────────────────────────────────
+    socket.on("webrtc:viewer-join", ({ transmision_id }) => {
+      if (!transmision_id) return;
+      const room = `broadcast:${transmision_id}`;
+      socket.join(room);
+      const bId = webrtcBroadcasters.get(String(transmision_id));
+      if (bId) {
+        // Pedir al broadcaster que cree una oferta para este viewer
+        io.to(bId).emit("webrtc:viewer-request", { viewer_id: socket.id });
+        // Confirmar al viewer que hay broadcaster
+        socket.emit("webrtc:broadcaster-ready", { broadcaster_id: bId });
+      }
+      actualizarConteoViewers(transmision_id);
+    });
+
+    // ── WebRTC Señalización (relay genérico) ───────────────────────
+    socket.on("webrtc:offer",  ({ to, offer })     => { if (to) io.to(to).emit("webrtc:offer",  { offer,     from: socket.id }); });
+    socket.on("webrtc:answer", ({ to, answer })    => { if (to) io.to(to).emit("webrtc:answer", { answer,    from: socket.id }); });
+    socket.on("webrtc:ice",    ({ to, candidate }) => { if (to) io.to(to).emit("webrtc:ice",    { candidate, from: socket.id }); });
+
+    // ── Desconexión ────────────────────────────────────────────────
     socket.on("disconnect", () => {
-      // Socket.io limpia las salas automáticamente
+      webrtcBroadcasters.forEach((socketId, txId) => {
+        if (socketId === socket.id) {
+          webrtcBroadcasters.delete(txId);
+          io.to(`broadcast:${txId}`).emit("webrtc:broadcaster-left");
+        }
+      });
     });
   });
 
