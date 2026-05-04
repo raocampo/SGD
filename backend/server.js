@@ -78,6 +78,7 @@ const publicRoutes = require("./routes/publicRoutes");
 const comprobanteRoutes = require("./routes/comprobanteRoutes");
 const transmisionRoutes = require("./routes/transmisionRoutes");
 const overlayRoutes = require("./routes/overlayRoutes");
+const facturacionRoutes = require("./routes/facturacionRoutes");
 
 app.use("/api/campeonatos", campeonatoRoutes);
 app.use("/api/equipos", equipoRoutes);
@@ -103,6 +104,7 @@ app.use("/api/public", publicRoutes);
 app.use("/api/comprobantes", comprobanteRoutes);
 app.use("/api/transmisiones", transmisionRoutes);
 app.use("/api/transmisiones/:id/overlay", overlayRoutes);
+app.use("/api/facturacion", facturacionRoutes);
 
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {

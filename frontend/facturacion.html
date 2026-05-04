@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LT&C - Facturación</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    /* ── Filtros y acciones ─────────────────────────────────────── */
+    .fact-filtros-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }
+    .fact-acciones { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+
+    /* ── Tabla de documentos ─────────────────────────────────────── */
+    .fact-table-wrap { overflow-x:auto; }
+    .fact-table { width:100%; border-collapse:collapse; font-size:.88rem; }
+    .fact-table th { background:var(--color-primary,#1a3a6b); color:#fff; padding:8px 10px; text-align:left; white-space:nowrap; }
+    .fact-table td { padding:7px 10px; border-bottom:1px solid #eee; vertical-align:middle; }
+    .fact-table tr:hover td { background:#f5f8ff; }
+    .fact-table .badge { padding:2px 8px; border-radius:12px; font-size:.78rem; font-weight:600; }
+    .badge-borrador  { background:#f0f0f0; color:#555; }
+    .badge-emitido   { background:#d4edda; color:#155724; }
+    .badge-anulado   { background:#f8d7da; color:#721c24; }
+    .badge-factura   { background:#cce5ff; color:#004085; }
+    .badge-nota_venta{ background:#fff3cd; color:#856404; }
+    .badge-recibo    { background:#e2e3e5; color:#383d41; }
+
+    /* ── Totales resumen ─────────────────────────────────────────── */
+    .fact-resumen-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; margin-bottom:16px; }
+    .fact-kpi { background:#fff; border:1px solid #dde; border-radius:8px; padding:14px 16px; }
+    .fact-kpi-label { font-size:.78rem; color:#666; margin-bottom:4px; }
+    .fact-kpi-value { font-size:1.4rem; font-weight:700; color:var(--color-primary,#1a3a6b); }
+
+    /* ── Modal ───────────────────────────────────────────────────── */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:#fff; border-radius:10px; max-width:760px; width:95%; max-height:90vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.25); }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid #eee; }
+    .modal-header h3 { margin:0; font-size:1rem; }
+    .modal-body { padding:18px; }
+    .modal-footer { display:flex; gap:8px; justify-content:flex-end; padding:12px 18px; border-top:1px solid #eee; }
+
+    /* ── Items del documento ─────────────────────────────────────── */
+    .items-table { width:100%; border-collapse:collapse; margin-top:8px; font-size:.85rem; }
+    .items-table th { background:#f0f2f5; padding:6px 8px; text-align:left; }
+    .items-table td { padding:5px 6px; border-bottom:1px solid #eee; }
+    .items-table input { width:100%; border:1px solid #ccc; border-radius:4px; padding:4px 6px; font-size:.84rem; }
+    .items-table input[type="number"] { text-align:right; }
+    .btn-add-item { margin-top:8px; }
+    .btn-del-item { background:none; border:none; color:#c0392b; cursor:pointer; font-size:1rem; padding:2px 6px; }
+
+    /* ── Totales del modal ───────────────────────────────────────── */
+    .fact-totales { margin-top:12px; background:#f8f9fa; border-radius:6px; padding:10px 14px; font-size:.88rem; }
+    .fact-totales div { display:flex; justify-content:space-between; padding:2px 0; }
+    .fact-totales .total-final { font-weight:700; font-size:1rem; border-top:1px solid #ccc; padding-top:6px; margin-top:4px; }
+
+    /* ── Config emisor ───────────────────────────────────────────── */
+    .fact-config-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; }
+
+    /* ── Vista detalle/impresión ─────────────────────────────────── */
+    #modal-detalle .doc-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+    #modal-detalle .doc-emisor { font-size:.85rem; line-height:1.5; }
+    #modal-detalle .doc-numero { font-size:1.1rem; font-weight:700; color:var(--color-primary,#1a3a6b); text-align:right; }
+    #modal-detalle .doc-receptor { background:#f8f9fa; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:.85rem; line-height:1.5; }
+    #modal-detalle .items-detalle { width:100%; border-collapse:collapse; font-size:.85rem; margin-bottom:12px; }
+    #modal-detalle .items-detalle th { background:#eee; padding:6px 10px; text-align:left; }
+    #modal-detalle .items-detalle td { padding:6px 10px; border-bottom:1px solid #eee; }
+    #modal-detalle .items-detalle td.num { text-align:right; }
+    #modal-detalle .doc-totales { display:flex; flex-direction:column; align-items:flex-end; font-size:.88rem; gap:3px; }
+    #modal-detalle .doc-total-final { font-size:1.1rem; font-weight:700; }
+
+    @media print {
+      .sidebar,.top-bar,.fact-acciones,.modal-footer,.btn,.nav-btn,.fact-filtros-grid,
+      .fact-resumen-grid { display:none!important; }
+      .modal-overlay { position:static; background:none; display:block; }
+      .modal-box { box-shadow:none; max-height:none; max-width:100%; }
+    }
+  </style>
+</head>
+
+<body class="app-layout page-facturacion">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">⚽ LT&C</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+      <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
+      <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
+      <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
+      <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
+      <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
+      <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
+      <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+      <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
+      <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
+      <a class="nav-btn" href="finanzas.html"><i class="fas fa-wallet"></i> Finanzas</a>
+      <a class="nav-btn active" href="facturacion.html"><i class="fas fa-file-invoice-dollar"></i> Facturación</a>
+      <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="top-bar">
+      <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+      <h1><i class="fas fa-file-invoice-dollar"></i> Facturación</h1>
+      <div style="display:flex;gap:8px;margin-left:auto;">
+        <button class="btn btn-secondary btn-sm" id="btn-config-emisor"><i class="fas fa-cog"></i> Config. emisor</button>
+        <button class="btn btn-primary btn-sm" id="btn-nuevo-doc"><i class="fas fa-plus"></i> Nuevo documento</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="container">
+
+        <!-- KPIs -->
+        <div class="fact-resumen-grid" id="fact-kpis" style="display:none;">
+          <div class="fact-kpi">
+            <div class="fact-kpi-label">Facturas emitidas</div>
+            <div class="fact-kpi-value" id="kpi-facturas">0</div>
+          </div>
+          <div class="fact-kpi">
+            <div class="fact-kpi-label">Notas de venta</div>
+            <div class="fact-kpi-value" id="kpi-notas">0</div>
+          </div>
+          <div class="fact-kpi">
+            <div class="fact-kpi-label">Recibos</div>
+            <div class="fact-kpi-value" id="kpi-recibos">0</div>
+          </div>
+          <div class="fact-kpi">
+            <div class="fact-kpi-label">Total emitido (USD)</div>
+            <div class="fact-kpi-value" id="kpi-total">0.00</div>
+          </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="config-card" style="margin-bottom:14px;">
+          <h3 style="margin-top:0;">Filtros</h3>
+          <div class="fact-filtros-grid">
+            <div class="form-group">
+              <label for="filt-tipo">Tipo</label>
+              <select id="filt-tipo">
+                <option value="">Todos</option>
+                <option value="factura">Factura</option>
+                <option value="nota_venta">Nota de venta</option>
+                <option value="recibo">Recibo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="filt-estado">Estado</label>
+              <select id="filt-estado">
+                <option value="">Todos</option>
+                <option value="borrador">Borrador</option>
+                <option value="emitido">Emitido</option>
+                <option value="anulado">Anulado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="filt-campeonato">Campeonato</label>
+              <select id="filt-campeonato">
+                <option value="">Todos</option>
+              </select>
+            </div>
+          </div>
+          <div class="fact-acciones">
+            <button class="btn btn-secondary" id="btn-buscar"><i class="fas fa-search"></i> Buscar</button>
+            <button class="btn btn-secondary" id="btn-limpiar"><i class="fas fa-times"></i> Limpiar</button>
+          </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="config-card">
+          <div class="fact-table-wrap">
+            <table class="fact-table" id="fact-tabla">
+              <thead>
+                <tr>
+                  <th>N° Documento</th>
+                  <th>Tipo</th>
+                  <th>Receptor</th>
+                  <th>Campeonato</th>
+                  <th>Fecha</th>
+                  <th>Total (USD)</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="fact-tbody">
+                <tr><td colspan="8" style="text-align:center;color:#999;padding:24px;">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       MODAL: Configuración del emisor
+  ══════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-config">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fas fa-cog"></i> Configuración del Emisor</h3>
+        <button class="btn btn-secondary btn-sm" onclick="cerrarModal('modal-config')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-config">
+          <div class="fact-config-grid">
+            <div class="form-group">
+              <label>Tipo de contribuyente</label>
+              <select id="cfg-tipo-contribuyente">
+                <option value="ruc">RUC</option>
+                <option value="rise">RISE</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>RUC / Cédula</label>
+              <input type="text" id="cfg-ruc-ci" maxlength="20" />
+            </div>
+            <div class="form-group">
+              <label>Razón social</label>
+              <input type="text" id="cfg-razon-social" maxlength="200" />
+            </div>
+            <div class="form-group">
+              <label>Nombre comercial</label>
+              <input type="text" id="cfg-nombre-comercial" maxlength="200" />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Dirección de matriz</label>
+              <input type="text" id="cfg-direccion" maxlength="250" />
+            </div>
+            <div class="form-group">
+              <label>Establecimiento (ej: 001)</label>
+              <input type="text" id="cfg-establecimiento" maxlength="3" value="001" />
+            </div>
+            <div class="form-group">
+              <label>Punto de emisión (ej: 001)</label>
+              <input type="text" id="cfg-punto-emision" maxlength="3" value="001" />
+            </div>
+            <div class="form-group">
+              <label>% IVA (ej: 15)</label>
+              <input type="number" id="cfg-iva" min="0" max="100" step="0.01" value="15" />
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('modal-config')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-guardar-config"><i class="fas fa-save"></i> Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       MODAL: Nuevo / Editar documento
+  ══════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-doc">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-doc-titulo"><i class="fas fa-file-invoice"></i> Nuevo documento</h3>
+        <button class="btn btn-secondary btn-sm" onclick="cerrarModal('modal-doc')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-doc">
+          <input type="hidden" id="doc-id" value="" />
+
+          <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+            <div class="form-group">
+              <label>Tipo de documento <span style="color:red">*</span></label>
+              <select id="doc-tipo" required>
+                <option value="">— seleccionar —</option>
+                <option value="factura">Factura</option>
+                <option value="nota_venta">Nota de venta</option>
+                <option value="recibo">Recibo de cobro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fecha de emisión</label>
+              <input type="date" id="doc-fecha" />
+            </div>
+            <div class="form-group">
+              <label>Campeonato (opcional)</label>
+              <select id="doc-campeonato">
+                <option value="">— ninguno —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Equipo (opcional)</label>
+              <select id="doc-equipo">
+                <option value="">— ninguno —</option>
+              </select>
+            </div>
+          </div>
+
+          <h4 style="margin:14px 0 6px;font-size:.9rem;color:#555;border-bottom:1px solid #eee;padding-bottom:4px;">
+            Datos del receptor
+          </h4>
+          <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+            <div class="form-group">
+              <label>Nombre / Razón social</label>
+              <input type="text" id="doc-receptor-nombre" maxlength="200" />
+            </div>
+            <div class="form-group">
+              <label>RUC / Cédula receptor</label>
+              <input type="text" id="doc-receptor-ruc" maxlength="20" />
+            </div>
+            <div class="form-group">
+              <label>Email receptor</label>
+              <input type="email" id="doc-receptor-email" maxlength="150" />
+            </div>
+            <div class="form-group">
+              <label>Dirección receptor</label>
+              <input type="text" id="doc-receptor-dir" maxlength="250" />
+            </div>
+          </div>
+
+          <h4 style="margin:14px 0 6px;font-size:.9rem;color:#555;border-bottom:1px solid #eee;padding-bottom:4px;">
+            Ítems
+          </h4>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th style="width:42%">Descripción</th>
+                <th style="width:10%">Cant.</th>
+                <th style="width:15%">P. unitario</th>
+                <th style="width:12%">Desc.</th>
+                <th style="width:13%">Subtotal</th>
+                <th style="width:8%"></th>
+              </tr>
+            </thead>
+            <tbody id="doc-items-body"></tbody>
+          </table>
+          <button type="button" class="btn btn-secondary btn-sm btn-add-item" id="btn-add-item">
+            <i class="fas fa-plus"></i> Agregar ítem
+          </button>
+
+          <div class="fact-totales" id="doc-totales-preview">
+            <div><span>Subtotal</span><span id="prev-subtotal">0.00</span></div>
+            <div id="prev-desc-row" style="display:none;"><span>Descuento</span><span id="prev-desc">0.00</span></div>
+            <div><span>Base imponible</span><span id="prev-base">0.00</span></div>
+            <div id="prev-iva-row"><span id="prev-iva-label">IVA (15%)</span><span id="prev-iva">0.00</span></div>
+            <div class="total-final"><span>TOTAL</span><span id="prev-total">0.00</span></div>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Descuento global (USD)</label>
+            <input type="number" id="doc-descuento" min="0" step="0.01" value="0" style="max-width:140px;" />
+          </div>
+          <div class="form-group">
+            <label>Observaciones</label>
+            <textarea id="doc-observaciones" rows="2" style="width:100%;resize:vertical;"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('modal-doc')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-guardar-doc"><i class="fas fa-save"></i> Guardar borrador</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       MODAL: Ver detalle / imprimir
+  ══════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-detalle">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="detalle-titulo"><i class="fas fa-file-alt"></i> Detalle</h3>
+        <button class="btn btn-secondary btn-sm" onclick="cerrarModal('modal-detalle')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="detalle-body">
+        <!-- generado por JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('modal-detalle')">Cerrar</button>
+        <button class="btn btn-secondary" onclick="imprimirDetalle()"><i class="fas fa-print"></i> Imprimir</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/core.js"></script>
+  <script>
+  /* ─── Estado ─────────────────────────────────────────────────── */
+  let factConfig = {};
+  let factDocs   = [];
+  let itemCount  = 0;
+
+  /* ─── Bootstrap ──────────────────────────────────────────────── */
+  document.addEventListener("DOMContentLoaded", async () => {
+    setupSidebar();
+    await cargarConfigEmisor();
+    await cargarCampeonatos();
+    await cargarDocumentos();
+    setupEventos();
+  });
+
+  function setupSidebar() {
+    const toggle = document.getElementById("nav-toggle");
+    const sidebar = document.getElementById("sidebar");
+    if (toggle && sidebar) {
+      toggle.addEventListener("click", () => sidebar.classList.toggle("open"));
+    }
+  }
+
+  /* ─── Config emisor ──────────────────────────────────────────── */
+  async function cargarConfigEmisor() {
+    try {
+      factConfig = await apiFetch("/api/facturacion/config") || {};
+      if (factConfig.ruc_ci) poblarFormConfig(factConfig);
+    } catch (_) {}
+  }
+
+  function poblarFormConfig(c) {
+    document.getElementById("cfg-tipo-contribuyente").value = c.tipo_contribuyente || "ruc";
+    document.getElementById("cfg-ruc-ci").value            = c.ruc_ci || "";
+    document.getElementById("cfg-razon-social").value      = c.razon_social || "";
+    document.getElementById("cfg-nombre-comercial").value  = c.nombre_comercial || "";
+    document.getElementById("cfg-direccion").value         = c.direccion_matriz || "";
+    document.getElementById("cfg-establecimiento").value   = c.codigo_establecimiento || "001";
+    document.getElementById("cfg-punto-emision").value     = c.punto_emision || "001";
+    document.getElementById("cfg-iva").value               = c.iva_porcentaje ?? 15;
+  }
+
+  document.getElementById("btn-guardar-config").addEventListener("click", async () => {
+    const datos = {
+      tipo_contribuyente:      document.getElementById("cfg-tipo-contribuyente").value,
+      ruc_ci:                  document.getElementById("cfg-ruc-ci").value.trim(),
+      razon_social:            document.getElementById("cfg-razon-social").value.trim(),
+      nombre_comercial:        document.getElementById("cfg-nombre-comercial").value.trim(),
+      direccion_matriz:        document.getElementById("cfg-direccion").value.trim(),
+      codigo_establecimiento:  document.getElementById("cfg-establecimiento").value.trim() || "001",
+      punto_emision:           document.getElementById("cfg-punto-emision").value.trim() || "001",
+      iva_porcentaje:          parseFloat(document.getElementById("cfg-iva").value) || 15,
+    };
+    try {
+      factConfig = await apiFetch("/api/facturacion/config", { method:"PUT", body: datos });
+      cerrarModal("modal-config");
+      mostrarToast("Configuración guardada", "success");
+    } catch (e) {
+      mostrarToast(e.message || "Error al guardar", "error");
+    }
+  });
+
+  /* ─── Campeonatos para selectores ────────────────────────────── */
+  async function cargarCampeonatos() {
+    try {
+      const camps = await apiFetch("/api/campeonatos") || [];
+      ["filt-campeonato", "doc-campeonato"].forEach(id => {
+        const sel = document.getElementById(id);
+        camps.forEach(c => {
+          const opt = document.createElement("option");
+          opt.value = c.id;
+          opt.textContent = c.nombre;
+          sel.appendChild(opt);
+        });
+      });
+    } catch (_) {}
+  }
+
+  /* ─── Cargar documentos ──────────────────────────────────────── */
+  async function cargarDocumentos() {
+    const tipo      = document.getElementById("filt-tipo").value;
+    const estado    = document.getElementById("filt-estado").value;
+    const campId    = document.getElementById("filt-campeonato").value;
+
+    const params = new URLSearchParams();
+    if (tipo)   params.set("tipo", tipo);
+    if (estado) params.set("estado", estado);
+    if (campId) params.set("campeonato_id", campId);
+
+    const tbody = document.getElementById("fact-tbody");
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;">Cargando...</td></tr>';
+
+    try {
+      factDocs = await apiFetch(`/api/facturacion?${params}`) || [];
+      renderTabla(factDocs);
+      actualizarKpis(factDocs);
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red;padding:18px;">${e.message}</td></tr>`;
+    }
+  }
+
+  function renderTabla(docs) {
+    const tbody = document.getElementById("fact-tbody");
+    if (!docs.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:24px;">Sin documentos</td></tr>';
+      return;
+    }
+    tbody.innerHTML = docs.map(d => `
+      <tr>
+        <td><strong>${d.numero_completo || '—'}</strong></td>
+        <td><span class="badge badge-${d.tipo}">${labelTipo(d.tipo)}</span></td>
+        <td>${esc(d.receptor_nombre || '—')}</td>
+        <td style="font-size:.8rem;">${esc(d.campeonato_nombre || '—')}</td>
+        <td>${formatFecha(d.fecha_emision)}</td>
+        <td style="text-align:right;font-weight:600;">${fmt(d.total)}</td>
+        <td><span class="badge badge-${d.estado}">${labelEstado(d.estado)}</span></td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="verDetalle(${d.id})" title="Ver"><i class="fas fa-eye"></i></button>
+            ${d.estado === 'borrador' ? `
+              <button class="btn btn-secondary btn-sm" onclick="editarDoc(${d.id})" title="Editar"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-primary btn-sm" onclick="emitirDoc(${d.id})" title="Emitir"><i class="fas fa-paper-plane"></i></button>
+              <button class="btn btn-danger btn-sm" onclick="anularDoc(${d.id})" title="Anular"><i class="fas fa-ban"></i></button>
+            ` : ''}
+            ${d.estado === 'emitido' ? `
+              <button class="btn btn-danger btn-sm" onclick="anularDoc(${d.id})" title="Anular"><i class="fas fa-ban"></i></button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  function actualizarKpis(docs) {
+    const emitidos = docs.filter(d => d.estado === 'emitido');
+    document.getElementById("kpi-facturas").textContent = emitidos.filter(d => d.tipo === 'factura').length;
+    document.getElementById("kpi-notas").textContent    = emitidos.filter(d => d.tipo === 'nota_venta').length;
+    document.getElementById("kpi-recibos").textContent  = emitidos.filter(d => d.tipo === 'recibo').length;
+    const total = emitidos.reduce((s, d) => s + parseFloat(d.total || 0), 0);
+    document.getElementById("kpi-total").textContent = fmt(total);
+    document.getElementById("fact-kpis").style.display = "grid";
+  }
+
+  /* ─── Nuevo / Editar documento ───────────────────────────────── */
+  document.getElementById("btn-nuevo-doc").addEventListener("click", () => {
+    resetFormDoc();
+    document.getElementById("modal-doc-titulo").innerHTML = '<i class="fas fa-file-invoice"></i> Nuevo documento';
+    abrirModal("modal-doc");
+  });
+
+  function resetFormDoc() {
+    document.getElementById("doc-id").value           = "";
+    document.getElementById("doc-tipo").value         = "";
+    document.getElementById("doc-fecha").value        = new Date().toISOString().slice(0,10);
+    document.getElementById("doc-campeonato").value   = "";
+    document.getElementById("doc-equipo").value       = "";
+    document.getElementById("doc-receptor-nombre").value = "";
+    document.getElementById("doc-receptor-ruc").value    = "";
+    document.getElementById("doc-receptor-email").value  = "";
+    document.getElementById("doc-receptor-dir").value    = "";
+    document.getElementById("doc-descuento").value       = "0";
+    document.getElementById("doc-observaciones").value   = "";
+    document.getElementById("doc-items-body").innerHTML  = "";
+    itemCount = 0;
+    agregarItem(); // al menos 1
+    recalcularTotales();
+  }
+
+  async function editarDoc(id) {
+    try {
+      const doc = await apiFetch(`/api/facturacion/${id}`);
+      document.getElementById("doc-id").value              = doc.id;
+      document.getElementById("doc-tipo").value            = doc.tipo;
+      document.getElementById("doc-fecha").value           = doc.fecha_emision?.slice(0,10) || "";
+      document.getElementById("doc-campeonato").value      = doc.campeonato_id || "";
+      document.getElementById("doc-receptor-nombre").value = doc.receptor_nombre || "";
+      document.getElementById("doc-receptor-ruc").value    = doc.receptor_ruc_ci || "";
+      document.getElementById("doc-receptor-email").value  = doc.receptor_email || "";
+      document.getElementById("doc-receptor-dir").value    = doc.receptor_direccion || "";
+      document.getElementById("doc-descuento").value       = doc.descuento || "0";
+      document.getElementById("doc-observaciones").value   = doc.observaciones || "";
+
+      document.getElementById("doc-items-body").innerHTML = "";
+      itemCount = 0;
+      (doc.items || []).forEach(it => agregarItem(it));
+      if (!doc.items?.length) agregarItem();
+      recalcularTotales();
+
+      document.getElementById("modal-doc-titulo").innerHTML = '<i class="fas fa-edit"></i> Editar documento';
+      abrirModal("modal-doc");
+    } catch (e) {
+      mostrarToast(e.message || "Error", "error");
+    }
+  }
+
+  /* ─── Items dinámicos ────────────────────────────────────────── */
+  document.getElementById("btn-add-item").addEventListener("click", () => agregarItem());
+
+  function agregarItem(it = {}) {
+    itemCount++;
+    const n = itemCount;
+    const tr = document.createElement("tr");
+    tr.dataset.item = n;
+    tr.innerHTML = `
+      <td><input type="text" placeholder="Descripción" value="${esc(it.descripcion || '')}" data-campo="desc" /></td>
+      <td><input type="number" min="1" step="1" value="${it.cantidad || 1}" data-campo="cant" /></td>
+      <td><input type="number" min="0" step="0.01" value="${it.precio_unitario || ''}" placeholder="0.00" data-campo="precio" /></td>
+      <td><input type="number" min="0" step="0.01" value="${it.descuento || 0}" data-campo="desc_item" /></td>
+      <td style="text-align:right;" data-campo="sub">${fmt((it.cantidad||1)*(it.precio_unitario||0)-(it.descuento||0))}</td>
+      <td><button class="btn-del-item" onclick="eliminarItem(${n})"><i class="fas fa-trash"></i></button></td>
+    `;
+    tr.querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => {
+      actualizarSubtotalFila(tr);
+      recalcularTotales();
+    }));
+    document.getElementById("doc-items-body").appendChild(tr);
+  }
+
+  function eliminarItem(n) {
+    const tr = document.querySelector(`#doc-items-body tr[data-item="${n}"]`);
+    if (tr) { tr.remove(); recalcularTotales(); }
+  }
+
+  function actualizarSubtotalFila(tr) {
+    const cant   = parseFloat(tr.querySelector('[data-campo="cant"]').value) || 0;
+    const precio = parseFloat(tr.querySelector('[data-campo="precio"]').value) || 0;
+    const desc   = parseFloat(tr.querySelector('[data-campo="desc_item"]').value) || 0;
+    const sub    = parseFloat((cant * precio - desc).toFixed(2));
+    tr.querySelector('[data-campo="sub"]').textContent = fmt(sub < 0 ? 0 : sub);
+  }
+
+  function recalcularTotales() {
+    let subtotal = 0;
+    document.querySelectorAll("#doc-items-body tr").forEach(tr => {
+      const cant   = parseFloat(tr.querySelector('[data-campo="cant"]')?.value) || 0;
+      const precio = parseFloat(tr.querySelector('[data-campo="precio"]')?.value) || 0;
+      const desc   = parseFloat(tr.querySelector('[data-campo="desc_item"]')?.value) || 0;
+      subtotal += Math.max(0, cant * precio - desc);
+    });
+    subtotal = parseFloat(subtotal.toFixed(2));
+
+    const descGlobal  = parseFloat(document.getElementById("doc-descuento").value) || 0;
+    const base        = parseFloat((subtotal - descGlobal).toFixed(2));
+    const tipo        = document.getElementById("doc-tipo").value;
+    const iva_pct     = parseFloat(factConfig?.iva_porcentaje ?? 15);
+    const aplica_iva  = tipo === "factura";
+    const iva_val     = aplica_iva ? parseFloat((base * iva_pct / 100).toFixed(2)) : 0;
+    const total       = parseFloat((base + iva_val).toFixed(2));
+
+    document.getElementById("prev-subtotal").textContent = fmt(subtotal);
+    document.getElementById("prev-base").textContent     = fmt(base);
+    document.getElementById("prev-iva").textContent      = fmt(iva_val);
+    document.getElementById("prev-total").textContent    = fmt(total);
+    document.getElementById("prev-iva-label").textContent = `IVA (${iva_pct}%)`;
+    document.getElementById("prev-iva-row").style.display = aplica_iva ? "" : "none";
+    document.getElementById("prev-desc-row").style.display = descGlobal > 0 ? "" : "none";
+    document.getElementById("prev-desc").textContent      = fmt(descGlobal);
+  }
+
+  document.getElementById("doc-tipo").addEventListener("change", recalcularTotales);
+  document.getElementById("doc-descuento").addEventListener("input", recalcularTotales);
+
+  /* ─── Guardar documento ──────────────────────────────────────── */
+  document.getElementById("btn-guardar-doc").addEventListener("click", async () => {
+    const id   = document.getElementById("doc-id").value;
+    const tipo = document.getElementById("doc-tipo").value;
+    if (!tipo) { mostrarToast("Selecciona el tipo de documento", "error"); return; }
+
+    const items = [];
+    let valido = true;
+    document.querySelectorAll("#doc-items-body tr").forEach(tr => {
+      const desc  = tr.querySelector('[data-campo="desc"]')?.value?.trim();
+      const cant  = parseFloat(tr.querySelector('[data-campo="cant"]')?.value) || 0;
+      const prec  = parseFloat(tr.querySelector('[data-campo="precio"]')?.value) || 0;
+      const dscIt = parseFloat(tr.querySelector('[data-campo="desc_item"]')?.value) || 0;
+      if (!desc) { valido = false; return; }
+      items.push({ descripcion: desc, cantidad: cant, precio_unitario: prec, descuento: dscIt });
+    });
+    if (!valido || !items.length) {
+      mostrarToast("Completa la descripción de todos los ítems", "error"); return;
+    }
+
+    const datos = {
+      tipo,
+      campeonato_id:     document.getElementById("doc-campeonato").value || null,
+      equipo_id:         document.getElementById("doc-equipo").value || null,
+      receptor_nombre:   document.getElementById("doc-receptor-nombre").value.trim(),
+      receptor_ruc_ci:   document.getElementById("doc-receptor-ruc").value.trim(),
+      receptor_email:    document.getElementById("doc-receptor-email").value.trim(),
+      receptor_direccion:document.getElementById("doc-receptor-dir").value.trim(),
+      descuento:         parseFloat(document.getElementById("doc-descuento").value) || 0,
+      observaciones:     document.getElementById("doc-observaciones").value.trim(),
+      fecha_emision:     document.getElementById("doc-fecha").value,
+      items,
+    };
+
+    try {
+      if (id) {
+        await apiFetch(`/api/facturacion/${id}`, { method:"PUT", body: datos });
+        mostrarToast("Documento actualizado", "success");
+      } else {
+        await apiFetch("/api/facturacion", { method:"POST", body: datos });
+        mostrarToast("Documento creado", "success");
+      }
+      cerrarModal("modal-doc");
+      await cargarDocumentos();
+    } catch (e) {
+      mostrarToast(e.message || "Error al guardar", "error");
+    }
+  });
+
+  /* ─── Acciones sobre documento ───────────────────────────────── */
+  async function emitirDoc(id) {
+    if (!confirm("¿Emitir este documento? No podrás editarlo después.")) return;
+    try {
+      await apiFetch(`/api/facturacion/${id}/emitir`, { method:"POST" });
+      mostrarToast("Documento emitido", "success");
+      await cargarDocumentos();
+    } catch (e) { mostrarToast(e.message || "Error", "error"); }
+  }
+
+  async function anularDoc(id) {
+    if (!confirm("¿Anular este documento?")) return;
+    try {
+      await apiFetch(`/api/facturacion/${id}/anular`, { method:"POST" });
+      mostrarToast("Documento anulado", "success");
+      await cargarDocumentos();
+    } catch (e) { mostrarToast(e.message || "Error", "error"); }
+  }
+
+  /* ─── Detalle / impresión ────────────────────────────────────── */
+  async function verDetalle(id) {
+    try {
+      const doc = await apiFetch(`/api/facturacion/${id}`);
+      renderDetalle(doc);
+      document.getElementById("detalle-titulo").innerHTML =
+        `<i class="fas fa-file-alt"></i> ${labelTipo(doc.tipo)} ${doc.numero_completo || ''}`;
+      abrirModal("modal-detalle");
+    } catch (e) { mostrarToast(e.message || "Error", "error"); }
+  }
+
+  function renderDetalle(doc) {
+    const cfg = factConfig;
+    const aplica_iva = doc.tipo === "factura";
+    const iva_pct = doc.iva_porcentaje ?? 15;
+
+    const body = document.getElementById("detalle-body");
+    body.innerHTML = `
+      <div class="doc-header">
+        <div class="doc-emisor">
+          <strong>${esc(cfg.razon_social || cfg.nombre_comercial || 'Emisor')}</strong><br/>
+          ${cfg.ruc_ci ? `RUC/CI: ${esc(cfg.ruc_ci)}<br/>` : ''}
+          ${cfg.direccion_matriz ? `Dir.: ${esc(cfg.direccion_matriz)}<br/>` : ''}
+          ${cfg.tipo_contribuyente ? `Contribuyente: ${cfg.tipo_contribuyente.toUpperCase()}` : ''}
+        </div>
+        <div class="doc-numero">
+          ${labelTipo(doc.tipo).toUpperCase()}<br/>
+          <span style="font-size:.85rem;font-weight:400;">N°: ${esc(doc.numero_completo || '—')}</span><br/>
+          <span style="font-size:.82rem;font-weight:400;color:#555;">${formatFecha(doc.fecha_emision)}</span><br/>
+          <span class="badge badge-${doc.estado}">${labelEstado(doc.estado)}</span>
+        </div>
+      </div>
+
+      <div class="doc-receptor">
+        <strong>Receptor</strong><br/>
+        ${doc.receptor_nombre ? `<b>${esc(doc.receptor_nombre)}</b><br/>` : '<em>Consumidor final</em><br/>'}
+        ${doc.receptor_ruc_ci ? `RUC/CI: ${esc(doc.receptor_ruc_ci)}<br/>` : ''}
+        ${doc.receptor_email  ? `Email: ${esc(doc.receptor_email)}<br/>` : ''}
+        ${doc.receptor_direccion ? `Dirección: ${esc(doc.receptor_direccion)}` : ''}
+      </div>
+
+      <table class="items-detalle">
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th class="num">Cant.</th>
+            <th class="num">P. Unit.</th>
+            <th class="num">Desc.</th>
+            <th class="num">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(doc.items || []).map(it => `
+            <tr>
+              <td>${esc(it.descripcion)}</td>
+              <td class="num">${it.cantidad}</td>
+              <td class="num">${fmt(it.precio_unitario)}</td>
+              <td class="num">${it.descuento > 0 ? fmt(it.descuento) : '—'}</td>
+              <td class="num">${fmt(it.subtotal)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <div class="doc-totales">
+        <div>Subtotal: <strong>${fmt(doc.subtotal_sin_iva)}</strong></div>
+        ${doc.descuento > 0 ? `<div>Descuento: <strong>-${fmt(doc.descuento)}</strong></div>` : ''}
+        <div>Base imponible: <strong>${fmt(doc.base_imponible)}</strong></div>
+        ${aplica_iva ? `<div>IVA (${iva_pct}%): <strong>${fmt(doc.iva_valor)}</strong></div>` : ''}
+        <div class="doc-total-final">TOTAL: <strong>USD ${fmt(doc.total)}</strong></div>
+      </div>
+
+      ${doc.observaciones ? `<div style="margin-top:14px;padding:10px;background:#f8f9fa;border-radius:6px;font-size:.85rem;"><strong>Observaciones:</strong> ${esc(doc.observaciones)}</div>` : ''}
+      ${doc.campeonato_nombre ? `<div style="margin-top:8px;font-size:.8rem;color:#888;">Campeonato: ${esc(doc.campeonato_nombre)}</div>` : ''}
+    `;
+  }
+
+  function imprimirDetalle() {
+    window.print();
+  }
+
+  /* ─── Helpers ────────────────────────────────────────────────── */
+  function abrirModal(id)  { document.getElementById(id).classList.add("open"); }
+  function cerrarModal(id) { document.getElementById(id).classList.remove("open"); }
+
+  function labelTipo(t) {
+    return { factura:"Factura", nota_venta:"Nota de venta", recibo:"Recibo" }[t] || t;
+  }
+  function labelEstado(e) {
+    return { borrador:"Borrador", emitido:"Emitido", anulado:"Anulado" }[e] || e;
+  }
+  function fmt(n) {
+    return parseFloat(n || 0).toFixed(2);
+  }
+  function formatFecha(f) {
+    if (!f) return "—";
+    return f.slice(0, 10);
+  }
+  function esc(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function mostrarToast(msg, tipo = "info") {
+    if (typeof window.showToast === "function") { window.showToast(msg, tipo); return; }
+    alert(msg);
+  }
+
+  async function apiFetch(url, opts = {}) {
+    const token = localStorage.getItem("token");
+    const res = await fetch(url, {
+      method: opts.method || "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(opts.body ? { body: JSON.stringify(opts.body) } : {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+    return data;
+  }
+
+  /* ─── Eventos botones ────────────────────────────────────────── */
+  function setupEventos() {
+    document.getElementById("btn-config-emisor").addEventListener("click", () => {
+      poblarFormConfig(factConfig);
+      abrirModal("modal-config");
+    });
+    document.getElementById("btn-buscar").addEventListener("click", cargarDocumentos);
+    document.getElementById("btn-limpiar").addEventListener("click", () => {
+      document.getElementById("filt-tipo").value       = "";
+      document.getElementById("filt-estado").value     = "";
+      document.getElementById("filt-campeonato").value = "";
+      cargarDocumentos();
+    });
+    // Cerrar modales al click fuera
+    document.querySelectorAll(".modal-overlay").forEach(el => {
+      el.addEventListener("click", e => { if (e.target === el) el.classList.remove("open"); });
+    });
+  }
+  </script>
+</body>
+</html>

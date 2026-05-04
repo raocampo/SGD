@@ -1,3 +1,61 @@
+## 2026-05-04 — Módulo de Facturación: Fase 1
+
+### Objetivo
+
+Agregar un módulo de facturación, nota de venta y recibo para que organizadores puedan emitir documentos tributarios a clientes (equipos/participantes) cuando lo soliciten. Contexto Ecuador/SRI.
+
+### Implementación aplicada
+
+**Backend — `backend/models/Facturacion.js`:**
+- `asegurarEsquema()` crea inline las 3 tablas si no existen:
+  - `facturacion_config`: datos del emisor por organizador (RUC/RISE, razón social, dirección, establecimiento, punto de emisión, % IVA, secuenciales por tipo).
+  - `documentos_facturacion`: documento maestro (tipo, serie, secuencial, número completo, datos del receptor, totales, IVA, estado: borrador/emitido/anulado).
+  - `documentos_items`: líneas del documento (descripción, cantidad, precio, descuento, subtotal).
+- Métodos: `obtenerConfig`, `guardarConfig`, `listarDocumentos`, `obtenerDocumento`, `crearDocumento` (transaccional, genera número secuencial), `actualizarDocumento` (solo borradores), `cambiarEstado`.
+- Cálculo automático: subtotal, base imponible, IVA (solo en `factura`), total.
+- `nota_venta` y `recibo` no desglosan IVA (contribuyentes RISE / uso interno).
+
+**Backend — `backend/controllers/facturacionController.js`:**
+- `obtenerConfig / guardarConfig`: configuración del emisor.
+- `listar / obtener / crear / actualizar / emitir / anular`: CRUD con scope por rol (organizador ve solo los suyos).
+
+**Backend — `backend/routes/facturacionRoutes.js`:**
+- `GET/PUT /api/facturacion/config`
+- `GET/POST /api/facturacion`
+- `GET/PUT /api/facturacion/:id`
+- `POST /api/facturacion/:id/emitir`
+- `POST /api/facturacion/:id/anular`
+- Roles: `administrador`, `organizador`.
+
+**Backend — `backend/server.js`:**
+- `require('./routes/facturacionRoutes')` registrado en `/api/facturacion`.
+
+**Frontend — `frontend/facturacion.html`:**
+- Sidebar con link activo `Facturación`.
+- KPIs: facturas/notas/recibos emitidos y total USD.
+- Filtros por tipo, estado y campeonato.
+- Tabla con badge de tipo y estado, acciones por estado (editar, emitir, anular, ver).
+- Modal config emisor: tipo contribuyente, RUC/CI, razón social, nombre comercial, dirección, establecimiento, punto emisión, % IVA.
+- Modal nuevo/editar documento: selector de tipo, datos receptor, ítems dinámicos, cálculo en tiempo real de subtotales/IVA/total, observaciones.
+- Modal detalle: vista de impresión con datos del emisor, receptor, tabla de ítems y totales.
+- Link agregado al sidebar de 21 páginas internas (`admin.html`, `campeonatos.html`, `equipos.html`, etc.).
+
+### Verificación
+
+- `node -e "require('./backend/controllers/facturacionController.js')"` — OK
+- `node -e "require('./backend/routes/facturacionRoutes.js')"` — OK
+- `node -e "require('./backend/models/Facturacion.js')"` — OK
+- `Facturacion.asegurarEsquema()` — tablas creadas en BD local OK
+- Tablas verificadas: `facturacion_config`, `documentos_facturacion`, `documentos_items`.
+
+### Pendientes del módulo
+
+- **Fase 2**: botón "Emitir documento" desde `finanzas.html` asociando movimientos financieros al documento.
+- **Fase 3**: PDF profesional con logo, QR visual, formato oficial A4.
+- **Fase 4**: Integración SRI electrónico (firma `.p12`, XML, RIDE) — requiere certificado del cliente.
+
+---
+
 ## 2026-05-03 — Transmisiones Fase 2: WebRTC broadcaster + viewer público
 
 ### Objetivo
