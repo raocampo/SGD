@@ -1687,8 +1687,22 @@ class Partido {
     const evento_id = evento.id;
     const campeonato_id = evento.campeonato_id;
 
-    // Reemplazar si piden
+    // Reemplazar si piden (bloquear si hay jugados para no perder historial)
     if (reemplazar) {
+      const jugadosR = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM partidos WHERE evento_id = $1 AND estado NOT IN ('pendiente') AND estado IS NOT NULL`,
+        [evento_id]
+      );
+      const totalJugados = jugadosR.rows[0]?.total || 0;
+      if (totalJugados > 0) {
+        const err = new Error(
+          `No se puede regenerar el fixture porque ya existen ${totalJugados} partido(s) con estado activo (finalizado, programado, en curso, etc.). ` +
+          `Usa "Regenerar preservando" para mantener los partidos jugados y completar solo los faltantes.`
+        );
+        err.statusCode = 409;
+        err.jugados = totalJugados;
+        throw err;
+      }
       await pool.query(`DELETE FROM partidos WHERE evento_id = $1`, [evento_id]);
     }
 
@@ -1931,6 +1945,20 @@ class Partido {
     }
 
     if (reemplazar) {
+      const jugadosR = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM partidos WHERE evento_id = $1 AND estado NOT IN ('pendiente') AND estado IS NOT NULL`,
+        [evento_id]
+      );
+      const totalJugados = jugadosR.rows[0]?.total || 0;
+      if (totalJugados > 0) {
+        const err = new Error(
+          `No se puede regenerar el fixture porque ya existen ${totalJugados} partido(s) con estado activo (finalizado, programado, en curso, etc.). ` +
+          `Usa "Regenerar preservando" para mantener los partidos jugados y completar solo los faltantes.`
+        );
+        err.statusCode = 409;
+        err.jugados = totalJugados;
+        throw err;
+      }
       await pool.query(`DELETE FROM partidos WHERE evento_id = $1`, [evento_id]);
     }
 
@@ -2447,7 +2475,12 @@ class Partido {
 
     const campeonato_id = evento.campeonato_id;
     const totalGrupos = await this.contarGruposPorEvento(evento_id);
-    const tieneGrupos = totalGrupos > 0;
+    // Para formato liga el "Grupo L" es un contenedor sintético, no grupos reales.
+    // Usar siempre el path sin-grupos para que la consulta de pares preservados no
+    // filtre por grupo_id (lo que dejaría fuera partidos con grupo_id=null o un id antiguo).
+    const metodoCompetencia = String(evento?.metodo_competencia || "").trim().toLowerCase();
+    const esFormatoLiga = ["liga", "todos", "todos_contra_todos"].includes(metodoCompetencia);
+    const tieneGrupos = totalGrupos > 0 && !esFormatoLiga;
 
     // Jornada máxima de partidos preservados (finalizados + programados + suspendidos/aplazados)
     const maxJornadaR = await pool.query(
@@ -2639,7 +2672,17 @@ class Partido {
         }
       }
     } else {
-      // ---- MODO SIN GRUPOS (todos contra todos) ----
+      // ---- MODO SIN GRUPOS / LIGA (todos contra todos) ----
+      // Para formato liga: asegurar Grupo L y usarlo en los nuevos partidos.
+      // La consulta de pares preservados NO filtra por grupo_id, por eso este path
+      // es correcto aunque existan partidos con grupo_id=null o un grupo antiguo.
+      let grupoLigaId = null;
+      if (esFormatoLiga) {
+        const grupoLiga = await Grupo.asegurarGrupoLigaPorEvento(evento_id);
+        const idNum = Number.parseInt(grupoLiga?.grupo?.id, 10);
+        grupoLigaId = Number.isFinite(idNum) && idNum > 0 ? idNum : null;
+      }
+
       const eqRes = await pool.query(
         `SELECT ee.equipo_id FROM evento_equipos ee WHERE ee.evento_id = $1 ORDER BY COALESCE(ee.orden_sorteo, 2147483647), ee.equipo_id`,
         [evento_id]
@@ -2712,7 +2755,7 @@ class Partido {
         for (let jIdx = 0; jIdx < jornadasPendientes.length; jIdx++) {
           const numJornada = maxJornadaJugada + jIdx + 1;
           for (const [local, visitante] of jornadasPendientes[jIdx]) {
-            const p = await this.crear(campeonato_id, null, local, visitante, null, null, null, numJornada, evento_id);
+            const p = await this.crear(campeonato_id, grupoLigaId, local, visitante, null, null, null, numJornada, evento_id);
             creados.push(p);
           }
         }
@@ -2738,7 +2781,7 @@ class Partido {
             if (capacidadInsuficiente || !slot) {
               for (; idx < jornada.length; idx++) {
                 const [local, visitante] = jornada[idx];
-                const creado = await this.crear(campeonato_id, null, local, visitante, null, null, null, numJornada, evento_id);
+                const creado = await this.crear(campeonato_id, grupoLigaId, local, visitante, null, null, null, numJornada, evento_id);
                 creados.push(creado);
                 sinProgramar += 1;
               }
@@ -2746,7 +2789,7 @@ class Partido {
             }
             for (let c = 0; c < canchas.length && idx < jornada.length; c++) {
               const [local, visitante] = jornada[idx++];
-              const creado = await this.crear(campeonato_id, null, local, visitante, formatYMD(slot.dateObj), fromMinutesSQL(slot.timeMin), canchas[c], numJornada, evento_id);
+              const creado = await this.crear(campeonato_id, grupoLigaId, local, visitante, formatYMD(slot.dateObj), fromMinutesSQL(slot.timeMin), canchas[c], numJornada, evento_id);
               creados.push(creado);
               programados += 1;
             }

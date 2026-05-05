@@ -426,20 +426,26 @@
 .tblp-tabla {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed; /* ancho fijo: columna equipo toma el resto */
+  table-layout: auto; /* columnas a su contenido; equipo toma el espacio restante */
 }
 
-/* Anchos fijos para que todas las columnas numéricas queden iguales y centradas */
+/* Posición: ancho mínimo fijo */
 .tblp-tabla th.col-pos,
-.tblp-tabla td.col-pos { width: 2.8rem; }
+.tblp-tabla td.col-pos {
+  min-width: 2.4rem;
+  width: 2.4rem;
+  white-space: nowrap;
+}
 
+/* Columna equipo: se expande y el nombre puede romper en 2 líneas */
 .tblp-tabla th.col-equipo,
-.tblp-tabla td.col-equipo { width: auto; } /* toma el espacio restante */
+.tblp-tabla td.col-equipo { width: auto; }
 
-/* Columnas numéricas: todas igual de anchas */
+/* Columnas numéricas: contenido no rompe → se mantienen estrechas */
 .tblp-tabla th:not(.col-pos):not(.col-equipo),
 .tblp-tabla td:not(.col-pos):not(.col-equipo) {
-  width: 2.6rem;
+  min-width: 1.8rem;
+  white-space: nowrap;
   text-align: center;
 }
 
@@ -581,37 +587,36 @@
 .tblp-rank-n { background: var(--p-badge-bg); color: var(--p-badge-color); opacity: .8; }
 
 /* ── Imagen de cancha / estadio ───────────────────────────────────────────── */
-.tblp-field-deco {
+.tblp-field-area {
   margin-top: clamp(.6rem, 1.2vw, 1rem);
   height: clamp(160px, 20vw, 260px);
   background: linear-gradient(180deg, #1a6b1a 0%, #0d4a0d 100%);
   position: relative;
   overflow: hidden;
-  /* contenedor de perspectiva 3D */
-  perspective: 700px;
-  perspective-origin: 50% 100%;
 }
 
 .tblp-field-img {
   width: 100%;
-  height: 140%; /* altura extra para compensar el recorte del giro 3D */
+  height: 135%;
   object-fit: cover;
   object-position: center 55%;
   display: block;
-  /* efecto perspectiva: la imagen se aleja hacia el fondo en la parte superior */
-  transform: rotateX(15deg) scale(1.04);
+  opacity: 0.65;
+  transform: perspective(700px) rotateX(12deg) scale(1.04);
   transform-origin: bottom center;
-  /* degradado superior para fundir con el fondo del poster */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 30%, black 100%);
-  mask-image:         linear-gradient(to bottom, transparent 0%, black 30%, black 100%);
 }
 
-/* ── Footer (auspiciantes) ────────────────────────────────────────────────── */
+/* ── Footer (auspiciantes) — overlay sobre la imagen de cancha ────────────── */
 .tblp-poster-footer {
-  background: var(--p-sponsors-bg);
-  padding: clamp(.5rem, 1.2vw, .9rem) clamp(.9rem, 2vw, 1.5rem);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--p-sponsors-bg, rgba(88,28,135,.85));
+  padding: clamp(.45rem, 1vw, .75rem) clamp(.9rem, 2vw, 1.5rem);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
   flex-wrap: wrap;
 }
@@ -631,6 +636,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: .75rem;
   flex: 1;
 }
@@ -677,5 +683,5 @@
   .tblp-poster-header { grid-template-columns: auto 1fr; }
   .tblp-year { display: none; }
   .tblp-equipo-nombre { max-width: 130px; }
-  .tblp-field-deco { height: 130px; }
+  .tblp-field-area { height: 130px; }
 }

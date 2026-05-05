@@ -2067,7 +2067,17 @@ async function generarFixtureEvento() {
     await cargarPartidos();
   } catch (error) {
     console.error(error);
-    mostrarNotificacion(error.message || "Error al generar el fixture.", "error");
+    // Error 409: hay partidos jugados — sugerir "Regenerar preservando"
+    if (error?.statusCode === 409 || (error?.message || "").includes("Regenerar preservando")) {
+      await window.mostrarAlerta({
+        titulo: "No se puede reemplazar el fixture",
+        mensaje: error.message,
+        tipo: "warning",
+        textoBoton: "Entendido",
+      });
+    } else {
+      mostrarNotificacion(error.message || "Error al generar el fixture.", "error");
+    }
   }
 }
 
