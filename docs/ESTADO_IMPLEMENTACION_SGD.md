@@ -1,3 +1,16 @@
+## 2026-05-04 — Sesión actual: Facturación Fase 1 + commit Transmisiones
+
+### Commits de esta sesión
+- **b53be6b** — `feat: transmisiones Fase 2+3` — WebRTC broadcaster/viewer, señalización Socket.io, instrucciones OBS colapsables, compartir en redes (WhatsApp/Facebook/Twitter/Copiar), fix parámetro `tipo` en postales de tablas.
+- **4eee71b** — `feat: módulo de facturación Fase 1` — factura / nota de venta / recibo, config emisor SRI, UI completa con ítems dinámicos y cálculo IVA en tiempo real, link en sidebar de 21 páginas internas.
+
+### Lo que quedó funcionando hoy
+- Módulo Facturación Fase 1 operativo en local (BD, backend, frontend).
+- Transmisiones Fase 2 (WebRTC) implementado pero **pendiente prueba en Render**.
+- Sidebar de 21 páginas internas actualizado con link a `facturacion.html`.
+
+---
+
 ## 2026-05-03 — Estado módulo Transmisiones en vivo
 
 ### Fase 1 — Overlay tiempo real (OBS): COMPLETO
@@ -561,6 +574,67 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - implementado,
   - publicado,
   - datos locales alineados con producción.
+24. Módulo de Facturación — Fases pendientes:
+
+- **Fase 2 — Integración con finanzas** (próxima sesión):
+  - Agregar botón "Emitir documento" en el estado de cuenta de un equipo dentro de `finanzas.html`.
+  - Al hacer clic, abrir modal de nuevo documento con ítems pre-llenados desde los movimientos seleccionados.
+  - Nueva tabla de enlace `documentos_pagos (documento_id, movimiento_id)` para trazabilidad.
+  - Mostrar badge "Documentado" en movimientos ya vinculados a un documento.
+
+- **Fase 3 — PDF oficial A4** (sesión posterior):
+  - Plantilla PDF con: logo del emisor, datos tributarios, número de documento, tabla de ítems, totales desglosados.
+  - QR visual con número y datos clave del documento (no SRI, solo referencia visual).
+  - Botón "Descargar PDF" desde el modal de detalle.
+  - Envío por email (requiere integración SMTP).
+
+- **Fase 4 — SRI electrónico** (futuro, requiere certificado del cliente):
+  - Generación de XML según esquema XSD del SRI Ecuador.
+  - Firma digital con certificado `.p12` del contribuyente.
+  - Envío al ambiente de pruebas → producción SRI.
+  - Descarga del RIDE (PDF oficial autorizado por SRI).
+  - Requiere: RUC activo, certificado digital vigente, clave de firma.
+
+---
+
+## CONTINUACIÓN — Próximos pasos para la siguiente sesión
+
+### Prioridad ALTA (acción inmediata)
+
+1. **Probar Transmisiones Fase 2 en Render**:
+   - Abrir `transmisiones.html` en producción → crear transmisión → botón "Transmitir video" → `broadcast.html`.
+   - Desde otro dispositivo: abrir `viewer.html?tx=<ID>`.
+   - Verificar que el stream WebRTC se establece correctamente.
+   - Si falla por NAT estricto → configurar TURN server en Metered.ca (free tier) y agregar `iceServers` en `broadcast.html` y `viewer.html`.
+
+2. **Facturación Fase 2 — integración con finanzas**:
+   - En `finanzas.html`, agregar botón "Emitir documento" en la sección de estado de cuenta de equipo.
+   - Pasar movimientos seleccionados como ítems pre-llenados al modal de `facturacion.html`.
+   - Crear tabla `documentos_pagos` en `Facturacion.js` (asegurarEsquema).
+
+### Prioridad MEDIA (sesión siguiente)
+
+3. **Facturación Fase 3 — PDF profesional**:
+   - Usar `jsPDF` (ya disponible en el proyecto) para generar PDF A4 desde el modal de detalle.
+   - Incluir: logo emisor (si tiene), datos SRI, receptor, tabla ítems, totales, QR.
+
+4. **Validar portal público con campeonato real**:
+   - `Copa Ciudad de Loja → Abierta`: confirmar que la pestaña Playoff no muestra cruces con equipos eliminados.
+   - Revisar `Resultados` en jornadas parciales de otros organizadores.
+   - Validar que `Sin jornada` no aparece en ninguna vista pública de eliminatorias.
+
+5. **Prueba E2E en Render con datos reales**:
+   - `npm run e2e:ops-flow` para validar el flujo completo sin modificar datos.
+
+### Prioridad BAJA (roadmap)
+
+6. **TURN server** para redes con NAT simétrico (Metered.ca free tier — 10 GB/mes gratis).
+7. **Facturación Fase 4** — SRI electrónico (requiere certificado del cliente antes de empezar).
+8. **App móvil** — React Native / PWA publicable en Play Store / App Store.
+9. **Onboarding comercial de planes** — integración PayPhone / PayPal para activación automática.
+
+---
+
 ## Documentacion Operativa Vinculada
 - Bitacora de sesion y continuidad: `docs/BITACORA_AVANCES.md`
 - Historial de cambios implementados: `docs/CAMBIOS_IMPLEMENTADOS.md`

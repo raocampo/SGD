@@ -50,9 +50,69 @@ Agregar un módulo de facturación, nota de venta y recibo para que organizadore
 
 ### Pendientes del módulo
 
-- **Fase 2**: botón "Emitir documento" desde `finanzas.html` asociando movimientos financieros al documento.
-- **Fase 3**: PDF profesional con logo, QR visual, formato oficial A4.
-- **Fase 4**: Integración SRI electrónico (firma `.p12`, XML, RIDE) — requiere certificado del cliente.
+- **Fase 2** — Integración con finanzas:
+  - Botón "Emitir documento" en estado de cuenta de equipo (`finanzas.html`).
+  - Modal pre-llenado con movimientos seleccionados como ítems.
+  - Nueva tabla `documentos_pagos (documento_id, movimiento_id)` en `Facturacion.js`.
+  - Badge "Documentado" en movimientos ya vinculados.
+- **Fase 3** — PDF oficial A4:
+  - Logo emisor, datos SRI, receptor, tabla ítems, totales, QR visual.
+  - Usar `jsPDF` (ya en proyecto). Botón "Descargar PDF" en modal detalle.
+- **Fase 4** — SRI electrónico (futuro):
+  - XML según XSD del SRI Ecuador, firma `.p12`, RIDE. Requiere certificado digital del cliente.
+
+### Estado de la BD
+
+- Tablas creadas con `asegurarEsquema()` en BD local (Render las creará al primer request autenticado).
+- Sin migración numerada: el esquema es inline en `Facturacion.js`, igual que otros modelos del proyecto.
+
+---
+
+## 2026-05-04 — Resumen de sesión (continuidad desde casa)
+
+### Commits del día
+| Hash | Descripción |
+|---|---|
+| `b53be6b` | feat: transmisiones Fase 2+3 — WebRTC broadcaster/viewer + OBS + compartir en redes |
+| `4eee71b` | feat: módulo de facturación Fase 1 — factura, nota de venta y recibo |
+
+### Estado al cerrar sesión
+- BD local: alineada, con tablas de facturación creadas.
+- Render: transmisiones Fase 2 no probada aún (WebRTC puede fallar en NAT estricto).
+- Facturación: operativa en local, Render la recibe al primer `GET /api/facturacion/config` autenticado.
+
+### Dónde continuar (orden sugerido)
+
+**1. Probar Transmisiones en Render** (prioridad inmediata):
+- Ingresar a `https://ltyc.onrender.com` con cuenta organizador.
+- Crear o abrir una transmisión → "Transmitir video" → compartir URL viewer con otro dispositivo.
+- Si WebRTC no conecta por NAT: agregar TURN de Metered.ca en `broadcast.html` y `viewer.html`.
+  ```js
+  // iceServers a agregar en RTCPeerConnection:
+  { urls: "turn:relay.metered.ca:80", username: "...", credential: "..." }
+  ```
+
+**2. Facturación Fase 2** (siguiente feature a implementar):
+- En `frontend/finanzas.html`: agregar botón "Emitir doc." en la sección `Estado de cuenta equipo`.
+- En `backend/models/Facturacion.js`: agregar tabla `documentos_pagos` en `asegurarEsquema()`.
+- En `frontend/facturacion.html` o `finanzas.html`: flujo de selección de movimientos → documento.
+
+**3. Facturación Fase 3** (PDF profesional):
+- Archivo: `frontend/facturacion.html`, función `imprimirDetalle()` ya existe (usa `window.print()`).
+- Reemplazar con generación `jsPDF` para PDF descargable sin depender del print del navegador.
+
+**4. Validación portal público** (cuando haya tiempo):
+- `Copa Ciudad de Loja → Abierta` en Render: verificar pestaña Playoff y Resultados.
+- Revisar que ningún campeonato muestre "Sin jornada" en la vista pública de eliminatorias.
+
+### Archivos clave del módulo de facturación
+| Archivo | Descripción |
+|---|---|
+| `backend/models/Facturacion.js` | Modelo: esquema, config emisor, CRUD documentos |
+| `backend/controllers/facturacionController.js` | Controlador REST |
+| `backend/routes/facturacionRoutes.js` | Rutas `/api/facturacion` |
+| `backend/server.js` línea ~107 | `app.use("/api/facturacion", facturacionRoutes)` |
+| `frontend/facturacion.html` | UI completa: listado, config emisor, nuevo doc, detalle |
 
 ---
 
