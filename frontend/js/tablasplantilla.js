@@ -345,28 +345,48 @@
     const grid = document.getElementById("tblp-sponsors-grid");
     if (!footer || !grid) return;
 
+    let lista = [];
+
+    // Intento 1: endpoint privado (con fallback a organizador + filesystem)
     try {
       const resp = await apiGet(`/auspiciantes/campeonato/${campeonatoId}`);
-      const lista = resp.auspiciantes || resp || [];
-      if (!lista.length) { footer.style.display = "none"; return; }
-
-      grid.innerHTML = lista.map((a) => {
-        const src = normalizarLogoUrl(a.logo_url);
-        if (src) {
-          return `<img src="${esc(src)}" alt="${esc(a.nombre || "")}" class="tblp-sponsor-logo"
-                      crossorigin="anonymous" referrerpolicy="no-referrer"
-                      onerror="this.style.display='none'">`;
-        }
-        if (a.nombre) {
-          return `<span class="tblp-sponsor-nombre">${esc(a.nombre)}</span>`;
-        }
-        return "";
-      }).filter(Boolean).join("");
-
-      footer.style.display = "";
-    } catch (_) {
-      if (footer) footer.style.display = "none";
+      lista = resp.auspiciantes || resp || [];
+    } catch (e) {
+      console.warn("[tablasplantilla] auspiciantes (privado) falló:", e.message);
     }
+
+    // Intento 2: endpoint público (filesystem fallback de Render)
+    if (!lista.length) {
+      try {
+        const resp = await fetch(
+          `${BACKEND_BASE}/api/public/campeonatos/${campeonatoId}/auspiciantes`,
+          { headers: { "Content-Type": "application/json" } }
+        );
+        if (resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          lista = data.auspiciantes || data || [];
+        }
+      } catch (e) {
+        console.warn("[tablasplantilla] auspiciantes (público) falló:", e.message);
+      }
+    }
+
+    if (!lista.length) { footer.style.display = "none"; return; }
+
+    grid.innerHTML = lista.map((a) => {
+      const src = normalizarLogoUrl(a.logo_url);
+      if (src) {
+        return `<img src="${esc(src)}" alt="${esc(a.nombre || "")}" class="tblp-sponsor-logo"
+                    crossorigin="anonymous" referrerpolicy="no-referrer"
+                    onerror="this.style.display='none'">`;
+      }
+      if (a.nombre) {
+        return `<span class="tblp-sponsor-nombre">${esc(a.nombre)}</span>`;
+      }
+      return "";
+    }).filter(Boolean).join("");
+
+    footer.style.display = grid.innerHTML.trim() ? "" : "none";
   }
 
   // ── Cargar datos ──────────────────────────────────────────────────────────
