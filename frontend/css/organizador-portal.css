@@ -1,0 +1,293 @@
+/* frontend/css/organizador-portal.css — estilos del admin de landing del organizador */
+
+/* ── Encabezado de paso ───────────────────────────────────────────────────── */
+.op-paso-header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: 1.25rem;
+}
+
+.op-paso-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: #3b82f6;
+  color: #fff;
+  border-radius: 50%;
+  font-size: .85rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.op-paso-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* ── Hints de campo ───────────────────────────────────────────────────────── */
+.op-field-hint {
+  display: block;
+  font-size: .75rem;
+  color: #64748b;
+  margin-top: .25rem;
+  line-height: 1.4;
+}
+
+/* ── Diagrama visual ──────────────────────────────────────────────────────── */
+.op-diagrama-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.op-diagrama-card h3 {
+  font-size: .95rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.op-diagrama {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 560px;
+  margin: 0 auto;
+  border: 2px solid #cbd5e1;
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: .72rem;
+}
+
+/* Zona del diagrama */
+.op-diag-zona {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .55rem .8rem;
+  position: relative;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.op-diag-zona:last-child { border-bottom: none; }
+
+/* Header */
+.op-diag-zona.zona-header {
+  background: #1e3a5f;
+  color: #fff;
+  align-items: center;
+  padding: .6rem .8rem;
+}
+
+/* Hero */
+.op-diag-zona.zona-hero {
+  background: linear-gradient(135deg, #1e3a5f 0%, #2a5298 100%);
+  color: #fff;
+  padding: 1rem .8rem;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+/* Secciones claras */
+.op-diag-zona.zona-torneos { background: #f1f5f9; }
+.op-diag-zona.zona-bienvenida { background: #f8fafc; }
+.op-diag-zona.zona-nosotros { background: #f1f5f9; }
+.op-diag-zona.zona-contacto {
+  background: #1e3a5f;
+  color: #fff;
+  justify-content: center;
+  font-size: .7rem;
+}
+
+.op-diag-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  background: #3b82f6;
+  color: #fff;
+  border-radius: 50%;
+  font-size: .65rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.zona-hero .op-diag-badge { background: #facc15; color: #0a1f4a; }
+.zona-contacto .op-diag-badge { background: #facc15; color: #0a1f4a; }
+
+.op-diag-logo-placeholder {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(255,255,255,.3);
+  border: 1px dashed rgba(255,255,255,.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .55rem;
+  color: rgba(255,255,255,.8);
+  flex-shrink: 0;
+}
+
+.op-diag-chip {
+  display: inline-block;
+  background: #facc15;
+  color: #0a1f4a;
+  border-radius: 999px;
+  padding: .1rem .5rem;
+  font-size: .6rem;
+  font-weight: 700;
+  margin-bottom: .2rem;
+}
+
+.op-diag-titulo-hero {
+  font-size: .85rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.op-diag-desc-hero {
+  font-size: .68rem;
+  opacity: .8;
+}
+
+.op-diag-img-hint {
+  font-size: .6rem;
+  opacity: .65;
+  border: 1px dashed rgba(255,255,255,.5);
+  border-radius: 4px;
+  padding: .1rem .4rem;
+  display: inline-block;
+  margin-top: .2rem;
+}
+
+.op-diag-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+}
+
+.op-diag-label-name {
+  font-weight: 700;
+  font-size: .7rem;
+}
+
+.op-diag-label-hint {
+  font-size: .62rem;
+  opacity: .65;
+}
+
+.op-diag-cols {
+  display: flex;
+  gap: .5rem;
+  flex: 1;
+}
+
+.op-diag-col {
+  flex: 1;
+  background: rgba(0,0,0,.04);
+  border-radius: 4px;
+  padding: .3rem .4rem;
+  font-size: .62rem;
+  line-height: 1.3;
+}
+
+/* ── Temas predefinidos ───────────────────────────────────────────────────── */
+.op-temas-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+
+.op-tema-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .35rem;
+  padding: .5rem .75rem;
+  border: 2px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+  font-size: .78rem;
+  font-weight: 600;
+  color: inherit;
+  min-width: 80px;
+}
+
+.op-tema-btn:hover { border-color: #3b82f6; }
+.op-tema-btn.activo { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+
+.op-tema-preview {
+  width: 52px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,.08);
+}
+
+/* ── Previsualización de imágenes actuales ────────────────────────────────── */
+.op-img-preview-wrap {
+  margin-top: .5rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+
+.op-img-preview {
+  max-height: 60px;
+  max-width: 120px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: #f8fafc;
+}
+
+.op-img-remove-btn {
+  font-size: .72rem;
+  color: #ef4444;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+/* ── Fieldset visual (sección dentro de card) ─────────────────────────────── */
+.op-fieldset {
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.op-fieldset legend {
+  font-size: .78rem;
+  font-weight: 700;
+  padding: 0 .4rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+/* ── Enlace copiado ───────────────────────────────────────────────────────── */
+.op-enlace-display {
+  font-size: .8rem;
+  background: var(--input-bg, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  padding: .45rem .75rem;
+  word-break: break-all;
+  color: #3b82f6;
+  margin-top: .5rem;
+  display: none;
+}

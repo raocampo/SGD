@@ -54,6 +54,16 @@
     open.href = landingUrl();
   }
 
+  function mostrarImagenPrevia(previewId, wrapId, url) {
+    if (!url) return;
+    const img = document.getElementById(previewId);
+    const wrap = document.getElementById(wrapId);
+    if (img && wrap) {
+      img.src = normalizarMedia(url);
+      wrap.style.display = "flex";
+    }
+  }
+
   function poblarConfig() {
     const config = state.config || {};
     llenarInput("op-organizacion-nombre", config.organizacion_nombre || state.organizador?.organizacion_nombre || "");
@@ -71,6 +81,18 @@
     llenarInput("op-facebook-url", config.facebook_url || "");
     llenarInput("op-instagram-url", config.instagram_url || "");
     llenarInput("op-whatsapp-url", config.whatsapp_url || "");
+
+    // Tema
+    const tema = config.color_tema || "deportivo";
+    llenarInput("op-color-tema", tema);
+    document.querySelectorAll(".op-tema-btn").forEach(btn => {
+      btn.classList.toggle("activo", btn.dataset.tema === tema);
+    });
+
+    // Previsualizaciones de imágenes ya guardadas
+    mostrarImagenPrevia("op-logo-preview", "op-logo-preview-wrap", config.logo);
+    mostrarImagenPrevia("op-hero-preview", "op-hero-preview-wrap", config.hero_image);
+    mostrarImagenPrevia("op-team-preview", "op-team-preview-wrap", config.team_welcome_image);
   }
 
   function resetAuspicianteForm() {
@@ -414,6 +436,10 @@
     if (logo) formData.append("logo", logo);
     if (heroImage) formData.append("hero_image", heroImage);
     if (teamWelcomeImage) formData.append("team_welcome_image", teamWelcomeImage);
+
+    // Tema visual seleccionado
+    const colorTema = document.getElementById("op-color-tema")?.value || "deportivo";
+    formData.append("color_tema", colorTema);
 
     await window.OrganizadorPortalAPI.actualizarConfig(formData);
     window.mostrarNotificacion("Configuración pública actualizada", "success");

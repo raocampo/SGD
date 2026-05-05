@@ -8,6 +8,7 @@
   <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/organizador-portal.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 </head>
 <body class="app-layout page-organizador-portal">
@@ -25,135 +26,347 @@
   <div class="main-wrapper">
     <header class="top-bar">
       <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
-      <h1>Mi Landing Pública</h1>
+      <h1><i class="fas fa-globe"></i> Mi Landing Pública</h1>
     </header>
 
     <main class="main">
       <div class="container">
+
+        <!-- ── Bienvenida / acceso rápido ──────────────────────────────── -->
         <div class="welcome-card">
           <h2>Portal del organizador</h2>
           <p id="op-resumen" style="margin-top:8px; color:#475569;">Cargando configuración del portal...</p>
-          <div class="actions" style="margin-top:12px;">
+          <div class="actions" style="margin-top:12px; flex-wrap:wrap; gap:.5rem;">
             <a id="op-open-landing" class="btn btn-primary" href="#" target="_blank" rel="noopener noreferrer">
-              <i class="fas fa-up-right-from-square"></i> Abrir landing
+              <i class="fas fa-up-right-from-square"></i> Abrir mi landing
             </a>
             <button id="op-copy-landing" type="button" class="btn btn-secondary">
               <i class="fas fa-copy"></i> Copiar enlace
             </button>
           </div>
+          <div id="op-enlace-display" class="op-enlace-display"></div>
         </div>
 
+        <!-- ── Mapa visual: dónde aparece cada campo ───────────────────── -->
+        <div class="op-diagrama-card">
+          <h3><i class="fas fa-map" style="color:#3b82f6;"></i> ¿Dónde aparece cada campo en tu landing?</h3>
+          <div class="op-diagrama">
+
+            <!-- Zona 1: Header -->
+            <div class="op-diag-zona zona-header">
+              <span class="op-diag-badge">1</span>
+              <div class="op-diag-logo-placeholder"><i class="fas fa-image" style="font-size:.55rem;"></i></div>
+              <div class="op-diag-field-row" style="color:#fff;">
+                <div class="op-diag-label-name">Nombre de organización</div>
+                <div class="op-diag-label-hint" style="opacity:.7;">Logo del organizador</div>
+              </div>
+            </div>
+
+            <!-- Zona 2: Hero -->
+            <div class="op-diag-zona zona-hero">
+              <span class="op-diag-badge">2</span>
+              <div style="flex:1;">
+                <div class="op-diag-chip">Etiqueta superior (ej: Temporada 2026)</div>
+                <div class="op-diag-titulo-hero">Título principal de la portada</div>
+                <div class="op-diag-desc-hero">Descripción de bienvenida...</div>
+                <div class="op-diag-img-hint"><i class="fas fa-image"></i> Imagen de fondo / banner (1200×500 px)</div>
+              </div>
+            </div>
+
+            <!-- Zona 3: Torneos (automático) -->
+            <div class="op-diag-zona zona-torneos">
+              <span class="op-diag-badge" style="background:#64748b;">A</span>
+              <div class="op-diag-field-row">
+                <div class="op-diag-label-name">Tus campeonatos (automático)</div>
+                <div class="op-diag-label-hint">Se muestran solos desde el sistema — no requiere configuración</div>
+              </div>
+            </div>
+
+            <!-- Zona 4: Bienvenida equipos -->
+            <div class="op-diag-zona zona-bienvenida">
+              <span class="op-diag-badge">3</span>
+              <div class="op-diag-cols">
+                <div class="op-diag-col">
+                  <strong>Título bienvenida equipos</strong><br>
+                  Descripción para equipos<br>
+                  <span style="font-size:.58rem; color:#64748b;">Imagen de bienvenida</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Zona 5: Nosotros -->
+            <div class="op-diag-zona zona-nosotros">
+              <span class="op-diag-badge">4</span>
+              <div class="op-diag-cols">
+                <div class="op-diag-col"><strong>Título "Nosotros"</strong><br>Texto párrafo 1</div>
+                <div class="op-diag-col">Texto párrafo 2</div>
+              </div>
+            </div>
+
+            <!-- Zona 6: Contacto -->
+            <div class="op-diag-zona zona-contacto">
+              <span class="op-diag-badge">5</span>
+              <div>Correo · Teléfono · Facebook · Instagram · WhatsApp</div>
+            </div>
+
+          </div>
+          <p style="font-size:.75rem; color:#94a3b8; margin-top:.75rem; text-align:center;">
+            Cada número corresponde a un paso del formulario de abajo.
+          </p>
+        </div>
+
+        <!-- ── Temas predefinidos ───────────────────────────────────────── -->
         <div class="config-card">
-          <h3><i class="fas fa-palette"></i> Branding y contenido principal</h3>
+          <div class="op-paso-header">
+            <span class="op-paso-num" style="background:#7c3aed;"><i class="fas fa-palette" style="font-size:.7rem;"></i></span>
+            <h3>Tema visual de tu landing</h3>
+          </div>
+          <p style="font-size:.83rem; color:#64748b; margin-bottom:1rem;">
+            Elige un tema base. Puedes personalizar colores desde el sistema más adelante.
+          </p>
+          <div class="op-temas-grid">
+            <button type="button" class="op-tema-btn activo" data-tema="deportivo" title="Azul y amarillo deportivo">
+              <div class="op-tema-preview" style="background:linear-gradient(135deg,#1e3a5f 0%,#facc15 100%);"></div>
+              Deportivo
+            </button>
+            <button type="button" class="op-tema-btn" data-tema="nocturno" title="Fondo oscuro, acento cian">
+              <div class="op-tema-preview" style="background:linear-gradient(135deg,#0b2b3a 0%,#06b6d4 100%);"></div>
+              Nocturno
+            </button>
+            <button type="button" class="op-tema-btn" data-tema="verde" title="Verde campo de fútbol">
+              <div class="op-tema-preview" style="background:linear-gradient(135deg,#14532d 0%,#86efac 100%);"></div>
+              Verde campo
+            </button>
+            <button type="button" class="op-tema-btn" data-tema="vinotinto" title="Vinotinto y dorado">
+              <div class="op-tema-preview" style="background:linear-gradient(135deg,#6b2737 0%,#fbbf24 100%);"></div>
+              Vinotinto
+            </button>
+            <button type="button" class="op-tema-btn" data-tema="clasico" title="Blanco y azul marino clásico">
+              <div class="op-tema-preview" style="background:linear-gradient(135deg,#f0f4fa 0%,#1e3a5f 100%);"></div>
+              Clásico
+            </button>
+          </div>
+          <input type="hidden" id="op-color-tema" value="deportivo" />
+        </div>
+
+        <!-- ── PASO 1: Identidad ────────────────────────────────────────── -->
+        <div class="config-card">
+          <div class="op-paso-header">
+            <span class="op-paso-num">1</span>
+            <h3>Identidad de tu organización</h3>
+          </div>
           <form id="op-config-form">
             <div class="form-grid">
+
               <div class="form-group">
-                <label for="op-organizacion-nombre">Nombre de organización</label>
-                <input id="op-organizacion-nombre" />
+                <label for="op-organizacion-nombre">Nombre de organización <span style="color:#ef4444;">*</span></label>
+                <input id="op-organizacion-nombre" placeholder="Ej: Liga Deportiva de Loja" />
+                <small class="op-field-hint">Aparece en el encabezado de tu landing y en los campeonatos.</small>
               </div>
+
               <div class="form-group">
-                <label for="op-lema">Lema</label>
-                <input id="op-lema" />
+                <label for="op-lema">Lema o eslogan</label>
+                <input id="op-lema" placeholder="Ej: Donde el fútbol es pasión" />
+                <small class="op-field-hint">Frase corta que acompaña tu nombre. Opcional.</small>
               </div>
+
               <div class="form-group">
                 <label for="op-logo">Logo del organizador</label>
                 <input id="op-logo" type="file" accept="image/*" />
+                <small class="op-field-hint">Recomendado: imagen cuadrada, mínimo 200×200 px (PNG o SVG con fondo transparente).</small>
+                <div id="op-logo-preview-wrap" class="op-img-preview-wrap" style="display:none;">
+                  <img id="op-logo-preview" class="op-img-preview" alt="Logo actual" />
+                  <span style="font-size:.75rem; color:#64748b;">Logo actual</span>
+                </div>
               </div>
+
               <div class="form-group">
-                <label for="op-hero-image">Imagen principal / banner</label>
+                <label for="op-hero-chip">Etiqueta sobre el título <span style="font-weight:400; color:#64748b;">(chip)</span></label>
+                <input id="op-hero-chip" placeholder="Ej: Temporada 2026 · Loja" />
+                <small class="op-field-hint">Pequeño texto en cápsula que aparece ENCIMA del título principal de la portada.</small>
+              </div>
+
+            </div>
+
+            <!-- ── PASO 2: Portada / Hero ──────────────────────────────── -->
+            <div class="op-paso-header" style="margin-top:1.5rem;">
+              <span class="op-paso-num">2</span>
+              <h3>Portada principal (sección hero)</h3>
+            </div>
+            <div class="form-grid">
+
+              <div class="form-group">
+                <label for="op-hero-title">Título principal</label>
+                <input id="op-hero-title" placeholder="Ej: Liga Interbarrial Loja 2026" />
+                <small class="op-field-hint">El texto grande y destacado que el visitante ve primero al abrir tu landing.</small>
+              </div>
+
+              <div class="form-group">
+                <label for="op-hero-image">Imagen de fondo / banner</label>
                 <input id="op-hero-image" type="file" accept="image/*" />
+                <small class="op-field-hint">Recomendado: 1200×500 px. Usa una foto de cancha, equipo o estadio.</small>
+                <div id="op-hero-preview-wrap" class="op-img-preview-wrap" style="display:none;">
+                  <img id="op-hero-preview" class="op-img-preview" alt="Banner actual" />
+                  <span style="font-size:.75rem; color:#64748b;">Banner actual</span>
+                </div>
               </div>
-              <div class="form-group">
-                <label for="op-hero-title">Título hero</label>
-                <input id="op-hero-title" />
-              </div>
-              <div class="form-group">
-                <label for="op-hero-chip">Etiqueta superior</label>
-                <input id="op-hero-chip" />
-              </div>
+
               <div class="form-group form-group-full">
-                <label for="op-hero-description">Descripción hero</label>
-                <textarea id="op-hero-description" rows="3"></textarea>
+                <label for="op-hero-description">Descripción de bienvenida</label>
+                <textarea id="op-hero-description" rows="3" placeholder="Ej: Organización deportiva con más de 10 años impulsando el fútbol amateur en Loja. Inscripciones abiertas."></textarea>
+                <small class="op-field-hint">2-3 oraciones que presentan tu organización. Aparece debajo del título principal.</small>
               </div>
+
+            </div>
+
+            <!-- ── PASO 3: Bienvenida a equipos ───────────────────────── -->
+            <div class="op-paso-header" style="margin-top:1.5rem;">
+              <span class="op-paso-num">3</span>
+              <h3>Bienvenida a equipos participantes</h3>
+            </div>
+            <div class="form-grid">
+
               <div class="form-group">
-                <label for="op-team-welcome-title">Titulo bienvenida equipos</label>
-                <input id="op-team-welcome-title" />
+                <label for="op-team-welcome-title">Título de la sección</label>
+                <input id="op-team-welcome-title" placeholder="Ej: Equipos participantes 2026" />
+                <small class="op-field-hint">Encabezado de la sección donde aparecen los equipos inscritos.</small>
               </div>
+
               <div class="form-group">
-                <label for="op-team-welcome-image">Imagen bienvenida equipos</label>
+                <label for="op-team-welcome-image">Imagen de la sección</label>
                 <input id="op-team-welcome-image" type="file" accept="image/*" />
+                <small class="op-field-hint">Recomendado: 800×500 px. Foto de equipos, jugadores o premiación.</small>
+                <div id="op-team-preview-wrap" class="op-img-preview-wrap" style="display:none;">
+                  <img id="op-team-preview" class="op-img-preview" alt="Imagen bienvenida actual" />
+                  <span style="font-size:.75rem; color:#64748b;">Imagen actual</span>
+                </div>
               </div>
+
               <div class="form-group form-group-full">
-                <label for="op-team-welcome-description">Descripcion bienvenida equipos</label>
-                <textarea id="op-team-welcome-description" rows="3"></textarea>
+                <label for="op-team-welcome-description">Descripción para equipos</label>
+                <textarea id="op-team-welcome-description" rows="3" placeholder="Ej: Bienvenidos los equipos de esta temporada. ¡A competir con fair play!"></textarea>
+                <small class="op-field-hint">Texto de bienvenida dirigido a los equipos inscritos.</small>
               </div>
-              <div class="form-group">
-                <label for="op-about-title">Título de nosotros</label>
-                <input id="op-about-title" />
+
+            </div>
+
+            <!-- ── PASO 4: Sobre nosotros ─────────────────────────────── -->
+            <div class="op-paso-header" style="margin-top:1.5rem;">
+              <span class="op-paso-num">4</span>
+              <h3>Sobre nosotros</h3>
+            </div>
+            <div class="form-grid">
+
+              <div class="form-group form-group-full">
+                <label for="op-about-title">Título de la sección</label>
+                <input id="op-about-title" placeholder='Ej: Quiénes somos' />
+                <small class="op-field-hint">Encabezado de la sección "Sobre nosotros" o "Nuestra historia".</small>
               </div>
+
+              <div class="form-group form-group-full">
+                <label for="op-about-text-1">Párrafo 1</label>
+                <textarea id="op-about-text-1" rows="3" placeholder="Ej: Somos una organización deportiva fundada en 2014, dedicada a promover el fútbol amateur en la provincia de Loja..."></textarea>
+                <small class="op-field-hint">Primer párrafo de presentación (historia, misión, valores).</small>
+              </div>
+
+              <div class="form-group form-group-full">
+                <label for="op-about-text-2">Párrafo 2 <span style="font-weight:400; color:#64748b;">(opcional)</span></label>
+                <textarea id="op-about-text-2" rows="3" placeholder="Ej: Contamos con más de 200 equipos registrados y organizamos 4 torneos anuales..."></textarea>
+                <small class="op-field-hint">Segundo párrafo con logros, estadísticas o información adicional.</small>
+              </div>
+
+            </div>
+
+            <!-- ── PASO 5: Contacto y redes ───────────────────────────── -->
+            <div class="op-paso-header" style="margin-top:1.5rem;">
+              <span class="op-paso-num">5</span>
+              <h3>Contacto y redes sociales</h3>
+            </div>
+            <div class="form-grid">
+
               <div class="form-group">
                 <label for="op-contact-email">Correo de contacto</label>
-                <input id="op-contact-email" type="email" />
+                <input id="op-contact-email" type="email" placeholder="info@miliga.com" />
+                <small class="op-field-hint">Se muestra en el pie de página y en el formulario de contacto.</small>
               </div>
+
               <div class="form-group">
                 <label for="op-contact-phone">Teléfono / WhatsApp</label>
-                <input id="op-contact-phone" />
+                <input id="op-contact-phone" placeholder="Ej: +593 99 123 4567" />
+                <small class="op-field-hint">Número de contacto visible en el pie de tu landing.</small>
               </div>
+
               <div class="form-group">
-                <label for="op-facebook-url">Facebook</label>
-                <input id="op-facebook-url" />
+                <label for="op-facebook-url">Página de Facebook</label>
+                <input id="op-facebook-url" placeholder="https://facebook.com/tuliga" />
+                <small class="op-field-hint">URL completa de tu página o perfil de Facebook.</small>
               </div>
+
               <div class="form-group">
-                <label for="op-instagram-url">Instagram</label>
-                <input id="op-instagram-url" />
+                <label for="op-instagram-url">Perfil de Instagram</label>
+                <input id="op-instagram-url" placeholder="https://instagram.com/tuliga" />
+                <small class="op-field-hint">URL completa de tu perfil de Instagram.</small>
               </div>
-              <div class="form-group">
-                <label for="op-whatsapp-url">WhatsApp URL</label>
-                <input id="op-whatsapp-url" />
-              </div>
+
               <div class="form-group form-group-full">
-                <label for="op-about-text-1">Texto nosotros 1</label>
-                <textarea id="op-about-text-1" rows="3"></textarea>
+                <label for="op-whatsapp-url">Enlace de WhatsApp</label>
+                <input id="op-whatsapp-url" placeholder="https://wa.me/593991234567" />
+                <small class="op-field-hint">
+                  Genera tu enlace en
+                  <a href="https://wa.me/" target="_blank" rel="noopener" style="color:#3b82f6;">wa.me</a>
+                  — formato: <code>https://wa.me/593XXXXXXXXX</code> (sin espacios ni guiones).
+                </small>
               </div>
-              <div class="form-group form-group-full">
-                <label for="op-about-text-2">Texto nosotros 2</label>
-                <textarea id="op-about-text-2" rows="3"></textarea>
-              </div>
+
             </div>
-            <div class="actions">
+
+            <div class="actions" style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border-color,#e2e8f0);">
               <button type="submit" class="btn btn-success">
                 <i class="fas fa-floppy-disk"></i> Guardar configuración
               </button>
+              <a id="op-open-landing-bottom" class="btn btn-secondary" href="#" target="_blank" rel="noopener noreferrer">
+                <i class="fas fa-eye"></i> Ver mi landing
+              </a>
             </div>
           </form>
         </div>
 
+        <!-- ── Auspiciantes ─────────────────────────────────────────────── -->
         <div class="config-card">
-          <h3><i class="fas fa-handshake"></i> Auspiciantes del organizador</h3>
+          <div class="op-paso-header">
+            <span class="op-paso-num" style="background:#f59e0b;"><i class="fas fa-handshake" style="font-size:.7rem;"></i></span>
+            <h3>Auspiciantes de tu organización</h3>
+          </div>
+          <p style="font-size:.83rem; color:#64748b; margin-bottom:1rem;">
+            Los logos de tus auspiciantes aparecen en la parte inferior de tu landing y en las tablas de posiciones.
+          </p>
           <form id="op-auspiciante-form">
             <input id="op-auspiciante-id" type="hidden" />
             <div class="form-grid">
               <div class="form-group">
-                <label for="op-auspiciante-nombre">Nombre</label>
-                <input id="op-auspiciante-nombre" required />
+                <label for="op-auspiciante-nombre">Nombre del auspiciante <span style="color:#ef4444;">*</span></label>
+                <input id="op-auspiciante-nombre" required placeholder="Ej: Banco del Austro" />
               </div>
               <div class="form-group">
                 <label for="op-auspiciante-logo">Logo</label>
                 <input id="op-auspiciante-logo" type="file" accept="image/*" />
+                <small class="op-field-hint">Recomendado: fondo blanco o transparente, mínimo 200×80 px.</small>
               </div>
               <div class="form-group">
-                <label for="op-auspiciante-enlace">Enlace</label>
+                <label for="op-auspiciante-enlace">Sitio web del auspiciante</label>
                 <input id="op-auspiciante-enlace" placeholder="https://..." />
+                <small class="op-field-hint">Al hacer clic en su logo, el visitante irá a esta URL.</small>
               </div>
               <div class="form-group">
-                <label for="op-auspiciante-orden">Orden</label>
+                <label for="op-auspiciante-orden">Orden de aparición</label>
                 <input id="op-auspiciante-orden" type="number" min="1" value="1" />
+                <small class="op-field-hint">1 = primero. Ordena cómo aparecen los logos.</small>
               </div>
               <div class="form-group">
                 <label for="op-auspiciante-activo">Estado</label>
                 <select id="op-auspiciante-activo">
-                  <option value="true">Activo</option>
-                  <option value="false">Inactivo</option>
+                  <option value="true">Activo (visible)</option>
+                  <option value="false">Inactivo (oculto)</option>
                 </select>
               </div>
             </div>
@@ -171,9 +384,15 @@
           </div>
         </div>
 
+        <!-- ── Jornadas visibles ─────────────────────────────────────────── -->
         <div class="config-card">
-          <h3><i class="fas fa-calendar-check"></i> Jornadas visibles en el portal</h3>
-          <p class="form-hint">Selecciona qué jornadas se muestran públicamente. Si no activas ningún filtro, se muestran todas.</p>
+          <div class="op-paso-header">
+            <span class="op-paso-num" style="background:#10b981;"><i class="fas fa-calendar-check" style="font-size:.7rem;"></i></span>
+            <h3>Jornadas visibles en el portal público</h3>
+          </div>
+          <p class="form-hint">
+            Controla qué jornadas se muestran a tus visitantes. Si no activas ningún filtro, se muestran todas.
+          </p>
 
           <div class="form-grid">
             <div class="form-group">
@@ -192,7 +411,6 @@
 
           <div id="op-jornadas-panel" style="display:none;">
             <div class="form-hint" id="op-jornadas-hint" style="margin-bottom:0.75rem;"></div>
-
             <div style="display:flex; gap:8px; margin-bottom:0.75rem; flex-wrap:wrap;">
               <button type="button" class="btn btn-secondary btn-sm" id="op-jornadas-marcar-todas">
                 <i class="fas fa-check-double"></i> Marcar todas
@@ -204,9 +422,7 @@
                 <i class="fas fa-globe"></i> Sin filtro (mostrar todas)
               </button>
             </div>
-
             <div id="op-jornadas-lista" class="jornadas-portal-lista"></div>
-
             <div class="actions" style="margin-top:1rem;">
               <button type="button" class="btn btn-success" id="op-jornadas-guardar">
                 <i class="fas fa-floppy-disk"></i> Guardar configuración de jornadas
@@ -221,18 +437,26 @@
           </div>
         </div>
 
+        <!-- ── Media pública ─────────────────────────────────────────────── -->
         <div class="config-card">
-          <h3><i class="fas fa-images"></i> Media pública de landing y campeonatos</h3>
+          <div class="op-paso-header">
+            <span class="op-paso-num" style="background:#8b5cf6;"><i class="fas fa-images" style="font-size:.7rem;"></i></span>
+            <h3>Galería y recursos multimedia</h3>
+          </div>
+          <p style="font-size:.83rem; color:#64748b; margin-bottom:1rem;">
+            Agrega fotos para la galería de tu landing o imágenes de portada para tus campeonatos.
+          </p>
           <form id="op-media-form">
             <input id="op-media-id" type="hidden" />
             <div class="form-grid">
               <div class="form-group">
-                <label for="op-media-tipo">Tipo</label>
+                <label for="op-media-tipo">Tipo de recurso</label>
                 <select id="op-media-tipo" required>
-                  <option value="landing_gallery">Galería de landing</option>
-                  <option value="campeonato_card">Imagen de card del campeonato</option>
-                  <option value="campeonato_gallery">Galería del campeonato</option>
+                  <option value="landing_gallery">Galería de mi landing</option>
+                  <option value="campeonato_card">Imagen de portada de campeonato</option>
+                  <option value="campeonato_gallery">Galería de campeonato</option>
                 </select>
+                <small class="op-field-hint">"Galería de mi landing" → aparece en la sección de fotos de tu página principal.</small>
               </div>
               <div class="form-group" id="op-media-campeonato-group" style="display:none;">
                 <label for="op-media-campeonato">Campeonato</label>
@@ -241,32 +465,34 @@
                 </select>
               </div>
               <div class="form-group">
-                <label for="op-media-titulo">Título</label>
-                <input id="op-media-titulo" />
+                <label for="op-media-titulo">Título de la imagen</label>
+                <input id="op-media-titulo" placeholder="Ej: Final Copa Ciudad 2025" />
               </div>
               <div class="form-group">
                 <label for="op-media-orden">Orden</label>
                 <input id="op-media-orden" type="number" min="1" value="1" />
+                <small class="op-field-hint">1 = primera posición en la galería.</small>
               </div>
               <div class="form-group">
                 <label for="op-media-imagen">Imagen</label>
                 <input id="op-media-imagen" type="file" accept="image/*" />
+                <small class="op-field-hint">Recomendado: 1200×800 px, máximo 5 MB.</small>
               </div>
               <div class="form-group">
                 <label for="op-media-activo">Estado</label>
                 <select id="op-media-activo">
-                  <option value="true">Activo</option>
-                  <option value="false">Inactivo</option>
+                  <option value="true">Activo (visible)</option>
+                  <option value="false">Inactivo (oculto)</option>
                 </select>
               </div>
               <div class="form-group form-group-full">
-                <label for="op-media-descripcion">Descripción</label>
-                <textarea id="op-media-descripcion" rows="3"></textarea>
+                <label for="op-media-descripcion">Descripción / pie de foto</label>
+                <textarea id="op-media-descripcion" rows="2" placeholder="Ej: Premiación de la categoría Sub-30, temporada 2025"></textarea>
               </div>
             </div>
             <div class="actions">
               <button id="op-media-guardar" type="submit" class="btn btn-success">
-                <i class="fas fa-plus"></i> Guardar media
+                <i class="fas fa-plus"></i> Guardar recurso
               </button>
               <button id="op-media-cancelar" type="button" class="btn btn-warning" style="display:none;">
                 <i class="fas fa-xmark"></i> Cancelar edición
@@ -274,10 +500,11 @@
             </div>
           </form>
           <div class="tabla-scroll" id="op-media-listado" style="margin-top:16px;">
-            <p>Cargando media...</p>
+            <p>Cargando recursos...</p>
           </div>
         </div>
-      </div>
+
+      </div><!-- /container -->
     </main>
   </div>
 
@@ -286,5 +513,63 @@
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/organizador-portal.js"></script>
+
+  <script>
+    // Tema selector
+    document.querySelectorAll(".op-tema-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".op-tema-btn").forEach(b => b.classList.remove("activo"));
+        btn.classList.add("activo");
+        const temaInput = document.getElementById("op-color-tema");
+        if (temaInput) temaInput.value = btn.dataset.tema || "deportivo";
+      });
+    });
+
+    // Sincronizar enlace inferior con el superior
+    const openTop = document.getElementById("op-open-landing");
+    const openBottom = document.getElementById("op-open-landing-bottom");
+    if (openTop && openBottom) {
+      const syncHref = () => { openBottom.href = openTop.href; };
+      new MutationObserver(syncHref).observe(openTop, { attributes: true, attributeFilter: ["href"] });
+      syncHref();
+    }
+
+    // Mostrar URL al copiar
+    const copyBtn = document.getElementById("op-copy-landing");
+    const enlaceDisplay = document.getElementById("op-enlace-display");
+    if (copyBtn && enlaceDisplay && openTop) {
+      copyBtn.addEventListener("click", () => {
+        const url = openTop.href;
+        navigator.clipboard?.writeText(url).catch(() => {});
+        enlaceDisplay.style.display = "block";
+        enlaceDisplay.textContent = url;
+        copyBtn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
+        setTimeout(() => {
+          copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar enlace';
+        }, 2500);
+      });
+    }
+
+    // Previsualizar imágenes al seleccionar archivo
+    function setupPreview(inputId, previewId, wrapId) {
+      const input = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      const wrap = document.getElementById(wrapId);
+      if (!input || !preview || !wrap) return;
+      input.addEventListener("change", () => {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+          preview.src = e.target.result;
+          wrap.style.display = "flex";
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    setupPreview("op-logo", "op-logo-preview", "op-logo-preview-wrap");
+    setupPreview("op-hero-image", "op-hero-preview", "op-hero-preview-wrap");
+    setupPreview("op-team-welcome-image", "op-team-preview", "op-team-preview-wrap");
+  </script>
 </body>
 </html>
