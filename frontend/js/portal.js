@@ -1909,6 +1909,7 @@ function renderCategoriaPanelPortal(data, index = 0) {
     { key: "tarjetas-amarillas", label: esBasquetbol ? "Faltas personales" : "Tarjetas amarillas", html: renderTarjetasPortal(data?.tarjetas || [], "amarillas", esBasquetbol) },
     { key: "tarjetas-rojas", label: esBasquetbol ? "Faltas técnicas" : "Tarjetas rojas", html: renderTarjetasPortal(data?.tarjetas || [], "rojas", esBasquetbol) },
     { key: "playoff", label: "Playoff", html: renderEliminatoriasPortal(data?.eliminatorias || []) },
+    { key: "equipos", label: "Equipos", html: `<div class="portal-equipos-lazy" data-evento-id="${evento.id}" data-loaded=""><p class="portal-empty-msg"><i class="fas fa-spinner fa-spin"></i> Cargando equipos...</p></div>` },
   ];
 
   return `
@@ -1942,6 +1943,44 @@ function renderCategoriaPanelPortal(data, index = 0) {
         .join("")}
     </section>
   `;
+}
+
+async function cargarEquiposTabPortal(eventoId, container) {
+  try {
+    const r = await fetch(`${API}/public/eventos/${eventoId}/equipos`);
+    if (!r.ok) throw new Error(`Error ${r.status}`);
+    const data = await r.json();
+    const equipos = Array.isArray(data.equipos) ? data.equipos : [];
+    if (!equipos.length) {
+      container.innerHTML = '<p class="portal-empty-msg">No hay equipos registrados en esta categoría.</p>';
+      return;
+    }
+    const backUrl = encodeURIComponent(window.location.href);
+    const cards = equipos.map((eq) => {
+      const rawLogo = eq.logo_url || "";
+      const logoUrl = rawLogo ? (rawLogo.startsWith("http") ? rawLogo : `${BACKEND_BASE}/${rawLogo.replace(/^\//, "")}`) : null;
+      const logoHtml = logoUrl
+        ? `<img src="${logoUrl}" style="width:42px;height:42px;border-radius:50%;object-fit:contain;flex-shrink:0;border:2px solid #e2e8f0;" alt="${escPortal(eq.nombre)}" onerror="this.style.display='none'">`
+        : `<div style="width:42px;height:42px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;color:#94a3b8;"><i class="fas fa-shield-halved"></i></div>`;
+      const meta = [
+        eq.total_jugadores > 0 ? `${eq.total_jugadores} jugador${eq.total_jugadores !== 1 ? "es" : ""}` : null,
+        eq.partidos_jugados > 0 ? `${eq.partidos_jugados} PJ` : null,
+      ].filter(Boolean).join(" · ");
+      return `<a href="equipo-publico.html?id=${eq.id}&evento=${eventoId}&back=${backUrl}"
+        style="display:flex;align-items:center;gap:.75rem;padding:.75rem;border-radius:10px;border:1px solid #e2e8f0;background:#fff;text-decoration:none;color:inherit;transition:box-shadow .15s;"
+        onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''">
+        ${logoHtml}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:800;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escPortal(eq.nombre)}</div>
+          ${meta ? `<div style="font-size:.75rem;color:#64748b;">${meta}</div>` : ""}
+        </div>
+        <i class="fas fa-chevron-right" style="color:#94a3b8;font-size:.75rem;flex-shrink:0;"></i>
+      </a>`;
+    }).join("");
+    container.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.75rem;margin-top:.5rem;">${cards}</div>`;
+  } catch (e) {
+    container.innerHTML = '<p class="portal-empty-msg"><i class="fas fa-exclamation-triangle"></i> Error cargando equipos.</p>';
+  }
 }
 
 function renderProximaTransmisionPortal(contenedor) {
@@ -2359,6 +2398,14 @@ document.addEventListener("click", (event) => {
   if (subtabButton) {
     const scope = subtabButton.closest(".portal-category-panel");
     activarPortalTab(scope, ".portal-subtab", ".portal-subtab-panel", subtabButton.dataset.target);
+    if (subtabButton.dataset.target && subtabButton.dataset.target.endsWith("-equipos")) {
+      const panel = document.getElementById(subtabButton.dataset.target);
+      const lazy = panel?.querySelector(".portal-equipos-lazy");
+      if (lazy && lazy.dataset.loaded === "") {
+        lazy.dataset.loaded = "1";
+        cargarEquiposTabPortal(lazy.dataset.eventoId, lazy);
+      }
+    }
     return;
   }
 
