@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equipo — LT&C Portal</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/portal.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    .ep-hero { background: var(--ep-bg, linear-gradient(135deg,#1e3a5f,#2a5298)); padding: clamp(2rem,5vw,3.5rem) 0 clamp(1.5rem,3vw,2.5rem); color: #fff; }
+    .ep-hero-inner { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+    .ep-logo { width: clamp(72px,10vw,110px); height: clamp(72px,10vw,110px); object-fit: contain; border-radius: 12px; background: rgba(255,255,255,.15); border: 3px solid rgba(255,255,255,.3); padding: 6px; flex-shrink: 0; }
+    .ep-logo-placeholder { width: clamp(72px,10vw,110px); height: clamp(72px,10vw,110px); border-radius: 12px; background: rgba(255,255,255,.15); border: 3px solid rgba(255,255,255,.3); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: rgba(255,255,255,.6); flex-shrink: 0; }
+    .ep-hero-info { flex: 1; min-width: 0; }
+    .ep-campeonato-chip { display: inline-block; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: .2rem .75rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-bottom: .5rem; }
+    .ep-nombre { font-size: clamp(1.6rem,4vw,3rem); font-weight: 900; line-height: 1.1; text-transform: uppercase; letter-spacing: -.01em; font-family: 'Barlow Condensed', sans-serif; }
+    .ep-dt { font-size: .9rem; opacity: .8; margin-top: .35rem; }
+    .ep-stats-strip { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; }
+    .ep-stat { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 10px; padding: .5rem .9rem; text-align: center; min-width: 70px; }
+    .ep-stat-val { font-size: 1.5rem; font-weight: 900; line-height: 1; }
+    .ep-stat-lbl { font-size: .65rem; text-transform: uppercase; letter-spacing: .07em; opacity: .75; margin-top: .15rem; }
+
+    .ep-tabs { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1.5rem 0 1rem; border-bottom: 2px solid #e2e8f0; padding-bottom: .5rem; }
+    .ep-tab { padding: .5rem 1.1rem; border-radius: 8px 8px 0 0; border: none; background: transparent; font-size: .88rem; font-weight: 700; cursor: pointer; color: #64748b; transition: color .15s, background .15s; }
+    .ep-tab:hover { color: #1e3a5f; }
+    .ep-tab.active { background: #1e3a5f; color: #fff; }
+    .ep-panel { display: none; }
+    .ep-panel.active { display: block; }
+
+    .ep-jugador-card { display: flex; align-items: center; gap: .9rem; padding: .75rem; border-radius: 10px; border: 1px solid #e2e8f0; background: #fff; transition: box-shadow .15s; cursor: pointer; text-decoration: none; color: inherit; }
+    .ep-jugador-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); border-color: #93c5fd; }
+    .ep-jugadores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .75rem; margin-top: 1rem; }
+    .ep-jugador-foto { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0; flex-shrink: 0; background: #f1f5f9; }
+    .ep-jugador-avatar { width: 52px; height: 52px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #94a3b8; flex-shrink: 0; }
+    .ep-jugador-num { width: 28px; height: 28px; border-radius: 6px; background: #1e3a5f; color: #fff; font-size: .75rem; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ep-jugador-info { flex: 1; min-width: 0; }
+    .ep-jugador-nombre { font-weight: 800; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ep-jugador-pos { font-size: .75rem; color: #64748b; }
+    .ep-jugador-badges { display: flex; gap: .3rem; margin-top: .25rem; flex-wrap: wrap; }
+    .ep-badge { font-size: .65rem; font-weight: 700; padding: .1rem .4rem; border-radius: 999px; }
+    .ep-badge-gol { background: #fef9c3; color: #854d0e; }
+    .ep-badge-am { background: #fef9c3; color: #92400e; }
+    .ep-badge-roja { background: #fee2e2; color: #991b1b; }
+    .ep-badge-cap { background: #dbeafe; color: #1e3a5f; }
+
+    .ep-partido-row { display: flex; align-items: center; gap: .75rem; padding: .65rem .5rem; border-bottom: 1px solid #f1f5f9; }
+    .ep-partido-row:last-child { border-bottom: none; }
+    .ep-partido-fecha { font-size: .75rem; color: #64748b; min-width: 80px; flex-shrink: 0; }
+    .ep-partido-equipos { flex: 1; display: flex; align-items: center; gap: .5rem; font-size: .85rem; font-weight: 600; }
+    .ep-partido-logo { width: 24px; height: 24px; border-radius: 50%; object-fit: contain; }
+    .ep-partido-resultado { min-width: 48px; text-align: center; font-weight: 900; font-size: .95rem; }
+    .ep-resultado-V { color: #16a34a; }
+    .ep-resultado-D { color: #dc2626; }
+    .ep-resultado-E { color: #d97706; }
+    .ep-estado-badge { font-size: .65rem; padding: .15rem .5rem; border-radius: 999px; font-weight: 700; }
+    .ep-estado-finalizado { background: #dcfce7; color: #166534; }
+    .ep-estado-pendiente { background: #f1f5f9; color: #64748b; }
+    .ep-estado-programado { background: #dbeafe; color: #1e40af; }
+    .ltc-section-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+    .ep-empty { text-align: center; padding: 2rem; color: #94a3b8; font-size: .9rem; }
+  </style>
+</head>
+<body class="ltc-landing">
+
+  <header class="ltc-site-header">
+    <div class="container ltc-header-inner">
+      <a class="ltc-header-brand" href="index.html">
+        <img src="assets/ltc/Logo.jpeg" alt="LT&C" />
+        <span>LT&C</span>
+      </a>
+      <nav class="ltc-header-nav" id="ltc-nav">
+        <a href="index.html#torneos">Torneos</a>
+        <a href="portal.html">Portal</a>
+        <a href="login.html" class="ltc-nav-auth-link ltc-nav-auth-link-solid" target="_blank" rel="noopener">Ingresar</a>
+      </nav>
+    </div>
+  </header>
+
+  <div id="ep-hero-section" class="ep-hero">
+    <div class="container">
+      <a id="ep-back-link" href="portal.html" style="color:rgba(255,255,255,.75); font-size:.82rem; display:inline-flex; align-items:center; gap:.35rem; margin-bottom:.75rem; text-decoration:none;">
+        <i class="fas fa-arrow-left"></i> Volver al portal
+      </a>
+      <div class="ep-hero-inner">
+        <div id="ep-logo-wrap"></div>
+        <div class="ep-hero-info">
+          <div id="ep-campeonato-chip" class="ep-campeonato-chip">Cargando...</div>
+          <div id="ep-nombre" class="ep-nombre">—</div>
+          <div id="ep-dt" class="ep-dt" style="display:none;"></div>
+          <div class="ep-stats-strip">
+            <div class="ep-stat"><div class="ep-stat-val" id="st-pj">—</div><div class="ep-stat-lbl">Partidos</div></div>
+            <div class="ep-stat"><div class="ep-stat-val" id="st-pg">—</div><div class="ep-stat-lbl">Ganados</div></div>
+            <div class="ep-stat"><div class="ep-stat-val" id="st-pe">—</div><div class="ep-stat-lbl">Empates</div></div>
+            <div class="ep-stat"><div class="ep-stat-val" id="st-pp">—</div><div class="ep-stat-lbl">Perdidos</div></div>
+            <div class="ep-stat"><div class="ep-stat-val" id="st-gf">—</div><div class="ep-stat-lbl">Goles F</div></div>
+            <div class="ep-stat"><div class="ep-stat-val" id="st-gc">—</div><div class="ep-stat-lbl">Goles C</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="ltc-main">
+    <section class="ltc-teams-section">
+      <div class="container">
+
+        <div class="ep-tabs">
+          <button class="ep-tab active" data-panel="jugadores"><i class="fas fa-users"></i> Jugadores</button>
+          <button class="ep-tab" data-panel="partidos"><i class="fas fa-futbol"></i> Partidos</button>
+          <button class="ep-tab" data-panel="info"><i class="fas fa-info-circle"></i> Información</button>
+        </div>
+
+        <!-- Panel: Jugadores -->
+        <div id="panel-jugadores" class="ep-panel active">
+          <div id="ep-jugadores-cont">
+            <p class="ep-empty"><i class="fas fa-spinner fa-spin"></i> Cargando nómina...</p>
+          </div>
+        </div>
+
+        <!-- Panel: Partidos -->
+        <div id="panel-partidos" class="ep-panel">
+          <div class="ltc-section-card" id="ep-partidos-cont">
+            <p class="ep-empty"><i class="fas fa-spinner fa-spin"></i> Cargando partidos...</p>
+          </div>
+        </div>
+
+        <!-- Panel: Info -->
+        <div id="panel-info" class="ep-panel">
+          <div class="ltc-section-card">
+            <table style="width:100%; font-size:.9rem; border-collapse:collapse;" id="ep-info-table">
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="ltc-footer">
+    <div class="container ltc-footer-inner">
+      <p style="font-size:.8rem; opacity:.7; margin:0;">© 2026 LT&C — Loja Torneos &amp; Competencias</p>
+    </div>
+  </footer>
+
+  <script src="js/core.js"></script>
+  <script>
+  (function () {
+    const BACKEND = window.resolveBackendBaseUrl ? window.resolveBackendBaseUrl() : window.location.origin;
+    const params = new URLSearchParams(window.location.search);
+    const equipoId = Number.parseInt(params.get("id"), 10);
+    const eventoId = Number.parseInt(params.get("evento") || "", 10) || null;
+    const backHref = params.get("back") || (eventoId ? `portal.html?evento=${eventoId}` : "portal.html");
+
+    document.getElementById("ep-back-link").href = backHref;
+
+    function imgUrl(u) {
+      if (!u) return null;
+      if (/^https?:\/\//i.test(u)) return u;
+      return `${BACKEND}/${u.replace(/^\//, "")}`;
+    }
+
+    async function apiFetch(path) {
+      const r = await fetch(`${BACKEND}/api/public${path}`);
+      if (!r.ok) throw new Error(`Error ${r.status}`);
+      return r.json();
+    }
+
+    function estadoBadge(estado) {
+      const map = { finalizado: "ep-estado-finalizado", programado: "ep-estado-programado" };
+      const cls = map[estado] || "ep-estado-pendiente";
+      const labels = { finalizado: "Finalizado", programado: "Programado", pendiente: "Pendiente", en_curso: "En curso", suspendido: "Suspendido", aplazado: "Aplazado" };
+      return `<span class="ep-estado-badge ${cls}">${labels[estado] || estado}</span>`;
+    }
+
+    function logoHtml(url, nombre, size = 24) {
+      if (url) return `<img src="${imgUrl(url)}" class="ep-partido-logo" style="width:${size}px;height:${size}px;" alt="${nombre}" onerror="this.style.display='none'">`;
+      return "";
+    }
+
+    // ── Tabs
+    document.querySelectorAll(".ep-tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".ep-tab").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".ep-panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(`panel-${btn.dataset.panel}`).classList.add("active");
+      });
+    });
+
+    async function cargar() {
+      if (!Number.isFinite(equipoId)) {
+        document.getElementById("ep-nombre").textContent = "Equipo no encontrado";
+        return;
+      }
+
+      try {
+        // Datos del equipo
+        const { equipo } = await apiFetch(`/equipos/${equipoId}`);
+        document.title = `${equipo.nombre} — LT&C`;
+
+        // Hero
+        const logoWrap = document.getElementById("ep-logo-wrap");
+        const logoUrl = imgUrl(equipo.logo_url);
+        logoWrap.innerHTML = logoUrl
+          ? `<img src="${logoUrl}" class="ep-logo" alt="${equipo.nombre}" onerror="this.style.display='none'">`
+          : `<div class="ep-logo-placeholder"><i class="fas fa-shield-halved"></i></div>`;
+
+        if (equipo.color_primario) {
+          document.getElementById("ep-hero-section").style.background =
+            `linear-gradient(135deg, ${equipo.color_primario}, ${equipo.color_secundario || equipo.color_primario}dd)`;
+        }
+
+        document.getElementById("ep-campeonato-chip").textContent = equipo.campeonato?.nombre || "Campeonato";
+        document.getElementById("ep-nombre").textContent = equipo.nombre;
+
+        if (equipo.director_tecnico) {
+          const dtEl = document.getElementById("ep-dt");
+          dtEl.textContent = `DT: ${equipo.director_tecnico}`;
+          dtEl.style.display = "";
+        }
+
+        const st = equipo.estadisticas || {};
+        document.getElementById("st-pj").textContent = st.pj ?? "—";
+        document.getElementById("st-pg").textContent = st.pg ?? "—";
+        document.getElementById("st-pe").textContent = st.pe ?? "—";
+        document.getElementById("st-pp").textContent = st.pp ?? "—";
+        document.getElementById("st-gf").textContent = st.gf ?? "—";
+        document.getElementById("st-gc").textContent = st.gc ?? "—";
+
+        // Info
+        const rows = [];
+        if (equipo.director_tecnico) rows.push(["Director técnico", equipo.director_tecnico]);
+        if (equipo.asistente_tecnico) rows.push(["Asistente técnico", equipo.asistente_tecnico]);
+        if (equipo.medico) rows.push(["Médico", equipo.medico]);
+        if (equipo.telefono) rows.push(["Teléfono", equipo.telefono]);
+        if (equipo.email) rows.push(["Correo", equipo.email]);
+        if (equipo.numero_campeonato) rows.push(["N° campeonato", equipo.numero_campeonato]);
+        if (equipo.campeonato?.nombre) rows.push(["Campeonato", equipo.campeonato.nombre]);
+        if (equipo.eventos?.length) rows.push(["Categorías", equipo.eventos.map(e => e.nombre).join(", ")]);
+        const tbody = document.querySelector("#ep-info-table tbody");
+        tbody.innerHTML = rows.map(([k, v]) =>
+          `<tr><td style="padding:.5rem .5rem; font-weight:700; color:#64748b; width:45%; white-space:nowrap;">${k}</td>
+               <td style="padding:.5rem .5rem;">${v}</td></tr>`
+        ).join("") || `<tr><td colspan="2" class="ep-empty">Sin información adicional</td></tr>`;
+
+      } catch (e) {
+        document.getElementById("ep-nombre").textContent = "Error al cargar el equipo";
+      }
+
+      // Jugadores
+      try {
+        const params2 = eventoId ? `?evento_id=${eventoId}` : "";
+        const { jugadores } = await apiFetch(`/equipos/${equipoId}/jugadores${params2}`);
+        const cont = document.getElementById("ep-jugadores-cont");
+
+        if (!jugadores?.length) {
+          cont.innerHTML = `<p class="ep-empty"><i class="fas fa-users"></i> Sin jugadores registrados.</p>`;
+        } else {
+          cont.innerHTML = `<div class="ep-jugadores-grid">${jugadores.map(j => {
+            const foto = imgUrl(j.foto_url);
+            const fotoHtml = foto
+              ? `<img src="${foto}" class="ep-jugador-foto" alt="${j.nombre_completo}" onerror="this.style.display='none';">`
+              : `<div class="ep-jugador-avatar"><i class="fas fa-user"></i></div>`;
+            const numHtml = j.numero_camiseta != null
+              ? `<div class="ep-jugador-num">${j.numero_camiseta}</div>` : "";
+            const badges = [];
+            if (j.es_capitan) badges.push(`<span class="ep-badge ep-badge-cap"><i class="fas fa-star"></i> Capitán</span>`);
+            if (j.goles > 0) badges.push(`<span class="ep-badge ep-badge-gol"><i class="fas fa-futbol"></i> ${j.goles} gol${j.goles !== 1 ? "es" : ""}</span>`);
+            if (j.tarjetas_amarillas > 0) badges.push(`<span class="ep-badge ep-badge-am">🟨 ${j.tarjetas_amarillas}</span>`);
+            if (j.tarjetas_rojas > 0) badges.push(`<span class="ep-badge ep-badge-roja">🟥 ${j.tarjetas_rojas}</span>`);
+            return `<a href="jugador-publico.html?id=${j.id}&back=${encodeURIComponent(window.location.href)}" class="ep-jugador-card">
+              ${fotoHtml}
+              ${numHtml}
+              <div class="ep-jugador-info">
+                <div class="ep-jugador-nombre">${j.apellido} ${j.nombre}</div>
+                <div class="ep-jugador-pos">${j.posicion || "Sin posición"}</div>
+                ${badges.length ? `<div class="ep-jugador-badges">${badges.join("")}</div>` : ""}
+              </div>
+              <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:.75rem;"></i>
+            </a>`;
+          }).join("")}</div>`;
+        }
+      } catch (e) {
+        document.getElementById("ep-jugadores-cont").innerHTML = `<p class="ep-empty">No se pudieron cargar los jugadores.</p>`;
+      }
+
+      // Partidos
+      try {
+        const params3 = eventoId ? `?evento_id=${eventoId}` : "";
+        const { partidos } = await apiFetch(`/equipos/${equipoId}/partidos${params3}`);
+        const cont = document.getElementById("ep-partidos-cont");
+
+        if (!partidos?.length) {
+          cont.innerHTML = `<p class="ep-empty"><i class="fas fa-futbol"></i> Sin partidos registrados.</p>`;
+        } else {
+          cont.innerHTML = partidos.map(p => {
+            const fecha = p.fecha ? new Date(p.fecha + "T00:00:00").toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+            const marcador = (p.estado === "finalizado" && p.goles_favor !== null)
+              ? `<span class="ep-resultado-${p.resultado || ""}">${p.goles_favor} — ${p.goles_contra}</span>` : "—";
+            return `<div class="ep-partido-row">
+              <div class="ep-partido-fecha">${fecha}<br><small style="color:#94a3b8;">${p.jornada ? "J" + p.jornada : p.evento_nombre || ""}</small></div>
+              <div class="ep-partido-equipos">
+                ${logoHtml(null, "", 20)}
+                <span style="${p.es_local ? "font-weight:900;" : ""}">${p.es_local ? "LOCAL" : "VISITA"}</span>
+                <i class="fas fa-arrows-left-right" style="color:#cbd5e1; font-size:.6rem;"></i>
+                ${logoHtml(p.rival?.logo_url, p.rival?.nombre || "", 20)}
+                <span>${p.rival?.nombre || "—"}</span>
+              </div>
+              <div class="ep-partido-resultado">${marcador}</div>
+              ${estadoBadge(p.estado)}
+            </div>`;
+          }).join("");
+        }
+      } catch (e) {
+        document.getElementById("ep-partidos-cont").innerHTML = `<p class="ep-empty">No se pudieron cargar los partidos.</p>`;
+      }
+    }
+
+    cargar();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jugador — LT&C Portal</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/portal.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    /* ── Hero ── */
+    .jp-hero { background: var(--jp-bg, linear-gradient(135deg,#1e3a5f,#2a5298)); padding: clamp(2rem,5vw,3.5rem) 0 clamp(1.5rem,3vw,2.5rem); color: #fff; }
+    .jp-hero-inner { display: flex; align-items: center; gap: 1.75rem; flex-wrap: wrap; }
+    .jp-foto-wrap { position: relative; flex-shrink: 0; }
+    .jp-foto { width: clamp(88px,12vw,130px); height: clamp(88px,12vw,130px); border-radius: 50%; object-fit: cover; border: 4px solid rgba(255,255,255,.4); background: rgba(255,255,255,.12); }
+    .jp-foto-placeholder { width: clamp(88px,12vw,130px); height: clamp(88px,12vw,130px); border-radius: 50%; background: rgba(255,255,255,.15); border: 4px solid rgba(255,255,255,.3); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: rgba(255,255,255,.6); }
+    .jp-num-badge { position: absolute; bottom: 0; right: -4px; width: 34px; height: 34px; border-radius: 8px; background: #fff; color: #1e3a5f; font-size: .85rem; font-weight: 900; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,.5); }
+    .jp-hero-info { flex: 1; min-width: 0; }
+    .jp-campeonato-chip { display: inline-flex; align-items: center; gap: .4rem; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: .2rem .75rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-bottom: .5rem; }
+    .jp-equipo-logo { width: 18px; height: 18px; border-radius: 50%; object-fit: contain; vertical-align: middle; }
+    .jp-nombre { font-size: clamp(1.6rem,4vw,2.8rem); font-weight: 900; line-height: 1.1; text-transform: uppercase; letter-spacing: -.01em; font-family: 'Barlow Condensed', sans-serif; }
+    .jp-meta { font-size: .88rem; opacity: .8; margin-top: .35rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+    .jp-meta-item { display: flex; align-items: center; gap: .3rem; }
+    .jp-cap-badge { display: inline-flex; align-items: center; gap: .3rem; background: rgba(255,255,255,.25); border-radius: 999px; padding: .15rem .6rem; font-size: .75rem; font-weight: 700; }
+
+    /* Stats strip */
+    .jp-stats-strip { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; }
+    .jp-stat { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 10px; padding: .5rem .9rem; text-align: center; min-width: 70px; }
+    .jp-stat-val { font-size: 1.5rem; font-weight: 900; line-height: 1; }
+    .jp-stat-lbl { font-size: .65rem; text-transform: uppercase; letter-spacing: .07em; opacity: .75; margin-top: .15rem; }
+
+    /* ── Tabs ── */
+    .jp-tabs { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1.5rem 0 1rem; border-bottom: 2px solid #e2e8f0; padding-bottom: .5rem; }
+    .jp-tab { padding: .5rem 1.1rem; border-radius: 8px 8px 0 0; border: none; background: transparent; font-size: .88rem; font-weight: 700; cursor: pointer; color: #64748b; transition: color .15s, background .15s; }
+    .jp-tab:hover { color: #1e3a5f; }
+    .jp-tab.active { background: #1e3a5f; color: #fff; }
+    .jp-panel { display: none; }
+    .jp-panel.active { display: block; }
+
+    /* ── Partidos / participaciones ── */
+    .jp-part-row { display: grid; grid-template-columns: 90px 1fr auto auto; align-items: center; gap: .5rem .75rem; padding: .75rem .5rem; border-bottom: 1px solid #f1f5f9; font-size: .85rem; }
+    .jp-part-row:last-child { border-bottom: none; }
+    .jp-part-fecha { font-size: .75rem; color: #64748b; }
+    .jp-part-jornada { font-size: .7rem; color: #94a3b8; }
+    .jp-part-equipos { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; font-weight: 600; min-width: 0; }
+    .jp-part-logo { width: 22px; height: 22px; border-radius: 50%; object-fit: contain; flex-shrink: 0; }
+    .jp-part-vs { color: #94a3b8; font-size: .75rem; margin: 0 .15rem; }
+    .jp-part-marcador { font-weight: 900; font-size: .9rem; text-align: center; white-space: nowrap; }
+    .jp-result-V { color: #16a34a; }
+    .jp-result-D { color: #dc2626; }
+    .jp-result-E { color: #d97706; }
+    .jp-part-contrib { display: flex; gap: .3rem; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+    .jp-contrib-badge { font-size: .7rem; font-weight: 700; padding: .15rem .45rem; border-radius: 999px; white-space: nowrap; }
+    .jp-contrib-gol { background: #fef9c3; color: #854d0e; }
+    .jp-contrib-am { background: #fef9c3; color: #92400e; }
+    .jp-contrib-roja { background: #fee2e2; color: #991b1b; }
+    .jp-estado-badge { font-size: .65rem; padding: .15rem .5rem; border-radius: 999px; font-weight: 700; }
+    .jp-estado-finalizado { background: #dcfce7; color: #166534; }
+    .jp-estado-pendiente { background: #f1f5f9; color: #64748b; }
+    .jp-estado-programado { background: #dbeafe; color: #1e40af; }
+
+    /* ── Info ficha ── */
+    .jp-ficha-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    .jp-ficha-table td { padding: .55rem .5rem; border-bottom: 1px solid #f1f5f9; }
+    .jp-ficha-table td:first-child { font-weight: 700; color: #64748b; width: 45%; white-space: nowrap; }
+    .jp-ficha-table tr:last-child td { border-bottom: none; }
+
+    /* ── Nota limitación ── */
+    .jp-limitation-note { background: #fefce8; border: 1px solid #fde68a; border-radius: 10px; padding: .85rem 1rem; font-size: .82rem; color: #78350f; display: flex; gap: .6rem; align-items: flex-start; margin-bottom: 1rem; }
+    .jp-limitation-note i { margin-top: .1rem; flex-shrink: 0; }
+
+    /* Shared */
+    .ltc-section-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+    .jp-empty { text-align: center; padding: 2rem; color: #94a3b8; font-size: .9rem; }
+
+    @media (max-width: 600px) {
+      .jp-part-row { grid-template-columns: 75px 1fr auto; }
+      .jp-part-contrib { grid-column: 2 / -1; }
+    }
+  </style>
+</head>
+<body class="ltc-landing">
+
+  <header class="ltc-site-header">
+    <div class="container ltc-header-inner">
+      <a class="ltc-header-brand" href="index.html">
+        <img src="assets/ltc/Logo.jpeg" alt="LT&C" />
+        <span>LT&C</span>
+      </a>
+      <nav class="ltc-header-nav" id="ltc-nav">
+        <a href="index.html#torneos">Torneos</a>
+        <a href="portal.html">Portal</a>
+        <a href="login.html" class="ltc-nav-auth-link ltc-nav-auth-link-solid" target="_blank" rel="noopener">Ingresar</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div id="jp-hero-section" class="jp-hero">
+    <div class="container">
+      <a id="jp-back-link" href="portal.html" style="color:rgba(255,255,255,.75); font-size:.82rem; display:inline-flex; align-items:center; gap:.35rem; margin-bottom:.75rem; text-decoration:none;">
+        <i class="fas fa-arrow-left"></i> Volver
+      </a>
+      <div class="jp-hero-inner">
+        <div class="jp-foto-wrap">
+          <div id="jp-foto-wrap"></div>
+          <div id="jp-num-badge" class="jp-num-badge" style="display:none;"></div>
+        </div>
+        <div class="jp-hero-info">
+          <div id="jp-equipo-chip" class="jp-campeonato-chip">Cargando...</div>
+          <div id="jp-nombre" class="jp-nombre">—</div>
+          <div id="jp-meta" class="jp-meta"></div>
+          <div class="jp-stats-strip">
+            <div class="jp-stat"><div class="jp-stat-val" id="st-goles">—</div><div class="jp-stat-lbl">Goles</div></div>
+            <div class="jp-stat"><div class="jp-stat-val" id="st-partidos">—</div><div class="jp-stat-lbl">Partidos</div></div>
+            <div class="jp-stat"><div class="jp-stat-val" id="st-amarillas">—</div><div class="jp-stat-lbl">Amarillas</div></div>
+            <div class="jp-stat"><div class="jp-stat-val" id="st-rojas">—</div><div class="jp-stat-lbl">Rojas</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="ltc-main">
+    <section class="ltc-teams-section">
+      <div class="container">
+
+        <div class="jp-tabs">
+          <button class="jp-tab active" data-panel="partidos"><i class="fas fa-futbol"></i> Partidos</button>
+          <button class="jp-tab" data-panel="ficha"><i class="fas fa-id-card"></i> Ficha</button>
+        </div>
+
+        <!-- Panel: Partidos con participaciones -->
+        <div id="panel-partidos" class="jp-panel active">
+          <div class="jp-limitation-note">
+            <i class="fas fa-info-circle"></i>
+            <span>Se muestran los partidos donde el jugador registró <strong>goles o tarjetas</strong>. El sistema aún no lleva registro de titularidad o suplencia (próxima mejora).</span>
+          </div>
+          <div class="ltc-section-card" id="jp-partidos-cont">
+            <p class="jp-empty"><i class="fas fa-spinner fa-spin"></i> Cargando historial...</p>
+          </div>
+        </div>
+
+        <!-- Panel: Ficha -->
+        <div id="panel-ficha" class="jp-panel">
+          <div class="ltc-section-card">
+            <table class="jp-ficha-table" id="jp-ficha-table">
+              <tbody>
+                <tr><td colspan="2" class="jp-empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="ltc-footer">
+    <div class="container ltc-footer-inner">
+      <p style="font-size:.8rem; opacity:.7; margin:0;">© 2026 LT&C — Loja Torneos &amp; Competencias</p>
+    </div>
+  </footer>
+
+  <script src="js/core.js"></script>
+  <script>
+  (function () {
+    const BACKEND = window.resolveBackendBaseUrl ? window.resolveBackendBaseUrl() : window.location.origin;
+    const params = new URLSearchParams(window.location.search);
+    const jugadorId = Number.parseInt(params.get("id"), 10);
+    const backHref = params.get("back") || "portal.html";
+
+    document.getElementById("jp-back-link").href = backHref;
+
+    function imgUrl(u) {
+      if (!u) return null;
+      if (/^https?:\/\//i.test(u)) return u;
+      return `${BACKEND}/${u.replace(/^\//, "")}`;
+    }
+
+    async function apiFetch(path) {
+      const r = await fetch(`${BACKEND}/api/public${path}`);
+      if (!r.ok) throw new Error(`Error ${r.status}`);
+      return r.json();
+    }
+
+    function formatFecha(f) {
+      if (!f) return "—";
+      try { return new Date(f).toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" }); }
+      catch { return f; }
+    }
+
+    function estadoClass(estado) {
+      const map = { finalizado: "jp-estado-finalizado", programado: "jp-estado-programado" };
+      return map[estado] || "jp-estado-pendiente";
+    }
+
+    function estadoLabel(estado) {
+      const map = { finalizado: "Finalizado", programado: "Programado", pendiente: "Pendiente", en_curso: "En curso", suspendido: "Suspendido", aplazado: "Aplazado" };
+      return map[estado] || estado;
+    }
+
+    // ── Tabs
+    document.querySelectorAll(".jp-tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".jp-tab").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".jp-panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(`panel-${btn.dataset.panel}`).classList.add("active");
+      });
+    });
+
+    // ── Calcular resultado para este equipo
+    function resultadoLetra(p, equipoLocalId) {
+      if (p.resultado_local == null || p.resultado_visitante == null) return null;
+      const rl = Number(p.resultado_local), rv = Number(p.resultado_visitante);
+      if (rl === rv) return "E";
+      // Si el jugador pertenece al local
+      const esLocal = Number(p.local?.equipo_id) === equipoLocalId;
+      if (esLocal) return rl > rv ? "V" : "D";
+      return rv > rl ? "V" : "D";
+    }
+
+    async function cargar() {
+      if (!Number.isFinite(jugadorId)) {
+        document.getElementById("jp-nombre").textContent = "Jugador no encontrado";
+        return;
+      }
+
+      // ── Datos del jugador
+      try {
+        const { jugador } = await apiFetch(`/jugadores/${jugadorId}`);
+        document.title = `${jugador.nombre_completo} — LT&C`;
+
+        // Foto
+        const fotoWrap = document.getElementById("jp-foto-wrap");
+        const fotoUrl = imgUrl(jugador.foto_url);
+        fotoWrap.innerHTML = fotoUrl
+          ? `<img src="${fotoUrl}" class="jp-foto" alt="${jugador.nombre_completo}" onerror="this.outerHTML='<div class=jp-foto-placeholder><i class=\\'fas fa-user\\'></i></div>'">`
+          : `<div class="jp-foto-placeholder"><i class="fas fa-user"></i></div>`;
+
+        // Número
+        if (jugador.numero_camiseta != null) {
+          const numBadge = document.getElementById("jp-num-badge");
+          numBadge.textContent = jugador.numero_camiseta;
+          numBadge.style.display = "flex";
+        }
+
+        // Fondo con colores del equipo
+        const eq = jugador.equipo;
+        if (eq?.color_primario) {
+          document.getElementById("jp-hero-section").style.background =
+            `linear-gradient(135deg, ${eq.color_primario}, ${eq.color_secundario || eq.color_primario}dd)`;
+        }
+
+        // Chip equipo
+        const eqLogoUrl = imgUrl(eq?.logo_url);
+        document.getElementById("jp-equipo-chip").innerHTML =
+          (eqLogoUrl ? `<img src="${eqLogoUrl}" class="jp-equipo-logo" alt="${eq.nombre}" onerror="this.style.display='none'">` : "") +
+          `<a href="equipo-publico.html?id=${eq.id}&back=${encodeURIComponent(window.location.href)}" style="color:inherit;text-decoration:none;">${eq.nombre}</a>` +
+          (jugador.campeonato?.nombre ? ` <span style="opacity:.6;">· ${jugador.campeonato.nombre}</span>` : "");
+
+        // Nombre
+        document.getElementById("jp-nombre").textContent = jugador.nombre_completo;
+
+        // Meta
+        const metaParts = [];
+        if (jugador.posicion) metaParts.push(`<span class="jp-meta-item"><i class="fas fa-running"></i> ${jugador.posicion}</span>`);
+        if (jugador.es_capitan) metaParts.push(`<span class="jp-cap-badge"><i class="fas fa-star"></i> Capitán</span>`);
+        document.getElementById("jp-meta").innerHTML = metaParts.join("");
+
+        // Stats
+        const st = jugador.estadisticas || {};
+        document.getElementById("st-goles").textContent = st.goles ?? 0;
+        document.getElementById("st-partidos").textContent = st.partidos_con_gol ?? 0;
+        document.getElementById("st-amarillas").textContent = st.tarjetas_amarillas ?? 0;
+        document.getElementById("st-rojas").textContent = st.tarjetas_rojas ?? 0;
+
+        // Ficha
+        const ficha = [];
+        ficha.push(["Nombre completo", jugador.nombre_completo]);
+        if (jugador.posicion) ficha.push(["Posición", jugador.posicion]);
+        if (jugador.numero_camiseta != null) ficha.push(["Número de camiseta", jugador.numero_camiseta]);
+        ficha.push(["Capitán", jugador.es_capitan ? "Sí" : "No"]);
+        if (jugador.fecha_nacimiento) {
+          const edad = calcularEdad(jugador.fecha_nacimiento);
+          ficha.push(["Fecha de nacimiento", `${formatFecha(jugador.fecha_nacimiento)}${edad !== null ? ` (${edad} años)` : ""}`]);
+        }
+        if (eq?.nombre) ficha.push(["Equipo", `<a href="equipo-publico.html?id=${eq.id}&back=${encodeURIComponent(window.location.href)}" style="color:#1e3a5f;">${eq.nombre}</a>`]);
+        if (jugador.campeonato?.nombre) ficha.push(["Campeonato", jugador.campeonato.nombre]);
+        ficha.push(["Goles", st.goles ?? 0]);
+        ficha.push(["Tarjetas amarillas", st.tarjetas_amarillas ?? 0]);
+        ficha.push(["Tarjetas rojas", st.tarjetas_rojas ?? 0]);
+
+        const tbody = document.querySelector("#jp-ficha-table tbody");
+        tbody.innerHTML = ficha.map(([k, v]) =>
+          `<tr><td>${k}</td><td>${v}</td></tr>`
+        ).join("");
+
+      } catch (e) {
+        document.getElementById("jp-nombre").textContent = "Error al cargar el jugador";
+        console.error(e);
+      }
+
+      // ── Participaciones
+      try {
+        const { partidos, total } = await apiFetch(`/jugadores/${jugadorId}/participaciones`);
+        const cont = document.getElementById("jp-partidos-cont");
+
+        if (!partidos?.length) {
+          cont.innerHTML = `<p class="jp-empty"><i class="fas fa-futbol"></i> Sin registros de partidos para este jugador.</p>`;
+          return;
+        }
+
+        const rows = partidos.map(p => {
+          const fecha = formatFecha(p.fecha);
+          const jornada = p.jornada != null ? `J${p.jornada}` : "";
+          const localLogo = imgUrl(p.local?.logo_url);
+          const visitanteLogo = imgUrl(p.visitante?.logo_url);
+          const localLogoHtml = localLogo ? `<img src="${localLogo}" class="jp-part-logo" alt="${p.local?.nombre}" onerror="this.style.display='none'">` : "";
+          const visitanteLogoHtml = visitanteLogo ? `<img src="${visitanteLogo}" class="jp-part-logo" alt="${p.visitante?.nombre}" onerror="this.style.display='none'">` : "";
+
+          let marcador = "—";
+          let resultClass = "";
+          if (p.resultado_local != null && p.resultado_visitante != null) {
+            const rl = Number(p.resultado_local), rv = Number(p.resultado_visitante);
+            marcador = `${rl} - ${rv}`;
+            if (rl === rv) resultClass = "jp-result-E";
+          }
+
+          const contrib = [];
+          if (p.goles > 0) contrib.push(`<span class="jp-contrib-badge jp-contrib-gol"><i class="fas fa-futbol"></i> ${p.goles} gol${p.goles !== 1 ? "es" : ""}</span>`);
+          if (p.tarjetas_amarillas > 0) contrib.push(`<span class="jp-contrib-badge jp-contrib-am">🟨 ${p.tarjetas_amarillas}</span>`);
+          if (p.tarjetas_rojas > 0) contrib.push(`<span class="jp-contrib-badge jp-contrib-roja">🟥 ${p.tarjetas_rojas}</span>`);
+
+          const estadoBadgeHtml = `<span class="jp-estado-badge ${estadoClass(p.estado)}">${estadoLabel(p.estado)}</span>`;
+
+          return `<div class="jp-part-row">
+            <div>
+              <div class="jp-part-fecha">${fecha}</div>
+              <div class="jp-part-jornada">${jornada}</div>
+              <div style="margin-top:.25rem;">${estadoBadgeHtml}</div>
+            </div>
+            <div class="jp-part-equipos">
+              ${localLogoHtml}
+              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;" title="${p.local?.nombre}">${p.local?.nombre || "—"}</span>
+              <span class="jp-part-vs">vs</span>
+              ${visitanteLogoHtml}
+              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;" title="${p.visitante?.nombre}">${p.visitante?.nombre || "—"}</span>
+            </div>
+            <div class="jp-part-marcador ${resultClass}">${marcador}</div>
+            <div class="jp-part-contrib">${contrib.join("") || '<span style="font-size:.7rem;color:#94a3b8;">—</span>'}</div>
+          </div>`;
+        });
+
+        cont.innerHTML = `
+          <div style="font-size:.8rem;color:#64748b;margin-bottom:.75rem;"><i class="fas fa-info-circle"></i> ${total} partido${total !== 1 ? "s" : ""} registrado${total !== 1 ? "s" : ""} (con gol o tarjeta)</div>
+          ${rows.join("")}`;
+
+      } catch (e) {
+        document.getElementById("jp-partidos-cont").innerHTML =
+          `<p class="jp-empty"><i class="fas fa-exclamation-triangle"></i> Error al cargar partidos.</p>`;
+        console.error(e);
+      }
+    }
+
+    function calcularEdad(fechaNac) {
+      try {
+        const hoy = new Date();
+        const nac = new Date(fechaNac);
+        let edad = hoy.getFullYear() - nac.getFullYear();
+        const m = hoy.getMonth() - nac.getMonth();
+        if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+        return edad >= 0 && edad < 100 ? edad : null;
+      } catch { return null; }
+    }
+
+    cargar();
+  })();
+  </script>
+</body>
+</html>

@@ -21,6 +21,12 @@ router.get(
   publicPortalController.listarMediaPorCampeonato
 );
 router.get("/eventos/:evento_id/partidos", publicPortalController.obtenerPartidosPorEvento);
+router.get("/eventos/:evento_id/equipos", publicPortalController.listarEquiposPorEvento);
+router.get("/equipos/:equipo_id", publicPortalController.obtenerEquipo);
+router.get("/equipos/:equipo_id/jugadores", publicPortalController.listarJugadoresPorEquipo);
+router.get("/equipos/:equipo_id/partidos", publicPortalController.listarPartidosPorEquipo);
+router.get("/jugadores/:jugador_id", publicPortalController.obtenerJugador);
+router.get("/jugadores/:jugador_id/participaciones", publicPortalController.listarParticipacionesJugador);
 router.get("/eventos/:evento_id/tablas", publicPortalController.obtenerTablasPorEvento);
 router.get("/eventos/:evento_id/eliminatorias", publicPortalController.obtenerEliminatoriasPorEvento);
 router.get("/eventos/:evento_id/goleadores", publicPortalController.obtenerGoleadoresPorEvento);

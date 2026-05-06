@@ -596,6 +596,406 @@ async function listarMediaPublicaPorCampeonato(campeonatoId) {
   };
 }
 
+// ─── EQUIPOS Y JUGADORES PÚBLICOS ────────────────────────────────────────────
+
+async function listarEquiposPublicosPorEvento(eventoId) {
+  const evR = await pool.query(
+    `SELECT e.id, e.nombre, e.metodo_competencia, e.campeonato_id,
+            c.nombre AS campeonato_nombre, c.organizador, c.estado AS campeonato_estado
+     FROM eventos e
+     JOIN campeonatos c ON c.id = e.campeonato_id
+     WHERE e.id = $1`,
+    [eventoId]
+  );
+  if (!evR.rows.length) return null;
+  const evento = evR.rows[0];
+
+  const eqR = await pool.query(
+    `SELECT eq.id, eq.nombre, eq.logo_url, eq.color_primario, eq.color_secundario,
+            eq.director_tecnico, eq.numero_campeonato, eq.es_cabeza_serie,
+            COUNT(DISTINCT j.id)::int AS total_jugadores,
+            COUNT(DISTINCT CASE WHEN p.estado IN ('finalizado','no_presentaron_ambos') THEN p.id END)::int AS partidos_jugados,
+            COALESCE(SUM(CASE
+              WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_local_id = eq.id
+                THEN COALESCE(p.resultado_local,0)
+              WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_visitante_id = eq.id
+                THEN COALESCE(p.resultado_visitante,0)
+              ELSE 0 END),0)::int AS goles_favor,
+            COALESCE(SUM(CASE
+              WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_local_id = eq.id
+                THEN COALESCE(p.resultado_visitante,0)
+              WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_visitante_id = eq.id
+                THEN COALESCE(p.resultado_local,0)
+              ELSE 0 END),0)::int AS goles_contra
+     FROM evento_equipos ee
+     JOIN equipos eq ON eq.id = ee.equipo_id
+     LEFT JOIN jugadores j ON j.equipo_id = eq.id AND j.evento_id = $1
+     LEFT JOIN partidos p ON p.evento_id = $1
+       AND (p.equipo_local_id = eq.id OR p.equipo_visitante_id = eq.id)
+     WHERE ee.evento_id = $1
+     GROUP BY eq.id
+     ORDER BY eq.nombre`,
+    [eventoId]
+  );
+
+  return {
+    evento: resumirEvento(evento),
+    total: eqR.rows.length,
+    equipos: eqR.rows.map((r) => ({
+      id: Number(r.id),
+      nombre: r.nombre,
+      logo_url: r.logo_url || null,
+      color_primario: r.color_primario || null,
+      color_secundario: r.color_secundario || null,
+      director_tecnico: r.director_tecnico || null,
+      numero_campeonato: normalizarEntero(r.numero_campeonato),
+      es_cabeza_serie: r.es_cabeza_serie === true,
+      total_jugadores: r.total_jugadores,
+      partidos_jugados: r.partidos_jugados,
+      goles_favor: r.goles_favor,
+      goles_contra: r.goles_contra,
+    })),
+  };
+}
+
+async function obtenerEquipoPublico(equipoId) {
+  const eqR = await pool.query(
+    `SELECT eq.id, eq.nombre, eq.logo_url, eq.color_primario, eq.color_secundario,
+            eq.color_terciario, eq.director_tecnico, eq.asistente_tecnico, eq.medico,
+            eq.telefono, eq.email, eq.numero_campeonato, eq.es_cabeza_serie,
+            c.id AS campeonato_id, c.nombre AS campeonato_nombre, c.estado AS campeonato_estado,
+            c.tipo_futbol, c.tipo_deporte, c.logo_url AS campeonato_logo
+     FROM equipos eq
+     JOIN campeonatos c ON c.id = eq.campeonato_id
+     WHERE eq.id = $1`,
+    [equipoId]
+  );
+  if (!eqR.rows.length) return null;
+  const eq = eqR.rows[0];
+
+  // Eventos donde participa el equipo
+  const evR = await pool.query(
+    `SELECT ev.id, ev.nombre, ev.modalidad, ev.metodo_competencia
+     FROM evento_equipos ee
+     JOIN eventos ev ON ev.id = ee.evento_id
+     WHERE ee.equipo_id = $1
+     ORDER BY ev.id`,
+    [equipoId]
+  );
+
+  // Stats globales (todos los eventos)
+  const stR = await pool.query(
+    `SELECT
+       COUNT(DISTINCT CASE WHEN p.estado IN ('finalizado','no_presentaron_ambos') THEN p.id END)::int AS pj,
+       COUNT(DISTINCT CASE
+         WHEN p.estado IN ('finalizado','no_presentaron_ambos')
+           AND ((p.equipo_local_id = $1 AND p.resultado_local > p.resultado_visitante)
+             OR (p.equipo_visitante_id = $1 AND p.resultado_visitante > p.resultado_local))
+         THEN p.id END)::int AS pg,
+       COUNT(DISTINCT CASE
+         WHEN p.estado IN ('finalizado','no_presentaron_ambos')
+           AND p.resultado_local = p.resultado_visitante
+         THEN p.id END)::int AS pe,
+       COUNT(DISTINCT CASE
+         WHEN p.estado IN ('finalizado','no_presentaron_ambos')
+           AND ((p.equipo_local_id = $1 AND p.resultado_local < p.resultado_visitante)
+             OR (p.equipo_visitante_id = $1 AND p.resultado_visitante < p.resultado_local))
+         THEN p.id END)::int AS pp,
+       COALESCE(SUM(CASE
+         WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_local_id = $1
+           THEN COALESCE(p.resultado_local,0)
+         WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_visitante_id = $1
+           THEN COALESCE(p.resultado_visitante,0)
+         ELSE 0 END),0)::int AS gf,
+       COALESCE(SUM(CASE
+         WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_local_id = $1
+           THEN COALESCE(p.resultado_visitante,0)
+         WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_visitante_id = $1
+           THEN COALESCE(p.resultado_local,0)
+         ELSE 0 END),0)::int AS gc
+     FROM partidos p
+     WHERE p.equipo_local_id = $1 OR p.equipo_visitante_id = $1`,
+    [equipoId]
+  );
+  const st = stR.rows[0] || {};
+
+  return {
+    id: Number(eq.id),
+    nombre: eq.nombre,
+    logo_url: eq.logo_url || null,
+    color_primario: eq.color_primario || null,
+    color_secundario: eq.color_secundario || null,
+    color_terciario: eq.color_terciario || null,
+    director_tecnico: eq.director_tecnico || null,
+    asistente_tecnico: eq.asistente_tecnico || null,
+    medico: eq.medico || null,
+    telefono: eq.telefono || null,
+    email: eq.email || null,
+    numero_campeonato: normalizarEntero(eq.numero_campeonato),
+    es_cabeza_serie: eq.es_cabeza_serie === true,
+    campeonato: {
+      id: Number(eq.campeonato_id),
+      nombre: eq.campeonato_nombre,
+      estado: eq.campeonato_estado,
+      tipo_futbol: eq.tipo_futbol || eq.tipo_deporte || null,
+      logo_url: eq.campeonato_logo || null,
+    },
+    eventos: evR.rows.map((e) => ({ id: Number(e.id), nombre: e.nombre, modalidad: e.modalidad, metodo_competencia: e.metodo_competencia })),
+    estadisticas: { pj: st.pj || 0, pg: st.pg || 0, pe: st.pe || 0, pp: st.pp || 0, gf: st.gf || 0, gc: st.gc || 0, dg: (st.gf || 0) - (st.gc || 0) },
+  };
+}
+
+async function listarJugadoresPublicosPorEquipo(equipoId, eventoId = null) {
+  const eqR = await pool.query(
+    `SELECT eq.id, eq.nombre, eq.logo_url, eq.color_primario, eq.color_secundario
+     FROM equipos eq WHERE eq.id = $1`,
+    [equipoId]
+  );
+  if (!eqR.rows.length) return null;
+
+  const params = [equipoId];
+  const eventoFiltro = eventoId ? `AND j.evento_id = $2` : "";
+  if (eventoId) params.push(eventoId);
+
+  const jR = await pool.query(
+    `SELECT j.id, j.nombre, j.apellido, j.cedidentidad, j.posicion,
+            j.numero_camiseta, j.es_capitan, j.fecha_nacimiento,
+            j.foto_carnet_recorte_url, j.evento_id,
+            COALESCE(g.total_goles,0)::int AS goles,
+            COALESCE(t.amarillas,0)::int AS tarjetas_amarillas,
+            COALESCE(t.rojas,0)::int AS tarjetas_rojas
+     FROM jugadores j
+     LEFT JOIN (
+       SELECT jugador_id, SUM(goles)::int AS total_goles
+       FROM goleadores gol
+       JOIN partidos p ON p.id = gol.partido_id
+       WHERE p.equipo_local_id = $1 OR p.equipo_visitante_id = $1
+       GROUP BY jugador_id
+     ) g ON g.jugador_id = j.id
+     LEFT JOIN (
+       SELECT jugador_id,
+         COUNT(*) FILTER (WHERE tipo_tarjeta = 'amarilla')::int AS amarillas,
+         COUNT(*) FILTER (WHERE tipo_tarjeta IN ('roja','roja_directa','doble_amarilla'))::int AS rojas
+       FROM tarjetas tar
+       JOIN partidos p ON p.id = tar.partido_id
+       WHERE p.equipo_local_id = $1 OR p.equipo_visitante_id = $1
+       GROUP BY jugador_id
+     ) t ON t.jugador_id = j.id
+     WHERE j.equipo_id = $1 ${eventoFiltro}
+     ORDER BY j.apellido, j.nombre`,
+    params
+  );
+
+  return {
+    equipo: {
+      id: Number(eqR.rows[0].id),
+      nombre: eqR.rows[0].nombre,
+      logo_url: eqR.rows[0].logo_url || null,
+      color_primario: eqR.rows[0].color_primario || null,
+      color_secundario: eqR.rows[0].color_secundario || null,
+    },
+    total: jR.rows.length,
+    jugadores: jR.rows.map((j) => ({
+      id: Number(j.id),
+      nombre: j.nombre,
+      apellido: j.apellido,
+      nombre_completo: `${j.apellido} ${j.nombre}`.trim(),
+      cedidentidad: j.cedidentidad || null,
+      posicion: j.posicion || null,
+      numero_camiseta: normalizarEntero(j.numero_camiseta),
+      es_capitan: j.es_capitan === true,
+      fecha_nacimiento: j.fecha_nacimiento || null,
+      foto_url: j.foto_carnet_recorte_url || null,
+      evento_id: normalizarEntero(j.evento_id),
+      goles: j.goles,
+      tarjetas_amarillas: j.tarjetas_amarillas,
+      tarjetas_rojas: j.tarjetas_rojas,
+    })),
+  };
+}
+
+async function listarPartidosPublicosPorEquipo(equipoId, eventoId = null) {
+  const eqR = await pool.query(`SELECT id, nombre, logo_url, color_primario FROM equipos WHERE id = $1`, [equipoId]);
+  if (!eqR.rows.length) return null;
+
+  const params = [equipoId];
+  const eventoFiltro = eventoId ? `AND p.evento_id = $2` : "";
+  if (eventoId) params.push(eventoId);
+
+  const pR = await pool.query(
+    `SELECT p.id, p.fecha_partido, p.hora_partido, p.cancha, p.jornada, p.estado,
+            p.resultado_local, p.resultado_visitante, p.evento_id,
+            el.id AS local_id, el.nombre AS local_nombre, el.logo_url AS local_logo,
+            ev.id AS visitante_id, ev.nombre AS visitante_nombre, ev.logo_url AS visitante_logo,
+            evo.id AS evento_id_num, evo.nombre AS evento_nombre,
+            c.nombre AS campeonato_nombre
+     FROM partidos p
+     JOIN equipos el ON el.id = p.equipo_local_id
+     JOIN equipos ev ON ev.id = p.equipo_visitante_id
+     JOIN eventos evo ON evo.id = p.evento_id
+     JOIN campeonatos c ON c.id = p.campeonato_id
+     WHERE (p.equipo_local_id = $1 OR p.equipo_visitante_id = $1) ${eventoFiltro}
+     ORDER BY p.fecha_partido DESC NULLS LAST, p.jornada DESC NULLS LAST`,
+    params
+  );
+
+  return {
+    equipo: { id: Number(eqR.rows[0].id), nombre: eqR.rows[0].nombre, logo_url: eqR.rows[0].logo_url || null },
+    total: pR.rows.length,
+    partidos: pR.rows.map((p) => {
+      const esLocal = Number(p.local_id) === equipoId;
+      const gf = esLocal ? normalizarEntero(p.resultado_local) : normalizarEntero(p.resultado_visitante);
+      const gc = esLocal ? normalizarEntero(p.resultado_visitante) : normalizarEntero(p.resultado_local);
+      let resultado = null;
+      if (p.estado === "finalizado" && gf !== null && gc !== null) {
+        resultado = gf > gc ? "V" : gf < gc ? "D" : "E";
+      }
+      return {
+        id: Number(p.id),
+        fecha: p.fecha_partido || null,
+        hora: p.hora_partido || null,
+        cancha: p.cancha || null,
+        jornada: normalizarEntero(p.jornada),
+        estado: p.estado || "pendiente",
+        es_local: esLocal,
+        rival: esLocal ? { id: Number(p.visitante_id), nombre: p.visitante_nombre, logo_url: p.visitante_logo } : { id: Number(p.local_id), nombre: p.local_nombre, logo_url: p.local_logo },
+        goles_favor: gf,
+        goles_contra: gc,
+        resultado,
+        evento_nombre: p.evento_nombre,
+        campeonato_nombre: p.campeonato_nombre,
+      };
+    }),
+  };
+}
+
+async function obtenerJugadorPublico(jugadorId) {
+  const jR = await pool.query(
+    `SELECT j.id, j.nombre, j.apellido, j.cedidentidad, j.posicion,
+            j.numero_camiseta, j.es_capitan, j.fecha_nacimiento,
+            j.foto_carnet_recorte_url, j.evento_id,
+            eq.id AS equipo_id, eq.nombre AS equipo_nombre, eq.logo_url AS equipo_logo,
+            eq.color_primario, eq.color_secundario,
+            c.id AS campeonato_id, c.nombre AS campeonato_nombre
+     FROM jugadores j
+     JOIN equipos eq ON eq.id = j.equipo_id
+     JOIN campeonatos c ON c.id = eq.campeonato_id
+     WHERE j.id = $1`,
+    [jugadorId]
+  );
+  if (!jR.rows.length) return null;
+  const j = jR.rows[0];
+
+  // Estadísticas del jugador
+  const stR = await pool.query(
+    `SELECT
+       COALESCE(SUM(g.goles),0)::int AS total_goles,
+       COUNT(DISTINCT g.partido_id)::int AS partidos_con_gol
+     FROM goleadores g WHERE g.jugador_id = $1`,
+    [jugadorId]
+  );
+  const tR = await pool.query(
+    `SELECT
+       COUNT(*) FILTER (WHERE tipo_tarjeta = 'amarilla')::int AS amarillas,
+       COUNT(*) FILTER (WHERE tipo_tarjeta IN ('roja','roja_directa','doble_amarilla'))::int AS rojas
+     FROM tarjetas WHERE jugador_id = $1`,
+    [jugadorId]
+  );
+
+  const st = stR.rows[0] || {};
+  const ta = tR.rows[0] || {};
+
+  return {
+    id: Number(j.id),
+    nombre: j.nombre,
+    apellido: j.apellido,
+    nombre_completo: `${j.apellido} ${j.nombre}`.trim(),
+    posicion: j.posicion || null,
+    numero_camiseta: normalizarEntero(j.numero_camiseta),
+    es_capitan: j.es_capitan === true,
+    fecha_nacimiento: j.fecha_nacimiento || null,
+    foto_url: j.foto_carnet_recorte_url || null,
+    equipo: {
+      id: Number(j.equipo_id),
+      nombre: j.equipo_nombre,
+      logo_url: j.equipo_logo || null,
+      color_primario: j.color_primario || null,
+      color_secundario: j.color_secundario || null,
+    },
+    campeonato: { id: Number(j.campeonato_id), nombre: j.campeonato_nombre },
+    estadisticas: {
+      goles: st.total_goles || 0,
+      partidos_con_gol: st.partidos_con_gol || 0,
+      tarjetas_amarillas: ta.amarillas || 0,
+      tarjetas_rojas: ta.rojas || 0,
+    },
+  };
+}
+
+async function listarParticipacionesPublicasJugador(jugadorId) {
+  const jR = await pool.query(`SELECT id FROM jugadores WHERE id = $1`, [jugadorId]);
+  if (!jR.rows.length) return null;
+
+  // Partidos donde aparece en goleadores o tarjetas
+  const pR = await pool.query(
+    `SELECT DISTINCT p.id, p.fecha_partido, p.hora_partido, p.jornada, p.estado, p.cancha,
+            p.resultado_local, p.resultado_visitante, p.equipo_local_id, p.equipo_visitante_id,
+            el.nombre AS local_nombre, el.logo_url AS local_logo,
+            ev.nombre AS visitante_nombre, ev.logo_url AS visitante_logo,
+            evo.nombre AS evento_nombre, c.nombre AS campeonato_nombre
+     FROM partidos p
+     JOIN equipos el ON el.id = p.equipo_local_id
+     JOIN equipos ev ON ev.id = p.equipo_visitante_id
+     JOIN eventos evo ON evo.id = p.evento_id
+     JOIN campeonatos c ON c.id = p.campeonato_id
+     WHERE p.id IN (
+       SELECT partido_id FROM goleadores WHERE jugador_id = $1
+       UNION
+       SELECT partido_id FROM tarjetas WHERE jugador_id = $1
+     )
+     ORDER BY p.fecha_partido DESC NULLS LAST, p.id DESC`,
+    [jugadorId]
+  );
+
+  // Goles por partido
+  const gR = await pool.query(
+    `SELECT partido_id, SUM(goles)::int AS goles, MIN(minuto) AS minuto_primer_gol
+     FROM goleadores WHERE jugador_id = $1 GROUP BY partido_id`,
+    [jugadorId]
+  );
+  const golesMap = new Map(gR.rows.map((r) => [Number(r.partido_id), { goles: r.goles, minuto: r.minuto_primer_gol }]));
+
+  // Tarjetas por partido
+  const tR = await pool.query(
+    `SELECT partido_id,
+       COUNT(*) FILTER (WHERE tipo_tarjeta = 'amarilla')::int AS amarillas,
+       COUNT(*) FILTER (WHERE tipo_tarjeta IN ('roja','roja_directa','doble_amarilla'))::int AS rojas
+     FROM tarjetas WHERE jugador_id = $1 GROUP BY partido_id`,
+    [jugadorId]
+  );
+  const tarjetasMap = new Map(tR.rows.map((r) => [Number(r.partido_id), { amarillas: r.amarillas, rojas: r.rojas }]));
+
+  return {
+    total: pR.rows.length,
+    partidos: pR.rows.map((p) => ({
+      id: Number(p.id),
+      fecha: p.fecha_partido || null,
+      jornada: normalizarEntero(p.jornada),
+      estado: p.estado || "pendiente",
+      cancha: p.cancha || null,
+      local: { nombre: p.local_nombre, logo_url: p.local_logo || null },
+      visitante: { nombre: p.visitante_nombre, logo_url: p.visitante_logo || null },
+      resultado_local: normalizarEntero(p.resultado_local),
+      resultado_visitante: normalizarEntero(p.resultado_visitante),
+      evento_nombre: p.evento_nombre,
+      campeonato_nombre: p.campeonato_nombre,
+      goles: golesMap.get(Number(p.id))?.goles || 0,
+      tarjetas_amarillas: tarjetasMap.get(Number(p.id))?.amarillas || 0,
+      tarjetas_rojas: tarjetasMap.get(Number(p.id))?.rojas || 0,
+    })),
+  };
+}
+
 module.exports = {
   listarCampeonatosPublicos,
   obtenerCampeonatoPublico,
@@ -608,4 +1008,10 @@ module.exports = {
   obtenerFairPlayPublicoPorEvento,
   listarAuspiciantesPublicosPorCampeonato,
   listarMediaPublicaPorCampeonato,
+  listarEquiposPublicosPorEvento,
+  obtenerEquipoPublico,
+  listarJugadoresPublicosPorEquipo,
+  listarPartidosPublicosPorEquipo,
+  obtenerJugadorPublico,
+  listarParticipacionesPublicasJugador,
 };

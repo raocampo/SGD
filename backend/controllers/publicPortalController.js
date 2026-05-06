@@ -245,6 +245,87 @@ const publicPortalController = {
       });
     }
   },
+  // ─── EQUIPOS Y JUGADORES PÚBLICOS ──────────────────────────────────────────
+
+  async listarEquiposPorEvento(req, res) {
+    try {
+      const eventoId = Number.parseInt(req.params.evento_id, 10);
+      if (!Number.isFinite(eventoId)) return res.status(400).json({ error: "evento_id invalido" });
+      const payload = await publicPortalService.listarEquiposPublicosPorEvento(eventoId);
+      if (!payload) return res.status(404).json({ error: "Evento no encontrado" });
+      return res.json({ ok: true, ...payload });
+    } catch (error) {
+      console.error("Error listando equipos públicos:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  },
+
+  async obtenerEquipo(req, res) {
+    try {
+      const equipoId = Number.parseInt(req.params.equipo_id, 10);
+      if (!Number.isFinite(equipoId)) return res.status(400).json({ error: "equipo_id invalido" });
+      const payload = await publicPortalService.obtenerEquipoPublico(equipoId);
+      if (!payload) return res.status(404).json({ error: "Equipo no encontrado" });
+      return res.json({ ok: true, equipo: payload });
+    } catch (error) {
+      console.error("Error obteniendo equipo público:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  },
+
+  async listarJugadoresPorEquipo(req, res) {
+    try {
+      const equipoId = Number.parseInt(req.params.equipo_id, 10);
+      if (!Number.isFinite(equipoId)) return res.status(400).json({ error: "equipo_id invalido" });
+      const eventoId = req.query.evento_id ? Number.parseInt(req.query.evento_id, 10) : null;
+      const payload = await publicPortalService.listarJugadoresPublicosPorEquipo(equipoId, eventoId || null);
+      if (!payload) return res.status(404).json({ error: "Equipo no encontrado" });
+      return res.json({ ok: true, ...payload });
+    } catch (error) {
+      console.error("Error listando jugadores públicos:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  },
+
+  async listarPartidosPorEquipo(req, res) {
+    try {
+      const equipoId = Number.parseInt(req.params.equipo_id, 10);
+      if (!Number.isFinite(equipoId)) return res.status(400).json({ error: "equipo_id invalido" });
+      const eventoId = req.query.evento_id ? Number.parseInt(req.query.evento_id, 10) : null;
+      const payload = await publicPortalService.listarPartidosPublicosPorEquipo(equipoId, eventoId || null);
+      if (!payload) return res.status(404).json({ error: "Equipo no encontrado" });
+      return res.json({ ok: true, ...payload });
+    } catch (error) {
+      console.error("Error listando partidos del equipo:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  },
+
+  async obtenerJugador(req, res) {
+    try {
+      const jugadorId = Number.parseInt(req.params.jugador_id, 10);
+      if (!Number.isFinite(jugadorId)) return res.status(400).json({ error: "jugador_id invalido" });
+      const payload = await publicPortalService.obtenerJugadorPublico(jugadorId);
+      if (!payload) return res.status(404).json({ error: "Jugador no encontrado" });
+      return res.json({ ok: true, jugador: payload });
+    } catch (error) {
+      console.error("Error obteniendo jugador público:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  },
+
+  async listarParticipacionesJugador(req, res) {
+    try {
+      const jugadorId = Number.parseInt(req.params.jugador_id, 10);
+      if (!Number.isFinite(jugadorId)) return res.status(400).json({ error: "jugador_id invalido" });
+      const payload = await publicPortalService.listarParticipacionesPublicasJugador(jugadorId);
+      if (!payload) return res.status(404).json({ error: "Jugador no encontrado" });
+      return res.json({ ok: true, ...payload });
+    } catch (error) {
+      console.error("Error listando participaciones del jugador:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  },
 };
 
 module.exports = publicPortalController;
