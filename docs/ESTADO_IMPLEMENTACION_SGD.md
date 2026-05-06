@@ -1,3 +1,30 @@
+## 2026-05-05/06 — Sesión actual: Portal público — perfiles de equipo y jugador
+
+### Commits de esta sesión
+- **7fbf1a7** — `feat: páginas públicas de equipo y jugador con API REST` — 6 endpoints `/api/public/`, `equipo-publico.html`, `jugador-publico.html`.
+- **e2c3d05** — `feat: tab Equipos en portal con carga lazy` — `portal.js` agrega subtab "Equipos" por categoría con fetch lazy.
+
+### Nuevas rutas API (sin auth, read-only)
+| Ruta | Descripción |
+|---|---|
+| `GET /api/public/eventos/:id/equipos` | Equipos inscritos en evento con stats básicas |
+| `GET /api/public/equipos/:id` | Perfil completo del equipo + estadísticas globales |
+| `GET /api/public/equipos/:id/jugadores` | Nómina del equipo con goles/tarjetas |
+| `GET /api/public/equipos/:id/partidos` | Partidos del equipo con resultado V/D/E |
+| `GET /api/public/jugadores/:id` | Ficha del jugador + estadísticas |
+| `GET /api/public/jugadores/:id/participaciones` | Partidos donde el jugador tiene goles o tarjetas |
+
+### Nuevas páginas frontend
+| Archivo | URL | Descripción |
+|---|---|---|
+| `equipo-publico.html` | `?id=X&evento=Y&back=URL` | Tabs: Jugadores / Partidos / Información |
+| `jugador-publico.html` | `?id=X&back=URL` | Tabs: Partidos / Ficha |
+
+### Limitación conocida y documentada
+El sistema **no registra titularidad ni suplencia**. Para implementarlo se necesita una nueva tabla `planilla_jugadores(partido_id, jugador_id, rol)`. Mientras tanto, el historial del jugador muestra solo los partidos donde hubo goles o tarjetas a su nombre.
+
+---
+
 ## 2026-05-04 — Sesión actual: Facturación Fase 1 + commit Transmisiones
 
 ### Commits de esta sesión

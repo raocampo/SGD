@@ -1,3 +1,64 @@
+## 2026-05-05/06 — Portal público: perfiles de equipo y jugador
+
+### Objetivo
+
+Mostrar en la landing del organizador (y en el portal general) los equipos inscritos en cada campeonato, con páginas de perfil para equipo y jugador: nómina, partidos, estadísticas, tarjetas.
+
+### Implementación aplicada
+
+**Backend — `backend/services/publicPortalService.js`:**
+6 nuevas funciones exportadas:
+- `listarEquiposPublicosPorEvento(eventoId)` — equipos con totales (jugadores, PJ, GF, GC).
+- `obtenerEquipoPublico(equipoId)` — perfil de equipo + eventos + estadísticas globales (PJ/PG/PE/PP/GF/GC).
+- `listarJugadoresPublicosPorEquipo(equipoId, eventoId?)` — nómina con goles y tarjetas.
+- `listarPartidosPublicosPorEquipo(equipoId, eventoId?)` — partidos del equipo con resultado V/D/E y datos del rival.
+- `obtenerJugadorPublico(jugadorId)` — ficha de jugador con equipo, campeonato y estadísticas.
+- `listarParticipacionesPublicasJugador(jugadorId)` — partidos donde el jugador registró goles o tarjetas.
+
+**Backend — `backend/controllers/publicPortalController.js`:**
+6 nuevos controladores correspondientes.
+
+**Backend — `backend/routes/publicRoutes.js`:**
+6 nuevas rutas GET:
+- `GET /api/public/eventos/:evento_id/equipos`
+- `GET /api/public/equipos/:equipo_id`
+- `GET /api/public/equipos/:equipo_id/jugadores`
+- `GET /api/public/equipos/:equipo_id/partidos`
+- `GET /api/public/jugadores/:jugador_id`
+- `GET /api/public/jugadores/:jugador_id/participaciones`
+
+**Frontend — `frontend/equipo-publico.html`** (nuevo):
+- URL: `equipo-publico.html?id=EQUIPO_ID&evento=EVENTO_ID&back=URL`
+- Hero con logo, colores del equipo, chip de campeonato, nombre, DT y strip de stats (PJ/PG/PE/PP/GF/GC).
+- Tab **Jugadores**: grid de tarjetas con foto/avatar, número, nombre, posición, badges (Capitán, goles, amarillas, rojas). Cada tarjeta enlaza a `jugador-publico.html`.
+- Tab **Partidos**: lista con fecha, resultado (V/D/E coloreado), rival, estado badge.
+- Tab **Información**: tabla clave/valor con DT, staff, contacto, campeonato.
+
+**Frontend — `frontend/jugador-publico.html`** (nuevo):
+- URL: `jugador-publico.html?id=JUGADOR_ID&back=URL`
+- Hero con foto circular, número badge, colores del equipo, chip con enlace al equipo, nombre y posición.
+- Strip de stats: Goles, Partidos, Amarillas, Rojas.
+- Tab **Partidos**: historial de partidos donde registró goles o tarjetas, con fecha, jornada, resultado, contribuciones por partido.
+- Tab **Ficha**: tabla con datos personales, edad calculada, vínculos a equipo y campeonato.
+- Nota informativa: "El sistema aún no lleva registro de titularidad o suplencia."
+
+**Frontend — `frontend/js/portal.js`:**
+- Nuevo subtab **Equipos** en cada categoría de evento (carga lazy al hacer clic).
+- Función `cargarEquiposTabPortal(eventoId, container)` que fetcha y renderiza grilla de equipos.
+- Cada tarjeta de equipo enlaza a `equipo-publico.html` con parámetro `back=` para regreso limpio.
+
+### Limitación documentada
+
+El sistema **no registra titularidad ni suplencia** en partidos. Solo se pueden mostrar partidos donde el jugador tiene goles (`goleadores` table) o tarjetas (`tarjetas` table). Para implementar titular/suplente se necesitará una nueva tabla `planilla_jugadores (partido_id, jugador_id, rol)`.
+
+### Commits
+| Hash | Descripción |
+|---|---|
+| `7fbf1a7` | feat: páginas públicas de equipo y jugador con API REST |
+| `e2c3d05` | feat: tab Equipos en portal con carga lazy y enlace a ficha pública |
+
+---
+
 ## 2026-05-04 — Módulo de Facturación: Fase 1
 
 ### Objetivo
