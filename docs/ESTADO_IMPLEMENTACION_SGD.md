@@ -25,6 +25,44 @@ El sistema **no registra titularidad ni suplencia**. Para implementarlo se neces
 
 ---
 
+## Pendientes para continuar — (al 2026-05-06)
+
+### 🔴 Prioridad inmediata
+
+| # | Tarea | Archivo(s) clave |
+|---|---|---|
+| 1 | **Probar tab "Equipos" en Render** con datos reales — verificar que las 6 rutas `/api/public/` responden OK y que `equipo-publico.html` + `jugador-publico.html` cargan correctamente | `ltyc.onrender.com` |
+| 2 | **Probar WebRTC en Render** — ingresar como organizador, crear transmisión, compartir URL viewer con otro dispositivo y confirmar que el stream llega | `broadcast.html`, `viewer.html` |
+
+### 🟡 Próximos features (orden sugerido)
+
+| # | Tarea | Detalle |
+|---|---|---|
+| 3 | **Titularidad / suplencia en partidos** | Nueva tabla `planilla_jugadores(partido_id, jugador_id, rol, minuto_entrada, minuto_salida)`. UI en `planilla.html`. Mostrar en `jugador-publico.html` tab Partidos como Titular/Suplente. |
+| 4 | **Facturación Fase 2 — integración finanzas** | Botón "Emitir doc." en `finanzas.html → Estado de cuenta equipo`. Tabla `documentos_pagos(documento_id, movimiento_id)` en `Facturacion.js`. |
+| 5 | **Facturación Fase 3 — PDF profesional** | Reemplazar `window.print()` en `facturacion.html` por generación `jsPDF` descargable (logo emisor, tabla ítems, totales, QR visual). |
+| 6 | **TURN server para WebRTC** | Agregar servidor TURN (Metered.ca free tier) en `broadcast.html` + `viewer.html` para redes con NAT simétrico (colegios, canchas con WiFi corporativo). |
+| 7 | **Botones compartir en viewer.html** | Igual que en `director.html`: WhatsApp, Facebook, Copiar link — para que espectadores compartan el stream. |
+| 8 | **Equipos en landing del organizador (`index.html`)** | Agregar sección visual de equipos inscritos por campeonato en la landing pública `index.html?organizador=ID`, con cards clicables a `equipo-publico.html`. |
+
+### 🟢 Futuro / Roadmap
+
+| # | Tarea | Detalle |
+|---|---|---|
+| 9 | **Facturación Fase 4 — SRI electrónico** | XML según XSD del SRI Ecuador, firma `.p12`, RIDE. Requiere certificado digital del cliente. |
+| 10 | **Activación automática por pago (Fase B)** | PayPhone webhook + PayPal capture → activar cuenta automáticamente. |
+| 11 | **App móvil** | React Native o PWA para Play Store / App Store. |
+| 12 | **Reporte ejecutivo financiero** | Histórico/comparativo por periodos en `finanzas.html`. |
+
+### Notas técnicas para retomar
+
+- Las rutas públicas de equipos/jugadores ya están en producción (Render). No requieren auth ni CORS adicional — usan el prefijo `/api/public/` que ya estaba en la lista blanca.
+- `equipo-publico.html` y `jugador-publico.html` usan `back=` en URL para navegación de regreso limpia entre páginas.
+- La última migración numerada conocida es la **065** (Transmisiones). La siguiente que se cree debe ser **066** en adelante.
+- `js/core.js` exporta `window.resolveBackendBaseUrl()` y `window.resolveApiBaseUrl()` — usar siempre estos en páginas nuevas para que funcione tanto en local como en Render.
+
+---
+
 ## 2026-05-04 — Sesión actual: Facturación Fase 1 + commit Transmisiones
 
 ### Commits de esta sesión
