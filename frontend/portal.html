@@ -25,7 +25,7 @@
         <span>LT&C</span>
         <span class="ltc-header-brand-sub">Portal público</span>
       </a>
-      <button class="ltc-nav-toggle" id="ltc-nav-toggle" aria-label="Abrir menu">
+      <button class="ltc-nav-toggle" id="ltc-nav-toggle" aria-label="Abrir menu" aria-expanded="false">
         <i class="fas fa-bars"></i>
       </button>
       <nav class="ltc-header-nav" id="ltc-nav">
@@ -95,10 +95,18 @@
     document.addEventListener("DOMContentLoaded", () => {
       const toggle = document.getElementById("ltc-nav-toggle");
       const nav = document.getElementById("ltc-nav");
-      if (toggle && nav) {
-        toggle.addEventListener("click", () => nav.classList.toggle("open"));
+      if (toggle && nav && toggle.dataset.bound !== "true") {
+        toggle.dataset.bound = "true";
+        toggle.setAttribute("aria-expanded", nav.classList.contains("open") ? "true" : "false");
+        toggle.addEventListener("click", () => {
+          const opened = nav.classList.toggle("open");
+          toggle.setAttribute("aria-expanded", opened ? "true" : "false");
+        });
         nav.querySelectorAll("a").forEach((lnk) =>
-          lnk.addEventListener("click", () => nav.classList.remove("open"))
+          lnk.addEventListener("click", () => {
+            nav.classList.remove("open");
+            toggle.setAttribute("aria-expanded", "false");
+          })
         );
       }
     });

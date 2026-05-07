@@ -19,9 +19,17 @@
   function setupNav() {
     const toggle = document.getElementById('ltc-nav-toggle');
     const nav = document.getElementById('ltc-nav');
-    if (!toggle || !nav) return;
-    toggle.addEventListener('click', () => nav.classList.toggle('open'));
-    nav.querySelectorAll('a').forEach((lnk) => lnk.addEventListener('click', () => nav.classList.remove('open')));
+    if (!toggle || !nav || toggle.dataset.bound === 'true') return;
+    toggle.dataset.bound = 'true';
+    toggle.setAttribute('aria-expanded', nav.classList.contains('open') ? 'true' : 'false');
+    toggle.addEventListener('click', () => {
+      const opened = nav.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', opened ? 'true' : 'false');
+    });
+    nav.querySelectorAll('a').forEach((lnk) => lnk.addEventListener('click', () => {
+      nav.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+    }));
   }
 
   function formatPrice(value, suffix) {

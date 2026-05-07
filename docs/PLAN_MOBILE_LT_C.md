@@ -1,6 +1,6 @@
 # Plan Mobile App - LT&C (Loja Torneos & Competencias)
 
-Ultima actualizacion: 2026-02-24
+Ultima actualizacion: 2026-05-07
 
 ## 1. Objetivo
 Construir una app movil de LT&C publicable en tiendas oficiales:
@@ -133,6 +133,10 @@ Entregable:
 ## 9. Estado del plan
 - Documento creado: Si.
 - Implementacion iniciada: Si (fase 1 base responsive web iniciada en esta sesion).
+- Estado actualizado 2026-05-07: el responsive web/mobile queda como pendiente prioritario operativo. Falta auditoria pantalla por pantalla en móvil real y cierre visual/funcional de módulos internos, no solo landing pública.
+- Avance 2026-05-07: primer bloque web responsive público aplicado en `index.html`, `torneos.html`, `portal.html`, `planes.html`, `equipo-publico.html` y `jugador-publico.html`; menú público reutilizable en `core.js`, fichas públicas compactas y tablas/selectores del portal con scroll táctil.
+- Avance 2026-05-07: segundo bloque web responsive interno aplicado en `style.css` y `core.js`; cubre layout `app-layout`, topbar, acciones, tabs, grids, tablas, modales y páginas internas de operación (`portal-admin`, `campeonatos`, `equipos`, `jugadores`, `partidos`, `tablas`, `facturacion`, `transmisiones`).
+- Avance 2026-05-07: tercer bloque responsive de cierre aplicado para `planilla`, `finanzas`, `gruposgen`, `sorteo`, `pases`, `eventos`, `usuarios` y `eliminatorias`; queda pendiente QA visual con datos reales.
 
 ## 10. Avance ejecutado (2026-02-24)
 - Fase 1 iniciada sobre frontend web actual (base compartida):
@@ -148,3 +152,46 @@ Entregable:
 - Proximo bloque recomendado:
   - validacion funcional visual en `390x844` y `768x1024`,
   - cierre responsive de `grupos`, `eliminatorias` y `pases` para mantener consistencia completa de operacion mobile.
+
+## 11. Avance ejecutado (2026-05-07 — bloque interno operativo)
+- Se agrega una capa responsive comun en `frontend/css/style.css` para pantallas internas:
+  - `top-bar` sticky y compacta,
+  - contenido `main` con paddings moviles,
+  - tarjetas/config-cards sin desborde,
+  - grillas y formularios a 1 columna en movil,
+  - tabs horizontales con scroll tactil,
+  - tablas internas con scroll horizontal contenido,
+  - acciones y botones a ancho completo en `<=560px`,
+  - modales de facturacion adaptados a viewport movil.
+- Se consolida el binding del sidebar interno:
+  - `core.js` marca `nav-toggle` con `data-mobile-menu-bound`,
+  - `facturacion.html`, `transmisiones.js` y `tablasplantilla.js` quedan alineados a `sidebar.nav-open`.
+- Verificacion aplicada:
+  - `node --check frontend/js/core.js frontend/js/transmisiones.js frontend/js/tablasplantilla.js`,
+  - `npm run smoke:frontend` desde `backend/` con `39/39` checks OK.
+- Proximo bloque recomendado:
+  - abrir QA visual con navegador/devtools en `390x844` y `768x1024`,
+  - corregir ajustes puntuales de pantallas con datos reales,
+  - revisar luego `grupos`, `eliminatorias`, `pases`, `sorteo` y `usuarios` como cierre del circuito operativo completo.
+
+## 12. Avance ejecutado (2026-05-07 — cierre responsive operativo)
+- Se refuerza `core.js` para que el menu lateral interno sincronice `aria-expanded` / `aria-controls` y mantenga un solo binding por boton.
+- Se agrega bloque `Mobile QA` en `style.css`:
+  - planilla con captura y vista previa scrolleable,
+  - finanzas con formularios largos a 1 columna y acciones compactas,
+  - sorteo con ruleta escalable y paneles apilados,
+  - eliminatorias con tabs/seed/manual/resumen protegidos contra desborde,
+  - pases/eventos/usuarios con tablas contenidas y botones tactiles.
+- Se agrega cierre responsive en `grupos.css`:
+  - acciones de grupos a ancho completo en movil,
+  - poster con textos largos contenidos,
+  - modo liga a 1 columna,
+  - playoff embebido con altura movil.
+- Verificacion aplicada:
+  - `node --check frontend/js/core.js frontend/js/transmisiones.js frontend/js/tablasplantilla.js`,
+  - `npm run smoke:frontend` desde `backend/` con `39/39` checks OK,
+  - paginas internas cubiertas responden `200` desde `http://localhost:5000/`.
+- Proximo bloque recomendado:
+  - QA visual manual con datos reales y viewport `390x844` / `768x1024`,
+  - tomar capturas de pantallas criticas,
+  - convertir tablas mas complejas a vista card mobile si el cliente confirma que el scroll horizontal no es suficiente.

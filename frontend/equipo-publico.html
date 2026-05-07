@@ -63,6 +63,71 @@
     .ep-estado-programado { background: #dbeafe; color: #1e40af; }
     .ltc-section-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
     .ep-empty { text-align: center; padding: 2rem; color: #94a3b8; font-size: .9rem; }
+
+    @media (max-width: 700px) {
+      .ep-hero { padding: 1.3rem 0 1.5rem; }
+      .ep-hero-inner { align-items: flex-start; gap: .9rem; }
+      .ep-logo,
+      .ep-logo-placeholder { width: 70px; height: 70px; }
+      .ep-campeonato-chip {
+        max-width: 100%;
+        white-space: normal;
+        line-height: 1.25;
+        letter-spacing: .04em;
+      }
+      .ep-nombre { font-size: clamp(1.55rem, 10vw, 2.35rem); overflow-wrap: anywhere; }
+      .ep-stats-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .45rem;
+      }
+      .ep-stat { min-width: 0; padding: .46rem .35rem; border-radius: 9px; }
+      .ep-stat-val { font-size: 1.2rem; }
+      .ep-stat-lbl { font-size: .58rem; letter-spacing: .04em; }
+      .ep-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        margin-top: 1rem;
+        padding-bottom: .45rem;
+        -webkit-overflow-scrolling: touch;
+      }
+      .ep-tab { flex: 0 0 auto; min-height: 40px; padding: .52rem .85rem; border-radius: 999px; }
+      .ep-jugadores-grid { grid-template-columns: 1fr; gap: .55rem; }
+      .ep-jugador-card { gap: .62rem; padding: .68rem; }
+      .ep-jugador-foto,
+      .ep-jugador-avatar { width: 46px; height: 46px; }
+      .ep-jugador-num { width: 26px; height: 26px; }
+      .ep-partido-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: .4rem .6rem;
+        padding: .75rem .25rem;
+      }
+      .ep-partido-fecha {
+        min-width: 0;
+        grid-column: 1 / -1;
+      }
+      .ep-partido-equipos {
+        min-width: 0;
+        flex-wrap: wrap;
+        line-height: 1.35;
+      }
+      .ep-partido-resultado { min-width: 44px; text-align: right; }
+      .ep-estado-badge { justify-self: end; }
+      .ltc-section-card { padding: .85rem; border-radius: 10px; }
+      #ep-info-table td {
+        display: block;
+        width: 100% !important;
+        white-space: normal !important;
+        padding: .42rem .25rem !important;
+      }
+      #ep-info-table tr { display: block; padding: .35rem 0; border-bottom: 1px solid #f1f5f9; }
+    }
+
+    @media (max-width: 390px) {
+      .ep-stats-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
   </style>
 </head>
 <body class="ltc-landing">
@@ -72,7 +137,11 @@
       <a class="ltc-header-brand" href="index.html">
         <img src="assets/ltc/Logo.jpeg" alt="LT&C" />
         <span>LT&C</span>
+        <span class="ltc-header-brand-sub">Equipo</span>
       </a>
+      <button class="ltc-nav-toggle" id="ltc-nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+        <i class="fas fa-bars"></i>
+      </button>
       <nav class="ltc-header-nav" id="ltc-nav">
         <a href="index.html#torneos">Torneos</a>
         <a href="portal.html">Portal</a>

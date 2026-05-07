@@ -586,32 +586,22 @@
 .tblp-rank-3 { background: #d97706; color: #fff; }
 .tblp-rank-n { background: var(--p-badge-bg); color: var(--p-badge-color); opacity: .8; }
 
-/* ── Imagen de cancha / estadio ───────────────────────────────────────────── */
+/* ── Auspiciantes del poster ──────────────────────────────────────────────── */
 .tblp-field-area {
   margin-top: clamp(.6rem, 1.2vw, 1rem);
-  height: clamp(160px, 20vw, 260px);
-  background: linear-gradient(180deg, #1a6b1a 0%, #0d4a0d 100%);
+  min-height: clamp(76px, 9vw, 112px);
+  background: transparent;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.tblp-field-img {
-  width: 100%;
-  height: 135%;
-  object-fit: cover;
-  object-position: center 55%;
-  display: block;
-  opacity: 0.65;
-  transform: perspective(700px) rotateX(12deg) scale(1.04);
-  transform-origin: bottom center;
-}
-
-/* ── Footer (auspiciantes) — overlay sobre la imagen de cancha ────────────── */
+/* ── Footer (auspiciantes) centrado, sin imagen de cancha ─────────────────── */
 .tblp-poster-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: static;
+  width: 100%;
   background: var(--p-sponsors-bg, rgba(88,28,135,.85));
   padding: clamp(.45rem, 1vw, .75rem) clamp(.9rem, 2vw, 1.5rem);
   display: flex;
@@ -619,6 +609,8 @@
   justify-content: center;
   gap: 1rem;
   flex-wrap: wrap;
+  border-radius: 16px;
+  text-align: center;
 }
 
 .tblp-footer-label {
@@ -683,5 +675,5 @@
   .tblp-poster-header { grid-template-columns: auto 1fr; }
   .tblp-year { display: none; }
   .tblp-equipo-nombre { max-width: 130px; }
-  .tblp-field-area { height: 130px; }
+  .tblp-field-area { min-height: 88px; }
 }

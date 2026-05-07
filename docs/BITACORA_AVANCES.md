@@ -1,3 +1,76 @@
+## 2026-05-07 — Portal público: fix Equipos, landing organizador y responsive pendiente
+
+### Bloque mobile aplicado — cierre operativo restante
+
+- `frontend/js/core.js`: el menú lateral interno ahora sincroniza `aria-expanded` y `aria-controls`, además de mantener el guard `data-mobile-menu-bound`.
+- `frontend/css/style.css`: se agrega bloque **Mobile QA** para `planilla`, `finanzas`, `sorteo`, `eliminatorias`, `pases`, `eventos` y `usuarios`: tablas con scroll táctil, formularios largos a 1 columna, botones full-width en `<=560px`, ruleta escalable, acciones financieras compactas y planilla con captura scrolleable.
+- `frontend/css/grupos.css`: se cierra responsive de `gruposgen.html`: acciones, selector de tema, poster, liga, nombres largos, controles de playoff e iframe embebido.
+- Verificación HTTP local: `planilla.html`, `finanzas.html`, `gruposgen.html`, `sorteo.html`, `pases.html`, `eventos.html`, `usuarios.html` y `eliminatorias.html` responden `200` desde `http://localhost:5000/`.
+
+Pendiente del cierre:
+- QA visual con datos reales en 390x844 y 768x1024. El objetivo ya no es corregir estructura base, sino ajustes finos por contenido real: columnas imprescindibles, nombres largos, botones muy densos y postales exportables.
+
+### Bloque mobile aplicado — pantallas internas de operación
+
+- `frontend/css/style.css`: se agrega una capa responsive común para páginas internas `app-layout` en `<=900px` y `<=560px`: topbar sticky compacta, padding táctil, tarjetas sin desborde, grillas a 1/2 columnas, tabs con scroll horizontal, tablas con scroll táctil y botones de acción a ancho completo en móvil pequeño.
+- Se cubren patrones usados por `portal-admin`, `campeonatos`, `equipos`, `jugadores`, `partidos`, `tablas`, `facturacion` y `transmisiones`.
+- `frontend/js/core.js`: el menú lateral interno ahora marca el botón con `data-mobile-menu-bound` para evitar doble binding.
+- `frontend/facturacion.html`, `frontend/js/transmisiones.js` y `frontend/js/tablasplantilla.js`: se elimina el fallback práctico a `sidebar.open` y se alinea con `sidebar.nav-open`, respetando el binding global.
+- Verificación: `node --check` OK para `core.js`, `transmisiones.js` y `tablasplantilla.js`; `npm run smoke:frontend` desde `backend/` queda en `39/39` checks OK.
+
+Pendiente del bloque interno:
+- Validación visual real en 390x844 y 768x1024, especialmente modales largos de `facturacion`, tablas anchas de `transmisiones/tablas` y poster exportable de `partidos`.
+
+### Bloque mobile aplicado — portal público y fichas públicas
+
+- `frontend/js/core.js`: nuevo inicializador reusable para el menú público (`ltc-nav-toggle` + `ltc-nav`), evitando que cada página tenga que duplicar lógica.
+- `frontend/js/public-pricing.js` y `frontend/portal.html`: protegidos contra doble binding del menú móvil.
+- `frontend/index.html`, `frontend/torneos.html`, `frontend/portal.html`, `frontend/planes.html`: botón de menú público con `aria-expanded`.
+- `frontend/equipo-publico.html`: se agrega menú móvil y media queries para hero, estadísticas, tabs, nómina, partidos e información en pantallas pequeñas.
+- `frontend/jugador-publico.html`: se agrega menú móvil y media queries para hero, estadísticas, tabs, participaciones y ficha.
+- `frontend/css/portal.css`: ajustes mobile para contenedores públicos, header, cards de torneo, detalle de campeonato, tablas con scroll táctil y selector de jornadas.
+
+Pendiente del bloque mobile:
+- Validación visual real en 390x844 y 768x1024 después del despliegue.
+- Continuar con pantallas internas de operación: `portal-admin`, `campeonatos`, `equipos`, `jugadores`, `partidos`, `planilla`, `tablas`, `finanzas`, `facturacion` y `transmisiones`.
+
+### Fix adicional — Ver todos los torneos
+
+- Problema: el botón **Ver todos los torneos** abría `torneos.html`, pero el guard global la trataba como página privada y redirigía a `login.html`.
+- Causa: `torneos.html` no estaba incluida en `PUBLIC_PAGES` dentro de `frontend/js/core.js`.
+- Solución: se agrega `torneos.html` al set de páginas públicas y se añade smoke `anon-public-torneos` en `backend/scripts/smokeFrontendRoleGuards.js`.
+- Verificación: `npm run smoke:frontend` queda en `39/39` checks OK.
+
+### Contexto
+
+Se revisó captura de producción en `ltyc.onrender.com/portal.html`: el tab **Equipos** devolvía `500` en `/api/public/eventos/19/equipos`.
+
+### Implementación aplicada
+
+**Backend — `backend/services/publicPortalService.js`:**
+- Se corrige la consulta pública de equipos: la BD real usa `equipos.cabeza_serie`, no `equipos.es_cabeza_serie`.
+- Se mantiene la propiedad pública `es_cabeza_serie` en la respuesta para compatibilidad frontend.
+- Se separa el cálculo de jugadores y estadísticas de partidos para evitar duplicar goles/PJ por el join con la nómina.
+
+**Landing organizador — `backend/controllers/authController.js` + `frontend/js/portal.js`:**
+- `equipos_participantes` ahora incluye `evento_id`, `evento_nombre` y `total_jugadores`.
+- Las tarjetas de equipos en `index.html?organizador=ID` enlazan a `equipo-publico.html?id=EQUIPO_ID&evento=EVENTO_ID`.
+
+**Postales de tablas — `frontend/tablasplantilla.html` + `frontend/css/tablasplantilla.css`:**
+- Se elimina la imagen de cancha/perspectiva del poster.
+- La franja inferior queda dedicada solo a auspiciantes centrados.
+
+**Responsive web/mobile:**
+- Queda registrado como pendiente prioritario real. Falta auditoría visual y cierre por módulos en móviles, especialmente para pantallas internas de operación.
+
+### Pendientes inmediatos
+
+- Desplegar en Render y validar que `/api/public/eventos/19/equipos` responda `200`.
+- Probar en móvil real `portal.html`, `index.html?organizador=ID`, `equipo-publico.html` y `jugador-publico.html`.
+- Abrir bloque de trabajo específico para responsive web/mobile por módulos.
+
+---
+
 ## 2026-05-05/06 — Portal público: perfiles de equipo y jugador
 
 ### Objetivo

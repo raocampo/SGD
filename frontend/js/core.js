@@ -35,7 +35,16 @@
   const ROUTE_CONTEXT_PREFIX = "sgd_route_ctx:";
   const BRAND_FAVICON_SVG = "favicon.svg";
   const BRAND_FAVICON_FALLBACK = "assets/ltc/Logo.jpeg";
-  const PUBLIC_PAGES = new Set(["index.html", "portal.html", "login.html", "register.html", "blog.html", "noticia.html", "planes.html"]);
+  const PUBLIC_PAGES = new Set([
+    "index.html",
+    "portal.html",
+    "torneos.html",
+    "login.html",
+    "register.html",
+    "blog.html",
+    "noticia.html",
+    "planes.html",
+  ]);
   const CMS_PAGES = new Set([
     "portal-cms.html",
     "noticias.html",
@@ -1822,11 +1831,17 @@
     function isMobile() {
       return window.innerWidth <= SIDEBAR_MOBILE_BREAKPOINT;
     }
+    function syncToggleState() {
+      if (!toggle) return;
+      const opened = target.classList.contains("nav-open") || !target.classList.contains("collapsed");
+      toggle.setAttribute("aria-expanded", opened ? "true" : "false");
+    }
     function setInitialState() {
       if (sidebar) {
         sidebar.classList.add("collapsed");
         sidebar.classList.remove("nav-open");
         overlay.classList.remove("active");
+        syncToggleState();
         return;
       }
 
@@ -1839,12 +1854,18 @@
         target.classList.remove("nav-open");
         overlay.classList.remove("active");
       }
+      syncToggleState();
+    }
+
+    if (toggle && target.id) {
+      toggle.setAttribute("aria-controls", target.id);
     }
 
     setInitialState();
     window.addEventListener("resize", setInitialState);
 
-    if (toggle && target) {
+    if (toggle && target && toggle.dataset.mobileMenuBound !== "true") {
+      toggle.dataset.mobileMenuBound = "true";
       toggle.addEventListener("click", () => {
         if (isMobile()) {
           target.classList.toggle("nav-open");
@@ -1852,6 +1873,7 @@
         } else {
           target.classList.toggle("collapsed");
         }
+        syncToggleState();
       });
     }
 
@@ -1859,6 +1881,34 @@
       if (sidebar) sidebar.classList.remove("nav-open");
       if (nav) nav.classList.remove("nav-open");
       overlay.classList.remove("active");
+      syncToggleState();
+    });
+  }
+
+  function initPublicHeaderNav() {
+    const toggle = document.getElementById("ltc-nav-toggle");
+    const nav = document.getElementById("ltc-nav");
+    if (!toggle || !nav || toggle.dataset.bound === "true") return;
+
+    toggle.dataset.bound = "true";
+    toggle.setAttribute("aria-expanded", nav.classList.contains("open") ? "true" : "false");
+
+    function closeNav() {
+      nav.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
+    }
+
+    toggle.addEventListener("click", () => {
+      const opened = nav.classList.toggle("open");
+      toggle.setAttribute("aria-expanded", opened ? "true" : "false");
+    });
+
+    nav.querySelectorAll("a").forEach((lnk) => {
+      lnk.addEventListener("click", closeNav);
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 1120) closeNav();
     });
   }
 
@@ -1924,6 +1974,7 @@
       if (!actualizada) return;
     }
     initMenuMovil();
+    initPublicHeaderNav();
     mostrarAvisoDeudaEquiposUsuario(user);
   });
 

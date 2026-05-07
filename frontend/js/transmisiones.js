@@ -386,8 +386,9 @@
 
     const navToggle = document.getElementById("nav-toggle");
     const sidebar = document.getElementById("sidebar");
-    if (navToggle && sidebar) {
-      navToggle.addEventListener("click", () => sidebar.classList.toggle("open"));
+    if (navToggle && sidebar && navToggle.dataset.mobileMenuBound !== "true") {
+      navToggle.dataset.mobileMenuBound = "true";
+      navToggle.addEventListener("click", () => sidebar.classList.toggle("nav-open"));
     }
   });
 })();

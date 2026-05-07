@@ -399,8 +399,9 @@
   function setupSidebar() {
     const toggle = document.getElementById("nav-toggle");
     const sidebar = document.getElementById("sidebar");
-    if (toggle && sidebar) {
-      toggle.addEventListener("click", () => sidebar.classList.toggle("open"));
+    if (toggle && sidebar && toggle.dataset.mobileMenuBound !== "true") {
+      toggle.dataset.mobileMenuBound = "true";
+      toggle.addEventListener("click", () => sidebar.classList.toggle("nav-open"));
     }
   }
 

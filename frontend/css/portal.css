@@ -478,6 +478,15 @@ body.ltc-landing {
   border-radius: 14px;
   background: linear-gradient(145deg, #f9fbff 0%, #f1f7ff 100%);
   padding: 0.56rem 0.68rem;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+a.ltc-team-chip-card:hover {
+  border-color: #9dbbe0;
+  box-shadow: 0 8px 18px rgba(25, 52, 86, 0.12);
+  transform: translateY(-1px);
 }
 
 .ltc-team-chip-logo {
@@ -503,12 +512,30 @@ body.ltc-landing {
   display: block;
 }
 
+.ltc-team-chip-copy {
+  min-width: 0;
+  flex: 1;
+}
+
 .ltc-team-chip-name {
   min-width: 0;
   color: #233a51;
   font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.3;
+}
+
+.ltc-team-chip-meta {
+  margin-top: 0.12rem;
+  color: #617691;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.ltc-team-chip-arrow {
+  flex: 0 0 auto;
+  color: #9ab0c8;
+  font-size: 0.72rem;
 }
 
 .portal-section {
@@ -837,6 +864,76 @@ body.ltc-landing {
 .portal-category-summary p {
   margin: 0.3rem 0 0;
   color: #57708d;
+}
+
+.portal-equipos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.portal-equipo-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.portal-equipo-card:hover {
+  border-color: #a8c1de;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.portal-equipo-card-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: contain;
+  flex-shrink: 0;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+}
+
+.portal-equipo-card-logo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  color: #94a3b8;
+  font-size: 1.1rem;
+}
+
+.portal-equipo-card-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.portal-equipo-card-name {
+  font-weight: 800;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portal-equipo-card-meta {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.portal-equipo-card-arrow {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  flex-shrink: 0;
 }
 
 .portal-stat-grid {
@@ -2567,6 +2664,34 @@ body.ltc-landing {
 }
 
 @media (max-width: 700px) {
+  .ltc-landing .container {
+    padding-inline: 0.85rem;
+  }
+
+  .ltc-header-inner {
+    min-height: 72px;
+  }
+
+  .ltc-header-brand img {
+    width: 42px;
+    height: 42px;
+  }
+
+  .ltc-header-nav {
+    top: 70px;
+    left: 0.85rem;
+    right: 0.85rem;
+  }
+
+  .ltc-section-title {
+    margin-bottom: 1rem;
+  }
+
+  .ltc-section-title h2 {
+    font-size: clamp(1.75rem, 9vw, 2.4rem);
+    line-height: 1;
+  }
+
   .ltc-team-chip-grid {
     grid-template-columns: 1fr;
   }
@@ -2575,13 +2700,67 @@ body.ltc-landing {
     grid-template-columns: 1fr;
   }
 
+  .portal-category-panel {
+    padding: 0.85rem;
+    border-radius: 14px;
+  }
+
+  .portal-category-tabs,
+  .portal-subtabs {
+    margin-inline: -0.15rem;
+    padding-inline: 0.15rem;
+  }
+
+  .portal-equipos-grid {
+    grid-template-columns: 1fr;
+  }
+
   .portal-card-categoria-chip {
     font-size: 0.72rem;
+  }
+
+  .portal-card-media {
+    height: 150px;
+  }
+
+  .portal-card-featured .portal-card-media {
+    height: 170px;
   }
 
   .portal-detail-heading {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .portal-detail-header {
+    padding: 0.85rem;
+    border-radius: 14px;
+  }
+
+  .portal-detail-logo {
+    width: 58px;
+    height: 58px;
+  }
+
+  .portal-table-wrap {
+    margin-inline: -0.35rem;
+    padding-inline: 0.35rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .portal-jornadas-wrap {
+    max-width: 100%;
+  }
+
+  .portal-jornadas-selector {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .portal-jornada-selector-btn {
+    flex: 0 0 auto;
+    min-height: 36px;
   }
 
   .ltc-pricing-grid {

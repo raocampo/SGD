@@ -611,30 +611,65 @@ async function listarEquiposPublicosPorEvento(eventoId) {
   const evento = evR.rows[0];
 
   const eqR = await pool.query(
-    `SELECT eq.id, eq.nombre, eq.logo_url, eq.color_primario, eq.color_secundario,
-            eq.director_tecnico, eq.numero_campeonato, eq.es_cabeza_serie,
-            COUNT(DISTINCT j.id)::int AS total_jugadores,
-            COUNT(DISTINCT CASE WHEN p.estado IN ('finalizado','no_presentaron_ambos') THEN p.id END)::int AS partidos_jugados,
-            COALESCE(SUM(CASE
-              WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_local_id = eq.id
-                THEN COALESCE(p.resultado_local,0)
-              WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_visitante_id = eq.id
-                THEN COALESCE(p.resultado_visitante,0)
-              ELSE 0 END),0)::int AS goles_favor,
-            COALESCE(SUM(CASE
-              WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_local_id = eq.id
-                THEN COALESCE(p.resultado_visitante,0)
-              WHEN p.estado IN ('finalizado','no_presentaron_ambos') AND p.equipo_visitante_id = eq.id
-                THEN COALESCE(p.resultado_local,0)
-              ELSE 0 END),0)::int AS goles_contra
-     FROM evento_equipos ee
-     JOIN equipos eq ON eq.id = ee.equipo_id
-     LEFT JOIN jugadores j ON j.equipo_id = eq.id AND j.evento_id = $1
-     LEFT JOIN partidos p ON p.evento_id = $1
-       AND (p.equipo_local_id = eq.id OR p.equipo_visitante_id = eq.id)
-     WHERE ee.evento_id = $1
-     GROUP BY eq.id
-     ORDER BY eq.nombre`,
+    `WITH equipos_evento AS (
+       SELECT
+         eq.id,
+         eq.nombre,
+         eq.logo_url,
+         eq.color_primario,
+         eq.color_secundario,
+         eq.director_tecnico,
+         eq.numero_campeonato,
+         eq.cabeza_serie AS es_cabeza_serie
+       FROM evento_equipos ee
+       JOIN equipos eq ON eq.id = ee.equipo_id
+       WHERE ee.evento_id = $1
+     ),
+     jugadores_evento AS (
+       SELECT j.equipo_id, COUNT(*)::int AS total_jugadores
+       FROM jugadores j
+       WHERE j.evento_id = $1
+       GROUP BY j.equipo_id
+     ),
+     partidos_equipo AS (
+       SELECT
+         equipo_id,
+         COUNT(*)::int AS partidos_jugados,
+         COALESCE(SUM(gf), 0)::int AS goles_favor,
+         COALESCE(SUM(gc), 0)::int AS goles_contra
+       FROM (
+         SELECT
+           p.equipo_local_id AS equipo_id,
+           COALESCE(p.resultado_local, 0)::int AS gf,
+           COALESCE(p.resultado_visitante, 0)::int AS gc
+         FROM partidos p
+         WHERE p.evento_id = $1
+           AND p.estado IN ('finalizado', 'no_presentaron_ambos')
+           AND p.equipo_local_id IS NOT NULL
+
+         UNION ALL
+
+         SELECT
+           p.equipo_visitante_id AS equipo_id,
+           COALESCE(p.resultado_visitante, 0)::int AS gf,
+           COALESCE(p.resultado_local, 0)::int AS gc
+         FROM partidos p
+         WHERE p.evento_id = $1
+           AND p.estado IN ('finalizado', 'no_presentaron_ambos')
+           AND p.equipo_visitante_id IS NOT NULL
+       ) stats
+       GROUP BY equipo_id
+     )
+     SELECT
+       ee.*,
+       COALESCE(j.total_jugadores, 0)::int AS total_jugadores,
+       COALESCE(p.partidos_jugados, 0)::int AS partidos_jugados,
+       COALESCE(p.goles_favor, 0)::int AS goles_favor,
+       COALESCE(p.goles_contra, 0)::int AS goles_contra
+     FROM equipos_evento ee
+     LEFT JOIN jugadores_evento j ON j.equipo_id = ee.id
+     LEFT JOIN partidos_equipo p ON p.equipo_id = ee.id
+     ORDER BY ee.nombre`,
     [eventoId]
   );
 
@@ -662,7 +697,7 @@ async function obtenerEquipoPublico(equipoId) {
   const eqR = await pool.query(
     `SELECT eq.id, eq.nombre, eq.logo_url, eq.color_primario, eq.color_secundario,
             eq.color_terciario, eq.director_tecnico, eq.asistente_tecnico, eq.medico,
-            eq.telefono, eq.email, eq.numero_campeonato, eq.es_cabeza_serie,
+            eq.telefono, eq.email, eq.numero_campeonato, eq.cabeza_serie AS es_cabeza_serie,
             c.id AS campeonato_id, c.nombre AS campeonato_nombre, c.estado AS campeonato_estado,
             c.tipo_futbol, c.tipo_deporte, c.logo_url AS campeonato_logo
      FROM equipos eq

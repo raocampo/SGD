@@ -616,8 +616,23 @@ function renderCardTorneoPrincipal(torneo) {
 function renderEquipoParticipanteLanding(equipo = {}) {
   const nombre = String(equipo?.nombre || "").trim() || "Equipo";
   const logo = normalizarMediaPortal(equipo?.logo_url || "");
+  const equipoId = Number.parseInt(equipo?.id, 10);
+  const eventoId = Number.parseInt(equipo?.evento_id, 10);
+  const href = Number.isFinite(equipoId)
+    ? `equipo-publico.html?id=${equipoId}${Number.isFinite(eventoId) ? `&evento=${eventoId}` : ""}&back=${encodeURIComponent(window.location.href)}`
+    : "";
+  const eventoNombre = limpiarCodigoTorneo(equipo?.evento_nombre || "");
+  const totalJugadores = Number.parseInt(equipo?.total_jugadores, 10);
+  const meta = [
+    eventoNombre || "",
+    Number.isFinite(totalJugadores) && totalJugadores > 0
+      ? `${totalJugadores} jugador${totalJugadores !== 1 ? "es" : ""}`
+      : "",
+  ].filter(Boolean).join(" • ");
+  const tag = href ? "a" : "article";
+  const hrefAttr = href ? ` href="${escPortal(href)}"` : "";
   return `
-    <article class="ltc-team-chip-card" title="${escPortal(nombre)}">
+    <${tag} class="ltc-team-chip-card" title="${escPortal(nombre)}"${hrefAttr}>
       <div class="ltc-team-chip-logo">
         ${
           logo
@@ -625,8 +640,12 @@ function renderEquipoParticipanteLanding(equipo = {}) {
             : `<span>${escPortal(nombre.slice(0, 2).toUpperCase())}</span>`
         }
       </div>
-      <div class="ltc-team-chip-name">${escPortal(nombre)}</div>
-    </article>
+      <div class="ltc-team-chip-copy">
+        <div class="ltc-team-chip-name">${escPortal(nombre)}</div>
+        ${meta ? `<div class="ltc-team-chip-meta">${escPortal(meta)}</div>` : ""}
+      </div>
+      ${href ? '<i class="fas fa-chevron-right ltc-team-chip-arrow"></i>' : ""}
+    </${tag}>
   `;
 }
 
@@ -1960,24 +1979,23 @@ async function cargarEquiposTabPortal(eventoId, container) {
       const rawLogo = eq.logo_url || "";
       const logoUrl = rawLogo ? (rawLogo.startsWith("http") ? rawLogo : `${BACKEND_BASE}/${rawLogo.replace(/^\//, "")}`) : null;
       const logoHtml = logoUrl
-        ? `<img src="${logoUrl}" style="width:42px;height:42px;border-radius:50%;object-fit:contain;flex-shrink:0;border:2px solid #e2e8f0;" alt="${escPortal(eq.nombre)}" onerror="this.style.display='none'">`
-        : `<div style="width:42px;height:42px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;color:#94a3b8;"><i class="fas fa-shield-halved"></i></div>`;
+        ? `<img src="${logoUrl}" class="portal-equipo-card-logo" alt="${escPortal(eq.nombre)}" onerror="this.style.display='none'">`
+        : `<div class="portal-equipo-card-logo portal-equipo-card-logo-empty"><i class="fas fa-shield-halved"></i></div>`;
       const meta = [
         eq.total_jugadores > 0 ? `${eq.total_jugadores} jugador${eq.total_jugadores !== 1 ? "es" : ""}` : null,
         eq.partidos_jugados > 0 ? `${eq.partidos_jugados} PJ` : null,
       ].filter(Boolean).join(" · ");
       return `<a href="equipo-publico.html?id=${eq.id}&evento=${eventoId}&back=${backUrl}"
-        style="display:flex;align-items:center;gap:.75rem;padding:.75rem;border-radius:10px;border:1px solid #e2e8f0;background:#fff;text-decoration:none;color:inherit;transition:box-shadow .15s;"
-        onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''">
+        class="portal-equipo-card">
         ${logoHtml}
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:800;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escPortal(eq.nombre)}</div>
-          ${meta ? `<div style="font-size:.75rem;color:#64748b;">${meta}</div>` : ""}
+        <div class="portal-equipo-card-copy">
+          <div class="portal-equipo-card-name">${escPortal(eq.nombre)}</div>
+          ${meta ? `<div class="portal-equipo-card-meta">${meta}</div>` : ""}
         </div>
-        <i class="fas fa-chevron-right" style="color:#94a3b8;font-size:.75rem;flex-shrink:0;"></i>
+        <i class="fas fa-chevron-right portal-equipo-card-arrow"></i>
       </a>`;
     }).join("");
-    container.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.75rem;margin-top:.5rem;">${cards}</div>`;
+    container.innerHTML = `<div class="portal-equipos-grid">${cards}</div>`;
   } catch (e) {
     container.innerHTML = '<p class="portal-empty-msg"><i class="fas fa-exclamation-triangle"></i> Error cargando equipos.</p>';
   }

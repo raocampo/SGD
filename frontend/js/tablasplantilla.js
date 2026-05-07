@@ -429,38 +429,6 @@
     }
   }
 
-  // ── Cancha personalizada ──────────────────────────────────────────────────
-
-  const CANCHA_DEFAULT_SRC = "assets/ltc/cancha_fondo.jpg";
-
-  function getCanchaImg() {
-    return document.querySelector(".tblp-field-img");
-  }
-
-  function aplicarCanchaPersonalizada(file) {
-    const img = getCanchaImg();
-    if (!img) return;
-    const url = URL.createObjectURL(file);
-    img.src = url;
-    img.style.display = "";
-    document.getElementById("tblp-cancha-clear").style.display = "";
-    document.getElementById("tblp-cancha-default")?.classList.remove("active");
-    document.getElementById("tblp-cancha-custom-label")?.classList.add("active");
-  }
-
-  function restablecerCanchaDefault() {
-    const img = getCanchaImg();
-    if (img) {
-      img.src = CANCHA_DEFAULT_SRC;
-      img.style.display = "";
-    }
-    document.getElementById("tblp-cancha-clear").style.display = "none";
-    document.getElementById("tblp-cancha-default")?.classList.add("active");
-    document.getElementById("tblp-cancha-custom-label")?.classList.remove("active");
-    const input = document.getElementById("tblp-cancha-input");
-    if (input) input.value = "";
-  }
-
   // ── Fondos predefinidos ────────────────────────────────────────────────────
 
   function aplicarFondo(fondo) {
@@ -655,7 +623,10 @@
     // Nav toggle
     const navToggle = document.getElementById("nav-toggle");
     const sidebar = document.getElementById("sidebar");
-    if (navToggle && sidebar) navToggle.addEventListener("click", () => sidebar.classList.toggle("open"));
+    if (navToggle && sidebar && navToggle.dataset.mobileMenuBound !== "true") {
+      navToggle.dataset.mobileMenuBound = "true";
+      navToggle.addEventListener("click", () => sidebar.classList.toggle("nav-open"));
+    }
 
     await cargarCampeonatos();
 
@@ -729,16 +700,6 @@
       document.querySelectorAll(".tblp-bg-swatch[data-fondo]").forEach((b) => b.classList.remove("active"));
       document.getElementById("tblp-bg-custom-label").classList.add("active");
     });
-
-    // Cancha — imagen personalizada
-    document.getElementById("tblp-cancha-input")?.addEventListener("change", (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      aplicarCanchaPersonalizada(file);
-    });
-
-    document.getElementById("tblp-cancha-default")?.addEventListener("click", restablecerCanchaDefault);
-    document.getElementById("tblp-cancha-clear")?.addEventListener("click", restablecerCanchaDefault);
 
     // Export buttons
     document.getElementById("tblp-btn-png")?.addEventListener("click", exportarPNG);

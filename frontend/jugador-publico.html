@@ -81,6 +81,66 @@
       .jp-part-row { grid-template-columns: 75px 1fr auto; }
       .jp-part-contrib { grid-column: 2 / -1; }
     }
+
+    @media (max-width: 700px) {
+      .jp-hero { padding: 1.3rem 0 1.5rem; }
+      .jp-hero-inner { align-items: flex-start; gap: .95rem; }
+      .jp-foto,
+      .jp-foto-placeholder { width: 82px; height: 82px; }
+      .jp-num-badge { width: 30px; height: 30px; border-radius: 8px; }
+      .jp-campeonato-chip {
+        max-width: 100%;
+        white-space: normal;
+        line-height: 1.25;
+        letter-spacing: .04em;
+      }
+      .jp-nombre { font-size: clamp(1.55rem, 10vw, 2.35rem); overflow-wrap: anywhere; }
+      .jp-meta { gap: .45rem .8rem; font-size: .8rem; }
+      .jp-stats-strip {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .45rem;
+      }
+      .jp-stat { min-width: 0; padding: .46rem .35rem; border-radius: 9px; }
+      .jp-stat-val { font-size: 1.18rem; }
+      .jp-stat-lbl { font-size: .56rem; letter-spacing: .04em; }
+      .jp-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        margin-top: 1rem;
+        padding-bottom: .45rem;
+        -webkit-overflow-scrolling: touch;
+      }
+      .jp-tab { flex: 0 0 auto; min-height: 40px; padding: .52rem .85rem; border-radius: 999px; }
+      .jp-limitation-note { padding: .75rem .8rem; line-height: 1.45; }
+      .ltc-section-card { padding: .85rem; border-radius: 10px; }
+      .jp-part-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: .45rem .6rem;
+        padding: .78rem .25rem;
+      }
+      .jp-part-row > div:first-child {
+        grid-column: 1 / -1;
+      }
+      .jp-part-equipos { grid-column: 1 / -1; line-height: 1.35; }
+      .jp-part-marcador { justify-self: start; }
+      .jp-part-contrib {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+      }
+      .jp-ficha-table td {
+        display: block;
+        width: 100% !important;
+        white-space: normal !important;
+        padding: .42rem .25rem !important;
+      }
+      .jp-ficha-table tr { display: block; padding: .35rem 0; border-bottom: 1px solid #f1f5f9; }
+    }
+
+    @media (max-width: 390px) {
+      .jp-stats-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
   </style>
 </head>
 <body class="ltc-landing">
@@ -90,7 +150,11 @@
       <a class="ltc-header-brand" href="index.html">
         <img src="assets/ltc/Logo.jpeg" alt="LT&C" />
         <span>LT&C</span>
+        <span class="ltc-header-brand-sub">Jugador</span>
       </a>
+      <button class="ltc-nav-toggle" id="ltc-nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+        <i class="fas fa-bars"></i>
+      </button>
       <nav class="ltc-header-nav" id="ltc-nav">
         <a href="index.html#torneos">Torneos</a>
         <a href="portal.html">Portal</a>

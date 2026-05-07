@@ -572,10 +572,14 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
    - al seleccionar plan pagado -> formulario de registro completo -> pagina/formulario de cobro -> pasarela de pago.
 10. Eliminatorias completas (llaves, reglas operativas y eventual partido extra/reclasificacion automatizado si el cliente lo define).
 11. Financiero avanzado (multas automaticas, bloqueos por morosidad, reportes ejecutivos).
-12. Plan mobile orientado a app instalable en tiendas:
+12. Responsive web/mobile operativo:
+   - auditoria visual por pantallas principales en 390x844 y 768x1024,
+   - cierre de desbordes, tablas, formularios largos, barras de acciones y navegacion tactil,
+   - prioridad en `portal.html`, `index.html?organizador`, panel organizador, planilla, tablas, finanzas, facturacion y transmisiones.
+13. Plan mobile orientado a app instalable en tiendas:
    - Android (Play Store),
    - iOS (App Store).
-13. Modulo de transmision en vivo (Streamer):
+14. Modulo de transmision en vivo (Streamer):
    - transmision de partidos directamente desde la plataforma sin contratar servicios externos,
    - streaming WebRTC desde camara/pantalla del navegador del operador o camarografo,
    - sala de transmision por partido con URL publica compartible para espectadores,
@@ -583,7 +587,7 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
    - vista publica de transmision embebida en `portal.html` (tab "En Vivo" por categoria/campeonato),
    - senalizacion WebRTC via Socket.io en el backend (servidor de senalizacion ligero),
    - grabacion opcional del stream en disco/CDN para reproduccion posterior.
-14. Dashboard de estadisticas (IMPLEMENTADO — ver §11.2):
+15. Dashboard de estadisticas (IMPLEMENTADO — ver §11.2):
    - Dashboard Organizador (`portal-admin.html`): KPIs financieros, grafico de ingresos por concepto (Chart.js), proximos encuentros y equipos morosos.
    - Dashboard Administrador (`admin.html`): vision comercial — organizadores por plan, MRR estimado, metricas globales y tabla de organizadores.
 
@@ -671,5 +675,4 @@ Vision comercial de la plataforma — lo que el admin ha "vendido" a organizador
 - `backend/uploads/` y cualquier ruta definida por `UPLOADS_DIR` deben permanecer fuera del versionado (runtime).
 - Dumps pesados de DB deben mantenerse fuera del flujo principal de commits.
 - No incluir secretos reales en archivos `.env`.
-
 

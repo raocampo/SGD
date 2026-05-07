@@ -9082,6 +9082,479 @@ body.page-finanzas {
   }
 }
 
+/* ========================================================
+   MOBILE OPERATIVO — pantallas internas de gestion
+   ======================================================== */
+@media (max-width: 900px) {
+  body.app-layout {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  body.app-layout .main-wrapper {
+    width: 100%;
+    margin-left: 0 !important;
+    min-width: 0;
+  }
+
+  body.app-layout .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10010;
+    padding: 0.65rem 0.85rem;
+    gap: 0.6rem;
+    flex-wrap: nowrap;
+  }
+
+  body.app-layout .top-bar .nav-toggle {
+    flex: 0 0 40px;
+  }
+
+  body.app-layout .top-bar h1 {
+    font-size: clamp(0.95rem, 3.7vw, 1.25rem);
+    overflow-wrap: anywhere;
+  }
+
+  body.app-layout .top-user-badge {
+    max-width: 34vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.app-layout .main,
+  body.app-layout > .main-wrapper > main.container {
+    padding: 1rem 0.85rem 1.4rem;
+  }
+
+  body.app-layout .card,
+  body.app-layout .config-card,
+  body.app-layout .dash-panel,
+  body.app-layout .dash-landing-card,
+  body.app-layout .section-card {
+    padding: 1rem;
+    max-width: 100%;
+  }
+
+  body.app-layout .form-grid,
+  body.app-layout .fact-filtros-grid,
+  body.app-layout .fact-config-grid,
+  body.app-layout .reportes-jugadores-grid,
+  body.app-layout .fixture-generation-options,
+  body.app-layout .jugadores-superior-grid,
+  body.app-layout .tx-pasos {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.app-layout .actions,
+  body.app-layout .action-bar,
+  body.app-layout .partidos-actions,
+  body.app-layout .partidos-busqueda-actions,
+  body.app-layout .tablas-filtros-actions,
+  body.app-layout .reportes-actions,
+  body.app-layout .fixture-generation-actions,
+  body.app-layout .fixture-accordion-actions,
+  body.app-layout .tablas-admin-actions,
+  body.app-layout .tablas-admin-btns,
+  body.app-layout .fact-acciones,
+  body.app-layout .dash-landing-actions,
+  body.app-layout .form-actions,
+  body.app-layout .modal-footer,
+  body.app-layout .tx-top-bar {
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  body.app-layout .partidos-main-tabs,
+  body.app-layout .jugadores-main-tabs,
+  body.app-layout .fixture-view-tabs,
+  body.app-layout .dash-tabs-bar,
+  body.app-layout .list-view-toggle {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.35rem;
+  }
+
+  body.app-layout .partidos-main-tabs::-webkit-scrollbar,
+  body.app-layout .jugadores-main-tabs::-webkit-scrollbar,
+  body.app-layout .fixture-view-tabs::-webkit-scrollbar,
+  body.app-layout .dash-tabs-bar::-webkit-scrollbar,
+  body.app-layout .list-view-toggle::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.app-layout .partidos-main-tab,
+  body.app-layout .jugadores-main-tab,
+  body.app-layout .fixture-view-btn,
+  body.app-layout .dash-tab-btn,
+  body.app-layout .list-view-toggle .btn,
+  body.app-layout .list-view-toggle button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  body.app-layout .table-responsive,
+  body.app-layout .list-table-wrap,
+  body.app-layout .tabla-scroll,
+  body.app-layout .fact-table-wrap,
+  body.app-layout .sgd-table-wrap,
+  body.app-layout .dash-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.app-layout table {
+    max-width: 100%;
+  }
+
+  body.app-layout .grid-container,
+  body.app-layout .cards-grid,
+  body.app-layout #lista-equipos,
+  body.app-layout #lista-campeonatos {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  }
+
+  body.app-layout #lista-jugadores:not(.list-mode-table) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.app-layout .stats-grid,
+  body.app-layout .dash-kpis,
+  body.app-layout .fact-resumen-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body.page-portal-admin .dash-hero {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  body.page-portal-admin .dash-shortcuts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  body.page-portal-admin .dash-table {
+    min-width: 520px;
+  }
+
+  body.page-transmisiones .tx-top-bar {
+    flex-direction: column;
+  }
+
+  body.page-transmisiones .tx-top-bar .form-group,
+  body.page-transmisiones .tx-top-bar .btn {
+    width: 100%;
+  }
+
+  body.page-transmisiones #tx-table-container .table,
+  body.page-facturacion .fact-table {
+    min-width: 760px;
+  }
+
+  body.page-facturacion .modal-box {
+    width: min(96vw, 760px);
+    max-height: 92dvh;
+  }
+
+  body.page-tablas .tabla-estadistica-posiciones {
+    min-width: 560px;
+  }
+
+  body.page-tablas .tabla-posicion-equipo {
+    gap: 0.45rem;
+  }
+
+  body.page-partidos .fixture-poster {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  body.app-layout .top-bar {
+    padding: 0.55rem 0.65rem;
+  }
+
+  body.app-layout .top-user-badge {
+    display: none;
+  }
+
+  body.app-layout .main,
+  body.app-layout > .main-wrapper > main.container {
+    padding: 0.75rem 0.65rem 1.15rem;
+  }
+
+  body.app-layout .card,
+  body.app-layout .config-card,
+  body.app-layout .dash-panel,
+  body.app-layout .dash-landing-card,
+  body.app-layout .section-card {
+    padding: 0.9rem;
+    border-radius: 10px;
+  }
+
+  body.app-layout .actions,
+  body.app-layout .action-bar,
+  body.app-layout .partidos-actions,
+  body.app-layout .partidos-busqueda-actions,
+  body.app-layout .tablas-filtros-actions,
+  body.app-layout .reportes-actions,
+  body.app-layout .fixture-generation-actions,
+  body.app-layout .fixture-accordion-actions,
+  body.app-layout .tablas-admin-actions,
+  body.app-layout .tablas-admin-btns,
+  body.app-layout .fact-acciones,
+  body.app-layout .dash-landing-actions,
+  body.app-layout .form-actions,
+  body.app-layout .modal-footer {
+    flex-direction: column;
+  }
+
+  body.app-layout .actions .btn,
+  body.app-layout .action-bar .btn,
+  body.app-layout .partidos-actions .btn,
+  body.app-layout .partidos-busqueda-actions .btn,
+  body.app-layout .tablas-filtros-actions .btn,
+  body.app-layout .reportes-actions .btn,
+  body.app-layout .fixture-generation-actions .btn,
+  body.app-layout .fixture-accordion-actions .btn,
+  body.app-layout .tablas-admin-actions .btn,
+  body.app-layout .tablas-admin-btns .btn,
+  body.app-layout .fact-acciones .btn,
+  body.app-layout .dash-landing-actions .btn,
+  body.app-layout .form-actions .btn,
+  body.app-layout .modal-footer .btn,
+  body.app-layout .tx-top-bar .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  body.app-layout .grid-container,
+  body.app-layout .cards-grid,
+  body.app-layout #lista-equipos,
+  body.app-layout #lista-campeonatos,
+  body.app-layout #lista-jugadores:not(.list-mode-table),
+  body.app-layout .stats-grid,
+  body.app-layout .dash-kpis,
+  body.app-layout .fact-resumen-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.page-portal-admin .dash-shortcuts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.page-facturacion .modal-box {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  body.page-facturacion .modal-body {
+    padding: 1rem;
+  }
+}
+
+/* ========================================================
+   MOBILE QA — cierre de modulos operativos restantes
+   ======================================================== */
+@media (max-width: 900px) {
+  body.page-planilla .planilla-top-actions,
+  body.page-planilla .planilla-inline-actions,
+  body.page-planilla .planilla-preview-toolbar-actions,
+  body.page-planilla .planilla-preview-mode-switch,
+  body.page-finanzas .fin-card-actions,
+  body.page-eliminatorias .eli-prog-toolbar,
+  body.page-eliminatorias .eli-export-customization-actions,
+  body.page-eliminatorias .eli-jornada-toolbar,
+  body.page-sorteo .ruleta-controls,
+  body.page-sorteo .manual-directo-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  body.page-planilla .planilla-captura-table-wrap,
+  body.page-planilla .planilla-preview-team,
+  body.page-planilla .planilla-oficial-team,
+  body.page-planilla .planilla-preview-sheet,
+  body.page-planilla .planilla-oficial-sheet,
+  body.page-finanzas .tabla-scroll,
+  body.page-pases .tabla-scroll,
+  body.page-pases .list-table-wrap,
+  body.page-eventos .list-table-wrap,
+  body.page-usuarios .tabla-scroll,
+  body.page-usuarios .list-table-wrap,
+  body.page-eliminatorias .eli-resumen-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  body.page-finanzas .fin-card-headline {
+    align-items: flex-start;
+  }
+
+  body.page-finanzas .gastos-form-grid,
+  body.page-finanzas .finanzas-form-grid,
+  body.page-pases .pases-form-grid,
+  body.page-eventos .form-grid,
+  body.page-usuarios .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.page-sorteo .ruleta-area {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  body.page-sorteo .ruleta-container {
+    max-width: 100%;
+    min-height: auto;
+    margin: 1rem 0;
+  }
+
+  body.page-sorteo #ruletaCanvas {
+    width: min(100%, 420px);
+    height: auto;
+  }
+
+  body.page-sorteo .ruleta-controls {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+
+  body.page-sorteo .manual-directo-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  body.page-sorteo .equipos-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  }
+
+  body.page-eventos #lista-eventos.list-mode-table,
+  body.page-pases .list-table,
+  body.page-usuarios .usuarios-list-table {
+    min-width: 760px;
+  }
+
+  body.page-eliminatorias .eli-main-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  body.page-eliminatorias .eli-main-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.page-eliminatorias .eli-main-tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  body.page-eliminatorias .eli-admin-grid,
+  body.page-eliminatorias .eli-slot-grid,
+  body.page-eliminatorias .eli-manual-seeding-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  body.page-planilla .planilla-penales-grid,
+  body.page-planilla .planilla-overtime-grid,
+  body.page-planilla .planilla-observaciones-grid,
+  body.page-planilla .planilla-faltas-visual {
+    grid-template-columns: 1fr;
+  }
+
+  body.page-planilla .planilla-captura-table {
+    min-width: 500px;
+  }
+
+  body.page-planilla .planilla-top-actions .btn,
+  body.page-planilla .planilla-inline-actions .btn,
+  body.page-planilla .planilla-preview-toolbar-actions .btn,
+  body.page-planilla .planilla-preview-mode-switch .btn,
+  body.page-finanzas .partidos-actions .btn,
+  body.page-finanzas .fin-card-actions .btn,
+  body.page-finanzas .gastos-form-wrap .btn,
+  body.page-sorteo .ruleta-controls .btn,
+  body.page-sorteo .manual-directo-controls .btn,
+  body.page-eliminatorias .eli-prog-toolbar .btn,
+  body.page-eliminatorias .eli-export-customization-actions .btn,
+  body.page-eliminatorias .eli-jornada-toolbar .btn,
+  body.page-eventos .list-view-toggle .btn,
+  body.page-eventos .list-view-toggle button,
+  body.page-usuarios .actions .btn,
+  body.page-pases .action-bar .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  body.page-finanzas .fin-card-headline {
+    flex-direction: column;
+  }
+
+  body.page-finanzas .fin-card-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  body.page-finanzas .fin-card-actions .btn {
+    min-width: 0;
+  }
+
+  body.page-finanzas .fin-toggle-btn {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+
+  body.page-finanzas .tabla-estadistica,
+  body.page-finanzas .tabla-estadistica-compacta {
+    min-width: 560px;
+  }
+
+  body.page-sorteo .sorteo-config {
+    padding: 0.9rem;
+  }
+
+  body.page-sorteo .ruleta-container {
+    padding: 0.9rem;
+    border-radius: 14px;
+  }
+
+  body.page-sorteo #ruletaCanvas {
+    width: min(100%, 300px);
+    border-width: 6px;
+  }
+
+  body.page-sorteo .grupos-container {
+    grid-template-columns: 1fr;
+  }
+
+  body.page-eventos #lista-eventos.list-mode-table,
+  body.page-pases .list-table,
+  body.page-usuarios .usuarios-list-table {
+    min-width: 680px;
+  }
+
+  body.page-usuarios #usr-organizacion-logo-preview-wrap {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+}
+
 /* Sport type tab selector */
 .sport-tabs {
   display: flex;

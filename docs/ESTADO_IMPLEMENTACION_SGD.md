@@ -1,3 +1,22 @@
+## 2026-05-07 — Ajustes portal público, landing organizador y responsive
+
+### Cambios aplicados
+- Se corrige el tab público **Equipos**: el endpoint `/api/public/eventos/:evento_id/equipos` usaba la columna inexistente `eq.es_cabeza_serie`; la BD real usa `eq.cabeza_serie`. La API mantiene la salida `es_cabeza_serie` para no romper frontend.
+- Se mejora el cálculo público de equipos por evento para no duplicar goles cuando un equipo tiene varios jugadores cargados.
+- La landing pública del organizador ahora incluye tarjetas de equipos clicables hacia `equipo-publico.html`, con categoría base y conteo de jugadores cuando existe.
+- La postal de tablas ya no muestra imagen de cancha en perspectiva; queda una franja de auspiciantes centrada.
+- Se aplica segundo bloque responsive web/mobile para pantallas internas: layout `app-layout`, topbar, acciones, tabs, grids, tablas, modales y sidebar en `portal-admin`, `campeonatos`, `equipos`, `jugadores`, `partidos`, `tablas`, `facturacion` y `transmisiones`.
+- Se aplica tercer bloque responsive de cierre operativo: `planilla`, `finanzas`, `gruposgen`, `sorteo`, `pases`, `eventos`, `usuarios` y `eliminatorias`, incluyendo ruleta escalable, tablas contenidas y acciones táctiles.
+
+### Pendiente responsive agregado
+- El sistema web aún requiere un bloque formal de **responsive operativo mobile**. Aunque existen ajustes parciales en portal público, `style.css`, tablas, finanzas, partidos y planilla, falta una revisión pantalla por pantalla en móvil real.
+- Prioridad sugerida: auditar y cerrar primero vistas de uso diario (`portal.html`, `index.html?organizador`, `login/register`, `portal-admin`, `campeonatos`, `equipos`, `jugadores`, `partidos`, `planilla`, `tablas`, `finanzas`, `facturacion`, `transmisiones`) en 390x844 y 768x1024.
+- Primer bloque cerrado: menú público reusable en `core.js`, navegación mobile en páginas públicas, fichas públicas `equipo/jugador` compactadas y ajustes de `portal.css` para cards, tablas y selector de jornadas en móvil.
+- Segundo bloque cerrado: capa responsive común para pantallas internas y menú lateral sin doble binding. Pendiente validar visualmente con datos reales antes de dar el responsive por cerrado.
+- Tercer bloque cerrado: módulos operativos restantes con reglas responsive específicas. El pendiente principal pasa a ser QA visual con datos reales y ajustes finos, no estructura base.
+
+---
+
 ## 2026-05-05/06 — Sesión actual: Portal público — perfiles de equipo y jugador
 
 ### Commits de esta sesión
@@ -25,25 +44,25 @@ El sistema **no registra titularidad ni suplencia**. Para implementarlo se neces
 
 ---
 
-## Pendientes para continuar — (al 2026-05-06)
+## Pendientes para continuar — (al 2026-05-07)
 
 ### 🔴 Prioridad inmediata
 
 | # | Tarea | Archivo(s) clave |
 |---|---|---|
-| 1 | **Probar tab "Equipos" en Render** con datos reales — verificar que las 6 rutas `/api/public/` responden OK y que `equipo-publico.html` + `jugador-publico.html` cargan correctamente | `ltyc.onrender.com` |
-| 2 | **Probar WebRTC en Render** — ingresar como organizador, crear transmisión, compartir URL viewer con otro dispositivo y confirmar que el stream llega | `broadcast.html`, `viewer.html` |
+| 1 | **Desplegar y probar fix del tab "Equipos" en Render** — verificar que `/api/public/eventos/:id/equipos` responde OK, que `equipo-publico.html` + `jugador-publico.html` cargan y que la landing del organizador enlaza correctamente a los equipos | `publicPortalService.js`, `portal.js`, `index.html` |
+| 2 | **Responsive web/mobile operativo** — auditoría visual y corrección por pantallas principales en 390x844 y 768x1024; documentar avance por módulo | `frontend/css/style.css`, `frontend/css/portal.css`, páginas internas |
+| 3 | **Probar WebRTC en Render** — ingresar como organizador, crear transmisión, compartir URL viewer con otro dispositivo y confirmar que el stream llega | `broadcast.html`, `viewer.html` |
 
 ### 🟡 Próximos features (orden sugerido)
 
 | # | Tarea | Detalle |
 |---|---|---|
-| 3 | **Titularidad / suplencia en partidos** | Nueva tabla `planilla_jugadores(partido_id, jugador_id, rol, minuto_entrada, minuto_salida)`. UI en `planilla.html`. Mostrar en `jugador-publico.html` tab Partidos como Titular/Suplente. |
-| 4 | **Facturación Fase 2 — integración finanzas** | Botón "Emitir doc." en `finanzas.html → Estado de cuenta equipo`. Tabla `documentos_pagos(documento_id, movimiento_id)` en `Facturacion.js`. |
-| 5 | **Facturación Fase 3 — PDF profesional** | Reemplazar `window.print()` en `facturacion.html` por generación `jsPDF` descargable (logo emisor, tabla ítems, totales, QR visual). |
-| 6 | **TURN server para WebRTC** | Agregar servidor TURN (Metered.ca free tier) en `broadcast.html` + `viewer.html` para redes con NAT simétrico (colegios, canchas con WiFi corporativo). |
-| 7 | **Botones compartir en viewer.html** | Igual que en `director.html`: WhatsApp, Facebook, Copiar link — para que espectadores compartan el stream. |
-| 8 | **Equipos en landing del organizador (`index.html`)** | Agregar sección visual de equipos inscritos por campeonato en la landing pública `index.html?organizador=ID`, con cards clicables a `equipo-publico.html`. |
+| 4 | **Titularidad / suplencia en partidos** | Nueva tabla `planilla_jugadores(partido_id, jugador_id, rol, minuto_entrada, minuto_salida)`. UI en `planilla.html`. Mostrar en `jugador-publico.html` tab Partidos como Titular/Suplente. |
+| 5 | **Facturación Fase 2 — integración finanzas** | Botón "Emitir doc." en `finanzas.html → Estado de cuenta equipo`. Tabla `documentos_pagos(documento_id, movimiento_id)` en `Facturacion.js`. |
+| 6 | **Facturación Fase 3 — PDF profesional** | Reemplazar `window.print()` en `facturacion.html` por generación `jsPDF` descargable (logo emisor, tabla ítems, totales, QR visual). |
+| 7 | **TURN server para WebRTC** | Agregar servidor TURN (Metered.ca free tier) en `broadcast.html` + `viewer.html` para redes con NAT simétrico (colegios, canchas con WiFi corporativo). |
+| 8 | **Botones compartir en viewer.html** | Igual que en `director.html`: WhatsApp, Facebook, Copiar link — para que espectadores compartan el stream. |
 
 ### 🟢 Futuro / Roadmap
 
@@ -58,7 +77,7 @@ El sistema **no registra titularidad ni suplencia**. Para implementarlo se neces
 
 - Las rutas públicas de equipos/jugadores ya están en producción (Render). No requieren auth ni CORS adicional — usan el prefijo `/api/public/` que ya estaba en la lista blanca.
 - `equipo-publico.html` y `jugador-publico.html` usan `back=` en URL para navegación de regreso limpia entre páginas.
-- La última migración numerada conocida es la **065** (Transmisiones). La siguiente que se cree debe ser **066** en adelante.
+- La última migración numerada conocida es la **067** (`eventos_fecha_corte_edad`). La siguiente que se cree debe ser **068** en adelante.
 - `js/core.js` exporta `window.resolveBackendBaseUrl()` y `window.resolveApiBaseUrl()` — usar siempre estos en páginas nuevas para que funcione tanto en local como en Render.
 
 ---
@@ -183,7 +202,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 6 Extras profesionales | Parcial-Alto | Exportaciones (PNG/PDF/XLSX) en modulos clave. Plantillas de publicacion con 3 temas visuales (Oscuro/Clasico/Colores del torneo) aplicables a posters de grupos y fixture. Nueva pagina `jornadasplantilla.html` para exportar programacion de jornada como poster (PNG/PDF), incluyendo modo `playoff` por ronda. Se corrige la exportación de grupos para evitar doble render/doble descarga con `html2canvas`. Seleccion individual de carnets para imprimir/exportar. Pendiente notificaciones, auditoria completa y reportes ejecutivos. |
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR, resumen ejecutivo por campeonato e impresion dedicadas; politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). El modulo de `gastos_operativos` ya quedó endurecido para organizadores: listar, editar, eliminar y resumir se limita solo a campeonatos propios, incluso cuando la UI no envía un `campeonato_id` puntual. Pendiente cierre de reglas avanzadas y reporteria ejecutiva adicional. |
 | 9 Facturacion | Fase 1 completa | Modulo de facturacion, nota de venta y recibo para clientes y organizadores. Tablas `facturacion_config`, `documentos_facturacion` y `documentos_items` operativas (esquema inline en modelo). Backend: `facturacionController.js` + `facturacionRoutes.js` + `/api/facturacion`. Frontend: `facturacion.html` con listado filtrable, KPIs de documentos emitidos, config de emisor (RUC/RISE, datos SRI, % IVA), modal de nuevo/editar documento con ítems dinámicos, cálculo automático de subtotales/IVA/total, modal de detalle con vista de impresión. Tipos soportados: `factura` (con IVA 15%), `nota_venta` (RISE, sin desglose IVA), `recibo`. Estados: `borrador` → `emitido` → `anulado`. Numeración secuencial por tipo y por emisor (`001-001-000000001`). Link en sidebar de 21 páginas internas. Pendiente: Fase 2 (vincular movimientos financieros), Fase 3 (PDF oficial con QR), Fase 4 (SRI electrónico). |
-| 8 Adaptacion mobile web | En progreso | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; fase 1 base responsive iniciada en `style.css`/`core.js` (layout, topbar, acciones y sidebar) con cierre parcial en `tablas`, `finanzas`, `partidos` y `planilla`; fase 1 cerrada para `grupos`, `eliminatorias` y `pases` (bracket con scroll horizontal, pases con tabla scrolleable y layout 1 col ≤480px); sesión 13: clases `page-*` añadidas a `campeonatos`, `equipos`, `eventos`, `usuarios`; grid de listas corregido para no desbordar en pantallas <313px; botones de card-actions al 100% de ancho en ≤520px; tabla de usuarios con scroll horizontal explícito. |
+| 8 Adaptacion mobile web | En progreso | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; fase responsive web retomada 2026-05-07 con bloque publico (`index`, `torneos`, `portal`, `planes`, fichas públicas de equipo/jugador) y bloque interno (`app-layout`, topbar, acciones, tabs, grids, tablas, modales y sidebar sin doble binding) para `portal-admin`, `campeonatos`, `equipos`, `jugadores`, `partidos`, `tablas`, `facturacion` y `transmisiones`. Queda pendiente QA visual en 390x844 y 768x1024 con datos reales antes de cerrar el responsive operativo. |
 
 ## Navegacion Interna y Seguridad Visual
 - El sistema deportivo ya oculta el contexto operativo principal de la barra del navegador para los modulos internos.
@@ -706,10 +725,6 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Propuesta funcional original: `docs/propuestaDesarrolloSGD.md`
 - Plan mobile web: `docs/PLAN_MOBILE_LT_C.md`
 - Plan CMS del portal publico: `docs/PLAN_CMS_PORTAL_PUBLICO.md`
-
-
-
-
 
 
 

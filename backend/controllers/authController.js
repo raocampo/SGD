@@ -438,7 +438,10 @@ const authController = {
                   json_build_object(
                     'id', eqx.id,
                     'nombre', eqx.nombre,
-                    'logo_url', eqx.logo_url
+                    'logo_url', eqx.logo_url,
+                    'evento_id', eqx.evento_id,
+                    'evento_nombre', eqx.evento_nombre,
+                    'total_jugadores', eqx.total_jugadores
                   )
                   ORDER BY eqx.sort_nombre, eqx.id
                 ),
@@ -449,8 +452,28 @@ const authController = {
                   eq.id,
                   eq.nombre,
                   eq.logo_url,
+                  evx.evento_id,
+                  evx.evento_nombre,
+                  (
+                    SELECT COUNT(*)::int
+                    FROM jugadores j
+                    WHERE j.equipo_id = eq.id
+                      AND (
+                        evx.evento_id IS NULL
+                        OR j.evento_id = evx.evento_id
+                      )
+                  ) AS total_jugadores,
                   LOWER(COALESCE(eq.nombre, '')) AS sort_nombre
                 FROM equipos eq
+                LEFT JOIN LATERAL (
+                  SELECT ee.evento_id, ev.nombre AS evento_nombre
+                  FROM evento_equipos ee
+                  JOIN eventos ev ON ev.id = ee.evento_id
+                  WHERE ee.equipo_id = eq.id
+                    AND ev.campeonato_id = c.id
+                  ORDER BY COALESCE(ev.numero_campeonato, 999999), ev.id
+                  LIMIT 1
+                ) evx ON true
                 WHERE eq.campeonato_id = c.id
                 ORDER BY LOWER(COALESCE(eq.nombre, '')), eq.id DESC
               ) eqx

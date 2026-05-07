@@ -675,3 +675,83 @@ body {
     width: 100%;
   }
 }
+
+/* Mobile QA — grupos, poster y playoff embebido */
+@media (max-width: 900px) {
+  .page-gruposgen .actions,
+  .page-gruposgen .action-bar,
+  .page-gruposgen .poster-tema-selector,
+  .page-gruposgen .playoff-tab-actions {
+    align-items: stretch;
+  }
+
+  .page-gruposgen .action-bar .form-group {
+    max-width: none !important;
+    width: 100%;
+  }
+
+  .page-gruposgen .poster {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .page-gruposgen .poster-title,
+  .page-gruposgen .poster-subtitle,
+  .page-gruposgen .poster-detail {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .page-gruposgen .poster-liga-equipos-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  }
+
+  .page-gruposgen .playoff-embed-wrap,
+  .page-gruposgen .playoff-embed-frame {
+    min-height: 68vh;
+  }
+}
+
+@media (max-width: 560px) {
+  .page-gruposgen .actions button,
+  .page-gruposgen .action-bar .btn,
+  .page-gruposgen .btn-recargar-grupos,
+  .page-gruposgen .btn-poster-tema,
+  .page-gruposgen .poster-bg-btn,
+  .page-gruposgen .playoff-tab-actions .btn {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .page-gruposgen .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .page-gruposgen .poster {
+    padding: 0.85rem;
+    border-radius: 12px;
+  }
+
+  .page-gruposgen .poster-liga-card-head {
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: center;
+  }
+
+  .page-gruposgen .poster-liga-equipos-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-gruposgen .team-row {
+    align-items: flex-start;
+  }
+
+  .page-gruposgen .team-name {
+    overflow-wrap: anywhere;
+  }
+}
