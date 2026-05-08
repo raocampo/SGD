@@ -5751,15 +5751,18 @@ body.modal-open {
   margin-top: -0.15rem;
 }
 
-#jugadores-superior-hint.is-warning {
+#jugadores-superior-hint.is-warning,
+#jugadores-inferior-hint.is-warning {
   color: #92400e;
 }
 
-#jugadores-superior-hint.is-error {
+#jugadores-superior-hint.is-error,
+#jugadores-inferior-hint.is-error {
   color: #b91c1c;
 }
 
-#jugadores-superior-hint.is-success {
+#jugadores-superior-hint.is-success,
+#jugadores-inferior-hint.is-success {
   color: #166534;
 }
 
@@ -9691,4 +9694,112 @@ body.page-finanzas {
   grid-column: 1 / -1;
   margin: 0;
   color: #92400e;
+}
+
+/* ========================================================
+   MOBILE — page-tablasplantilla (poster de tablas)
+   ======================================================== */
+@media (max-width: 900px) {
+  body.page-tablasplantilla .tblp-controls-card {
+    padding: 1rem;
+  }
+
+  body.page-tablasplantilla .tblp-bg-label {
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 560px) {
+  body.page-tablasplantilla .tblp-tipo-tab {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+  }
+
+  body.page-tablasplantilla .tblp-poster-header {
+    gap: 0.5rem;
+  }
+
+  body.page-tablasplantilla .tblp-org-logo {
+    width: 42px;
+    height: 42px;
+  }
+
+  body.page-tablasplantilla .tblp-title {
+    font-size: clamp(0.95rem, 4vw, 1.4rem);
+  }
+
+  body.page-tablasplantilla .tblp-subtitle,
+  body.page-tablasplantilla .tblp-detail {
+    font-size: clamp(0.65rem, 2.5vw, 0.85rem);
+  }
+}
+
+/* ========================================================
+   MOBILE — page-jugadores (gestión de jugadores)
+   ======================================================== */
+@media (max-width: 900px) {
+  body.page-jugadores .jugadores-superior-contexto {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.87rem;
+  }
+
+  body.page-jugadores .jugadores-superior-contexto span {
+    display: none;
+  }
+
+  body.page-jugadores .jugadores-nomina-board {
+    max-width: 100%;
+  }
+
+  body.page-jugadores .jugadores-superior-actions {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  body.page-jugadores .jugadores-superior-card {
+    padding: 0.9rem;
+  }
+
+  body.page-jugadores .jugador-foto-ajuste {
+    grid-template-columns: 100px 1fr;
+    gap: 0.75rem;
+  }
+
+  body.page-jugadores .jugador-foto-ajuste-preview {
+    width: 84px;
+    height: 100px;
+  }
+
+  body.page-jugadores .jugador-foto-ajuste-direccional {
+    grid-template-columns: repeat(3, 36px);
+    grid-template-rows: repeat(3, 36px);
+  }
+}
+
+/* ========================================================
+   MOBILE — page-contenido-portal (CMS portal)
+   ======================================================== */
+@media (max-width: 900px) {
+  body.page-contenido-portal .form-grid,
+  body.page-portal-cms .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.page-contenido-portal .list-table-wrap,
+  body.page-portal-cms .list-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 560px) {
+  body.page-contenido-portal .actions .btn,
+  body.page-portal-cms .actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }

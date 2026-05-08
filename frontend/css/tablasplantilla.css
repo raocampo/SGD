@@ -669,9 +669,51 @@
 .tblp-empty-state i { font-size: 2.5rem; }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  /* Tabs de tipo: scroll horizontal para evitar que rompan el layout */
+  .tblp-tipo-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+  }
+  .tblp-tipo-tabs::-webkit-scrollbar { display: none; }
+  .tblp-tipo-tab { flex: 0 0 auto; white-space: nowrap; }
+
+  /* Selector de fondo: apila label + swatches en columna */
+  .tblp-bg-selector { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .tblp-bg-swatches { flex-wrap: wrap; }
+
+  /* Acciones de exportación: columna con botones al ancho completo */
+  .tblp-export-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tblp-export-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Poster: scroll horizontal si el contenido es más ancho que la pantalla */
+  .tblp-poster {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 @media (max-width: 600px) {
   .tblp-selectors { flex-direction: column; }
-  .tblp-export-actions { flex-direction: column; }
+
+  /* Botones de swatches: compactos en pantallas muy pequeñas */
+  .tblp-bg-swatch {
+    padding: .25rem .5rem;
+    font-size: .74rem;
+  }
+  .swatch-preview { width: 14px; height: 14px; }
+
   .tblp-poster-header { grid-template-columns: auto 1fr; }
   .tblp-year { display: none; }
   .tblp-equipo-nombre { max-width: 130px; }

@@ -291,3 +291,60 @@
   margin-top: .5rem;
   display: none;
 }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .op-diagrama-card {
+    padding: 1rem;
+    overflow-x: auto;
+  }
+
+  .op-diagrama {
+    min-width: 340px;
+  }
+
+  .op-temas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  }
+
+  .op-img-preview-wrap {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .4rem;
+  }
+
+  .op-img-preview {
+    max-width: 100%;
+    max-height: 80px;
+  }
+}
+
+@media (max-width: 560px) {
+  .op-paso-header {
+    gap: .5rem;
+  }
+
+  .op-paso-header h3 {
+    font-size: .92rem;
+  }
+
+  .op-temas-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .op-tema-btn {
+    min-width: 0;
+    padding: .4rem .5rem;
+    font-size: .74rem;
+  }
+
+  .op-tema-preview {
+    width: 40px;
+    height: 24px;
+  }
+
+  .op-fieldset {
+    padding: .75rem;
+  }
+}
