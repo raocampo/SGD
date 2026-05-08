@@ -63,6 +63,10 @@ let jugadoresActuales = [];
 let categoriasMovimientoSuperior = [];
 let equiposMovimientoSuperior = [];
 let jugadoresMovimientoSuperior = [];
+let categoriasMovimientoInferior = [];
+let equiposMovimientoInferior = [];
+let jugadoresMovimientoInferior = [];
+let jugadorEsAscendente = false;
 let vistaJugadores = localStorage.getItem("sgd_vista_jugadores") || "cards";
 vistaJugadores = vistaJugadores === "table" ? "table" : "cards";
 
@@ -442,6 +446,14 @@ function esCategoriaSuperiorPermitidaJugador(origenNombre, destinoNombre) {
   return origen.nivel > destino.nivel;
 }
 
+function esCategoriaInferiorPermitidaJugador(origenNombre, destinoNombre) {
+  const origen = inferirNivelMovimientoCategoriaJugador(origenNombre);
+  const destino = inferirNivelMovimientoCategoriaJugador(destinoNombre);
+  if (!origen.aplica || !destino.aplica) return false;
+  if (!Number.isFinite(origen.nivel) || !Number.isFinite(destino.nivel)) return false;
+  return origen.nivel < destino.nivel;
+}
+
 function normalizarCuposJuvenilEvento(valor, fallback = 0) {
   const numero = Number.parseInt(valor, 10);
   if (!Number.isFinite(numero) || numero < 0) return fallback;
@@ -642,6 +654,7 @@ function cambiarPestanaJugadores(tabId = "tab-jugadores-gestion") {
   const tabs = [
     { buttonId: "btn-tab-jugadores-gestion", panelId: "tab-jugadores-gestion" },
     { buttonId: "btn-tab-jugadores-superior", panelId: "tab-jugadores-superior" },
+    { buttonId: "btn-tab-jugadores-inferior", panelId: "tab-jugadores-inferior" },
     { buttonId: "btn-tab-jugadores-reportes", panelId: "tab-jugadores-reportes" },
   ];
 
@@ -656,6 +669,9 @@ function cambiarPestanaJugadores(tabId = "tab-jugadores-gestion") {
 
   if (tabId === "tab-jugadores-superior") {
     void refrescarPestanaJugadorSuperior();
+  }
+  if (tabId === "tab-jugadores-inferior") {
+    void refrescarPestanaJugadorInferior();
   }
 }
 
@@ -690,6 +706,321 @@ function actualizarResumenContextoMovimientoSuperior() {
     <strong>Equipo:</strong> ${escapeHtml(equipo)}
   `;
 }
+
+// ── MOVIMIENTO INFERIOR (Ascendentes) ────────────────────────────────────────
+
+function resetearSelectMovimientoInferior(id, placeholder) {
+  const select = document.getElementById(id);
+  if (!select) return null;
+  select.innerHTML = `<option value="">${placeholder}</option>`;
+  select.value = "";
+  select.disabled = true;
+  return select;
+}
+
+function actualizarResumenMovimientoInferior(html = "", tipo = "") {
+  const el = document.getElementById("jugadores-inferior-hint");
+  if (!el) return;
+  el.classList.remove("is-success", "is-warning", "is-error");
+  if (tipo) el.classList.add(`is-${tipo}`);
+  el.innerHTML = html;
+}
+
+function actualizarResumenContextoMovimientoInferior() {
+  const el = document.getElementById("jugadores-inferior-contexto");
+  if (!el) return;
+  const campeonato = campeonatoMeta?.nombre || "—";
+  const categoria = obtenerNombreEventoActual() || "—";
+  const equipo = equipoActual?.nombre || "—";
+  el.innerHTML = `
+    <strong>Destino actual:</strong> ${escapeHtml(campeonato)}
+    <span>•</span>
+    <strong>Categoría:</strong> ${escapeHtml(categoria)}
+    <span>•</span>
+    <strong>Equipo:</strong> ${escapeHtml(equipo)}
+  `;
+}
+
+async function cargarEquiposMovimientoInferior(origenEventoId, mantenerEquipoId = null) {
+  const selectEquipo = resetearSelectMovimientoInferior(
+    "select-equipo-inferior-jugador",
+    "— Selecciona un equipo de origen —"
+  );
+  const selectJugador = resetearSelectMovimientoInferior(
+    "select-jugador-inferior-jugador",
+    "— Selecciona un jugador —"
+  );
+  equiposMovimientoInferior = [];
+  jugadoresMovimientoInferior = [];
+
+  if (!selectEquipo || !selectJugador || !Number.isFinite(Number(origenEventoId)) || Number(origenEventoId) <= 0) {
+    return;
+  }
+
+  try {
+    const data = await window.ApiClient.get(`/eventos/${Number(origenEventoId)}/equipos`);
+    const equipos = Array.isArray(data?.equipos) ? data.equipos : [];
+    equiposMovimientoInferior = equipos;
+
+    equipos.forEach((equipo) => {
+      selectEquipo.innerHTML += `<option value="${equipo.id}">${escapeHtml(equipo.nombre || "Equipo")}</option>`;
+    });
+
+    selectEquipo.disabled = equipos.length === 0;
+    if (mantenerEquipoId && equipos.some((equipo) => Number(equipo.id) === Number(mantenerEquipoId))) {
+      selectEquipo.value = String(mantenerEquipoId);
+    }
+  } catch (error) {
+    console.error("Error cargando equipos de categoría inferior:", error);
+    actualizarResumenMovimientoInferior("No se pudieron cargar los equipos de la categoría inferior seleccionada.", "error");
+  }
+}
+
+async function cargarJugadoresMovimientoInferior(origenEventoId, origenEquipoId, mantenerJugadorId = null) {
+  const selectJugador = resetearSelectMovimientoInferior(
+    "select-jugador-inferior-jugador",
+    "— Selecciona un jugador —"
+  );
+  jugadoresMovimientoInferior = [];
+  if (!selectJugador || !Number.isFinite(Number(origenEventoId)) || Number(origenEventoId) <= 0 || !Number.isFinite(Number(origenEquipoId)) || Number(origenEquipoId) <= 0) {
+    return;
+  }
+
+  const edadBaseDestino = inferirEdadBaseCategoriaJugador(obtenerNombreEventoActual());
+
+  try {
+    const data = await window.ApiClient.get(
+      `/jugadores/equipo/${Number(origenEquipoId)}?evento_id=${Number(origenEventoId)}`
+    );
+    const jugadores = Array.isArray(data) ? data : (data.jugadores || data.data || []);
+
+    const elegibles = Number.isFinite(edadBaseDestino)
+      ? jugadores.filter((jugador) => {
+          const edad = calcularEdadPorAnio(jugador.fecha_nacimiento);
+          return Number.isFinite(edad) && edad >= edadBaseDestino;
+        })
+      : jugadores;
+
+    jugadoresMovimientoInferior = elegibles;
+
+    if (elegibles.length === 0) {
+      actualizarResumenMovimientoInferior(
+        `Ningún jugador de este equipo cumple la edad mínima (${Number.isFinite(edadBaseDestino) ? edadBaseDestino : "?"} años) para la categoría destino.`,
+        "warning"
+      );
+    }
+
+    elegibles.forEach((jugador) => {
+      const nombre = `${jugador.nombre || ""} ${jugador.apellido || ""}`.trim() || "Jugador";
+      const cedula = String(jugador.cedidentidad || "").trim();
+      const edad = calcularEdadPorAnio(jugador.fecha_nacimiento);
+      const extra = [
+        jugador.numero_camiseta ? `#${jugador.numero_camiseta}` : "",
+        cedula ? `CI ${cedula}` : "",
+        Number.isFinite(edad) ? `${edad} años` : "",
+      ].filter(Boolean).join(" • ");
+      selectJugador.innerHTML += `<option value="${jugador.id}">${escapeHtml(nombre)}${extra ? ` · ${escapeHtml(extra)}` : ""}</option>`;
+    });
+
+    selectJugador.disabled = elegibles.length === 0;
+    if (mantenerJugadorId && elegibles.some((jugador) => Number(jugador.id) === Number(mantenerJugadorId))) {
+      selectJugador.value = String(mantenerJugadorId);
+    }
+  } catch (error) {
+    console.error("Error cargando jugadores de categoría inferior:", error);
+    actualizarResumenMovimientoInferior("No se pudieron cargar los jugadores del equipo de origen.", "error");
+  }
+}
+
+async function refrescarPestanaJugadorInferior() {
+  actualizarResumenContextoMovimientoInferior();
+
+  const selectCategoria = resetearSelectMovimientoInferior(
+    "select-evento-inferior-jugador",
+    "— Selecciona una categoría inferior —"
+  );
+  const selectEquipo = resetearSelectMovimientoInferior(
+    "select-equipo-inferior-jugador",
+    "— Selecciona un equipo de origen —"
+  );
+  const selectJugador = resetearSelectMovimientoInferior(
+    "select-jugador-inferior-jugador",
+    "— Selecciona un jugador —"
+  );
+  const btn = document.getElementById("btn-cargar-jugador-inferior");
+  if (btn) btn.disabled = true;
+
+  if (!selectCategoria || !selectEquipo || !selectJugador) return;
+
+  if (!campeonatoId || !eventoId || !equipoId) {
+    actualizarResumenMovimientoInferior(
+      "Selecciona primero campeonato, categoría destino y equipo destino para habilitar este flujo.",
+      "warning"
+    );
+    return;
+  }
+
+  try {
+    const data = await (window.EventosAPI?.obtenerPorCampeonato?.(campeonatoId) || window.ApiClient?.get?.(`/eventos/campeonato/${campeonatoId}`));
+    const lista = Array.isArray(data) ? data : (data.eventos || data.data || []);
+    categoriasMovimientoInferior = lista.map((item) => ({
+      ...item,
+      campeonato_id: Number(item?.campeonato_id || campeonatoId) || null,
+    }));
+
+    const categoriaDestino =
+      categoriasMovimientoInferior.find((item) => Number(item.id) === Number(eventoId)) ||
+      { id: eventoId, nombre: obtenerNombreEventoActual() };
+
+    const inferiores = categoriasMovimientoInferior.filter((item) => {
+      if (Number(item.id) === Number(eventoId)) return false;
+      return esCategoriaInferiorPermitidaJugador(item.nombre, categoriaDestino?.nombre);
+    });
+
+    if (!inferiores.length) {
+      actualizarResumenMovimientoInferior(
+        "La categoría actual no tiene categorías inferiores en este campeonato. Solo aplica para categorías Sub (ej: Sub-40 puede recibir jugadores de Sub-35).",
+        "warning"
+      );
+      return;
+    }
+
+    inferiores.forEach((categoria) => {
+      selectCategoria.innerHTML += `<option value="${categoria.id}">${escapeHtml(categoria.nombre || "Categoría")}</option>`;
+    });
+    selectCategoria.disabled = false;
+
+    const valorPrevioCategoria = selectCategoria.dataset.valorPrevio || "";
+    if (valorPrevioCategoria && inferiores.some((item) => String(item.id) === valorPrevioCategoria)) {
+      selectCategoria.value = valorPrevioCategoria;
+    }
+
+    selectCategoria.onchange = async () => {
+      selectCategoria.dataset.valorPrevio = String(selectCategoria.value || "");
+      selectEquipo.dataset.valorPrevio = "";
+      selectJugador.dataset.valorPrevio = "";
+      if (btn) btn.disabled = true;
+      await cargarEquiposMovimientoInferior(selectCategoria.value ? Number(selectCategoria.value) : null);
+      actualizarResumenMovimientoInferior(
+        selectCategoria.value
+          ? "Selecciona el equipo de origen y luego el jugador que quieres inscribir en esta categoría superior."
+          : "Selecciona una categoría inferior para continuar.",
+        selectCategoria.value ? "" : "warning"
+      );
+    };
+
+    selectEquipo.onchange = async () => {
+      selectEquipo.dataset.valorPrevio = String(selectEquipo.value || "");
+      selectJugador.dataset.valorPrevio = "";
+      if (btn) btn.disabled = true;
+      await cargarJugadoresMovimientoInferior(
+        selectCategoria.value ? Number(selectCategoria.value) : null,
+        selectEquipo.value ? Number(selectEquipo.value) : null
+      );
+    };
+
+    selectJugador.onchange = () => {
+      selectJugador.dataset.valorPrevio = String(selectJugador.value || "");
+      if (btn) btn.disabled = !selectJugador.value || usuarioSoloLecturaJugadores();
+    };
+
+    if (selectCategoria.value) {
+      await cargarEquiposMovimientoInferior(
+        Number(selectCategoria.value),
+        selectEquipo.dataset.valorPrevio || null
+      );
+      if (selectEquipo.value) {
+        await cargarJugadoresMovimientoInferior(
+          Number(selectCategoria.value),
+          Number(selectEquipo.value),
+          selectJugador.dataset.valorPrevio || null
+        );
+      }
+    }
+
+    actualizarResumenMovimientoInferior(
+      usuarioSoloLecturaJugadores()
+        ? "Puedes consultar jugadores de categorías inferiores, pero tu perfil no puede inscribir nuevos registros."
+        : "Solo se muestran categorías inferiores del mismo campeonato. Se filtra por jugadores que cumplen la edad mínima de la categoría destino.",
+      usuarioSoloLecturaJugadores() ? "warning" : ""
+    );
+    if (btn) btn.disabled = !selectJugador.value || usuarioSoloLecturaJugadores();
+  } catch (error) {
+    console.error("Error preparando pestaña de jugador inferior:", error);
+    actualizarResumenMovimientoInferior("No se pudo preparar la pestaña para traer jugadores desde categorías inferiores.", "error");
+  }
+}
+
+function obtenerJugadorInferiorSeleccionado() {
+  const jugadorId = Number.parseInt(
+    document.getElementById("select-jugador-inferior-jugador")?.value || "",
+    10
+  );
+  if (!Number.isFinite(jugadorId) || jugadorId <= 0) return null;
+  return jugadoresMovimientoInferior.find((jugador) => Number(jugador.id) === jugadorId) || null;
+}
+
+async function cargarJugadorDesdeCategoriaInferior() {
+  if (usuarioSoloLecturaJugadores()) {
+    mostrarNotificacion("Tu perfil es solo lectura en jugadores", "warning");
+    return;
+  }
+  if (!equipoId || !eventoId) {
+    mostrarNotificacion("Selecciona primero la categoría y el equipo destino", "warning");
+    return;
+  }
+
+  let jugador = obtenerJugadorInferiorSeleccionado();
+  if (!jugador) {
+    mostrarNotificacion("Selecciona un jugador de la categoría inferior", "warning");
+    return;
+  }
+
+  if (jugador?.cedidentidad) {
+    const yaInscrito = jugadoresActuales.some(
+      (item) => String(item?.cedidentidad || "").trim() && String(item?.cedidentidad || "").trim() === String(jugador.cedidentidad || "").trim()
+    );
+    if (yaInscrito) {
+      mostrarNotificacion("Ese jugador ya está inscrito en el equipo destino actual", "warning");
+      return;
+    }
+  }
+
+  try {
+    const data = await ApiClient.get(`/jugadores/${jugador.id}`);
+    jugador = data?.jugador || data || jugador;
+  } catch (error) {
+    console.warn("No se pudo refrescar el jugador seleccionado, se usará el perfil listado:", error);
+  }
+
+  const categoriaOrigenId = Number.parseInt(
+    document.getElementById("select-evento-inferior-jugador")?.value || "",
+    10
+  );
+  const equipoOrigenId = Number.parseInt(
+    document.getElementById("select-equipo-inferior-jugador")?.value || "",
+    10
+  );
+  const categoriaOrigen = categoriasMovimientoInferior.find((item) => Number(item.id) === categoriaOrigenId);
+  const equipoOrigen = equiposMovimientoInferior.find((item) => Number(item.id) === equipoOrigenId);
+
+  jugadorEsAscendente = true;
+  mostrarModalCrearJugador();
+  jugadorEncontradoPorCedula = jugador;
+  rellenarFormularioJugadorDesdePerfil(jugador);
+  actualizarEstadoRequisitosEnModal(null);
+  actualizarResultadoBusquedaCedula(
+    `Se cargaron datos desde <strong>${escapeHtml(categoriaOrigen?.nombre || "categoría inferior")}</strong> / ${escapeHtml(
+      equipoOrigen?.nombre || "equipo de origen"
+    )}. Este jugador cumple la edad para la categoría destino. Revisa número de camiseta y documentos antes de guardar.`,
+    "success"
+  );
+  document.getElementById("jugador-numero")?.focus();
+}
+
+window.cargarJugadorDesdeCategoriaInferior = cargarJugadorDesdeCategoriaInferior;
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function obtenerCategoriasMovimientoSuperior() {
   if (!campeonatoId) {
@@ -1506,6 +1837,7 @@ function limpiarVistaSinEquipo() {
   renderPlanillaJugador();
   actualizarEstadoPanelReportes();
   void refrescarPestanaJugadorSuperior();
+  void refrescarPestanaJugadorInferior();
   if (lista) {
     lista.innerHTML = `
       <div class="empty-state">
@@ -3677,6 +4009,7 @@ function mostrarModalCrearJugador() {
   const form = document.getElementById("form-jugador");
 
   jugadorActualEnEdicion = null;
+  jugadorEsAscendente = false;
   if (titulo) titulo.textContent = "Nuevo Jugador";
   if (form) form.reset();
 
@@ -3837,6 +4170,7 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
   if (posicion) fd.append("posicion", posicion);
   if (numeroRaw) fd.append("numero_camiseta", String(Number.parseInt(numeroRaw, 10)));
   fd.append("es_capitan", esCapitan ? "true" : "false");
+  if (jugadorEsAscendente) fd.append("es_ascendente", "true");
 
   if (fotoCedulaFile) fd.append("foto_cedula", fotoCedulaFile);
   if (fotoCarnetFile) fd.append("foto_carnet", fotoCarnetFile);
@@ -3870,6 +4204,7 @@ document.getElementById("form-jugador").addEventListener("submit", async (e) => 
     fd.append("foto_carnet_zoom", String(fotoCarnetZoom));
 
     await guardarJugadorConFormData({ id, fd });
+    jugadorEsAscendente = false;
     mostrarNotificacion(id ? "Jugador actualizado correctamente" : "Jugador creado correctamente", "success");
     cerrarModal("modal-jugador");
     await cargarJugadores();

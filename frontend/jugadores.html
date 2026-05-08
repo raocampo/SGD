@@ -115,6 +115,14 @@
             Desde categoría superior
           </button>
           <button
+            id="btn-tab-jugadores-inferior"
+            class="jugadores-main-tab"
+            type="button"
+            onclick="cambiarPestanaJugadores('tab-jugadores-inferior')"
+          >
+            Desde categoría inferior
+          </button>
+          <button
             id="btn-tab-jugadores-reportes"
             class="jugadores-main-tab"
             type="button"
@@ -162,6 +170,47 @@
               </button>
             </div>
             <div id="jugadores-superior-hint" class="form-hint"></div>
+          </div>
+        </div>
+
+        <div id="tab-jugadores-inferior" class="jugadores-tab-panel">
+          <div class="config-card jugadores-superior-card">
+            <h3><i class="fas fa-arrow-up"></i> Inscribir desde categoría inferior</h3>
+            <p class="form-hint">
+              Usa esta pestaña para inscribir un jugador de una categoría inferior del mismo campeonato en la categoría actual, siempre que cumpla la edad mínima requerida (ej: un jugador de Sub-35 con 50 años puede jugar en Sub-40 o Sub-50).
+            </p>
+            <div id="jugadores-inferior-contexto" class="jugadores-superior-contexto"></div>
+            <div class="form-grid jugadores-superior-grid">
+              <div class="form-group">
+                <label for="select-evento-inferior-jugador">Categoría inferior:</label>
+                <select id="select-evento-inferior-jugador">
+                  <option value="">— Selecciona una categoría inferior —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="select-equipo-inferior-jugador">Equipo de origen:</label>
+                <select id="select-equipo-inferior-jugador">
+                  <option value="">— Selecciona un equipo de origen —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="select-jugador-inferior-jugador">Jugador elegible:</label>
+                <select id="select-jugador-inferior-jugador">
+                  <option value="">— Selecciona un jugador —</option>
+                </select>
+              </div>
+            </div>
+            <div class="partidos-busqueda-actions jugadores-superior-actions">
+              <button
+                class="btn btn-primary"
+                id="btn-cargar-jugador-inferior"
+                type="button"
+                onclick="cargarJugadorDesdeCategoriaInferior()"
+              >
+                <i class="fas fa-user-plus"></i> Cargar al formulario
+              </button>
+            </div>
+            <div id="jugadores-inferior-hint" class="form-hint"></div>
           </div>
         </div>
 

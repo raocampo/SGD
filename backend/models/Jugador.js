@@ -869,7 +869,8 @@ class Jugador {
         foto_carnet_pos_x = 50,
         foto_carnet_pos_y = 35,
         foto_carnet_zoom = 1,
-        evento_id_contexto = null
+        evento_id_contexto = null,
+        omitirValidacionDireccion = false
     ) {
         await this.asegurarColumnasDocumentos();
         const cedulaNormalizada = this.validarCedidentidad(
@@ -919,11 +920,13 @@ class Jugador {
             eventoId: contextoRoster.eventoId,
             fechaNacimiento: fechaNacimientoNormalizada,
         });
-        await this.validarDireccionCategoriaPorCedula({
-            cedula: cedulaNormalizada,
-            equipoId: equipo_id,
-            eventoId: contextoRoster.eventoId,
-        });
+        if (!omitirValidacionDireccion) {
+            await this.validarDireccionCategoriaPorCedula({
+                cedula: cedulaNormalizada,
+                equipoId: equipo_id,
+                eventoId: contextoRoster.eventoId,
+            });
+        }
 
         // Verificar si la cédula ya existe en otro equipo de la misma categoría/evento
         await this.verificarJugadorUnicoPorEvento(

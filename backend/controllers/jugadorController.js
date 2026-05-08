@@ -120,6 +120,7 @@ const jugadorController = {
                 foto_carnet_pos_x,
                 foto_carnet_pos_y,
                 foto_carnet_zoom,
+                es_ascendente,
             } = req.body;
             const fotoCedula =
                 construirUrlArchivoJugador(req, req.files?.foto_cedula?.[0]) ||
@@ -177,7 +178,8 @@ const jugadorController = {
                 fotoCarnetPosX,
                 fotoCarnetPosY,
                 fotoCarnetZoom,
-                evento_id
+                evento_id,
+                parseBooleanFlag(es_ascendente)
             );
 
             res.status(201).json({
@@ -189,12 +191,14 @@ const jugadorController = {
             console.error('Error creando jugador:', error);
             
             // Manejo específico de errores
-            if (error.message.includes('Límite') || 
+            if (error.message.includes('Límite') ||
                 error.message.includes('Equipo no encontrado') ||
                 error.message.includes('cédula') ||
                 error.message.includes('Cedula') ||
                 error.message.includes('número de camiseta') ||
-                error.message.includes('no puede estar en dos equipos')) {
+                error.message.includes('no puede estar en dos equipos') ||
+                error.message.includes('Solo se permite bajar') ||
+                error.message.includes('categoría')) {
                 return res.status(400).json({
                     error: error.message
                 });
