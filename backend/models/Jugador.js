@@ -13,7 +13,9 @@ class Jugador {
             );
         }
         if (constraint === "jugadores_cedidentidad_evento_uidx") {
-            return new Error("La cédula ya está registrada en esta misma categoría.");
+            return new Error(
+                "La cédula ya está registrada en esta categoría por una restricción antigua. Debes aplicar la migración 068 para permitir preinscripción en varios equipos de la misma categoría."
+            );
         }
         return error;
     }
@@ -460,20 +462,13 @@ class Jugador {
             Number.isFinite(excluirId) ? [...params, excluirId] : params
         );
 
-        const conflicto = jugadoresResult.rows
+        const inscripciones = jugadoresResult.rows
             .map((row) => ({
                 ...row,
                 nivel: this.inferirNivelCategoriaMovimiento(row.evento_nombre),
             }))
             .filter((row) => row.nivel?.aplica === true && Number.isFinite(row.nivel?.nivel))
-            .sort((a, b) => Number(a.nivel.nivel) - Number(b.nivel.nivel))
-            .find((row) => Number(row.nivel.nivel) < Number(nivelDestino.nivel));
-
-        if (conflicto) {
-            throw new Error(
-                `No se puede inscribir la cédula en la categoría "${destino.nombre}" porque ya participa en la categoría "${conflicto.evento_nombre}" del campeonato "${destino.campeonato_nombre}". Solo se permite bajar jugadores desde categorías más altas hacia categorías más bajas.`
-            );
-        }
+            .sort((a, b) => Number(a.nivel.nivel) - Number(b.nivel.nivel));
 
         return {
             destino: {
@@ -483,6 +478,7 @@ class Jugador {
                 campeonato_nombre: destino.campeonato_nombre,
                 nivel: nivelDestino.nivel,
             },
+            inscripciones,
         };
     }
 
@@ -783,11 +779,10 @@ class Jugador {
     }
 
     /**
-     * Validación: un jugador no puede estar en dos equipos de la misma categoría/evento.
-     * Puede repetirse en otras categorías del mismo campeonato.
-     * @param {string} cedula
-     * @param {number} equipo_destino_id - equipo al que se asigna
-     * @param {number} [excluir_jugador_id] - al actualizar, excluir este jugador del chequeo
+     * Compatibilidad histórica.
+     * La regla actual permite preinscribir una misma cédula en varias categorías
+     * y equipos. El bloqueo por "primer equipo que juega" se valida al guardar
+     * planilla, cuando existe participación real en una categoría.
      */
     static async verificarJugadorUnicoPorEvento(
         cedula,
@@ -795,62 +790,11 @@ class Jugador {
         excluir_jugador_id = null,
         evento_contexto_id = null
     ) {
-        if (!cedula || !equipo_destino_id) return;
-
-        const eventoContextoId = Number.parseInt(evento_contexto_id, 10);
-        let q = `
-            WITH eventos_destino AS (
-              SELECT ee.evento_id
-              FROM evento_equipos ee
-              WHERE ee.equipo_id = $2
-                AND ($3::int IS NULL OR ee.evento_id = $3)
-            ),
-            conteo_eventos_equipo AS (
-              SELECT
-                ee.equipo_id,
-                COUNT(DISTINCT ee.evento_id)::int AS total_eventos
-              FROM evento_equipos ee
-              GROUP BY ee.equipo_id
-            )
-            SELECT
-              j.id,
-              j.nombre,
-              j.apellido,
-              e.nombre as equipo_nombre,
-              STRING_AGG(DISTINCT ev.nombre, ', ' ORDER BY ev.nombre) AS evento_nombre
-            FROM jugadores j
-            JOIN equipos e ON e.id = j.equipo_id
-            JOIN evento_equipos ee_jugador ON ee_jugador.equipo_id = j.equipo_id
-            JOIN eventos_destino ed ON ed.evento_id = ee_jugador.evento_id
-            LEFT JOIN conteo_eventos_equipo cee ON cee.equipo_id = j.equipo_id
-            LEFT JOIN eventos ev ON ev.id = ee_jugador.evento_id
-            WHERE j.cedidentidad = $1
-              AND j.equipo_id != $2
-              AND (
-                $3::int IS NULL
-                OR (COALESCE(cee.total_eventos, 0) > 1 AND j.evento_id = ed.evento_id)
-                OR (COALESCE(cee.total_eventos, 0) <= 1 AND (j.evento_id = ed.evento_id OR j.evento_id IS NULL))
-              )
-        `;
-        const params = [cedula, equipo_destino_id, Number.isFinite(eventoContextoId) ? eventoContextoId : null];
-        if (excluir_jugador_id) {
-            q += ` AND j.id != $4`;
-            params.push(excluir_jugador_id);
-        }
-        q += `
-            GROUP BY j.id, j.nombre, j.apellido, e.nombre
-            LIMIT 1
-        `;
-
-        const r = await pool.query(q, params);
-        if (r.rows.length > 0) {
-            const otro = r.rows[0];
-            throw new Error(
-                `Un jugador no puede estar en dos equipos de la misma categoría. ` +
-                `La cédula ya está registrada en el equipo "${otro.equipo_nombre}"` +
-                `${otro.evento_nombre ? ` de la categoría "${otro.evento_nombre}"` : ""}.`
-            );
-        }
+        void cedula;
+        void equipo_destino_id;
+        void excluir_jugador_id;
+        void evento_contexto_id;
+        return null;
     }
     
     // CREATE - Crear nuevo jugador

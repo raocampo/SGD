@@ -1,3 +1,69 @@
+## 2026-05-08 — Regla multi inscripción por categoría/equipo
+
+### Objetivo
+Actualizar la regla de jugadores para permitir que una misma cédula pueda preinscribirse en varias categorías y también en varios equipos de la misma categoría, siempre que cumpla la edad de cada categoría. La participación efectiva queda bloqueada por el primer equipo con el que juegue en esa categoría.
+
+### Regla aplicada
+- Un jugador de 50 años puede estar inscrito en U35, U40 y U50 si cumple edad.
+- Puede estar preinscrito en equipos diferentes, incluso dentro de la misma categoría.
+- La inscripción administrativa no define el equipo final.
+- Al guardar una planilla finalizada, la cédula queda asociada al primer equipo con el que participa en esa categoría.
+- Si luego se intenta guardar planilla en la misma categoría con esa cédula en otro equipo, el backend bloquea la participación.
+
+### Cambios aplicados
+- `backend/models/Jugador.js`
+  - `validarDireccionCategoriaPorCedula()` ya no bloquea por dirección de categoría; conserva el contexto de categoría/campeonato.
+  - `verificarJugadorUnicoPorEvento()` queda como compatibilidad histórica y deja de bloquear la preinscripción en otro equipo de la misma categoría.
+  - El mensaje para el índice antiguo `jugadores_cedidentidad_evento_uidx` ahora indica aplicar la migración 068.
+- `backend/models/Partido.js`
+  - Nuevo control al guardar planilla finalizada: detecta cédulas ya usadas en la misma categoría con otro equipo y bloquea la nueva participación.
+  - También bloquea si la misma cédula aparece en dos equipos dentro de la misma planilla.
+- `database/migrations/068_jugadores_cedula_multi_equipo_categoria.sql`
+  - Elimina el índice único `jugadores_cedidentidad_evento_uidx`.
+  - Crea índice no único de consulta para `cedidentidad + evento_id`.
+
+### Verificación local
+- `node --check backend/models/Jugador.js`
+- `node --check backend/models/Partido.js`
+- `node --check frontend/js/jugadores.js`
+- `npm run smoke:frontend`
+
+### Pendiente
+QA en Render después del deploy: crear/editar misma cédula en U50 aunque exista en U40, registrar misma cédula en dos equipos de U50, guardar planilla con el primer equipo y confirmar bloqueo al intentar guardarla con el segundo.
+
+---
+
+## 2026-05-08 — Fix inscripción desde categoría inferior (jugadores)
+
+### Objetivo
+Corregir el flujo de `jugadores.html` para inscribir formalmente en una categoría superior a un jugador ya registrado en una categoría inferior del mismo campeonato, cuando cumple la edad mínima de la categoría destino.
+
+### Diagnóstico
+- La pestaña **Desde categoría inferior** sí filtraba jugadores elegibles por edad.
+- Al cargar el jugador al formulario se marcaba `jugadorEsAscendente = true`.
+- Pero `mostrarModalCrearJugador()` reiniciaba ese estado a `false` al abrir el modal.
+- Por eso el `FormData` no enviaba `es_ascendente=true`, y el backend aplicaba la validación antigua de dirección: "Solo se permite bajar jugadores desde categorías más altas hacia categorías más bajas".
+
+### Cambio aplicado
+- `frontend/js/jugadores.js`:
+  - `mostrarModalCrearJugador(opciones = {})` ahora acepta `{ esAscendente: true }`.
+  - El flujo **Desde categoría inferior** abre el modal con ese contexto y conserva el flag hasta el guardado.
+  - Si el modal no puede abrirse por permisos, equipo faltante o cupo máximo, el flujo se detiene sin rellenar datos.
+  - Se aplicó el mismo control de apertura al flujo **Desde categoría superior**.
+- El backend mantiene las validaciones de edad/documentos/cupos; cuando recibe `es_ascendente=true`, omite solo la validación direccional entre categorías.
+
+### Verificación local
+- `git pull --ff-only --autostash origin main`
+- `node --check frontend/js/jugadores.js`
+- `node --check backend/models/Jugador.js`
+- `node --check backend/controllers/jugadorController.js`
+- `npm run smoke:frontend`
+
+### Pendiente
+QA en Render con el caso real: jugador de U40 con edad válida guardado en U50 desde la pestaña **Desde categoría inferior**.
+
+---
+
 ## 2026-05-08 — Responsive completo: admin app + portal web público
 
 ### Objetivo
@@ -47,7 +113,7 @@ Permitir que jugadores inscritos en categorías Sub inferiores suban a jugar en 
 
 ### Diseño adoptado
 - **Planilla-level** (no inscripción formal): el jugador NO se inscribe en la categoría destino; solo se registra como presente en ese partido específico.
-- La validación `validarDireccionCategoriaPorCedula` queda intacta (controla inscripciones formales).
+- Nota posterior: desde la regla multi inscripción, `validarDireccionCategoriaPorCedula` ya no bloquea dirección de categoría; las inscripciones formales se validan por edad/documentos/cupos y el bloqueo por equipo se aplica al guardar planilla.
 - Los ascendentes se almacenan en el JSONB `partido_planillas.registro_jugadores_local/visitante` con `es_ascendente: true` y `evento_origen_id`.
 - La categoría debe tener `permite_ascenso = true` activado por el organizador.
 
@@ -2055,7 +2121,7 @@ Mantener un registro vivo del progreso del proyecto para retomar trabajo sin per
   - la ultima actividad se sincroniza entre pestañas con `localStorage` y `login.html` muestra aviso cuando la sesion fue cerrada por timeout.
   - `frontend/js/api.js`, `frontend/js/login.js` y `frontend/js/register.js` ya consumen `refreshToken` para acompañar el cierre de sesion y el control de actividad.
 - Jugadores:
-  - `backend/models/Jugador.js` ya permite reutilizar la misma cedula en distintas categorias del mismo campeonato; el bloqueo solo aplica si el jugador intenta quedar en dos equipos de la misma categoria/evento.
+  - `backend/models/Jugador.js` ya permite reutilizar la misma cedula en distintas categorias y equipos del mismo campeonato si cumple edad; desde la migracion `068`, el bloqueo por equipo dentro de una categoria se valida al guardar planilla, con el primer equipo que juega.
   - `frontend/jugadores.html`, `frontend/js/jugadores.js` y `frontend/css/style.css` ajustaron la experiencia de fichas/tarjetas:
     - hero visual con `foto carné`,
     - fallback al logo del equipo o placeholder,

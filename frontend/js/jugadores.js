@@ -1004,8 +1004,9 @@ async function cargarJugadorDesdeCategoriaInferior() {
   const categoriaOrigen = categoriasMovimientoInferior.find((item) => Number(item.id) === categoriaOrigenId);
   const equipoOrigen = equiposMovimientoInferior.find((item) => Number(item.id) === equipoOrigenId);
 
-  jugadorEsAscendente = true;
-  mostrarModalCrearJugador();
+  const modalAbierto = mostrarModalCrearJugador({ esAscendente: true });
+  if (!modalAbierto) return;
+
   jugadorEncontradoPorCedula = jugador;
   rellenarFormularioJugadorDesdePerfil(jugador);
   actualizarEstadoRequisitosEnModal(null);
@@ -1814,7 +1815,9 @@ async function cargarJugadorDesdeCategoriaSuperior() {
   const categoriaOrigen = categoriasMovimientoSuperior.find((item) => Number(item.id) === categoriaOrigenId);
   const equipoOrigen = equiposMovimientoSuperior.find((item) => Number(item.id) === equipoOrigenId);
 
-  mostrarModalCrearJugador();
+  const modalAbierto = mostrarModalCrearJugador();
+  if (!modalAbierto) return;
+
   jugadorEncontradoPorCedula = jugador;
   rellenarFormularioJugadorDesdePerfil(jugador);
   actualizarEstadoRequisitosEnModal(null);
@@ -3990,26 +3993,26 @@ function actualizarResumenJugadores() {
   resumenEl.style.color = color;
 }
 
-function mostrarModalCrearJugador() {
+function mostrarModalCrearJugador(opciones = {}) {
   if (usuarioSoloLecturaJugadores()) {
     mostrarNotificacion("Tu perfil es solo lectura en jugadores", "warning");
-    return;
+    return false;
   }
   if (!equipoId) {
     mostrarNotificacion("Selecciona un equipo primero", "warning");
-    return;
+    return false;
   }
 
   if (maxJugadoresPorEquipo && jugadoresActuales.length >= maxJugadoresPorEquipo) {
     mostrarNotificacion(`Ya alcanzaste el maximo de ${maxJugadoresPorEquipo} jugadores para este equipo`, "warning");
-    return;
+    return false;
   }
 
   const titulo = document.getElementById("modal-jugador-titulo");
   const form = document.getElementById("form-jugador");
 
   jugadorActualEnEdicion = null;
-  jugadorEsAscendente = false;
+  jugadorEsAscendente = Boolean(opciones?.esAscendente);
   if (titulo) titulo.textContent = "Nuevo Jugador";
   if (form) form.reset();
 
@@ -4033,6 +4036,7 @@ function mostrarModalCrearJugador() {
     const targetId = esCedulaObligatoriaEnCampeonato() ? "jugador-ced" : "jugador-nombre";
     document.getElementById(targetId)?.focus();
   }, 60);
+  return true;
 }
 
 async function editarJugador(id) {

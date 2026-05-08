@@ -219,6 +219,177 @@ function construirMapaRegistroPlanilla(items = []) {
   return mapa;
 }
 
+function construirEntradasParticipacionCategoria({
+  registroJugadoresLocal = [],
+  registroJugadoresVisitante = [],
+  goles = [],
+  tarjetas = [],
+} = {}) {
+  const mapa = new Map();
+  const agregar = (item = {}) => {
+    const jugadorId = Number.parseInt(item?.jugador_id, 10);
+    const equipoId = Number.parseInt(item?.equipo_id, 10);
+    if (!Number.isFinite(jugadorId) || jugadorId <= 0) return;
+    if (!Number.isFinite(equipoId) || equipoId <= 0) return;
+    const key = `${equipoId}:${jugadorId}`;
+    if (mapa.has(key)) return;
+    mapa.set(key, {
+      jugador_id: jugadorId,
+      equipo_id: equipoId,
+    });
+  };
+
+  [
+    ...registroJugadoresLocal,
+    ...registroJugadoresVisitante,
+    ...goles,
+    ...tarjetas,
+  ].forEach(agregar);
+  return [...mapa.values()];
+}
+
+async function validarParticipacionUnicaPorCedulaCategoria(
+  client,
+  partido = {},
+  entradas = [],
+  estadoPlanilla = ""
+) {
+  const eventoId = Number.parseInt(partido?.evento_id, 10);
+  const partidoId = Number.parseInt(partido?.id, 10);
+  if (!Number.isFinite(eventoId) || eventoId <= 0) return;
+  if (!Number.isFinite(partidoId) || partidoId <= 0) return;
+  if (!partidoCuentaParaSuspension(estadoPlanilla)) return;
+
+  const participantesBase = (Array.isArray(entradas) ? entradas : [])
+    .map((item) => ({
+      jugador_id: Number.parseInt(item?.jugador_id, 10),
+      equipo_id: Number.parseInt(item?.equipo_id, 10),
+    }))
+    .filter(
+      (item) =>
+        Number.isFinite(item.jugador_id) &&
+        item.jugador_id > 0 &&
+        Number.isFinite(item.equipo_id) &&
+        item.equipo_id > 0
+    );
+  if (!participantesBase.length) return;
+
+  const jugadorIds = [...new Set(participantesBase.map((item) => item.jugador_id))];
+  const jugadoresR = await client.query(
+    `
+      SELECT id, cedidentidad, nombre, apellido
+      FROM jugadores
+      WHERE id = ANY($1::int[])
+    `,
+    [jugadorIds]
+  );
+  const jugadoresPorId = new Map(
+    jugadoresR.rows.map((row) => [Number.parseInt(row.id, 10), row])
+  );
+
+  const participantes = participantesBase
+    .map((item) => {
+      const jugador = jugadoresPorId.get(item.jugador_id);
+      const cedula = Jugador.normalizarCedidentidad(jugador?.cedidentidad);
+      if (!cedula) return null;
+      return {
+        ...item,
+        cedula,
+        nombre: [jugador?.nombre, jugador?.apellido].filter(Boolean).join(" ").trim(),
+      };
+    })
+    .filter(Boolean);
+  if (!participantes.length) return;
+
+  const equipoIds = [...new Set(participantes.map((item) => item.equipo_id))];
+  const equiposR = await client.query(
+    `SELECT id, nombre FROM equipos WHERE id = ANY($1::int[])`,
+    [equipoIds]
+  );
+  const equiposPorId = new Map(
+    equiposR.rows.map((row) => [Number.parseInt(row.id, 10), row.nombre])
+  );
+  const nombreEquipo = (equipoId) => equiposPorId.get(Number(equipoId)) || `Equipo ${equipoId}`;
+
+  const actualPorCedula = new Map();
+  for (const participante of participantes) {
+    const existente = actualPorCedula.get(participante.cedula);
+    if (existente && Number(existente.equipo_id) !== Number(participante.equipo_id)) {
+      const error = new Error(
+        `La cédula ${participante.cedula} figura en dos equipos de esta planilla (${nombreEquipo(existente.equipo_id)} y ${nombreEquipo(participante.equipo_id)}). En una misma categoría solo puede jugar por el primer equipo confirmado.`
+      );
+      error.statusCode = 400;
+      error.code = "JUGADOR_DUPLICADO_PLANILLA_CATEGORIA";
+      throw error;
+    }
+    if (!existente) actualPorCedula.set(participante.cedula, participante);
+  }
+
+  const cedulas = [...actualPorCedula.keys()];
+  const bloqueosR = await client.query(
+    `
+      WITH registros AS (
+        SELECT
+          p.id AS partido_id,
+          p.jornada,
+          p.fecha_partido,
+          p.hora_partido,
+          p.estado,
+          (reg.value->>'jugador_id')::int AS jugador_id,
+          (reg.value->>'equipo_id')::int AS equipo_id
+        FROM partido_planillas pp
+        JOIN partidos p ON p.id = pp.partido_id
+        CROSS JOIN LATERAL jsonb_array_elements(
+          COALESCE(pp.registro_jugadores_local, '[]'::jsonb) ||
+          COALESCE(pp.registro_jugadores_visitante, '[]'::jsonb)
+        ) AS reg(value)
+        WHERE p.evento_id = $1
+          AND p.id <> $2
+          AND p.estado IN ('finalizado', 'no_presentaron_ambos')
+          AND (reg.value->>'jugador_id') ~ '^\\d+$'
+          AND (reg.value->>'equipo_id') ~ '^\\d+$'
+      )
+      SELECT DISTINCT
+        r.partido_id,
+        r.jornada,
+        r.fecha_partido,
+        r.hora_partido,
+        r.estado,
+        r.equipo_id,
+        eq.nombre AS equipo_nombre,
+        j.cedidentidad,
+        j.nombre AS jugador_nombre,
+        j.apellido AS jugador_apellido
+      FROM registros r
+      JOIN jugadores j ON j.id = r.jugador_id
+      LEFT JOIN equipos eq ON eq.id = r.equipo_id
+      WHERE j.cedidentidad = ANY($3::text[])
+      ORDER BY r.fecha_partido NULLS LAST, r.hora_partido NULLS LAST, r.partido_id
+    `,
+    [eventoId, partidoId, cedulas]
+  );
+
+  for (const bloqueo of bloqueosR.rows) {
+    const cedula = Jugador.normalizarCedidentidad(bloqueo.cedidentidad);
+    const participante = actualPorCedula.get(cedula);
+    const equipoBloqueadoId = Number.parseInt(bloqueo.equipo_id, 10);
+    if (!participante || !Number.isFinite(equipoBloqueadoId)) continue;
+    if (Number(equipoBloqueadoId) === Number(participante.equipo_id)) continue;
+
+    const jugadorNombre =
+      participante.nombre ||
+      [bloqueo.jugador_nombre, bloqueo.jugador_apellido].filter(Boolean).join(" ").trim() ||
+      `cédula ${cedula}`;
+    const equipoBloqueado = bloqueo.equipo_nombre || `Equipo ${equipoBloqueadoId}`;
+    const error = new Error(
+      `${jugadorNombre} ya quedó habilitado para jugar en esta categoría con el equipo "${equipoBloqueado}". Puede estar inscrito en otros equipos, pero en esta categoría solo puede participar por el primer equipo que jugó.`
+    );
+    error.statusCode = 400;
+    error.code = "JUGADOR_BLOQUEADO_PRIMER_EQUIPO";
+    throw error;
+  }
+}
+
 async function aplicarNumerosCamisetaDesdePlanilla(client, partido, cambios = []) {
   const cambiosNormalizados = normalizarCambiosNumeroCamisetaPlanilla(cambios);
   if (!cambiosNormalizados.length) return;
@@ -3728,6 +3899,18 @@ class Partido {
       );
       const goles = golesBase.filter((item) => !equipoBloqueado(item?.equipo_id));
       const tarjetas = tarjetasBase.filter((item) => !equipoBloqueado(item?.equipo_id));
+
+      await validarParticipacionUnicaPorCedulaCategoria(
+        client,
+        partido,
+        construirEntradasParticipacionCategoria({
+          registroJugadoresLocal,
+          registroJugadoresVisitante,
+          goles,
+          tarjetas,
+        }),
+        estado
+      );
 
       const pagoTaLocal = localBloqueado
         ? 0

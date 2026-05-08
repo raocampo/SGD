@@ -321,7 +321,7 @@ Se implementaron las recomendaciones priorizadas del documento `propuestaDesarro
 - compatibilidad transitoria:
   - si un equipo participa en una sola categoria, el sistema aun puede leer filas legacy (`evento_id IS NULL`) mientras termina de migrarse el historial.
   - si un equipo participa en multiples categorias, la lectura se fuerza al `evento_id` actual para impedir compartir nomina entre categorias.
-- la restriccion vieja `jugadores_dni_key UNIQUE (cedidentidad)` se reemplazo por un indice unico parcial sobre `(cedidentidad, evento_id)` para permitir la misma cédula en distintas categorías sin perder el bloqueo dentro de la misma categoría.
+- la restriccion vieja `jugadores_dni_key UNIQUE (cedidentidad)` fue reemplazada inicialmente por un indice unico parcial sobre `(cedidentidad, evento_id)`. Regla actual: migracion `068` elimina ese indice unico y deja un indice no unico de consulta para permitir la misma cedula en varios equipos de la misma categoria; el bloqueo se aplica al guardar planilla por el primer equipo que juega.
 - despliegue:
   - `045` aplicada en BD local y Render.
   - `046` aplicada en BD local y Render.

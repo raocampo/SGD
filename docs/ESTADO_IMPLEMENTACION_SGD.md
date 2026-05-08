@@ -1,3 +1,42 @@
+## 2026-05-08 — Regla multi inscripción y bloqueo por primer equipo
+
+### Cambios aplicados
+- Se actualiza la regla de jugadores: una misma cédula puede preinscribirse en distintas categorías y en distintos equipos de la misma categoría si cumple edad.
+- La preinscripción ya no bloquea por dirección de categoría ni por otro equipo de la misma categoría.
+- El bloqueo pasa a planilla: al guardar una planilla finalizada, la cédula queda asociada al primer equipo con el que participa en esa categoría.
+- Si la misma cédula intenta participar luego en la misma categoría con otro equipo, el backend responde error 400 y bloquea el guardado.
+- Se agrega migración `068_jugadores_cedula_multi_equipo_categoria.sql` para reemplazar el índice único `cedidentidad + evento_id` por un índice no único de consulta.
+
+### Verificación local
+- `node --check backend/models/Jugador.js`
+- `node --check backend/models/Partido.js`
+- `node --check frontend/js/jugadores.js`
+- `npm run smoke:frontend`
+
+### Pendiente agregado
+- QA en Render después del deploy con el caso real U40/U50 y con dos equipos dentro de U50.
+
+---
+
+## 2026-05-08 — Fix inscripción formal desde categoría inferior
+
+### Cambios aplicados
+- Corregido `frontend/js/jugadores.js` para que la pestaña **Desde categoría inferior** conserve el estado `jugadorEsAscendente` al abrir el modal de nuevo jugador.
+- El guardado vuelve a enviar `es_ascendente=true` al backend, evitando que se dispare la validación antigua de "solo bajar" cuando el jugador sube de una categoría inferior a una superior y cumple edad.
+- El modal ahora devuelve si logró abrirse; los flujos de categorías superior/inferior se detienen si hay bloqueo por permisos, equipo faltante o cupo máximo.
+
+### Verificación local
+- `git pull --ff-only --autostash origin main`
+- `node --check frontend/js/jugadores.js`
+- `node --check backend/models/Jugador.js`
+- `node --check backend/controllers/jugadorController.js`
+- `npm run smoke:frontend`
+
+### Pendiente agregado
+- QA en Render con caso real: seleccionar jugador desde U40 hacia U50, guardar y confirmar que no aparezca el error de dirección de categoría.
+
+---
+
 ## 2026-05-08 — Responsive completo: admin app + portal web público
 
 ### Cambios aplicados
@@ -251,7 +290,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 3.1 Gestion de Torneos/Campeonatos | Parcial-Alto | CRUD y estados operativos, organizador/logo/colores; tipos de futbol ampliados (`futbol_11`, `futbol_9`, `futbol_8`, `futbol_7`, `futbol_6`, `futbol_5`, `futsala`, `indor`) y fondo de carné configurable por campeonato; pendiente reglamento PDF/bases y sedes multiples. |
 | 3.2 Categorias por torneo | Alto | Eventos/categorias por campeonato funcionales con asignacion de equipos, parametro `clasificados_por_grupo`, configuracion inicial de playoff (`playoff_plantilla`, `playoff_tercer_puesto`) y reglas etarias por categoría (`categoria_juvenil`, cupos juveniles, diferencia máxima permitida y control de edad visible en carné). |
 | 3.3 Gestion de Equipos | Alto | Registro completo con logo/contacto/colores, asignacion por evento, flujo hacia sorteo y vista Tarjetas/Tabla. |
-| 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; validacion de jugador unico por categoria/evento (ya no por campeonato completo), permitiendo la misma cedula en distintas categorias. La validacion ya toma el `evento_id` actual enviado por la UI, evitando falsos bloqueos cuando el equipo participa en varias categorias. `jugadores` ya incorpora `evento_id` para separar la nomina por categoria real; lectura de plantel, conteo maximo, numero de camiseta, capitania y planilla ya se resuelven con ese contexto. La restriccion vieja `jugadores_dni_key UNIQUE (cedidentidad)` fue reemplazada por un indice unico por `cedidentidad + evento_id`, con lo que la misma cédula ya puede repetirse en categorias distintas manteniendo el bloqueo dentro de la misma categoria. Para equipos de una sola categoria se mantiene compatibilidad legacy con filas `evento_id IS NULL`; para equipos de multiples categorias, la lectura se fuerza al `evento_id` actual para evitar compartir roster. Documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Uploads reorganizados por tipo (`jugadores/cedulas`, `jugadores/fotos`) sin romper carnés ni reporteria; fecha de nacimiento ya no sufre desfase por zona horaria, la `foto carné` puede borrarse desde el perfil del jugador y las cards/fichas ya usan hero con foto o logo de equipo como fallback. El guardado multipart ya usa cliente autenticado, el backend responde errores amigables de subida y el limite de imagenes se amplio a `8MB`. Los carnés ya soportan fondo configurable por campeonato mezclando imagen, logo y colores institucionales, y ahora guardan un recorte estable (`foto_carnet_recorte_url`) para evitar desfases entre preview y PDF; el ajuste de encuadre ya soporta arrastre directo, guía visual y restablecimiento rapido. La gestión etaria por categoría ya valida jugadores juveniles para categorías `Sub/U 30` a `Sub/U 60`, controla cupos juveniles por equipo y permite que tarjetas, tabla y carné muestren edad/condición juvenil cuando corresponde. Modulo de pases con UI operativa, sincronizacion contable integrada (cargo/abono por pase) e historial visual por jugador/equipo. `jugadores.html` ya incorpora `Nómina simple de jugadores` y exportación `Excel` para nómina oficial/simple, sanciones y ficha individual. |
+| 3.4 Gestion de Jugadores | Alto | CRUD por equipo y acceso global; la misma cedula puede preinscribirse en distintas categorias y en varios equipos de la misma categoria si cumple la edad. La validacion toma el `evento_id` actual enviado por la UI y `jugadores` separa la nomina por categoria real; lectura de plantel, conteo maximo, numero de camiseta, capitania y planilla se resuelven con ese contexto. La restriccion vieja `jugadores_dni_key UNIQUE (cedidentidad)` y el indice unico `cedidentidad + evento_id` quedan reemplazados por un indice no unico de consulta; el bloqueo pasa a planilla: al guardar una planilla finalizada, la cedula queda asociada al primer equipo con el que participa en esa categoria y se bloquea si intenta participar luego por otro equipo de la misma categoria. Para equipos de una sola categoria se mantiene compatibilidad legacy con filas `evento_id IS NULL`; para equipos de multiples categorias, la lectura se fuerza al `evento_id` actual para evitar compartir roster. Documentos opcionales/requeridos segun campeonato; cedula configurable como obligatoria/opcional por campeonato; importacion masiva y reportes. Uploads reorganizados por tipo (`jugadores/cedulas`, `jugadores/fotos`) sin romper carnés ni reporteria; fecha de nacimiento ya no sufre desfase por zona horaria, la `foto carné` puede borrarse desde el perfil del jugador y las cards/fichas ya usan hero con foto o logo de equipo como fallback. El guardado multipart ya usa cliente autenticado, el backend responde errores amigables de subida y el limite de imagenes se amplio a `8MB`. Los carnés ya soportan fondo configurable por campeonato mezclando imagen, logo y colores institucionales, y ahora guardan un recorte estable (`foto_carnet_recorte_url`) para evitar desfases entre preview y PDF; el ajuste de encuadre ya soporta arrastre directo, guía visual y restablecimiento rapido. La gestion etaria por categoria ya valida jugadores juveniles para categorias `Sub/U 30` a `Sub/U 60`, controla cupos juveniles por equipo y permite que tarjetas, tabla y carné muestren edad/condicion juvenil cuando corresponde. Modulo de pases con UI operativa, sincronizacion contable integrada (cargo/abono por pase) e historial visual por jugador/equipo. `jugadores.html` ya incorpora `Nómina simple de jugadores` y exportacion `Excel` para nomina oficial/simple, sanciones y ficha individual. |
 | 3.5 Creacion de Grupos | Alto | Modo aleatorio, cabezas de serie y manual con ruleta funcionando. |
 | 3.6 Generacion de Fixture | Alto | Generacion por evento, filtros por grupo/jornada/fecha, vista plantilla y exportaciones. Eliminacion de fixture con confirmacion ante partidos finalizados. Regeneracion preservando partidos jugados: ahora preserva tambien `programado`, `suspendido`, `aplazado`, `en_curso`; elimina solo `pendiente`; las jornadas ya calendarizadas no se tocan al agregar un equipo nuevo. Creacion de partido manual por administrador (modal con dropdowns de equipos del evento, jornada, fecha, hora, cancha y `N° visible del partido`). Edicion de equipos de un partido (solo administrador, via dropdowns en modal Editar) y edición del número visible operativo sin tocar el identificador interno de auditoría. Badge de estado coloreado en cada card de partido. Equipo que descansa (bye) calculado automaticamente y mostrado en: listing de gestion, fixture exportable y portal publico. Auto-estado: al programar fecha pasa a `programado`; al borrarla vuelve a `pendiente`; estado manual explícito disponible (suspendido/aplazado/en_curso). |
 | 3.7 Resultados/Tablas/Clasificados | Alto | Tablas por evento (posiciones, goleadores, tarjetas, fair play) con selector de campeonato en UI y guardado explícito del formato de clasificación (`metodo_competencia` + `clasificados_por_grupo`). Planillaje ya alimenta resultado + estadisticas. Clasificacion por grupo parametrizable; equipos eliminados ya bajan al final aunque tengan mayor puntaje y los fuera de cupo quedan diferenciados visualmente en naranja. El administrador ya puede corregir manualmente la tabla con comentario obligatorio y auditoria persistente; si cambia puntos/estadisticas, la posicion se recalcula automaticamente y la posicion manual queda como desempate final. La invalidacion automática por nuevos resultados ahora respeta el grupo afectado: ya no elimina tablas manuales de otros grupos del mismo evento. Pendiente refinamiento de desempates avanzados. |
@@ -784,6 +823,3 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 - Propuesta funcional original: `docs/propuestaDesarrolloSGD.md`
 - Plan mobile web: `docs/PLAN_MOBILE_LT_C.md`
 - Plan CMS del portal publico: `docs/PLAN_CMS_PORTAL_PUBLICO.md`
-
-
-
