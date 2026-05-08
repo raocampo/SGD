@@ -220,6 +220,29 @@
                 </div>
               </div>
 
+              <div id="bloque-ascendentes" style="display:none;">
+                <h4>Jugadores Ascendentes</h4>
+                <p class="form-hint" id="hint-ascendentes"></p>
+                <div class="planilla-captura-grid">
+                  <div class="planilla-captura-card">
+                    <h5 id="asc-titulo-local">Local — Ascendentes</h5>
+                    <div id="asc-search-local" class="planilla-asc-search">
+                      <input type="text" id="asc-input-local" placeholder="Buscar por nombre o cédula…" oninput="filtrarAscendentes('local')" />
+                      <div id="asc-resultados-local" class="planilla-asc-resultados"></div>
+                    </div>
+                    <div id="asc-seleccionados-local" class="planilla-asc-seleccionados"></div>
+                  </div>
+                  <div class="planilla-captura-card">
+                    <h5 id="asc-titulo-visitante">Visitante — Ascendentes</h5>
+                    <div id="asc-search-visitante" class="planilla-asc-search">
+                      <input type="text" id="asc-input-visitante" placeholder="Buscar por nombre o cédula…" oninput="filtrarAscendentes('visitante')" />
+                      <div id="asc-resultados-visitante" class="planilla-asc-resultados"></div>
+                    </div>
+                    <div id="asc-seleccionados-visitante" class="planilla-asc-seleccionados"></div>
+                  </div>
+                </div>
+              </div>
+
               <div class="planilla-footer-grid">
                 <article class="planilla-footer-team">
                   <h5 id="footer-equipo-local">Local</h5>

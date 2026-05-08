@@ -486,6 +486,82 @@ class Jugador {
         };
     }
 
+    static async buscarAscendentesDisponibles(partidoId) {
+        const id = Number.parseInt(partidoId, 10);
+        if (!Number.isFinite(id) || id <= 0) {
+            const err = new Error("Partido no encontrado");
+            err.statusCode = 404;
+            throw err;
+        }
+
+        const partidoR = await pool.query(
+            `
+            SELECT p.id, p.evento_id, p.equipo_local_id, p.equipo_visitante_id,
+                   eq.campeonato_id,
+                   ev.nombre AS evento_nombre,
+                   COALESCE(ev.permite_ascenso, false) AS permite_ascenso,
+                   COALESCE(ev.max_ascendentes_por_partido, 2) AS max_ascendentes_por_partido
+            FROM partidos p
+            JOIN equipos eq ON eq.id = p.equipo_local_id
+            LEFT JOIN eventos ev ON ev.id = p.evento_id
+            WHERE p.id = $1
+            LIMIT 1
+            `,
+            [id]
+        );
+
+        if (!partidoR.rows.length) {
+            const err = new Error("Partido no encontrado");
+            err.statusCode = 404;
+            throw err;
+        }
+
+        const partido = partidoR.rows[0];
+        const edadBaseObjetivo = this.inferirEdadBaseCategoria(partido.evento_nombre);
+
+        if (!edadBaseObjetivo || !partido.permite_ascenso) {
+            return {
+                permite_ascenso: partido.permite_ascenso,
+                max_ascendentes_por_partido: Number(partido.max_ascendentes_por_partido),
+                jugadores: [],
+            };
+        }
+
+        const jugadoresR = await pool.query(
+            `
+            SELECT j.id, j.nombre, j.apellido, j.cedidentidad, j.fecha_nacimiento,
+                   j.numero_camiseta, j.posicion, j.foto_url,
+                   j.equipo_id, eq.nombre AS equipo_nombre,
+                   j.evento_id AS evento_origen_id, ev.nombre AS evento_origen_nombre
+            FROM jugadores j
+            JOIN equipos eq ON eq.id = j.equipo_id
+            JOIN eventos ev ON ev.id = j.evento_id
+            WHERE eq.campeonato_id = $1
+              AND j.evento_id IS NOT NULL
+              AND j.evento_id <> $2
+            ORDER BY j.apellido, j.nombre
+            `,
+            [partido.campeonato_id, partido.evento_id]
+        );
+
+        const anioActual = new Date().getFullYear();
+
+        const jugadoresFiltrados = jugadoresR.rows.filter((row) => {
+            const edadBaseOrigen = this.inferirEdadBaseCategoria(row.evento_origen_nombre);
+            if (!Number.isFinite(edadBaseOrigen)) return false;
+            if (edadBaseOrigen >= edadBaseObjetivo) return false;
+            const edad = this.calcularEdadPorAnio(row.fecha_nacimiento, anioActual);
+            if (!Number.isFinite(edad)) return false;
+            return edad >= edadBaseObjetivo;
+        });
+
+        return {
+            permite_ascenso: partido.permite_ascenso,
+            max_ascendentes_por_partido: Number(partido.max_ascendentes_por_partido),
+            jugadores: jugadoresFiltrados,
+        };
+    }
+
     static normalizarNumeroCamiseta(valor) {
         const texto = String(valor ?? "").trim();
         if (!texto) return null;

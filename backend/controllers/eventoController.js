@@ -332,6 +332,11 @@ async function asegurarEsquemaEventos() {
     ADD COLUMN IF NOT EXISTS carnet_mostrar_edad BOOLEAN DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS fecha_corte_edad DATE
   `);
+  await pool.query(`
+    ALTER TABLE eventos
+    ADD COLUMN IF NOT EXISTS permite_ascenso BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS max_ascendentes_por_partido INTEGER DEFAULT 2
+  `);
 
   await pool.query(`
     UPDATE eventos
@@ -461,6 +466,8 @@ const eventoController = {
         categoria_juvenil_max_diferencia,
         carnet_mostrar_edad,
         fecha_corte_edad,
+        permite_ascenso,
+        max_ascendentes_por_partido,
       } = req.body;
 
       if (!campeonato_id || !nombre || !fecha_inicio || !fecha_fin) {
@@ -590,6 +597,11 @@ const eventoController = {
       );
       const carnetMostrarEdad = normalizarBooleanFlexible(carnet_mostrar_edad, false) === true;
       const edadSubJuvenil = inferirSubJuvenilEdad(nombre);
+      const permiteAscenso = normalizarBooleanFlexible(permite_ascenso, false) === true;
+      const maxAscendentesPorPartido = (() => {
+        const n = Number.parseInt(max_ascendentes_por_partido, 10);
+        return Number.isFinite(n) && n >= 0 ? n : 2;
+      })();
       const fechaCorteEdad = fecha_corte_edad ? String(fecha_corte_edad).slice(0, 10) : null;
       if (edadSubJuvenil && !fechaCorteEdad) {
         return res.status(400).json({
@@ -630,10 +642,11 @@ const eventoController = {
           horario_weekday_inicio, horario_weekday_fin,
           horario_sab_inicio, horario_sab_fin,
           horario_dom_inicio, horario_dom_fin,
+          permite_ascenso, max_ascendentes_por_partido,
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -670,6 +683,8 @@ const eventoController = {
         satEnd,
         sunStart,
         sunEnd,
+        permiteAscenso,
+        maxAscendentesPorPartido,
       ];
 
       const result = await pool.query(query, values);
@@ -990,6 +1005,26 @@ const eventoController = {
           const fecha = v ? String(v).slice(0, 10) : null;
           campos.push(`${k} = $${i}`);
           valores.push(fecha);
+          i++;
+          continue;
+        }
+        if (k === "permite_ascenso") {
+          const valorBool = normalizarBooleanFlexible(v, null);
+          if (v !== null && v !== "" && valorBool === null) {
+            return res.status(400).json({ error: "permite_ascenso invalido. Usa true o false." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(valorBool === true);
+          i++;
+          continue;
+        }
+        if (k === "max_ascendentes_por_partido") {
+          const n = v === null || v === "" ? 2 : Number.parseInt(v, 10);
+          if (v !== null && v !== "" && (!Number.isFinite(n) || n < 0)) {
+            return res.status(400).json({ error: "max_ascendentes_por_partido debe ser un entero mayor o igual a 0." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(Number.isFinite(n) ? n : 2);
           i++;
           continue;
         }

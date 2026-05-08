@@ -1,6 +1,7 @@
 // controllers/partidoController.js
 const Partido = require("../models/Partido");
 const Eliminatoria = require("../models/Eliminatoria");
+const Jugador = require("../models/Jugador");
 const pool = require("../config/database");
 const { ACCIONES, registrar: registrarAuditoria, extraerIp } = require("../services/auditoria");
 
@@ -579,5 +580,16 @@ exports.guardarPlanillaPartido = async (req, res) => {
       ? Number(mapped.statusCode)
       : 500;
     return res.status(status).json({ error: mapped.message });
+  }
+};
+
+exports.obtenerJugadoresAscendentes = async (req, res) => {
+  try {
+    const partidoId = Number.parseInt(req.params.id, 10);
+    const resultado = await Jugador.buscarAscendentesDisponibles(partidoId);
+    return res.json(resultado);
+  } catch (error) {
+    const status = Number.isFinite(Number(error?.statusCode)) ? Number(error.statusCode) : 500;
+    return res.status(status).json({ error: error.message });
   }
 };

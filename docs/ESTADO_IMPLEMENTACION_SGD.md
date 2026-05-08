@@ -1,3 +1,17 @@
+## 2026-05-08 — Jugadores ascendentes en planilla
+
+### Cambios aplicados
+- Nueva feature: jugadores de categorías Sub inferiores pueden jugar en partidos de categorías Sub superiores del mismo campeonato, si cumplen la edad mínima de la categoría destino (inverso del sistema de juveniles).
+- Se activa por categoría con los campos `permite_ascenso` (boolean) y `max_ascendentes_por_partido` (integer, default 2) en la tabla `eventos`.
+- Los ascendentes se registran a nivel de planilla (JSONB `partido_planillas`) con `es_ascendente: true` y `evento_origen_id`, sin inscripción formal.
+- Backend: migración inline en `asegurarEsquemaEventos`, nuevo método `Jugador.buscarAscendentesDisponibles`, nuevo endpoint `GET /api/partidos/:id/jugadores-ascendentes`, validación de límite en `Partido.guardarPlanilla`.
+- Frontend: campos en form de categorías (crear + editar), sección "Jugadores Ascendentes" en planilla.html con búsqueda en tiempo real, badges ASC, y merge automático al guardar.
+
+### Pendiente agregado
+- QA en Render: verificar flujo completo (activar categoría → buscar elegibles → agregar en planilla → guardar → recargar).
+
+---
+
 ## 2026-05-07 — Ajustes portal público, landing organizador y responsive
 
 ### Cambios aplicados
@@ -44,41 +58,43 @@ El sistema **no registra titularidad ni suplencia**. Para implementarlo se neces
 
 ---
 
-## Pendientes para continuar — (al 2026-05-07)
+## Pendientes para continuar — (al 2026-05-08)
 
 ### 🔴 Prioridad inmediata
 
 | # | Tarea | Archivo(s) clave |
 |---|---|---|
-| 1 | **Desplegar y probar fix del tab "Equipos" en Render** — verificar que `/api/public/eventos/:id/equipos` responde OK, que `equipo-publico.html` + `jugador-publico.html` cargan y que la landing del organizador enlaza correctamente a los equipos | `publicPortalService.js`, `portal.js`, `index.html` |
-| 2 | **Responsive web/mobile operativo** — auditoría visual y corrección por pantallas principales en 390x844 y 768x1024; documentar avance por módulo | `frontend/css/style.css`, `frontend/css/portal.css`, páginas internas |
-| 3 | **Probar WebRTC en Render** — ingresar como organizador, crear transmisión, compartir URL viewer con otro dispositivo y confirmar que el stream llega | `broadcast.html`, `viewer.html` |
+| 1 | **QA jugadores ascendentes en Render** — crear categoría con `permite_ascenso=true`, confirmar que `GET /api/partidos/:id/jugadores-ascendentes` devuelve elegibles, agregar en planilla y guardar | `Jugador.buscarAscendentesDisponibles`, `planilla.js`, `planilla.html` |
+| 2 | **Probar fix tab "Equipos" en Render** — verificar que `/api/public/eventos/:id/equipos` responde OK y que `equipo-publico.html` + `jugador-publico.html` cargan correctamente | `publicPortalService.js`, `portal.js`, `index.html` |
+| 3 | **Responsive web/mobile operativo** — auditoría visual por pantallas principales en 390x844 y 768x1024 | `frontend/css/style.css`, `frontend/css/portal.css` |
+| 4 | **Probar WebRTC en Render** — organizador crea transmisión, otro dispositivo recibe stream en `viewer.html` | `broadcast.html`, `viewer.html` |
 
 ### 🟡 Próximos features (orden sugerido)
 
 | # | Tarea | Detalle |
 |---|---|---|
-| 4 | **Titularidad / suplencia en partidos** | Nueva tabla `planilla_jugadores(partido_id, jugador_id, rol, minuto_entrada, minuto_salida)`. UI en `planilla.html`. Mostrar en `jugador-publico.html` tab Partidos como Titular/Suplente. |
-| 5 | **Facturación Fase 2 — integración finanzas** | Botón "Emitir doc." en `finanzas.html → Estado de cuenta equipo`. Tabla `documentos_pagos(documento_id, movimiento_id)` en `Facturacion.js`. |
-| 6 | **Facturación Fase 3 — PDF profesional** | Reemplazar `window.print()` en `facturacion.html` por generación `jsPDF` descargable (logo emisor, tabla ítems, totales, QR visual). |
-| 7 | **TURN server para WebRTC** | Agregar servidor TURN (Metered.ca free tier) en `broadcast.html` + `viewer.html` para redes con NAT simétrico (colegios, canchas con WiFi corporativo). |
-| 8 | **Botones compartir en viewer.html** | Igual que en `director.html`: WhatsApp, Facebook, Copiar link — para que espectadores compartan el stream. |
+| 5 | **Titularidad / suplencia en partidos** | Nueva tabla `planilla_jugadores(partido_id, jugador_id, rol)`. UI en `planilla.html`. Mostrar en `jugador-publico.html` tab Partidos. |
+| 6 | **Facturación Fase 2 — integración finanzas** | Botón "Emitir doc." en `finanzas.html`. Tabla `documentos_pagos(documento_id, movimiento_id)` en `Facturacion.js`. |
+| 7 | **Facturación Fase 3 — PDF profesional** | Reemplazar `window.print()` por `jsPDF` descargable en `facturacion.html`. |
+| 8 | **TURN server para WebRTC** | Agregar TURN (Metered.ca free tier) en `broadcast.html` + `viewer.html` para NAT simétrico. |
+| 9 | **Botones compartir en viewer.html** | WhatsApp, Facebook, Copiar link — para que espectadores compartan el stream. |
 
 ### 🟢 Futuro / Roadmap
 
 | # | Tarea | Detalle |
 |---|---|---|
-| 9 | **Facturación Fase 4 — SRI electrónico** | XML según XSD del SRI Ecuador, firma `.p12`, RIDE. Requiere certificado digital del cliente. |
-| 10 | **Activación automática por pago (Fase B)** | PayPhone webhook + PayPal capture → activar cuenta automáticamente. |
-| 11 | **App móvil** | React Native o PWA para Play Store / App Store. |
-| 12 | **Reporte ejecutivo financiero** | Histórico/comparativo por periodos en `finanzas.html`. |
+| 10 | **Facturación Fase 4 — SRI electrónico** | XML según XSD del SRI Ecuador, firma `.p12`, RIDE. Requiere certificado digital del cliente. |
+| 11 | **Activación automática por pago (Fase B)** | PayPhone webhook + PayPal capture → activar cuenta automáticamente. |
+| 12 | **App móvil** | React Native o PWA para Play Store / App Store. |
+| 13 | **Reporte ejecutivo financiero** | Histórico/comparativo por periodos en `finanzas.html`. |
 
 ### Notas técnicas para retomar
 
-- Las rutas públicas de equipos/jugadores ya están en producción (Render). No requieren auth ni CORS adicional — usan el prefijo `/api/public/` que ya estaba en la lista blanca.
-- `equipo-publico.html` y `jugador-publico.html` usan `back=` en URL para navegación de regreso limpia entre páginas.
-- La última migración numerada conocida es la **067** (`eventos_fecha_corte_edad`). La siguiente que se cree debe ser **068** en adelante.
-- `js/core.js` exporta `window.resolveBackendBaseUrl()` y `window.resolveApiBaseUrl()` — usar siempre estos en páginas nuevas para que funcione tanto en local como en Render.
+- **Jugadores ascendentes**: la feature se activa por categoría (`permite_ascenso`). El método `Jugador.buscarAscendentesDisponibles` infiere la edad mínima del nombre del evento (e.g. "Sub 40") y filtra por `calcularEdadPorAnio`. Los registros se guardan en el JSONB con `equipo_id = equipo del partido` (no el real del jugador) para pasar el filtro `equipoIdPermitido`.
+- Las rutas públicas de equipos/jugadores ya están en producción (Render). No requieren auth adicional — prefijo `/api/public/`.
+- `equipo-publico.html` y `jugador-publico.html` usan `back=` en URL para navegación de regreso limpia.
+- La última migración numerada conocida es la **067** (`eventos_fecha_corte_edad`). Las migraciones de ascendentes son inline en `asegurarEsquemaEventos` — no requieren archivo numerado.
+- `js/core.js` exporta `window.resolveBackendBaseUrl()` y `window.resolveApiBaseUrl()` — usar siempre estos en páginas nuevas.
 
 ---
 

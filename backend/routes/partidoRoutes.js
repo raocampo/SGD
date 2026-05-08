@@ -104,6 +104,16 @@ router.post(
   transmisionController.crearTransmision
 );
 
+// ===============================
+// 👆 JUGADORES ASCENDENTES
+// ===============================
+router.get(
+  "/:id/jugadores-ascendentes",
+  requireAuth,
+  requireRoles("administrador", "organizador", "operador_sistema"),
+  partidoController.obtenerJugadoresAscendentes
+);
+
 router.get("/:id", partidoController.obtenerPartido);
 
 module.exports = router;

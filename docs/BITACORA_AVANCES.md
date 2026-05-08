@@ -1,3 +1,71 @@
+## 2026-05-08 — Jugadores ascendentes en planilla
+
+### Objetivo
+Permitir que jugadores inscritos en categorías Sub inferiores suban a jugar en partidos de categorías superiores (Sub más alta) de cualquier equipo, siempre que cumplan la edad mínima de la categoría destino. Es el inverso de la feature "categoría juvenil" ya existente.
+
+### Diseño adoptado
+- **Planilla-level** (no inscripción formal): el jugador NO se inscribe en la categoría destino; solo se registra como presente en ese partido específico.
+- La validación `validarDireccionCategoriaPorCedula` queda intacta (controla inscripciones formales).
+- Los ascendentes se almacenan en el JSONB `partido_planillas.registro_jugadores_local/visitante` con `es_ascendente: true` y `evento_origen_id`.
+- La categoría debe tener `permite_ascenso = true` activado por el organizador.
+
+### Implementación aplicada
+
+**Backend — `backend/controllers/eventoController.js`:**
+- `asegurarEsquemaEventos()`: migración inline que agrega `permite_ascenso BOOLEAN DEFAULT FALSE` y `max_ascendentes_por_partido INTEGER DEFAULT 2` a la tabla `eventos`.
+- `crearEvento()`: destructura y persiste los dos campos (params `$32` y `$33` en el INSERT).
+- `actualizarEvento()` (PATCH): maneja `permite_ascenso` y `max_ascendentes_por_partido` con validación.
+
+**Backend — `backend/models/Jugador.js`:**
+- Nuevo método estático `buscarAscendentesDisponibles(partidoId)`:
+  - Resuelve campeonato, evento destino y `edad_base_objetivo` del partido.
+  - Busca todos los jugadores del mismo campeonato en eventos con `edad_base < objetivo`.
+  - Filtra en JS los que tienen `calcularEdadPorAnio >= edad_base_objetivo`.
+  - Devuelve `{ permite_ascenso, max_ascendentes_por_partido, jugadores[] }`.
+
+**Backend — `backend/models/Partido.js`:**
+- `normalizarRegistroJugadoresPlanilla()`: preserva `es_ascendente` y `evento_origen_id` en los registros del JSONB.
+- `obtenerPlanilla()`: join con `eventos` para exponer `permite_ascenso` y `max_ascendentes_por_partido` en la respuesta de planilla.
+- `guardarPlanilla()`: valida que el número de jugadores con `es_ascendente = true` no supere `max_ascendentes_por_partido` por equipo; lanza `400` si se supera.
+
+**Backend — `backend/controllers/partidoController.js`:**
+- Nuevo export `obtenerJugadoresAscendentes`: llama a `Jugador.buscarAscendentesDisponibles(id)` y retorna JSON.
+
+**Backend — `backend/routes/partidoRoutes.js`:**
+- Nueva ruta `GET /:id/jugadores-ascendentes` con auth `administrador | organizador | operador_sistema`, posicionada antes de `/:id` para evitar shadowing.
+
+**Frontend — `frontend/eventos.html`:**
+- Nuevo select `#evt-permite-ascenso` (No/Sí) con `onchange="actualizarVisibilidadAscenso()"`.
+- Nuevo input `#evt-max-ascendentes-por-partido` (min 1, max 10), visible solo cuando `permite_ascenso = true`.
+
+**Frontend — `frontend/js/eventos.js`:**
+- `actualizarVisibilidadAscenso()`: muestra/oculta el campo max según el select.
+- `crearEvento()`: lee y envía `permite_ascenso` + `max_ascendentes_por_partido`.
+- `editarEvento()`: agrega ambos campos al modal y al payload PATCH.
+
+**Frontend — `frontend/planilla.html`:**
+- Bloque `#bloque-ascendentes` (oculto por defecto), revelado cuando `permite_ascenso = true`.
+- Por cada lado (local/visitante): `<h5>`, input de búsqueda con `oninput`, resultados, y contenedor de seleccionados.
+
+**Frontend — `frontend/css/style.css`:**
+- Estilos `.planilla-asc-search`, `.planilla-asc-resultados`, `.planilla-asc-item`, `.planilla-asc-seleccionados`, `.planilla-asc-tag`, `.badge-ascendente`.
+
+**Frontend — `frontend/js/planilla.js`:**
+- Estado: `ascendentesDisponiblesCache` y `ascendentesSeleccionados { local, visitante }`.
+- `cargarAscendentesDisponibles()`: GET a la API, muestra/oculta el bloque, actualiza títulos con nombres reales de equipos.
+- `cargarAscendentesDesdeRegistro()`: al recargar la planilla, parsea los registros con `es_ascendente = true` y reconstituye el estado.
+- `filtrarAscendentes(lado)`: búsqueda en tiempo real por nombre o cédula.
+- `agregarAscendente(lado, id)` / `quitarAscendente(lado, id)`: gestión del estado.
+- `renderAscendentesSeleccionados(lado)`: renderiza tags con badge `ASC` y botón quitar.
+- Al guardar: merge de `ascendentesSeleccionados` en `registroJugadoresLocal/Visitante` con `es_ascendente: true`, `evento_origen_id` y `equipo_id = equipo del partido` (para pasar el filtro `equipoIdPermitido`).
+- Se integra en `refrescarPlanillaPreservandoFormulario()` reseteando el estado y recargando.
+- `window.filtrarAscendentes`, `window.agregarAscendente`, `window.quitarAscendente` expuestos globalmente.
+
+### Pendientes de esta feature
+- QA en Render: crear evento con `permite_ascenso = true`, confirmar que la búsqueda devuelve elegibles, agregar ascendente, guardar planilla y verificar el JSONB guardado.
+
+---
+
 ## 2026-05-07 — Portal público: fix Equipos, landing organizador y responsive pendiente
 
 ### Bloque mobile aplicado — cierre operativo restante

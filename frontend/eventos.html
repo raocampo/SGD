@@ -275,6 +275,20 @@
             </div>
 
             <div class="form-group">
+              <label>Jugadores ascendentes:</label>
+              <select id="evt-permite-ascenso" onchange="actualizarVisibilidadAscenso()">
+                <option value="false" selected>No</option>
+                <option value="true">Si</option>
+              </select>
+              <small class="form-hint">Permite que jugadores de categorías Sub inferiores suban a jugar en partidos de esta categoría si cumplen la edad.</small>
+            </div>
+
+            <div class="form-group" id="evt-wrap-max-ascendentes" style="display:none;">
+              <label>Máx. ascendentes por equipo por partido:</label>
+              <input id="evt-max-ascendentes-por-partido" type="number" min="1" max="10" step="1" value="2" />
+            </div>
+
+            <div class="form-group">
               <label>Mostrar edad en carné:</label>
               <select id="evt-carnet-mostrar-edad">
                 <option value="false" selected>No</option>

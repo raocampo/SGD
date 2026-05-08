@@ -178,6 +178,7 @@ function normalizarRegistroJugadoresPlanilla(items = [], { equipoIdPermitido = n
     const key = `${equipoId}:${jugadorId}`;
     if (vistos.has(key)) return;
     vistos.add(key);
+    const eventoOrigenId = Number.parseInt(item?.evento_origen_id, 10);
     registros.push({
       jugador_id: jugadorId,
       equipo_id: equipoId,
@@ -195,6 +196,8 @@ function normalizarRegistroJugadoresPlanilla(items = [], { equipoIdPermitido = n
       sale: esFutbol11
         ? normalizarBooleanRegistroPlanilla(item?.sale ?? item?.exits)
         : false,
+      es_ascendente: normalizarBooleanRegistroPlanilla(item?.es_ascendente),
+      evento_origen_id: Number.isFinite(eventoOrigenId) && eventoOrigenId > 0 ? eventoOrigenId : null,
     });
   });
   return registros;
@@ -3151,6 +3154,8 @@ class Partido {
              COALESCE(c.requiere_foto_carnet, false) AS requiere_foto_carnet,
              evt.nombre AS evento_nombre,
              evt.metodo_competencia,
+             COALESCE(evt.permite_ascenso, false) AS permite_ascenso,
+             COALESCE(evt.max_ascendentes_por_partido, 2) AS max_ascendentes_por_partido,
              g.letra_grupo,
              g.nombre_grupo,
              pe.ronda AS playoff_ronda,
@@ -3633,6 +3638,30 @@ class Partido {
         equipoIdPermitido: equipoVisitanteId,
         esFutbol11,
       });
+
+      if (partido.evento_id) {
+        const eventoAscR = await client.query(
+          `SELECT COALESCE(permite_ascenso, false) AS permite_ascenso, COALESCE(max_ascendentes_por_partido, 2) AS max_ascendentes_por_partido FROM eventos WHERE id = $1 LIMIT 1`,
+          [partido.evento_id]
+        );
+        const eventoAsc = eventoAscR.rows[0];
+        if (eventoAsc && eventoAsc.permite_ascenso) {
+          const max = Number.parseInt(eventoAsc.max_ascendentes_por_partido, 10) || 2;
+          const ascLocal = registroJugadoresLocal.filter((r) => r.es_ascendente === true).length;
+          const ascVisit = registroJugadoresVisitante.filter((r) => r.es_ascendente === true).length;
+          if (ascLocal > max) {
+            const error = new Error(`El equipo local supera el máximo de ${max} jugador${max === 1 ? "" : "es"} ascendente${max === 1 ? "" : "s"} permitido${max === 1 ? "" : "s"} por partido.`);
+            error.statusCode = 400;
+            throw error;
+          }
+          if (ascVisit > max) {
+            const error = new Error(`El equipo visitante supera el máximo de ${max} jugador${max === 1 ? "" : "es"} ascendente${max === 1 ? "" : "s"} permitido${max === 1 ? "" : "s"} por partido.`);
+            error.statusCode = 400;
+            throw error;
+          }
+        }
+      }
+
       const cambiosNumeroCamiseta = [
         ...(Array.isArray(datos.numeros_jugadores) ? datos.numeros_jugadores : []),
         ...registroJugadoresLocal,

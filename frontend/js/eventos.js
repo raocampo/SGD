@@ -203,6 +203,12 @@ function actualizarVisibilidadConfigJuvenil() {
   }
 }
 
+function actualizarVisibilidadAscenso() {
+  const selectAscenso = document.getElementById("evt-permite-ascenso");
+  const wrapMax = document.getElementById("evt-wrap-max-ascendentes");
+  if (wrapMax) wrapMax.style.display = selectAscenso?.value === "true" ? "" : "none";
+}
+
 function formatearClasificadosPorGrupo(evento = {}) {
   const metodo = obtenerMetodoCompetenciaVisibleEvento(evento);
   if (!["grupos", "mixto", "tabla_acumulada"].includes(metodo)) return "No aplica";
@@ -605,6 +611,10 @@ async function crearEvento() {
     document.getElementById("evt-categoria-juvenil-max-diferencia")?.value,
     categoria_juvenil ? 2 : 1
   );
+  const permite_ascenso = document.getElementById("evt-permite-ascenso")?.value === "true";
+  const max_ascendentes_por_partido = permite_ascenso
+    ? (Number.parseInt(document.getElementById("evt-max-ascendentes-por-partido")?.value, 10) || 2)
+    : 2;
   const carnet_mostrar_edad = document.getElementById("evt-carnet-mostrar-edad")?.value === "true";
   const fecha_corte_edad = document.getElementById("evt-fecha-corte-edad")?.value || null;
   const tipoEdad = document.getElementById("evt-tipo-edad")?.value || "libre";
@@ -675,6 +685,8 @@ async function crearEvento() {
       categoria_juvenil,
       categoria_juvenil_cupos: categoria_juvenil ? categoria_juvenil_cupos : 0,
       categoria_juvenil_max_diferencia: categoria_juvenil ? categoria_juvenil_max_diferencia : 1,
+      permite_ascenso,
+      max_ascendentes_por_partido,
       carnet_mostrar_edad,
       fecha_corte_edad: edadSubJuvenil ? fecha_corte_edad : null,
     });
@@ -974,6 +986,26 @@ async function editarEvento(id) {
         value: evento?.fecha_corte_edad ? String(evento.fecha_corte_edad).slice(0, 10) : "",
         hint: "Sub-4 a Sub-19: el jugador debe tener menos de N años en esta fecha.",
       },
+      {
+        name: "permite_ascenso",
+        label: "Jugadores ascendentes",
+        type: "select",
+        value: evento?.permite_ascenso === true ? "true" : "false",
+        options: [
+          { value: "false", label: "No" },
+          { value: "true", label: "Sí" },
+        ],
+        hint: "Permite jugadores de Sub inferiores que cumplan la edad en partidos de esta categoría.",
+      },
+      {
+        name: "max_ascendentes_por_partido",
+        label: "Máx. ascendentes por equipo por partido",
+        type: "number",
+        value: String(Number.isFinite(Number(evento?.max_ascendentes_por_partido)) ? Number(evento.max_ascendentes_por_partido) : 2),
+        min: 1,
+        max: 10,
+        step: 1,
+      },
     ],
   });
   if (!form) return;
@@ -1074,6 +1106,10 @@ async function editarEvento(id) {
     payload.categoria_juvenil_max_diferencia = categoriaJuvenilActiva ? categoriaJuvenilMaxDiferencia : 1;
     payload.carnet_mostrar_edad = String(form.carnet_mostrar_edad || "false").trim().toLowerCase() === "true";
     payload.fecha_corte_edad = form.fecha_corte_edad ? String(form.fecha_corte_edad).slice(0, 10) : null;
+    payload.permite_ascenso = String(form.permite_ascenso || "false").trim().toLowerCase() === "true";
+    payload.max_ascendentes_por_partido = payload.permite_ascenso
+      ? (Number.parseInt(form.max_ascendentes_por_partido, 10) || 2)
+      : 2;
     await EventosAPI.actualizar(id, payload);
     mostrarNotificacion("Categoría actualizada", "success");
     await cargarEventos();
@@ -1085,3 +1121,4 @@ async function editarEvento(id) {
 
 window.cambiarVistaEventos = cambiarVistaEventos;
 window.toggleFormularioCategoria = toggleFormularioCategoria;
+window.actualizarVisibilidadAscenso = actualizarVisibilidadAscenso;

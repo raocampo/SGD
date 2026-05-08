@@ -15,6 +15,8 @@ let documentosRequeridos = {
 };
 let eventosPlanillaCache = [];
 let partidosSelectorCache = [];
+let ascendentesDisponiblesCache = { permite_ascenso: false, max: 2, jugadores: [] };
+let ascendentesSeleccionados = { local: [], visitante: [] };
 let partidosSelectorRegularCache = [];
 let partidosSelectorPlayoffCache = [];
 let grupoSelectorActual = "";
@@ -2220,6 +2222,9 @@ async function refrescarPlanillaPreservandoFormulario() {
   actualizarVisibilidadContenidoPlanilla(true);
   await sincronizarSelectoresDesdePlanillaActual();
   restaurarEstadoFormularioPlanilla(snapshot);
+  ascendentesSeleccionados = { local: [], visitante: [] };
+  await cargarAscendentesDisponibles();
+  cargarAscendentesDesdeRegistro();
 }
 
 function calcularTotalesCaptura() {
@@ -2304,6 +2309,153 @@ function valorNoNegativoEntero(valor, fallback = 0, max = 99) {
   if (!Number.isFinite(n)) return fallback;
   return Math.min(Math.max(n, 0), max);
 }
+
+// ---------------------------------------------------------------
+// JUGADORES ASCENDENTES
+// ---------------------------------------------------------------
+
+async function cargarAscendentesDisponibles() {
+  const bloqueAsc = document.getElementById("bloque-ascendentes");
+  if (!partidoId || !Number.isFinite(Number(partidoId)) || Number(partidoId) <= 0) {
+    if (bloqueAsc) bloqueAsc.style.display = "none";
+    return;
+  }
+  try {
+    const resp = await ApiClient.get(`/partidos/${partidoId}/jugadores-ascendentes`);
+    ascendentesDisponiblesCache = {
+      permite_ascenso: resp.permite_ascenso === true,
+      max: Number(resp.max_ascendentes_por_partido) || 2,
+      jugadores: Array.isArray(resp.jugadores) ? resp.jugadores : [],
+    };
+  } catch (_) {
+    ascendentesDisponiblesCache = { permite_ascenso: false, max: 2, jugadores: [] };
+  }
+  if (bloqueAsc) {
+    bloqueAsc.style.display = ascendentesDisponiblesCache.permite_ascenso ? "" : "none";
+  }
+  if (ascendentesDisponiblesCache.permite_ascenso) {
+    const hint = document.getElementById("hint-ascendentes");
+    const max = ascendentesDisponiblesCache.max;
+    if (hint) hint.textContent = `Máximo ${max} jugador${max === 1 ? "" : "es"} ascendente${max === 1 ? "" : "s"} por equipo. Solo jugadores de categorías Sub inferiores que cumplan la edad de esta categoría.`;
+    const tLocal = document.getElementById("asc-titulo-local");
+    const tVisit = document.getElementById("asc-titulo-visitante");
+    if (tLocal) tLocal.textContent = `${equiposPartido.local.nombre} — Ascendentes`;
+    if (tVisit) tVisit.textContent = `${equiposPartido.visitante.nombre} — Ascendentes`;
+    filtrarAscendentes("local");
+    filtrarAscendentes("visitante");
+    renderAscendentesSeleccionados("local");
+    renderAscendentesSeleccionados("visitante");
+  }
+}
+
+function cargarAscendentesDesdeRegistro() {
+  if (!dataPlanilla) return;
+  const registroLocal = Array.isArray(dataPlanilla?.planilla?.registro_jugadores_local)
+    ? dataPlanilla.planilla.registro_jugadores_local : [];
+  const registroVisitante = Array.isArray(dataPlanilla?.planilla?.registro_jugadores_visitante)
+    ? dataPlanilla.planilla.registro_jugadores_visitante : [];
+
+  const parsear = (registro) =>
+    registro
+      .filter((r) => r.es_ascendente === true)
+      .map((r) => {
+        const fromCache = ascendentesDisponiblesCache.jugadores.find(
+          (j) => Number(j.id) === Number(r.jugador_id)
+        );
+        if (fromCache) return fromCache;
+        return {
+          id: r.jugador_id,
+          nombre: "",
+          apellido: String(r.jugador_id),
+          equipo_nombre: "",
+          evento_origen_nombre: "",
+          evento_origen_id: r.evento_origen_id || null,
+          equipo_id: r.equipo_id || null,
+        };
+      });
+
+  ascendentesSeleccionados.local = parsear(registroLocal);
+  ascendentesSeleccionados.visitante = parsear(registroVisitante);
+  renderAscendentesSeleccionados("local");
+  renderAscendentesSeleccionados("visitante");
+}
+
+function filtrarAscendentes(lado) {
+  const inputEl = document.getElementById(`asc-input-${lado}`);
+  const contenedor = document.getElementById(`asc-resultados-${lado}`);
+  if (!contenedor) return;
+  const texto = (inputEl?.value || "").toLowerCase().trim();
+  const selIds = new Set(ascendentesSeleccionados[lado].map((j) => Number(j.id)));
+  const filtrados = ascendentesDisponiblesCache.jugadores.filter((j) => {
+    if (!texto) return true;
+    const haystack = `${j.nombre || ""} ${j.apellido || ""} ${j.cedidentidad || ""}`.toLowerCase();
+    return haystack.includes(texto);
+  });
+  if (!filtrados.length) {
+    contenedor.innerHTML = `<div class="planilla-asc-item" style="cursor:default;color:#6b7280;">Sin resultados</div>`;
+    return;
+  }
+  contenedor.innerHTML = filtrados
+    .map((j) => {
+      const agregado = selIds.has(Number(j.id));
+      return `<div class="planilla-asc-item ${agregado ? "is-added" : ""}"
+        ${agregado ? "" : `onclick="agregarAscendente('${lado}', ${j.id})"`}>
+        <span><strong>${escapeHtml(j.apellido || "")} ${escapeHtml(j.nombre || "")}</strong> &mdash; ${escapeHtml(j.equipo_nombre || "")} <small style="color:#6b7280">(${escapeHtml(j.evento_origen_nombre || "")})</small></span>
+        ${agregado ? "<small style='color:#6b7280'>Agregado</small>" : "<span style='color:#1d4ed8;font-weight:700;font-size:0.8rem'>+ Agregar</span>"}
+      </div>`;
+    })
+    .join("");
+}
+
+function agregarAscendente(lado, jugadorIdRaw) {
+  const jugadorId = Number(jugadorIdRaw);
+  if (!Number.isFinite(jugadorId) || jugadorId <= 0) return;
+  if (ascendentesSeleccionados[lado].find((j) => Number(j.id) === jugadorId)) return;
+  const max = ascendentesDisponiblesCache.max || 2;
+  if (ascendentesSeleccionados[lado].length >= max) {
+    mostrarNotificacion(`Máximo ${max} ascendente${max === 1 ? "" : "s"} por equipo permitido${max === 1 ? "" : "s"}.`, "warning");
+    return;
+  }
+  const jugador = ascendentesDisponiblesCache.jugadores.find((j) => Number(j.id) === jugadorId);
+  if (!jugador) return;
+  ascendentesSeleccionados[lado].push(jugador);
+  renderAscendentesSeleccionados(lado);
+  filtrarAscendentes(lado);
+}
+
+function quitarAscendente(lado, jugadorIdRaw) {
+  const jugadorId = Number(jugadorIdRaw);
+  ascendentesSeleccionados[lado] = ascendentesSeleccionados[lado].filter(
+    (j) => Number(j.id) !== jugadorId
+  );
+  renderAscendentesSeleccionados(lado);
+  filtrarAscendentes(lado);
+}
+
+function renderAscendentesSeleccionados(lado) {
+  const contenedor = document.getElementById(`asc-seleccionados-${lado}`);
+  if (!contenedor) return;
+  const lista = ascendentesSeleccionados[lado];
+  if (!lista.length) {
+    contenedor.innerHTML = "<p class='form-hint' style='margin-top:0.4rem'>Ningún jugador ascendente agregado.</p>";
+    return;
+  }
+  contenedor.innerHTML = lista
+    .map(
+      (j) => `
+    <div class="planilla-asc-tag">
+      <span class="badge-ascendente">ASC</span>
+      <span><strong>${escapeHtml(j.apellido || "")} ${escapeHtml(j.nombre || "")}</strong></span>
+      <small style="color:#374151">${escapeHtml(j.equipo_nombre || "")} (${escapeHtml(j.evento_origen_nombre || "")})</small>
+      <button type="button" onclick="quitarAscendente('${lado}', ${j.id})" title="Quitar">✕</button>
+    </div>`
+    )
+    .join("");
+}
+
+window.filtrarAscendentes = filtrarAscendentes;
+window.agregarAscendente = agregarAscendente;
+window.quitarAscendente = quitarAscendente;
 
 function construirStatsInicialesPlanilla() {
   return construirIndicesEventos({
@@ -3929,6 +4081,38 @@ function recolectarPayloadPlanilla() {
         });
       }
     });
+
+    // Merge ascendentes into registro (equipo_id is the MATCH team so filter passes)
+    if (ascendentesDisponiblesCache.permite_ascenso) {
+      ascendentesSeleccionados.local.forEach((j) => {
+        if (!registroJugadoresLocal.find((r) => Number(r.jugador_id) === Number(j.id))) {
+          registroJugadoresLocal.push({
+            jugador_id: Number(j.id),
+            equipo_id: Number(equiposPartido.local.id),
+            numero_camiseta: null,
+            convocatoria: null,
+            entra: false,
+            sale: false,
+            es_ascendente: true,
+            evento_origen_id: j.evento_origen_id || null,
+          });
+        }
+      });
+      ascendentesSeleccionados.visitante.forEach((j) => {
+        if (!registroJugadoresVisitante.find((r) => Number(r.jugador_id) === Number(j.id))) {
+          registroJugadoresVisitante.push({
+            jugador_id: Number(j.id),
+            equipo_id: Number(equiposPartido.visitante.id),
+            numero_camiseta: null,
+            convocatoria: null,
+            entra: false,
+            sale: false,
+            es_ascendente: true,
+            evento_origen_id: j.evento_origen_id || null,
+          });
+        }
+      });
+    }
   } else if (!hayInasistencia) {
     // Respaldo del flujo anterior por filas manuales.
     document.querySelectorAll(".planilla-row-gol").forEach((row) => {
