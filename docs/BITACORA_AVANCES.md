@@ -1,3 +1,31 @@
+## 2026-05-08 — Fix responsive portal público detalle de torneos
+
+### Objetivo
+Corregir el desbordamiento horizontal en `portal.html` en vista móvil, visible en todos los torneos al entrar al detalle de categorías, tabs y jornadas.
+
+### Diagnóstico
+- El detalle del torneo reutiliza `portal-detail-shell`, `portal-category-panel`, `portal-subtabs` y tarjetas de jornadas para todos los campeonatos.
+- En móvil, textos largos como `Tabla de posiciones`, el resumen de categoría y los metadatos de partidos podían empujar el ancho efectivo del panel.
+- Aunque los tabs tenían `overflow-x: auto`, faltaba contención con `min-width: 0`, `max-width: 100%` y wrapping en los nodos internos.
+
+### Cambio aplicado
+- `frontend/css/portal.css`:
+  - Se refuerzan `portal-category-tabs` y `portal-subtabs` con ancho contenido, wrapping móvil y `overscroll-behavior-inline`.
+  - Se agrega bloque mobile `max-width: 700px` para contener `portal-detalle`, `portal-detail-shell`, paneles, jornadas, partidos y tablas.
+  - Se fuerza wrapping en resumen de categoría, metadatos de jornada y nombres de equipos.
+  - Subtabs y selector de jornadas pasan a filas compactas en móvil para evitar botones parcialmente cortados.
+  - Se compactan subtabs, cards de jornada, logos y marcador en móviles de 420px o menos.
+
+### Verificación local
+- `git diff --check`
+- `node --max-old-space-size=4096 scripts/smokeFrontendRoleGuards.js` desde `backend/` → 39/39 PASS
+- Playwright headless en `portal.html?campeonato=9&evento=19` con viewports 320, 360, 390 y 412 px → `scrollWidth` igual al viewport y sin ofensores horizontales.
+
+### Pendiente
+QA visual en Render con viewport aproximado 412x915 en `portal.html`, probando tabs `Jornadas`, `Resultados`, `Tabla de posiciones` y varias jornadas.
+
+---
+
 ## 2026-05-08 — Regla multi inscripción por categoría/equipo
 
 ### Objetivo

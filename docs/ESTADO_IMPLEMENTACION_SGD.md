@@ -1,3 +1,22 @@
+## 2026-05-08 — Fix responsive portal público detalle de torneos
+
+### Cambios aplicados
+- `frontend/css/portal.css` corrige overflow horizontal en `portal.html` para móvil.
+- Los contenedores del detalle (`portal-detail-shell`, `portal-category-panel`, subtabs, jornadas, partidos y tablas) ahora quedan contenidos con `min-width: 0` y `max-width: 100%`.
+- Tabs de categorías, subtabs y selector de jornadas se acomodan en filas compactas en móvil para no quedar cortados.
+- Resumen de categoría, metadatos de jornada y nombres de equipos ahora hacen wrap en móvil.
+- Se compacta el layout en `<=420px` para viewport tipo Pixel/iPhone pequeño.
+
+### Verificación local
+- `git diff --check`
+- `node --max-old-space-size=4096 scripts/smokeFrontendRoleGuards.js` desde `backend/` → 39/39 PASS
+- Playwright headless en viewports 320, 360, 390 y 412 px sobre `portal.html?campeonato=9&evento=19` → sin overflow horizontal.
+
+### Pendiente agregado
+- QA visual en Render con viewport 412x915 en detalle de torneo, especialmente tabs `Jornadas`, `Resultados`, `Tabla de posiciones`, selector de jornadas y cards de partidos.
+
+---
+
 ## 2026-05-08 — Regla multi inscripción y bloqueo por primer equipo
 
 ### Cambios aplicados

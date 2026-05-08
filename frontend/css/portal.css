@@ -3289,7 +3289,14 @@ a.ltc-team-chip-card:hover {
   /* Touch scrolling en tabs de categoría del portal */
   .portal-category-tabs,
   .portal-subtabs {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: visible;
+    overflow-y: visible;
+    flex-wrap: wrap;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
     scrollbar-width: none;
   }
   .portal-category-tabs::-webkit-scrollbar,
@@ -3337,6 +3344,177 @@ a.ltc-team-chip-card:hover {
   /* Plan offer cards: reduce inner padding */
   .ltc-plan-offer-card {
     padding: 0.95rem 0.9rem 0.85rem;
+  }
+}
+
+/* ── Portal detalle: contención mobile contra overflow horizontal ── */
+@media (max-width: 700px) {
+  .ltc-landing,
+  .ltc-landing .ltc-main,
+  .ltc-landing .container,
+  #portal-detalle,
+  #portal-detalle-contenido,
+  .portal-detail-shell,
+  .portal-detail-header,
+  .portal-category-panel,
+  .portal-subtab-panel,
+  .portal-jornadas-wrap,
+  .portal-jornadas-cards,
+  .portal-jornada-card,
+  .portal-jornada-match,
+  .partido-publico {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  #portal-detalle,
+  #portal-detalle-contenido,
+  .portal-detail-shell,
+  .portal-category-panel,
+  .portal-subtab-panel,
+  .portal-jornadas-wrap,
+  .portal-jornadas-cards {
+    overflow-x: hidden;
+  }
+
+  .portal-detail-shell {
+    width: 100%;
+  }
+
+  .portal-category-panel {
+    width: 100%;
+    padding: 0.75rem;
+  }
+
+  .portal-category-summary,
+  .portal-category-summary > div,
+  .portal-category-summary h3,
+  .portal-category-summary p {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .portal-category-summary h3 {
+    font-size: clamp(1.2rem, 6vw, 1.45rem);
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+
+  .portal-category-summary p,
+  .portal-jornada-match-meta,
+  .portal-jornada-fecha,
+  .portal-jornada-count,
+  .equipo-nombre {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .portal-category-tab,
+  .portal-subtab,
+  .portal-jornada-selector-btn {
+    max-width: 100%;
+  }
+
+  .portal-subtab {
+    flex: 1 1 min(10.5rem, 100%);
+    padding: 0.58rem 0.78rem;
+    font-size: 0.82rem;
+    min-height: 42px;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .portal-category-tab,
+  .portal-jornada-selector-btn {
+    flex: 0 1 auto;
+    white-space: normal;
+  }
+
+  .portal-jornadas-selector {
+    flex-wrap: wrap;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  .portal-jornada-card-head,
+  .portal-playoff-match-head {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .portal-jornada-card-body {
+    padding-inline: 0.65rem;
+  }
+
+  .partido-publico {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 0.45rem;
+    padding-inline: 0;
+  }
+
+  .equipo-col,
+  .marcador-col {
+    min-width: 0;
+  }
+
+  .equipo-nombre {
+    max-width: 100%;
+    font-size: 0.78rem;
+    line-height: 1.25;
+  }
+
+  .portal-match-logo,
+  .portal-match-logo-placeholder {
+    width: 40px;
+    height: 40px;
+  }
+
+  .marcador {
+    min-width: 46px;
+    padding-inline: 0.42rem;
+    font-size: 0.95rem;
+  }
+
+  .portal-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+}
+
+@media (max-width: 420px) {
+  .portal-category-panel {
+    padding: 0.65rem;
+  }
+
+  .portal-category-tabs,
+  .portal-subtabs {
+    gap: 0.45rem;
+  }
+
+  .portal-category-tab {
+    padding: 0.68rem 0.86rem;
+  }
+
+  .portal-subtab {
+    padding: 0.54rem 0.7rem;
+    font-size: 0.8rem;
+  }
+
+  .portal-jornada-card-body {
+    padding-inline: 0.55rem;
+  }
+
+  .partido-publico {
+    gap: 0.35rem;
+  }
+
+  .portal-match-logo,
+  .portal-match-logo-placeholder {
+    width: 36px;
+    height: 36px;
   }
 }
 
