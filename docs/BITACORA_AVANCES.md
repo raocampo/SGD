@@ -1,3 +1,45 @@
+## 2026-05-08 — Responsive completo: admin app + portal web público
+
+### Objetivo
+Cerrar cobertura responsive de todas las páginas del sistema — tanto la app de gestión (`app-layout`) como el portal web público (`ltc-landing`).
+
+### Admin app — `frontend/css/style.css`
+
+**Bloque `MOBILE QA` (`@media max-width: 900px / 560px`):**
+- **iOS auto-zoom** en tablas operativas: `planilla-captura-table input/select`, `planilla-penales-grid input`, `planilla-overtime-grid input`, `tabla-scroll input/select`, `list-table input/select` → `font-size: 16px !important`
+- **`grupos-main-tabs` / `grupos-main-tab`** agregados a la regla general de tabs scrollables (`overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none`) — antes solo cubría `partidos-main-tabs`, `jugadores-main-tabs`
+
+**`frontend/director.html`** — nuevo `@media (max-width: 600px)` inline:
+- `.btn-gol`: 36×36 → 52×52 px (mínimo táctil Apple: 44px)
+- Inputs/selects: `font-size: 16px` (iOS zoom prevention)
+- `.action-row` columna, `.btn-action` full-width
+- `.share-btns` grid 2×2
+- Padding y tipografía compactos
+
+### Portal web público — `frontend/css/portal.css`
+
+**Audit completo sobre:** `index.html`, `portal.html`, `torneos.html`, `planes.html`, `blog.html`, `noticia.html`
+
+Nuevo bloque `MOBILE CIERRE PORTAL` al final de `portal.css`:
+
+| Problema | Breakpoint | Fix |
+|----------|-----------|-----|
+| iOS auto-zoom búsqueda/select torneos | 700px | `font-size: 16px` en `ltc-torneos-search-wrap input` y `ltc-torneos-select` |
+| `ltc-feature-grid` salta 3→1 col (sin paso intermedio) | 980px/640px | 2-col en 980px, 1-col en 640px |
+| `portal-category-tabs` sin scroll inercial iOS | 700px | `-webkit-overflow-scrolling: touch; scrollbar-width: none` |
+| Hero blob demasiado alto en phones (<480px) | 480px | `ltc-hero-media min-height: 180px`, shape `min(200px, 60vw)` |
+| `ltc-hero-actions` no apila en phones muy pequeños | 480px | `flex-direction: column; align-items: stretch`, botones full-width |
+| `ltc-team-welcome-groups` 2-col en 390px (~165px/col) | 480px | `grid-template-columns: 1fr` |
+| `ltc-about-banner` sin height cap tras 1-col a 980px | 700px | `max-height: 250px; object-fit: cover` |
+| `ltc-clientes-section` con 70px padding en móvil | 700px | `padding: 40px 0` |
+| `ltc-gallery-card img` 230px en layout 1-col | 700px | `height: 180px` |
+| `ltc-plans-hero` padding excesivo en phones | 480px | `padding: 1.8rem 0 0.8rem` |
+
+### Pendiente
+QA visual en viewport 390×844 y 768×1024 con datos reales — no verificable en código. Ver `ESTADO_IMPLEMENTACION_SGD.md`.
+
+---
+
 ## 2026-05-08 — Jugadores ascendentes en planilla
 
 ### Objetivo

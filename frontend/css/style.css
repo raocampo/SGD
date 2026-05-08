@@ -2101,9 +2101,11 @@ body.app-layout {
     font-size: 13px;
   }
 
+  /* Mantener ≥16px en inputs para evitar auto-zoom en iOS */
   .form-group input,
-  .form-group select {
-    font-size: 13px;
+  .form-group select,
+  .form-group textarea {
+    font-size: 16px;
   }
 }
 
@@ -9239,6 +9241,7 @@ body.page-finanzas {
 
   body.app-layout .partidos-main-tabs,
   body.app-layout .jugadores-main-tabs,
+  body.app-layout .grupos-main-tabs,
   body.app-layout .fixture-view-tabs,
   body.app-layout .dash-tabs-bar,
   body.app-layout .list-view-toggle {
@@ -9251,6 +9254,7 @@ body.page-finanzas {
 
   body.app-layout .partidos-main-tabs::-webkit-scrollbar,
   body.app-layout .jugadores-main-tabs::-webkit-scrollbar,
+  body.app-layout .grupos-main-tabs::-webkit-scrollbar,
   body.app-layout .fixture-view-tabs::-webkit-scrollbar,
   body.app-layout .dash-tabs-bar::-webkit-scrollbar,
   body.app-layout .list-view-toggle::-webkit-scrollbar {
@@ -9259,6 +9263,7 @@ body.page-finanzas {
 
   body.app-layout .partidos-main-tab,
   body.app-layout .jugadores-main-tab,
+  body.app-layout .grupos-main-tab,
   body.app-layout .fixture-view-btn,
   body.app-layout .dash-tab-btn,
   body.app-layout .list-view-toggle .btn,
@@ -9467,6 +9472,18 @@ body.page-finanzas {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100%;
+  }
+
+  /* iOS auto-zoom prevention: inputs/selects must be ≥16px on mobile */
+  body.page-planilla .planilla-captura-table input,
+  body.page-planilla .planilla-captura-table select,
+  body.page-planilla .planilla-penales-grid input,
+  body.page-planilla .planilla-overtime-grid input,
+  body.app-layout .tabla-scroll input,
+  body.app-layout .tabla-scroll select,
+  body.app-layout .list-table input,
+  body.app-layout .list-table select {
+    font-size: 16px !important;
   }
 
   body.page-finanzas .fin-card-headline {

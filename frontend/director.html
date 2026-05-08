@@ -359,6 +359,44 @@
       z-index: 9999;
     }
     #toast.show { transform: translateY(0); opacity: 1; }
+
+    @media (max-width: 600px) {
+      .director-wrap { padding: 16px 12px 60px; }
+      .director-header { gap: 8px; margin-bottom: 18px; }
+      .director-header h1 { font-size: 1.1rem; }
+      .card { padding: 14px 14px; }
+
+      /* Bigger touch targets for goal buttons */
+      .btn-gol {
+        width: 52px;
+        height: 52px;
+        font-size: 22px;
+        border-radius: 10px;
+      }
+      .gol-display { font-size: 48px; }
+
+      /* iOS auto-zoom prevention */
+      .input-sm, .select-sm, .input-texto {
+        font-size: 16px !important;
+      }
+
+      /* Preset buttons easier to tap */
+      .btn-preset {
+        padding: 8px 14px;
+        font-size: 14px;
+      }
+
+      /* Action buttons full width */
+      .action-row { flex-direction: column; }
+      .btn-action { width: 100%; justify-content: center; }
+
+      /* Share buttons 2-col grid */
+      .share-btns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+      .btn-share { justify-content: center; }
+    }
   </style>
 </head>
 <body>

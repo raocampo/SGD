@@ -1,3 +1,46 @@
+## 2026-05-08 — Responsive completo: admin app + portal web público
+
+### Cambios aplicados
+
+**`frontend/css/style.css` — MOBILE QA:**
+- iOS auto-zoom prevention: `font-size: 16px !important` en `planilla-captura-table`, `tabla-scroll` y `list-table` inputs/selects a `max-width: 900px`
+- `grupos-main-tabs` / `grupos-main-tab` añadidos a la regla general de tabs scrollables (`body.app-layout`) — cubre `gruposgen.html`
+- `director.html`: nuevo bloque `@media (max-width: 600px)` inline — botones gol 52×52px, iOS zoom prevention, acciones full-width, share buttons 2-col
+
+**`frontend/css/portal.css` — MOBILE CIERRE PORTAL:**
+- Feature-grid: 3-col → 2-col a 980px → 1-col a 640px
+- iOS auto-zoom torneos: `font-size: 16px` en búsqueda y select de filtros
+- Portal category tabs: `-webkit-overflow-scrolling: touch; scrollbar-width: none`
+- Hero media: reducido a `min-height: 180px` y shape `min(200px, 60vw)` en phones <480px
+- Hero actions: apila a columna y full-width en phones <480px
+- Team welcome groups: 1-col a ≤480px
+- About banner: `max-height: 250px` a ≤700px
+- Clientes section: padding 70px → 40px a ≤700px
+- Gallery card img: 230px → 180px a ≤700px
+- Plans hero: padding reducido a ≤480px
+
+### Estado responsive por hoja de estilos
+
+| Archivo CSS | Cobertura mobile | Estado |
+|------------|-----------------|--------|
+| `style.css` | Todas las páginas `app-layout` (~28 páginas) | ✅ Completo |
+| `portal.css` | `index.html`, `portal.html`, `torneos.html`, `planes.html`, `blog.html`, `noticia.html` | ✅ Completo |
+| `tablasplantilla.css` | `tablasplantilla.html` | ✅ Completo (900px + 600px) |
+| `organizador-portal.css` | `organizador-portal.html` (admin CMS) | ✅ Completo (900px + 560px) |
+| `grupos.css` | `gruposgen.html` | ✅ Completo (640px + 780px + 900px + 560px, propio) |
+| `director.html` inline | `director.html` | ✅ Completo (600px inline) |
+| `equipo-publico.html` inline | público | ✅ Tiene 700px + 390px propios |
+| `jugador-publico.html` inline | público | ✅ Tiene 600px + 700px + 390px propios |
+
+### Pendiente
+
+**QA visual** (requiere browser real, no verificable en código):
+- Viewport 390×844 (iPhone 14): hero `index.html`, torneos filtros, portal category tabs, plan cards `planes.html`, director.html botones gol
+- Viewport 768×1024 (iPad): feature-grid 2-col, portal detail, dashboard admin shortcuts
+- Viewport 1024×768 (landscape tablet): sidebar comportamiento, grids 2/3 cols
+
+---
+
 ## 2026-05-08 — Jugadores ascendentes en planilla
 
 ### Cambios aplicados

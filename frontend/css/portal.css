@@ -3265,3 +3265,137 @@ a.ltc-team-chip-card:hover {
     justify-content: center;
   }
 }
+
+/* ================================================================
+   MOBILE CIERRE PORTAL — mejoras responsivas adicionales
+   ================================================================ */
+
+/* ── 980px: feature-grid 2-col en tablet (evita salto 3→1 col) ── */
+@media (max-width: 980px) {
+  .ltc-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── 640px: feature-grid colapsa a 1-col ── */
+@media (max-width: 640px) {
+  .ltc-feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── 700px: complemento del bloque existente ── */
+@media (max-width: 700px) {
+  /* Touch scrolling en tabs de categoría del portal */
+  .portal-category-tabs,
+  .portal-subtabs {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .portal-category-tabs::-webkit-scrollbar,
+  .portal-subtabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* iOS auto-zoom: torneos filtros */
+  .ltc-torneos-search-wrap input {
+    font-size: 16px;
+  }
+  .ltc-torneos-select {
+    font-size: 16px;
+  }
+
+  /* About banner: cap height after 1-col collapse at 980px */
+  .ltc-about-banner {
+    max-height: 250px;
+  }
+  .ltc-about-banner img {
+    max-height: 250px;
+    object-fit: cover;
+  }
+
+  /* Gallery: shorter images in 1-col layout */
+  .ltc-gallery-card img {
+    height: 180px;
+  }
+
+  /* Clientes: reduce wasted vertical padding */
+  .ltc-clientes-section {
+    padding: 40px 0;
+  }
+
+  /* News section: reduce bottom padding */
+  .ltc-news-section {
+    padding: 1.5rem 0;
+  }
+
+  /* Feature cards: compact padding */
+  .ltc-feature-card {
+    padding: 1.1rem;
+  }
+
+  /* Plan offer cards: reduce inner padding */
+  .ltc-plan-offer-card {
+    padding: 0.95rem 0.9rem 0.85rem;
+  }
+}
+
+/* ── 480px: very small phones ── */
+@media (max-width: 480px) {
+  /* Hero image: reduce height significantly */
+  .ltc-hero-media {
+    min-height: 180px;
+  }
+  .ltc-hero-media-shape {
+    width: min(200px, 60vw);
+  }
+  .ltc-play-btn {
+    width: 60px;
+    height: 60px;
+    font-size: 1rem;
+  }
+
+  /* Hero copy: stack action buttons */
+  .ltc-hero-copy h1 {
+    max-width: 100%;
+  }
+  .ltc-hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ltc-demo-text,
+  .ltc-btn-enter,
+  .ltc-btn-demo {
+    text-align: center;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* Team welcome groups: 1-col on tiny phones */
+  .ltc-team-welcome-groups {
+    grid-template-columns: 1fr;
+  }
+
+  /* Pricing & plan buttons full-width on mobile */
+  .ltc-pricing-btn,
+  .ltc-plan-features .ltc-pricing-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Plans hero: slightly less top padding */
+  .ltc-plans-hero {
+    padding: 1.8rem 0 0.8rem;
+  }
+
+  /* Section titles: compact margin */
+  .ltc-section-title {
+    margin-bottom: 0.75rem;
+  }
+
+  /* Stream section: already covered at 480px above, keep consistent */
+  .ltc-stream-copy p {
+    font-size: 0.9rem;
+  }
+}
