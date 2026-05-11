@@ -3479,8 +3479,78 @@ a.ltc-team-chip-card:hover {
 
   .portal-table-wrap {
     max-width: 100%;
-    overflow-x: auto;
+    overflow-x: hidden;
     overscroll-behavior-inline: contain;
+  }
+
+  .portal-tabla-posiciones,
+  .portal-fair-play-table {
+    table-layout: fixed;
+    min-width: 0;
+    font-size: 0.72rem;
+  }
+
+  .portal-tabla-posiciones .portal-table-col-secondary,
+  .portal-fair-play-table .portal-fair-play-secondary {
+    display: none;
+  }
+
+  .portal-tabla-posiciones th,
+  .portal-tabla-posiciones td,
+  .portal-fair-play-table th,
+  .portal-fair-play-table td {
+    padding: 0.32rem 0.2rem;
+  }
+
+  .portal-tabla-posiciones .portal-table-rank,
+  .portal-fair-play-table .portal-table-rank {
+    width: 2rem;
+  }
+
+  .portal-tabla-posiciones .portal-table-team,
+  .portal-fair-play-table .portal-table-team {
+    width: auto;
+    text-align: left;
+  }
+
+  .portal-tabla-posiciones .portal-table-stat-main,
+  .portal-fair-play-table .portal-fair-play-main {
+    width: 2.45rem;
+  }
+
+  .portal-tabla-posiciones .portal-table-points,
+  .portal-fair-play-table .portal-table-points {
+    width: 3rem;
+  }
+
+  .portal-fair-play-table .portal-table-points {
+    width: 3.7rem;
+  }
+
+  .portal-tabla-posicion-equipo {
+    flex-wrap: nowrap;
+    gap: 0.28rem;
+  }
+
+  .portal-tabla-posicion-equipo > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .portal-tabla-posicion-status {
+    flex-shrink: 0;
+  }
+
+  .portal-tabla-posiciones td.portal-tabla-posicion-eliminado-main {
+    min-width: 0;
+  }
+
+  .portal-tabla-posicion-eliminado-overlay {
+    padding-inline: 0.3rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.02rem;
   }
 }
 

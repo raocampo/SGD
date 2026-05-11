@@ -1,3 +1,16 @@
+## 2026-05-11 — Tablas públicas compactas en móvil
+
+### Cambios aplicados
+- `frontend/js/portal.js` y `frontend/css/portal.css` compactan tablas densas del portal público en móvil.
+- Tabla de posiciones móvil queda con `#`, `Equipo`, `PJ`, `GD/DP`, `PTOS`.
+- Fair play móvil queda con `#`, `Equipo`, `TA`, `TR`, `Puntaje`.
+- Las columnas secundarias permanecen disponibles en escritorio.
+
+### Verificación local
+- Playwright headless en 320, 360, 390 y 412 px sobre `portal.html?campeonato=9&evento=19` → sin overflow horizontal en `Tabla de posiciones` ni `Fair play`.
+
+---
+
 ## 2026-05-08 — Fix responsive portal público detalle de torneos
 
 ### Cambios aplicados

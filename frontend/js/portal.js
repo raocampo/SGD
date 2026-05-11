@@ -1181,7 +1181,7 @@ function renderTablasPortal(tablas = [], tipoDeporte = "") {
   const esBasquetbol = String(tipoDeporte || "").toLowerCase().includes("basquet");
   const labelGF = esBasquetbol ? "PF" : "GF";
   const labelGC = esBasquetbol ? "PC" : "GC";
-  const labelDG = esBasquetbol ? "DP" : "DG";
+  const labelDG = esBasquetbol ? "DP" : "GD";
 
   const bloques = tablas
     .map((grupoData) => {
@@ -1201,18 +1201,18 @@ function renderTablasPortal(tablas = [], tipoDeporte = "") {
           const statsHtml = eliminado
             ? renderCeldaEliminadoPortal(row, classes)
             : `
-                <td class="${classes}">${est.partidos_jugados || 0}</td>
-                <td class="${classes}">${est.partidos_ganados || 0}</td>
-                <td class="${classes}">${est.partidos_empatados || 0}</td>
-                <td class="${classes}">${est.partidos_perdidos || 0}</td>
-                <td class="${classes}">${est.goles_favor || 0}</td>
-                <td class="${classes}">${est.goles_contra || 0}</td>
-                <td class="${classes}">${(est.goles_favor || 0) - (est.goles_contra || 0)}</td>
-                <td class="${classes}"><strong>${row.puntos || 0}</strong></td>
+                <td class="${classes} portal-table-stat-main">${est.partidos_jugados || 0}</td>
+                <td class="${classes} portal-table-col-secondary">${est.partidos_ganados || 0}</td>
+                <td class="${classes} portal-table-col-secondary">${est.partidos_empatados || 0}</td>
+                <td class="${classes} portal-table-col-secondary">${est.partidos_perdidos || 0}</td>
+                <td class="${classes} portal-table-col-secondary">${est.goles_favor || 0}</td>
+                <td class="${classes} portal-table-col-secondary">${est.goles_contra || 0}</td>
+                <td class="${classes} portal-table-stat-main">${(est.goles_favor || 0) - (est.goles_contra || 0)}</td>
+                <td class="${classes} portal-table-points"><strong>${row.puntos || 0}</strong></td>
               `;
           return `<tr>
-            <td class="${classes}">${row.posicion || index + 1}</td>
-            <td class="${classes}">
+            <td class="${classes} portal-table-rank">${row.posicion || index + 1}</td>
+            <td class="${classes} portal-table-team">
               <div class="portal-tabla-posicion-equipo">
                 <span>${escPortal(row.equipo?.nombre || "-")}</span>
                 ${renderEstadoPosicionPortal(row)}
@@ -1234,7 +1234,18 @@ function renderTablasPortal(tablas = [], tipoDeporte = "") {
           <div class="portal-table-wrap">
             <table class="tabla-posicion portal-tabla-posiciones">
               <thead>
-                <tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>${labelGF}</th><th>${labelGC}</th><th>${labelDG}</th><th>PTS</th></tr>
+                <tr>
+                  <th class="portal-table-rank">#</th>
+                  <th class="portal-table-team">Equipo</th>
+                  <th class="portal-table-stat-main">PJ</th>
+                  <th class="portal-table-col-secondary">PG</th>
+                  <th class="portal-table-col-secondary">PE</th>
+                  <th class="portal-table-col-secondary">PP</th>
+                  <th class="portal-table-col-secondary">${labelGF}</th>
+                  <th class="portal-table-col-secondary">${labelGC}</th>
+                  <th class="portal-table-stat-main">${labelDG}</th>
+                  <th class="portal-table-points">PTOS</th>
+                </tr>
               </thead>
               <tbody>
                 ${rowsHtml}
@@ -1869,20 +1880,27 @@ function renderFairPlayPortal(fairPlay = []) {
   const rowsHtml = rows
     .map((row) => `
       <tr>
-        <td>${Number(row.posicion || 0)}</td>
-        <td>${escPortal(row.equipo_nombre || "-")}</td>
-        <td>${Number(row.amarillas || 0)}</td>
-        <td>${Number(row.rojas || 0)}</td>
-        <td>${Number(row.faltas || 0)}</td>
-        <td><strong>${Number(row.puntaje_fair_play || 0)}</strong></td>
+        <td class="portal-table-rank">${Number(row.posicion || 0)}</td>
+        <td class="portal-table-team">${escPortal(row.equipo_nombre || "-")}</td>
+        <td class="portal-fair-play-main">${Number(row.amarillas || 0)}</td>
+        <td class="portal-fair-play-main">${Number(row.rojas || 0)}</td>
+        <td class="portal-fair-play-secondary">${Number(row.faltas || 0)}</td>
+        <td class="portal-table-points"><strong>${Number(row.puntaje_fair_play || 0)}</strong></td>
       </tr>
     `)
     .join("");
 
   return `
     <div class="portal-table-wrap">
-      <table class="tabla-posicion">
-        <tr><th>#</th><th>Equipo</th><th>TA</th><th>TR</th><th>Faltas</th><th>Puntaje</th></tr>
+      <table class="tabla-posicion portal-fair-play-table">
+        <tr>
+          <th class="portal-table-rank">#</th>
+          <th class="portal-table-team">Equipo</th>
+          <th class="portal-fair-play-main">TA</th>
+          <th class="portal-fair-play-main">TR</th>
+          <th class="portal-fair-play-secondary">Faltas</th>
+          <th class="portal-table-points">Puntaje</th>
+        </tr>
         ${rowsHtml}
       </table>
     </div>

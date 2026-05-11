@@ -1,3 +1,26 @@
+## 2026-05-11 — Tablas públicas compactas en móvil
+
+### Objetivo
+Reducir la densidad de columnas en tablas del portal público para que la vista responsiva muestre solo los datos más relevantes.
+
+### Cambio aplicado
+- `frontend/js/portal.js`:
+  - Tabla de posiciones marca columnas primarias/secundarias.
+  - En fútbol se usa `GD` y `PTOS`; en básquet se conserva `DP` para diferencia de puntos.
+  - Fair play marca `Faltas` como columna secundaria móvil.
+- `frontend/css/portal.css`:
+  - En móvil, tabla de posiciones muestra `#`, `Equipo`, `PJ`, `GD/DP`, `PTOS`.
+  - En móvil, fair play muestra `#`, `Equipo`, `TA`, `TR`, `Puntaje`.
+  - Se evita overflow horizontal en las tablas densas y se ajustan anchos para 320–412px.
+
+### Verificación local
+- Playwright headless en `portal.html?campeonato=9&evento=19` con viewports 320, 360, 390 y 412 px:
+  - `Tabla de posiciones` → columnas visibles `#`, `Equipo`, `PJ`, `GD`, `PTOS`.
+  - `Fair play` → columnas visibles `#`, `Equipo`, `TA`, `TR`, `Puntaje`.
+  - `scrollWidth` igual al viewport y sin ofensores horizontales.
+
+---
+
 ## 2026-05-08 — Fix responsive portal público detalle de torneos
 
 ### Objetivo
