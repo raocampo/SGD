@@ -1,3 +1,16 @@
+## 2026-05-11 — Ajuste tabla pública y tope de planillaje
+
+### Cambios aplicados
+- La tabla de posiciones móvil del portal público ahora reserva más ancho para `Equipo` y muestra nombres hasta en 2 líneas.
+- Se mantienen columnas compactas `#`, `Equipo`, `PJ`, `GD/DP`, `PTOS`.
+- Reportes PDF de planillaje usan tope duro de 30 jugadores por equipo para todos los tipos de fútbol.
+- El cálculo de filas de PDF usa planteles reales más configuración, capado a 30 para sostener el objetivo: sin observaciones 1 página; con observaciones máximo 2 páginas.
+
+### Verificación local
+- Playwright en 360px sobre `portal.html?campeonato=9&evento=19` → nombres de equipos legibles, sin overflow horizontal.
+
+---
+
 ## 2026-05-11 — Tablas públicas compactas en móvil
 
 ### Cambios aplicados

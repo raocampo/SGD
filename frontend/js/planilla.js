@@ -55,6 +55,7 @@ const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante",
 const ESTADOS_PLANILLA_CERRADOS = new Set(["finalizado", "no_presentaron_ambos"]);
 const GOLES_WALKOVER = 3;
 const MAX_FALTAS_PLANILLA = 6;
+const MAX_JUGADORES_REPORTE_PLANILLA = 30;
 const RONDAS_PLAYOFF_PLANILLA = [
   "reclasificacion",
   "32vos",
@@ -4362,7 +4363,8 @@ function obtenerJugadoresImpresionPlanilla(jugadores, maxFilas) {
   const lista = Array.isArray(jugadores)
     ? jugadores.filter((jugador) => jugador && (Number.isFinite(Number(jugador.id)) || Boolean(nombreJugador(jugador))))
     : [];
-  const tope = Number.isFinite(Number(maxFilas)) && Number(maxFilas) > 0 ? Number(maxFilas) : lista.length;
+  const topeBase = Number.isFinite(Number(maxFilas)) && Number(maxFilas) > 0 ? Number(maxFilas) : lista.length;
+  const tope = Math.min(MAX_JUGADORES_REPORTE_PLANILLA, topeBase);
   const filas = ordenarJugadoresPorApellidoPlanilla(lista).slice(0, tope);
   while (filas.length < tope) filas.push(null);
   return filas;
@@ -4473,12 +4475,17 @@ function obtenerMaxFilasVistaPreviaPlanilla() {
   const visitanteCount = Array.isArray(dataPlanilla?.plantel_visitante)
     ? dataPlanilla.plantel_visitante.length
     : 0;
-  return Math.max(localCount, visitanteCount, maxConfigurado, 8);
+  return Math.min(
+    MAX_JUGADORES_REPORTE_PLANILLA,
+    Math.max(localCount, visitanteCount, maxConfigurado, 8)
+  );
 }
 
 function obtenerMaxJugadoresConfiguradoPlanilla(partido = dataPlanilla?.partido || {}) {
   const maxConfigurado = Number(partido?.max_jugador);
-  if (Number.isFinite(maxConfigurado) && maxConfigurado > 0) return maxConfigurado;
+  if (Number.isFinite(maxConfigurado) && maxConfigurado > 0) {
+    return Math.min(MAX_JUGADORES_REPORTE_PLANILLA, maxConfigurado);
+  }
 
   const tipo = obtenerTipoDeportePlanillaNormalizado(partido);
   if (tipo === "futbol_11") return 25;
@@ -4486,7 +4493,7 @@ function obtenerMaxJugadoresConfiguradoPlanilla(partido = dataPlanilla?.partido 
   const modelo = ["futbol_11", "futbol_9", "futbol_8", "indor"].includes(tipo)
     ? "futbol_11_indor"
     : "futbol_7_5_sala";
-  return modelo === "futbol_7_5_sala" ? 20 : 18;
+  return Math.min(MAX_JUGADORES_REPORTE_PLANILLA, modelo === "futbol_7_5_sala" ? 20 : 18);
 }
 
 function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
@@ -5490,7 +5497,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
     const visitNombre = p.equipo_visitante_nombre || equiposPartido.visitante.nombre;
     const localDt = valorReportePlanilla(p.equipo_local_director_tecnico);
     const visitDt = valorReportePlanilla(p.equipo_visitante_director_tecnico);
-    const maxFilas = obtenerMaxJugadoresConfiguradoPlanilla(p);
+    const maxFilas = obtenerMaxFilasVistaPreviaPlanilla();
     const plantelLocalImpresion = obtenerJugadoresImpresionPlanilla(dataPlanilla.plantel_local || [], maxFilas);
     const plantelVisitanteImpresion = obtenerJugadoresImpresionPlanilla(
       dataPlanilla.plantel_visitante || [],

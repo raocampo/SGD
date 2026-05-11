@@ -1,3 +1,26 @@
+## 2026-05-11 — Ajuste tabla pública y tope de planillaje
+
+### Objetivo
+Corregir la tabla de posiciones móvil para que los nombres de equipos sean legibles y asegurar que los reportes PDF de planillaje trabajen con un máximo de 30 jugadores por equipo.
+
+### Cambio aplicado
+- `frontend/css/portal.css`:
+  - La columna `Equipo` en tabla de posiciones móvil recibe prioridad de ancho.
+  - Los nombres de equipos permiten hasta 2 líneas en móvil en lugar de quedar truncados con puntos suspensivos.
+  - Se reducen anchos/padding de `#`, `PJ`, `GD/DP` y `PTOS` para dar espacio al nombre.
+- `frontend/js/planilla.js`:
+  - Se agrega `MAX_JUGADORES_REPORTE_PLANILLA = 30`.
+  - Vista previa e impresión PDF capan jugadores de planilla a 30 filas por equipo.
+  - El PDF calcula filas usando planteles reales + configuración, pero nunca supera 30; así sin observaciones debe conservarse en 1 página y con observaciones en máximo 2 páginas.
+
+### Verificación local
+- Playwright en `portal.html?campeonato=9&evento=19`, viewport 360px:
+  - `Tabla de posiciones` conserva columnas `#`, `Equipo`, `PJ`, `GD`, `PTOS`.
+  - Los nombres completos de equipos se ven en 1 o 2 líneas.
+  - `scrollWidth` igual al viewport y sin ofensores horizontales.
+
+---
+
 ## 2026-05-11 — Tablas públicas compactas en móvil
 
 ### Objetivo

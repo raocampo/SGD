@@ -3499,44 +3499,49 @@ a.ltc-team-chip-card:hover {
   .portal-tabla-posiciones td,
   .portal-fair-play-table th,
   .portal-fair-play-table td {
-    padding: 0.32rem 0.2rem;
+    padding: 0.32rem 0.14rem;
   }
 
   .portal-tabla-posiciones .portal-table-rank,
   .portal-fair-play-table .portal-table-rank {
-    width: 2rem;
+    width: 1.55rem;
   }
 
   .portal-tabla-posiciones .portal-table-team,
   .portal-fair-play-table .portal-table-team {
-    width: auto;
+    width: 48%;
     text-align: left;
   }
 
   .portal-tabla-posiciones .portal-table-stat-main,
   .portal-fair-play-table .portal-fair-play-main {
-    width: 2.45rem;
+    width: 2rem;
   }
 
   .portal-tabla-posiciones .portal-table-points,
   .portal-fair-play-table .portal-table-points {
-    width: 3rem;
+    width: 2.45rem;
   }
 
   .portal-fair-play-table .portal-table-points {
-    width: 3.7rem;
+    width: 3.25rem;
   }
 
   .portal-tabla-posicion-equipo {
-    flex-wrap: nowrap;
-    gap: 0.28rem;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.12rem;
   }
 
   .portal-tabla-posicion-equipo > span:first-child {
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.12;
   }
 
   .portal-tabla-posicion-status {
