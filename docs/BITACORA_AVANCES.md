@@ -1,3 +1,35 @@
+## 2026-05-11 — Ajuste de paginación PDF de planillas
+
+### Objetivo
+Corregir los reportes PDF de planilla para que:
+- sin observaciones salgan en 1 página,
+- con observaciones salgan en 2 páginas,
+- el plantel tenga un máximo de 30 filas por equipo,
+- y los casos con menos filas se ajusten sin empujar páginas extra.
+
+### Cambio aplicado
+- `frontend/js/planilla.js`:
+  - La salida PDF usa siempre maqueta compacta y pasa a modo ultra desde 24 filas.
+  - Se recalibró el presupuesto de altura fija de la página 1 para reservar espacio real a encabezado, metadatos, marcador, faltas, planteles, firmas, tarjetas y pagos.
+  - Se redujeron alturas, paddings y fuentes de filas altas para que 30 filas por equipo entren en la página 1.
+  - Los nombres de equipos, jugadores y metadatos críticos quedan en una línea para evitar que un wrap aumente la altura de filas.
+  - Pagos y resumen de tarjetas ahora tienen padding compacto en PDF.
+  - Las observaciones se fuerzan siempre a página 2 cuando se exporta el PDF con observaciones.
+
+### Verificación local
+- `node --check frontend/js/planilla.js`
+- `npm run smoke:frontend` desde `backend/` → 39/39 PASS
+- `git diff --check`
+
+### Pendiente
+- Validar visualmente en Render con planillas reales:
+  - sin observaciones: 1 página,
+  - con observaciones: 2 páginas,
+  - planteles de 24 a 30 filas,
+  - planteles menores a 24 filas.
+
+---
+
 ## 2026-05-11 — Sidebar completo para rol organizador
 
 ### Objetivo

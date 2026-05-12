@@ -5089,8 +5089,8 @@ async function construirBloqueAuspiciantesPdf() {
 }
 
 function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false, ultra = false } = {}) {
-  const fitLogo = ultra ? [22, 22] : compacto ? [28, 28] : [36, 36];
-  const fontSize = ultra ? 7.8 : compacto ? 9 : 10.5;
+  const fitLogo = ultra ? [18, 18] : compacto ? [24, 24] : [36, 36];
+  const fontSize = ultra ? 6.8 : compacto ? 8.2 : 10.5;
 
   const innerBody = [];
   if (logoDataUrl) {
@@ -5107,6 +5107,7 @@ function construirCeldaMarcadorEquipoPdf(nombre, logoDataUrl, { compacto = false
     alignment: "center",
     bold: true,
     fontSize,
+    noWrap: true,
     border: [false, false, false, false],
   }]);
 
@@ -5187,10 +5188,16 @@ function construirFilasPlantelPdf(jugadores, stats, maxFilas) {
   return body;
 }
 
-function construirBloqueTarjetasEquipoPdf(totalTa, totalTr, mostrarEnBlanco = false) {
+function construirBloqueTarjetasEquipoPdf(
+  totalTa,
+  totalTr,
+  mostrarEnBlanco = false,
+  modoCompactoPdf = false,
+  modoUltraCompactoPdf = false
+) {
   return {
     table: {
-      widths: ["*", 26],
+      widths: ["*", modoUltraCompactoPdf ? 20 : modoCompactoPdf ? 22 : 26],
       body: [
         [
           { text: "Tarjetas amarillas", style: "footLabel" },
@@ -5207,24 +5214,31 @@ function construirBloqueTarjetasEquipoPdf(totalTa, totalTr, mostrarEnBlanco = fa
       vLineWidth: () => 0.6,
       hLineColor: () => "#9ca3af",
       vLineColor: () => "#9ca3af",
-      paddingLeft: () => 3,
-      paddingRight: () => 3,
-      paddingTop: () => 2,
-      paddingBottom: () => 2,
+      paddingLeft: () => (modoUltraCompactoPdf ? 1.5 : modoCompactoPdf ? 2 : 3),
+      paddingRight: () => (modoUltraCompactoPdf ? 1.5 : modoCompactoPdf ? 2 : 3),
+      paddingTop: () => (modoUltraCompactoPdf ? 0.7 : modoCompactoPdf ? 1 : 2),
+      paddingBottom: () => (modoUltraCompactoPdf ? 0.7 : modoCompactoPdf ? 1 : 2),
     },
   };
 }
 
-function construirBloquePagosPdf(localNombre, visitNombre, pagos = {}, mostrarEnBlanco = false) {
+function construirBloquePagosPdf(
+  localNombre,
+  visitNombre,
+  pagos = {},
+  mostrarEnBlanco = false,
+  modoCompactoPdf = false,
+  modoUltraCompactoPdf = false
+) {
   const layoutTabla = {
     hLineWidth: () => 0.6,
     vLineWidth: () => 0.6,
     hLineColor: () => "#9ca3af",
     vLineColor: () => "#9ca3af",
-    paddingLeft: () => 3.5,
-    paddingRight: () => 3.5,
-    paddingTop: () => 3,
-    paddingBottom: () => 3,
+    paddingLeft: () => (modoUltraCompactoPdf ? 1.8 : modoCompactoPdf ? 2.2 : 3.5),
+    paddingRight: () => (modoUltraCompactoPdf ? 1.8 : modoCompactoPdf ? 2.2 : 3.5),
+    paddingTop: () => (modoUltraCompactoPdf ? 0.9 : modoCompactoPdf ? 1.3 : 3),
+    paddingBottom: () => (modoUltraCompactoPdf ? 0.9 : modoCompactoPdf ? 1.3 : 3),
   };
 
   const filasPago = (inscripcion, arbitraje, pagoTa, pagoTr) => [
@@ -5259,16 +5273,16 @@ function construirBloquePagosPdf(localNombre, visitNombre, pagos = {}, mostrarEn
                 vLineWidth: () => 0.6,
                 hLineColor: () => "#9ca3af",
                 vLineColor: () => "#9ca3af",
-                paddingLeft: () => 3,
-                paddingRight: () => 3,
-                paddingTop: () => 2,
-                paddingBottom: () => 2,
+                paddingLeft: () => (modoUltraCompactoPdf ? 1.6 : modoCompactoPdf ? 2 : 3),
+                paddingRight: () => (modoUltraCompactoPdf ? 1.6 : modoCompactoPdf ? 2 : 3),
+                paddingTop: () => (modoUltraCompactoPdf ? 0.8 : modoCompactoPdf ? 1 : 2),
+                paddingBottom: () => (modoUltraCompactoPdf ? 0.8 : modoCompactoPdf ? 1 : 2),
               },
-              margin: [0, 0, 0, 2],
+              margin: [0, 0, 0, modoUltraCompactoPdf ? 1 : 2],
             },
             {
               table: {
-                widths: ["*", 58],
+                widths: ["*", modoUltraCompactoPdf ? 48 : modoCompactoPdf ? 52 : 58],
                 body: filasPago(
                   pagos.pago_local,
                   pagos.pago_arbitraje_local,
@@ -5290,16 +5304,16 @@ function construirBloquePagosPdf(localNombre, visitNombre, pagos = {}, mostrarEn
                 vLineWidth: () => 0.6,
                 hLineColor: () => "#9ca3af",
                 vLineColor: () => "#9ca3af",
-                paddingLeft: () => 3,
-                paddingRight: () => 3,
-                paddingTop: () => 2,
-                paddingBottom: () => 2,
+                paddingLeft: () => (modoUltraCompactoPdf ? 1.6 : modoCompactoPdf ? 2 : 3),
+                paddingRight: () => (modoUltraCompactoPdf ? 1.6 : modoCompactoPdf ? 2 : 3),
+                paddingTop: () => (modoUltraCompactoPdf ? 0.8 : modoCompactoPdf ? 1 : 2),
+                paddingBottom: () => (modoUltraCompactoPdf ? 0.8 : modoCompactoPdf ? 1 : 2),
               },
-              margin: [0, 0, 0, 2],
+              margin: [0, 0, 0, modoUltraCompactoPdf ? 1 : 2],
             },
             {
               table: {
-                widths: ["*", 58],
+                widths: ["*", modoUltraCompactoPdf ? 48 : modoCompactoPdf ? 52 : 58],
                 body: filasPago(
                   pagos.pago_visitante,
                   pagos.pago_arbitraje_visitante,
@@ -5511,44 +5525,36 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
       plantelVisitanteImpresion.filter((j) => j !== null).length,
       0
     );
-    // Fútbol 11 custom (< 24 filas) → modo normal (márgenes amplios, preservar comportamiento actual).
-    // Todos los demás formatos (f7, f8, f9, f6, f5, sala, indor, basquetbol) → siempre compacto.
-    // 24+ filas → compacto; 30+ filas → ultra-compacto.
-    const modoCompactoPdf = !arbitraje.esFutbol11 || totalFilasImpresion >= 24;
-    const modoUltraCompactoPdf = totalFilasImpresion >= 30;
-    // Altura dinámica: calcular cuánto espacio queda en A4 después del contenido fijo
-    // y distribuirlo entre todas las filas del plantel para llenar la hoja.
+    // El PDF operativo debe caber en 1 hoja sin observaciones y en 2 hojas con observaciones.
+    // Por eso la salida PDF usa siempre una maqueta compacta; desde 24 filas entra en modo ultra.
+    const modoCompactoPdf = true;
+    const modoUltraCompactoPdf = totalFilasImpresion >= 24;
+    // Altura dinámica: calcular cuánto espacio queda en A4 después de un presupuesto
+    // conservador de contenido fijo y distribuirlo entre las filas del plantel.
     const _alturaA4 = 841; // puntos pdfMake (1pt = 1/72 inch)
-    const _margenVertical = modoUltraCompactoPdf ? 8 : modoCompactoPdf ? 10 : 44;
-    // futbol_7_5_sala añade un bloque de faltas (~22pt) que futbol_11_indor no tiene.
-    const _extraFaltas = (!arbitraje.esFutbol11 && modelo === "futbol_7_5_sala" && !modoUltraCompactoPdf) ? 22 : 0;
-    const _espacioFijo = modoUltraCompactoPdf ? 387 : modoCompactoPdf ? 345 + _extraFaltas : 490;
+    const _margenVertical = 8;
+    const _incluyeBloqueFaltas = modelo === "futbol_7_5_sala";
+    const _espacioFijo = modoUltraCompactoPdf
+      ? (_incluyeBloqueFaltas ? 526 : 502)
+      : (_incluyeBloqueFaltas ? 486 : 456);
     const _espacioParaFilas = _alturaA4 - _margenVertical - _espacioFijo;
     const _totalFilasConCabecera = totalFilasImpresion + 1; // +1 por la fila de encabezado
-    const _alturaFilaMin = modoUltraCompactoPdf ? 5 : modoCompactoPdf ? 6 : 8;
-    // Cap 32pt para no-ultra: da altura visual cómoda cuando hay pocas filas.
-    const _alturaFilaMax = modoUltraCompactoPdf ? 22 : 32;
+    const _alturaFilaMin = modoUltraCompactoPdf ? 5.2 : 6.2;
+    // Cap alto para planteles cortos, sin volver a inflar la hoja hasta forzar otra página.
+    const _alturaFilaMax = modoUltraCompactoPdf ? 15.5 : 28;
     const alturaFilaPlantel = _totalFilasConCabecera > 0
       ? Math.max(_alturaFilaMin, Math.min(_alturaFilaMax, _espacioParaFilas / _totalFilasConCabecera))
       : _alturaFilaMax;
-    const alturaCabeceraPlantel = Math.max(_alturaFilaMin + 1, alturaFilaPlantel * 0.85);
+    const alturaCabeceraPlantel = Math.max(_alturaFilaMin, alturaFilaPlantel * 0.78);
     // Para no-F11: la fuente escala según el ratio de jugadores REALES vs máximo configurado.
     // totalFilasImpresion siempre es maxFilas (filas vacías rellenadas), por eso se usan
     // totalJugadoresReales para que la fuente suba cuando hay pocas inscripciones.
-    const _fontCeldaBase = modoUltraCompactoPdf ? 6.6 : 7.4;
-    const _fontHeaderBase = modoUltraCompactoPdf ? 6.8 : 7.6;
+    const _fontCeldaBase = modoUltraCompactoPdf ? 6.1 : 7.0;
+    const _fontHeaderBase = modoUltraCompactoPdf ? 6.2 : 7.1;
     const _filasRatio = maxFilas > 0 ? Math.min(1, totalJugadoresReales / maxFilas) : 1;
-    const _fontScaleNoF11 = !arbitraje.esFutbol11 ? (1 + (1 - _filasRatio) * 0.35) : 1.0;
-    const fontCeldaJugador = !arbitraje.esFutbol11
-      ? Math.min(9.0, _fontCeldaBase * _fontScaleNoF11)
-      : (modoUltraCompactoPdf ? 6.6 : modoCompactoPdf ? 7.4 : 8.5);
-    const fontHeaderTabla = !arbitraje.esFutbol11
-      ? Math.min(9.5, _fontHeaderBase * _fontScaleNoF11)
-      : (modoUltraCompactoPdf ? 6.8 : modoCompactoPdf ? 7.6 : 8.8);
-    // Observaciones en misma página si el espacio restante alcanza; si no, página 2.
-    const _espacioRestante = _espacioParaFilas - alturaFilaPlantel * _totalFilasConCabecera;
-    const _alturaObsEstimada = 200; // pt: 3 secciones de observaciones en modo compacto
-    const obsEnMismaPagina = !arbitraje.esFutbol11 && conObservaciones && _espacioRestante >= _alturaObsEstimada;
+    const _fontScale = 1 + (1 - _filasRatio) * 0.22;
+    const fontCeldaJugador = Math.min(modoUltraCompactoPdf ? 6.8 : 8.2, _fontCeldaBase * _fontScale);
+    const fontHeaderTabla = Math.min(modoUltraCompactoPdf ? 7.0 : 8.4, _fontHeaderBase * _fontScale);
     const bodyLocal = construirFilasPlantelPdf(plantelLocalImpresion, stats, maxFilas);
     const bodyVisit = construirFilasPlantelPdf(plantelVisitanteImpresion, stats, maxFilas);
     const logoOrg = await cargarImagenComoDataUrl(p.campeonato_logo_url);
@@ -5594,6 +5600,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
           text: valorReportePlanilla(valor),
           width: "*",
           alignment: "left",
+          noWrap: true,
           margin: [modoUltraCompactoPdf ? 2 : modoCompactoPdf ? 3 : 4, 0, 0, 0],
         },
       ],
@@ -5603,20 +5610,20 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
 
     const docDefinition = {
       pageSize: "A4",
-      pageMargins: modoUltraCompactoPdf ? [5, 4, 5, 4] : modoCompactoPdf ? [6, 5, 6, 5] : [10, 22, 10, 22],
+      pageMargins: modoUltraCompactoPdf ? [5, 4, 5, 4] : [6, 4, 6, 4],
       defaultStyle: { fontSize: modoUltraCompactoPdf ? 7.4 : modoCompactoPdf ? 8.0 : 8.8, color: "#111827" },
       content: [
         {
           columns: [
             logoOrg
               ? {
-                  width: modoCompactoPdf ? 48 : 54,
+                  width: modoUltraCompactoPdf ? 40 : modoCompactoPdf ? 46 : 54,
                   image: logoOrg,
-                  fit: modoCompactoPdf ? [42, 42] : [50, 50],
+                  fit: modoUltraCompactoPdf ? [30, 30] : modoCompactoPdf ? [38, 38] : [50, 50],
                   alignment: "left",
                   margin: [0, 1, 0, 0],
                 }
-              : { width: modoCompactoPdf ? 48 : 54, text: "" },
+              : { width: modoUltraCompactoPdf ? 40 : modoCompactoPdf ? 46 : 54, text: "" },
             {
               width: "*",
               stack: [
@@ -5624,13 +5631,14 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                   text: p.campeonato_organizador || p.campeonato_nombre || "LT&C",
                   alignment: "center",
                   bold: true,
-                  fontSize: modoUltraCompactoPdf ? 8.3 : modoCompactoPdf ? 8.9 : 10,
+                  fontSize: modoUltraCompactoPdf ? 7.8 : modoCompactoPdf ? 8.6 : 10,
+                  noWrap: true,
                 },
                 {
                   text: "PLANILLA DE JUEGO",
                   alignment: "center",
                   bold: true,
-                  fontSize: modoUltraCompactoPdf ? 12.8 : modoCompactoPdf ? 13.8 : 16,
+                  fontSize: modoUltraCompactoPdf ? 12.2 : modoCompactoPdf ? 13.2 : 16,
                   margin: [0, 0, 0, 0],
                 },
               ],
@@ -5766,7 +5774,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
             {
               width: "*",
               stack: [
-                { text: `EQUIPO: ${localNombre}`, style: "teamHead", margin: [0, 0, 0, modoCompactoPdf ? 1 : 2] },
+                { text: `EQUIPO: ${localNombre}`, style: "teamHead", noWrap: true, margin: [0, 0, 0, modoCompactoPdf ? 1 : 2] },
                 {
                   table: {
                     headerRows: 1,
@@ -5779,10 +5787,10 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                     vLineWidth: () => 0.5,
                     hLineColor: () => "#cbd5e1",
                     vLineColor: () => "#cbd5e1",
-                    paddingLeft: () => (modoCompactoPdf ? 1.4 : 3),
-                    paddingRight: () => (modoCompactoPdf ? 1.4 : 3),
-                    paddingTop: () => (modoCompactoPdf ? 1 : 3),
-                    paddingBottom: () => (modoCompactoPdf ? 1 : 3),
+                    paddingLeft: () => (modoUltraCompactoPdf ? 0.8 : modoCompactoPdf ? 1.1 : 3),
+                    paddingRight: () => (modoUltraCompactoPdf ? 0.8 : modoCompactoPdf ? 1.1 : 3),
+                    paddingTop: () => (modoUltraCompactoPdf ? 0.25 : modoCompactoPdf ? 0.55 : 3),
+                    paddingBottom: () => (modoUltraCompactoPdf ? 0.25 : modoCompactoPdf ? 0.55 : 3),
                   },
                 },
                 {
@@ -5820,7 +5828,9 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                   ...construirBloqueTarjetasEquipoPdf(
                     Number(stats.totalAmarillasLocal || 0),
                     Number(stats.totalRojasLocal || 0),
-                    mostrarEnBlanco
+                    mostrarEnBlanco,
+                    modoCompactoPdf,
+                    modoUltraCompactoPdf
                   ),
                   margin: [0, modoCompactoPdf ? 2 : 3, 0, 0],
                 },
@@ -5833,7 +5843,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
             {
               width: "*",
               stack: [
-                { text: `EQUIPO: ${visitNombre}`, style: "teamHead", margin: [0, 0, 0, modoCompactoPdf ? 1 : 2] },
+                { text: `EQUIPO: ${visitNombre}`, style: "teamHead", noWrap: true, margin: [0, 0, 0, modoCompactoPdf ? 1 : 2] },
                 {
                   table: {
                     headerRows: 1,
@@ -5846,10 +5856,10 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                     vLineWidth: () => 0.5,
                     hLineColor: () => "#cbd5e1",
                     vLineColor: () => "#cbd5e1",
-                    paddingLeft: () => (modoCompactoPdf ? 1.4 : 3),
-                    paddingRight: () => (modoCompactoPdf ? 1.4 : 3),
-                    paddingTop: () => (modoCompactoPdf ? 1 : 3),
-                    paddingBottom: () => (modoCompactoPdf ? 1 : 3),
+                    paddingLeft: () => (modoUltraCompactoPdf ? 0.8 : modoCompactoPdf ? 1.1 : 3),
+                    paddingRight: () => (modoUltraCompactoPdf ? 0.8 : modoCompactoPdf ? 1.1 : 3),
+                    paddingTop: () => (modoUltraCompactoPdf ? 0.25 : modoCompactoPdf ? 0.55 : 3),
+                    paddingBottom: () => (modoUltraCompactoPdf ? 0.25 : modoCompactoPdf ? 0.55 : 3),
                   },
                 },
                 {
@@ -5887,7 +5897,9 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                   ...construirBloqueTarjetasEquipoPdf(
                     Number(stats.totalAmarillasVisitante || 0),
                     Number(stats.totalRojasVisitante || 0),
-                    mostrarEnBlanco
+                    mostrarEnBlanco,
+                    modoCompactoPdf,
+                    modoUltraCompactoPdf
                   ),
                   margin: [0, modoCompactoPdf ? 2 : 3, 0, 0],
                 },
@@ -5902,18 +5914,23 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
           margin: [0, 0, 0, modoCompactoPdf ? 2 : 5],
         },
         {
-          ...construirBloquePagosPdf(localNombre, visitNombre, payload.pagos, mostrarEnBlanco),
+          ...construirBloquePagosPdf(
+            localNombre,
+            visitNombre,
+            payload.pagos,
+            mostrarEnBlanco,
+            modoCompactoPdf,
+            modoUltraCompactoPdf
+          ),
           margin: [0, 0, 0, modoCompactoPdf ? 2 : 6],
         },
-        // Sin observaciones: 1 hoja siempre.
-        // Con observaciones (no-F11): misma página si el espacio alcanza; página 2 si no.
-        // Con observaciones (F11): siempre página 2.
+        // Sin observaciones: 1 hoja. Con observaciones: página 1 + página 2.
         ...(conObservaciones
           ? [
               {
                 text: "OBSERVACIONES",
                 style: "sectionTitle",
-                ...(obsEnMismaPagina ? {} : { pageBreak: "before" }),
+                pageBreak: "before",
                 margin: [0, 2, 0, 6],
               },
               {
@@ -6019,6 +6036,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
           bold: true,
           fontSize: modoUltraCompactoPdf ? 6.7 : modoCompactoPdf ? 7.2 : 8.3,
           margin: [0, 0, 0, modoCompactoPdf ? 1 : 2],
+          noWrap: true,
         },
         thCenter: {
           bold: true,
@@ -6033,7 +6051,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
           fontSize: fontHeaderTabla,
         },
         tdCenter: { alignment: "center", fontSize: fontCeldaJugador },
-        tdLeft: { alignment: "left", fontSize: fontCeldaJugador },
+        tdLeft: { alignment: "left", fontSize: fontCeldaJugador, noWrap: true },
         footTeamTitle: {
           bold: true,
           fillColor: "#f3f4f6",
