@@ -1,3 +1,27 @@
+## 2026-05-11 — Sidebar completo para rol organizador
+
+### Objetivo
+Corregir el menú lateral del organizador, donde `organizador-portal.html` mostraba solo una parte de las opciones operativas del sistema.
+
+### Diagnóstico
+- El sidebar se construye con una mezcla de HTML estático por página y ajustes dinámicos en `frontend/js/core.js`.
+- Para el rol `organizador`, el ajuste dinámico solo agregaba algunos accesos (`Portal Deportivo`, `Finanzas`, `Pases`, `Mi Landing`, `Usuarios`) y dependía de la base estática de cada pantalla.
+- En `organizador-portal.html`, esa base estática estaba recortada, por lo que no aparecían opciones como categorías, equipos, jugadores, sorteo, grupos, partidos, transmisiones, planillaje, tablas y playoff.
+
+### Cambio aplicado
+- `frontend/js/core.js`:
+  - Se agregó renderizado ordenado del sidebar cuando el usuario autenticado tiene rol `organizador`.
+  - El menú del organizador ahora muestra de forma consistente:
+    - Portal Deportivo, Mi Landing, Campeonatos, Auspiciantes, Categorías, Equipos, Jugadores, Sorteo, Grupos, Partidos, Transmisiones, Planillaje, Tablas, Playoff, Usuarios, Facturación, Finanzas, Pases y Ver Portal.
+  - Se elimina la dependencia del link estático viejo `admin.html` para ese rol.
+
+### Verificación local
+- `node --check frontend/js/core.js`
+- `npm run smoke:frontend` desde `backend/` → 39/39 PASS
+- `git diff --check`
+
+---
+
 ## 2026-05-11 — Ajuste tabla pública y tope de planillaje
 
 ### Objetivo

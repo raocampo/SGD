@@ -1439,6 +1439,18 @@
       link.classList.toggle("active", Boolean(isActive));
     };
 
+    const renderOrderedSidebar = (items = []) => {
+      const currentPage = getCurrentPage();
+      sidebarNav.innerHTML = "";
+      items.forEach((item) => {
+        const link = document.createElement("a");
+        link.className = `nav-btn${currentPage === item.href ? " active" : ""}`;
+        link.href = item.href;
+        link.innerHTML = `<i class="${item.icon}"></i> ${item.label}`;
+        sidebarNav.appendChild(link);
+      });
+    };
+
     ensureNavLink(
       "finanzas.html",
       '<i class="fas fa-wallet"></i> Finanzas',
@@ -1652,15 +1664,27 @@
           else sidebarNav.appendChild(group);
         }
       } else if (rol === "organizador") {
-        // Organizador: "Portal Deportivo" al inicio del sidebar
-        let portalDeportivo = sidebarNav.querySelector('a[href="portal-admin.html"]');
-        if (!portalDeportivo) {
-          portalDeportivo = document.createElement("a");
-          portalDeportivo.className = "nav-btn" + (window.location.pathname.endsWith("portal-admin.html") ? " active" : "");
-          portalDeportivo.href = "portal-admin.html";
-          portalDeportivo.innerHTML = '<i class="fas fa-home"></i> Portal Deportivo';
-        }
-        sidebarNav.insertBefore(portalDeportivo, sidebarNav.firstChild);
+        renderOrderedSidebar([
+          { href: "portal-admin.html", icon: "fas fa-home", label: "Portal Deportivo" },
+          { href: "organizador-portal.html", icon: "fas fa-globe", label: "Mi Landing" },
+          { href: "campeonatos.html", icon: "fas fa-trophy", label: "Campeonatos" },
+          { href: "auspiciantes.html", icon: "fas fa-handshake", label: "Auspiciantes" },
+          { href: "eventos.html", icon: "fas fa-calendar-alt", label: "Categorías" },
+          { href: "equipos.html", icon: "fas fa-users", label: "Equipos" },
+          { href: "jugadores.html", icon: "fas fa-user-friends", label: "Jugadores" },
+          { href: "sorteo.html", icon: "fas fa-random", label: "Sorteo" },
+          { href: "gruposgen.html", icon: "fas fa-layer-group", label: "Grupos" },
+          { href: "partidos.html", icon: "fas fa-futbol", label: "Partidos" },
+          { href: "transmisiones.html", icon: "fas fa-broadcast-tower", label: "Transmisiones" },
+          { href: "planilla.html", icon: "fas fa-clipboard-list", label: "Planillaje" },
+          { href: "tablas.html", icon: "fas fa-table", label: "Tablas" },
+          { href: "eliminatorias.html", icon: "fas fa-sitemap", label: "Playoff" },
+          { href: "usuarios.html", icon: "fas fa-user-shield", label: "Usuarios" },
+          { href: "facturacion.html", icon: "fas fa-file-invoice-dollar", label: "Facturación" },
+          { href: "finanzas.html", icon: "fas fa-wallet", label: "Finanzas" },
+          { href: "pases.html", icon: "fas fa-people-arrows", label: "Pases" },
+          { href: "index.html", icon: "fas fa-up-right-from-square", label: "Ver Portal" },
+        ]);
       }
     }
 
