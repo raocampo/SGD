@@ -5019,7 +5019,112 @@ function prepararVistaPreviaOficialParaPDF() {
   return card.querySelector(".planilla-oficial-sheet");
 }
 
-async function cargarImagenComoDataUrl(url, timeoutMs = 700) {
+function obtenerMimeImagenBlob(blob) {
+  return String(blob?.type || "").split(";")[0].trim().toLowerCase();
+}
+
+function puedeConvertirImagenEnCanvas() {
+  return (
+    typeof Image !== "undefined" &&
+    typeof document !== "undefined" &&
+    typeof window !== "undefined" &&
+    !!window.URL?.createObjectURL
+  );
+}
+
+function leerBlobComoDataUrl(blob, timeoutMs = 1000) {
+  return new Promise((resolve) => {
+    if (!(blob instanceof Blob) || !blob.size || typeof FileReader === "undefined") {
+      resolve(null);
+      return;
+    }
+
+    const reader = new FileReader();
+    let finalizado = false;
+    const terminar = (valor = null) => {
+      if (finalizado) return;
+      finalizado = true;
+      window.clearTimeout(timeoutId);
+      resolve(valor);
+    };
+    const timeoutId = window.setTimeout(() => {
+      try {
+        reader.abort();
+      } catch (_error) {
+        // sin accion
+      }
+      terminar(null);
+    }, timeoutMs);
+
+    reader.onload = () => terminar(String(reader.result || ""));
+    reader.onerror = () => terminar(null);
+    reader.onabort = () => terminar(null);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function convertirBlobImagenAPngDataUrl(blob, { timeoutMs = 1600, maxSide = 640 } = {}) {
+  return new Promise((resolve) => {
+    if (
+      !(blob instanceof Blob) ||
+      !blob.size ||
+      !puedeConvertirImagenEnCanvas()
+    ) {
+      resolve(null);
+      return;
+    }
+
+    const objectUrl = window.URL.createObjectURL(blob);
+    const img = new Image();
+    let finalizado = false;
+    let timeoutId = null;
+
+    const terminar = (valor = null) => {
+      if (finalizado) return;
+      finalizado = true;
+      if (timeoutId) window.clearTimeout(timeoutId);
+      img.onload = null;
+      img.onerror = null;
+      try {
+        window.URL.revokeObjectURL(objectUrl);
+      } catch (_error) {
+        // sin accion
+      }
+      resolve(valor);
+    };
+
+    timeoutId = window.setTimeout(() => terminar(null), timeoutMs);
+    img.onload = () => {
+      try {
+        const naturalWidth = Number(img.naturalWidth || img.width || 0);
+        const naturalHeight = Number(img.naturalHeight || img.height || 0);
+        if (!Number.isFinite(naturalWidth) || !Number.isFinite(naturalHeight) || naturalWidth <= 0 || naturalHeight <= 0) {
+          terminar(null);
+          return;
+        }
+
+        const escala = Math.min(1, Number(maxSide || 640) / Math.max(naturalWidth, naturalHeight));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(naturalWidth * escala));
+        canvas.height = Math.max(1, Math.round(naturalHeight * escala));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          terminar(null);
+          return;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        terminar(canvas.toDataURL("image/png"));
+      } catch (_error) {
+        terminar(null);
+      }
+    };
+    img.onerror = () => terminar(null);
+    img.src = objectUrl;
+  });
+}
+
+async function cargarImagenComoDataUrl(url, timeoutMs = 1800) {
   const normalizada = normalizarArchivoUrl(url);
   if (!normalizada) return null;
 
@@ -5030,12 +5135,22 @@ async function cargarImagenComoDataUrl(url, timeoutMs = 700) {
     const resp = await fetch(normalizada, { cache: "force-cache", signal: controller.signal });
     if (!resp.ok) return null;
     const blob = await resp.blob();
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("No se pudo leer imagen"));
-      reader.readAsDataURL(blob);
-    });
+    if (!blob?.size) return null;
+
+    const puedeConvertir = puedeConvertirImagenEnCanvas();
+    const pngDataUrl = puedeConvertir
+      ? await convertirBlobImagenAPngDataUrl(blob, {
+          timeoutMs: Math.max(timeoutMs, 1600),
+          maxSide: 640,
+        })
+      : null;
+    if (pngDataUrl) return pngDataUrl;
+
+    const mime = obtenerMimeImagenBlob(blob);
+    if (!puedeConvertir && (mime === "image/png" || mime === "image/jpeg" || mime === "image/jpg")) {
+      return await leerBlobComoDataUrl(blob, Math.max(900, Math.floor(timeoutMs / 2)));
+    }
+    return null;
   } catch (_error) {
     return null;
   } finally {
@@ -5465,6 +5580,39 @@ function construirBloqueObservacionesCompactoPdf(
     margin: [0, 0, 0, modoCompactoPdf ? 0 : 2],
   };
 }
+
+function generarBlobPdfMakeConTimeout(docDefinition, timeoutMs = 25000) {
+  return new Promise((resolve, reject) => {
+    let finalizado = false;
+    const terminar = (error, blob = null) => {
+      if (finalizado) return;
+      finalizado = true;
+      window.clearTimeout(timeoutId);
+      if (error) {
+        reject(error);
+        return;
+      }
+      if (blob instanceof Blob) {
+        resolve(blob);
+        return;
+      }
+      reject(new Error("No se recibio un Blob valido del PDF"));
+    };
+    const timeoutId = window.setTimeout(() => {
+      terminar(new Error("La generacion del PDF tardo demasiado."));
+    }, timeoutMs);
+
+    try {
+      window.pdfMake.createPdf(docDefinition).getBlob((blob) => {
+        if (blob) terminar(null, blob);
+        else terminar(new Error("No se pudo generar el PDF"));
+      });
+    } catch (error) {
+      terminar(error);
+    }
+  });
+}
+
 async function imprimirPDFPlanilla(conObservaciones = true) {
   if (!dataPlanilla?.partido) {
     mostrarNotificacion("Carga primero una planilla para exportar PDF", "warning");
@@ -6067,12 +6215,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
       },
     };
 
-    const pdfBlob = await new Promise((resolve, reject) => {
-      window.pdfMake.createPdf(docDefinition).getBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error("No se pudo generar el PDF"));
-      });
-    });
+    const pdfBlob = await generarBlobPdfMakeConTimeout(docDefinition);
 
     if (!(pdfBlob instanceof Blob)) {
       throw new Error("No se recibio un Blob valido del PDF");
@@ -6084,7 +6227,11 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
   } catch (error) {
     console.error("Error generando PDF:", error);
     try {
-      pdfTab.close();
+      pdfTab.document.body.innerHTML = `
+        <p style="font-family:Arial,sans-serif;padding:12px;margin:0;">
+          No se pudo generar el PDF. Vuelve a intentarlo y, si persiste, revisa los logos del partido.
+        </p>
+      `;
     } catch (_e) {
       // sin accion
     }
