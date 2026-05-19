@@ -101,6 +101,15 @@ class Finanza {
     if (client === pool) this._esquemaAsegurado = true;
   }
 
+  static async esquemaDocumentosDisponible(client = pool) {
+    const { rows } = await client.query(`
+      SELECT
+        to_regclass('public.documentos_facturacion') IS NOT NULL AS tiene_documentos,
+        to_regclass('public.documentos_pagos') IS NOT NULL AS tiene_pagos
+    `);
+    return Boolean(rows[0]?.tiene_documentos && rows[0]?.tiene_pagos);
+  }
+
   static normalizarTipo(tipo) {
     const valor = String(tipo || "").trim().toLowerCase();
     if (!TIPOS_MOVIMIENTO.has(valor)) {
@@ -454,6 +463,23 @@ class Finanza {
   static async listarMovimientos(filtros = {}) {
     await this.asegurarEsquema();
     await this.sincronizarCargosInscripcion(filtros, pool);
+    const incluirDocumento = await this.esquemaDocumentosDisponible();
+    const selectDocumento = incluirDocumento
+      ? `
+             df.id AS documento_id,
+             df.numero_completo AS documento_numero,
+             df.tipo AS documento_tipo,
+             df.estado AS documento_estado`
+      : `
+             NULL::integer AS documento_id,
+             NULL::text AS documento_numero,
+             NULL::text AS documento_tipo,
+             NULL::text AS documento_estado`;
+    const joinDocumento = incluirDocumento
+      ? `
+      LEFT JOIN documentos_pagos dp ON dp.movimiento_id = fm.id
+      LEFT JOIN documentos_facturacion df ON df.id = dp.documento_id`
+      : "";
 
     const where = [];
     const values = [];
@@ -520,11 +546,13 @@ class Finanza {
       SELECT fm.*,
              e.nombre AS equipo_nombre,
              c.nombre AS campeonato_nombre,
-             ev.nombre AS evento_nombre
+             ev.nombre AS evento_nombre,
+             ${selectDocumento}
       FROM finanzas_movimientos fm
       JOIN equipos e ON e.id = fm.equipo_id
       JOIN campeonatos c ON c.id = fm.campeonato_id
       LEFT JOIN eventos ev ON ev.id = fm.evento_id
+      ${joinDocumento}
       ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
       ORDER BY fm.fecha_movimiento DESC, fm.id DESC
       LIMIT ${limit}
@@ -536,6 +564,23 @@ class Finanza {
 
   static async obtenerEstadoCuentaEquipo(equipo_id, filtros = {}) {
     await this.asegurarEsquema();
+    const incluirDocumento = await this.esquemaDocumentosDisponible();
+    const selectDocumento = incluirDocumento
+      ? `
+             df.id AS documento_id,
+             df.numero_completo AS documento_numero,
+             df.tipo AS documento_tipo,
+             df.estado AS documento_estado`
+      : `
+             NULL::integer AS documento_id,
+             NULL::text AS documento_numero,
+             NULL::text AS documento_tipo,
+             NULL::text AS documento_estado`;
+    const joinDocumento = incluirDocumento
+      ? `
+      LEFT JOIN documentos_pagos dp ON dp.movimiento_id = fm.id
+      LEFT JOIN documentos_facturacion df ON df.id = dp.documento_id`
+      : "";
 
     const eqId = this.parseEntero(equipo_id, "equipo_id");
     const eqR = await pool.query(
@@ -596,9 +641,11 @@ class Finanza {
 
     const movimientosQ = `
       SELECT fm.*,
-             ev.nombre AS evento_nombre
+             ev.nombre AS evento_nombre,
+             ${selectDocumento}
       FROM finanzas_movimientos fm
       LEFT JOIN eventos ev ON ev.id = fm.evento_id
+      ${joinDocumento}
       WHERE ${whereFm.join(" AND ")}
       ORDER BY fm.fecha_movimiento DESC, fm.id DESC
       LIMIT 250

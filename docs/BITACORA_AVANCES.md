@@ -1,3 +1,115 @@
+## 2026-05-15 — Facturación Fase 3: PDF/RIDE descargable
+
+### Cambio aplicado
+- Se agregó descarga PDF desde la tabla de documentos y desde el modal de detalle en `frontend/facturacion.html`.
+- El PDF se genera con `jsPDF` y maqueta profesional tipo representación impresa:
+  - cabecera con tipo, número y fecha,
+  - datos de emisor, receptor y contexto operativo,
+  - tabla de ítems con paginación automática,
+  - totales, IVA/descuentos y movimientos financieros documentados,
+  - pie aclaratorio mientras la autorización electrónica SRI queda para fase posterior.
+- Backend:
+  - `Facturacion.obtenerDocumento` devuelve los datos de emisor desde `facturacion_config` para que el PDF use la configuración real del organizador del documento.
+
+### Verificación local
+- `node --check backend/models/Facturacion.js`
+- `node --check backend/controllers/facturacionController.js`
+- `node --check backend/models/Finanza.js`
+- Parse del script inline de `frontend/facturacion.html`
+- `npm run smoke:frontend` desde `backend/` → 39/39 PASS
+- `git diff --check`
+
+### Pendientes siguientes
+- QA visual/funcional en navegador con documento real:
+  - crear documento desde Finanzas,
+  - emitirlo,
+  - descargar PDF,
+  - confirmar ítems, totales, movimientos vinculados y nombre de archivo.
+- Facturación Fase 4: SRI electrónico cuando el cliente confirme certificado digital.
+- Transmisiones WebRTC en Render y QA responsive visual siguen como pendientes operativos.
+
+---
+
+## 2026-05-15 — Facturación Fase 2: integración con Finanzas
+
+### Cambio aplicado
+- Se implementó el flujo `Finanzas -> Facturación` desde el estado de cuenta de un equipo:
+  - botón `Emitir documento` en `frontend/finanzas.html`,
+  - selección de movimientos no documentados en `frontend/js/finanzas.js`,
+  - envío por `sessionStorage` hacia `facturacion.html`,
+  - modal de documento prellenado con campeonato, equipo, receptor, ítems y movimientos vinculados.
+- Backend:
+  - nueva relación `documentos_pagos (documento_id, movimiento_id)`,
+  - `Facturacion.js` acepta `movimiento_ids` al crear/editar documentos,
+  - validación de pertenencia por campeonato/equipo y bloqueo de movimientos ya documentados,
+  - `Finanza.js` devuelve `documento_id`, número, tipo y estado del documento vinculado.
+- BD:
+  - nueva migración `database/migrations/069_facturacion_documentos_pagos.sql` para formalizar tablas de facturación y el vínculo con movimientos financieros.
+
+### Verificación local
+- `node --check backend/models/Facturacion.js`
+- `node --check backend/controllers/facturacionController.js`
+- `node --check backend/models/Finanza.js`
+- `node --check frontend/js/finanzas.js`
+- Parse de script inline en `frontend/facturacion.html`
+- `npm run smoke:frontend` desde `backend/` → 39/39 PASS
+- `git diff --check`
+
+### Pendientes siguientes
+- QA funcional con datos reales: seleccionar cargos/abonos de un equipo, crear recibo/factura, confirmar badge `Documentado` y bloqueo de doble documentación.
+- Facturación Fase 3: PDF/RIDE profesional descargable.
+- Facturación Fase 4: SRI electrónico cuando el cliente confirme certificado digital.
+
+---
+
+## 2026-05-11 — Cierre de sesión y continuidad para oficina
+
+### Estado al cierre
+- Rama `main` actualizada y publicada en GitHub.
+- Sidebar del organizador corregido y publicado:
+  - el rol `organizador` ya ve el menú completo desde `organizador-portal.html` y el resto de módulos.
+- Reportes PDF de planilla corregidos y publicados:
+  - sin observaciones: objetivo 1 página,
+  - con observaciones: objetivo 2 páginas,
+  - máximo 30 filas de jugadores por equipo,
+  - ajuste compacto también cuando hay menos jugadores.
+- Validación funcional reportada por el usuario:
+  - "Ya quedó la planilla muy bien".
+  - Se da por cerrado el bloque urgente de paginación PDF de planillaje.
+
+### Commits publicados en esta sesión
+- `5f13201 fix: completar sidebar del organizador`
+- `976ca56 fix: ajustar paginacion PDF de planillas`
+
+### Pendientes para retomar en oficina
+1. **Facturación Fase 2 — integración con Finanzas**:
+   - agregar botón `Emitir documento` desde el estado de cuenta de equipo en `finanzas.html`,
+   - permitir seleccionar movimientos a documentar,
+   - abrir/prellenar modal de documento en `facturacion.html`,
+   - crear vínculo `documentos_pagos (documento_id, movimiento_id)`,
+   - mostrar badge `Documentado` en movimientos ya vinculados.
+2. **QA rápido post-deploy en Render**:
+   - confirmar sidebar completo del organizador en producción,
+   - confirmar PDF de planilla con un partido real sin observaciones y otro con observaciones.
+3. **Transmisiones WebRTC en Render**:
+   - probar `transmisiones.html` → `broadcast.html` → `viewer.html?tx=<ID>`,
+   - si falla por NAT estricto, preparar TURN server.
+4. **Portal público / playoff con datos reales**:
+   - validar `Copa Ciudad de Loja -> Abierta`,
+   - revisar que `Resultados` no oculte jornadas parciales,
+   - confirmar que no reaparezca `Sin jornada` en eliminatorias públicas.
+5. **QA funcional de jugadores multi inscripción**:
+   - misma cédula en varias categorías,
+   - misma cédula en dos equipos de la misma categoría,
+   - bloqueo al intentar usarla con segundo equipo después de jugar con el primero.
+6. **Responsive visual pendiente**:
+   - revisión manual en 390x844 y 768x1024 de panel organizador, planilla, tablas, finanzas, facturación y transmisiones.
+
+### Recomendación de arranque
+Empezar por **Facturación Fase 2**, porque el bloque de planillaje ya quedó validado y Facturación es el siguiente flujo operativo con mayor impacto para el cliente.
+
+---
+
 ## 2026-05-11 — Ajuste de paginación PDF de planillas
 
 ### Objetivo
@@ -21,12 +133,10 @@ Corregir los reportes PDF de planilla para que:
 - `npm run smoke:frontend` desde `backend/` → 39/39 PASS
 - `git diff --check`
 
-### Pendiente
-- Validar visualmente en Render con planillas reales:
-  - sin observaciones: 1 página,
-  - con observaciones: 2 páginas,
-  - planteles de 24 a 30 filas,
-  - planteles menores a 24 filas.
+### Validación posterior
+- Validado visualmente por el usuario después del deploy/cambio:
+  - "Ya quedó la planilla muy bien".
+- Estado: bloque cerrado.
 
 ---
 

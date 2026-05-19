@@ -27,11 +27,24 @@ function canWriteCompetition(user) {
   return ["administrador", "organizador"].includes(String(user?.rol || "").toLowerCase());
 }
 
+function mapMobileRoleScope(user, teamIds) {
+  const role = String(user?.rol || "").toLowerCase();
+  return {
+    role,
+    canWrite: canWriteCompetition(user),
+    scope: teamIds === null ? "global" : "team",
+    teamIds: Array.isArray(teamIds) ? teamIds.map((id) => toId(id)) : [],
+  };
+}
+
 async function obtenerCompetenciaEvento(user, eventoId) {
   const evento = await assertEventoAccess(user, eventoId);
   await Partido.asegurarEsquemaPlanilla();
-  const partidos = await Partido.obtenerPorEvento(evento.id);
-  const tablas = await tablaInternals.generarTablasEventoInterna(evento.id);
+  const [partidos, tablas, equipoIdsVisibles] = await Promise.all([
+    Partido.obtenerPorEvento(evento.id),
+    tablaInternals.generarTablasEventoInterna(evento.id),
+    obtenerEquipoIdsVisibles(user),
+  ]);
 
   const tarjetasR = await pool.query(
     `
@@ -113,8 +126,15 @@ async function obtenerCompetenciaEvento(user, eventoId) {
       grupo.grupo?.letra_grupo && grupo.grupo?.letra_grupo !== "-"
         ? `Grupo ${grupo.grupo.letra_grupo}`
         : grupo.grupo?.nombre_grupo || "Tabla General",
+    qualifiersPerGroup: grupo.grupo?.clasificados_por_grupo == null
+      ? null
+      : toInteger(grupo.grupo.clasificados_por_grupo, 0),
+    scoringSystem: grupo.sistema_puntuacion || null,
+    manualOverride: grupo.grupo?.edicion_manual_activa === true,
     rows: (grupo.tabla || []).map((row) => ({
       position: toInteger(row.posicion, 0),
+      classificationPosition:
+        row.posicion_clasificacion == null ? null : toInteger(row.posicion_clasificacion, 0),
       teamId: toId(row.equipo?.id),
       teamName: row.equipo?.nombre || "",
       played: toInteger(row.estadisticas?.partidos_jugados, 0),
@@ -125,11 +145,17 @@ async function obtenerCompetenciaEvento(user, eventoId) {
       goalsAgainst: toInteger(row.estadisticas?.goles_contra, 0),
       goalDiff: toInteger(row.estadisticas?.diferencia_goles, 0),
       points: toInteger(row.puntos, 0),
+      qualifies: row.clasifica === true,
+      outsideQualification: row.fuera_clasificacion === true,
+      eliminated: row.eliminado_competencia === true,
+      noShows: toInteger(row.no_presentaciones, 0),
+      eliminationReason: row.motivo_eliminacion_label || row.motivo_eliminacion || null,
     })),
   }));
 
   return {
     event: mapEvent(evento, 0),
+    roleScope: mapMobileRoleScope(user, equipoIdsVisibles),
     fixture: Array.from(jornadasMap.values()).sort((a, b) => a.roundNumber - b.roundNumber),
     standings,
   };

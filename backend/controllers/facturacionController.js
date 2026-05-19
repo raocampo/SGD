@@ -8,7 +8,13 @@ function statusParaError(err) {
     msg.includes("obligatorio") ||
     msg.includes("debe") ||
     msg.includes("no encontrado") ||
-    msg.includes("al menos")
+    msg.includes("no existe") ||
+    msg.includes("inválido") ||
+    msg.includes("invalido") ||
+    msg.includes("al menos") ||
+    msg.includes("documentado") ||
+    msg.includes("pertenecen") ||
+    msg.includes("selecciona")
   ) return 400;
   if (msg.includes("no autorizado")) return 403;
   return 500;
@@ -79,7 +85,7 @@ const facturacionController = {
   async crear(req, res) {
     try {
       const orgId = resolverOrganizadorId(req);
-      const { items, ...datos } = req.body || {};
+      const { items, movimiento_ids, ...datos } = req.body || {};
 
       if (isOrganizador(req.user) && datos.campeonato_id) {
         const permitidos = await obtenerCampeonatoIdsOrganizador(req.user);
@@ -88,7 +94,7 @@ const facturacionController = {
         }
       }
 
-      const doc = await Facturacion.crearDocumento(orgId, datos, items || []);
+      const doc = await Facturacion.crearDocumento(orgId, datos, items || [], movimiento_ids);
       res.status(201).json(doc);
     } catch (err) {
       res.status(statusParaError(err)).json({ error: err.message });
@@ -98,8 +104,8 @@ const facturacionController = {
   async actualizar(req, res) {
     try {
       const orgId = resolverOrganizadorId(req);
-      const { items, ...datos } = req.body || {};
-      const doc = await Facturacion.actualizarDocumento(req.params.id, orgId, datos, items);
+      const { items, movimiento_ids, ...datos } = req.body || {};
+      const doc = await Facturacion.actualizarDocumento(req.params.id, orgId, datos, items, movimiento_ids);
       res.json(doc);
     } catch (err) {
       res.status(statusParaError(err)).json({ error: err.message });

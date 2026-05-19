@@ -1,3 +1,63 @@
+## 2026-05-15 — Facturación Fase 3 PDF/RIDE descargable
+
+### Estado actualizado
+- `facturacion.html` ya permite descargar PDF desde la tabla y desde el modal de detalle.
+- El PDF incluye cabecera tipo RIDE interno, emisor, receptor, contexto de campeonato/equipo, ítems, descuentos, IVA, total y movimientos financieros vinculados.
+- `Facturacion.obtenerDocumento` devuelve los datos de `facturacion_config` asociados al organizador del documento, evitando depender solo de la configuración cargada en pantalla.
+
+### Siguiente foco recomendado
+1. QA visual/funcional con datos reales: documento creado desde Finanzas, emisión, descarga PDF y bloqueo de doble documentación.
+2. Facturación Fase 4: SRI electrónico cuando el cliente entregue certificado digital.
+3. Transmisiones WebRTC en Render.
+4. QA responsive visual con datos reales.
+
+---
+
+## 2026-05-15 — Facturación Fase 2 integrada con Finanzas
+
+### Estado actualizado
+- La integración entre estado de cuenta financiero y facturación quedó implementada:
+  - `finanzas.html` permite seleccionar movimientos no documentados y emitir un documento.
+  - `facturacion.html` abre el modal prellenado desde Finanzas.
+  - `documentos_pagos` conserva trazabilidad entre documento y movimiento financiero.
+  - Finanzas muestra badge/metadata de movimientos ya documentados.
+- Se agregó migración formal `069_facturacion_documentos_pagos.sql`.
+
+### Verificación
+- Checks de sintaxis backend/frontend OK.
+- `npm run smoke:frontend` → 39/39 PASS.
+
+### Siguiente foco recomendado
+1. QA funcional en Render/local con movimientos reales.
+2. Facturación Fase 3: PDF/RIDE profesional descargable.
+3. Transmisiones WebRTC en Render.
+4. QA responsive visual con datos reales.
+
+---
+
+## 2026-05-11 — Cierre operativo: planilla PDF validada y próximos pendientes
+
+### Estado cerrado
+- Planillaje PDF:
+  - sin observaciones: ajustado para 1 página,
+  - con observaciones: ajustado para 2 páginas,
+  - máximo 30 filas por equipo,
+  - compactación estable también para planteles menores.
+- Validación de usuario:
+  - "Ya quedó la planilla muy bien".
+- Sidebar del organizador:
+  - menú completo publicado para rol `organizador`.
+
+### Siguiente foco recomendado
+1. Facturación Fase 2 integrada con Finanzas.
+2. QA rápido post-deploy en Render de sidebar organizador y PDF de planilla.
+3. Prueba de transmisiones WebRTC en Render.
+4. Validación pública de playoff/resultados con datos reales.
+5. QA de multi inscripción de jugadores por categoría/equipo.
+6. Auditoría responsive visual de pantallas operativas.
+
+---
+
 ## 2026-05-11 — Ajuste tabla pública y tope de planillaje
 
 ### Cambios aplicados
@@ -344,7 +404,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 5 Roles y permisos (RBAC) | Medio-Alto | Autenticacion operativa; fase 1 de separacion de dominios iniciada con rol `operador` para CMS publico; rol `jugador` agregado para consulta de equipo en modo solo lectura; noticias, galeria, contenido y contacto institucional fuera del alcance de organizadores; smokes RBAC (`npm run smoke:roles`, `npm run smoke:matrix`, `npm run smoke:frontend`) operativos para validacion rapida por rol. Se agrega bandera `debe_cambiar_password`, cambio obligatorio de clave al primer ingreso para cuentas creadas por admin/organizador y accion de cambio de contraseña propio desde UI. Las cuentas internas ya pueden autenticarse con `correo o username`; la recuperacion de contraseña sigue limitada a cuentas con correo. `usuarios.html` ya quedo alineado con la base de `Mi Landing` para organizadores (organizacion, lema, contacto publico y logo). La web ya fuerza cierre de sesion por inactividad tras 1 hora, sincroniza ese timeout entre pestañas del navegador y ahora avisa antes de expulsar la sesion. |
 | 6 Extras profesionales | Parcial-Alto | Exportaciones (PNG/PDF/XLSX) en modulos clave. Plantillas de publicacion con 3 temas visuales (Oscuro/Clasico/Colores del torneo) aplicables a posters de grupos y fixture. Nueva pagina `jornadasplantilla.html` para exportar programacion de jornada como poster (PNG/PDF), incluyendo modo `playoff` por ronda. Se corrige la exportación de grupos para evitar doble render/doble descarga con `html2canvas`. Seleccion individual de carnets para imprimir/exportar. Pendiente notificaciones, auditoria completa y reportes ejecutivos. |
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR, resumen ejecutivo por campeonato e impresion dedicadas; politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). El modulo de `gastos_operativos` ya quedó endurecido para organizadores: listar, editar, eliminar y resumir se limita solo a campeonatos propios, incluso cuando la UI no envía un `campeonato_id` puntual. Pendiente cierre de reglas avanzadas y reporteria ejecutiva adicional. |
-| 9 Facturacion | Fase 1 completa | Modulo de facturacion, nota de venta y recibo para clientes y organizadores. Tablas `facturacion_config`, `documentos_facturacion` y `documentos_items` operativas (esquema inline en modelo). Backend: `facturacionController.js` + `facturacionRoutes.js` + `/api/facturacion`. Frontend: `facturacion.html` con listado filtrable, KPIs de documentos emitidos, config de emisor (RUC/RISE, datos SRI, % IVA), modal de nuevo/editar documento con ítems dinámicos, cálculo automático de subtotales/IVA/total, modal de detalle con vista de impresión. Tipos soportados: `factura` (con IVA 15%), `nota_venta` (RISE, sin desglose IVA), `recibo`. Estados: `borrador` → `emitido` → `anulado`. Numeración secuencial por tipo y por emisor (`001-001-000000001`). Link en sidebar de 21 páginas internas. Pendiente: Fase 2 (vincular movimientos financieros), Fase 3 (PDF oficial con QR), Fase 4 (SRI electrónico). |
+| 9 Facturacion | Fase 2 completa | Modulo de facturacion, nota de venta y recibo para clientes y organizadores. Tablas `facturacion_config`, `documentos_facturacion`, `documentos_items` y `documentos_pagos` operativas, con migración formal `069_facturacion_documentos_pagos.sql`. Backend: `facturacionController.js` + `facturacionRoutes.js` + `/api/facturacion`, creación/edición con `movimiento_ids` y validación de movimientos por campeonato/equipo. Frontend: `facturacion.html` con listado filtrable, KPIs de documentos emitidos, config de emisor (RUC/RISE, datos SRI, % IVA), modal de nuevo/editar documento con ítems dinámicos, cálculo automático de subtotales/IVA/total, modal de detalle con vista de impresión y movimientos documentados. `finanzas.html` permite seleccionar movimientos desde estado de cuenta y prellenar el documento; movimientos vinculados muestran metadata/badge `Documentado`. Tipos soportados: `factura` (con IVA 15%), `nota_venta` (RISE, sin desglose IVA), `recibo`. Estados: `borrador` → `emitido` → `anulado`. Numeración secuencial por tipo y por emisor (`001-001-000000001`). Link en sidebar de 21 páginas internas. Pendiente: Fase 3 (PDF oficial con QR/RIDE), Fase 4 (SRI electrónico). |
 | 8 Adaptacion mobile web | En progreso | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; fase responsive web retomada 2026-05-07 con bloque publico (`index`, `torneos`, `portal`, `planes`, fichas públicas de equipo/jugador) y bloque interno (`app-layout`, topbar, acciones, tabs, grids, tablas, modales y sidebar sin doble binding) para `portal-admin`, `campeonatos`, `equipos`, `jugadores`, `partidos`, `tablas`, `facturacion` y `transmisiones`. Queda pendiente QA visual en 390x844 y 768x1024 con datos reales antes de cerrar el responsive operativo. |
 
 ## Navegacion Interna y Seguridad Visual

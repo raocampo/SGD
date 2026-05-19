@@ -1,4 +1,5 @@
 const pool = require("../config/database");
+const Finanza = require("./Finanza");
 
 const TIPOS_DOC = new Set(["factura", "nota_venta", "recibo"]);
 const ESTADOS_DOC = new Set(["borrador", "emitido", "anulado"]);
@@ -75,6 +76,21 @@ class Facturacion {
       )
     `);
 
+    await Finanza.asegurarEsquema(client);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS documentos_pagos (
+        id SERIAL PRIMARY KEY,
+        documento_id INTEGER NOT NULL
+          REFERENCES documentos_facturacion(id) ON DELETE CASCADE,
+        movimiento_id INTEGER NOT NULL
+          REFERENCES finanzas_movimientos(id) ON DELETE RESTRICT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (documento_id, movimiento_id),
+        UNIQUE (movimiento_id)
+      )
+    `);
+
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_doc_facturacion_org
         ON documentos_facturacion(organizador_id)
@@ -87,8 +103,105 @@ class Facturacion {
       CREATE INDEX IF NOT EXISTS idx_doc_facturacion_estado
         ON documentos_facturacion(estado)
     `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_documentos_pagos_doc
+        ON documentos_pagos(documento_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_documentos_pagos_mov
+        ON documentos_pagos(movimiento_id)
+    `);
 
     if (client === pool) this._esquemaAsegurado = true;
+  }
+
+  static normalizarMovimientoIds(ids = []) {
+    const valores = Array.isArray(ids) ? ids : [ids];
+    const unicos = new Set();
+
+    valores.forEach((valor) => {
+      const id = Number.parseInt(valor, 10);
+      if (Number.isFinite(id) && id > 0) {
+        unicos.add(id);
+      }
+    });
+
+    return Array.from(unicos);
+  }
+
+  static async obtenerMovimientosDocumento(documentoId, client = pool) {
+    const { rows } = await client.query(
+      `
+        SELECT fm.*,
+               ev.nombre AS evento_nombre
+        FROM documentos_pagos dp
+        JOIN finanzas_movimientos fm ON fm.id = dp.movimiento_id
+        LEFT JOIN eventos ev ON ev.id = fm.evento_id
+        WHERE dp.documento_id = $1
+        ORDER BY fm.fecha_movimiento DESC, fm.id DESC
+      `,
+      [documentoId]
+    );
+    return rows;
+  }
+
+  static async vincularMovimientosDocumento(client, documento, movimientoIds = []) {
+    const ids = this.normalizarMovimientoIds(movimientoIds);
+
+    await client.query("DELETE FROM documentos_pagos WHERE documento_id = $1", [documento.id]);
+    if (!ids.length) return [];
+
+    if (!documento.campeonato_id || !documento.equipo_id) {
+      throw new Error("Para documentar movimientos selecciona campeonato y equipo");
+    }
+
+    const { rows } = await client.query(
+      `
+        SELECT id, campeonato_id, equipo_id
+        FROM finanzas_movimientos
+        WHERE id = ANY($1::int[])
+      `,
+      [ids]
+    );
+
+    if (rows.length !== ids.length) {
+      throw new Error("Uno o más movimientos no existen");
+    }
+
+    const fueraDeContexto = rows.find((mov) => (
+      Number(mov.campeonato_id) !== Number(documento.campeonato_id) ||
+      Number(mov.equipo_id) !== Number(documento.equipo_id)
+    ));
+    if (fueraDeContexto) {
+      throw new Error("Los movimientos seleccionados no pertenecen al equipo/campeonato del documento");
+    }
+
+    const { rows: yaDocumentados } = await client.query(
+      `
+        SELECT movimiento_id
+        FROM documentos_pagos
+        WHERE movimiento_id = ANY($1::int[])
+          AND documento_id <> $2
+        LIMIT 1
+      `,
+      [ids, documento.id]
+    );
+    if (yaDocumentados.length) {
+      throw new Error("Uno de los movimientos seleccionados ya está documentado");
+    }
+
+    for (const movimientoId of ids) {
+      await client.query(
+        `
+          INSERT INTO documentos_pagos (documento_id, movimiento_id)
+          VALUES ($1, $2)
+          ON CONFLICT (documento_id, movimiento_id) DO NOTHING
+        `,
+        [documento.id, movimientoId]
+      );
+    }
+
+    return this.obtenerMovimientosDocumento(documento.id, client);
   }
 
   // ─── CONFIG ────────────────────────────────────────────────────────────────
@@ -164,7 +277,12 @@ class Facturacion {
     const { rows } = await pool.query(
       `SELECT d.*,
               c.nombre AS campeonato_nombre,
-              e.nombre AS equipo_nombre
+              e.nombre AS equipo_nombre,
+              (
+                SELECT COUNT(*)::int
+                FROM documentos_pagos dp
+                WHERE dp.documento_id = d.id
+              ) AS movimientos_documentados
        FROM documentos_facturacion d
        LEFT JOIN campeonatos c ON c.id = d.campeonato_id
        LEFT JOIN equipos e ON e.id = d.equipo_id
@@ -186,10 +304,19 @@ class Facturacion {
     const { rows } = await pool.query(
       `SELECT d.*,
               c.nombre AS campeonato_nombre,
-              e.nombre AS equipo_nombre
+              e.nombre AS equipo_nombre,
+              fc.tipo_contribuyente AS emisor_tipo_contribuyente,
+              fc.ruc_ci AS emisor_ruc_ci,
+              fc.razon_social AS emisor_razon_social,
+              fc.nombre_comercial AS emisor_nombre_comercial,
+              fc.direccion_matriz AS emisor_direccion_matriz,
+              fc.codigo_establecimiento AS emisor_codigo_establecimiento,
+              fc.punto_emision AS emisor_punto_emision,
+              fc.iva_porcentaje AS emisor_iva_porcentaje
        FROM documentos_facturacion d
        LEFT JOIN campeonatos c ON c.id = d.campeonato_id
        LEFT JOIN equipos e ON e.id = d.equipo_id
+       LEFT JOIN facturacion_config fc ON fc.organizador_id = d.organizador_id
        WHERE ${cond}`,
       params
     );
@@ -199,10 +326,11 @@ class Facturacion {
       "SELECT * FROM documentos_items WHERE documento_id = $1 ORDER BY id",
       [id]
     );
-    return { ...rows[0], items };
+    const movimientos = await this.obtenerMovimientosDocumento(id);
+    return { ...rows[0], items, movimientos };
   }
 
-  static async crearDocumento(organizadorId, datos, itemsArray) {
+  static async crearDocumento(organizadorId, datos, itemsArray, movimientoIds = undefined) {
     await this.asegurarEsquema();
 
     const {
@@ -304,8 +432,12 @@ class Facturacion {
         );
       }
 
+      const movimientos = movimientoIds !== undefined
+        ? await this.vincularMovimientosDocumento(client, doc, movimientoIds)
+        : [];
+
       await client.query("COMMIT");
-      return { ...doc, items: itemsCalculados };
+      return { ...doc, items: itemsCalculados, movimientos };
     } catch (err) {
       await client.query("ROLLBACK");
       throw err;
@@ -329,7 +461,7 @@ class Facturacion {
     return rows[0];
   }
 
-  static async actualizarDocumento(id, organizadorId, datos, itemsArray) {
+  static async actualizarDocumento(id, organizadorId, datos, itemsArray, movimientoIds = undefined) {
     await this.asegurarEsquema();
 
     // Solo borradores se pueden editar
@@ -412,6 +544,14 @@ class Facturacion {
             [id, it.descripcion, it.cantidad, it.precio_unitario, it.descuento, it.subtotal]
           );
         }
+      }
+
+      if (movimientoIds !== undefined) {
+        const { rows: docRowsActualizado } = await client.query(
+          "SELECT * FROM documentos_facturacion WHERE id = $1",
+          [id]
+        );
+        await this.vincularMovimientosDocumento(client, docRowsActualizado[0], movimientoIds);
       }
 
       await client.query("COMMIT");

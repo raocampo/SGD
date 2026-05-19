@@ -376,15 +376,20 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="cerrarModal('modal-detalle')">Cerrar</button>
         <button class="btn btn-secondary" onclick="imprimirDetalle()"><i class="fas fa-print"></i> Imprimir</button>
+        <button class="btn btn-primary" onclick="descargarDetallePDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button>
       </div>
     </div>
   </div>
 
   <script src="js/core.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script>
   /* ─── Estado ─────────────────────────────────────────────────── */
   let factConfig = {};
   let factDocs   = [];
+  let factEquipos = [];
+  let factDetalleActual = null;
+  let docMovimientoIds = [];
   let itemCount  = 0;
 
   /* ─── Bootstrap ──────────────────────────────────────────────── */
@@ -392,8 +397,10 @@
     setupSidebar();
     await cargarConfigEmisor();
     await cargarCampeonatos();
-    await cargarDocumentos();
+    await cargarEquipos();
     setupEventos();
+    await cargarDocumentos();
+    aplicarPrefillDesdeFinanzas();
   });
 
   function setupSidebar() {
@@ -460,6 +467,38 @@
     } catch (_) {}
   }
 
+  async function cargarEquipos() {
+    try {
+      const data = await apiFetch("/api/equipos") || [];
+      factEquipos = Array.isArray(data?.equipos) ? data.equipos : (Array.isArray(data) ? data : []);
+      poblarEquiposDocumento();
+    } catch (_) {
+      factEquipos = [];
+    }
+  }
+
+  function poblarEquiposDocumento(campeonatoId = document.getElementById("doc-campeonato")?.value || "") {
+    const sel = document.getElementById("doc-equipo");
+    if (!sel) return;
+
+    const valorActual = sel.value;
+    const campId = Number.parseInt(campeonatoId, 10);
+    sel.innerHTML = '<option value="">— ninguno —</option>';
+
+    factEquipos
+      .filter(eq => !Number.isFinite(campId) || campId <= 0 || Number(eq.campeonato_id) === campId)
+      .forEach(eq => {
+        const opt = document.createElement("option");
+        opt.value = eq.id;
+        opt.textContent = eq.nombre;
+        sel.appendChild(opt);
+      });
+
+    if ([...sel.options].some(opt => opt.value === valorActual)) {
+      sel.value = valorActual;
+    }
+  }
+
   /* ─── Cargar documentos ──────────────────────────────────────── */
   async function cargarDocumentos() {
     const tipo      = document.getElementById("filt-tipo").value;
@@ -491,7 +530,10 @@
     }
     tbody.innerHTML = docs.map(d => `
       <tr>
-        <td><strong>${d.numero_completo || '—'}</strong></td>
+        <td>
+          <strong>${d.numero_completo || '—'}</strong>
+          ${Number(d.movimientos_documentados || 0) > 0 ? `<div style="font-size:.72rem;color:#64748b;margin-top:2px;">${Number(d.movimientos_documentados)} mov. documentado(s)</div>` : ''}
+        </td>
         <td><span class="badge badge-${d.tipo}">${labelTipo(d.tipo)}</span></td>
         <td>${esc(d.receptor_nombre || '—')}</td>
         <td style="font-size:.8rem;">${esc(d.campeonato_nombre || '—')}</td>
@@ -501,6 +543,7 @@
         <td>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
             <button class="btn btn-secondary btn-sm" onclick="verDetalle(${d.id})" title="Ver"><i class="fas fa-eye"></i></button>
+            <button class="btn btn-secondary btn-sm" onclick="descargarDocumentoPDF(${d.id})" title="Descargar PDF"><i class="fas fa-file-pdf"></i></button>
             ${d.estado === 'borrador' ? `
               <button class="btn btn-secondary btn-sm" onclick="editarDoc(${d.id})" title="Editar"><i class="fas fa-edit"></i></button>
               <button class="btn btn-primary btn-sm" onclick="emitirDoc(${d.id})" title="Emitir"><i class="fas fa-paper-plane"></i></button>
@@ -533,10 +576,12 @@
   });
 
   function resetFormDoc() {
+    docMovimientoIds = [];
     document.getElementById("doc-id").value           = "";
     document.getElementById("doc-tipo").value         = "";
     document.getElementById("doc-fecha").value        = new Date().toISOString().slice(0,10);
     document.getElementById("doc-campeonato").value   = "";
+    poblarEquiposDocumento("");
     document.getElementById("doc-equipo").value       = "";
     document.getElementById("doc-receptor-nombre").value = "";
     document.getElementById("doc-receptor-ruc").value    = "";
@@ -557,12 +602,17 @@
       document.getElementById("doc-tipo").value            = doc.tipo;
       document.getElementById("doc-fecha").value           = doc.fecha_emision?.slice(0,10) || "";
       document.getElementById("doc-campeonato").value      = doc.campeonato_id || "";
+      poblarEquiposDocumento(doc.campeonato_id || "");
+      document.getElementById("doc-equipo").value          = doc.equipo_id || "";
       document.getElementById("doc-receptor-nombre").value = doc.receptor_nombre || "";
       document.getElementById("doc-receptor-ruc").value    = doc.receptor_ruc_ci || "";
       document.getElementById("doc-receptor-email").value  = doc.receptor_email || "";
       document.getElementById("doc-receptor-dir").value    = doc.receptor_direccion || "";
       document.getElementById("doc-descuento").value       = doc.descuento || "0";
       document.getElementById("doc-observaciones").value   = doc.observaciones || "";
+      docMovimientoIds = (doc.movimientos || [])
+        .map(m => Number.parseInt(m.id, 10))
+        .filter(idMov => Number.isFinite(idMov) && idMov > 0);
 
       document.getElementById("doc-items-body").innerHTML = "";
       itemCount = 0;
@@ -575,6 +625,75 @@
     } catch (e) {
       mostrarToast(e.message || "Error", "error");
     }
+  }
+
+  function aplicarPrefillDesdeFinanzas() {
+    const raw = sessionStorage.getItem("ltc_facturacion_prefill");
+    if (!raw) return;
+    sessionStorage.removeItem("ltc_facturacion_prefill");
+
+    let prefill = null;
+    try {
+      prefill = JSON.parse(raw);
+    } catch (_) {
+      mostrarToast("No se pudo leer el documento desde finanzas", "error");
+      return;
+    }
+    if (prefill?.origen !== "finanzas_estado_cuenta") return;
+
+    const movimientos = Array.isArray(prefill.movimientos) ? prefill.movimientos : [];
+
+    resetFormDoc();
+    docMovimientoIds = (prefill.movimiento_ids || movimientos.map(m => m.id))
+      .map(idMov => Number.parseInt(idMov, 10))
+      .filter(idMov => Number.isFinite(idMov) && idMov > 0);
+
+    document.getElementById("doc-tipo").value = "recibo";
+    document.getElementById("doc-fecha").value = new Date().toISOString().slice(0,10);
+    document.getElementById("doc-campeonato").value = prefill.campeonato_id || "";
+    poblarEquiposDocumento(prefill.campeonato_id || "");
+    document.getElementById("doc-equipo").value = prefill.equipo_id || "";
+    document.getElementById("doc-receptor-nombre").value = prefill.receptor_nombre || "";
+    document.getElementById("doc-observaciones").value =
+      `Documento generado desde estado de cuenta financiero (${docMovimientoIds.length} movimiento(s)).`;
+
+    document.getElementById("doc-items-body").innerHTML = "";
+    itemCount = 0;
+    movimientos.forEach(mov => {
+      agregarItem({
+        descripcion: mov.item_descripcion || describirMovimientoFacturacion(mov),
+        cantidad: 1,
+        precio_unitario: Number(mov.monto || 0),
+        descuento: 0,
+      });
+    });
+    if (!movimientos.length) agregarItem();
+    recalcularTotales();
+
+    document.getElementById("modal-doc-titulo").innerHTML =
+      '<i class="fas fa-file-invoice-dollar"></i> Documento desde estado de cuenta';
+    abrirModal("modal-doc");
+  }
+
+  function labelConceptoFacturacion(concepto) {
+    return {
+      inscripcion: "Inscripción",
+      arbitraje: "Arbitraje",
+      multa: "Multa",
+      pago: "Pago",
+      ajuste: "Ajuste",
+      otro: "Otro",
+    }[String(concepto || "").toLowerCase()] || concepto || "Movimiento";
+  }
+
+  function describirMovimientoFacturacion(mov) {
+    const tipo = String(mov.tipo_movimiento || "").toLowerCase() === "abono" ? "Pago" : "Cargo";
+    return [
+      `${tipo} ${labelConceptoFacturacion(mov.concepto)}`,
+      mov.descripcion,
+      mov.evento_nombre ? `Categoría: ${mov.evento_nombre}` : "",
+      mov.fecha_movimiento ? `Fecha: ${formatFecha(mov.fecha_movimiento)}` : "",
+    ].filter(Boolean).join(" - ");
   }
 
   /* ─── Items dinámicos ────────────────────────────────────────── */
@@ -676,6 +795,7 @@
       observaciones:     document.getElementById("doc-observaciones").value.trim(),
       fecha_emision:     document.getElementById("doc-fecha").value,
       items,
+      movimiento_ids:    docMovimientoIds,
     };
 
     try {
@@ -716,6 +836,7 @@
   async function verDetalle(id) {
     try {
       const doc = await apiFetch(`/api/facturacion/${id}`);
+      factDetalleActual = doc;
       renderDetalle(doc);
       document.getElementById("detalle-titulo").innerHTML =
         `<i class="fas fa-file-alt"></i> ${labelTipo(doc.tipo)} ${doc.numero_completo || ''}`;
@@ -723,10 +844,38 @@
     } catch (e) { mostrarToast(e.message || "Error", "error"); }
   }
 
+  function obtenerConfigEmisorDocumento(doc = {}) {
+    return {
+      tipo_contribuyente: doc.emisor_tipo_contribuyente || factConfig.tipo_contribuyente || "ruc",
+      ruc_ci: doc.emisor_ruc_ci || factConfig.ruc_ci || "",
+      razon_social: doc.emisor_razon_social || factConfig.razon_social || "",
+      nombre_comercial: doc.emisor_nombre_comercial || factConfig.nombre_comercial || "",
+      direccion_matriz: doc.emisor_direccion_matriz || factConfig.direccion_matriz || "",
+      codigo_establecimiento: doc.emisor_codigo_establecimiento || factConfig.codigo_establecimiento || "001",
+      punto_emision: doc.emisor_punto_emision || factConfig.punto_emision || "001",
+      iva_porcentaje: doc.emisor_iva_porcentaje ?? factConfig.iva_porcentaje ?? 15,
+    };
+  }
+
   function renderDetalle(doc) {
-    const cfg = factConfig;
+    const cfg = obtenerConfigEmisorDocumento(doc);
     const aplica_iva = doc.tipo === "factura";
     const iva_pct = doc.iva_porcentaje ?? 15;
+    const movimientosHtml = Array.isArray(doc.movimientos) && doc.movimientos.length
+      ? `
+        <div style="margin-top:14px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:.85rem;">
+          <strong>Movimientos documentados</strong>
+          <ul style="margin:8px 0 0 18px;padding:0;">
+            ${doc.movimientos.map(mov => `
+              <li>
+                ${esc(describirMovimientoFacturacion(mov))}
+                <strong>${fmt(mov.monto)}</strong>
+              </li>
+            `).join("")}
+          </ul>
+        </div>
+      `
+      : "";
 
     const body = document.getElementById("detalle-body");
     body.innerHTML = `
@@ -784,6 +933,7 @@
         <div class="doc-total-final">TOTAL: <strong>USD ${fmt(doc.total)}</strong></div>
       </div>
 
+      ${movimientosHtml}
       ${doc.observaciones ? `<div style="margin-top:14px;padding:10px;background:#f8f9fa;border-radius:6px;font-size:.85rem;"><strong>Observaciones:</strong> ${esc(doc.observaciones)}</div>` : ''}
       ${doc.campeonato_nombre ? `<div style="margin-top:8px;font-size:.8rem;color:#888;">Campeonato: ${esc(doc.campeonato_nombre)}</div>` : ''}
     `;
@@ -791,6 +941,361 @@
 
   function imprimirDetalle() {
     window.print();
+  }
+
+  async function descargarDetallePDF() {
+    if (!factDetalleActual?.id) {
+      mostrarToast("Abre primero el detalle del documento", "warning");
+      return;
+    }
+    try {
+      await generarPdfDocumento(factDetalleActual);
+      mostrarToast("PDF descargado", "success");
+    } catch (e) {
+      console.error("Error descargando PDF de facturación:", e);
+      mostrarToast(e.message || "No se pudo descargar el PDF", "error");
+    }
+  }
+
+  async function descargarDocumentoPDF(id) {
+    try {
+      const doc = await apiFetch(`/api/facturacion/${id}`);
+      await generarPdfDocumento(doc);
+      mostrarToast("PDF descargado", "success");
+    } catch (e) {
+      console.error("Error descargando PDF de facturación:", e);
+      mostrarToast(e.message || "No se pudo descargar el PDF", "error");
+    }
+  }
+
+  async function generarPdfDocumento(doc) {
+    if (!window.jspdf?.jsPDF) {
+      throw new Error("No se cargó la librería PDF");
+    }
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("p", "mm", "a4");
+    const cfg = obtenerConfigEmisorDocumento(doc);
+    const tipoLabel = labelTipo(doc.tipo);
+    const numero = doc.numero_completo || `BORRADOR-${doc.id || ""}`;
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 14;
+    const contentW = pageW - margin * 2;
+    const bottomLimit = pageH - 24;
+    const primary = [26, 58, 107];
+    const textColor = [30, 41, 59];
+    const muted = [100, 116, 139];
+    const border = [203, 213, 225];
+    let y = 14;
+
+    pdf.setProperties({
+      title: `${tipoLabel} ${numero}`,
+      subject: "Representación impresa de documento de facturación",
+      author: cfg.razon_social || cfg.nombre_comercial || "LT&C",
+      creator: "LT&C Sistema de Gestión Deportiva",
+    });
+
+    function setText(rgb = textColor) {
+      pdf.setTextColor(rgb[0], rgb[1], rgb[2]);
+    }
+
+    function limpiarPdf(value, fallback = "—") {
+      const txt = String(value ?? "").replace(/\s+/g, " ").trim();
+      return txt || fallback;
+    }
+
+    function text(value, x, yy, opts = {}) {
+      pdf.text(limpiarPdf(value), x, yy, opts);
+    }
+
+    function split(value, width) {
+      return pdf.splitTextToSize(limpiarPdf(value), width);
+    }
+
+    function addPageIfNeeded(heightNeeded) {
+      if (y + heightNeeded <= bottomLimit) return;
+      pdf.addPage();
+      y = 16;
+      renderMiniHeader();
+    }
+
+    function renderMiniHeader() {
+      pdf.setDrawColor(border[0], border[1], border[2]);
+      pdf.line(margin, 12, pageW - margin, 12);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      setText(primary);
+      text(`${tipoLabel} ${numero}`, margin, 9);
+      pdf.setFont("helvetica", "normal");
+      setText(muted);
+      text(formatFecha(doc.fecha_emision), pageW - margin, 9, { align: "right" });
+      y += 4;
+    }
+
+    function renderHeader() {
+      pdf.setFillColor(primary[0], primary[1], primary[2]);
+      pdf.rect(margin, y, contentW, 22, "F");
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(15);
+      setText([255, 255, 255]);
+      text(tipoLabel.toUpperCase(), margin + 4, y + 8);
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "normal");
+      text("Representación impresa", margin + 4, y + 15);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      text(numero, pageW - margin - 4, y + 8, { align: "right" });
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "normal");
+      text(`Fecha: ${formatFecha(doc.fecha_emision)}`, pageW - margin - 4, y + 15, { align: "right" });
+      y += 28;
+      setText();
+    }
+
+    function boxLines(lines, width) {
+      return lines
+        .filter(Boolean)
+        .flatMap(line => split(line, width));
+    }
+
+    function renderInfoBox(title, lines, x, yy, width, height) {
+      pdf.setDrawColor(border[0], border[1], border[2]);
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(x, yy, width, height, "FD");
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      setText(primary);
+      text(title, x + 3, yy + 6);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      setText(textColor);
+      let ly = yy + 12;
+      lines.forEach(line => {
+        if (ly > yy + height - 3) return;
+        text(line, x + 3, ly);
+        ly += 4.1;
+      });
+    }
+
+    function renderTwoBoxes(leftTitle, leftLinesRaw, rightTitle, rightLinesRaw) {
+      const gap = 6;
+      const boxW = (contentW - gap) / 2;
+      const leftLines = boxLines(leftLinesRaw, boxW - 6);
+      const rightLines = boxLines(rightLinesRaw, boxW - 6);
+      const height = Math.max(44, (Math.max(leftLines.length, rightLines.length) * 4.1) + 15);
+      addPageIfNeeded(height + 8);
+      renderInfoBox(leftTitle, leftLines, margin, y, boxW, height);
+      renderInfoBox(rightTitle, rightLines, margin + boxW + gap, y, boxW, height);
+      y += height + 8;
+    }
+
+    function renderSectionTitle(title) {
+      addPageIfNeeded(12);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      setText(primary);
+      text(title, margin, y);
+      pdf.setDrawColor(primary[0], primary[1], primary[2]);
+      pdf.line(margin, y + 2, pageW - margin, y + 2);
+      y += 7;
+      pdf.setFont("helvetica", "normal");
+      setText();
+    }
+
+    const cols = [
+      { label: "Descripción", x: margin, w: 82, align: "left" },
+      { label: "Cant.", x: margin + 82, w: 18, align: "right" },
+      { label: "P. Unit.", x: margin + 100, w: 28, align: "right" },
+      { label: "Desc.", x: margin + 128, w: 24, align: "right" },
+      { label: "Subtotal", x: margin + 152, w: 30, align: "right" },
+    ];
+
+    function renderItemsHeader() {
+      pdf.setFillColor(primary[0], primary[1], primary[2]);
+      pdf.rect(margin, y, contentW, 7, "F");
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      setText([255, 255, 255]);
+      cols.forEach(col => {
+        const tx = col.align === "right" ? col.x + col.w - 2 : col.x + 2;
+        text(col.label, tx, y + 4.8, { align: col.align });
+      });
+      y += 7;
+      setText();
+    }
+
+    function renderItemsTable(items) {
+      renderSectionTitle("Detalle de ítems");
+      renderItemsHeader();
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+
+      (items || []).forEach((it, idx) => {
+        const descLines = split(it.descripcion, cols[0].w - 4);
+        const rowH = Math.max(8, descLines.length * 4.1 + 4);
+        if (y + rowH > bottomLimit) {
+          pdf.addPage();
+          y = 16;
+          renderMiniHeader();
+          renderItemsHeader();
+        }
+        pdf.setDrawColor(226, 232, 240);
+        pdf.setFillColor(idx % 2 === 0 ? 255 : 248, idx % 2 === 0 ? 255 : 250, idx % 2 === 0 ? 255 : 252);
+        pdf.rect(margin, y, contentW, rowH, "FD");
+        setText(textColor);
+        descLines.forEach((line, lineIdx) => {
+          text(line, cols[0].x + 2, y + 5 + lineIdx * 4.1);
+        });
+        text(fmt(it.cantidad), cols[1].x + cols[1].w - 2, y + 5, { align: "right" });
+        text(fmt(it.precio_unitario), cols[2].x + cols[2].w - 2, y + 5, { align: "right" });
+        text(Number(it.descuento || 0) > 0 ? fmt(it.descuento) : "—", cols[3].x + cols[3].w - 2, y + 5, { align: "right" });
+        pdf.setFont("helvetica", "bold");
+        text(fmt(it.subtotal), cols[4].x + cols[4].w - 2, y + 5, { align: "right" });
+        pdf.setFont("helvetica", "normal");
+        y += rowH;
+      });
+      y += 6;
+    }
+
+    function renderTotales() {
+      const aplicaIva = doc.tipo === "factura";
+      const totalLines = [
+        ["Subtotal", fmt(doc.subtotal_sin_iva)],
+        ...(Number(doc.descuento || 0) > 0 ? [["Descuento", `-${fmt(doc.descuento)}`]] : []),
+        ["Base imponible", fmt(doc.base_imponible)],
+        ...(aplicaIva ? [[`IVA (${doc.iva_porcentaje ?? cfg.iva_porcentaje ?? 15}%)`, fmt(doc.iva_valor)]] : []),
+      ];
+      const boxW = 78;
+      const rowH = 6.5;
+      const boxH = (totalLines.length + 1) * rowH + 4;
+      addPageIfNeeded(boxH + 8);
+      const x = pageW - margin - boxW;
+      pdf.setDrawColor(border[0], border[1], border[2]);
+      pdf.rect(x, y, boxW, boxH);
+      pdf.setFontSize(8.5);
+      totalLines.forEach((line, idx) => {
+        const rowY = y + 5 + idx * rowH;
+        pdf.setFont("helvetica", "normal");
+        setText(muted);
+        text(line[0], x + 4, rowY);
+        setText(textColor);
+        text(`USD ${line[1]}`, x + boxW - 4, rowY, { align: "right" });
+      });
+      const finalY = y + 5 + totalLines.length * rowH;
+      pdf.setFillColor(primary[0], primary[1], primary[2]);
+      pdf.rect(x, finalY - 4.7, boxW, rowH + 1, "F");
+      pdf.setFont("helvetica", "bold");
+      setText([255, 255, 255]);
+      text("TOTAL", x + 4, finalY);
+      text(`USD ${fmt(doc.total)}`, x + boxW - 4, finalY, { align: "right" });
+      setText();
+      y += boxH + 8;
+    }
+
+    function renderTextoLibre(title, rawLines) {
+      const lines = rawLines
+        .filter(Boolean)
+        .flatMap(line => split(line, contentW - 6));
+      if (!lines.length) return;
+      renderSectionTitle(title);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      lines.forEach(line => {
+        addPageIfNeeded(5);
+        text(line, margin + 2, y);
+        y += 4.4;
+      });
+      y += 4;
+    }
+
+    function renderFooters() {
+      const pages = pdf.internal.getNumberOfPages();
+      const legal = "Generado por LT&C. Autorización electrónica SRI pendiente de integración/certificado.";
+      for (let i = 1; i <= pages; i++) {
+        pdf.setPage(i);
+        pdf.setDrawColor(border[0], border[1], border[2]);
+        pdf.line(margin, pageH - 17, pageW - margin, pageH - 17);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(7);
+        setText(muted);
+        text(legal, margin, pageH - 12);
+        text(`Página ${i} de ${pages}`, pageW - margin, pageH - 12, { align: "right" });
+      }
+    }
+
+    renderHeader();
+    renderTwoBoxes(
+      "Emisor",
+      [
+        cfg.razon_social || cfg.nombre_comercial || "Emisor",
+        cfg.nombre_comercial && cfg.nombre_comercial !== cfg.razon_social ? `Nombre comercial: ${cfg.nombre_comercial}` : "",
+        cfg.ruc_ci ? `RUC/CI: ${cfg.ruc_ci}` : "",
+        cfg.direccion_matriz ? `Dirección matriz: ${cfg.direccion_matriz}` : "",
+        cfg.tipo_contribuyente ? `Tipo contribuyente: ${String(cfg.tipo_contribuyente).toUpperCase()}` : "",
+      ],
+      "Documento",
+      [
+        `Tipo: ${tipoLabel}`,
+        `Número: ${numero}`,
+        `Estado: ${labelEstado(doc.estado)}`,
+        `Fecha emisión: ${formatFecha(doc.fecha_emision)}`,
+        cfg.codigo_establecimiento || cfg.punto_emision ? `Serie: ${cfg.codigo_establecimiento || "001"}-${cfg.punto_emision || "001"}` : "",
+      ]
+    );
+
+    renderTwoBoxes(
+      "Receptor",
+      [
+        doc.receptor_nombre || "Consumidor final",
+        doc.receptor_ruc_ci ? `RUC/CI: ${doc.receptor_ruc_ci}` : "",
+        doc.receptor_email ? `Email: ${doc.receptor_email}` : "",
+        doc.receptor_direccion ? `Dirección: ${doc.receptor_direccion}` : "",
+      ],
+      "Contexto operativo",
+      [
+        doc.campeonato_nombre ? `Campeonato: ${doc.campeonato_nombre}` : "",
+        doc.equipo_nombre ? `Equipo: ${doc.equipo_nombre}` : "",
+        Array.isArray(doc.movimientos) && doc.movimientos.length
+          ? `Movimientos vinculados: ${doc.movimientos.length}`
+          : "Sin movimientos financieros vinculados",
+      ]
+    );
+
+    renderItemsTable(doc.items || []);
+    renderTotales();
+
+    if (Array.isArray(doc.movimientos) && doc.movimientos.length) {
+      renderTextoLibre(
+        "Movimientos documentados",
+        doc.movimientos.map(mov => (
+          `${formatFecha(mov.fecha_movimiento)} - ${describirMovimientoFacturacion(mov)} - USD ${fmt(mov.monto)}`
+        ))
+      );
+    }
+
+    if (doc.observaciones) {
+      renderTextoLibre("Observaciones", [doc.observaciones]);
+    }
+
+    renderFooters();
+    pdf.save(nombreArchivoDocumento(doc));
+  }
+
+  function nombreArchivoDocumento(doc) {
+    const tipo = labelTipo(doc.tipo || "documento");
+    const numero = doc.numero_completo || doc.id || "documento";
+    const base = `${tipo}_${numero}`;
+    return `${slugArchivo(base)}.pdf`;
+  }
+
+  function slugArchivo(value) {
+    return String(value || "documento")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_-]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .toLowerCase() || "documento";
   }
 
   /* ─── Helpers ────────────────────────────────────────────────── */
@@ -844,6 +1349,10 @@
       abrirModal("modal-config");
     });
     document.getElementById("btn-buscar").addEventListener("click", cargarDocumentos);
+    document.getElementById("doc-campeonato").addEventListener("change", () => {
+      poblarEquiposDocumento();
+      document.getElementById("doc-equipo").value = "";
+    });
     document.getElementById("btn-limpiar").addEventListener("click", () => {
       document.getElementById("filt-tipo").value       = "";
       document.getElementById("filt-estado").value     = "";

@@ -61,6 +61,9 @@ function aplicarPermisosFinanzasUI() {
 
   const cardMorosidad = document.querySelector(".fin-card-morosidad");
   if (cardMorosidad) cardMorosidad.style.display = "none";
+
+  const btnEmitirDocumento = document.getElementById("btn-fin-emitir-documento");
+  if (btnEmitirDocumento) btnEmitirDocumento.style.display = "none";
 }
 
 function bindEventosFinanzas() {
@@ -134,6 +137,9 @@ function bindEventosFinanzas() {
   document
     .getElementById("btn-fin-imprimir-estado")
     ?.addEventListener("click", imprimirReporteEstadoCuenta);
+  document
+    .getElementById("btn-fin-emitir-documento")
+    ?.addEventListener("click", iniciarDocumentoDesdeEstadoCuenta);
   document
     .getElementById("btn-fin-imprimir-morosidad")
     ?.addEventListener("click", imprimirReporteMorosidad);
@@ -959,6 +965,87 @@ async function guardarMovimientoFinanzas(e) {
     console.error(error);
     mostrarNotificacion(error.message || "No se pudo registrar movimiento", "error");
   }
+}
+
+function obtenerMovimientosSeleccionadosEstadoCuenta() {
+  const checks = Array.from(document.querySelectorAll(".fin-mov-doc-check:checked"));
+  const ids = new Set(
+    checks
+      .map((chk) => Number.parseInt(chk.value, 10))
+      .filter((id) => Number.isFinite(id) && id > 0)
+  );
+  const movimientos = finanzasState.ultimoEstadoCuenta?.movimientos || [];
+  return movimientos.filter((mov) => ids.has(Number(mov.id)));
+}
+
+function labelConceptoFinanzas(concepto) {
+  return {
+    inscripcion: "Inscripción",
+    arbitraje: "Arbitraje",
+    multa: "Multa",
+    pago: "Pago",
+    ajuste: "Ajuste",
+    otro: "Otro",
+  }[String(concepto || "").toLowerCase()] || concepto || "Movimiento";
+}
+
+function describirMovimientoParaDocumento(mov) {
+  const tipo = String(mov.tipo_movimiento || "").toLowerCase() === "abono"
+    ? "Pago"
+    : "Cargo";
+  const partes = [
+    `${tipo} ${labelConceptoFinanzas(mov.concepto)}`,
+    mov.descripcion,
+    mov.evento_nombre ? `Categoría: ${mov.evento_nombre}` : "",
+    mov.fecha_movimiento ? `Fecha: ${formatearFechaFinanzas(mov.fecha_movimiento)}` : "",
+  ].filter(Boolean);
+  return partes.join(" - ");
+}
+
+function iniciarDocumentoDesdeEstadoCuenta() {
+  if (finanzasState.esTecnico) {
+    mostrarNotificacion("No autorizado para emitir documentos", "warning");
+    return;
+  }
+
+  const data = finanzasState.ultimoEstadoCuenta;
+  if (!data?.equipo) {
+    mostrarNotificacion("Selecciona un equipo para emitir el documento", "warning");
+    return;
+  }
+
+  const movimientos = obtenerMovimientosSeleccionadosEstadoCuenta();
+  if (!movimientos.length) {
+    mostrarNotificacion("Selecciona al menos un movimiento no documentado", "warning");
+    return;
+  }
+
+  const campeonatoId = (
+    document.getElementById("fin-campeonato")?.value ||
+    data.equipo.campeonato_id ||
+    ""
+  );
+
+  const payload = {
+    origen: "finanzas_estado_cuenta",
+    campeonato_id: campeonatoId,
+    equipo_id: data.equipo.id,
+    receptor_nombre: data.equipo.nombre || "",
+    movimiento_ids: movimientos.map((mov) => Number(mov.id)),
+    movimientos: movimientos.map((mov) => ({
+      id: Number(mov.id),
+      fecha_movimiento: mov.fecha_movimiento,
+      tipo_movimiento: mov.tipo_movimiento,
+      concepto: mov.concepto,
+      descripcion: mov.descripcion,
+      evento_nombre: mov.evento_nombre,
+      monto: Number(mov.monto || 0),
+      item_descripcion: describirMovimientoParaDocumento(mov),
+    })),
+  };
+
+  sessionStorage.setItem("ltc_facturacion_prefill", JSON.stringify(payload));
+  window.location.href = "facturacion.html?prefill=finanzas";
 }
 
 function capturarContextoFormularioMovimiento(payload) {
@@ -2114,14 +2201,35 @@ function renderTablaEstadoCuenta(items) {
 
   const rows = items
     .map((m) => {
+      const documentado = Boolean(m.documento_id);
+      const estadoMov = String(m.estado || "").toLowerCase();
+      const estadoDoc = String(m.documento_estado || "").toLowerCase();
+      const puedeSeleccionar = !documentado && estadoMov !== "anulado";
+      const docNumero = m.documento_numero || (m.documento_id ? `#${m.documento_id}` : "");
+      const docBadge = documentado
+        ? `<span class="${estadoDoc === "anulado" ? "badge-estado-pendiente" : "badge-estado-activo"}">
+            ${estadoDoc === "anulado" ? "Doc. anulada" : "Documentado"} ${escaparHtml(docNumero)}
+          </span>`
+        : '<span style="color:#94a3b8;">—</span>';
+
       return `
         <tr>
+          <td>
+            <input
+              type="checkbox"
+              class="fin-mov-doc-check"
+              value="${escaparHtml(m.id)}"
+              ${puedeSeleccionar ? "" : "disabled"}
+              aria-label="Seleccionar movimiento para documento"
+            />
+          </td>
           <td class="fin-col-fecha">${escaparHtml(formatearFechaFinanzas(m.fecha_movimiento))}</td>
           <td>${escaparHtml(m.tipo_movimiento || "-")}</td>
           <td>${escaparHtml(m.concepto || "-")}</td>
           <td class="fin-col-monto">${formatoMoneda(m.monto)}</td>
           <td>${escaparHtml(m.estado || "-")}</td>
           <td>${escaparHtml(m.evento_nombre || "-")}</td>
+          <td>${docBadge}</td>
         </tr>
       `;
     })
@@ -2131,12 +2239,14 @@ function renderTablaEstadoCuenta(items) {
     <table class="tabla-estadistica tabla-estadistica-compacta">
       <thead>
         <tr>
+          <th>Doc.</th>
           <th>Fecha</th>
           <th>Tipo</th>
           <th>Concepto</th>
           <th>Monto</th>
           <th>Estado</th>
           <th>Categoría</th>
+          <th>Documento</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>

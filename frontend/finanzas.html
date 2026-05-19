@@ -179,9 +179,14 @@
           <div class="card fin-card-estado">
             <div class="fin-card-headline">
               <h3>Estado de Cuenta (Equipo seleccionado)</h3>
-              <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-estado">
-                <i class="fas fa-print"></i> Imprimir estado
-              </button>
+              <div class="fin-card-actions">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-fin-emitir-documento">
+                  <i class="fas fa-file-invoice-dollar"></i> Emitir documento
+                </button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-estado">
+                  <i class="fas fa-print"></i> Imprimir estado
+                </button>
+              </div>
             </div>
             <div id="fin-estado-cuenta-resumen" class="fin-resumen-vacio">Selecciona un equipo para visualizar su estado de cuenta.</div>
             <div id="fin-estado-cuenta-movimientos" class="tabla-scroll"></div>
@@ -390,4 +395,3 @@
 </body>
 
 </html>
-
