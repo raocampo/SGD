@@ -224,6 +224,7 @@
     const params = new URLSearchParams(window.location.search);
     const equipoId = Number.parseInt(params.get("id"), 10);
     const eventoId = Number.parseInt(params.get("evento") || "", 10) || null;
+    const tabInicial = String(params.get("tab") || "").trim().toLowerCase();
     const backHref = params.get("back") || (eventoId ? `portal.html?evento=${eventoId}` : "portal.html");
 
     document.getElementById("ep-back-link").href = backHref;
@@ -252,13 +253,33 @@
       return "";
     }
 
+    function esPartidoJugado(p) {
+      return p?.jugado === true || ["finalizado", "no_presentaron_ambos"].includes(String(p?.estado || ""));
+    }
+
+    function formatearFechaPartido(fechaRaw) {
+      if (!fechaRaw) return "—";
+      const raw = String(fechaRaw);
+      const fecha = raw.includes("T") ? new Date(raw) : new Date(`${raw}T00:00:00`);
+      if (Number.isNaN(fecha.getTime())) return "—";
+      return fecha.toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" });
+    }
+
+    function activarTab(panel) {
+      const target = String(panel || "").trim();
+      const btn = document.querySelector(`.ep-tab[data-panel="${target}"]`);
+      const targetPanel = document.getElementById(`panel-${target}`);
+      if (!btn || !targetPanel) return;
+      document.querySelectorAll(".ep-tab").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".ep-panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      targetPanel.classList.add("active");
+    }
+
     // ── Tabs
     document.querySelectorAll(".ep-tab").forEach(btn => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".ep-tab").forEach(b => b.classList.remove("active"));
-        document.querySelectorAll(".ep-panel").forEach(p => p.classList.remove("active"));
-        btn.classList.add("active");
-        document.getElementById(`panel-${btn.dataset.panel}`).classList.add("active");
+        activarTab(btn.dataset.panel);
       });
     });
 
@@ -365,12 +386,14 @@
         const { partidos } = await apiFetch(`/equipos/${equipoId}/partidos${params3}`);
         const cont = document.getElementById("ep-partidos-cont");
 
-        if (!partidos?.length) {
-          cont.innerHTML = `<p class="ep-empty"><i class="fas fa-futbol"></i> Sin partidos registrados.</p>`;
+        const jugados = (Array.isArray(partidos) ? partidos : []).filter(esPartidoJugado);
+
+        if (!jugados.length) {
+          cont.innerHTML = `<p class="ep-empty"><i class="fas fa-futbol"></i> Sin partidos jugados todavía.</p>`;
         } else {
-          cont.innerHTML = partidos.map(p => {
-            const fecha = p.fecha ? new Date(p.fecha + "T00:00:00").toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" }) : "—";
-            const marcador = (p.estado === "finalizado" && p.goles_favor !== null)
+          cont.innerHTML = `<h3 style="margin-top:0;">Partidos jugados</h3>${jugados.map(p => {
+            const fecha = formatearFechaPartido(p.fecha);
+            const marcador = esPartidoJugado(p) && p.goles_favor !== null
               ? `<span class="ep-resultado-${p.resultado || ""}">${p.goles_favor} — ${p.goles_contra}</span>` : "—";
             return `<div class="ep-partido-row">
               <div class="ep-partido-fecha">${fecha}<br><small style="color:#94a3b8;">${p.jornada ? "J" + p.jornada : p.evento_nombre || ""}</small></div>
@@ -384,10 +407,14 @@
               <div class="ep-partido-resultado">${marcador}</div>
               ${estadoBadge(p.estado)}
             </div>`;
-          }).join("");
+          }).join("")}`;
         }
       } catch (e) {
         document.getElementById("ep-partidos-cont").innerHTML = `<p class="ep-empty">No se pudieron cargar los partidos.</p>`;
+      }
+
+      if (tabInicial === "partidos" || tabInicial === "info") {
+        activarTab(tabInicial);
       }
     }
 

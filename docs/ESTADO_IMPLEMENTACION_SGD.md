@@ -1,3 +1,26 @@
+## 2026-05-24 — Equipos: partidos jugados visibles por clic
+
+### Estado actualizado
+- En el sistema interno, `equipos.html` permite hacer clic en el nombre del equipo o en el botón `Partidos` para abrir el historial jugado de ese equipo.
+- El historial muestra fecha, jornada, rival, local/visita, cancha, marcador y resultado.
+- En el portal público, el clic sobre un equipo desde la pestaña de equipos abre `equipo-publico.html` directamente en `tab=partidos`.
+- El perfil público de equipo muestra solo partidos jugados, no los programados pendientes.
+- El endpoint público `GET /api/public/equipos/:equipo_id/partidos` ahora entrega `jugado`, `marcador` y resultado normalizado.
+
+### Verificación local
+- Checks de sintaxis backend/frontend OK.
+- Endpoint público probado en `localhost:5000` con equipo real: devuelve partidos y marca correctamente el jugado.
+- `npm run smoke` desde `backend/` → 9/9 PASS.
+- `npm run smoke:frontend` desde `backend/` → 39/39 PASS.
+
+### Siguiente foco recomendado
+1. QA visual en navegador de modal interno y perfil público de equipo.
+2. Prueba end-to-end en Render de Transmisiones WebRTC.
+3. QA visual en navegador de descarga PDF/RIDE desde `facturacion.html` con documento real conservado.
+4. QA responsive visual con datos reales.
+
+---
+
 ## 2026-05-24 — Transmisiones: QA funcional local automatizado
 
 ### Estado actualizado

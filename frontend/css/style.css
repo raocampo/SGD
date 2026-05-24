@@ -1452,6 +1452,108 @@ body.app-layout {
   margin-top: 10px;
 }
 
+.equipo-title-button,
+.equipo-table-link {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.equipo-title-button:hover,
+.equipo-table-link:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.equipo-partidos-modal {
+  max-width: 920px;
+}
+
+.equipo-partidos-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.equipo-partidos-resumen span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.28rem 0.65rem;
+}
+
+.equipo-partidos-empty {
+  display: grid;
+  place-items: center;
+  gap: 0.45rem;
+  min-height: 150px;
+  color: #64748b;
+  text-align: center;
+}
+
+.equipo-partidos-empty i {
+  color: #94a3b8;
+  font-size: 1.6rem;
+}
+
+.equipo-partidos-error i {
+  color: #f59e0b;
+}
+
+.equipo-partido-rival {
+  display: block;
+  font-weight: 700;
+}
+
+.equipo-partido-rival + small {
+  display: block;
+  color: #64748b;
+  margin-top: 0.18rem;
+}
+
+.equipo-resultado-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.18rem 0.55rem;
+}
+
+.equipo-resultado-V {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.equipo-resultado-D {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.equipo-resultado-E {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.equipo-resultado-J {
+  background: #e2e8f0;
+  color: #334155;
+}
+
 /* Botón hamburguesa */
 .nav-toggle {
   display: none;

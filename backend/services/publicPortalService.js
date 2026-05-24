@@ -881,8 +881,10 @@ async function listarPartidosPublicosPorEquipo(equipoId, eventoId = null) {
       const esLocal = Number(p.local_id) === equipoId;
       const gf = esLocal ? normalizarEntero(p.resultado_local) : normalizarEntero(p.resultado_visitante);
       const gc = esLocal ? normalizarEntero(p.resultado_visitante) : normalizarEntero(p.resultado_local);
+      const estado = p.estado || "pendiente";
+      const jugado = ["finalizado", "no_presentaron_ambos"].includes(estado) && gf !== null && gc !== null;
       let resultado = null;
-      if (p.estado === "finalizado" && gf !== null && gc !== null) {
+      if (jugado) {
         resultado = gf > gc ? "V" : gf < gc ? "D" : "E";
       }
       return {
@@ -891,11 +893,13 @@ async function listarPartidosPublicosPorEquipo(equipoId, eventoId = null) {
         hora: p.hora_partido || null,
         cancha: p.cancha || null,
         jornada: normalizarEntero(p.jornada),
-        estado: p.estado || "pendiente",
+        estado,
+        jugado,
         es_local: esLocal,
         rival: esLocal ? { id: Number(p.visitante_id), nombre: p.visitante_nombre, logo_url: p.visitante_logo } : { id: Number(p.local_id), nombre: p.local_nombre, logo_url: p.local_logo },
         goles_favor: gf,
         goles_contra: gc,
+        marcador: jugado ? `${gf} - ${gc}` : null,
         resultado,
         evento_nombre: p.evento_nombre,
         campeonato_nombre: p.campeonato_nombre,

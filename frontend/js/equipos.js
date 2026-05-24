@@ -951,6 +951,31 @@ function renderListadoEquipos() {
   cont.innerHTML = equiposCache.map((equipo, index) => renderEquipoCard(equipo, index)).join("");
 }
 
+function formatearFechaPartidoEquipo(fechaRaw) {
+  if (!fechaRaw) return "—";
+  const raw = String(fechaRaw);
+  const fecha = raw.includes("T") ? new Date(raw) : new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(fecha.getTime())) return "—";
+  return fecha.toLocaleDateString("es-EC", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function esPartidoJugadoEquipo(partido = {}) {
+  const estado = String(partido.estado || "").toLowerCase();
+  return partido.jugado === true || ["finalizado", "no_presentaron_ambos"].includes(estado);
+}
+
+function labelResultadoEquipo(resultado) {
+  const key = String(resultado || "").toUpperCase();
+  if (key === "V") return "Victoria";
+  if (key === "D") return "Derrota";
+  if (key === "E") return "Empate";
+  return "Jugado";
+}
+
 function renderEquipoCard(equipo, index = 0) {
   const baseUrl = (window.API_BASE_URL || "").replace(/\/api\/?$/, "") || window.location.origin;
   const logoUrl = equipo.logo_url ? (equipo.logo_url.startsWith("http") ? equipo.logo_url : `${baseUrl}${equipo.logo_url}`) : "";
@@ -984,7 +1009,11 @@ function renderEquipoCard(equipo, index = 0) {
     <div class="equipo-card campeonato-card">
       <div class="equipo-header campeonato-header">
         <span class="item-index">${numero || index + 1}.</span>
-        <h4>${equipo.nombre}</h4>
+        <h4>
+          <button class="equipo-title-button" type="button" onclick="verPartidosEquipo(${equipo.id})" title="Ver partidos jugados">
+            ${escapeHtml(equipo.nombre || "Equipo")}
+          </button>
+        </h4>
         ${
           logoUrl
             ? `<img src="${logoUrl}" alt="Logo ${escapeHtml(equipo.nombre || "")}" class="equipo-logo">`
@@ -1000,6 +1029,9 @@ function renderEquipoCard(equipo, index = 0) {
       <div class="equipo-actions campeonato-actions">
         <button class="btn btn-primary" onclick="irAJugadores(${equipo.id})">
           <i class="fas fa-user-friends"></i> Jugadores
+        </button>
+        <button class="btn btn-secondary" onclick="verPartidosEquipo(${equipo.id})">
+          <i class="fas fa-futbol"></i> Partidos
         </button>
         ${accionesAdmin}
       </div>
@@ -1047,7 +1079,11 @@ function renderTablaEquipos(equipos) {
         <tr>
           <td>${numero}</td>
           <td>${logo}</td>
-          <td>${escapeHtml(equipo.nombre || "—")}</td>
+          <td>
+            <button class="equipo-table-link" type="button" onclick="verPartidosEquipo(${equipo.id})" title="Ver partidos jugados">
+              ${escapeHtml(equipo.nombre || "—")}
+            </button>
+          </td>
           <td>${escapeHtml(equipo.director_tecnico || "-")}</td>
           <td>${escapeHtml(equipo.telefono || "-")}</td>
           <td>${escapeHtml(equipo.email || "-")}</td>
@@ -1055,6 +1091,9 @@ function renderTablaEquipos(equipos) {
           <td class="list-table-actions">
             <button class="btn btn-primary" onclick="irAJugadores(${equipo.id})">
               <i class="fas fa-user-friends"></i> Jugadores
+            </button>
+            <button class="btn btn-secondary" onclick="verPartidosEquipo(${equipo.id})">
+              <i class="fas fa-futbol"></i> Partidos
             </button>
             ${accionesAdmin}
           </td>
@@ -1451,6 +1490,135 @@ function irAJugadores(equipoId) {
   window.location.href = "jugadores.html";
 }
 
+function asegurarModalPartidosEquipo() {
+  let modal = document.getElementById("modal-partidos-equipo");
+  if (modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = "modal-partidos-equipo";
+  modal.className = "modal";
+  modal.style.display = "none";
+  modal.innerHTML = `
+    <div class="modal-content equipo-partidos-modal">
+      <div class="modal-header">
+        <h3 id="modal-partidos-equipo-titulo">Partidos del equipo</h3>
+        <button class="modal-close" onclick="cerrarModal('modal-partidos-equipo')">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="modal-partidos-equipo-resumen" class="equipo-partidos-resumen"></div>
+        <div id="modal-partidos-equipo-contenido">
+          <p class="form-hint">Cargando partidos...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-partidos-equipo')">Cerrar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function renderHistorialPartidosEquipo(partidos = []) {
+  const jugados = (Array.isArray(partidos) ? partidos : []).filter(esPartidoJugadoEquipo);
+  if (!jugados.length) {
+    return `
+      <div class="equipo-partidos-empty">
+        <i class="fas fa-futbol"></i>
+        <p>Este equipo todavía no tiene partidos jugados en la categoría seleccionada.</p>
+      </div>
+    `;
+  }
+
+  const filas = jugados
+    .map((p) => {
+      const resultado = String(p.resultado || "").toUpperCase();
+      const marcador = p.marcador || (
+        p.goles_favor !== null && p.goles_contra !== null
+          ? `${p.goles_favor} - ${p.goles_contra}`
+          : "—"
+      );
+      return `
+        <tr>
+          <td>${formatearFechaPartidoEquipo(p.fecha)}</td>
+          <td>${p.jornada ? `J${escapeHtml(p.jornada)}` : escapeHtml(p.evento_nombre || "—")}</td>
+          <td>
+            <span class="equipo-partido-rival">
+              ${escapeHtml(p.es_local ? "Local" : "Visita")} vs ${escapeHtml(p.rival?.nombre || "—")}
+            </span>
+            ${p.cancha ? `<small>${escapeHtml(p.cancha)}</small>` : ""}
+          </td>
+          <td><strong>${escapeHtml(marcador)}</strong></td>
+          <td><span class="equipo-resultado-badge equipo-resultado-${resultado || "J"}">${labelResultadoEquipo(resultado)}</span></td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="list-table-wrap equipo-partidos-table-wrap">
+      <table class="list-table equipo-partidos-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Jornada</th>
+            <th>Partido</th>
+            <th>Resultado</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function verPartidosEquipo(equipoId) {
+  const id = Number.parseInt(equipoId, 10);
+  if (!Number.isFinite(id) || id <= 0) {
+    mostrarNotificacion("No se pudo identificar el equipo", "warning");
+    return;
+  }
+
+  const equipo = equiposCache.find((item) => Number(item.id) === id) || null;
+  const modal = asegurarModalPartidosEquipo();
+  const titulo = document.getElementById("modal-partidos-equipo-titulo");
+  const resumen = document.getElementById("modal-partidos-equipo-resumen");
+  const contenido = document.getElementById("modal-partidos-equipo-contenido");
+
+  if (titulo) titulo.textContent = equipo?.nombre ? `Partidos jugados — ${equipo.nombre}` : "Partidos jugados";
+  if (resumen) {
+    const categoria = eventoIdSeleccionado
+      ? document.getElementById("select-evento")?.selectedOptions?.[0]?.textContent || ""
+      : "";
+    resumen.innerHTML = `
+      <span><i class="fas fa-shield-halved"></i> ${escapeHtml(equipo?.nombre || `Equipo ${id}`)}</span>
+      ${categoria ? `<span><i class="fas fa-layer-group"></i> ${escapeHtml(categoria)}</span>` : ""}
+    `;
+  }
+  if (contenido) contenido.innerHTML = '<p class="form-hint"><i class="fas fa-spinner fa-spin"></i> Cargando partidos jugados...</p>';
+
+  abrirModal("modal-partidos-equipo");
+
+  try {
+    const query = eventoIdSeleccionado ? `?evento_id=${encodeURIComponent(eventoIdSeleccionado)}` : "";
+    const data = await window.ApiClient.get(`/public/equipos/${id}/partidos${query}`);
+    if (contenido) contenido.innerHTML = renderHistorialPartidosEquipo(data?.partidos || []);
+  } catch (error) {
+    console.error("Error cargando partidos del equipo:", error);
+    if (contenido) {
+      contenido.innerHTML = `
+        <div class="equipo-partidos-empty equipo-partidos-error">
+          <i class="fas fa-triangle-exclamation"></i>
+          <p>No se pudieron cargar los partidos del equipo.</p>
+        </div>
+      `;
+    }
+  }
+
+  return modal;
+}
+
 function irASorteo() {
   if (usuarioEsTecnico()) {
     mostrarNotificacion("No autorizado para gestionar sorteo", "warning");
@@ -1492,6 +1660,7 @@ window.eliminarEquipo = eliminarEquipo;
 window.moverEquipoCategoria = moverEquipoCategoria;
 window.irASorteo = irASorteo;
 window.irAJugadores = irAJugadores;
+window.verPartidosEquipo = verPartidosEquipo;
 window.cambiarVistaEquipos = cambiarVistaEquipos;
 window.abrirImportadorEquipos = abrirImportadorEquipos;
 window.descargarPlantillaEquipos = descargarPlantillaEquipos;

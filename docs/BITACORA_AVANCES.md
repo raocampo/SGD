@@ -1,3 +1,29 @@
+## 2026-05-24 — Equipos: historial de partidos jugados en sistema y portal público
+
+### Cambio aplicado
+- En `equipos.html`, el nombre del equipo y el botón `Partidos` abren un modal con los partidos ya jugados por el equipo.
+- El modal muestra fecha, jornada, condición local/visita, rival, cancha, marcador y estado del resultado.
+- El portal público ahora abre el perfil del equipo directamente en la pestaña `Partidos` cuando se hace clic desde el listado de equipos.
+- `equipo-publico.html` filtra la pestaña para mostrar solo partidos jugados y conserva el mensaje vacío cuando todavía no hay historial.
+- El endpoint público de partidos por equipo agrega `jugado`, `marcador` y resultado normalizado (`V`, `D`, `E`) para facilitar la vista pública e interna.
+
+### Verificación local
+- `node --check backend/services/publicPortalService.js`
+- `node --check frontend/js/equipos.js`
+- `node --check frontend/js/portal.js`
+- Validación del script inline de `frontend/equipo-publico.html` con `new Function(...)` → PASS.
+- `GET http://localhost:5000/api/public/equipos/24/partidos?evento_id=5` → devuelve `total = 3` y un partido `jugado: true` con marcador `0 - 0`, jornada `3` y resultado `E`.
+- `npm run smoke` desde `backend/` → 9/9 PASS.
+- `npm run smoke:frontend` desde `backend/` → 39/39 PASS.
+
+### Pendientes siguientes
+- QA visual en navegador: `equipos.html` → clic en equipo/botón Partidos, y `portal.html` → clic en equipo público → pestaña Partidos.
+- Prueba end-to-end en Render de Transmisiones WebRTC.
+- QA visual de descarga PDF/RIDE en Facturación con documento real conservado.
+- QA responsive visual con datos reales.
+
+---
+
 ## 2026-05-24 — Transmisiones: esquema autoasegurado y QA funcional
 
 ### Cambio aplicado

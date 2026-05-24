@@ -2003,7 +2003,7 @@ async function cargarEquiposTabPortal(eventoId, container) {
         eq.total_jugadores > 0 ? `${eq.total_jugadores} jugador${eq.total_jugadores !== 1 ? "es" : ""}` : null,
         eq.partidos_jugados > 0 ? `${eq.partidos_jugados} PJ` : null,
       ].filter(Boolean).join(" · ");
-      return `<a href="equipo-publico.html?id=${eq.id}&evento=${eventoId}&back=${backUrl}"
+      return `<a href="equipo-publico.html?id=${eq.id}&evento=${eventoId}&tab=partidos&back=${backUrl}"
         class="portal-equipo-card">
         ${logoHtml}
         <div class="portal-equipo-card-copy">
