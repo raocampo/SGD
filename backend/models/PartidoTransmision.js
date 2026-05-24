@@ -14,71 +14,111 @@ const CAMPOS_EDITABLES = [
 ];
 
 class PartidoTransmision {
+  static _tablaAsegurada = false;
+  static _initTablaPromise = null;
+
   static async asegurarTabla(dbPool) {
+    if (!dbPool && this._tablaAsegurada) return;
+
     const db = dbPool || pool;
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS partido_transmisiones (
-        id SERIAL PRIMARY KEY,
-        partido_id INTEGER NOT NULL REFERENCES partidos(id) ON DELETE CASCADE,
-        campeonato_id INTEGER REFERENCES campeonatos(id) ON DELETE SET NULL,
-        evento_id INTEGER REFERENCES eventos(id) ON DELETE SET NULL,
-        titulo VARCHAR(200),
-        descripcion TEXT,
-        plataforma VARCHAR(60),
-        url_publica TEXT,
-        embed_url TEXT,
-        estado VARCHAR(30) NOT NULL DEFAULT 'programada',
-        fecha_inicio_programada TIMESTAMPTZ,
-        fecha_inicio_real TIMESTAMPTZ,
-        fecha_fin_real TIMESTAMPTZ,
-        thumbnail_url TEXT,
-        destacado BOOLEAN NOT NULL DEFAULT FALSE,
-        creado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-    // Migración: agregar destacado si ya existe la tabla sin esa columna
-    await db.query(`
-      DO $$ BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'partido_transmisiones' AND column_name = 'destacado'
-        ) THEN
-          ALTER TABLE partido_transmisiones ADD COLUMN destacado BOOLEAN NOT NULL DEFAULT FALSE;
-        END IF;
-      END $$;
-    `);
-    // Migración: overlay_token + director_token (tokens para Socket.io overlay)
-    await db.query(`
-      DO $$ BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'partido_transmisiones' AND column_name = 'overlay_token'
-        ) THEN
-          ALTER TABLE partido_transmisiones ADD COLUMN overlay_token UUID DEFAULT gen_random_uuid() UNIQUE;
-        END IF;
-      END $$;
-    `);
-    await db.query(`
-      DO $$ BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'partido_transmisiones' AND column_name = 'director_token'
-        ) THEN
-          ALTER TABLE partido_transmisiones ADD COLUMN director_token UUID DEFAULT gen_random_uuid() UNIQUE;
-        END IF;
-      END $$;
-    `);
-    await db.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_transmisiones_partido ON partido_transmisiones(partido_id)
-    `);
-    await db.query(`
-      CREATE INDEX IF NOT EXISTS idx_transmisiones_estado ON partido_transmisiones(estado)
-    `);
-    await db.query(`
-      CREATE INDEX IF NOT EXISTS idx_transmisiones_campeonato ON partido_transmisiones(campeonato_id)
-    `);
+    const init = async () => {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS partido_transmisiones (
+          id SERIAL PRIMARY KEY,
+          partido_id INTEGER NOT NULL REFERENCES partidos(id) ON DELETE CASCADE,
+          campeonato_id INTEGER REFERENCES campeonatos(id) ON DELETE SET NULL,
+          evento_id INTEGER REFERENCES eventos(id) ON DELETE SET NULL,
+          titulo VARCHAR(200),
+          descripcion TEXT,
+          plataforma VARCHAR(60),
+          url_publica TEXT,
+          embed_url TEXT,
+          estado VARCHAR(30) NOT NULL DEFAULT 'programada',
+          fecha_inicio_programada TIMESTAMPTZ,
+          fecha_inicio_real TIMESTAMPTZ,
+          fecha_fin_real TIMESTAMPTZ,
+          thumbnail_url TEXT,
+          destacado BOOLEAN NOT NULL DEFAULT FALSE,
+          creado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      // Migración: agregar destacado si ya existe la tabla sin esa columna.
+      await db.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'partido_transmisiones' AND column_name = 'destacado'
+          ) THEN
+            ALTER TABLE partido_transmisiones ADD COLUMN destacado BOOLEAN NOT NULL DEFAULT FALSE;
+          END IF;
+        END $$;
+      `);
+      // Migración: overlay_token + director_token (tokens para Socket.io overlay).
+      await db.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'partido_transmisiones' AND column_name = 'overlay_token'
+          ) THEN
+            ALTER TABLE partido_transmisiones ADD COLUMN overlay_token UUID DEFAULT gen_random_uuid() UNIQUE;
+          END IF;
+        END $$;
+      `);
+      await db.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'partido_transmisiones' AND column_name = 'director_token'
+          ) THEN
+            ALTER TABLE partido_transmisiones ADD COLUMN director_token UUID DEFAULT gen_random_uuid() UNIQUE;
+          END IF;
+        END $$;
+      `);
+      await db.query(`
+        UPDATE partido_transmisiones
+        SET overlay_token = gen_random_uuid()
+        WHERE overlay_token IS NULL
+      `);
+      await db.query(`
+        UPDATE partido_transmisiones
+        SET director_token = gen_random_uuid()
+        WHERE director_token IS NULL
+      `);
+      await db.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_transmisiones_partido ON partido_transmisiones(partido_id)
+      `);
+      await db.query(`
+        CREATE INDEX IF NOT EXISTS idx_transmisiones_estado ON partido_transmisiones(estado)
+      `);
+      await db.query(`
+        CREATE INDEX IF NOT EXISTS idx_transmisiones_campeonato ON partido_transmisiones(campeonato_id)
+      `);
+      await db.query(`
+        CREATE INDEX IF NOT EXISTS idx_transmisiones_overlay_token ON partido_transmisiones(overlay_token)
+      `);
+      await db.query(`
+        CREATE INDEX IF NOT EXISTS idx_transmisiones_director_token ON partido_transmisiones(director_token)
+      `);
+    };
+
+    if (dbPool) {
+      await init();
+      return;
+    }
+
+    if (!this._initTablaPromise) {
+      this._initTablaPromise = init()
+        .then(() => {
+          this._tablaAsegurada = true;
+        })
+        .finally(() => {
+          this._initTablaPromise = null;
+        });
+    }
+
+    await this._initTablaPromise;
   }
 
   static limpiar(row) {
@@ -108,6 +148,8 @@ class PartidoTransmision {
   }
 
   static async obtenerPorPartido(partidoId) {
+    await this.asegurarTabla();
+
     const result = await pool.query(
       "SELECT * FROM partido_transmisiones WHERE partido_id = $1 LIMIT 1",
       [partidoId]
@@ -116,6 +158,8 @@ class PartidoTransmision {
   }
 
   static async crear(data) {
+    await this.asegurarTabla();
+
     const {
       partido_id,
       campeonato_id = null,
@@ -146,6 +190,8 @@ class PartidoTransmision {
   }
 
   static async actualizar(id, data) {
+    await this.asegurarTabla();
+
     const sets = [];
     const values = [];
     let idx = 1;
@@ -176,6 +222,8 @@ class PartidoTransmision {
   }
 
   static async iniciar(id) {
+    await this.asegurarTabla();
+
     const result = await pool.query(
       `UPDATE partido_transmisiones
        SET estado = 'en_vivo', fecha_inicio_real = NOW(), updated_at = NOW()
@@ -186,6 +234,8 @@ class PartidoTransmision {
   }
 
   static async finalizar(id) {
+    await this.asegurarTabla();
+
     const result = await pool.query(
       `UPDATE partido_transmisiones
        SET estado = 'finalizada', fecha_fin_real = NOW(), updated_at = NOW()
@@ -196,6 +246,8 @@ class PartidoTransmision {
   }
 
   static async cancelar(id) {
+    await this.asegurarTabla();
+
     const result = await pool.query(
       `UPDATE partido_transmisiones
        SET estado = 'cancelada', updated_at = NOW()
@@ -206,6 +258,8 @@ class PartidoTransmision {
   }
 
   static async listarActivas() {
+    await this.asegurarTabla();
+
     const result = await pool.query(
       `SELECT * FROM partido_transmisiones WHERE estado = 'en_vivo' ORDER BY fecha_inicio_real DESC`
     );
@@ -213,6 +267,8 @@ class PartidoTransmision {
   }
 
   static async listarActivasPorCampeonato(campeonatoId) {
+    await this.asegurarTabla();
+
     const result = await pool.query(
       `SELECT * FROM partido_transmisiones
        WHERE estado = 'en_vivo' AND campeonato_id = $1
@@ -223,6 +279,8 @@ class PartidoTransmision {
   }
 
   static async listarPorCampeonato(campeonatoId) {
+    await this.asegurarTabla();
+
     const result = await pool.query(
       `SELECT t.*,
         p.jornada, p.fecha_partido, p.estado AS partido_estado,
@@ -250,6 +308,8 @@ class PartidoTransmision {
   }
 
   static async toggleDestacado(id) {
+    await this.asegurarTabla();
+
     const result = await pool.query(
       `UPDATE partido_transmisiones
        SET destacado = NOT destacado, updated_at = NOW()
@@ -260,6 +320,8 @@ class PartidoTransmision {
   }
 
   static async listarDestacadas() {
+    await this.asegurarTabla();
+
     const result = await pool.query(
       `SELECT * FROM partido_transmisiones
        WHERE destacado = TRUE AND estado IN ('en_vivo', 'programada')

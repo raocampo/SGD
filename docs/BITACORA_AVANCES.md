@@ -1,3 +1,33 @@
+## 2026-05-24 — Transmisiones: esquema autoasegurado y QA funcional
+
+### Cambio aplicado
+- `PartidoTransmision` ahora asegura/migra `partido_transmisiones` antes de cualquier lectura o escritura, incluyendo `destacado`, `overlay_token`, `director_token` e índices.
+- `TransmisionOverlay` ahora asegura `transmision_overlay_state` antes de operar el marcador/overlay.
+- Los controladores que consultan transmisiones por SQL directo aseguran la tabla antes de consultar.
+- El overlay público valida el formato UUID del token y devuelve `400` en vez de provocar un `500` por token inválido.
+- Se agregó `backend/scripts/qaTransmisionesFlow.js` y el comando `npm run qa:transmisiones`.
+
+### Verificación local
+- `npm run qa:transmisiones` → PASS completo:
+  - crea transmisión temporal,
+  - valida listado privado,
+  - inicia transmisión,
+  - valida activas públicas,
+  - valida viewer público,
+  - valida overlay público,
+  - actualiza overlay autenticado,
+  - valida token inválido,
+  - limpia transmisión y overlay QA.
+- Verificación posterior en BD local: `partido_transmisiones = 0`, `transmision_overlay_state = 0`.
+- Checks de sintaxis en modelos/controladores/script de transmisiones.
+
+### Pendientes siguientes
+- Prueba end-to-end en Render con `transmisiones.html -> broadcast.html -> viewer.html?tx=<ID>`.
+- Agregar TURN (Metered.ca u otro) si la prueba real confirma bloqueo por NAT estricto.
+- QA responsive visual con datos reales.
+
+---
+
 ## 2026-05-24 — Facturación: QA funcional automatizado con limpieza
 
 ### Cambio aplicado

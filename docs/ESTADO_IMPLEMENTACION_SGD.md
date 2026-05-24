@@ -1,3 +1,20 @@
+## 2026-05-24 — Transmisiones: QA funcional local automatizado
+
+### Estado actualizado
+- `PartidoTransmision` y `TransmisionOverlay` ya autoaseguran sus tablas/columnas antes de leer o escribir, cubriendo bases existentes donde las migraciones fueron registradas sin ejecutar el esquema de transmisiones.
+- El endpoint privado `GET /api/transmisiones?campeonato_id=...` deja de fallar con `500` cuando falta `partido_transmisiones`; el modelo crea/migra la tabla y devuelve listado vacío o datos reales.
+- El overlay público valida tokens UUID mal formados y responde `400`, evitando errores de PostgreSQL visibles como `500`.
+- Queda disponible `npm run qa:transmisiones` para validar el flujo funcional local sin dejar datos QA persistidos.
+- Verificación local: `npm run qa:transmisiones` PASS; posterior a la limpieza, `partido_transmisiones = 0` y `transmision_overlay_state = 0`.
+
+### Siguiente foco recomendado
+1. Prueba end-to-end en Render: `transmisiones.html -> broadcast.html -> viewer.html?tx=<ID>`.
+2. Agregar TURN (Metered.ca u otro) solo si la prueba real confirma bloqueo por NAT estricto.
+3. QA visual en navegador de descarga PDF/RIDE desde `facturacion.html` con un documento real conservado.
+4. QA responsive visual con datos reales.
+
+---
+
 ## 2026-05-24 — Facturación: QA funcional automatizado
 
 ### Estado actualizado
@@ -850,6 +867,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
   - **Fase 1 COMPLETA**: `partido_transmisiones`, endpoints CRUD, Socket.io overlay, `director.html`, `overlay.html`, migraciones 064+065, UX lista transmisiones, navegación director↔lista.
   - **Fase 2 IMPLEMENTADA (pendiente prueba en Render)**: WebRTC broadcaster (`broadcast.html`) + viewer público (`viewer.html`), señalización Socket.io, endpoint público `/api/public/transmisiones/:id`, botón "Ver" en lista, botón "Transmitir" en director.
   - **Fase 3 COMPLETA**: instrucciones OBS colapsables, compartir en redes (WhatsApp/Facebook/Twitter/Copiar) con texto auto-generado.
+  - **QA local 2026-05-24**: `npm run qa:transmisiones` valida creación temporal, listado, inicio, activas públicas, viewer, overlay público, actualización autenticada y limpieza.
   - **Pendiente**: prueba end-to-end en Render, TURN server para NAT estricto (Metered.ca).
 
 21. Fixture / sincronización de fechas:

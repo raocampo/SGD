@@ -488,6 +488,7 @@ En `backend/package.json`:
 - `npm run smoke:matrix`: matriz RBAC por usuarios activos de BD.
 - `npm run qa:cms`: corrida consolidada (`smoke + smoke:frontend + smoke:matrix`).
 - `npm run qa:facturacion`: QA funcional de facturación; crea un documento temporal, valida vínculo con movimiento, emisión, bloqueo de doble documentación y limpia el dato QA.
+- `npm run qa:transmisiones`: QA funcional de transmisiones; crea una transmisión temporal, valida listado privado, vivo público, viewer, overlay y limpia el dato QA.
 - `npm run qa:ui-dataset`: validacion de dataset UI (web + mobile + portal publico).
 - `npm run e2e:ops-flow`: verificacion operativa E2E en modo solo lectura sobre datos reales (campeonato/categoria/equipos/grupos/partidos/planilla/tablas/finanzas/portal).
 

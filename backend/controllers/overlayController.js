@@ -1,8 +1,11 @@
 "use strict";
 
 const pool = require("../config/database");
+const PartidoTransmision = require("../models/PartidoTransmision");
 const TransmisionOverlay = require("../models/TransmisionOverlay");
 const { emitOverlayState } = require("../services/socketService");
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * GET /api/transmisiones/:id/overlay
@@ -65,8 +68,12 @@ async function getOverlayPublico(req, res) {
   try {
     const { overlay_token } = req.params;
     if (!overlay_token) return res.status(400).json({ error: "Token requerido" });
+    if (!UUID_RE.test(String(overlay_token))) {
+      return res.status(400).json({ error: "Token inválido" });
+    }
 
     // Buscar transmisión por token
+    await PartidoTransmision.asegurarTabla();
     const txResult = await pool.query(
       `SELECT t.id, t.overlay_token, t.titulo,
               p.equipo_local_id, p.equipo_visitante_id,

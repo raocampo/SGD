@@ -1,6 +1,7 @@
 "use strict";
 
 const pool = require("../config/database");
+const PartidoTransmision = require("./PartidoTransmision");
 
 const ESTADO_INICIAL = {
   goles_local: 0,
@@ -15,6 +16,45 @@ const ESTADO_INICIAL = {
 };
 
 class TransmisionOverlay {
+  static _tablaAsegurada = false;
+  static _initTablaPromise = null;
+
+  static async asegurarTabla() {
+    if (this._tablaAsegurada) return;
+
+    if (!this._initTablaPromise) {
+      this._initTablaPromise = (async () => {
+        await PartidoTransmision.asegurarTabla();
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS transmision_overlay_state (
+            id SERIAL PRIMARY KEY,
+            transmision_id INTEGER NOT NULL REFERENCES partido_transmisiones(id) ON DELETE CASCADE,
+            goles_local INTEGER NOT NULL DEFAULT 0,
+            goles_visitante INTEGER NOT NULL DEFAULT 0,
+            minuto INTEGER NOT NULL DEFAULT 0,
+            periodo VARCHAR(30) NOT NULL DEFAULT '1T',
+            estado VARCHAR(30) NOT NULL DEFAULT 'esperando',
+            texto_evento TEXT,
+            mostrar_marcador BOOLEAN NOT NULL DEFAULT TRUE,
+            mostrar_cronometro BOOLEAN NOT NULL DEFAULT TRUE,
+            mostrar_texto_evento BOOLEAN NOT NULL DEFAULT FALSE,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT uq_overlay_transmision UNIQUE (transmision_id)
+          )
+        `);
+        await pool.query(`
+          CREATE INDEX IF NOT EXISTS idx_overlay_transmision
+          ON transmision_overlay_state(transmision_id)
+        `);
+        this._tablaAsegurada = true;
+      })().finally(() => {
+        this._initTablaPromise = null;
+      });
+    }
+
+    await this._initTablaPromise;
+  }
+
   static limpiar(row) {
     if (!row) return null;
     return {
@@ -37,6 +77,8 @@ class TransmisionOverlay {
    * Obtener estado actual. Si no existe, crea el registro con valores por defecto.
    */
   static async obtenerOCrear(transmisionId) {
+    await this.asegurarTabla();
+
     const existing = await pool.query(
       "SELECT * FROM transmision_overlay_state WHERE transmision_id = $1",
       [transmisionId]
@@ -73,6 +115,8 @@ class TransmisionOverlay {
    * Actualizar campos del estado del overlay.
    */
   static async actualizar(transmisionId, data) {
+    await this.asegurarTabla();
+
     const CAMPOS = [
       "goles_local",
       "goles_visitante",
@@ -124,6 +168,8 @@ class TransmisionOverlay {
    * Resetear el estado a cero.
    */
   static async reset(transmisionId) {
+    await this.asegurarTabla();
+
     const result = await pool.query(
       `UPDATE transmision_overlay_state
        SET goles_local = 0, goles_visitante = 0, minuto = 0,

@@ -163,6 +163,7 @@ async function obtenerTransmisionViewer(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
     if (!id) return res.json({ transmision: null });
+    await PartidoTransmision.asegurarTabla();
     const result = await require("../config/database").query(
       `SELECT t.id, t.titulo, t.descripcion, t.plataforma, t.url_publica,
               t.estado, t.fecha_inicio_programada, t.fecha_inicio_real,
@@ -254,6 +255,7 @@ async function obtenerTransmisionPorId(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
     if (!id) return res.status(400).json({ error: "ID inválido" });
+    await PartidoTransmision.asegurarTabla();
     const result = await require("../config/database").query(
       `SELECT t.*,
         p.equipo_local_id, p.equipo_visitante_id,
