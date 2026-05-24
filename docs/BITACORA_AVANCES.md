@@ -1,3 +1,27 @@
+## 2026-05-24 — Facturación: QA funcional automatizado con limpieza
+
+### Cambio aplicado
+- Se agregó `backend/scripts/qaFacturacionFlow.js` y el comando `npm run qa:facturacion`.
+- El QA crea por API un documento temporal tipo `recibo` usando un movimiento financiero libre, valida:
+  - creación del documento,
+  - detalle con ítems y movimiento vinculado,
+  - bloqueo de doble documentación del mismo movimiento,
+  - emisión a estado `emitido`,
+  - presencia en listado de emitidos.
+- Al finalizar, elimina el documento QA y restaura la configuración/secuenciales de facturación del organizador usado, salvo que se ejecute con `QA_FACT_KEEP_DOCUMENT=1`.
+
+### Verificación local
+- `npm run qa:facturacion` → PASS completo.
+- Verificación posterior en BD local: `documentos_facturacion = 0`, `documentos_pagos = 0`, configuración temporal restaurada.
+- `node --check backend/scripts/qaFacturacionFlow.js`
+
+### Pendientes siguientes
+- QA visual en navegador de la descarga PDF/RIDE desde `facturacion.html` con un documento real conservado.
+- Transmisiones WebRTC en Render.
+- QA responsive visual con datos reales.
+
+---
+
 ## 2026-05-24 — Liga: clasificados por grupo se conserva en categorías y tablas
 
 ### Cambio aplicado

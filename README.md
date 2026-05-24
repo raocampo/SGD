@@ -487,6 +487,7 @@ En `backend/package.json`:
 - `npm run smoke:frontend`: auditoria de guardas frontend por rol.
 - `npm run smoke:matrix`: matriz RBAC por usuarios activos de BD.
 - `npm run qa:cms`: corrida consolidada (`smoke + smoke:frontend + smoke:matrix`).
+- `npm run qa:facturacion`: QA funcional de facturación; crea un documento temporal, valida vínculo con movimiento, emisión, bloqueo de doble documentación y limpia el dato QA.
 - `npm run qa:ui-dataset`: validacion de dataset UI (web + mobile + portal publico).
 - `npm run e2e:ops-flow`: verificacion operativa E2E en modo solo lectura sobre datos reales (campeonato/categoria/equipos/grupos/partidos/planilla/tablas/finanzas/portal).
 
@@ -675,4 +676,3 @@ Vision comercial de la plataforma — lo que el admin ha "vendido" a organizador
 - `backend/uploads/` y cualquier ruta definida por `UPLOADS_DIR` deben permanecer fuera del versionado (runtime).
 - Dumps pesados de DB deben mantenerse fuera del flujo principal de commits.
 - No incluir secretos reales en archivos `.env`.
-

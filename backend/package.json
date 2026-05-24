@@ -14,6 +14,7 @@
     "smoke:matrix": "node scripts/smokeRoleMatrixDb.js",
     "smoke:frontend": "node scripts/smokeFrontendRoleGuards.js",
     "qa:cms": "npm run smoke && npm run smoke:frontend && npm run smoke:matrix",
+    "qa:facturacion": "node scripts/qaFacturacionFlow.js",
     "e2e:mobile-flow": "node scripts/e2eMobileTournamentFlow.js",
     "qa:ui-dataset": "node scripts/qaUiDatasetCheck.js",
     "e2e:ops-flow": "node scripts/e2eOperationalFlowCheck.js"
