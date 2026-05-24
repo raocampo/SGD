@@ -1,3 +1,39 @@
+## 2026-05-24 — Cierre operativo para oficina
+
+### Estado para continuar el lunes 25 de mayo de 2026
+- Código actualizado y publicado en `origin/main`.
+- Último commit publicado: `892a7ed feat: mostrar partidos jugados por equipo`.
+- La jornada dejó cerrados y documentados cuatro frentes: cupos de Liga, QA Facturación, QA Transmisiones e historial de partidos por equipo.
+- Servidor local validado en `http://localhost:5000` durante las pruebas.
+
+### Orden recomendado para continuar
+1. QA visual de la nueva función de partidos por equipo:
+   - Sistema interno: `equipos.html`, clic en nombre del equipo o botón `Partidos`.
+   - Portal público: `portal.html`, clic en equipo, confirmar que abre `equipo-publico.html?tab=partidos`.
+2. Validación manual de Liga:
+   - Guardar `Clasifican por grupo = 8`.
+   - Entrar a `tablas.html`.
+   - Confirmar que se conserva y se muestra `8`, no `2`.
+3. Facturación Fase 3:
+   - Crear o conservar documento real.
+   - Emitir.
+   - Descargar PDF/RIDE.
+   - Confirmar bloqueo de doble documentación del mismo movimiento.
+4. Transmisiones en Render:
+   - Crear transmisión.
+   - Abrir `broadcast.html`.
+   - Abrir `viewer.html?tx=<ID>`.
+   - Revisar señal, overlay y comportamiento en red real.
+5. QA responsive visual con datos reales en portal público y módulos operativos.
+
+### Referencias de commits publicados
+- `892a7ed` — Historial de partidos jugados por equipo.
+- `82026bc` — QA funcional de transmisiones.
+- `8db250e` — QA funcional de facturación.
+- `dfba290` — Cupos de clasificación persistentes para Liga.
+
+---
+
 ## 2026-05-24 — Equipos: partidos jugados visibles por clic
 
 ### Estado actualizado

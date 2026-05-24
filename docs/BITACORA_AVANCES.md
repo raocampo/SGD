@@ -1,3 +1,38 @@
+## 2026-05-24 — Cierre de jornada para continuar desde oficina
+
+### Estado git publicado
+- Rama `main` sincronizada con `origin/main`.
+- Últimos commits publicados:
+  - `892a7ed` — `feat: mostrar partidos jugados por equipo`
+  - `82026bc` — `test: agregar qa funcional de transmisiones`
+  - `8db250e` — `test: agregar qa funcional de facturacion`
+  - `dfba290` — `fix: conservar cupos de liga en tablas`
+
+### Resumen de lo cerrado hoy
+- Liga: `clasificados_por_grupo` se conserva para categorías con método `Liga` y se refleja correctamente en `tablas.html`.
+- Facturación: se agregó QA funcional automatizado con limpieza (`npm run qa:facturacion`).
+- Transmisiones: se agregó QA funcional automatizado, autoasegurado de tablas/columnas y validación de token UUID en overlay (`npm run qa:transmisiones`).
+- Equipos: clic en equipo muestra partidos jugados con fecha, jornada, marcador y resultado en sistema interno y portal público.
+- Documentación actualizada en `BITACORA_AVANCES.md` y `ESTADO_IMPLEMENTACION_SGD.md`.
+
+### Verificaciones acumuladas relevantes
+- `npm run smoke` desde `backend/` → 9/9 PASS.
+- `npm run smoke:frontend` desde `backend/` → 39/39 PASS.
+- `npm run qa:facturacion` → PASS completo con limpieza local.
+- `npm run qa:transmisiones` → PASS completo con limpieza local.
+- Checks de sintaxis aplicados en archivos backend/frontend modificados.
+
+### Pendientes para retomar el lunes 25 de mayo de 2026 desde oficina
+- QA visual en navegador de `equipos.html`: clic en nombre/botón `Partidos` y revisión del modal con datos reales.
+- QA visual en navegador de `portal.html`: clic en equipo público y revisión de `equipo-publico.html?tab=partidos`.
+- QA funcional en navegador de Liga: editar `Clasifican por grupo = 8`, guardar categoría y confirmar `8` en `tablas.html`.
+- QA visual/funcional de Facturación Fase 3 con documento real conservado: emisión, descarga PDF/RIDE y bloqueo de doble documentación.
+- Prueba end-to-end en Render de Transmisiones WebRTC: `transmisiones.html -> broadcast.html -> viewer.html?tx=<ID>`.
+- Agregar TURN solo si la prueba real en Render confirma bloqueo por NAT estricto.
+- QA responsive visual con datos reales en módulos operativos y portal público.
+
+---
+
 ## 2026-05-24 — Equipos: historial de partidos jugados en sistema y portal público
 
 ### Cambio aplicado
