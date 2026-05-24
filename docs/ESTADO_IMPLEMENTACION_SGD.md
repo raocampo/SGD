@@ -1,3 +1,19 @@
+## 2026-05-24 — Liga: cupos de clasificación persistentes
+
+### Estado actualizado
+- Las categorías en formato `Liga` ya tratan `clasificados_por_grupo` como configuración válida.
+- El modal de categoría permite guardar valores como `8` y el backend deja de convertirlos a `null`.
+- El módulo `tablas.html` recibe fallback coherente para Liga, por lo que no debe volver a mostrar `2` si la categoría fue guardada con otro cupo.
+- Verificación local: checks de sintaxis y `npm run smoke:frontend` con 39/39 PASS.
+
+### Siguiente foco recomendado
+1. QA en navegador con categoría Liga real: guardar `Clasifican por grupo = 8` y validar `tablas.html`.
+2. QA visual/funcional de Facturación Fase 3 con documento real.
+3. Transmisiones WebRTC en Render.
+4. QA responsive visual con datos reales.
+
+---
+
 ## 2026-05-15 — Facturación Fase 3 PDF/RIDE descargable
 
 ### Estado actualizado

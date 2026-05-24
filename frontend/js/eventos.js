@@ -75,6 +75,10 @@ function normalizarClasificadosPorGrupo(valor, fallback = null) {
   return n;
 }
 
+function metodoUsaClasificadosPorGrupo(metodo) {
+  return ["grupos", "liga", "mixto", "tabla_acumulada"].includes(String(metodo || "").toLowerCase());
+}
+
 function normalizarColorHexEvento(valor, fallback = "") {
   const raw = String(valor || "").trim();
   if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) {
@@ -211,7 +215,7 @@ function actualizarVisibilidadAscenso() {
 
 function formatearClasificadosPorGrupo(evento = {}) {
   const metodo = obtenerMetodoCompetenciaVisibleEvento(evento);
-  if (!["grupos", "mixto", "tabla_acumulada"].includes(metodo)) return "No aplica";
+  if (!metodoUsaClasificadosPorGrupo(metodo)) return "No aplica";
   const n = normalizarClasificadosPorGrupo(evento?.clasificados_por_grupo, 2);
   return `${n || 2}`;
 }
@@ -241,13 +245,13 @@ function actualizarVisibilidadConfigEliminatoria() {
   if (!wrap) return;
   wrap.style.display = ["eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
   if (wrapClasificados) {
-    wrapClasificados.style.display = ["grupos", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
+    wrapClasificados.style.display = metodoUsaClasificadosPorGrupo(metodo) ? "" : "none";
   }
   if (wrapPlantilla) {
-    wrapPlantilla.style.display = ["grupos", "eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
+    wrapPlantilla.style.display = ["grupos", "liga", "eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
   }
   if (wrapTercer) {
-    wrapTercer.style.display = ["grupos", "eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
+    wrapTercer.style.display = ["grupos", "liga", "eliminatoria", "mixto", "tabla_acumulada"].includes(metodo) ? "" : "none";
   }
   actualizarVisibilidadConfigJuvenil();
 }
@@ -632,10 +636,10 @@ async function crearEvento() {
     mostrarNotificacion("Método de competencia inválido.", "warning");
     return;
   }
-  const clasificados_por_grupo = ["grupos", "mixto", "tabla_acumulada"].includes(metodo_competencia)
+  const clasificados_por_grupo = metodoUsaClasificadosPorGrupo(metodo_competencia)
     ? normalizarClasificadosPorGrupo(clasificadosRaw, 2)
     : null;
-  if (["grupos", "mixto", "tabla_acumulada"].includes(metodo_competencia) && !clasificados_por_grupo) {
+  if (metodoUsaClasificadosPorGrupo(metodo_competencia) && !clasificados_por_grupo) {
     mostrarNotificacion("Clasificados por grupo inválido.", "warning");
     return;
   }
@@ -838,7 +842,7 @@ async function editarEvento(id) {
         min: 1,
         step: 1,
         validate: (value, values) => {
-          if (!["grupos", "mixto", "tabla_acumulada"].includes(values.metodo_competencia)) return "";
+          if (!metodoUsaClasificadosPorGrupo(values.metodo_competencia)) return "";
           return normalizarClasificadosPorGrupo(value, null)
             ? ""
             : "Clasificados por grupo inválido. Usa un entero mayor a 0.";
@@ -1012,7 +1016,7 @@ async function editarEvento(id) {
 
   const nuevoNombre = String(form.nombre || "").trim();
   const nuevoMetodo = normalizarMetodoCompetencia(form.metodo_competencia);
-  const clasificadosPrompt = ["grupos", "mixto", "tabla_acumulada"].includes(nuevoMetodo)
+  const clasificadosPrompt = metodoUsaClasificadosPorGrupo(nuevoMetodo)
     ? String(form.clasificados_por_grupo || "").trim()
     : "";
   const nuevaLlave = ["eliminatoria", "mixto", "tabla_acumulada"].includes(nuevoMetodo)
@@ -1040,7 +1044,7 @@ async function editarEvento(id) {
     mostrarNotificacion("Método inválido. Usa: grupos, liga, eliminatoria, mixto o tabla acumulada.", "warning");
     return;
   }
-  if (["grupos", "mixto", "tabla_acumulada"].includes(nuevoMetodo) && !normalizarClasificadosPorGrupo(clasificadosPrompt, null)) {
+  if (metodoUsaClasificadosPorGrupo(nuevoMetodo) && !normalizarClasificadosPorGrupo(clasificadosPrompt, null)) {
     mostrarNotificacion("Clasificados por grupo inválido. Usa un entero mayor a 0.", "warning");
     return;
   }
@@ -1076,7 +1080,7 @@ async function editarEvento(id) {
   try {
     const payload = { nombre: nuevoNombre, metodo_competencia: nuevoMetodo };
     payload.clasificados_por_grupo =
-      nuevoMetodo === "grupos" || nuevoMetodo === "mixto" || nuevoMetodo === "tabla_acumulada"
+      metodoUsaClasificadosPorGrupo(nuevoMetodo)
         ? normalizarClasificadosPorGrupo(clasificadosPrompt, 2)
         : null;
     payload.eliminatoria_equipos = nuevaLlave ? Number(nuevaLlave) : null;

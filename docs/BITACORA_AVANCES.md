@@ -1,3 +1,24 @@
+## 2026-05-24 — Liga: clasificados por grupo se conserva en categorías y tablas
+
+### Cambio aplicado
+- Se corrigió el flujo de categorías con `metodo_competencia = liga` para que `clasificados_por_grupo` sí aplique igual que en grupos/mixto.
+- `frontend/js/eventos.js` ahora muestra, valida y envía cupos de clasificación cuando la categoría es Liga.
+- `backend/controllers/eventoController.js` ahora persiste cupos para Liga y normaliza categorías antiguas de Liga sin cupos a `2` como fallback.
+- `backend/controllers/tablaController.js` ahora devuelve fallback de cupos para Liga en tablas internas, evitando que el módulo Tablas muestre un valor incoherente o “No definido”.
+
+### Verificación local
+- `git pull` quedó aplicado/alineado con `origin/main` en `37c603e`.
+- `node --check frontend/js/eventos.js`
+- `node --check backend/controllers/eventoController.js`
+- `node --check backend/controllers/tablaController.js`
+- `npm run smoke:frontend` desde `backend/` → 39/39 PASS
+
+### Pendientes siguientes
+- QA funcional en navegador con una categoría real en Liga: editar `Clasifican por grupo` a `8`, guardar, abrir `tablas.html` y confirmar que el formulario bloqueado y la tabla muestran `8`.
+- Retomar pendientes operativos vigentes: QA Facturación Fase 3 con datos reales, Transmisiones WebRTC en Render y QA responsive visual.
+
+---
+
 ## 2026-05-15 — Facturación Fase 3: PDF/RIDE descargable
 
 ### Cambio aplicado

@@ -93,7 +93,7 @@ function normalizarMetodoCompetencia(value, fallback = "grupos") {
 }
 
 function requiereClasificadosPorGrupo(metodoCompetencia) {
-  return ["grupos", "mixto", "tabla_acumulada"].includes(String(metodoCompetencia || "").toLowerCase());
+  return ["grupos", "liga", "mixto", "tabla_acumulada"].includes(String(metodoCompetencia || "").toLowerCase());
 }
 
 function soportaLlaveEliminatoria(metodoCompetencia) {
@@ -378,7 +378,7 @@ async function asegurarEsquemaEventos() {
     UPDATE eventos
     SET clasificados_por_grupo = 2
     WHERE (clasificados_por_grupo IS NULL OR clasificados_por_grupo <= 0)
-      AND LOWER(COALESCE(metodo_competencia, 'grupos')) IN ('grupos', 'mixto')
+      AND LOWER(COALESCE(metodo_competencia, 'grupos')) IN ('grupos', 'liga', 'mixto')
   `);
   await pool.query(`
     UPDATE eventos

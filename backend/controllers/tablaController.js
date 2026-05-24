@@ -721,7 +721,7 @@ async function generarTablaGrupoInterna(grupoId, options = {}) {
            LOWER(COALESCE(e.metodo_competencia, 'grupos')) AS metodo_competencia,
            COALESCE(
              e.clasificados_por_grupo,
-             CASE WHEN LOWER(COALESCE(e.metodo_competencia, 'grupos')) IN ('grupos', 'mixto') THEN 2 ELSE NULL END
+             CASE WHEN LOWER(COALESCE(e.metodo_competencia, 'grupos')) IN ('grupos', 'liga', 'mixto') THEN 2 ELSE NULL END
            ) AS clasificados_por_grupo,
            c.id AS campeonato_id,
            c.nombre AS campeonato_nombre,
@@ -929,6 +929,10 @@ async function generarTablaEventoSinGrupos(evento, options = {}) {
 async function generarTablasEventoInterna(eventoId, options = {}) {
   const evento = await obtenerEventoConCampeonato(eventoId);
   if (!evento) throw new Error("Evento no encontrado");
+  const metodoEvento = String(evento.metodo_competencia || "grupos").trim().toLowerCase();
+  if (["grupos", "liga", "mixto"].includes(metodoEvento) && !aEntero(evento.clasificados_por_grupo, 0)) {
+    evento.clasificados_por_grupo = 2;
+  }
   const sistema = evento.sistema_puntuacion || "tradicional";
 
   const grupos = await obtenerGruposPorEvento(eventoId);
