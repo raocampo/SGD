@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-05-28): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. La nomina de jugadores ya puede quedar asociada directamente al `evento_id`, de modo que un mismo equipo reutilizado en varias categorias deje de compartir plantel por accidente. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer. En eliminatorias ya se soporta la plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con cupos `MP1..MP4` calculados segun ranking deportivo; la categoria es la fuente de verdad para `playoff_plantilla` y `playoff_tercer_puesto`, y la llave permite editar manualmente cruces pendientes sin repetir equipos dentro de la misma ronda. Ademas ya existe la plantilla `manual_asistida`, que parte de una sugerencia balanceada y deja al organizador definir el orden `P1..Pn` antes de generar la llave real. La plantilla publicable del playoff ya admite fondo personalizado, conectores reforzados, anchos dinamicos por texto y bloque compacto de `Tercer y cuarto` para exportacion `PNG/PDF`. La API mobile queda ampliada para crear campeonatos y categorias con colores, morosidad, tabla acumulada, playoff, carnet, juveniles, ascendentes y estados normalizados de planilla. El portal publico endurece filtros de publicacion y evita exponer cedulas en fichas/nominas publicas.
+Estado del proyecto (cierre 2026-06-02 America/Guayaquil, continuar 2026-06-03): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, incorpora base de branding/publicidad por organizador, endurece filtros de publicacion y evita exponer cedulas en fichas/nominas publicas. La portada publica ahora muestra solo torneos `en_curso`, con grilla compacta 3/2/1 y cards centradas para pantallas grandes; `torneos.html` lista solamente torneos `en_curso`, `inscripcion` y `finalizado`, dejando fuera `borrador`, `planificacion` y `suspendido`. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. La nomina de jugadores ya puede quedar asociada directamente al `evento_id`, de modo que un mismo equipo reutilizado en varias categorias deje de compartir plantel por accidente. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer. En eliminatorias ya se soporta la plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con cupos `MP1..MP4` calculados segun ranking deportivo; la categoria es la fuente de verdad para `playoff_plantilla` y `playoff_tercer_puesto`, y la llave permite editar manualmente cruces pendientes sin repetir equipos dentro de la misma ronda. Ademas ya existe la plantilla `manual_asistida`, que parte de una sugerencia balanceada y deja al organizador definir el orden `P1..Pn` antes de generar la llave real. La plantilla publicable del playoff ya admite fondo personalizado, conectores reforzados, anchos dinamicos por texto y bloque compacto de `Tercer y cuarto` para exportacion `PNG/PDF`. La API mobile queda ampliada para crear campeonatos y categorias con colores, morosidad, tabla acumulada, playoff, carnet, juveniles, ascendentes y estados normalizados de planilla.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -29,6 +29,28 @@ Flujo principal operativo:
 5. Generar fixture.
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
+
+## Novedades Recientes (2026-06-02)
+- Sincronizacion y publicacion:
+  - `git pull` ejecutado sobre `main`; resultado `Already up to date`.
+  - Commits publicados en `origin/main` para revisar en Render:
+    - `db45378 fix: ajustar torneos visibles en portal publico`.
+    - `e8f62af fix: compactar cards de torneos en portada`.
+- Portal publico:
+  - `index.html` muestra solo campeonatos `en_curso` en la seccion de torneos.
+  - La portada permite hasta 6 cards para sostener la composicion `3 arriba / 3 abajo`.
+  - La grilla de portada queda centrada y compacta en pantallas grandes, con columnas limitadas a `24rem`.
+  - `torneos.html` consulta `/api/public/campeonatos?include_finalizados=true` y filtra a `en_curso`, `inscripcion` y `finalizado`.
+  - Se excluyen de vistas publicas de listado los estados `borrador`, `planificacion` y `suspendido`.
+  - El menu superior publico se compacta en anchos intermedios para evitar solapamiento entre enlaces y botones de acceso.
+- Verificacion:
+  - `node --check frontend/js/portal.js`.
+  - Validacion del script inline de `frontend/torneos.html` con `new Function(...)`.
+  - `npm --prefix backend run smoke:frontend` -> `39/39 PASS`.
+  - `GET http://localhost:5000/api/public/campeonatos?include_finalizados=true` -> `NO_PERMITIDOS=0`.
+  - `git diff --check` OK.
+- Pendiente inmediato:
+  - QA visual en Render de `https://ltyc.onrender.com/index.html` y `https://ltyc.onrender.com/torneos.html` en escritorio grande, laptop, tablet y movil.
 
 ## Novedades Recientes (2026-05-28)
 - Sincronizacion:
@@ -580,6 +602,20 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
    - Commit con mensaje claro por modulo.
 
 ## 11. Pendientes Prioritarios
+### Para continuar el 2026-06-03
+1. Revisar Render despues del deploy de `e8f62af`:
+   - `index.html`: portada solo con torneos `en_curso`, cards compactas y centradas en pantallas grandes.
+   - `torneos.html`: listado con `en_curso`, `inscripcion`, `finalizado`; sin `borrador`, `planificacion` ni `suspendido`.
+   - Header publico: comprobar que `Contacto`, `Registrarse` e `Ingresar` no se encimen.
+2. Probar viewports reales:
+   - escritorio grande tipo 1920px,
+   - laptop 1366px,
+   - tablet 768px,
+   - movil 390px.
+3. Si Render conserva cache, forzar recarga dura del navegador antes de evaluar CSS/JS.
+4. Si aparece un nuevo desajuste visual, tomar captura y ajustar solo `frontend/css/portal.css` salvo que el problema sea de datos.
+
+### Pendientes generales
 1. Pruebas E2E con datos reales (flujo completo).
 2. Validar en operacion real la nueva eliminacion manual por categoria, la promocion automatica de elegibles y la clasificacion manual sugerida antes de cerrar reglas de playoff.
 3. Cierre de planillaje oficial (detalle visual y de impresion).

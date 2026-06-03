@@ -1,3 +1,28 @@
+## 2026-06-02 - Portal publico: torneos visibles y cards compactas
+
+- `frontend/js/portal.js`:
+  - La portada publica filtra torneos a estado `en_curso`.
+  - El limite de portada sube a 6 para permitir composicion `3 arriba / 3 abajo`.
+  - El conteo de `Ver todos los torneos` usa los torneos listables.
+  - El listado publico permitido queda acotado a `en_curso`, `inscripcion` y `finalizado`.
+- `frontend/torneos.html`:
+  - Consulta `/api/public/campeonatos?include_finalizados=true`.
+  - Elimina el filtro de `Proximos`.
+  - Excluye `borrador`, `planificacion` y `suspendido`.
+- `frontend/css/portal.css`:
+  - La grilla de portada queda centrada, con columnas maximas de `24rem` en escritorio grande.
+  - El bloque de torneos de portada queda limitado a `78rem`.
+  - Se compactan imagen, cuerpo y textos de cards para mejorar lectura.
+  - El header publico se compacta en anchos intermedios para evitar solapamiento.
+- Verificacion:
+  - `node --check frontend/js/portal.js`.
+  - Script inline de `frontend/torneos.html` validado.
+  - `npm --prefix backend run smoke:frontend` -> `39/39 PASS`.
+  - `GET /api/public/campeonatos?include_finalizados=true` sin estados no permitidos.
+- Commits publicados:
+  - `db45378 fix: ajustar torneos visibles en portal publico`.
+  - `e8f62af fix: compactar cards de torneos en portada`.
+
 ## 2026-05-28 - Portal publico endurecido y lecturas mobile robustas
 
 - `backend/services/publicPortalService.js`: perfiles publicos de equipo/jugador, nominas y partidos filtran por campeonatos publicos y organizadores reales antes de devolver datos.

@@ -1,3 +1,36 @@
+## 2026-06-02 - Cierre portal publico y pendientes para continuar el 2026-06-03
+
+### Estado actualizado
+- Proyecto publicado en `origin/main` hasta:
+  - `e8f62af fix: compactar cards de torneos en portada`.
+  - `db45378 fix: ajustar torneos visibles en portal publico`.
+- Portal publico:
+  - La portada (`index.html`) muestra solo torneos `en_curso`.
+  - La portada permite hasta 6 cards y conserva composicion esperada `3 arriba / 3 abajo` cuando hay suficientes torneos activos.
+  - Las cards de portada quedan centradas y limitadas a `24rem` en pantallas grandes para evitar una experiencia visual demasiado ancha.
+  - `torneos.html` muestra solo torneos `en_curso`, `inscripcion` y `finalizado`.
+  - Se excluyen de listados publicos los estados `borrador`, `planificacion` y `suspendido`.
+  - El header publico se ajusto para evitar solapamientos en anchos intermedios.
+
+### Verificacion local
+- `node --check frontend/js/portal.js`.
+- Script inline de `frontend/torneos.html` validado con `new Function(...)`.
+- `GET http://localhost:5000/api/public/campeonatos?include_finalizados=true` sin estados no permitidos (`NO_PERMITIDOS=0`).
+- `npm --prefix backend run smoke:frontend` -> `39/39 PASS`.
+- `git diff --check` OK.
+
+### Pendientes inmediatos para el 2026-06-03
+1. Revisar deploy en Render:
+   - `https://ltyc.onrender.com/index.html`,
+   - `https://ltyc.onrender.com/torneos.html`.
+2. Validar que la portada muestre solo `en_curso` y que `torneos.html` no muestre `borrador`, `planificacion` ni `suspendido`.
+3. Validar composicion visual en escritorio grande: cards centradas, no demasiado anchas, con lectura equilibrada.
+4. Validar header publico en escritorio/laptop: enlaces y botones sin encimarse.
+5. Probar responsive en 1920px, 1366px, 768px y 390px.
+6. Si Render no refleja el cambio, confirmar estado del deploy y hacer recarga dura por cache del navegador.
+
+---
+
 ## 2026-05-28 - Pull al dia y hardening de portal publico
 
 ### Estado actualizado

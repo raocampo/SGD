@@ -1,3 +1,67 @@
+## 2026-06-02 — Cierre de sesion para continuar el 2026-06-03
+
+### Estado git/publicacion
+- Rama `main` limpia antes de documentar este cierre.
+- Ultimos commits publicados en `origin/main`:
+  - `e8f62af fix: compactar cards de torneos en portada`.
+  - `db45378 fix: ajustar torneos visibles en portal publico`.
+  - `a34f77f Implementar avances mobile y portal publico`.
+- Render debe tomar los cambios desde `origin/main`.
+
+### Resumen de lo cerrado
+- Portada publica (`index.html`):
+  - muestra solo torneos `en_curso`,
+  - permite hasta 6 cards para composicion `3 arriba / 3 abajo`,
+  - usa una grilla centrada con columnas maximas de `24rem` para evitar cards demasiado anchas en pantallas grandes,
+  - conserva 2 columnas en tablet y 1 en movil.
+- Pagina `torneos.html`:
+  - consulta `/api/public/campeonatos?include_finalizados=true`,
+  - muestra solo `en_curso`, `inscripcion` y `finalizado`,
+  - excluye `borrador`, `planificacion` y `suspendido`,
+  - mantiene filtros por estado y deporte.
+- Header publico:
+  - se compacto en anchos intermedios,
+  - evita solapamiento entre enlaces y botones `Registrarse` / `Ingresar`.
+- Documentacion:
+  - `README.md`, `docs/BITACORA_AVANCES.md`, `docs/ESTADO_IMPLEMENTACION_SGD.md` y `docs/CAMBIOS_IMPLEMENTADOS.md` quedan como fuentes de continuidad.
+
+### Verificacion realizada durante la sesion
+- `git pull` -> `Already up to date`.
+- `node --check frontend/js/portal.js` OK.
+- Validacion del script inline de `frontend/torneos.html` con `new Function(...)` OK.
+- `GET http://localhost:5000/api/public/campeonatos?include_finalizados=true`:
+  - `NO_PERMITIDOS=0`.
+  - Base local al momento de prueba: `EN_CURSO=2`, `LISTABLES=4`, `PORTADA_MUESTRA=2`.
+- `npm --prefix backend run smoke:frontend` -> `39/39 PASS`.
+- `git diff --check` OK.
+
+### Pendientes para arrancar manana
+1. Verificar Render despues del deploy:
+   - `https://ltyc.onrender.com/index.html`,
+   - `https://ltyc.onrender.com/torneos.html`.
+2. Confirmar visualmente:
+   - cards compactas y centradas en escritorio grande,
+   - portada solo con torneos `en_curso`,
+   - `Ver todos` sin borradores/suspendidos/planificacion,
+   - menu superior sin solapamientos.
+3. Probar responsive en:
+   - 1920px,
+   - 1366px,
+   - 768px,
+   - 390px.
+4. Si el cambio no aparece en produccion:
+   - esperar deploy de Render,
+   - hacer recarga dura del navegador,
+   - revisar logs de build/deploy.
+5. Retomar pendientes generales:
+   - QA visual de perfiles publicos `equipo-publico.html` y `jugador-publico.html` con `evento_id`,
+   - QA funcional de portal publico contra campeonato real,
+   - `npm run e2e:mobile-flow` con credenciales reales,
+   - pruebas WebRTC en Render,
+   - QA responsive de modulos operativos.
+
+---
+
 ## 2026-06-02 — Portal publico: cards compactas en pantallas grandes
 
 ### Cambio aplicado
