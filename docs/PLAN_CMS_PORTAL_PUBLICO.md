@@ -1,6 +1,6 @@
 # Plan CMS Portal Publico LT&C
 
-Ultima actualizacion: 2026-03-05
+Ultima actualizacion: 2026-05-28
 
 ## Objetivo
 Separar formalmente el portal web publico de LT&C del panel de gestion deportiva, de forma que:
@@ -176,6 +176,14 @@ Estado: cerrado tecnicamente (QA API + guard frontend); validacion visual/manual
     - `npm run smoke:matrix`,
     - `npm run smoke:frontend`,
     - `npm run smoke:provided` (cuentas provistas por app mobile).
+
+## Actualizacion 2026-05-28 - hardening del portal publico deportivo
+
+- Los perfiles publicos de equipo/jugador, nominas y partidos ahora validan que el campeonato sea publico y corresponda a organizadores reales antes de devolver datos.
+- Las respuestas publicas de jugadores dejan de incluir `cedidentidad`.
+- `GET /api/public/jugadores/:jugador_id/participaciones` acepta `evento_id` opcional para limitar el historial a una categoria/evento.
+- El historial publico de jugador lista partidos publicados del equipo y agrega goles/tarjetas cuando existan registros del jugador.
+- Pendiente de QA manual: abrir `equipo-publico.html` y `jugador-publico.html` con datos reales, validando filtros por `evento_id` y ausencia de cedulas.
 
 ## Nota de coexistencia con app movil
 

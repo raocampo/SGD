@@ -21,6 +21,7 @@ const {
   obtenerCompetenciaEvento,
   obtenerFairPlayEvento,
   obtenerFinanzasCampeonato,
+  regenerarFixturePreservandoEvento,
   registrarResultadoResumen,
 } = require("../services/mobileCompetitionService");
 const {
@@ -66,7 +67,7 @@ function parseCreateCampeonatoBody(body = {}, user = null) {
       null,
     fecha_inicio: body.startDate ? String(body.startDate).slice(0, 10) : null,
     fecha_fin: body.endDate ? String(body.endDate).slice(0, 10) : null,
-    tipo_futbol: String(body.footballType || "futbol_11").trim(),
+    tipo_futbol: String(body.sportType || body.footballType || body.tipo_deporte || "futbol_11").trim(),
     sistema_puntuacion: String(body.scoringSystem || "tradicional").trim(),
     max_equipos: body.maxTeams ?? null,
     min_jugador: body.minPlayers ?? null,
@@ -101,7 +102,10 @@ function statusFor(error, fallback = 500) {
     normalized.includes("exige") ||
     normalized.includes("ya existe") ||
     normalized.includes("ya está") ||
-    normalized.includes("no pertenece")
+    normalized.includes("no pertenece") ||
+    normalized.includes("selecciona") ||
+    normalized.includes("programacion") ||
+    normalized.includes("programación")
   ) {
     return 400;
   }
@@ -192,7 +196,10 @@ const mobileController = {
         payload.costo_arbitraje,
         payload.costo_tarjeta_amarilla,
         payload.costo_tarjeta_roja,
-        payload.costo_carnet
+        payload.costo_carnet,
+        payload.bloquear_morosos,
+        payload.bloqueo_morosidad_monto,
+        null
       );
 
       if (req.body?.status && mapTournamentStatusToApi(req.body.status) !== "borrador") {
@@ -454,6 +461,16 @@ const mobileController = {
     } catch (error) {
       console.error("Error mobile postGenerarFixture:", error);
       return res.status(statusFor(error)).json({ error: error.message || "No se pudo generar fixture" });
+    }
+  },
+
+  async postRegenerarFixturePreservando(req, res) {
+    try {
+      const data = await regenerarFixturePreservandoEvento(req.user, req.params.id, req.body || {});
+      return res.json(data);
+    } catch (error) {
+      console.error("Error mobile postRegenerarFixturePreservando:", error);
+      return res.status(statusFor(error)).json({ error: error.message || "No se pudo regenerar fixture" });
     }
   },
 

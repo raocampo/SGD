@@ -16,6 +16,29 @@ const {
   obtenerEquipoIdsVisibles,
 } = require("./mobileAccessService");
 
+const TRANSIENT_DB_ERROR_CODES = new Set(["40P01", "40001"]);
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withTransientDbRetry(operation, attempts = 3) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const isTransient = TRANSIENT_DB_ERROR_CODES.has(String(error?.code || ""));
+      if (!isTransient || attempt >= attempts) {
+        throw error;
+      }
+      await delay(60 * attempt + Math.floor(Math.random() * 40));
+    }
+  }
+  throw lastError;
+}
+
 async function listarCampeonatos(user) {
   await Campeonato.asegurarColumnasDocumentos();
   const visibles = await obtenerCampeonatoIdsVisibles(user);
@@ -189,9 +212,15 @@ async function obtenerEquipoDetalle(user, equipoId) {
 }
 
 async function listarJugadores(user, filters = {}) {
+  return withTransientDbRetry(() => listarJugadoresInterno(user, filters));
+}
+
+async function listarJugadoresInterno(user, filters = {}) {
   const equipoId = filters.equipo_id ? Number.parseInt(filters.equipo_id, 10) : null;
   const eventoId = filters.evento_id ? Number.parseInt(filters.evento_id, 10) : null;
   const campeonatoId = filters.campeonato_id ? Number.parseInt(filters.campeonato_id, 10) : null;
+
+  await Jugador.asegurarColumnasDocumentos();
   const visibles = await obtenerEquipoIdsVisibles(user);
 
   if (equipoId) {
@@ -250,10 +279,11 @@ async function listarJugadores(user, filters = {}) {
 
     const jugadoresR = await pool.query(
       `
-        SELECT j.*, e.nombre AS nombre_equipo, c.nombre AS nombre_campeonato
+        SELECT j.*, e.nombre AS nombre_equipo, c.nombre AS nombre_campeonato, ev.nombre AS nombre_evento
         FROM jugadores j
         JOIN equipos e ON e.id = j.equipo_id
         JOIN campeonatos c ON c.id = e.campeonato_id
+        LEFT JOIN eventos ev ON ev.id = j.evento_id
         WHERE ${where.join(" AND ")}
         ORDER BY e.numero_campeonato ASC NULLS LAST, e.nombre ASC, j.apellido ASC, j.nombre ASC
       `,

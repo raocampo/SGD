@@ -1,3 +1,39 @@
+## 2026-05-28 - Pull al dia y hardening de portal publico
+
+### Estado actualizado
+- `git pull` ejecutado sobre `main`; resultado `Already up to date`.
+- `HEAD` local se mantiene en `3061168 docs: registrar cierre y pendientes de oficina`.
+- El portal publico refuerza filtros de publicacion en perfiles de equipo/jugador, nominas y partidos: solo responde campeonatos publicos asociados a organizadores reales.
+- Las fichas y nominas publicas dejan de exponer `cedidentidad`.
+- Las participaciones publicas de jugador aceptan `evento_id` y ahora devuelven el calendario publicado del equipo, agregando goles/tarjetas del jugador cuando existan.
+- La planilla y consultas de jugadores aseguran columnas de ascendentes en `eventos` para bases existentes.
+- La lectura mobile de jugadores agrega retry ante errores transitorios PostgreSQL `40P01` y `40001`.
+
+### Verificacion local
+- `node --check` ejecutado sobre controladores, modelos, servicios backend modificados y `backend/scripts/e2eMobileTournamentFlow.js`.
+
+### Pendiente agregado
+- Validar en navegador las paginas `equipo-publico.html` y `jugador-publico.html` con `evento_id` real.
+- Ejecutar QA de portal publico contra un campeonato publicado real.
+- Mantener pendiente `npm run e2e:mobile-flow` con credenciales reales para cerrar el contrato app.
+
+---
+
+## 2026-05-27 — API mobile ampliada y sincronizacion de proyecto
+
+### Estado actualizado
+- Proyecto sincronizado con `origin/main` en `3061168`.
+- El contrato backend mobile queda ampliado para que la app pueda crear campeonatos con tipo deportivo (`sportType`), colores, politica de morosidad y montos.
+- La creacion/listado mobile de categorias expone configuracion avanzada: tabla acumulada, cupos, playoff, tercer puesto, limite de inscripcion, carnet, juveniles y ascendentes.
+- El guardado de planilla mobile normaliza estados (`JUGADO`, `played`) e inasistencias (`both_absent`, `home`, `away`) antes de persistirlos.
+- El E2E mobile se actualizo para validar el contrato ampliado durante el flujo campeonato -> categoria -> equipos -> sorteo -> fixture -> planilla -> competencia -> finanzas.
+
+### Pendiente agregado
+- Ejecutar `npm run e2e:mobile-flow` con credenciales reales (`E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD`) contra base controlada.
+- Confirmar con el cliente mobile los nombres definitivos de payload antes de congelar contrato para build de tiendas.
+
+---
+
 ## 2026-05-24 — Cierre operativo para oficina
 
 ### Estado para continuar el lunes 25 de mayo de 2026
@@ -338,7 +374,7 @@
 | `GET /api/public/equipos/:id/jugadores` | Nómina del equipo con goles/tarjetas |
 | `GET /api/public/equipos/:id/partidos` | Partidos del equipo con resultado V/D/E |
 | `GET /api/public/jugadores/:id` | Ficha del jugador + estadísticas |
-| `GET /api/public/jugadores/:id/participaciones` | Partidos donde el jugador tiene goles o tarjetas |
+| `GET /api/public/jugadores/:id/participaciones` | Partidos publicados del equipo del jugador, con goles/tarjetas del jugador cuando existan; acepta `evento_id` opcional |
 
 ### Nuevas páginas frontend
 | Archivo | URL | Descripción |
@@ -347,7 +383,7 @@
 | `jugador-publico.html` | `?id=X&back=URL` | Tabs: Partidos / Ficha |
 
 ### Limitación conocida y documentada
-El sistema **no registra titularidad ni suplencia**. Para implementarlo se necesita una nueva tabla `planilla_jugadores(partido_id, jugador_id, rol)`. Mientras tanto, el historial del jugador muestra solo los partidos donde hubo goles o tarjetas a su nombre.
+El sistema **no registra titularidad ni suplencia**. Para implementarlo se necesita una nueva tabla `planilla_jugadores(partido_id, jugador_id, rol)`. Mientras tanto, el historial publico del jugador muestra los partidos publicados de su equipo y marca goles/tarjetas solo cuando existen registros a su nombre.
 
 ---
 
@@ -491,7 +527,7 @@ Ultima actualizacion: 2026-03-31 (sesión 20)
 - Impacto esperado en Render: vuelven a aparecer las jornadas y la subtab `Resultados` ya no se queda vacía en categorías con planillas registradas.
 # Estado de Implementacion vs Propuesta LT&C
 
-Ultima actualizacion: 2026-03-30 (sesión 18)
+Ultima actualizacion: 2026-05-28 (pull, portal publico y mobile API)
 Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## Resumen por Modulo
@@ -511,7 +547,7 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | 6 Extras profesionales | Parcial-Alto | Exportaciones (PNG/PDF/XLSX) en modulos clave. Plantillas de publicacion con 3 temas visuales (Oscuro/Clasico/Colores del torneo) aplicables a posters de grupos y fixture. Nueva pagina `jornadasplantilla.html` para exportar programacion de jornada como poster (PNG/PDF), incluyendo modo `playoff` por ronda. Se corrige la exportación de grupos para evitar doble render/doble descarga con `html2canvas`. Seleccion individual de carnets para imprimir/exportar. Pendiente notificaciones, auditoria completa y reportes ejecutivos. |
 | 7 Modulo financiero | Medio-Alto | Cuenta corriente por equipo (cargos/abonos), estado de cuenta y morosidad operativos con sincronizacion de inscripcion por categoria y conciliacion desde planilla; consolidado TA/TR, resumen ejecutivo por campeonato e impresion dedicadas; politica de morosidad parametrizable (campeonato + override por categoria) aplicada en planilla en modo aviso (sin bloqueo). El modulo de `gastos_operativos` ya quedó endurecido para organizadores: listar, editar, eliminar y resumir se limita solo a campeonatos propios, incluso cuando la UI no envía un `campeonato_id` puntual. Pendiente cierre de reglas avanzadas y reporteria ejecutiva adicional. |
 | 9 Facturacion | Fase 3 funcional | Modulo de facturacion, nota de venta y recibo para clientes y organizadores. Tablas `facturacion_config`, `documentos_facturacion`, `documentos_items` y `documentos_pagos` operativas, con migración formal `069_facturacion_documentos_pagos.sql`. Backend: `facturacionController.js` + `facturacionRoutes.js` + `/api/facturacion`, creación/edición con `movimiento_ids` y validación de movimientos por campeonato/equipo. Frontend: `facturacion.html` con listado filtrable, KPIs de documentos emitidos, config de emisor (RUC/RISE, datos SRI, % IVA), modal de nuevo/editar documento con ítems dinámicos, cálculo automático de subtotales/IVA/total, modal de detalle con descarga PDF/RIDE interno y movimientos documentados. `finanzas.html` permite seleccionar movimientos desde estado de cuenta y prellenar el documento; movimientos vinculados muestran metadata/badge `Documentado`. Tipos soportados: `factura` (con IVA 15%), `nota_venta` (RISE, sin desglose IVA), `recibo`. Estados: `borrador` → `emitido` → `anulado`. Numeración secuencial por tipo y por emisor (`001-001-000000001`). Link en sidebar de 21 páginas internas. QA funcional automatizado disponible con `npm run qa:facturacion`. Pendiente: QA visual PDF con documento real conservado y Fase 4 (SRI electrónico). |
-| 8 Adaptacion mobile web | En progreso | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; fase responsive web retomada 2026-05-07 con bloque publico (`index`, `torneos`, `portal`, `planes`, fichas públicas de equipo/jugador) y bloque interno (`app-layout`, topbar, acciones, tabs, grids, tablas, modales y sidebar sin doble binding) para `portal-admin`, `campeonatos`, `equipos`, `jugadores`, `partidos`, `tablas`, `facturacion` y `transmisiones`. Queda pendiente QA visual en 390x844 y 768x1024 con datos reales antes de cerrar el responsive operativo. |
+| 8 Adaptacion mobile web/app | En progreso | Plan mobile documentado en `docs/PLAN_MOBILE_LT_C.md`; fase responsive web retomada 2026-05-07 con bloque publico (`index`, `torneos`, `portal`, `planes`, fichas públicas de equipo/jugador) y bloque interno (`app-layout`, topbar, acciones, tabs, grids, tablas, modales y sidebar sin doble binding) para `portal-admin`, `campeonatos`, `equipos`, `jugadores`, `partidos`, `tablas`, `facturacion` y `transmisiones`. Al 2026-05-28 el backend mobile acepta y devuelve configuracion ampliada para campeonatos/categorias (colores, morosidad, tabla acumulada, playoff, carnet, juveniles y ascendentes), normaliza estados de planilla enviados por app y reintenta lecturas de jugadores ante errores transitorios de BD. Queda pendiente QA visual en 390x844 y 768x1024, ejecutar `npm run e2e:mobile-flow` con credenciales reales y congelar contrato con el cliente mobile. |
 
 ## Navegacion Interna y Seguridad Visual
 - El sistema deportivo ya oculta el contexto operativo principal de la barra del navegador para los modulos internos.

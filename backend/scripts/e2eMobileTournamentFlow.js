@@ -128,8 +128,11 @@ async function main() {
         organizer: "QA Automatizado",
         startDate,
         endDate,
-        footballType: "futbol_7",
+        sportType: "futbol_7",
         scoringSystem: "tradicional",
+        primaryColor: "#123456",
+        secondaryColor: "#ABCDEF",
+        accentColor: "#FEDCBA",
         requireNationalId: false,
         requireNationalIdPhoto: false,
         requirePlayerCardPhoto: false,
@@ -138,6 +141,8 @@ async function main() {
         yellowCardFee: 1,
         redCardFee: 2,
         playerCardFee: 0,
+        blockDebtors: true,
+        debtBlockAmount: 25,
         status: "DRAFT",
       },
     },
@@ -147,6 +152,10 @@ async function main() {
 
   const tournamentId = String(createdTournament?.campeonato?.id || "");
   assert(tournamentId, "No se obtuvo tournamentId");
+  assert(createdTournament?.campeonato?.footballType === "futbol_7", "No se propago sportType a footballType");
+  assert(createdTournament?.campeonato?.primaryColor === "#123456", "No se propago primaryColor");
+  assert(createdTournament?.campeonato?.blockDebtors === true, "No se propago blockDebtors");
+  assert(Number(createdTournament?.campeonato?.debtBlockAmount || 0) === 25, "No se propago debtBlockAmount");
 
   const createdEvent = await expect(
     "/api/mobile/v1/eventos",
@@ -158,9 +167,24 @@ async function main() {
         name: eventName,
         startDate: eventStart,
         endDate: eventEnd,
-        format: "GRUPOS",
+        format: "TABLA_ACUMULADA",
         modality: "weekend",
         registrationFee: 20,
+        qualifiersPerGroup: 4,
+        playoffTemplate: "manual_asistida",
+        thirdPlace: true,
+        registrationDeadlineRound: 2,
+        debtPolicy: "inherit",
+        cardStyle: "franja",
+        cardPrimaryColor: "234567",
+        cardSecondaryColor: "#345678",
+        cardAccentColor: "#456789",
+        youthCategory: true,
+        youthCategorySlots: 3,
+        youthCategoryMaxDifference: 2,
+        showAgeOnCard: true,
+        allowAscendantPlayers: true,
+        maxAscendantsPerMatch: 3,
       },
     },
     201,
@@ -169,6 +193,14 @@ async function main() {
 
   const eventId = String(createdEvent?.evento?.id || "");
   assert(eventId, "No se obtuvo eventId");
+  assert(createdEvent?.evento?.format === "TABLA_ACUMULADA", "No se propago formato tabla acumulada");
+  assert(createdEvent?.evento?.classificationTableAccumulated === true, "No se marco tabla acumulada");
+  assert(Number(createdEvent?.evento?.qualifiersPerGroup || 0) === 4, "No se propago qualifiersPerGroup");
+  assert(createdEvent?.evento?.playoffTemplate === "manual_asistida", "No se propago playoffTemplate");
+  assert(createdEvent?.evento?.thirdPlace === true, "No se propago thirdPlace");
+  assert(createdEvent?.evento?.cardPrimaryColor === "#234567", "No se normalizo cardPrimaryColor");
+  assert(createdEvent?.evento?.youthCategory === true, "No se propago youthCategory");
+  assert(createdEvent?.evento?.allowAscendantPlayers === true, "No se propago allowAscendantPlayers");
 
   const createdTeams = [];
   for (let i = 1; i <= 4; i += 1) {
@@ -299,13 +331,15 @@ async function main() {
       method: "PUT",
       token,
       body: {
+        matchStatus: "JUGADO",
+        absenceStatus: "NONE",
         homeScore: 2,
         awayScore: 1,
         homeTeamFouls: 3,
         awayTeamFouls: 2,
         goals: [
-          { playerId: homePlayer.id, goals: 2, goalType: "campo", minute: 15 },
-          { playerId: awayPlayer.id, goals: 1, goalType: "campo", minute: 32 },
+          { playerId: homePlayer.id, teamId: planilla.match.homeTeam.id, goals: 2, goalType: "campo", minute: 15 },
+          { playerId: awayPlayer.id, teamId: planilla.match.awayTeam.id, goals: 1, goalType: "campo", minute: 32 },
         ],
         cards: [
           { playerId: homePlayer.id, teamId: planilla.match.homeTeam.id, cardType: "AMARILLA", minute: 40 },

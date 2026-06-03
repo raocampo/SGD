@@ -46,6 +46,15 @@ function parseOptionalPositiveInt(value, field) {
   return parsePositiveInt(value, field);
 }
 
+function parseOptionalNonNegativeInt(value, field) {
+  if (value === undefined || value === null || `${value}`.trim() === "") return null;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${field} invalido`);
+  }
+  return parsed;
+}
+
 function parseBoolean(value, fallback = false) {
   if (typeof value === "boolean") return value;
   const raw = String(value ?? "").trim().toLowerCase();
@@ -108,8 +117,75 @@ function normalizarMetodoCompetenciaMovil(value, fallback = "grupos") {
     mixto: "mixto",
     mixed: "mixto",
     grupos_y_eliminatoria: "mixto",
+    tabla_acumulada: "tabla_acumulada",
+    tabla_unica: "tabla_acumulada",
+    acumulada: "tabla_acumulada",
+    rendimiento: "tabla_acumulada",
   };
   return map[raw] || null;
+}
+
+function normalizarPlayoffPlantillaMovil(value, fallback = "estandar") {
+  const raw = String(value || fallback).trim().toLowerCase();
+  const map = {
+    estandar: "estandar",
+    standard: "estandar",
+    automatico: "estandar",
+    balanceada_8vos: "balanceada_8vos",
+    manual_asistida: "manual_asistida",
+    mejores_perdedores_12vos: "mejores_perdedores_12vos",
+  };
+  return map[raw] || null;
+}
+
+function normalizarCarnetEstiloMovil(value, fallback = null) {
+  if (value === undefined || value === null || String(value).trim() === "") return fallback;
+  const raw = String(value).trim().toLowerCase();
+  return ["clasico", "franja", "marco", "minimal"].includes(raw) ? raw : null;
+}
+
+function normalizarEstadoPlanillaMovil(value, fallback = "finalizado") {
+  const raw = String(value || fallback).trim().toLowerCase();
+  const map = {
+    finalizado: "finalizado",
+    jugado: "finalizado",
+    played: "finalizado",
+    finished: "finalizado",
+    no_presentaron_ambos: "no_presentaron_ambos",
+    ambos_no_presentes: "no_presentaron_ambos",
+    both_absent: "no_presentaron_ambos",
+    pendiente: "pendiente",
+    programado: "programado",
+    suspendido: "suspendido",
+    aplazado: "aplazado",
+    en_curso: "en_curso",
+  };
+  return map[raw] || fallback;
+}
+
+function normalizarInasistenciaPlanillaMovil(value, fallback = "ninguno") {
+  const raw = String(value || fallback).trim().toLowerCase();
+  const map = {
+    ninguno: "ninguno",
+    none: "ninguno",
+    local: "local",
+    home: "local",
+    visitante: "visitante",
+    away: "visitante",
+    ambos: "ambos",
+    both: "ambos",
+    both_absent: "ambos",
+    ambos_no_presentes: "ambos",
+  };
+  return map[raw] || fallback;
+}
+
+function normalizarColorHexMovil(value, fallback = null) {
+  if (value === undefined || value === null || String(value).trim() === "") return fallback;
+  const raw = String(value).trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toUpperCase();
+  if (/^[0-9a-fA-F]{6}$/.test(raw)) return `#${raw.toUpperCase()}`;
+  return null;
 }
 
 function normalizarEliminatoriaEquipos(value, fallback = null) {
@@ -131,8 +207,23 @@ async function asegurarEsquemaEventosMovil() {
     ADD COLUMN IF NOT EXISTS costo_inscripcion NUMERIC(12,2) DEFAULT 0,
     ADD COLUMN IF NOT EXISTS metodo_competencia VARCHAR(30) DEFAULT 'grupos',
     ADD COLUMN IF NOT EXISTS eliminatoria_equipos INTEGER,
+    ADD COLUMN IF NOT EXISTS clasificados_por_grupo INTEGER,
+    ADD COLUMN IF NOT EXISTS clasificacion_tabla_acumulada BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS playoff_plantilla VARCHAR(40) DEFAULT 'estandar',
+    ADD COLUMN IF NOT EXISTS playoff_tercer_puesto BOOLEAN DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS bloquear_morosos BOOLEAN,
     ADD COLUMN IF NOT EXISTS bloqueo_morosidad_monto NUMERIC(12,2),
+    ADD COLUMN IF NOT EXISTS carnet_estilo VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS limite_inscripcion_jornada INTEGER,
+    ADD COLUMN IF NOT EXISTS carnet_color_primario VARCHAR(7),
+    ADD COLUMN IF NOT EXISTS carnet_color_secundario VARCHAR(7),
+    ADD COLUMN IF NOT EXISTS carnet_color_acento VARCHAR(7),
+    ADD COLUMN IF NOT EXISTS categoria_juvenil BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS categoria_juvenil_cupos INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS categoria_juvenil_max_diferencia INTEGER DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS carnet_mostrar_edad BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS permite_ascenso BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS max_ascendentes_por_partido INTEGER DEFAULT 0,
     ADD COLUMN IF NOT EXISTS horario_weekday_inicio TIME,
     ADD COLUMN IF NOT EXISTS horario_weekday_fin TIME,
     ADD COLUMN IF NOT EXISTS horario_sab_inicio TIME,
@@ -151,6 +242,16 @@ async function asegurarEsquemaEventosMovil() {
     UPDATE eventos
     SET metodo_competencia = 'grupos'
     WHERE metodo_competencia IS NULL OR TRIM(metodo_competencia) = ''
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET clasificados_por_grupo = 2
+    WHERE clasificados_por_grupo IS NULL OR clasificados_por_grupo <= 0
+  `);
+  await pool.query(`
+    UPDATE eventos
+    SET playoff_plantilla = 'estandar'
+    WHERE playoff_plantilla IS NULL OR TRIM(COALESCE(playoff_plantilla, '')) = ''
   `);
   await pool.query(`
     UPDATE eventos
@@ -212,13 +313,16 @@ async function crearEventoMovil(user, body = {}) {
 
   const fechaInicio = parseDateOnly(body.startDate ?? body.fecha_inicio, "fecha_inicio");
   const fechaFin = parseDateOnly(body.endDate ?? body.fecha_fin, "fecha_fin");
-  const metodoCompetencia = normalizarMetodoCompetenciaMovil(
+  const metodoCompetenciaVisible = normalizarMetodoCompetenciaMovil(
     body.format ?? body.metodo_competencia ?? body.competitionMethod,
     "grupos"
   );
-  if (!metodoCompetencia) {
-    throw new Error("metodo_competencia invalido. Usa: grupos, liga, eliminatoria o mixto");
+  if (!metodoCompetenciaVisible) {
+    throw new Error("metodo_competencia invalido. Usa: grupos, liga, eliminatoria, mixto o tabla_acumulada");
   }
+  const metodoCompetencia =
+    metodoCompetenciaVisible === "tabla_acumulada" ? "mixto" : metodoCompetenciaVisible;
+  const clasificacionTablaAcumulada = metodoCompetenciaVisible === "tabla_acumulada";
 
   const eliminatoriaEquipos = normalizarEliminatoriaEquipos(
     body.eliminationSize ?? body.eliminatoria_equipos,
@@ -251,17 +355,77 @@ async function crearEventoMovil(user, body = {}) {
     body.registrationFee ?? body.costo_inscripcion,
     0
   );
-  const bloquearMorosos =
-    body.blockDebtors === undefined &&
-    body.bloquear_morosos === undefined &&
-    body.debtBlockAmount === undefined &&
-    body.bloqueo_morosidad_monto === undefined
-      ? null
-      : parseBoolean(body.blockDebtors ?? body.bloquear_morosos, false);
+  const debtPolicy = String(body.debtPolicy ?? "").trim().toLowerCase();
+  let bloquearMorosos = null;
+  if (["block", "bloquear"].includes(debtPolicy)) {
+    bloquearMorosos = true;
+  } else if (["allow", "no_block", "permitir"].includes(debtPolicy)) {
+    bloquearMorosos = false;
+  } else if (
+    !["inherit", "heredar"].includes(debtPolicy) &&
+    !(
+      body.blockDebtors === undefined &&
+      body.bloquear_morosos === undefined &&
+      body.debtBlockAmount === undefined &&
+      body.bloqueo_morosidad_monto === undefined
+    )
+  ) {
+    bloquearMorosos = parseBoolean(body.blockDebtors ?? body.bloquear_morosos, false);
+  }
   const bloqueoMorosidadMonto = parseDecimalNullable(
     body.debtBlockAmount ?? body.bloqueo_morosidad_monto,
     null
   );
+  const clasificadosPorGrupo =
+    parseOptionalPositiveInt(body.qualifiersPerGroup ?? body.clasificados_por_grupo, "clasificados_por_grupo") ??
+    2;
+  const playoffPlantilla = normalizarPlayoffPlantillaMovil(
+    body.playoffTemplate ?? body.playoff_plantilla,
+    "estandar"
+  );
+  if (!playoffPlantilla) {
+    throw new Error("playoff_plantilla invalida");
+  }
+  const playoffTercerPuesto = parseBoolean(body.thirdPlace ?? body.playoff_tercer_puesto, false);
+  const limiteInscripcionJornada = parseOptionalNonNegativeInt(
+    body.registrationDeadlineRound ?? body.limite_inscripcion_jornada,
+    "limite_inscripcion_jornada"
+  );
+  const carnetEstilo = normalizarCarnetEstiloMovil(body.cardStyle ?? body.carnet_estilo, null);
+  if ((body.cardStyle ?? body.carnet_estilo) && !carnetEstilo) {
+    throw new Error("carnet_estilo invalido");
+  }
+  const carnetColorPrimario = normalizarColorHexMovil(
+    body.cardPrimaryColor ?? body.carnet_color_primario,
+    null
+  );
+  const carnetColorSecundario = normalizarColorHexMovil(
+    body.cardSecondaryColor ?? body.carnet_color_secundario,
+    null
+  );
+  const carnetColorAcento = normalizarColorHexMovil(
+    body.cardAccentColor ?? body.carnet_color_acento,
+    null
+  );
+  const categoriaJuvenil = parseBoolean(body.youthCategory ?? body.categoria_juvenil, false);
+  const permiteAscenso = parseBoolean(body.allowAscendantPlayers ?? body.permite_ascenso, false);
+  const carnetMostrarEdad = parseBoolean(body.showAgeOnCard ?? body.carnet_mostrar_edad, false);
+  const categoriaJuvenilCupos =
+    parseOptionalNonNegativeInt(body.youthCategorySlots ?? body.categoria_juvenil_cupos, "categoria_juvenil_cupos") ??
+    (categoriaJuvenil ? 2 : 0);
+  const categoriaJuvenilDiferencia =
+    parseOptionalNonNegativeInt(
+      body.youthCategoryMaxDifference ?? body.categoria_juvenil_max_diferencia,
+      "categoria_juvenil_max_diferencia"
+    ) ?? (categoriaJuvenil ? 2 : 1);
+  if (![1, 2].includes(categoriaJuvenilDiferencia)) {
+    throw new Error("categoria_juvenil_max_diferencia invalido");
+  }
+  const maxAscendentes =
+    parseOptionalNonNegativeInt(
+      body.maxAscendantsPerMatch ?? body.max_ascendentes_por_partido,
+      "max_ascendentes_por_partido"
+    ) ?? (permiteAscenso ? 2 : 0);
 
   const insertR = await pool.query(
     `
@@ -273,7 +437,12 @@ async function crearEventoMovil(user, body = {}) {
       INSERT INTO eventos (
         campeonato_id, nombre, organizador, fecha_inicio, fecha_fin, estado,
         modalidad, metodo_competencia, eliminatoria_equipos, costo_inscripcion,
+        clasificados_por_grupo, clasificacion_tabla_acumulada,
+        playoff_plantilla, playoff_tercer_puesto, limite_inscripcion_jornada,
         bloquear_morosos, bloqueo_morosidad_monto,
+        carnet_estilo, carnet_color_primario, carnet_color_secundario, carnet_color_acento,
+        categoria_juvenil, categoria_juvenil_cupos, categoria_juvenil_max_diferencia,
+        carnet_mostrar_edad, permite_ascenso, max_ascendentes_por_partido,
         horario_weekday_inicio, horario_weekday_fin,
         horario_sab_inicio, horario_sab_fin,
         horario_dom_inicio, horario_dom_fin,
@@ -283,9 +452,14 @@ async function crearEventoMovil(user, body = {}) {
         $1, $2, $3, $4, $5, 'activo',
         $6, $7, $8, $9,
         $10, $11,
-        $12, $13,
-        $14, $15,
-        $16, $17,
+        $12, $13, $14,
+        $15, $16,
+        $17, $18, $19, $20,
+        $21, $22, $23,
+        $24, $25, $26,
+        $27, $28,
+        $29, $30,
+        $31, $32,
         next_num.next_num
       FROM next_num
       RETURNING *
@@ -300,8 +474,23 @@ async function crearEventoMovil(user, body = {}) {
       metodoCompetencia,
       eliminatoriaEquipos,
       costoInscripcion,
+      clasificadosPorGrupo,
+      clasificacionTablaAcumulada,
+      playoffPlantilla,
+      playoffTercerPuesto,
+      limiteInscripcionJornada,
       bloquearMorosos,
       bloqueoMorosidadMonto,
+      carnetEstilo,
+      carnetColorPrimario,
+      carnetColorSecundario,
+      carnetColorAcento,
+      categoriaJuvenil,
+      categoriaJuvenilCupos,
+      categoriaJuvenilDiferencia,
+      carnetMostrarEdad,
+      permiteAscenso,
+      maxAscendentes,
       wkStart,
       wkEnd,
       satStart,
@@ -638,31 +827,65 @@ async function listarPartidosEvento(user, eventoId) {
   await Partido.asegurarEsquemaPlanilla();
   const partidos = await Partido.obtenerPorEvento(evento.id);
 
+  const mapFixturePhase = (partido) => {
+    const round = String(partido?.playoff_ronda || "").trim().toLowerCase();
+    const labels = {
+      reclasificacion: "Reclasificacion",
+      "32vos": "32vos",
+      "16vos": "16vos",
+      "12vos": "12vos",
+      "8vos": "8vos",
+      "4tos": "4tos",
+      semifinal: "Semifinal",
+      final: "Finales",
+      tercer_puesto: "Finales",
+    };
+    if (round) {
+      return {
+        key: ["final", "tercer_puesto"].includes(round) ? "finales" : round,
+        label: labels[round] || partido.playoff_ronda,
+      };
+    }
+    return { key: "fase_grupos", label: "Fase de grupos" };
+  };
+
   return {
     event: mapEvent(evento, 0),
-    matches: partidos.map((partido) => ({
-      id: toId(partido.id),
-      status: String(partido.estado || "").toLowerCase() === "finalizado" ? "JUGADO" : "PROGRAMADO",
-      groupLabel: partido.letra_grupo || partido.nombre_grupo || null,
-      roundLabel: partido.jornada ? `Fecha ${partido.jornada}` : "Partido",
-      venue: partido.cancha || null,
-      scheduledAt: formatScheduledAt(partido),
-      homeTeam: {
-        id: toId(partido.equipo_local_id),
-        name: partido.equipo_local_nombre || "",
-      },
-      awayTeam: {
-        id: toId(partido.equipo_visitante_id),
-        name: partido.equipo_visitante_nombre || "",
-      },
-      result:
-        partido.resultado_local == null || partido.resultado_visitante == null
-          ? null
-          : {
-              homeScore: toInteger(partido.resultado_local, 0),
-              awayScore: toInteger(partido.resultado_visitante, 0),
-            },
-    })),
+    matches: partidos.map((partido) => {
+      const phase = mapFixturePhase(partido);
+      return {
+        id: toId(partido.id),
+        tournamentId: toId(evento.campeonato_id),
+        eventId: toId(evento.id),
+        rawStatus: String(partido.estado || "programado").toLowerCase(),
+        status: ["finalizado", "no_presentaron_ambos"].includes(String(partido.estado || "").toLowerCase())
+          ? "JUGADO"
+          : "PROGRAMADO",
+        groupLabel: partido.letra_grupo || partido.nombre_grupo || null,
+        roundLabel: partido.jornada ? `Fecha ${partido.jornada}` : "Partido",
+        phaseKey: phase.key,
+        phaseLabel: phase.label,
+        venue: partido.cancha || null,
+        scheduledAt: formatScheduledAt(partido),
+        homeTeam: {
+          id: toId(partido.equipo_local_id),
+          name: partido.equipo_local_nombre || "",
+          logoUrl: partido.equipo_local_logo_url || null,
+        },
+        awayTeam: {
+          id: toId(partido.equipo_visitante_id),
+          name: partido.equipo_visitante_nombre || "",
+          logoUrl: partido.equipo_visitante_logo_url || null,
+        },
+        result:
+          partido.resultado_local == null || partido.resultado_visitante == null
+            ? null
+            : {
+                homeScore: toInteger(partido.resultado_local, 0),
+                awayScore: toInteger(partido.resultado_visitante, 0),
+              },
+      };
+    }),
   };
 }
 
@@ -728,8 +951,13 @@ async function obtenerPlanillaPartido(user, partidoId) {
   return {
     match: {
       id: toId(data.partido.id),
+      tournamentId: toId(data.partido.campeonato_id),
       eventId: toId(data.partido.evento_id),
-      status: String(data.partido.estado || "").toLowerCase() === "finalizado" ? "JUGADO" : "PROGRAMADO",
+      rawStatus: String(data.partido.estado || "programado").toLowerCase(),
+      absenceStatus: String(data.planilla?.inasistencia_equipo || "ninguno").toLowerCase(),
+      status: ["finalizado", "no_presentaron_ambos"].includes(String(data.partido.estado || "").toLowerCase())
+        ? "JUGADO"
+        : "PROGRAMADO",
       groupLabel: data.partido.letra_grupo || data.partido.nombre_grupo || null,
       roundLabel: data.partido.jornada ? `Fecha ${data.partido.jornada}` : "Partido",
       venue: data.partido.cancha || null,
@@ -764,6 +992,9 @@ async function obtenerPlanillaPartido(user, partidoId) {
       awayRedPayment: toNumber(data.planilla?.pago_tr_visitante, 0),
     },
     footballType: data.partido.tipo_futbol || "",
+    requiresEditReason:
+      !!data.planilla &&
+      ["finalizado", "no_presentaron_ambos"].includes(String(data.partido.estado || "").toLowerCase()),
     fouls: {
       homeTeamFouls: toInteger(data.faltas?.local_total, 0),
       awayTeamFouls: toInteger(data.faltas?.visitante_total, 0),
@@ -839,6 +1070,7 @@ async function guardarPlanillaPartido(user, partidoId, body = {}) {
     ? body.goals
         .map((item) => ({
           jugador_id: item.playerId ? Number.parseInt(item.playerId, 10) : null,
+          equipo_id: item.teamId ? Number.parseInt(item.teamId, 10) : null,
           goles: toInteger(item.goals, 0),
           tipo_gol: item.goalType || "campo",
           minuto: item.minute == null ? null : toInteger(item.minute, null),
@@ -869,10 +1101,16 @@ async function guardarPlanillaPartido(user, partidoId, body = {}) {
     numero_camiseta: item.numero_camiseta,
   }));
 
+  const absenceStatus = normalizarInasistenciaPlanillaMovil(
+    body.absenceStatus || body.inasistenciaEquipo || body.inasistencia_equipo || "ninguno"
+  );
+
   const payloadPlanilla = {
     resultado_local: homeScore,
     resultado_visitante: awayScore,
-    estado: "finalizado",
+    estado: normalizarEstadoPlanillaMovil(body.matchStatus || body.status || body.estado, "finalizado"),
+    inasistencia_equipo: absenceStatus || "ninguno",
+    ambos_no_presentes: absenceStatus === "ambos",
     faltas_local_total: Math.max(0, toInteger(body.homeTeamFouls ?? body.fouls?.homeTeamFouls, 0)),
     faltas_visitante_total: Math.max(0, toInteger(body.awayTeamFouls ?? body.fouls?.awayTeamFouls, 0)),
     numeros_jugadores: numerosJugadores,

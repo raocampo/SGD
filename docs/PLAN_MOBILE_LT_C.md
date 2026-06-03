@@ -1,6 +1,6 @@
 # Plan Mobile App - LT&C (Loja Torneos & Competencias)
 
-Ultima actualizacion: 2026-05-07
+Ultima actualizacion: 2026-05-28
 
 ## 1. Objetivo
 Construir una app movil de LT&C publicable en tiendas oficiales:
@@ -137,6 +137,8 @@ Entregable:
 - Avance 2026-05-07: primer bloque web responsive público aplicado en `index.html`, `torneos.html`, `portal.html`, `planes.html`, `equipo-publico.html` y `jugador-publico.html`; menú público reutilizable en `core.js`, fichas públicas compactas y tablas/selectores del portal con scroll táctil.
 - Avance 2026-05-07: segundo bloque web responsive interno aplicado en `style.css` y `core.js`; cubre layout `app-layout`, topbar, acciones, tabs, grids, tablas, modales y páginas internas de operación (`portal-admin`, `campeonatos`, `equipos`, `jugadores`, `partidos`, `tablas`, `facturacion`, `transmisiones`).
 - Avance 2026-05-07: tercer bloque responsive de cierre aplicado para `planilla`, `finanzas`, `gruposgen`, `sorteo`, `pases`, `eventos`, `usuarios` y `eliminatorias`; queda pendiente QA visual con datos reales.
+- Avance 2026-05-27: contrato backend mobile ampliado para alta/lectura de campeonatos y categorias con configuracion avanzada (colores, morosidad, tabla acumulada, playoff, carnet, juveniles y ascendentes). Planilla mobile normaliza estados de cliente antes de persistir. Queda pendiente E2E con credenciales reales y congelar nombres de payload con el equipo mobile.
+- Avance 2026-05-28: lectura mobile de jugadores suma retry ante errores transitorios de PostgreSQL y devuelve contexto de torneo/evento/fotos; planilla y jugadores aseguran columnas de ascendentes para bases existentes.
 
 ## 10. Avance ejecutado (2026-02-24)
 - Fase 1 iniciada sobre frontend web actual (base compartida):
@@ -195,3 +197,31 @@ Entregable:
   - QA visual manual con datos reales y viewport `390x844` / `768x1024`,
   - tomar capturas de pantallas criticas,
   - convertir tablas mas complejas a vista card mobile si el cliente confirma que el scroll horizontal no es suficiente.
+
+## 13. Avance ejecutado (2026-05-27 — contrato API mobile)
+- Campeonatos mobile:
+  - `POST /api/mobile/v1/campeonatos` acepta `sportType`, colores (`primaryColor`, `secondaryColor`, `accentColor`) y configuracion de morosidad (`blockDebtors`, `debtBlockAmount`).
+  - Las respuestas mobile devuelven colores y politica de morosidad para que la app pueda precargar formularios.
+- Categorias/eventos mobile:
+  - `POST /api/mobile/v1/eventos` acepta `TABLA_ACUMULADA`, `qualifiersPerGroup`, `playoffTemplate`, `thirdPlace`, `registrationDeadlineRound`, `debtPolicy`, estilos/colores de carnet, juvenil y ascendentes.
+  - `mapEvent` devuelve esos campos normalizados para consumo de app.
+- Planilla mobile:
+  - Estados tipo `JUGADO`/`played` e inasistencias tipo `both_absent`/`home`/`away` se normalizan antes de llegar al modelo de partidos.
+  - Goles mobile pueden incluir `teamId` para conservar el contexto de equipo.
+- QA:
+  - `backend/scripts/e2eMobileTournamentFlow.js` valida el contrato ampliado, aunque su ejecucion requiere `E2E_ADMIN_EMAIL` y `E2E_ADMIN_PASSWORD`.
+- Proximo bloque recomendado:
+  - ejecutar `npm run e2e:mobile-flow` contra base controlada,
+  - revisar payload final con el cliente mobile,
+  - agregar pruebas de contrato por endpoint si el flujo E2E resulta pesado para CI.
+
+## 14. Avance ejecutado (2026-05-28 - estabilidad mobile)
+- Lecturas mobile:
+  - `listarJugadores` reintenta automaticamente errores transitorios de PostgreSQL (`40P01`, `40001`) con espera corta.
+  - `mapPlayer` expone `eventId`, torneo/evento y URLs de fotos/carnet para que la app no tenga que inferir esos datos.
+- Planilla / ascendentes:
+  - `Jugador.asegurarColumnasAscensoEventos()` garantiza `permite_ascenso` y `max_ascendentes_por_partido` en bases existentes antes de consultar o guardar planilla.
+- Verificacion aplicada:
+  - `node --check` en controladores, modelos, servicios mobile/publicos y script E2E mobile.
+- Pendiente:
+  - ejecutar `npm run e2e:mobile-flow` con credenciales reales y datos controlados.

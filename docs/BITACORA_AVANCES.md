@@ -1,3 +1,84 @@
+## 2026-05-28 - Pull al dia, portal publico endurecido y documentacion actualizada
+
+### Estado git
+- `git pull` ejecutado sobre `main` desde `frontend/`.
+- Resultado: `Already up to date`.
+- La rama sigue alineada con `origin/main` en `3061168 docs: registrar cierre y pendientes de oficina`.
+
+### Documentacion actualizada
+- `README.md`: estado general movido a 2026-05-28 y nueva seccion de novedades.
+- `docs/ESTADO_IMPLEMENTACION_SGD.md`: se agrega estado de portal publico, mobile y pendientes actualizados.
+- `docs/CAMBIOS_IMPLEMENTADOS.md`: se registra el hardening publico y robustez de jugadores/mobile.
+- `docs/PLAN_MOBILE_LT_C.md`: se agrega continuidad del contrato mobile y retry de lecturas.
+- `docs/PLAN_CMS_PORTAL_PUBLICO.md`: se documenta el cierre de seguridad de perfiles publicos.
+
+### Cambio funcional documentado
+- Portal publico:
+  - Perfiles de equipo/jugador, nominas y partidos verifican que el campeonato sea publico y pertenezca a organizadores reales.
+  - Las nominas y fichas publicas dejan de devolver `cedidentidad`.
+  - Participaciones publicas de jugador aceptan `evento_id` y usan los partidos publicados de su equipo, agregando goles/tarjetas del jugador cuando existan.
+- Jugadores/planilla:
+  - `Jugador.asegurarColumnasAscensoEventos()` agrega `permite_ascenso` y `max_ascendentes_por_partido` en bases existentes antes de consultar o guardar planillas.
+  - `Jugador.asegurarColumnasDocumentos()` queda protegido contra carreras concurrentes y limita el update de defaults a filas con valores nulos.
+- Mobile:
+  - `listarJugadores` incorpora retry corto ante errores transitorios PostgreSQL `40P01` y `40001`.
+  - La lectura mobile de jugadores expone `eventId`, torneo/evento y URLs de fotos/carnet.
+
+### Verificacion local
+- `node --check backend/controllers/mobileController.js`
+- `node --check backend/controllers/publicPortalController.js`
+- `node --check backend/models/Jugador.js`
+- `node --check backend/models/Partido.js`
+- `node --check backend/services/mobileAccessService.js`
+- `node --check backend/services/mobileOperationsService.js`
+- `node --check backend/services/mobileReadService.js`
+- `node --check backend/services/publicPortalService.js`
+- `node --check backend/scripts/e2eMobileTournamentFlow.js`
+
+### Pendientes siguientes
+- Ejecutar `npm run e2e:mobile-flow` con credenciales reales.
+- Validar visualmente perfiles publicos de equipo/jugador con `evento_id`.
+- Correr QA funcional de portal publico contra un campeonato publicado real.
+
+---
+
+## 2026-05-27 — Pull, contrato mobile ampliado y pendientes actualizados
+
+### Estado git
+- `git pull --autostash` aplicado sobre `main`.
+- La rama local quedó sincronizada con `origin/main` en `3061168 docs: registrar cierre y pendientes de oficina`.
+- Antes del pull existían dos scripts QA no rastreados (`qaFacturacionFlow.js`, `qaTransmisionesFlow.js`) idénticos a los del remoto; se retiraron como no rastreados para que Git los materialice como archivos versionados.
+
+### Cambio aplicado
+- API mobile de campeonatos:
+  - `createCampeonato` acepta `sportType` como alias principal de tipo deportivo.
+  - Se propagan colores, bloqueo de morosidad y monto de bloqueo en el alta/lectura mobile.
+- API mobile de categorias/eventos:
+  - Soporte para `TABLA_ACUMULADA`, `qualifiersPerGroup`, plantilla playoff, tercer puesto y limite de inscripcion por jornada.
+  - Soporte para estilo/colores de carnet, categoria juvenil, cupos/diferencia juvenil, edad visible en carnet, ascendentes y maximo de ascendentes por partido.
+  - Autoasegurado de columnas mobile necesarias en `eventos` para bases existentes.
+- API mobile de partidos/planilla:
+  - Listados y detalle de planilla exponen `tournamentId`, `eventId`, `rawStatus` y estado de inasistencia.
+  - El guardado de planilla normaliza estados (`JUGADO`, `played`) e inasistencias (`both_absent`, `home`, `away`) antes de persistir.
+  - Goles enviados desde mobile pueden incluir `teamId` para conservar contexto de equipo.
+- QA mobile:
+  - `backend/scripts/e2eMobileTournamentFlow.js` ahora crea campeonato/categoria con el contrato ampliado y valida campos devueltos antes de continuar con sorteo, fixture, planilla, tablas y finanzas.
+
+### Verificacion local
+- `node --check backend/controllers/mobileController.js`
+- `node --check backend/services/mobileAccessService.js`
+- `node --check backend/services/mobileOperationsService.js`
+- `node --check backend/scripts/e2eMobileTournamentFlow.js`
+- `git diff --check`
+- `npm --prefix backend ls --depth=0` confirma dependencias instaladas, incluido `uuid@13.0.0`.
+
+### Pendientes siguientes
+- Ejecutar `npm run e2e:mobile-flow` con `E2E_ADMIN_EMAIL` y `E2E_ADMIN_PASSWORD` sobre base local/Render con datos controlados.
+- Validar con el cliente mobile el payload final de categorias: tabla acumulada, playoff, carnet, juveniles, ascendentes y morosidad.
+- Mantener pendientes operativos vigentes: QA visual de equipos/portal, Liga con cupos reales, Facturacion PDF/RIDE, Transmisiones WebRTC en Render y QA responsive visual.
+
+---
+
 ## 2026-05-24 — Cierre de jornada para continuar desde oficina
 
 ### Estado git publicado

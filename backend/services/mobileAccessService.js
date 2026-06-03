@@ -54,6 +54,7 @@ function mapFormat(value) {
     liga: "LIGA",
     eliminatoria: "ELIMINATORIA",
     mixto: "MIXTO",
+    tabla_acumulada: "TABLA_ACUMULADA",
   };
   return map[raw] || "GRUPOS";
 }
@@ -84,6 +85,9 @@ function mapTournament(row, counts = {}) {
     maxTeams: row.max_equipos == null ? null : toInteger(row.max_equipos, 0),
     minPlayers: row.min_jugador == null ? null : toInteger(row.min_jugador, 0),
     maxPlayers: row.max_jugador == null ? null : toInteger(row.max_jugador, 0),
+    primaryColor: row.color_primario || null,
+    secondaryColor: row.color_secundario || null,
+    accentColor: row.color_acento || null,
     status: mapTournamentStatus(row.estado),
     requireNationalId: row.requiere_cedula_jugador !== false,
     requireNationalIdPhoto: row.requiere_foto_cedula === true,
@@ -93,6 +97,8 @@ function mapTournament(row, counts = {}) {
     yellowCardFee: toNumber(row.costo_tarjeta_amarilla, 0),
     redCardFee: toNumber(row.costo_tarjeta_roja, 0),
     playerCardFee: toNumber(row.costo_carnet, 0),
+    blockDebtors: row.bloquear_morosos === true,
+    debtBlockAmount: toNumber(row.bloqueo_morosidad_monto, 0),
     createdAt: row.created_at || null,
     counts: {
       categories: counts.categories || 0,
@@ -102,6 +108,10 @@ function mapTournament(row, counts = {}) {
 }
 
 function mapEvent(row, totalTeams = 0) {
+  const format = row.clasificacion_tabla_acumulada === true
+    ? "TABLA_ACUMULADA"
+    : mapFormat(row.metodo_competencia);
+
   return {
     id: toId(row.id),
     tournamentId: toId(row.campeonato_id),
@@ -109,12 +119,37 @@ function mapEvent(row, totalTeams = 0) {
     organizer: row.organizador || "",
     startDate: row.fecha_inicio || null,
     endDate: row.fecha_fin || null,
-    format: mapFormat(row.metodo_competencia),
+    format,
     qualifiersPerGroup:
       row.clasificados_por_grupo == null ? null : toInteger(row.clasificados_por_grupo, 0),
+    classificationTableAccumulated: row.clasificacion_tabla_acumulada === true,
+    playoffTemplate: row.playoff_plantilla || "estandar",
+    thirdPlace: row.playoff_tercer_puesto === true,
     registrationFee: toNumber(row.costo_inscripcion, 0),
+    registrationDeadlineRound:
+      row.limite_inscripcion_jornada == null ? null : toInteger(row.limite_inscripcion_jornada, 0),
     eliminationSize: row.eliminatoria_equipos == null ? null : toInteger(row.eliminatoria_equipos, 0),
     modality: row.modalidad || "weekend",
+    blockDebtors: row.bloquear_morosos == null ? null : row.bloquear_morosos === true,
+    debtBlockAmount:
+      row.bloqueo_morosidad_monto == null ? null : toNumber(row.bloqueo_morosidad_monto, 0),
+    cardStyle: row.carnet_estilo || null,
+    cardPrimaryColor: row.carnet_color_primario || null,
+    cardSecondaryColor: row.carnet_color_secundario || null,
+    cardAccentColor: row.carnet_color_acento || null,
+    youthCategory: row.categoria_juvenil === true,
+    youthCategorySlots:
+      row.categoria_juvenil_cupos == null ? null : toInteger(row.categoria_juvenil_cupos, 0),
+    youthCategoryMaxDifference:
+      row.categoria_juvenil_max_diferencia == null
+        ? null
+        : toInteger(row.categoria_juvenil_max_diferencia, 0),
+    showAgeOnCard: row.carnet_mostrar_edad === true,
+    allowAscendantPlayers: row.permite_ascenso === true,
+    maxAscendantsPerMatch:
+      row.max_ascendentes_por_partido == null
+        ? null
+        : toInteger(row.max_ascendentes_por_partido, 0),
     status: row.estado || "activo",
     createdAt: row.created_at || null,
     counts: {
@@ -151,6 +186,7 @@ function mapPlayer(row) {
   return {
     id: toId(row.id),
     teamId: toId(row.equipo_id),
+    eventId: row.evento_id == null ? null : toId(row.evento_id),
     fullName: [row.nombre, row.apellido].filter(Boolean).join(" ").trim(),
     firstName: row.nombre || "",
     lastName: row.apellido || "",
@@ -160,6 +196,12 @@ function mapPlayer(row) {
     shirtNumber: row.numero_camiseta == null ? null : toInteger(row.numero_camiseta, 0),
     isCaptain: row.es_capitan === true,
     teamName: row.nombre_equipo || "",
+    tournamentName: row.nombre_campeonato || row.campeonato_nombre || "",
+    eventName: row.nombre_evento || row.evento_nombre || "",
+    photoUrl: row.foto_carnet_recorte_url || row.foto_carnet_url || row.foto_cedula_url || null,
+    nationalIdPhotoUrl: row.foto_cedula_url || null,
+    playerCardPhotoUrl: row.foto_carnet_url || null,
+    playerCardCropUrl: row.foto_carnet_recorte_url || null,
   };
 }
 

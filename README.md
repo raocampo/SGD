@@ -2,7 +2,7 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
-Estado del proyecto (2026-03-25): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. La nomina de jugadores ya puede quedar asociada directamente al `evento_id`, de modo que un mismo equipo reutilizado en varias categorias deje de compartir plantel por accidente. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer. En eliminatorias ya se soporta la plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con cupos `MP1..MP4` calculados segun ranking deportivo; la categoria es la fuente de verdad para `playoff_plantilla` y `playoff_tercer_puesto`, y la llave permite editar manualmente cruces pendientes sin repetir equipos dentro de la misma ronda. Ademas ya existe la plantilla `manual_asistida`, que parte de una sugerencia balanceada y deja al organizador definir el orden `P1..Pn` antes de generar la llave real. La plantilla publicable del playoff ya admite fondo personalizado, conectores reforzados, anchos dinámicos por texto y bloque compacto de `Tercer y cuarto` para exportación `PNG/PDF`.
+Estado del proyecto (2026-05-28): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, muestra torneos proximos/inscripcion legados cuando pertenecen a organizadores reales, incorpora base de branding/publicidad por organizador y autenticacion admite `correo o username` para cuentas internas. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. La nomina de jugadores ya puede quedar asociada directamente al `evento_id`, de modo que un mismo equipo reutilizado en varias categorias deje de compartir plantel por accidente. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer. En eliminatorias ya se soporta la plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con cupos `MP1..MP4` calculados segun ranking deportivo; la categoria es la fuente de verdad para `playoff_plantilla` y `playoff_tercer_puesto`, y la llave permite editar manualmente cruces pendientes sin repetir equipos dentro de la misma ronda. Ademas ya existe la plantilla `manual_asistida`, que parte de una sugerencia balanceada y deja al organizador definir el orden `P1..Pn` antes de generar la llave real. La plantilla publicable del playoff ya admite fondo personalizado, conectores reforzados, anchos dinamicos por texto y bloque compacto de `Tercer y cuarto` para exportacion `PNG/PDF`. La API mobile queda ampliada para crear campeonatos y categorias con colores, morosidad, tabla acumulada, playoff, carnet, juveniles, ascendentes y estados normalizados de planilla. El portal publico endurece filtros de publicacion y evita exponer cedulas en fichas/nominas publicas.
 
 ## Tabla de Contenidos
 - [1. Vision General](#1-vision-general)
@@ -29,6 +29,29 @@ Flujo principal operativo:
 5. Generar fixture.
 6. Registrar planilla de partido (resultado, goles, tarjetas, pagos, observaciones).
 7. Consultar tablas y portal publico.
+
+## Novedades Recientes (2026-05-28)
+- Sincronizacion:
+  - `git pull` ejecutado sobre `main`; Git reporto `Already up to date` y `HEAD` sigue en `3061168`.
+- Portal publico:
+  - perfiles publicos de equipo/jugador, nominas y partidos validan campeonatos publicados y organizadores reales antes de responder.
+  - `GET /api/public/jugadores/:jugador_id/participaciones` acepta `evento_id` y devuelve el calendario publicado del equipo con goles/tarjetas del jugador.
+  - las cedulas dejan de exponerse en endpoints publicos de nomina y ficha de jugador.
+- Robustez backend:
+  - jugadores y planilla aseguran columnas de ascendentes en `eventos` para bases existentes.
+  - listado mobile de jugadores reintenta errores transitorios de PostgreSQL (`40P01`, `40001`).
+
+## Novedades Recientes (2026-05-27)
+- Sincronizacion:
+  - `git pull --autostash` aplicado y rama `main` alineada con `origin/main` en `3061168`.
+  - los scripts QA de facturacion y transmisiones quedaron como archivos versionados del remoto.
+- API mobile:
+  - `POST /api/mobile/v1/campeonatos` acepta `sportType`, colores publicos, politica de morosidad y montos de bloqueo.
+  - `POST /api/mobile/v1/eventos` acepta `TABLA_ACUMULADA`, `qualifiersPerGroup`, plantilla playoff, tercer puesto, limite de inscripcion por jornada, estilo/colores de carnet, reglas juveniles y ascendentes.
+  - las respuestas mobile exponen la configuracion extendida de campeonato/categoria para clientes app.
+  - el guardado de planilla mobile normaliza estados (`JUGADO`, `played`) e inasistencias (`both_absent`, `home`, `away`) antes de persistir.
+- QA:
+  - `backend/scripts/e2eMobileTournamentFlow.js` cubre el contrato mobile ampliado para campeonatos, categorias y planilla.
 
 ## Novedades Recientes (2026-03-25)
 - Categorías / juvenil:
@@ -579,6 +602,9 @@ Resumen rapido (detalle completo en `docs/ESTADO_IMPLEMENTACION_SGD.md`):
    - cierre de desbordes, tablas, formularios largos, barras de acciones y navegacion tactil,
    - prioridad en `portal.html`, `index.html?organizador`, panel organizador, planilla, tablas, finanzas, facturacion y transmisiones.
 13. Plan mobile orientado a app instalable en tiendas:
+   - contrato backend mobile ampliado para alta de campeonato/categoria y planillaje,
+   - ejecutar `npm run e2e:mobile-flow` con credenciales reales despues del deploy,
+   - alinear payload final con el cliente mobile antes de publicar build,
    - Android (Play Store),
    - iOS (App Store).
 14. Modulo de transmision en vivo (Streamer):

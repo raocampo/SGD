@@ -3312,6 +3312,7 @@ class Partido {
   static async obtenerPlanilla(partido_id) {
     await this.asegurarEsquemaPlanilla();
     await Jugador.asegurarColumnasDocumentos();
+    await Jugador.asegurarColumnasAscensoEventos();
 
     const partidoQ = `
       SELECT p.*,
@@ -3695,6 +3696,7 @@ class Partido {
 
   static async guardarPlanilla(partido_id, datos = {}, opciones = {}) {
     await this.asegurarEsquemaPlanilla();
+    await Jugador.asegurarColumnasAscensoEventos();
 
     const ambosNoPresentes =
       datos.ambos_no_presentes === true ||

@@ -3,7 +3,11 @@ const publicPortalService = require("../services/publicPortalService");
 const publicPortalController = {
   async listarCampeonatos(req, res) {
     try {
-      const campeonatos = await publicPortalService.listarCampeonatosPublicos();
+      const includeFinalizados =
+        req.query?.include_finalizados === "true" ||
+        req.query?.includeFinalizados === "true" ||
+        req.query?.finalizados === "true";
+      const campeonatos = await publicPortalService.listarCampeonatosPublicos({ includeFinalizados });
       return res.json({
         ok: true,
         total: campeonatos.length,
@@ -318,7 +322,8 @@ const publicPortalController = {
     try {
       const jugadorId = Number.parseInt(req.params.jugador_id, 10);
       if (!Number.isFinite(jugadorId)) return res.status(400).json({ error: "jugador_id invalido" });
-      const payload = await publicPortalService.listarParticipacionesPublicasJugador(jugadorId);
+      const eventoId = req.query.evento_id ? Number.parseInt(req.query.evento_id, 10) : null;
+      const payload = await publicPortalService.listarParticipacionesPublicasJugador(jugadorId, eventoId || null);
       if (!payload) return res.status(404).json({ error: "Jugador no encontrado" });
       return res.json({ ok: true, ...payload });
     } catch (error) {

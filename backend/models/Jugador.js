@@ -3,6 +3,9 @@ const { obtenerPlan } = require("../services/planLimits");
 
 class Jugador {
     static _columnasDocumentosAseguradas = false;
+    static _columnasAscensoEventosAseguradas = false;
+    static _columnasDocumentosPromise = null;
+    static _columnasAscensoEventosPromise = null;
 
     static traducirErrorRestriccionJugador(error) {
         if (!error || error.code !== "23505") return error;
@@ -18,6 +21,34 @@ class Jugador {
             );
         }
         return error;
+    }
+
+    static async asegurarColumnasAscensoEventos() {
+        if (this._columnasAscensoEventosAseguradas) return;
+        if (this._columnasAscensoEventosPromise) {
+            await this._columnasAscensoEventosPromise;
+            return;
+        }
+
+        this._columnasAscensoEventosPromise = (async () => {
+            await pool.query(`
+                ALTER TABLE eventos
+                ADD COLUMN IF NOT EXISTS permite_ascenso BOOLEAN DEFAULT FALSE,
+                ADD COLUMN IF NOT EXISTS max_ascendentes_por_partido INTEGER DEFAULT 2
+            `);
+            this._columnasAscensoEventosAseguradas = true;
+        })();
+
+        try {
+            await this._columnasAscensoEventosPromise;
+        } catch (error) {
+            this._columnasAscensoEventosPromise = null;
+            throw error;
+        } finally {
+            if (this._columnasAscensoEventosAseguradas) {
+                this._columnasAscensoEventosPromise = null;
+            }
+        }
     }
 
     static normalizarCedidentidad(valor) {
@@ -483,6 +514,8 @@ class Jugador {
     }
 
     static async buscarAscendentesDisponibles(partidoId) {
+        await this.asegurarColumnasAscensoEventos();
+
         const id = Number.parseInt(partidoId, 10);
         if (!Number.isFinite(id) || id <= 0) {
             const err = new Error("Partido no encontrado");
@@ -683,24 +716,45 @@ class Jugador {
 
     static async asegurarColumnasDocumentos() {
         if (this._columnasDocumentosAseguradas) return;
-        await pool.query(`
-            ALTER TABLE jugadores
-            ADD COLUMN IF NOT EXISTS foto_cedula_url TEXT,
-            ADD COLUMN IF NOT EXISTS foto_carnet_url TEXT,
-            ADD COLUMN IF NOT EXISTS foto_carnet_recorte_url TEXT,
-            ADD COLUMN IF NOT EXISTS evento_id INTEGER,
-            ADD COLUMN IF NOT EXISTS foto_carnet_pos_x NUMERIC(5,2) DEFAULT 50,
-            ADD COLUMN IF NOT EXISTS foto_carnet_pos_y NUMERIC(5,2) DEFAULT 35,
-            ADD COLUMN IF NOT EXISTS foto_carnet_zoom NUMERIC(5,2) DEFAULT 1.00
-        `);
-        await pool.query(`
-            UPDATE jugadores
-            SET
-              foto_carnet_pos_x = COALESCE(foto_carnet_pos_x, 50),
-              foto_carnet_pos_y = COALESCE(foto_carnet_pos_y, 35),
-              foto_carnet_zoom = COALESCE(foto_carnet_zoom, 1.00)
-        `);
-        this._columnasDocumentosAseguradas = true;
+        if (this._columnasDocumentosPromise) {
+            await this._columnasDocumentosPromise;
+            return;
+        }
+
+        this._columnasDocumentosPromise = (async () => {
+            await pool.query(`
+                ALTER TABLE jugadores
+                ADD COLUMN IF NOT EXISTS foto_cedula_url TEXT,
+                ADD COLUMN IF NOT EXISTS foto_carnet_url TEXT,
+                ADD COLUMN IF NOT EXISTS foto_carnet_recorte_url TEXT,
+                ADD COLUMN IF NOT EXISTS evento_id INTEGER,
+                ADD COLUMN IF NOT EXISTS foto_carnet_pos_x NUMERIC(5,2) DEFAULT 50,
+                ADD COLUMN IF NOT EXISTS foto_carnet_pos_y NUMERIC(5,2) DEFAULT 35,
+                ADD COLUMN IF NOT EXISTS foto_carnet_zoom NUMERIC(5,2) DEFAULT 1.00
+            `);
+            await pool.query(`
+                UPDATE jugadores
+                SET
+                  foto_carnet_pos_x = COALESCE(foto_carnet_pos_x, 50),
+                  foto_carnet_pos_y = COALESCE(foto_carnet_pos_y, 35),
+                  foto_carnet_zoom = COALESCE(foto_carnet_zoom, 1.00)
+                WHERE foto_carnet_pos_x IS NULL
+                   OR foto_carnet_pos_y IS NULL
+                   OR foto_carnet_zoom IS NULL
+            `);
+            this._columnasDocumentosAseguradas = true;
+        })();
+
+        try {
+            await this._columnasDocumentosPromise;
+        } catch (error) {
+            this._columnasDocumentosPromise = null;
+            throw error;
+        } finally {
+            if (this._columnasDocumentosAseguradas) {
+                this._columnasDocumentosPromise = null;
+            }
+        }
     }
 
     static calcularMaximoJugadoresPermitido(maxJugadoresCampeonato, planCodigo) {
@@ -967,10 +1021,12 @@ class Jugador {
         const contextoRoster = await this.resolverContextoRosterEquipo(equipo_id, evento_id_contexto);
         if (!contextoRoster.eventoId) {
             const query = `
-                SELECT j.*, e.nombre as nombre_equipo, e.numero_campeonato as equipo_numero_campeonato, c.nombre as nombre_campeonato
+                SELECT j.*, e.nombre as nombre_equipo, e.numero_campeonato as equipo_numero_campeonato, c.nombre as nombre_campeonato,
+                       ev.nombre as nombre_evento
                 FROM jugadores j 
                 JOIN equipos e ON j.equipo_id = e.id 
                 JOIN campeonatos c ON e.campeonato_id = c.id 
+                LEFT JOIN eventos ev ON ev.id = j.evento_id
                 WHERE j.equipo_id = $1 
                 ORDER BY
                     LOWER(COALESCE(NULLIF(TRIM(j.apellido), ''), TRIM(j.nombre), '')),
@@ -988,11 +1044,13 @@ class Jugador {
                     e.nombre AS nombre_equipo,
                     e.numero_campeonato AS equipo_numero_campeonato,
                     c.nombre AS nombre_campeonato,
+                    ev.nombre AS nombre_evento,
                     COALESCE(NULLIF(TRIM(j.cedidentidad), ''), CONCAT('__jugador__', j.id::text)) AS dedupe_key,
                     CASE WHEN j.evento_id = $2 THEN 0 ELSE 1 END AS prioridad_evento
                 FROM jugadores j
                 JOIN equipos e ON j.equipo_id = e.id
                 JOIN campeonatos c ON e.campeonato_id = c.id
+                LEFT JOIN eventos ev ON ev.id = j.evento_id
                 WHERE j.equipo_id = $1
                   ${this.construirFiltroRosterEvento("j", "$2", contextoRoster)}
             ),
@@ -1024,10 +1082,12 @@ class Jugador {
     static async obtenerPorId(id) {
         await this.asegurarColumnasDocumentos();
         const query = `
-            SELECT j.*, e.nombre as nombre_equipo, e.numero_campeonato as equipo_numero_campeonato, c.nombre as nombre_campeonato
+            SELECT j.*, e.nombre as nombre_equipo, e.numero_campeonato as equipo_numero_campeonato, c.nombre as nombre_campeonato,
+                   ev.nombre as nombre_evento
             FROM jugadores j 
             JOIN equipos e ON j.equipo_id = e.id 
             JOIN campeonatos c ON e.campeonato_id = c.id 
+            LEFT JOIN eventos ev ON ev.id = j.evento_id
             WHERE j.id = $1
         `;
         const result = await pool.query(query, [id]);
@@ -1038,10 +1098,12 @@ class Jugador {
     static async obtenerTodos() {
         await this.asegurarColumnasDocumentos();
         const query = `
-            SELECT j.*, e.nombre as nombre_equipo, e.numero_campeonato as equipo_numero_campeonato, c.nombre as nombre_campeonato
+            SELECT j.*, e.nombre as nombre_equipo, e.numero_campeonato as equipo_numero_campeonato, c.nombre as nombre_campeonato,
+                   ev.nombre as nombre_evento
             FROM jugadores j 
             JOIN equipos e ON j.equipo_id = e.id 
             JOIN campeonatos c ON e.campeonato_id = c.id 
+            LEFT JOIN eventos ev ON ev.id = j.evento_id
             ORDER BY c.nombre, e.nombre, j.apellido, j.nombre
         `;
         const result = await pool.query(query);

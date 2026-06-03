@@ -79,6 +79,12 @@ router.post(
   requireRoles("administrador", "organizador"),
   mobileController.postGenerarFixture
 );
+router.post(
+  "/eventos/:id/fixture/regenerar-preservando",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  mobileController.postRegenerarFixturePreservando
+);
 router.get("/eventos/:id/eliminatorias", requireAuth, mobileController.getEliminatoriasEvento);
 router.post(
   "/eventos/:id/eliminatorias",

@@ -23,6 +23,67 @@ function formatScheduledAt(row) {
   return fecha ? `${fecha}T${hora}` : null;
 }
 
+function mapFixturePhase(row) {
+  const round = String(row?.playoff_ronda || "").trim().toLowerCase();
+  const labels = {
+    reclasificacion: "Reclasificacion",
+    "32vos": "32vos",
+    "16vos": "16vos",
+    "12vos": "12vos",
+    "8vos": "8vos",
+    "4tos": "4tos",
+    semifinal: "Semifinal",
+    final: "Finales",
+    tercer_puesto: "Finales",
+  };
+
+  if (round) {
+    return {
+      key: ["final", "tercer_puesto"].includes(round) ? "finales" : round,
+      label: labels[round] || row.playoff_ronda,
+    };
+  }
+
+  return { key: "fase_grupos", label: "Fase de grupos" };
+}
+
+function parseBooleanFlag(value) {
+  return value === true || String(value || "").trim().toLowerCase() === "true";
+}
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key);
+}
+
+function resolveSchedulingMode(body = {}) {
+  const hasAutomatic = hasOwn(body, "programacion_automatica") || hasOwn(body, "automaticScheduling");
+  const hasManual = hasOwn(body, "programacion_manual") || hasOwn(body, "manualScheduling");
+  const automatic = parseBooleanFlag(body.programacion_automatica ?? body.automaticScheduling);
+  const manual = parseBooleanFlag(body.programacion_manual ?? body.manualScheduling);
+
+  if (!hasAutomatic && !hasManual) {
+    return {
+      programacion_automatica: true,
+      programacion_manual: false,
+      permitir_sobrantes_sin_fecha: true,
+    };
+  }
+
+  if (automatic && manual) {
+    throw new Error("Selecciona solo una opcion de programacion: automatica o manual.");
+  }
+
+  if (!automatic && !manual) {
+    throw new Error("Selecciona una opcion de programacion para generar el fixture.");
+  }
+
+  return {
+    programacion_automatica: automatic,
+    programacion_manual: manual,
+    permitir_sobrantes_sin_fecha: automatic,
+  };
+}
+
 function canWriteCompetition(user) {
   return ["administrador", "organizador"].includes(String(user?.rol || "").toLowerCase());
 }
@@ -91,20 +152,25 @@ async function obtenerCompetenciaEvento(user, eventoId) {
       amarillas: 0,
       rojas: 0,
     };
+    const phase = mapFixturePhase(partido);
 
     jornadasMap.get(jornada).matches.push({
       id: toId(partido.id),
       status: String(partido.estado || "").toLowerCase() === "finalizado" ? "JUGADO" : "PROGRAMADO",
       groupLabel: partido.letra_grupo || partido.nombre_grupo || null,
+      phaseKey: phase.key,
+      phaseLabel: phase.label,
       venue: partido.cancha || null,
       scheduledAt: formatScheduledAt(partido),
       homeTeam: {
         id: toId(partido.equipo_local_id),
         name: partido.equipo_local_nombre || "",
+        logoUrl: partido.equipo_local_logo_url || null,
       },
       awayTeam: {
         id: toId(partido.equipo_visitante_id),
         name: partido.equipo_visitante_nombre || "",
+        logoUrl: partido.equipo_visitante_logo_url || null,
       },
       result:
         partido.resultado_local === null || partido.resultado_visitante === null
@@ -137,6 +203,7 @@ async function obtenerCompetenciaEvento(user, eventoId) {
         row.posicion_clasificacion == null ? null : toInteger(row.posicion_clasificacion, 0),
       teamId: toId(row.equipo?.id),
       teamName: row.equipo?.nombre || "",
+      teamLogoUrl: row.equipo?.logo_url || null,
       played: toInteger(row.estadisticas?.partidos_jugados, 0),
       won: toInteger(row.estadisticas?.partidos_ganados, 0),
       drawn: toInteger(row.estadisticas?.partidos_empatados, 0),
@@ -172,22 +239,53 @@ async function generarFixtureEvento(user, eventoId, body = {}) {
     throw new Error("No autorizado para generar fixture");
   }
 
+  const schedulingMode = resolveSchedulingMode(body);
   const resultado = await Partido.generarFixtureEvento({
     evento_id: evento.id,
-    ida_y_vuelta: body.homeAndAway === true,
-    duracion_min: toInteger(body.durationMinutes, 90),
-    descanso_min: toInteger(body.breakMinutes, 10),
-    reemplazar: body.overwrite === true,
-    programacion_manual: false,
-    modo: "auto",
-    fecha_inicio: body.startDate || null,
-    fecha_fin: body.endDate || null,
+    ida_y_vuelta: parseBooleanFlag(body.homeAndAway ?? body.ida_y_vuelta),
+    duracion_min: toInteger(body.durationMinutes ?? body.duracion_min, 90),
+    descanso_min: toInteger(body.breakMinutes ?? body.descanso_min, 10),
+    reemplazar: parseBooleanFlag(body.overwrite ?? body.reemplazar),
+    programacion_manual: schedulingMode.programacion_manual,
+    programacion_automatica: schedulingMode.programacion_automatica,
+    permitir_sobrantes_sin_fecha: schedulingMode.permitir_sobrantes_sin_fecha,
+    modo: body.mode || body.modo || "auto",
+    fecha_inicio: body.startDate || body.fecha_inicio || null,
+    fecha_fin: body.endDate || body.fecha_fin || null,
   });
   const partidos = Array.isArray(resultado) ? resultado : resultado?.partidos || [];
 
   return {
     ok: true,
     total: partidos.length,
+    ...(Array.isArray(resultado) ? {} : resultado),
+  };
+}
+
+async function regenerarFixturePreservandoEvento(user, eventoId, body = {}) {
+  const evento = await assertEventoAccess(user, eventoId);
+  if (!canWriteCompetition(user)) {
+    throw new Error("No autorizado para regenerar fixture");
+  }
+
+  const schedulingMode = resolveSchedulingMode(body);
+  const resultado = await Partido.regenerarFixturePreservandoJugados({
+    evento_id: evento.id,
+    ida_y_vuelta: parseBooleanFlag(body.homeAndAway ?? body.ida_y_vuelta),
+    duracion_min: toInteger(body.durationMinutes ?? body.duracion_min, 90),
+    descanso_min: toInteger(body.breakMinutes ?? body.descanso_min, 10),
+    programacion_manual: schedulingMode.programacion_manual,
+    programacion_automatica: schedulingMode.programacion_automatica,
+    permitir_sobrantes_sin_fecha: schedulingMode.permitir_sobrantes_sin_fecha,
+  });
+  const partidos = Array.isArray(resultado) ? resultado : resultado?.partidos || [];
+
+  return {
+    ok: true,
+    total: partidos.length,
+    mensaje: partidos.length
+      ? `Fixture regenerado: ${partidos.length} partido(s) nuevo(s) creado(s).`
+      : "No hay partidos pendientes que regenerar.",
     ...(Array.isArray(resultado) ? {} : resultado),
   };
 }
@@ -453,5 +551,6 @@ module.exports = {
   obtenerCompetenciaEvento,
   obtenerFairPlayEvento,
   obtenerFinanzasCampeonato,
+  regenerarFixturePreservandoEvento,
   registrarResultadoResumen,
 };

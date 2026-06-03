@@ -1,3 +1,18 @@
+## 2026-05-28 - Portal publico endurecido y lecturas mobile robustas
+
+- `backend/services/publicPortalService.js`: perfiles publicos de equipo/jugador, nominas y partidos filtran por campeonatos publicos y organizadores reales antes de devolver datos.
+- `backend/controllers/publicPortalController.js`: participaciones publicas de jugador aceptan `evento_id` para consultar historial dentro de una categoria concreta.
+- `backend/services/publicPortalService.js`: nominas/fichas publicas dejan de exponer `cedidentidad` y las participaciones muestran partidos publicados del equipo con goles/tarjetas del jugador.
+- `backend/models/Jugador.js` y `backend/models/Partido.js`: autoaseguran columnas de ascendentes en `eventos` antes de consultar/guardar planillas, con proteccion contra carreras concurrentes.
+- `backend/services/mobileReadService.js`: listado mobile de jugadores reintenta errores transitorios de PostgreSQL (`40P01`, `40001`).
+
+## 2026-05-27 - Contrato backend mobile ampliado
+
+- `backend/controllers/mobileController.js`: alta mobile de campeonato acepta `sportType` y propaga politica de morosidad.
+- `backend/services/mobileAccessService.js`: respuestas mobile de campeonato/categoria exponen colores, morosidad, tabla acumulada, playoff, carnet, juveniles y ascendentes.
+- `backend/services/mobileOperationsService.js`: alta mobile de categoria persiste configuracion avanzada y normaliza estados de planilla enviados por la app.
+- `backend/scripts/e2eMobileTournamentFlow.js`: flujo E2E mobile cubre el contrato ampliado antes de continuar con sorteo, fixture, planilla, tablas y finanzas.
+
 ## 2026-04-05 - Activación por pago (Fase A) — comprobante manual
 
 - **Migración 060**: tabla `comprobantes_pago` (estado: `pendiente/aprobado/rechazado`). Aplicada en local y Render.
