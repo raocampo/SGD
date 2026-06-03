@@ -1,3 +1,40 @@
+## 2026-06-02 — Portal publico: portada solo en curso y listado filtrado
+
+### Estado git
+- `git pull` ejecutado sobre `main`; resultado `Already up to date`.
+- La rama local estaba limpia antes de cambios y se mantiene un commit local por delante de `origin/main`.
+
+### Cambio aplicado
+- `frontend/js/portal.js`:
+  - La portada (`index.html`) ahora muestra solo campeonatos `en_curso`.
+  - El limite de portada sube a 6 tarjetas para permitir grilla `3 arriba / 3 abajo`.
+  - El listado publico permitido queda acotado a `en_curso`, `inscripcion` y `finalizado`; se excluyen `borrador`, `planificacion` y `suspendido`.
+  - El boton `Ver todos los torneos` cuenta los torneos listables, no solo los destacados en portada.
+  - `portalCargarCampeonatos` sale de forma segura si la pagina no tiene contenedor de torneos.
+- `frontend/torneos.html`:
+  - El listado dedicado consulta `/api/public/campeonatos?include_finalizados=true`.
+  - Los filtros visibles quedan en `Todos`, `En curso`, `Inscripcion` y `Finalizados`.
+  - Se filtran en frontend los estados permitidos para evitar mostrar borradores o suspendidos aunque lleguen en un payload externo.
+- `frontend/css/portal.css`:
+  - La grilla de portada queda en 3 columnas en escritorio, 2 en tablet y 1 en movil.
+  - El header publico se compacta en anchos intermedios para evitar que `Contacto`, `Registrarse` e `Ingresar` se encimen.
+  - Se agregan estilos de badge para estados en `torneos.html`.
+
+### Verificacion local
+- `node --check frontend/js/portal.js` OK.
+- Validacion del script inline de `frontend/torneos.html` con `new Function(...)` OK.
+- `GET http://localhost:5000/api/public/campeonatos?include_finalizados=true`:
+  - `NO_PERMITIDOS=0`.
+  - Base local actual: `EN_CURSO=2`, `LISTABLES=4`, `PORTADA_MUESTRA=2`.
+- `npm --prefix backend run smoke:frontend` -> `39/39 PASS`.
+- `git diff --check` OK.
+- Servidor local levantado en `http://localhost:5000`.
+
+### Pendiente
+- QA visual manual en navegador real y luego en Render. Se intento captura headless con Brave, pero el navegador reutilizo una sesion existente; se limpiaron solo los procesos temporales abiertos por esta prueba y no se cerraron ventanas del usuario.
+
+---
+
 ## 2026-05-28 - Pull al dia, portal publico endurecido y documentacion actualizada
 
 ### Estado git

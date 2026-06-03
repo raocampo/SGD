@@ -20,6 +20,9 @@ const RONDAS_PLAYOFF_PORTAL_ORDEN = [
   "final",
   "tercer_puesto",
 ];
+const LIMITE_TORNEOS_PORTADA = 6;
+const ESTADOS_TORNEOS_PORTADA = new Set(["en_curso"]);
+const ESTADOS_TORNEOS_LISTADO_PUBLICO = new Set(["en_curso", "inscripcion", "finalizado"]);
 
 function leerContextoPortalDesdeUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -440,6 +443,12 @@ function humanizarTokenPortal(valor = "") {
     .replace(/\s+/g, " ");
 }
 
+function normalizarEstadoTorneoPortal(estado) {
+  return String(estado || "")
+    .trim()
+    .toLowerCase();
+}
+
 function formatearModalidadPortal(valor = "") {
   const raw = String(valor || "").trim().toLowerCase();
   if (!raw) return "";
@@ -733,9 +742,11 @@ function ordenarTorneosPortal(lista = []) {
 }
 
 function estadoEsVisibleEnPortal(estado) {
-  return ["en_curso", "inscripcion", "planificacion", "borrador"].includes(
-    String(estado || "").trim().toLowerCase()
-  );
+  return ESTADOS_TORNEOS_LISTADO_PUBLICO.has(normalizarEstadoTorneoPortal(estado));
+}
+
+function estadoEsVisibleEnPortada(estado) {
+  return ESTADOS_TORNEOS_PORTADA.has(normalizarEstadoTorneoPortal(estado));
 }
 
 function renderErrorPortal(mensaje) {
@@ -746,33 +757,55 @@ function renderErrorPortal(mensaje) {
 
 async function portalCargarCampeonatos(listaForzada = null, options = {}) {
   const cont = document.getElementById("portal-lista-campeonatos");
+  if (!cont) return;
   try {
     let lista = Array.isArray(listaForzada) ? listaForzada : null;
     if (!lista) {
-      const data = window.PortalPublicAPI
-        ? await window.PortalPublicAPI.listarCampeonatos()
-        : await fetch(`${API}/public/campeonatos`).then((r) => r.json());
+      const incluirFinalizados = options?.includeFinalizados !== false;
+      const url = incluirFinalizados
+        ? `${API}/public/campeonatos?include_finalizados=true`
+        : `${API}/public/campeonatos`;
+      const data =
+        window.PortalPublicAPI && !incluirFinalizados
+          ? await window.PortalPublicAPI.listarCampeonatos()
+          : await fetch(url).then((r) => r.json());
       lista = data.campeonatos || data || [];
     }
-    const activos = ordenarTorneosPortal((lista || []).filter((c) => estadoEsVisibleEnPortal(c.estado)));
+    const esPortadaInicio =
+      !ES_PORTAL_PAGE &&
+      document.body.classList.contains("ltc-landing") &&
+      !document.body.classList.contains("ltc-torneos-page");
+    const listables = ordenarTorneosPortal((lista || []).filter((c) => estadoEsVisibleEnPortal(c.estado)));
+    const destacados = esPortadaInicio
+      ? ordenarTorneosPortal((lista || []).filter((c) => estadoEsVisibleEnPortada(c.estado)))
+      : listables;
 
-    if (!activos.length) {
-      cont.innerHTML = '<p class="empty-msg">No hay torneos públicos para este organizador.</p>';
+    if (!destacados.length) {
+      cont.innerHTML = esPortadaInicio
+        ? '<p class="empty-msg">No hay torneos en curso por el momento.</p>'
+        : '<p class="empty-msg">No hay torneos públicos para este organizador.</p>';
+      const btnVerTodos = document.getElementById("ltc-ver-todos-torneos");
+      if (btnVerTodos) {
+        btnVerTodos.style.display = esPortadaInicio && listables.length > 0 ? "inline-flex" : "none";
+        btnVerTodos.textContent = `Ver todos los torneos (${listables.length})`;
+      }
       return;
     }
 
-    // En landing (index.html) mostrar solo los 4 más recientes/activos
-    const esLanding = document.body.classList.contains("ltc-landing");
-    const limite = esLanding ? 4 : activos.length;
-    const visibles = activos.slice(0, limite);
+    const limite = esPortadaInicio ? LIMITE_TORNEOS_PORTADA : destacados.length;
+    const visibles = destacados.slice(0, limite);
 
     cont.innerHTML = visibles.map((t) => renderCardTorneoPrincipal(t)).join("");
 
-    // Botón "Ver todos" si hay más de 4 y estamos en landing
     const btnVerTodos = document.getElementById("ltc-ver-todos-torneos");
     if (btnVerTodos) {
-      btnVerTodos.style.display = activos.length > 4 ? "inline-flex" : "none";
-      btnVerTodos.textContent = `Ver todos los torneos (${activos.length})`;
+      const totalListables = listables.length;
+      const debeMostrar =
+        esPortadaInicio &&
+        totalListables > 0 &&
+        (totalListables > visibles.length || destacados.length > visibles.length);
+      btnVerTodos.style.display = debeMostrar ? "inline-flex" : "none";
+      btnVerTodos.textContent = `Ver todos los torneos (${totalListables})`;
     }
   } catch (err) {
     console.error(err);
