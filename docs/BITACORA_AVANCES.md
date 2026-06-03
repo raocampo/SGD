@@ -1,3 +1,20 @@
+## 2026-06-02 — Portal publico: cards compactas en pantallas grandes
+
+### Cambio aplicado
+- `frontend/css/portal.css`:
+  - La grilla de torneos de portada mantiene 3 columnas en escritorio, pero cada columna queda limitada a `24rem` para evitar cards demasiado anchas en pantallas grandes.
+  - El bloque de torneos de portada queda centrado con ancho maximo de `78rem`.
+  - La imagen superior y el cuerpo de cada card se compactan ligeramente para una lectura mas proporcionada.
+  - En tablet se mantienen 2 columnas con ancho maximo controlado; en movil se conserva una columna centrada.
+
+### Verificacion local
+- `git diff --check` OK.
+
+### Pendiente
+- QA visual en Render despues de publicar este ajuste.
+
+---
+
 ## 2026-06-02 — Portal publico: portada solo en curso y listado filtrado
 
 ### Estado git

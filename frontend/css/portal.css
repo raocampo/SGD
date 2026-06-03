@@ -559,7 +559,32 @@ a.ltc-team-chip-card:hover {
 }
 
 body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos.portal-campeonatos-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(18rem, 24rem));
+  justify-content: center;
+  gap: clamp(1rem, 1.2vw, 1.35rem);
+}
+
+body.ltc-landing:not(.ltc-torneos-page) #portal-inicio {
+  max-width: 78rem;
+  margin-inline: auto;
+}
+
+body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-media {
+  height: clamp(150px, 9vw, 168px);
+}
+
+body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-body {
+  padding: 0.82rem 0.9rem 0.95rem;
+}
+
+body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-body h3 {
+  max-width: 24ch;
+  line-height: 1.32;
+}
+
+body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-date,
+body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-meta {
+  font-size: 0.8rem;
 }
 
 .portal-campeonato-card {
@@ -2574,7 +2599,7 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos.portal-campeon
   }
 
   body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos.portal-campeonatos-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(17.5rem, 23rem));
   }
 
   .portal-card-categorias {
@@ -2774,6 +2799,10 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos.portal-campeon
 
   body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos.portal-campeonatos-grid {
     grid-template-columns: 1fr;
+  }
+
+  body.ltc-landing:not(.ltc-torneos-page) #portal-inicio {
+    max-width: 28rem;
   }
 
   .portal-category-panel {
