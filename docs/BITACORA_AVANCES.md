@@ -1,3 +1,43 @@
+## 2026-06-12 - Portal publico: playoff y fichas por categoria
+
+### Cambio aplicado
+- El endpoint publico de playoff conserva la llave generada cuando existen partidos guardados, aunque el diagnostico marque inconsistencias por cupos futuros o placeholders `Por definir`; el portal deja de ocultar octavos/cuartos ya generados.
+- `GET /api/public/equipos/:id` acepta `evento_id` y devuelve estadisticas del equipo filtradas por categoria cuando la URL llega desde el portal.
+- Los partidos publicos de equipo/jugador ahora incluyen metadatos de fase:
+  - `Fase de grupos`,
+  - `Reclasificacion`,
+  - `16vos`, `Octavos`, `Cuartos`, `Semifinal`, `Final`, etc.
+- `equipo-publico.html`:
+  - ordena tabs como **Informacion**, **Partidos**, **Jugadores**,
+  - muestra todos los partidos publicados de la categoria, no solo jugados,
+  - propaga `evento` al abrir `jugador-publico.html`,
+  - ajusta contraste del hero segun colores del equipo para fondos claros u oscuros.
+- `jugador-publico.html`:
+  - acepta `evento` en URL y filtra ficha/estadisticas/partidos por categoria,
+  - ordena la ficha antes del historial de partidos,
+  - muestra fase y categoria en cada partido.
+
+### Verificacion local
+- `node --check backend/services/publicPortalService.js` OK.
+- `node --check backend/controllers/publicPortalController.js` OK.
+- Scripts inline de `frontend/equipo-publico.html` y `frontend/jugador-publico.html` validados con `new Function(...)`.
+- `npm --prefix backend run smoke:frontend` -> `45/45 PASS`.
+- `npm --prefix backend run smoke` con servidor local temporal -> `9/9 PASS`.
+- Prueba dirigida con API publica local:
+  - ficha de equipo con `evento_id` devuelve `equipo.evento.id`,
+  - partidos y jugadores por categoria responden OK,
+  - jugador publico con `evento_id` y participaciones por categoria responden OK,
+  - playoff publico con datos locales: evento `8` devuelve `5` rondas y `16` partidos.
+
+### Pendiente
+- Validar en Render con campeonato real:
+  - pestaña Playoff mostrando la llave generada,
+  - ficha de equipo con estadisticas solo de la categoria abierta,
+  - partidos con fase visible,
+  - contraste de texto sobre colores claros.
+
+---
+
 ## 2026-06-12 - Portal publico: equipos primero y fichas publicas
 
 ### Cambio aplicado

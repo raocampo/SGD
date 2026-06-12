@@ -12,18 +12,19 @@
   <link rel="stylesheet" href="css/portal.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
   <style>
-    .ep-hero { background: var(--ep-bg, linear-gradient(135deg,#1e3a5f,#2a5298)); padding: clamp(2rem,5vw,3.5rem) 0 clamp(1.5rem,3vw,2.5rem); color: #fff; }
+    .ep-hero { background: var(--ep-bg, linear-gradient(135deg,#1e3a5f,#2a5298)); padding: clamp(2rem,5vw,3.5rem) 0 clamp(1.5rem,3vw,2.5rem); color: var(--ep-hero-fg, #fff); }
     .ep-hero-inner { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
-    .ep-logo { width: clamp(72px,10vw,110px); height: clamp(72px,10vw,110px); object-fit: contain; border-radius: 12px; background: rgba(255,255,255,.15); border: 3px solid rgba(255,255,255,.3); padding: 6px; flex-shrink: 0; }
-    .ep-logo-placeholder { width: clamp(72px,10vw,110px); height: clamp(72px,10vw,110px); border-radius: 12px; background: rgba(255,255,255,.15); border: 3px solid rgba(255,255,255,.3); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: rgba(255,255,255,.6); flex-shrink: 0; }
+    #ep-back-link { color: var(--ep-hero-muted, rgba(255,255,255,.75)); }
+    .ep-logo { width: clamp(72px,10vw,110px); height: clamp(72px,10vw,110px); object-fit: contain; border-radius: 12px; background: var(--ep-soft-bg, rgba(255,255,255,.15)); border: 3px solid var(--ep-soft-border, rgba(255,255,255,.3)); padding: 6px; flex-shrink: 0; }
+    .ep-logo-placeholder { width: clamp(72px,10vw,110px); height: clamp(72px,10vw,110px); border-radius: 12px; background: var(--ep-soft-bg, rgba(255,255,255,.15)); border: 3px solid var(--ep-soft-border, rgba(255,255,255,.3)); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--ep-hero-muted, rgba(255,255,255,.6)); flex-shrink: 0; }
     .ep-hero-info { flex: 1; min-width: 0; }
-    .ep-campeonato-chip { display: inline-block; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: .2rem .75rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-bottom: .5rem; }
+    .ep-campeonato-chip { display: inline-block; background: var(--ep-chip-bg, rgba(255,255,255,.2)); border: 1px solid var(--ep-chip-border, rgba(255,255,255,.35)); color: var(--ep-hero-fg, #fff); border-radius: 999px; padding: .2rem .75rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-bottom: .5rem; }
     .ep-nombre { font-size: clamp(1.6rem,4vw,3rem); font-weight: 900; line-height: 1.1; text-transform: uppercase; letter-spacing: -.01em; font-family: 'Barlow Condensed', sans-serif; }
-    .ep-dt { font-size: .9rem; opacity: .8; margin-top: .35rem; }
+    .ep-dt { font-size: .9rem; color: var(--ep-hero-muted, rgba(255,255,255,.8)); margin-top: .35rem; }
     .ep-stats-strip { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; }
-    .ep-stat { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 10px; padding: .5rem .9rem; text-align: center; min-width: 70px; }
+    .ep-stat { background: var(--ep-soft-bg, rgba(255,255,255,.12)); border: 1px solid var(--ep-soft-border, rgba(255,255,255,.2)); border-radius: 10px; padding: .5rem .9rem; text-align: center; min-width: 70px; }
     .ep-stat-val { font-size: 1.5rem; font-weight: 900; line-height: 1; }
-    .ep-stat-lbl { font-size: .65rem; text-transform: uppercase; letter-spacing: .07em; opacity: .75; margin-top: .15rem; }
+    .ep-stat-lbl { font-size: .65rem; text-transform: uppercase; letter-spacing: .07em; color: var(--ep-hero-muted, rgba(255,255,255,.75)); margin-top: .15rem; }
 
     .ep-tabs { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1.5rem 0 1rem; border-bottom: 2px solid #e2e8f0; padding-bottom: .5rem; }
     .ep-tab { padding: .5rem 1.1rem; border-radius: 8px 8px 0 0; border: none; background: transparent; font-size: .88rem; font-weight: 700; cursor: pointer; color: #64748b; transition: color .15s, background .15s; }
@@ -54,6 +55,7 @@
     .ep-partido-equipos { flex: 1; display: flex; align-items: center; gap: .5rem; font-size: .85rem; font-weight: 600; }
     .ep-partido-logo { width: 24px; height: 24px; border-radius: 50%; object-fit: contain; }
     .ep-partido-resultado { min-width: 48px; text-align: center; font-weight: 900; font-size: .95rem; }
+    .ep-fase-badge { display: inline-flex; width: fit-content; margin-top: .18rem; border-radius: 999px; background: #eef2ff; color: #1e3a5f; padding: .12rem .45rem; font-size: .66rem; font-weight: 800; }
     .ep-resultado-V { color: #16a34a; }
     .ep-resultado-D { color: #dc2626; }
     .ep-resultado-E { color: #d97706; }
@@ -152,7 +154,7 @@
 
   <div id="ep-hero-section" class="ep-hero">
     <div class="container">
-      <a id="ep-back-link" href="portal.html" style="color:rgba(255,255,255,.75); font-size:.82rem; display:inline-flex; align-items:center; gap:.35rem; margin-bottom:.75rem; text-decoration:none;">
+      <a id="ep-back-link" href="portal.html" style="font-size:.82rem; display:inline-flex; align-items:center; gap:.35rem; margin-bottom:.75rem; text-decoration:none;">
         <i class="fas fa-arrow-left"></i> Volver al portal
       </a>
       <div class="ep-hero-inner">
@@ -179,15 +181,17 @@
       <div class="container">
 
         <div class="ep-tabs">
-          <button class="ep-tab active" data-panel="jugadores"><i class="fas fa-users"></i> Jugadores</button>
+          <button class="ep-tab active" data-panel="info"><i class="fas fa-info-circle"></i> Información</button>
           <button class="ep-tab" data-panel="partidos"><i class="fas fa-futbol"></i> Partidos</button>
-          <button class="ep-tab" data-panel="info"><i class="fas fa-info-circle"></i> Información</button>
+          <button class="ep-tab" data-panel="jugadores"><i class="fas fa-users"></i> Jugadores</button>
         </div>
 
-        <!-- Panel: Jugadores -->
-        <div id="panel-jugadores" class="ep-panel active">
-          <div id="ep-jugadores-cont">
-            <p class="ep-empty"><i class="fas fa-spinner fa-spin"></i> Cargando nómina...</p>
+        <!-- Panel: Info -->
+        <div id="panel-info" class="ep-panel active">
+          <div class="ltc-section-card">
+            <table style="width:100%; font-size:.9rem; border-collapse:collapse;" id="ep-info-table">
+              <tbody></tbody>
+            </table>
           </div>
         </div>
 
@@ -198,12 +202,10 @@
           </div>
         </div>
 
-        <!-- Panel: Info -->
-        <div id="panel-info" class="ep-panel">
-          <div class="ltc-section-card">
-            <table style="width:100%; font-size:.9rem; border-collapse:collapse;" id="ep-info-table">
-              <tbody></tbody>
-            </table>
+        <!-- Panel: Jugadores -->
+        <div id="panel-jugadores" class="ep-panel">
+          <div id="ep-jugadores-cont">
+            <p class="ep-empty"><i class="fas fa-spinner fa-spin"></i> Cargando nómina...</p>
           </div>
         </div>
 
@@ -265,6 +267,50 @@
       return fecha.toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" });
     }
 
+    function normalizarHexColor(color) {
+      const raw = String(color || "").trim();
+      if (/^#[0-9a-f]{6}$/i.test(raw)) return raw;
+      if (/^#[0-9a-f]{3}$/i.test(raw)) {
+        return `#${raw.slice(1).split("").map((ch) => ch + ch).join("")}`;
+      }
+      return "";
+    }
+
+    function luminanciaHex(color) {
+      const hex = normalizarHexColor(color);
+      if (!hex) return 0;
+      const rgb = [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16) / 255);
+      const [r, g, b] = rgb.map((value) =>
+        value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4)
+      );
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    function aplicarColoresHero(equipo) {
+      const hero = document.getElementById("ep-hero-section");
+      if (!hero) return;
+      const primario = normalizarHexColor(equipo?.color_primario) || "#1e3a5f";
+      const secundario = normalizarHexColor(equipo?.color_secundario) || primario;
+      hero.style.background = `linear-gradient(135deg, ${primario}, ${secundario})`;
+
+      const brillo = (luminanciaHex(primario) + luminanciaHex(secundario)) / 2;
+      const textoOscuro = brillo > 0.48;
+      hero.style.setProperty("--ep-hero-fg", textoOscuro ? "#102033" : "#ffffff");
+      hero.style.setProperty("--ep-hero-muted", textoOscuro ? "rgba(16,32,51,.78)" : "rgba(255,255,255,.82)");
+      hero.style.setProperty("--ep-chip-bg", textoOscuro ? "rgba(255,255,255,.48)" : "rgba(255,255,255,.2)");
+      hero.style.setProperty("--ep-chip-border", textoOscuro ? "rgba(16,32,51,.22)" : "rgba(255,255,255,.35)");
+      hero.style.setProperty("--ep-soft-bg", textoOscuro ? "rgba(255,255,255,.38)" : "rgba(255,255,255,.12)");
+      hero.style.setProperty("--ep-soft-border", textoOscuro ? "rgba(16,32,51,.18)" : "rgba(255,255,255,.2)");
+    }
+
+    function fasePartidoLabel(partido) {
+      const label = String(partido?.fase?.label || "").trim();
+      if (label) return label;
+      const ronda = String(partido?.playoff_ronda || "").trim();
+      if (ronda) return ronda;
+      return partido?.jornada ? `Fase de grupos · J${partido.jornada}` : "Fase de grupos";
+    }
+
     function activarTab(panel) {
       const target = String(panel || "").trim();
       const btn = document.querySelector(`.ep-tab[data-panel="${target}"]`);
@@ -291,7 +337,8 @@
 
       try {
         // Datos del equipo
-        const { equipo } = await apiFetch(`/equipos/${equipoId}`);
+        const paramsEquipo = eventoId ? `?evento_id=${eventoId}` : "";
+        const { equipo } = await apiFetch(`/equipos/${equipoId}${paramsEquipo}`);
         document.title = `${equipo.nombre} — LT&C`;
 
         // Hero
@@ -301,12 +348,11 @@
           ? `<img src="${logoUrl}" class="ep-logo" alt="${equipo.nombre}" onerror="this.style.display='none'">`
           : `<div class="ep-logo-placeholder"><i class="fas fa-shield-halved"></i></div>`;
 
-        if (equipo.color_primario) {
-          document.getElementById("ep-hero-section").style.background =
-            `linear-gradient(135deg, ${equipo.color_primario}, ${equipo.color_secundario || equipo.color_primario}dd)`;
-        }
+        aplicarColoresHero(equipo);
 
-        document.getElementById("ep-campeonato-chip").textContent = equipo.campeonato?.nombre || "Campeonato";
+        const eventoActual = equipo.evento || (eventoId ? (equipo.eventos || []).find((e) => Number(e.id) === Number(eventoId)) : null);
+        document.getElementById("ep-campeonato-chip").textContent =
+          [equipo.campeonato?.nombre || "Campeonato", eventoActual?.nombre || ""].filter(Boolean).join(" · ");
         document.getElementById("ep-nombre").textContent = equipo.nombre;
 
         if (equipo.director_tecnico) {
@@ -332,6 +378,7 @@
         if (equipo.email) rows.push(["Correo", equipo.email]);
         if (equipo.numero_campeonato) rows.push(["N° campeonato", equipo.numero_campeonato]);
         if (equipo.campeonato?.nombre) rows.push(["Campeonato", equipo.campeonato.nombre]);
+        if (eventoActual?.nombre) rows.push(["Categoría actual", eventoActual.nombre]);
         if (equipo.eventos?.length) rows.push(["Categorías", equipo.eventos.map(e => e.nombre).join(", ")]);
         const tbody = document.querySelector("#ep-info-table tbody");
         tbody.innerHTML = rows.map(([k, v]) =>
@@ -364,7 +411,8 @@
             if (j.goles > 0) badges.push(`<span class="ep-badge ep-badge-gol"><i class="fas fa-futbol"></i> ${j.goles} gol${j.goles !== 1 ? "es" : ""}</span>`);
             if (j.tarjetas_amarillas > 0) badges.push(`<span class="ep-badge ep-badge-am">🟨 ${j.tarjetas_amarillas}</span>`);
             if (j.tarjetas_rojas > 0) badges.push(`<span class="ep-badge ep-badge-roja">🟥 ${j.tarjetas_rojas}</span>`);
-            return `<a href="jugador-publico.html?id=${j.id}&back=${encodeURIComponent(window.location.href)}" class="ep-jugador-card">
+            const jugadorHref = `jugador-publico.html?id=${j.id}${eventoId ? `&evento=${eventoId}` : ""}&back=${encodeURIComponent(window.location.href)}`;
+            return `<a href="${jugadorHref}" class="ep-jugador-card">
               ${fotoHtml}
               ${numHtml}
               <div class="ep-jugador-info">
@@ -386,17 +434,18 @@
         const { partidos } = await apiFetch(`/equipos/${equipoId}/partidos${params3}`);
         const cont = document.getElementById("ep-partidos-cont");
 
-        const jugados = (Array.isArray(partidos) ? partidos : []).filter(esPartidoJugado);
+        const listaPartidos = Array.isArray(partidos) ? partidos : [];
 
-        if (!jugados.length) {
-          cont.innerHTML = `<p class="ep-empty"><i class="fas fa-futbol"></i> Sin partidos jugados todavía.</p>`;
+        if (!listaPartidos.length) {
+          cont.innerHTML = `<p class="ep-empty"><i class="fas fa-futbol"></i> Sin partidos publicados todavía.</p>`;
         } else {
-          cont.innerHTML = `<h3 style="margin-top:0;">Partidos jugados</h3>${jugados.map(p => {
+          cont.innerHTML = `<h3 style="margin-top:0;">${eventoId ? "Partidos de la categoría" : "Partidos publicados"}</h3>${listaPartidos.map(p => {
             const fecha = formatearFechaPartido(p.fecha);
             const marcador = esPartidoJugado(p) && p.goles_favor !== null
               ? `<span class="ep-resultado-${p.resultado || ""}">${p.goles_favor} — ${p.goles_contra}</span>` : "—";
+            const fase = fasePartidoLabel(p);
             return `<div class="ep-partido-row">
-              <div class="ep-partido-fecha">${fecha}<br><small style="color:#94a3b8;">${p.jornada ? "J" + p.jornada : p.evento_nombre || ""}</small></div>
+              <div class="ep-partido-fecha">${fecha}<br><span class="ep-fase-badge">${fase}</span></div>
               <div class="ep-partido-equipos">
                 ${logoHtml(null, "", 20)}
                 <span style="${p.es_local ? "font-weight:900;" : ""}">${p.es_local ? "LOCAL" : "VISITA"}</span>
@@ -413,7 +462,7 @@
         document.getElementById("ep-partidos-cont").innerHTML = `<p class="ep-empty">No se pudieron cargar los partidos.</p>`;
       }
 
-      if (tabInicial === "partidos" || tabInicial === "info") {
+      if (tabInicial === "partidos" || tabInicial === "jugadores" || tabInicial === "info") {
         activarTab(tabInicial);
       }
     }

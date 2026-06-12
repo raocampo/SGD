@@ -46,6 +46,7 @@
     .jp-part-row:last-child { border-bottom: none; }
     .jp-part-fecha { font-size: .75rem; color: #64748b; }
     .jp-part-jornada { font-size: .7rem; color: #94a3b8; }
+    .jp-fase-badge { display: inline-flex; width: fit-content; margin-top: .18rem; border-radius: 999px; background: #eef2ff; color: #1e3a5f; padding: .12rem .45rem; font-size: .66rem; font-weight: 800; }
     .jp-part-equipos { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; font-weight: 600; min-width: 0; }
     .jp-part-logo { width: 22px; height: 22px; border-radius: 50%; object-fit: contain; flex-shrink: 0; }
     .jp-part-vs { color: #94a3b8; font-size: .75rem; margin: 0 .15rem; }
@@ -194,29 +195,29 @@
       <div class="container">
 
         <div class="jp-tabs">
-          <button class="jp-tab active" data-panel="partidos"><i class="fas fa-futbol"></i> Partidos</button>
-          <button class="jp-tab" data-panel="ficha"><i class="fas fa-id-card"></i> Ficha</button>
-        </div>
-
-        <!-- Panel: Partidos con participaciones -->
-        <div id="panel-partidos" class="jp-panel active">
-          <div class="jp-limitation-note">
-            <i class="fas fa-info-circle"></i>
-            <span>Se muestran los partidos donde el jugador registró <strong>goles o tarjetas</strong>. El sistema aún no lleva registro de titularidad o suplencia (próxima mejora).</span>
-          </div>
-          <div class="ltc-section-card" id="jp-partidos-cont">
-            <p class="jp-empty"><i class="fas fa-spinner fa-spin"></i> Cargando historial...</p>
-          </div>
+          <button class="jp-tab active" data-panel="ficha"><i class="fas fa-id-card"></i> Ficha</button>
+          <button class="jp-tab" data-panel="partidos"><i class="fas fa-futbol"></i> Partidos</button>
         </div>
 
         <!-- Panel: Ficha -->
-        <div id="panel-ficha" class="jp-panel">
+        <div id="panel-ficha" class="jp-panel active">
           <div class="ltc-section-card">
             <table class="jp-ficha-table" id="jp-ficha-table">
               <tbody>
                 <tr><td colspan="2" class="jp-empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- Panel: Partidos con participaciones -->
+        <div id="panel-partidos" class="jp-panel">
+          <div class="jp-limitation-note">
+            <i class="fas fa-info-circle"></i>
+            <span>Se muestran los partidos publicados de la categoría del jugador, con goles y tarjetas cuando existan registros.</span>
+          </div>
+          <div class="ltc-section-card" id="jp-partidos-cont">
+            <p class="jp-empty"><i class="fas fa-spinner fa-spin"></i> Cargando historial...</p>
           </div>
         </div>
 
@@ -236,6 +237,7 @@
     const BACKEND = window.resolveBackendBaseUrl ? window.resolveBackendBaseUrl() : window.location.origin;
     const params = new URLSearchParams(window.location.search);
     const jugadorId = Number.parseInt(params.get("id"), 10);
+    const eventoId = Number.parseInt(params.get("evento") || "", 10) || null;
     const backHref = params.get("back") || "portal.html";
 
     document.getElementById("jp-back-link").href = backHref;
@@ -268,6 +270,14 @@
       return map[estado] || estado;
     }
 
+    function fasePartidoLabel(partido) {
+      const label = String(partido?.fase?.label || "").trim();
+      if (label) return label;
+      const ronda = String(partido?.playoff_ronda || "").trim();
+      if (ronda) return ronda;
+      return partido?.jornada ? `Fase de grupos · J${partido.jornada}` : "Fase de grupos";
+    }
+
     // ── Tabs
     document.querySelectorAll(".jp-tab").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -297,7 +307,8 @@
 
       // ── Datos del jugador
       try {
-        const { jugador } = await apiFetch(`/jugadores/${jugadorId}`);
+        const queryEvento = eventoId ? `?evento_id=${eventoId}` : "";
+        const { jugador } = await apiFetch(`/jugadores/${jugadorId}${queryEvento}`);
         document.title = `${jugador.nombre_completo} — LT&C`;
 
         // Foto
@@ -323,9 +334,10 @@
 
         // Chip equipo
         const eqLogoUrl = imgUrl(eq?.logo_url);
+        const equipoHref = `equipo-publico.html?id=${eq.id}${eventoId ? `&evento=${eventoId}` : ""}&back=${encodeURIComponent(window.location.href)}`;
         document.getElementById("jp-equipo-chip").innerHTML =
           (eqLogoUrl ? `<img src="${eqLogoUrl}" class="jp-equipo-logo" alt="${eq.nombre}" onerror="this.style.display='none'">` : "") +
-          `<a href="equipo-publico.html?id=${eq.id}&back=${encodeURIComponent(window.location.href)}" style="color:inherit;text-decoration:none;">${eq.nombre}</a>` +
+          `<a href="${equipoHref}" style="color:inherit;text-decoration:none;">${eq.nombre}</a>` +
           (jugador.campeonato?.nombre ? ` <span style="opacity:.6;">· ${jugador.campeonato.nombre}</span>` : "");
 
         // Nombre
@@ -354,8 +366,9 @@
           const edad = calcularEdad(jugador.fecha_nacimiento);
           ficha.push(["Fecha de nacimiento", `${formatFecha(jugador.fecha_nacimiento)}${edad !== null ? ` (${edad} años)` : ""}`]);
         }
-        if (eq?.nombre) ficha.push(["Equipo", `<a href="equipo-publico.html?id=${eq.id}&back=${encodeURIComponent(window.location.href)}" style="color:#1e3a5f;">${eq.nombre}</a>`]);
+        if (eq?.nombre) ficha.push(["Equipo", `<a href="${equipoHref}" style="color:#1e3a5f;">${eq.nombre}</a>`]);
         if (jugador.campeonato?.nombre) ficha.push(["Campeonato", jugador.campeonato.nombre]);
+        if (jugador.evento?.nombre) ficha.push(["Categoría", jugador.evento.nombre]);
         ficha.push(["Goles", st.goles ?? 0]);
         ficha.push(["Tarjetas amarillas", st.tarjetas_amarillas ?? 0]);
         ficha.push(["Tarjetas rojas", st.tarjetas_rojas ?? 0]);
@@ -372,7 +385,8 @@
 
       // ── Participaciones
       try {
-        const { partidos, total } = await apiFetch(`/jugadores/${jugadorId}/participaciones`);
+        const queryEvento = eventoId ? `?evento_id=${eventoId}` : "";
+        const { partidos, total } = await apiFetch(`/jugadores/${jugadorId}/participaciones${queryEvento}`);
         const cont = document.getElementById("jp-partidos-cont");
 
         if (!partidos?.length) {
@@ -382,7 +396,7 @@
 
         const rows = partidos.map(p => {
           const fecha = formatFecha(p.fecha);
-          const jornada = p.jornada != null ? `J${p.jornada}` : "";
+          const fase = fasePartidoLabel(p);
           const localLogo = imgUrl(p.local?.logo_url);
           const visitanteLogo = imgUrl(p.visitante?.logo_url);
           const localLogoHtml = localLogo ? `<img src="${localLogo}" class="jp-part-logo" alt="${p.local?.nombre}" onerror="this.style.display='none'">` : "";
@@ -406,7 +420,8 @@
           return `<div class="jp-part-row">
             <div>
               <div class="jp-part-fecha">${fecha}</div>
-              <div class="jp-part-jornada">${jornada}</div>
+              <div class="jp-part-jornada">${p.evento_nombre || ""}</div>
+              <span class="jp-fase-badge">${fase}</span>
               <div style="margin-top:.25rem;">${estadoBadgeHtml}</div>
             </div>
             <div class="jp-part-equipos">

@@ -268,7 +268,8 @@ const publicPortalController = {
     try {
       const equipoId = Number.parseInt(req.params.equipo_id, 10);
       if (!Number.isFinite(equipoId)) return res.status(400).json({ error: "equipo_id invalido" });
-      const payload = await publicPortalService.obtenerEquipoPublico(equipoId);
+      const eventoId = req.query.evento_id ? Number.parseInt(req.query.evento_id, 10) : null;
+      const payload = await publicPortalService.obtenerEquipoPublico(equipoId, eventoId || null);
       if (!payload) return res.status(404).json({ error: "Equipo no encontrado" });
       return res.json({ ok: true, equipo: payload });
     } catch (error) {
@@ -309,7 +310,8 @@ const publicPortalController = {
     try {
       const jugadorId = Number.parseInt(req.params.jugador_id, 10);
       if (!Number.isFinite(jugadorId)) return res.status(400).json({ error: "jugador_id invalido" });
-      const payload = await publicPortalService.obtenerJugadorPublico(jugadorId);
+      const eventoId = req.query.evento_id ? Number.parseInt(req.query.evento_id, 10) : null;
+      const payload = await publicPortalService.obtenerJugadorPublico(jugadorId, eventoId || null);
       if (!payload) return res.status(404).json({ error: "Jugador no encontrado" });
       return res.json({ ok: true, jugador: payload });
     } catch (error) {

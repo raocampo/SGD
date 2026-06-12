@@ -481,12 +481,15 @@ async function obtenerEliminatoriasPublicasPorEvento(eventoId) {
   const rondas = Array.isArray(diagnostico?.rondas) ? diagnostico.rondas : [];
 
   if (diagnostico?.consistente === false) {
+    const rondasPublicables = rondas.length
+      ? rondas
+      : (partidos.length ? Eliminatoria.agruparPartidosPorRonda(partidos) : []);
     return {
       ok: true,
       evento: resumirEvento(evento),
-      total: 0,
-      rondas: [],
-      partidos: [],
+      total: partidos.length,
+      rondas: rondasPublicables,
+      partidos,
       inconsistente: true,
       codigo: diagnostico?.codigo || "bracket_desactualizado",
       mensaje:
@@ -694,7 +697,53 @@ async function listarEquiposPublicosPorEvento(eventoId) {
   };
 }
 
-async function obtenerEquipoPublico(equipoId) {
+function formatearRondaPublica(ronda = "") {
+  const key = String(ronda || "").trim().toLowerCase();
+  const labels = {
+    "32vos": "32vos de final",
+    "16vos": "16vos de final",
+    "12vos": "12vos de final",
+    "8vos": "Octavos",
+    "4tos": "Cuartos",
+    semifinal: "Semifinal",
+    final: "Final",
+    tercer_puesto: "Tercer y cuarto",
+    reclasificacion: "Reclasificación",
+  };
+  return labels[key] || String(ronda || "").trim() || "";
+}
+
+function describirFasePartido(row = {}) {
+  const ronda = String(row.playoff_ronda || "").trim().toLowerCase();
+  if (ronda) {
+    return {
+      tipo: "playoff",
+      ronda,
+      label: formatearRondaPublica(ronda),
+    };
+  }
+  if (row.es_reclasificacion_playoff === true || row.es_reclasificacion_playoff === "t") {
+    return {
+      tipo: "playoff",
+      ronda: "reclasificacion",
+      label: formatearRondaPublica("reclasificacion"),
+    };
+  }
+  const jornada = normalizarEntero(row.jornada);
+  return {
+    tipo: "grupos",
+    ronda: null,
+    label: jornada ? `Fase de grupos · J${jornada}` : "Fase de grupos",
+  };
+}
+
+async function obtenerEquipoPublico(equipoId, eventoId = null) {
+  let eventoActual = null;
+  if (eventoId) {
+    eventoActual = await obtenerEventoPublico(eventoId);
+    if (!eventoActual) return null;
+  }
+
   const eqR = await pool.query(
     `SELECT eq.id, eq.nombre, eq.logo_url, eq.color_primario, eq.color_secundario,
             eq.color_terciario, eq.director_tecnico, eq.asistente_tecnico, eq.medico,
@@ -712,6 +761,18 @@ async function obtenerEquipoPublico(equipoId) {
   const eq = eqR.rows[0];
   if (!esEstadoPublico(eq.campeonato_estado)) return null;
 
+  if (eventoActual && Number(eventoActual.campeonato_id) !== Number(eq.campeonato_id)) {
+    return null;
+  }
+
+  if (eventoActual) {
+    const participaR = await pool.query(
+      `SELECT 1 FROM evento_equipos WHERE evento_id = $1 AND equipo_id = $2 LIMIT 1`,
+      [eventoId, equipoId]
+    );
+    if (!participaR.rows.length) return null;
+  }
+
   // Eventos donde participa el equipo
   const evR = await pool.query(
     `SELECT ev.id, ev.nombre, ev.modalidad, ev.metodo_competencia
@@ -725,7 +786,11 @@ async function obtenerEquipoPublico(equipoId) {
     [equipoId]
   );
 
-  // Stats globales (todos los eventos)
+  const statsParams = [equipoId];
+  const statsEventoFiltro = eventoActual ? `AND p.evento_id = $2` : "";
+  if (eventoActual) statsParams.push(eventoId);
+
+  // Stats por categoria cuando llega evento_id; globales solo como fallback legacy.
   const stR = await pool.query(
     `SELECT
        COUNT(DISTINCT CASE WHEN p.estado IN ('finalizado','no_presentaron_ambos') THEN p.id END)::int AS pj,
@@ -756,10 +821,17 @@ async function obtenerEquipoPublico(equipoId) {
            THEN COALESCE(p.resultado_local,0)
          ELSE 0 END),0)::int AS gc
      FROM partidos p
-     WHERE p.equipo_local_id = $1 OR p.equipo_visitante_id = $1`,
-    [equipoId]
+     WHERE (p.equipo_local_id = $1 OR p.equipo_visitante_id = $1)
+       ${statsEventoFiltro}`,
+    statsParams
   );
   const st = stR.rows[0] || {};
+  const eventos = evR.rows.map((e) => ({
+    id: Number(e.id),
+    nombre: e.nombre,
+    modalidad: e.modalidad,
+    metodo_competencia: e.metodo_competencia,
+  }));
 
   return {
     id: Number(eq.id),
@@ -782,7 +854,8 @@ async function obtenerEquipoPublico(equipoId) {
       tipo_futbol: eq.tipo_futbol || eq.tipo_deporte || null,
       logo_url: eq.campeonato_logo || null,
     },
-    eventos: evR.rows.map((e) => ({ id: Number(e.id), nombre: e.nombre, modalidad: e.modalidad, metodo_competencia: e.metodo_competencia })),
+    evento: eventoActual ? resumirEvento(eventoActual) : null,
+    eventos,
     estadisticas: { pj: st.pj || 0, pg: st.pg || 0, pe: st.pe || 0, pp: st.pp || 0, gf: st.gf || 0, gc: st.gc || 0, dg: (st.gf || 0) - (st.gc || 0) },
   };
 }
@@ -893,15 +966,21 @@ async function listarPartidosPublicosPorEquipo(equipoId, eventoId = null) {
   const pR = await pool.query(
     `SELECT p.id, p.fecha_partido, p.hora_partido, p.cancha, p.jornada, p.estado,
             p.resultado_local, p.resultado_visitante, p.evento_id,
+            pe.ronda AS playoff_ronda, pe.partido_numero AS playoff_partido_numero,
+            (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
             el.id AS local_id, el.nombre AS local_nombre, el.logo_url AS local_logo,
             ev.id AS visitante_id, ev.nombre AS visitante_nombre, ev.logo_url AS visitante_logo,
             evo.id AS evento_id_num, evo.nombre AS evento_nombre,
-            c.nombre AS campeonato_nombre
+            c.nombre AS campeonato_nombre,
+            g.nombre_grupo, g.letra_grupo
      FROM partidos p
      JOIN equipos el ON el.id = p.equipo_local_id
      JOIN equipos ev ON ev.id = p.equipo_visitante_id
      JOIN eventos evo ON evo.id = p.evento_id
      JOIN campeonatos c ON c.id = p.campeonato_id
+     LEFT JOIN grupos g ON g.id = p.grupo_id
+     LEFT JOIN partidos_eliminatoria pe ON pe.partido_id = p.id
+     LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
      WHERE (p.equipo_local_id = $1 OR p.equipo_visitante_id = $1) ${eventoFiltro}
      ORDER BY p.fecha_partido DESC NULLS LAST, p.jornada DESC NULLS LAST`,
     params
@@ -920,12 +999,19 @@ async function listarPartidosPublicosPorEquipo(equipoId, eventoId = null) {
       if (jugado) {
         resultado = gf > gc ? "V" : gf < gc ? "D" : "E";
       }
+      const fase = describirFasePartido(p);
       return {
         id: Number(p.id),
         fecha: p.fecha_partido || null,
         hora: p.hora_partido || null,
         cancha: p.cancha || null,
         jornada: normalizarEntero(p.jornada),
+        fase,
+        playoff_ronda: p.playoff_ronda || null,
+        playoff_partido_numero: normalizarEntero(p.playoff_partido_numero),
+        es_reclasificacion_playoff: p.es_reclasificacion_playoff === true,
+        grupo_nombre: p.nombre_grupo || null,
+        grupo_letra: p.letra_grupo || null,
         estado,
         jugado,
         es_local: esLocal,
@@ -941,7 +1027,13 @@ async function listarPartidosPublicosPorEquipo(equipoId, eventoId = null) {
   };
 }
 
-async function obtenerJugadorPublico(jugadorId) {
+async function obtenerJugadorPublico(jugadorId, eventoId = null) {
+  let eventoActual = null;
+  if (eventoId) {
+    eventoActual = await obtenerEventoPublico(eventoId);
+    if (!eventoActual) return null;
+  }
+
   const jR = await pool.query(
     `SELECT j.id, j.nombre, j.apellido, j.posicion,
             j.numero_camiseta, j.es_capitan, j.fecha_nacimiento,
@@ -960,21 +1052,35 @@ async function obtenerJugadorPublico(jugadorId) {
   if (!jR.rows.length) return null;
   const j = jR.rows[0];
   if (!esEstadoPublico(j.campeonato_estado)) return null;
+  const jugadorEventoId = eventoActual ? Number(eventoId) : normalizarEntero(j.evento_id);
+  if (eventoActual && Number(eventoActual.campeonato_id) !== Number(j.campeonato_id)) return null;
+  if (eventoActual && normalizarEntero(j.evento_id) && normalizarEntero(j.evento_id) !== Number(eventoId)) {
+    return null;
+  }
 
   // Estadísticas del jugador
+  const statsParams = [jugadorId];
+  const statsEventoFiltro = jugadorEventoId ? `AND p.evento_id = $2::int` : "";
+  if (jugadorEventoId) statsParams.push(jugadorEventoId);
   const stR = await pool.query(
     `SELECT
        COALESCE(SUM(g.goles),0)::int AS total_goles,
        COUNT(DISTINCT g.partido_id)::int AS partidos_con_gol
-     FROM goleadores g WHERE g.jugador_id = $1`,
-    [jugadorId]
+     FROM goleadores g
+     JOIN partidos p ON p.id = g.partido_id
+     WHERE g.jugador_id = $1
+       ${statsEventoFiltro}`,
+    statsParams
   );
   const tR = await pool.query(
     `SELECT
        COUNT(*) FILTER (WHERE tipo_tarjeta = 'amarilla')::int AS amarillas,
        COUNT(*) FILTER (WHERE tipo_tarjeta IN ('roja','roja_directa','doble_amarilla'))::int AS rojas
-     FROM tarjetas WHERE jugador_id = $1`,
-    [jugadorId]
+     FROM tarjetas t
+     JOIN partidos p ON p.id = t.partido_id
+     WHERE t.jugador_id = $1
+       ${statsEventoFiltro}`,
+    statsParams
   );
 
   const st = stR.rows[0] || {};
@@ -998,6 +1104,12 @@ async function obtenerJugadorPublico(jugadorId) {
       color_secundario: j.color_secundario || null,
     },
     campeonato: { id: Number(j.campeonato_id), nombre: j.campeonato_nombre },
+    evento: eventoActual || jugadorEventoId
+      ? {
+          id: jugadorEventoId,
+          nombre: eventoActual?.nombre || null,
+        }
+      : null,
     estadisticas: {
       goles: st.total_goles || 0,
       partidos_con_gol: st.partidos_con_gol || 0,
@@ -1014,7 +1126,7 @@ async function listarParticipacionesPublicasJugador(jugadorId, eventoId = null) 
   }
 
   const jR = await pool.query(
-    `SELECT j.id, j.equipo_id
+    `SELECT j.id, j.equipo_id, j.evento_id
      FROM jugadores j
      JOIN equipos eq ON eq.id = j.equipo_id
      JOIN campeonatos c ON c.id = eq.campeonato_id
@@ -1028,24 +1140,34 @@ async function listarParticipacionesPublicasJugador(jugadorId, eventoId = null) 
   const jugador = jR.rows[0];
   const equipoId = normalizarEntero(jugador.equipo_id);
   if (!equipoId) return null;
+  if (eventoId && normalizarEntero(jugador.evento_id) && normalizarEntero(jugador.evento_id) !== Number(eventoId)) {
+    return null;
+  }
+  const eventoFiltroId = eventoId || normalizarEntero(jugador.evento_id);
 
   const partidoParams = [equipoId];
-  const eventoFiltro = eventoId ? `AND p.evento_id = $2::int` : "";
-  if (eventoId) partidoParams.push(eventoId);
-  const estadosParam = eventoId ? "$3" : "$2";
+  const eventoFiltro = eventoFiltroId ? `AND p.evento_id = $2::int` : "";
+  if (eventoFiltroId) partidoParams.push(eventoFiltroId);
+  const estadosParam = eventoFiltroId ? "$3" : "$2";
 
   // Planilla publica del jugador: todos los partidos publicados de su equipo.
   const pR = await pool.query(
     `SELECT DISTINCT p.id, p.fecha_partido, p.hora_partido, p.jornada, p.estado, p.cancha,
             p.resultado_local, p.resultado_visitante, p.equipo_local_id, p.equipo_visitante_id,
+            pe.ronda AS playoff_ronda, pe.partido_numero AS playoff_partido_numero,
+            (erp.id IS NOT NULL) AS es_reclasificacion_playoff,
             el.nombre AS local_nombre, el.logo_url AS local_logo,
             ev.nombre AS visitante_nombre, ev.logo_url AS visitante_logo,
-            evo.nombre AS evento_nombre, c.nombre AS campeonato_nombre
+            evo.id AS evento_id, evo.nombre AS evento_nombre, c.nombre AS campeonato_nombre,
+            g.nombre_grupo, g.letra_grupo
      FROM partidos p
      JOIN equipos el ON el.id = p.equipo_local_id
      JOIN equipos ev ON ev.id = p.equipo_visitante_id
      JOIN eventos evo ON evo.id = p.evento_id
      JOIN campeonatos c ON c.id = p.campeonato_id
+     LEFT JOIN grupos g ON g.id = p.grupo_id
+     LEFT JOIN partidos_eliminatoria pe ON pe.partido_id = p.id
+     LEFT JOIN evento_reclasificaciones_playoff erp ON erp.partido_id = p.id
      LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
      WHERE (p.equipo_local_id = $1::int OR p.equipo_visitante_id = $1::int)
        ${eventoFiltro}
@@ -1075,22 +1197,34 @@ async function listarParticipacionesPublicasJugador(jugadorId, eventoId = null) 
 
   return {
     total: pR.rows.length,
-    partidos: pR.rows.map((p) => ({
-      id: Number(p.id),
-      fecha: p.fecha_partido || null,
-      jornada: normalizarEntero(p.jornada),
-      estado: p.estado || "pendiente",
-      cancha: p.cancha || null,
-      local: { nombre: p.local_nombre, logo_url: p.local_logo || null },
-      visitante: { nombre: p.visitante_nombre, logo_url: p.visitante_logo || null },
-      resultado_local: normalizarEntero(p.resultado_local),
-      resultado_visitante: normalizarEntero(p.resultado_visitante),
-      evento_nombre: p.evento_nombre,
-      campeonato_nombre: p.campeonato_nombre,
-      goles: golesMap.get(Number(p.id))?.goles || 0,
-      tarjetas_amarillas: tarjetasMap.get(Number(p.id))?.amarillas || 0,
-      tarjetas_rojas: tarjetasMap.get(Number(p.id))?.rojas || 0,
-    })),
+    evento_id: eventoFiltroId || null,
+    partidos: pR.rows.map((p) => {
+      const fase = describirFasePartido(p);
+      return {
+        id: Number(p.id),
+        fecha: p.fecha_partido || null,
+        hora: p.hora_partido || null,
+        jornada: normalizarEntero(p.jornada),
+        fase,
+        playoff_ronda: p.playoff_ronda || null,
+        playoff_partido_numero: normalizarEntero(p.playoff_partido_numero),
+        es_reclasificacion_playoff: p.es_reclasificacion_playoff === true,
+        grupo_nombre: p.nombre_grupo || null,
+        grupo_letra: p.letra_grupo || null,
+        estado: p.estado || "pendiente",
+        cancha: p.cancha || null,
+        local: { id: normalizarEntero(p.equipo_local_id), nombre: p.local_nombre, logo_url: p.local_logo || null },
+        visitante: { id: normalizarEntero(p.equipo_visitante_id), nombre: p.visitante_nombre, logo_url: p.visitante_logo || null },
+        resultado_local: normalizarEntero(p.resultado_local),
+        resultado_visitante: normalizarEntero(p.resultado_visitante),
+        evento_id: normalizarEntero(p.evento_id),
+        evento_nombre: p.evento_nombre,
+        campeonato_nombre: p.campeonato_nombre,
+        goles: golesMap.get(Number(p.id))?.goles || 0,
+        tarjetas_amarillas: tarjetasMap.get(Number(p.id))?.amarillas || 0,
+        tarjetas_rojas: tarjetasMap.get(Number(p.id))?.rojas || 0,
+      };
+    }),
   };
 }
 
