@@ -50,6 +50,7 @@
     .jp-fase-badge { display: inline-flex; width: fit-content; margin-top: .18rem; border-radius: 999px; background: #eef2ff; color: #1e3a5f; padding: .12rem .45rem; font-size: .66rem; font-weight: 800; }
     .jp-part-equipos { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; font-weight: 600; min-width: 0; }
     .jp-part-logo { width: 22px; height: 22px; border-radius: 50%; object-fit: contain; flex-shrink: 0; }
+    .jp-part-team-name { min-width: 0; max-width: min(22vw, 140px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .jp-part-vs { color: #94a3b8; font-size: .75rem; margin: 0 .15rem; }
     .jp-part-marcador { font-weight: 900; font-size: .9rem; text-align: center; white-space: nowrap; }
     .jp-result-V { color: #16a34a; }
@@ -126,6 +127,12 @@
         grid-column: 1 / -1;
       }
       .jp-part-equipos { grid-column: 1 / -1; line-height: 1.35; }
+      .jp-part-team-name {
+        flex: 1 1 7rem;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
       .jp-part-marcador { justify-self: start; }
       .jp-part-contrib {
         grid-column: 1 / -1;
@@ -466,10 +473,10 @@
             </div>
             <div class="jp-part-equipos">
               ${localLogoHtml}
-              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;" title="${p.local?.nombre}">${p.local?.nombre || "—"}</span>
+              <span class="jp-part-team-name" title="${p.local?.nombre}">${p.local?.nombre || "—"}</span>
               <span class="jp-part-vs">vs</span>
               ${visitanteLogoHtml}
-              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;" title="${p.visitante?.nombre}">${p.visitante?.nombre || "—"}</span>
+              <span class="jp-part-team-name" title="${p.visitante?.nombre}">${p.visitante?.nombre || "—"}</span>
             </div>
             <div class="jp-part-marcador ${resultClass}">${marcador}</div>
             <div class="jp-part-contrib">${contrib.join("") || '<span style="font-size:.7rem;color:#94a3b8;">—</span>'}</div>

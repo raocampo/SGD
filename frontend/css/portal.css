@@ -80,6 +80,13 @@ body.ltc-landing {
   flex: 1 1 auto;
 }
 
+.ltc-header-brand > span:first-of-type {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ltc-nav-item {
   position: relative;
   display: flex;
@@ -695,6 +702,7 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
   font-size: 1.02rem;
   color: #2f3a4a;
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .portal-card-organizer {
@@ -939,7 +947,7 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
 
 .portal-equipos-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
   gap: 0.75rem;
   margin-top: 0.5rem;
 }
@@ -1400,6 +1408,7 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
   gap: 0.62rem;
   padding: 0.55rem 0.35rem;
   border-bottom: 1px solid #e4edf8;
+  min-width: 0;
 }
 
 .partido-publico:last-child {
@@ -1413,6 +1422,7 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
   justify-content: space-between;
   gap: 0.65rem;
   margin-bottom: 0.15rem;
+  min-width: 0;
 }
 
 .portal-playoff-match-status {
@@ -1430,6 +1440,7 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
   font-size: 0.76rem;
   color: #607691;
   text-align: right;
+  min-width: 0;
 }
 
 .portal-playoff-match-status.estado-finalizado {
@@ -1470,6 +1481,8 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
   flex-direction: column;
   align-items: center;
   gap: 0.3rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .equipo-local { align-items: flex-end; text-align: right; }
@@ -1505,6 +1518,9 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
   font-weight: 600;
   color: #27486f;
   font-size: 0.82rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .marcador-col {
@@ -2774,10 +2790,18 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
     height: 42px;
   }
 
+  .ltc-header-brand {
+    max-width: calc(100% - 54px);
+  }
+
   .ltc-header-nav {
     top: 70px;
     left: 0.85rem;
     right: 0.85rem;
+    max-height: calc(100vh - 86px);
+    max-height: calc(100dvh - 86px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .ltc-section-title {
@@ -2835,6 +2859,12 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
   .portal-detail-heading {
     flex-direction: column;
     align-items: flex-start;
+    min-width: 0;
+  }
+
+  .portal-detail-heading > div {
+    max-width: 100%;
+    min-width: 0;
   }
 
   .portal-detail-header {
@@ -3549,6 +3579,12 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
     min-width: 0;
   }
 
+  .portal-jornada-card-title,
+  .portal-jornada-card-meta {
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .portal-jornada-card-body {
     padding-inline: 0.65rem;
   }
@@ -3584,7 +3620,7 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
 
   .portal-table-wrap {
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: auto;
     overscroll-behavior-inline: contain;
   }
 
@@ -3687,6 +3723,18 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
     padding-inline: 0.55rem;
   }
 
+  .portal-jornada-card-head,
+  .portal-eliminatoria-ronda-head,
+  .portal-playoff-match-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .portal-jornada-card-meta,
+  .portal-playoff-match-meta {
+    text-align: left;
+  }
+
   .partido-publico {
     gap: 0.35rem;
   }
@@ -3695,6 +3743,22 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
   .portal-match-logo-placeholder {
     width: 36px;
     height: 36px;
+  }
+}
+
+@media (max-width: 360px) {
+  .partido-publico {
+    grid-template-columns: 1fr;
+  }
+
+  .equipo-local,
+  .equipo-visitante {
+    align-items: center;
+    text-align: center;
+  }
+
+  .marcador-col {
+    justify-self: center;
   }
 }
 

@@ -53,6 +53,7 @@
     .ep-partido-row:last-child { border-bottom: none; }
     .ep-partido-fecha { font-size: .75rem; color: #64748b; min-width: 80px; flex-shrink: 0; }
     .ep-partido-equipos { flex: 1; display: flex; align-items: center; gap: .5rem; font-size: .85rem; font-weight: 600; }
+    .ep-partido-rival { min-width: 0; overflow-wrap: anywhere; line-height: 1.25; }
     .ep-partido-logo { width: 24px; height: 24px; border-radius: 50%; object-fit: contain; }
     .ep-partido-resultado { min-width: 48px; text-align: center; font-weight: 900; font-size: .95rem; }
     .ep-fase-badge { display: inline-flex; width: fit-content; margin-top: .18rem; border-radius: 999px; background: #eef2ff; color: #1e3a5f; padding: .12rem .45rem; font-size: .66rem; font-weight: 800; }
@@ -115,8 +116,11 @@
         flex-wrap: wrap;
         line-height: 1.35;
       }
+      .ep-partido-rival {
+        flex: 1 1 8rem;
+      }
       .ep-partido-resultado { min-width: 44px; text-align: right; }
-      .ep-estado-badge { justify-self: end; }
+      .ep-estado-badge { grid-column: 1 / -1; justify-self: start; }
       .ltc-section-card { padding: .85rem; border-radius: 10px; }
       #ep-info-table td {
         display: block;
@@ -451,7 +455,7 @@
                 <span style="${p.es_local ? "font-weight:900;" : ""}">${p.es_local ? "LOCAL" : "VISITA"}</span>
                 <i class="fas fa-arrows-left-right" style="color:#cbd5e1; font-size:.6rem;"></i>
                 ${logoHtml(p.rival?.logo_url, p.rival?.nombre || "", 20)}
-                <span>${p.rival?.nombre || "—"}</span>
+                <span class="ep-partido-rival">${p.rival?.nombre || "—"}</span>
               </div>
               <div class="ep-partido-resultado">${marcador}</div>
               ${estadoBadge(p.estado)}

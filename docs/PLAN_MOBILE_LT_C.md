@@ -225,3 +225,18 @@ Entregable:
   - `node --check` en controladores, modelos, servicios mobile/publicos y script E2E mobile.
 - Pendiente:
   - ejecutar `npm run e2e:mobile-flow` con credenciales reales y datos controlados.
+
+## 15. Avance ejecutado (2026-06-12 - responsive publico)
+- Se refuerza el bloque publico web para estabilidad en viewport movil/tablet:
+  - header publico con marca contenida y menu desplegable con scroll vertical,
+  - grillas de torneos/equipos protegidas contra nombres largos,
+  - detalle de campeonato/categoria con partidos, playoff y tablas sin desborde horizontal accidental,
+  - fichas publicas de equipo/jugador con nombres de equipos y rivales adaptados a movil.
+- Verificacion aplicada:
+  - scripts inline de perfiles publicos OK,
+  - `git diff --check` OK,
+  - `npm --prefix backend run smoke:frontend` con `45/45 PASS`.
+- Pendiente:
+  - QA visual manual en `390x844` y `768x1024` con datos reales,
+  - probar en Render el portal publico completo despues de deploy,
+  - convertir tablas o listados especificos a vista tipo card si el cliente confirma que algun scroll horizontal restante no es comodo.

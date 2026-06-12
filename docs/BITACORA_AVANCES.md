@@ -1,3 +1,33 @@
+## 2026-06-12 - QA responsive publico: estabilidad mobile
+
+### Cambio aplicado
+- `frontend/css/portal.css`:
+  - se reforzo el header publico para evitar desbordes en anchos reducidos y para que el menu desplegable tenga alto maximo con scroll vertical tactil,
+  - las cards de torneos aceptan titulos largos sin empujar la grilla,
+  - la grilla de equipos usa columnas que nunca superan el ancho disponible,
+  - los partidos publicos y playoff tienen `min-width: 0`, metadatos contenibles y ajuste especifico para `420px` y `360px`,
+  - las tablas publicas conservan scroll horizontal tactil como respaldo cuando una combinacion de datos reales no quepa completa.
+- `frontend/equipo-publico.html`:
+  - los nombres largos de rivales en partidos pueden envolver en movil sin romper la fila,
+  - el estado del partido baja a una linea propia en movil para evitar choques con marcador/nombres.
+- `frontend/jugador-publico.html`:
+  - los nombres de equipos en el historial de partidos usan clase propia: truncado en escritorio y envoltura en movil.
+
+### Verificacion local
+- Scripts inline de `frontend/equipo-publico.html` y `frontend/jugador-publico.html` validados con `new Function(...)`.
+- `git diff --check` OK.
+- `npm --prefix backend run smoke:frontend` -> `45/45 PASS`.
+- Se intento generar capturas con Edge headless local, pero esta instalacion no produjo archivos de screenshot; queda QA visual manual pendiente.
+
+### Pendiente
+- QA visual manual en navegador real despues del deploy:
+  - `390x844`: `index.html`, `portal.html`, detalle de campeonato/categoria, `equipo-publico.html` y `jugador-publico.html`,
+  - `768x1024`: mismas rutas para tablet,
+  - validar con nombres reales largos de equipos, categorias con muchas pestanas, playoff con varias rondas y tablas de posiciones completas,
+  - confirmar en Render que no haya scroll horizontal accidental en el body.
+
+---
+
 ## 2026-06-12 - Portal publico: playoff y fichas por categoria
 
 ### Cambio aplicado
