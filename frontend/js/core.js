@@ -44,6 +44,9 @@
     "blog.html",
     "noticia.html",
     "planes.html",
+    "equipo-publico.html",
+    "jugador-publico.html",
+    "viewer.html",
   ]);
   const CMS_PAGES = new Set([
     "portal-cms.html",

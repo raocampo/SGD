@@ -1,3 +1,26 @@
+## 2026-06-12 - Portal publico: equipos primero y fichas publicas
+
+### Cambio aplicado
+- Se corrigio `frontend/js/core.js` para tratar como paginas publicas a:
+  - `equipo-publico.html`,
+  - `jugador-publico.html`,
+  - `viewer.html`.
+- Con esto, el clic en un equipo desde `portal.html` deja de activar el guard de sesion del sistema interno y abre la ficha publica correspondiente (`equipo-publico.html?id=...&evento=...&tab=partidos`).
+- En el detalle publico de una categoria, el orden de pestañas ahora inicia con **Equipos**, luego **Jornadas**, y conserva el resto de pestañas en el orden existente.
+- Como **Equipos** queda activo por defecto, se agrego carga automatica del listado al abrir el torneo y al cambiar de categoria, manteniendo lazy load para no repetir peticiones.
+- Se amplio `backend/scripts/smokeFrontendRoleGuards.js` con casos anonimos para paginas publicas reales del portal, incluyendo fichas de equipo/jugador y viewer.
+
+### Verificacion local
+- `node --check frontend/js/core.js` OK.
+- `node --check frontend/js/portal.js` OK.
+- `node --check backend/scripts/smokeFrontendRoleGuards.js` OK.
+- `npm --prefix backend run smoke:frontend` -> `45/45 PASS`.
+
+### Pendiente
+- Validar en Render despues del deploy: desde `https://ltyc.onrender.com/portal.html`, abrir un torneo/categoria y confirmar que **Equipos** aparece primero, carga el listado sin clic extra y cada card entra a `equipo-publico.html` sin redirigir al sistema interno.
+
+---
+
 ## 2026-06-02 — Cierre de sesion para continuar el 2026-06-03
 
 ### Estado git/publicacion

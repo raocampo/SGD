@@ -137,8 +137,14 @@ function runAssertions(qa) {
   const assertions = [
     // Publico sin sesion.
     { role: null, page: "index.html", expected: true, label: "anon-public-index" },
+    { role: null, page: "portal.html", expected: true, label: "anon-public-portal" },
     { role: null, page: "torneos.html", expected: true, label: "anon-public-torneos" },
     { role: null, page: "blog.html", expected: true, label: "anon-public-blog" },
+    { role: null, page: "noticia.html", expected: true, label: "anon-public-noticia" },
+    { role: null, page: "planes.html", expected: true, label: "anon-public-planes" },
+    { role: null, page: "equipo-publico.html", expected: true, label: "anon-public-equipo" },
+    { role: null, page: "jugador-publico.html", expected: true, label: "anon-public-jugador" },
+    { role: null, page: "viewer.html", expected: true, label: "anon-public-viewer" },
     { role: null, page: "portal-cms.html", expected: false, label: "anon-cms-deny" },
     { role: null, page: "portal-admin.html", expected: false, label: "anon-admin-deny" },
 

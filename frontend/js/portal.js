@@ -1971,6 +1971,7 @@ function renderCategoriaPanelPortal(data, index = 0) {
   const tipoDeporte = String(evento.tipo_deporte || evento.tipo_futbol || "").toLowerCase();
   const esBasquetbol = tipoDeporte.includes("basquet");
   const subtabs = [
+    { key: "equipos", label: "Equipos", html: `<div class="portal-equipos-lazy" data-evento-id="${evento.id}" data-loaded=""><p class="portal-empty-msg"><i class="fas fa-spinner fa-spin"></i> Cargando equipos...</p></div>` },
     { key: "jornadas", label: "Jornadas", html: renderJornadasPortal(data?.jornadas || [], data?.partidos || [], "proximas") },
     { key: "resultados", label: "Resultados", html: renderResultadosPortal(data?.jornadas || [], data?.partidos || []) },
     { key: "posiciones", label: "Tabla de posiciones", html: renderTablasPortal(data?.tablas || [], tipoDeporte) },
@@ -1979,7 +1980,6 @@ function renderCategoriaPanelPortal(data, index = 0) {
     { key: "tarjetas-amarillas", label: esBasquetbol ? "Faltas personales" : "Tarjetas amarillas", html: renderTarjetasPortal(data?.tarjetas || [], "amarillas", esBasquetbol) },
     { key: "tarjetas-rojas", label: esBasquetbol ? "Faltas técnicas" : "Tarjetas rojas", html: renderTarjetasPortal(data?.tarjetas || [], "rojas", esBasquetbol) },
     { key: "playoff", label: "Playoff", html: renderEliminatoriasPortal(data?.eliminatorias || []) },
-    { key: "equipos", label: "Equipos", html: `<div class="portal-equipos-lazy" data-evento-id="${evento.id}" data-loaded=""><p class="portal-empty-msg"><i class="fas fa-spinner fa-spin"></i> Cargando equipos...</p></div>` },
   ];
 
   return `
@@ -2050,6 +2050,22 @@ async function cargarEquiposTabPortal(eventoId, container) {
   } catch (e) {
     container.innerHTML = '<p class="portal-empty-msg"><i class="fas fa-exclamation-triangle"></i> Error cargando equipos.</p>';
   }
+}
+
+function cargarEquiposLazyPortal(lazy) {
+  if (!lazy || lazy.dataset.loaded !== "") return;
+  lazy.dataset.loaded = "1";
+  cargarEquiposTabPortal(lazy.dataset.eventoId, lazy);
+}
+
+function cargarEquiposPanelActivoPortal(scope = document) {
+  if (!scope?.querySelectorAll) return;
+  const selector = scope.classList?.contains("portal-category-panel")
+    ? ".portal-subtab-panel.active .portal-equipos-lazy"
+    : ".portal-category-panel.active .portal-subtab-panel.active .portal-equipos-lazy";
+  scope
+    .querySelectorAll(selector)
+    .forEach((lazy) => cargarEquiposLazyPortal(lazy));
 }
 
 function renderProximaTransmisionPortal(contenedor) {
@@ -2422,6 +2438,7 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
     );
 
     cont.innerHTML = renderDetalleCampeonatoPortal(camp, eventosData);
+    cargarEquiposPanelActivoPortal(cont);
     prepararVistaDetallePortal(camp, options);
     renderProximaTransmisionPortal(cont);
     if (options?.cargarAuspiciantes !== false) {
@@ -2460,6 +2477,7 @@ document.addEventListener("click", (event) => {
   if (categoryButton) {
     const scope = categoryButton.closest(".portal-detail-shell");
     activarPortalTab(scope, ".portal-category-tab", ".portal-category-panel", categoryButton.dataset.target);
+    cargarEquiposPanelActivoPortal(document.getElementById(categoryButton.dataset.target));
     return;
   }
 
@@ -2469,11 +2487,7 @@ document.addEventListener("click", (event) => {
     activarPortalTab(scope, ".portal-subtab", ".portal-subtab-panel", subtabButton.dataset.target);
     if (subtabButton.dataset.target && subtabButton.dataset.target.endsWith("-equipos")) {
       const panel = document.getElementById(subtabButton.dataset.target);
-      const lazy = panel?.querySelector(".portal-equipos-lazy");
-      if (lazy && lazy.dataset.loaded === "") {
-        lazy.dataset.loaded = "1";
-        cargarEquiposTabPortal(lazy.dataset.eventoId, lazy);
-      }
+      cargarEquiposLazyPortal(panel?.querySelector(".portal-equipos-lazy"));
     }
     return;
   }
