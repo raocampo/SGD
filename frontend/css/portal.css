@@ -1176,6 +1176,145 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
   gap: 0.6rem;
 }
 
+.portal-eliminatoria-grid-extra {
+  margin-top: 1rem;
+}
+
+/* Bracket navegable: pestañas por ronda + columnas conectadas con líneas */
+.portal-bracket {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.portal-bracket-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.portal-bracket-nav-btn {
+  flex: 0 0 auto;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 50%;
+  border: 1px solid #c9d8ec;
+  background: #fff;
+  color: #1c4f95;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.portal-bracket-nav-btn:hover {
+  background: #1c4f95;
+  color: #fff;
+}
+
+.portal-bracket-tabs {
+  flex: 1 1 auto;
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.portal-bracket-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.portal-bracket-tab {
+  flex: 0 0 auto;
+  border: 1px solid #d5e2f0;
+  background: #f4f8fd;
+  color: #33547c;
+  border-radius: 999px;
+  padding: 0.4rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.portal-bracket-tab.active {
+  background: linear-gradient(135deg, #203a5d 0%, #315d95 100%);
+  border-color: transparent;
+  color: #fff;
+}
+
+.portal-bracket-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.4rem;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+}
+
+.portal-bracket-track {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  width: max-content;
+  min-width: 100%;
+  gap: 2.25rem;
+}
+
+.portal-bracket-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+.portal-bracket-line {
+  fill: none;
+  stroke: #b7c9e2;
+  stroke-width: 2;
+}
+
+.portal-bracket-round {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 250px;
+  scroll-snap-align: start;
+}
+
+.portal-bracket-round-title {
+  margin: 0 0 0.6rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+  color: #1e3a5f;
+}
+
+.portal-bracket-round-title span:last-child {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6b7fa0;
+}
+
+.portal-bracket-round-body {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.portal-bracket-match.partido-publico {
+  border: 1px solid #d5e2f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 14px rgba(35, 58, 92, 0.08);
+  padding: 0.6rem 0.7rem;
+}
+
 .portal-jornada-card {
   border: 1px solid #d5e2f0;
   border-radius: 16px;
@@ -3819,5 +3958,41 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
   /* Stream section: already covered at 480px above, keep consistent */
   .ltc-stream-copy p {
     font-size: 0.9rem;
+  }
+}
+
+/* Bracket navegable: ajustes responsive */
+@media (max-width: 900px) {
+  .portal-bracket-round {
+    flex: 0 0 220px;
+  }
+
+  .portal-bracket-track {
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .portal-bracket-toolbar {
+    gap: 0.35rem;
+  }
+
+  .portal-bracket-nav-btn {
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: 0.85rem;
+  }
+
+  .portal-bracket-tab {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+  }
+
+  .portal-bracket-round {
+    flex: 0 0 82vw;
+  }
+
+  .portal-bracket-track {
+    gap: 1rem;
   }
 }

@@ -20,6 +20,17 @@ const RONDAS_PLAYOFF_PORTAL_ORDEN = [
   "final",
   "tercer_puesto",
 ];
+// Rondas que forman el árbol principal del bracket (con conectores entre partidos).
+// reclasificacion y tercer_puesto se muestran aparte porque no encajan en el árbol binario.
+const RONDAS_BRACKET_PRINCIPAL_PORTAL = new Set([
+  "32vos",
+  "16vos",
+  "12vos",
+  "8vos",
+  "4tos",
+  "semifinal",
+  "final",
+]);
 const LIMITE_TORNEOS_PORTADA = 6;
 const ESTADOS_TORNEOS_PORTADA = new Set(["en_curso"]);
 const ESTADOS_TORNEOS_LISTADO_PUBLICO = new Set(["en_curso", "inscripcion", "finalizado"]);
@@ -1731,6 +1742,86 @@ function renderResultadosPortal(jornadas = [], partidos = []) {
   return renderJornadasPortal(jornadas, partidos, "resultados");
 }
 
+function resolverNombreSeedPortal(partido, lado = "local") {
+  const sideKey = lado === "visitante" ? "visitante" : "local";
+  const nombre = partido?.[`equipo_${sideKey}_nombre`] || null;
+  if (nombre) return nombre;
+  const seedRef = String(partido?.[`seed_${sideKey}_ref`] || "").trim().toUpperCase();
+  if (/^MP\d+$/.test(seedRef)) {
+    return `Mejor perdedor ${seedRef.replace("MP", "")}`;
+  }
+  return "Por definir";
+}
+
+function resolverResumenPenalesPortal(partido = {}) {
+  const shootoutsActivos = partido?.shootouts === true || partido?.shootouts === "t";
+  const local = Number.parseInt(partido?.resultado_local_shootouts, 10);
+  const visitante = Number.parseInt(partido?.resultado_visitante_shootouts, 10);
+  if (!shootoutsActivos || !Number.isFinite(local) || !Number.isFinite(visitante) || local === visitante) {
+    return "";
+  }
+  const ganador = local > visitante
+    ? resolverNombreSeedPortal(partido, "local")
+    : resolverNombreSeedPortal(partido, "visitante");
+  return `Penales: ${local} - ${visitante} • Clasifica ${ganador} por penales`;
+}
+
+function construirTarjetaPartidoBracketPortal(partido = {}, opciones = {}) {
+  const estadoNormalizado = resolverEstadoNormalizadoPortal(partido);
+  const marcador =
+    Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante))
+      ? obtenerMarcadorVisiblePortal(partido)
+      : "vs";
+  const fecha = formatearFechaPortal(partido.fecha_partido || null);
+  const hora = formatearHoraPortal(partido.hora_partido || null);
+  const cancha = String(partido.cancha || "").trim();
+  const meta = [fecha !== "Por definir" ? fecha : "", hora ? `Hora ${hora}` : "", cancha]
+    .filter(Boolean)
+    .join(" • ");
+  const numero = Number.parseInt(partido.numero_campeonato, 10);
+  const numeroPartido = Number.isFinite(numero) && numero > 0 ? `P${numero}` : "";
+  const resumenPenales = resolverResumenPenalesPortal(partido);
+  const nombreLocal = resolverNombreSeedPortal(partido, "local");
+  const nombreVisitante = resolverNombreSeedPortal(partido, "visitante");
+  const matchId = escPortal(String(partido?.id ?? ""));
+  const slotLocalId = escPortal(String(partido?.slot_local_id ?? ""));
+  const slotVisitanteId = escPortal(String(partido?.slot_visitante_id ?? ""));
+  const claseExtra = opciones?.claseBracket ? " portal-bracket-match" : "";
+
+  return `
+    <div class="partido-publico${claseExtra}"${
+      opciones?.claseBracket
+        ? ` data-match-id="${matchId}" data-slot-local="${slotLocalId}" data-slot-visitante="${slotVisitanteId}"`
+        : ""
+    }>
+      <div class="portal-playoff-match-head">
+        <span class="portal-playoff-match-status estado-${escPortal(estadoNormalizado)}">${escPortal(
+          obtenerEstadoPartidoPortal(partido)
+        )}</span>
+        <span class="portal-playoff-match-meta">${escPortal(
+          [numeroPartido, meta].filter(Boolean).join(" • ") || "Por programar"
+        )}</span>
+      </div>
+      <div class="equipo-col equipo-local">
+        ${renderLogoEquipoPortal(partido.equipo_local_logo || partido.equipo_local_logo_url, nombreLocal)}
+        <div class="equipo-nombre">${escPortal(nombreLocal)}</div>
+      </div>
+      <div class="marcador-col">
+        <div class="marcador">${escPortal(marcador)}</div>
+      </div>
+      <div class="equipo-col equipo-visitante">
+        ${renderLogoEquipoPortal(partido.equipo_visitante_logo || partido.equipo_visitante_logo_url, nombreVisitante)}
+        <div class="equipo-nombre">${escPortal(nombreVisitante)}</div>
+      </div>
+      ${
+        resumenPenales
+          ? `<div class="portal-playoff-penales">${escPortal(resumenPenales)}</div>`
+          : ""
+      }
+    </div>
+  `;
+}
+
 function renderEliminatoriasPortal(payload = []) {
   const data = normalizarPayloadEliminatoriasPortal(payload);
   const rondasValidas = Array.isArray(data?.rondas)
@@ -1741,99 +1832,308 @@ function renderEliminatoriasPortal(payload = []) {
     return `<p class="empty-msg">${escPortal(mensaje)}</p>`;
   }
 
-  const resolverNombreSeedPortal = (partido, lado = "local") => {
-    const sideKey = lado === "visitante" ? "visitante" : "local";
-    const nombre = partido?.[`equipo_${sideKey}_nombre`] || null;
-    if (nombre) return nombre;
-    const seedRef = String(partido?.[`seed_${sideKey}_ref`] || "").trim().toUpperCase();
-    if (/^MP\d+$/.test(seedRef)) {
-      return `Mejor perdedor ${seedRef.replace("MP", "")}`;
-    }
-    return "Por definir";
-  };
+  const rondasPrincipales = rondasValidas.filter((ronda) =>
+    RONDAS_BRACKET_PRINCIPAL_PORTAL.has(normalizarRondaPlayoffPortal(ronda.ronda))
+  );
+  const rondasExtra = rondasValidas.filter(
+    (ronda) => !RONDAS_BRACKET_PRINCIPAL_PORTAL.has(normalizarRondaPlayoffPortal(ronda.ronda))
+  );
 
-  const resolverResumenPenalesPortal = (partido = {}) => {
-    const shootoutsActivos = partido?.shootouts === true || partido?.shootouts === "t";
-    const local = Number.parseInt(partido?.resultado_local_shootouts, 10);
-    const visitante = Number.parseInt(partido?.resultado_visitante_shootouts, 10);
-    if (!shootoutsActivos || !Number.isFinite(local) || !Number.isFinite(visitante) || local === visitante) {
-      return "";
-    }
-    const ganador = local > visitante
-      ? resolverNombreSeedPortal(partido, "local")
-      : resolverNombreSeedPortal(partido, "visitante");
-    return `Penales: ${local} - ${visitante} • Clasifica ${ganador} por penales`;
-  };
+  const extraHtml = rondasExtra.length
+    ? `
+      <div class="portal-eliminatoria-grid portal-eliminatoria-grid-extra">
+        ${rondasExtra
+          .map(
+            (ronda) => `
+              <section class="portal-eliminatoria-ronda">
+                <div class="portal-eliminatoria-ronda-head">
+                  <h4>${escPortal(formatearRondaPlayoffPortal(ronda.ronda))}</h4>
+                  <span>${Array.isArray(ronda.partidos) ? ronda.partidos.length : 0} partido(s)</span>
+                </div>
+                <div class="portal-eliminatoria-ronda-body">
+                  ${ronda.partidos.map((partido) => construirTarjetaPartidoBracketPortal(partido)).join("")}
+                </div>
+              </section>
+            `
+          )
+          .join("")}
+      </div>
+    `
+    : "";
+
+  if (rondasPrincipales.length < 2) {
+    // Sin suficientes rondas para armar un árbol con conectores: se listan como tarjetas simples.
+    const soloHtml = rondasPrincipales.length
+      ? `
+        <div class="portal-eliminatoria-grid">
+          ${rondasPrincipales
+            .map(
+              (ronda) => `
+                <section class="portal-eliminatoria-ronda">
+                  <div class="portal-eliminatoria-ronda-head">
+                    <h4>${escPortal(formatearRondaPlayoffPortal(ronda.ronda))}</h4>
+                    <span>${Array.isArray(ronda.partidos) ? ronda.partidos.length : 0} partido(s)</span>
+                  </div>
+                  <div class="portal-eliminatoria-ronda-body">
+                    ${ronda.partidos.map((partido) => construirTarjetaPartidoBracketPortal(partido)).join("")}
+                  </div>
+                </section>
+              `
+            )
+            .join("")}
+        </div>
+      `
+      : "";
+    return soloHtml + extraHtml;
+  }
+
+  const tabsHtml = rondasPrincipales
+    .map((ronda, idx) => {
+      const claveRonda = escPortal(normalizarRondaPlayoffPortal(ronda.ronda));
+      return `
+        <button type="button" class="portal-bracket-tab${idx === 0 ? " active" : ""}" data-bracket-round="${claveRonda}">
+          ${escPortal(formatearRondaPlayoffPortal(ronda.ronda))}
+        </button>
+      `;
+    })
+    .join("");
+
+  const columnasHtml = rondasPrincipales
+    .map((ronda) => {
+      const claveRonda = escPortal(normalizarRondaPlayoffPortal(ronda.ronda));
+      const partidosHtml = ronda.partidos
+        .map((partido) => construirTarjetaPartidoBracketPortal(partido, { claseBracket: true }))
+        .join("");
+      return `
+        <section class="portal-bracket-round" data-bracket-round-col="${claveRonda}">
+          <h4 class="portal-bracket-round-title">
+            <span>${escPortal(formatearRondaPlayoffPortal(ronda.ronda))}</span>
+            <span>${Array.isArray(ronda.partidos) ? ronda.partidos.length : 0} partido(s)</span>
+          </h4>
+          <div class="portal-bracket-round-body">
+            ${partidosHtml}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
 
   return `
-    <div class="portal-eliminatoria-grid">
-      ${rondasValidas
-        .map((ronda) => {
-          const partidosHtml = ronda.partidos
-            .map((partido) => {
-              const estadoNormalizado = resolverEstadoNormalizadoPortal(partido);
-              const marcador =
-                Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante))
-                  ? obtenerMarcadorVisiblePortal(partido)
-                  : "vs";
-              const fecha = formatearFechaPortal(partido.fecha_partido || null);
-              const hora = formatearHoraPortal(partido.hora_partido || null);
-              const cancha = String(partido.cancha || "").trim();
-              const meta = [fecha !== "Por definir" ? fecha : "", hora ? `Hora ${hora}` : "", cancha]
-                .filter(Boolean)
-                .join(" • ");
-              const numero = Number.parseInt(partido.numero_campeonato, 10);
-              const numeroPartido = Number.isFinite(numero) && numero > 0 ? `P${numero}` : "";
-              const resumenPenales = resolverResumenPenalesPortal(partido);
-              const nombreLocal = resolverNombreSeedPortal(partido, "local");
-              const nombreVisitante = resolverNombreSeedPortal(partido, "visitante");
-              return `
-                <div class="partido-publico">
-                  <div class="portal-playoff-match-head">
-                    <span class="portal-playoff-match-status estado-${escPortal(estadoNormalizado)}">${escPortal(
-                      obtenerEstadoPartidoPortal(partido)
-                    )}</span>
-                    <span class="portal-playoff-match-meta">${escPortal(
-                      [numeroPartido, meta].filter(Boolean).join(" • ") || "Por programar"
-                    )}</span>
-                  </div>
-                  <div class="equipo-col equipo-local">
-                    ${renderLogoEquipoPortal(partido.equipo_local_logo || partido.equipo_local_logo_url, nombreLocal)}
-                    <div class="equipo-nombre">${escPortal(nombreLocal)}</div>
-                  </div>
-                  <div class="marcador-col">
-                    <div class="marcador">${escPortal(marcador)}</div>
-                  </div>
-                  <div class="equipo-col equipo-visitante">
-                    ${renderLogoEquipoPortal(partido.equipo_visitante_logo || partido.equipo_visitante_logo_url, nombreVisitante)}
-                    <div class="equipo-nombre">${escPortal(nombreVisitante)}</div>
-                  </div>
-                  ${
-                    resumenPenales
-                      ? `<div class="portal-playoff-penales">${escPortal(resumenPenales)}</div>`
-                      : ""
-                  }
-                </div>
-              `;
-            })
-            .join("");
-
-          return `
-            <section class="portal-eliminatoria-ronda">
-              <div class="portal-eliminatoria-ronda-head">
-                <h4>${escPortal(formatearRondaPlayoffPortal(ronda.ronda))}</h4>
-                <span>${Array.isArray(ronda.partidos) ? ronda.partidos.length : 0} partido(s)</span>
-              </div>
-              <div class="portal-eliminatoria-ronda-body">
-                ${partidosHtml}
-              </div>
-            </section>
-          `;
-        })
-        .join("")}
+    <div class="portal-bracket" data-bracket>
+      <div class="portal-bracket-toolbar">
+        <button type="button" class="portal-bracket-nav-btn" data-bracket-nav="prev" aria-label="Ronda anterior">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="portal-bracket-tabs" data-bracket-tabs>${tabsHtml}</div>
+        <button type="button" class="portal-bracket-nav-btn" data-bracket-nav="next" aria-label="Ronda siguiente">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      <div class="portal-bracket-scroll" data-bracket-scroll>
+        <div class="portal-bracket-track" data-bracket-track>
+          <svg class="portal-bracket-lines" data-bracket-svg aria-hidden="true"></svg>
+          ${columnasHtml}
+        </div>
+      </div>
     </div>
+    ${extraHtml}
   `;
 }
+
+// Ubica cada partido de la ronda N a la altura media de los dos partidos de la
+// ronda N-1 que lo alimentan (usando slot_local_id / slot_visitante_id), para que
+// las líneas conectoras del bracket se dibujen de forma coherente.
+function maquetarBracketPortal(root) {
+  const track = root?.querySelector?.("[data-bracket-track]");
+  if (!track) return;
+  const columnas = Array.from(track.querySelectorAll("[data-bracket-round-col]"));
+  if (!columnas.length) return;
+
+  columnas.forEach((col) => {
+    const body = col.querySelector(".portal-bracket-round-body");
+    if (body) {
+      body.style.position = "";
+      body.style.minHeight = "";
+    }
+    col.querySelectorAll("[data-match-id]").forEach((m) => {
+      m.style.position = "";
+      m.style.top = "";
+    });
+  });
+
+  if (columnas.length < 2) {
+    dibujarConectoresBracketPortal(root);
+    return;
+  }
+
+  const centerYRelTrack = (el) => {
+    const r = el.getBoundingClientRect();
+    const t = track.getBoundingClientRect();
+    return r.top - t.top + r.height / 2;
+  };
+
+  const primerBody = columnas[0].querySelector(".portal-bracket-round-body");
+  const alturaBase = primerBody ? primerBody.scrollHeight : 0;
+
+  let centros = new Map();
+  columnas[0].querySelectorAll("[data-match-id]").forEach((m) => {
+    centros.set(m.dataset.matchId, centerYRelTrack(m));
+  });
+
+  for (let i = 1; i < columnas.length; i += 1) {
+    const body = columnas[i].querySelector(".portal-bracket-round-body");
+    if (!body) continue;
+    body.style.position = "relative";
+    body.style.minHeight = `${alturaBase}px`;
+
+    const matches = Array.from(body.querySelectorAll("[data-match-id]"));
+    matches.forEach((m) => {
+      const yLocal = centros.get(m.dataset.slotLocal);
+      const yVisitante = centros.get(m.dataset.slotVisitante);
+      let centerY = null;
+      if (Number.isFinite(yLocal) && Number.isFinite(yVisitante)) {
+        centerY = (yLocal + yVisitante) / 2;
+      } else if (Number.isFinite(yLocal)) {
+        centerY = yLocal;
+      } else if (Number.isFinite(yVisitante)) {
+        centerY = yVisitante;
+      }
+      if (centerY == null) return;
+      const alturaMatch = m.getBoundingClientRect().height;
+      const bodyTop = body.getBoundingClientRect().top - track.getBoundingClientRect().top;
+      const top = Math.max(0, centerY - bodyTop - alturaMatch / 2);
+      m.style.position = "absolute";
+      m.style.left = "0";
+      m.style.right = "0";
+      m.style.top = `${top}px`;
+    });
+
+    const nuevos = new Map();
+    matches.forEach((m) => nuevos.set(m.dataset.matchId, centerYRelTrack(m)));
+    centros = nuevos;
+  }
+
+  dibujarConectoresBracketPortal(root);
+}
+
+function dibujarConectoresBracketPortal(root) {
+  const track = root?.querySelector?.("[data-bracket-track]");
+  const svg = root?.querySelector?.("[data-bracket-svg]");
+  if (!track || !svg) return;
+
+  const rectTrack = track.getBoundingClientRect();
+  svg.innerHTML = "";
+
+  const matches = Array.from(track.querySelectorAll("[data-match-id]"));
+  if (matches.length < 2) return;
+  const porId = new Map(matches.map((m) => [m.dataset.matchId, m]));
+
+  const puntoDerecho = (el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.right - rectTrack.left, y: r.top - rectTrack.top + r.height / 2 };
+  };
+  const puntoIzquierdo = (el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.left - rectTrack.left, y: r.top - rectTrack.top + r.height / 2 };
+  };
+
+  const ns = "http://www.w3.org/2000/svg";
+  matches.forEach((m) => {
+    const destino = puntoIzquierdo(m);
+    ["slotLocal", "slotVisitante"].forEach((key) => {
+      const feederId = m.dataset[key];
+      const feeder = feederId ? porId.get(feederId) : null;
+      if (!feeder || feeder === m) return;
+      const origen = puntoDerecho(feeder);
+      const midX = origen.x + (destino.x - origen.x) / 2;
+      const d = `M ${origen.x} ${origen.y} H ${midX} V ${destino.y} H ${destino.x}`;
+      const path = document.createElementNS(ns, "path");
+      path.setAttribute("d", d);
+      path.setAttribute("class", "portal-bracket-line");
+      svg.appendChild(path);
+    });
+  });
+}
+
+function configurarNavegacionBracketPortal(root) {
+  if (!root || root.dataset.bracketNavBound === "1") return;
+  root.dataset.bracketNavBound = "1";
+
+  const scrollWrap = root.querySelector("[data-bracket-scroll]");
+  const tabs = Array.from(root.querySelectorAll("[data-bracket-round]"));
+  if (!scrollWrap || !tabs.length) return;
+
+  const marcarActiva = (ronda) => {
+    tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.bracketRound === ronda));
+  };
+
+  const irARonda = (ronda) => {
+    const columna = root.querySelector(`[data-bracket-round-col="${ronda}"]`);
+    if (!columna) return;
+    scrollWrap.scrollTo({ left: columna.offsetLeft - 8, behavior: "smooth" });
+  };
+
+  root.addEventListener("click", (event) => {
+    const tabBtn = event.target.closest("[data-bracket-round]");
+    if (tabBtn) {
+      marcarActiva(tabBtn.dataset.bracketRound);
+      irARonda(tabBtn.dataset.bracketRound);
+      return;
+    }
+    const navBtn = event.target.closest("[data-bracket-nav]");
+    if (navBtn) {
+      const activa = tabs.find((t) => t.classList.contains("active")) || tabs[0];
+      const idx = tabs.indexOf(activa);
+      const delta = navBtn.dataset.bracketNav === "next" ? 1 : -1;
+      const siguiente = tabs[Math.min(tabs.length - 1, Math.max(0, idx + delta))];
+      if (siguiente) {
+        marcarActiva(siguiente.dataset.bracketRound);
+        irARonda(siguiente.dataset.bracketRound);
+      }
+    }
+  });
+
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibles = entries.filter((e) => e.isIntersecting);
+        if (!visibles.length) return;
+        const masVisible = visibles.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        const ronda = masVisible?.target?.dataset?.bracketRoundCol;
+        if (ronda) marcarActiva(ronda);
+      },
+      { root: scrollWrap, threshold: [0.5] }
+    );
+    root.querySelectorAll("[data-bracket-round-col]").forEach((col) => observer.observe(col));
+  }
+}
+
+function inicializarBracketPortal(panelEl) {
+  const root = panelEl?.classList?.contains("portal-bracket")
+    ? panelEl
+    : panelEl?.querySelector?.(".portal-bracket");
+  if (!root) return;
+  configurarNavegacionBracketPortal(root);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      maquetarBracketPortal(root);
+      root.querySelectorAll("img").forEach((img) => {
+        if (img.complete) return;
+        img.addEventListener("load", () => maquetarBracketPortal(root), { once: true });
+      });
+    });
+  });
+}
+
+let bracketPortalResizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(bracketPortalResizeTimer);
+  bracketPortalResizeTimer = setTimeout(() => {
+    document.querySelectorAll(".portal-bracket").forEach((root) => {
+      if (root.offsetParent !== null) maquetarBracketPortal(root);
+    });
+  }, 200);
+});
 
 function renderGoleadoresPortal(goleadores = [], esBasquetbol = false) {
   const rows = Array.isArray(goleadores) ? goleadores.slice(0, 10) : [];
@@ -2488,6 +2788,9 @@ document.addEventListener("click", (event) => {
     if (subtabButton.dataset.target && subtabButton.dataset.target.endsWith("-equipos")) {
       const panel = document.getElementById(subtabButton.dataset.target);
       cargarEquiposLazyPortal(panel?.querySelector(".portal-equipos-lazy"));
+    }
+    if (subtabButton.dataset.target && subtabButton.dataset.target.endsWith("-playoff")) {
+      inicializarBracketPortal(document.getElementById(subtabButton.dataset.target));
     }
     return;
   }
