@@ -1753,71 +1753,76 @@ function resolverNombreSeedPortal(partido, lado = "local") {
   return "Por definir";
 }
 
-function resolverResumenPenalesPortal(partido = {}) {
-  const shootoutsActivos = partido?.shootouts === true || partido?.shootouts === "t";
-  const local = Number.parseInt(partido?.resultado_local_shootouts, 10);
-  const visitante = Number.parseInt(partido?.resultado_visitante_shootouts, 10);
-  if (!shootoutsActivos || !Number.isFinite(local) || !Number.isFinite(visitante) || local === visitante) {
-    return "";
-  }
-  const ganador = local > visitante
-    ? resolverNombreSeedPortal(partido, "local")
-    : resolverNombreSeedPortal(partido, "visitante");
-  return `Penales: ${local} - ${visitante} • Clasifica ${ganador} por penales`;
+function resolverGanadorLadoPortal(partido = {}) {
+  const ganadorId = Number.parseInt(partido?.ganador_id, 10);
+  if (!Number.isFinite(ganadorId) || ganadorId <= 0) return null;
+  const localId = Number.parseInt(partido?.equipo_local_id, 10);
+  const visitanteId = Number.parseInt(partido?.equipo_visitante_id, 10);
+  if (Number.isFinite(localId) && localId === ganadorId) return "local";
+  if (Number.isFinite(visitanteId) && visitanteId === ganadorId) return "visitante";
+  return null;
 }
 
-function construirTarjetaPartidoBracketPortal(partido = {}, opciones = {}) {
+function construirFilaEquipoBracketPortal(partido, lado, ladoGanador) {
+  const nombre = resolverNombreSeedPortal(partido, lado);
+  const logo =
+    lado === "visitante"
+      ? partido.equipo_visitante_logo || partido.equipo_visitante_logo_url
+      : partido.equipo_local_logo || partido.equipo_local_logo_url;
+  let marcadorTxt = "";
+  if (esPartidoConResultadoPortal(partido)) {
+    const resultado = Number.parseInt(partido?.[lado === "visitante" ? "resultado_visitante" : "resultado_local"], 10);
+    const shootoutsActivos = partido?.shootouts === true || partido?.shootouts === "t";
+    const shootout = Number.parseInt(
+      partido?.[lado === "visitante" ? "resultado_visitante_shootouts" : "resultado_local_shootouts"],
+      10
+    );
+    if (Number.isFinite(resultado)) {
+      marcadorTxt = String(resultado);
+      if (shootoutsActivos && Number.isFinite(shootout)) {
+        marcadorTxt += ` (${shootout})`;
+      }
+    }
+  }
+  const claseResultado = ladoGanador === lado ? " pb-team-ganador" : ladoGanador ? " pb-team-perdedor" : "";
+
+  return `
+    <div class="pb-team${claseResultado}">
+      <span class="pb-team-icon">${renderLogoEquipoPortal(logo, nombre)}</span>
+      <span class="pb-team-name">${escPortal(nombre)}</span>
+      <span class="pb-team-score">${escPortal(marcadorTxt)}</span>
+    </div>
+  `;
+}
+
+function construirTarjetaPartidoBracketPortal(partido = {}) {
   const estadoNormalizado = resolverEstadoNormalizadoPortal(partido);
-  const marcador =
-    Number.isFinite(Number(partido.resultado_local)) || Number.isFinite(Number(partido.resultado_visitante))
-      ? obtenerMarcadorVisiblePortal(partido)
-      : "vs";
   const fecha = formatearFechaPortal(partido.fecha_partido || null);
   const hora = formatearHoraPortal(partido.hora_partido || null);
   const cancha = String(partido.cancha || "").trim();
-  const meta = [fecha !== "Por definir" ? fecha : "", hora ? `Hora ${hora}` : "", cancha]
-    .filter(Boolean)
-    .join(" • ");
   const numero = Number.parseInt(partido.numero_campeonato, 10);
   const numeroPartido = Number.isFinite(numero) && numero > 0 ? `P${numero}` : "";
-  const resumenPenales = resolverResumenPenalesPortal(partido);
-  const nombreLocal = resolverNombreSeedPortal(partido, "local");
-  const nombreVisitante = resolverNombreSeedPortal(partido, "visitante");
+  const meta = [numeroPartido, fecha !== "Por definir" ? fecha : "", hora ? `${hora}` : "", cancha]
+    .filter(Boolean)
+    .join(" • ");
+  const ladoGanador = estadoNormalizado === "finalizado" ? resolverGanadorLadoPortal(partido) : null;
+  const shootoutsActivos = partido?.shootouts === true || partido?.shootouts === "t";
+  const etiquetaEstado =
+    estadoNormalizado === "finalizado" && shootoutsActivos
+      ? `${obtenerEstadoPartidoPortal(partido)} (P)`
+      : obtenerEstadoPartidoPortal(partido);
   const matchId = escPortal(String(partido?.id ?? ""));
   const slotLocalId = escPortal(String(partido?.slot_local_id ?? ""));
   const slotVisitanteId = escPortal(String(partido?.slot_visitante_id ?? ""));
-  const claseExtra = opciones?.claseBracket ? " portal-bracket-match" : "";
 
   return `
-    <div class="partido-publico${claseExtra}"${
-      opciones?.claseBracket
-        ? ` data-match-id="${matchId}" data-slot-local="${slotLocalId}" data-slot-visitante="${slotVisitanteId}"`
-        : ""
-    }>
-      <div class="portal-playoff-match-head">
-        <span class="portal-playoff-match-status estado-${escPortal(estadoNormalizado)}">${escPortal(
-          obtenerEstadoPartidoPortal(partido)
-        )}</span>
-        <span class="portal-playoff-match-meta">${escPortal(
-          [numeroPartido, meta].filter(Boolean).join(" • ") || "Por programar"
-        )}</span>
+    <div class="pb-card" data-match-id="${matchId}" data-slot-local="${slotLocalId}" data-slot-visitante="${slotVisitanteId}">
+      <div class="pb-card-head">
+        <span class="pb-card-date">${escPortal(meta || "Por programar")}</span>
+        <span class="pb-status estado-${escPortal(estadoNormalizado)}">${escPortal(etiquetaEstado)}</span>
       </div>
-      <div class="equipo-col equipo-local">
-        ${renderLogoEquipoPortal(partido.equipo_local_logo || partido.equipo_local_logo_url, nombreLocal)}
-        <div class="equipo-nombre">${escPortal(nombreLocal)}</div>
-      </div>
-      <div class="marcador-col">
-        <div class="marcador">${escPortal(marcador)}</div>
-      </div>
-      <div class="equipo-col equipo-visitante">
-        ${renderLogoEquipoPortal(partido.equipo_visitante_logo || partido.equipo_visitante_logo_url, nombreVisitante)}
-        <div class="equipo-nombre">${escPortal(nombreVisitante)}</div>
-      </div>
-      ${
-        resumenPenales
-          ? `<div class="portal-playoff-penales">${escPortal(resumenPenales)}</div>`
-          : ""
-      }
+      ${construirFilaEquipoBracketPortal(partido, "local", ladoGanador)}
+      ${construirFilaEquipoBracketPortal(partido, "visitante", ladoGanador)}
     </div>
   `;
 }
@@ -1839,52 +1844,32 @@ function renderEliminatoriasPortal(payload = []) {
     (ronda) => !RONDAS_BRACKET_PRINCIPAL_PORTAL.has(normalizarRondaPlayoffPortal(ronda.ronda))
   );
 
-  const extraHtml = rondasExtra.length
-    ? `
-      <div class="portal-eliminatoria-grid portal-eliminatoria-grid-extra">
-        ${rondasExtra
-          .map(
-            (ronda) => `
-              <section class="portal-eliminatoria-ronda">
-                <div class="portal-eliminatoria-ronda-head">
-                  <h4>${escPortal(formatearRondaPlayoffPortal(ronda.ronda))}</h4>
-                  <span>${Array.isArray(ronda.partidos) ? ronda.partidos.length : 0} partido(s)</span>
-                </div>
-                <div class="portal-eliminatoria-ronda-body">
-                  ${ronda.partidos.map((partido) => construirTarjetaPartidoBracketPortal(partido)).join("")}
-                </div>
-              </section>
-            `
-          )
-          .join("")}
+  const construirColumnaRondaHtml = (ronda) => `
+    <section class="portal-bracket-round" data-bracket-round-col="${escPortal(
+      normalizarRondaPlayoffPortal(ronda.ronda)
+    )}">
+      <h4 class="portal-bracket-round-title">${escPortal(formatearRondaPlayoffPortal(ronda.ronda))}</h4>
+      <div class="portal-bracket-round-body">
+        ${ronda.partidos.map((partido) => construirTarjetaPartidoBracketPortal(partido)).join("")}
       </div>
-    `
+    </section>
+  `;
+
+  const extraHtml = rondasExtra.length
+    ? `<div class="portal-bracket-extra">${rondasExtra.map((ronda) => construirColumnaRondaHtml(ronda)).join("")}</div>`
     : "";
 
   if (rondasPrincipales.length < 2) {
     // Sin suficientes rondas para armar un árbol con conectores: se listan como tarjetas simples.
-    const soloHtml = rondasPrincipales.length
-      ? `
-        <div class="portal-eliminatoria-grid">
-          ${rondasPrincipales
-            .map(
-              (ronda) => `
-                <section class="portal-eliminatoria-ronda">
-                  <div class="portal-eliminatoria-ronda-head">
-                    <h4>${escPortal(formatearRondaPlayoffPortal(ronda.ronda))}</h4>
-                    <span>${Array.isArray(ronda.partidos) ? ronda.partidos.length : 0} partido(s)</span>
-                  </div>
-                  <div class="portal-eliminatoria-ronda-body">
-                    ${ronda.partidos.map((partido) => construirTarjetaPartidoBracketPortal(partido)).join("")}
-                  </div>
-                </section>
-              `
-            )
-            .join("")}
+    if (!rondasPrincipales.length && !rondasExtra.length) return "";
+    return `
+      <div class="portal-bracket portal-bracket-simple">
+        <div class="portal-bracket-extra">
+          ${rondasPrincipales.map((ronda) => construirColumnaRondaHtml(ronda)).join("")}
         </div>
-      `
-      : "";
-    return soloHtml + extraHtml;
+        ${extraHtml}
+      </div>
+    `;
   }
 
   const tabsHtml = rondasPrincipales
@@ -1898,25 +1883,7 @@ function renderEliminatoriasPortal(payload = []) {
     })
     .join("");
 
-  const columnasHtml = rondasPrincipales
-    .map((ronda) => {
-      const claveRonda = escPortal(normalizarRondaPlayoffPortal(ronda.ronda));
-      const partidosHtml = ronda.partidos
-        .map((partido) => construirTarjetaPartidoBracketPortal(partido, { claseBracket: true }))
-        .join("");
-      return `
-        <section class="portal-bracket-round" data-bracket-round-col="${claveRonda}">
-          <h4 class="portal-bracket-round-title">
-            <span>${escPortal(formatearRondaPlayoffPortal(ronda.ronda))}</span>
-            <span>${Array.isArray(ronda.partidos) ? ronda.partidos.length : 0} partido(s)</span>
-          </h4>
-          <div class="portal-bracket-round-body">
-            ${partidosHtml}
-          </div>
-        </section>
-      `;
-    })
-    .join("");
+  const columnasHtml = rondasPrincipales.map((ronda) => construirColumnaRondaHtml(ronda)).join("");
 
   return `
     <div class="portal-bracket" data-bracket>
@@ -1935,8 +1902,8 @@ function renderEliminatoriasPortal(payload = []) {
           ${columnasHtml}
         </div>
       </div>
+      ${extraHtml}
     </div>
-    ${extraHtml}
   `;
 }
 
