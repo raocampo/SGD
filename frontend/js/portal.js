@@ -2096,14 +2096,37 @@ function inicializarBracketPortal(panelEl) {
     : panelEl?.querySelector?.(".portal-bracket");
   if (!root) return;
   configurarNavegacionBracketPortal(root);
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
+
+  let rafPendiente = null;
+  const recalcular = () => {
+    if (rafPendiente) cancelAnimationFrame(rafPendiente);
+    rafPendiente = requestAnimationFrame(() => {
+      rafPendiente = null;
       maquetarBracketPortal(root);
-      root.querySelectorAll("img").forEach((img) => {
-        if (img.complete) return;
-        img.addEventListener("load", () => maquetarBracketPortal(root), { once: true });
-      });
     });
+  };
+
+  recalcular();
+
+  // La ronda base (columna 0) nunca se reposiciona a sí misma, así que observarla
+  // no genera loops: si su alto natural cambia (fuente web que termina de cargar,
+  // imagen que llega tarde, texto que reajusta), se vuelve a maquetar el bracket.
+  // Esto es necesario porque en producción los recursos (CDN de íconos, logos)
+  // pueden tardar más que en desarrollo local y llegar después del primer cálculo.
+  if (!root._pbResizeObserver && "ResizeObserver" in window) {
+    const primerBody = root.querySelector(".portal-bracket-round-body");
+    const observer = new ResizeObserver(() => recalcular());
+    if (primerBody) observer.observe(primerBody);
+    root._pbResizeObserver = observer;
+  }
+
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(recalcular).catch(() => {});
+  }
+
+  root.querySelectorAll("img").forEach((img) => {
+    if (img.complete) return;
+    img.addEventListener("load", recalcular, { once: true });
   });
 }
 

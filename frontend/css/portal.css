@@ -1260,6 +1260,11 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
 .portal-bracket-round-body {
   display: grid;
   gap: 0.85rem;
+  /* Evita que las tarjetas aun estaticas se estiren para llenar el min-height
+     que se asigna via JS (igualar el alto de todas las columnas del bracket);
+     sin esto, CSS Grid las infla (align-content:stretch por defecto) mientras
+     se calculan las posiciones, corrompiendo la altura medida de cada tarjeta. */
+  align-content: start;
 }
 
 .portal-bracket-extra {
