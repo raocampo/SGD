@@ -1297,11 +1297,13 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
 }
 
 .pb-card-date {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
   font-size: 0.7rem;
+  line-height: 1.25;
   color: #6b7789;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   min-width: 0;
 }
 

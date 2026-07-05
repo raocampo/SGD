@@ -1799,12 +1799,10 @@ function construirTarjetaPartidoBracketPortal(partido = {}) {
   const estadoNormalizado = resolverEstadoNormalizadoPortal(partido);
   const fecha = formatearFechaPortal(partido.fecha_partido || null);
   const hora = formatearHoraPortal(partido.hora_partido || null);
-  const cancha = String(partido.cancha || "").trim();
-  const numero = Number.parseInt(partido.numero_campeonato, 10);
-  const numeroPartido = Number.isFinite(numero) && numero > 0 ? `P${numero}` : "";
-  const meta = [numeroPartido, fecha !== "Por definir" ? fecha : "", hora ? `${hora}` : "", cancha]
-    .filter(Boolean)
-    .join(" • ");
+  const tieneFecha = fecha !== "Por definir";
+  const fechaHtml = tieneFecha
+    ? `<span>${escPortal(fecha)}</span>${hora ? `<span>${escPortal(hora)}</span>` : ""}`
+    : `<span>Por programar</span>`;
   const ladoGanador = estadoNormalizado === "finalizado" ? resolverGanadorLadoPortal(partido) : null;
   const shootoutsActivos = partido?.shootouts === true || partido?.shootouts === "t";
   const etiquetaEstado =
@@ -1818,7 +1816,7 @@ function construirTarjetaPartidoBracketPortal(partido = {}) {
   return `
     <div class="pb-card" data-match-id="${matchId}" data-slot-local="${slotLocalId}" data-slot-visitante="${slotVisitanteId}">
       <div class="pb-card-head">
-        <span class="pb-card-date">${escPortal(meta || "Por programar")}</span>
+        <span class="pb-card-date">${fechaHtml}</span>
         <span class="pb-status estado-${escPortal(estadoNormalizado)}">${escPortal(etiquetaEstado)}</span>
       </div>
       ${construirFilaEquipoBracketPortal(partido, "local", ladoGanador)}
@@ -1943,8 +1941,10 @@ function maquetarBracketPortal(root) {
   const alturaBase = primerBody ? primerBody.scrollHeight : 0;
 
   let centros = new Map();
-  columnas[0].querySelectorAll("[data-match-id]").forEach((m) => {
+  let elementosRonda = Array.from(columnas[0].querySelectorAll("[data-match-id]"));
+  elementosRonda.forEach((m) => {
     centros.set(m.dataset.matchId, centerYRelTrack(m));
+    m._pbFeeders = null;
   });
 
   for (let i = 1; i < columnas.length; i += 1) {
@@ -1954,18 +1954,28 @@ function maquetarBracketPortal(root) {
     body.style.minHeight = `${alturaBase}px`;
 
     const matches = Array.from(body.querySelectorAll("[data-match-id]"));
-    matches.forEach((m) => {
-      const yLocal = centros.get(m.dataset.slotLocal);
-      const yVisitante = centros.get(m.dataset.slotVisitante);
-      let centerY = null;
-      if (Number.isFinite(yLocal) && Number.isFinite(yVisitante)) {
-        centerY = (yLocal + yVisitante) / 2;
-      } else if (Number.isFinite(yLocal)) {
-        centerY = yLocal;
-      } else if (Number.isFinite(yVisitante)) {
-        centerY = yVisitante;
+    const elementosPrevios = elementosRonda;
+    matches.forEach((m, idx) => {
+      const elLocal = elementosPrevios.find((e) => e.dataset.matchId === m.dataset.slotLocal);
+      const elVisitante = elementosPrevios.find((e) => e.dataset.matchId === m.dataset.slotVisitante);
+      let feederA = elLocal || null;
+      let feederB = elVisitante || null;
+      if (!feederA && !feederB) {
+        // Sin slot_local_id/slot_visitante_id (llaves antiguas o sembradas manualmente):
+        // se asume emparejamiento por orden (partido i toma los partidos 2i y 2i+1 de la ronda anterior).
+        feederA = elementosPrevios[idx * 2] || null;
+        feederB = elementosPrevios[idx * 2 + 1] || null;
       }
+      m._pbFeeders = [feederA, feederB].filter(Boolean);
+
+      const yA = feederA ? centros.get(feederA.dataset.matchId) : null;
+      const yB = feederB ? centros.get(feederB.dataset.matchId) : null;
+      let centerY = null;
+      if (Number.isFinite(yA) && Number.isFinite(yB)) centerY = (yA + yB) / 2;
+      else if (Number.isFinite(yA)) centerY = yA;
+      else if (Number.isFinite(yB)) centerY = yB;
       if (centerY == null) return;
+
       const alturaMatch = m.getBoundingClientRect().height;
       const bodyTop = body.getBoundingClientRect().top - track.getBoundingClientRect().top;
       const top = Math.max(0, centerY - bodyTop - alturaMatch / 2);
@@ -1978,6 +1988,7 @@ function maquetarBracketPortal(root) {
     const nuevos = new Map();
     matches.forEach((m) => nuevos.set(m.dataset.matchId, centerYRelTrack(m)));
     centros = nuevos;
+    elementosRonda = matches;
   }
 
   dibujarConectoresBracketPortal(root);
@@ -2007,9 +2018,13 @@ function dibujarConectoresBracketPortal(root) {
   const ns = "http://www.w3.org/2000/svg";
   matches.forEach((m) => {
     const destino = puntoIzquierdo(m);
-    ["slotLocal", "slotVisitante"].forEach((key) => {
-      const feederId = m.dataset[key];
-      const feeder = feederId ? porId.get(feederId) : null;
+    // _pbFeeders lo calcula maquetarBracketPortal (incluye el fallback posicional
+    // cuando no hay slot_local_id/slot_visitante_id); si no corrió, se cae a los
+    // atributos de datos directamente.
+    const feeders = Array.isArray(m._pbFeeders)
+      ? m._pbFeeders
+      : [m.dataset.slotLocal, m.dataset.slotVisitante].map((id) => (id ? porId.get(id) : null)).filter(Boolean);
+    feeders.forEach((feeder) => {
       if (!feeder || feeder === m) return;
       const origen = puntoDerecho(feeder);
       const midX = origen.x + (destino.x - origen.x) / 2;
