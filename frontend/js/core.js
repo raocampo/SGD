@@ -15,6 +15,14 @@
       return "http://localhost:5000/api";
     }
 
+    // Frontend (Vercel) y backend (Railway) viven en dominios distintos.
+    const PROD_HOST_API_MAP = {
+      "ltyc.corpsimtelec.com": "https://api.ltyc.corpsimtelec.com/api",
+    };
+    if (PROD_HOST_API_MAP[window.location.hostname]) {
+      return PROD_HOST_API_MAP[window.location.hostname];
+    }
+
     return `${window.location.origin}/api`;
   }
 
