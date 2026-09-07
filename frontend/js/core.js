@@ -126,6 +126,8 @@
 
   function getCurrentPage() {
     const path = window.location.pathname || "";
+    // Landing personalizada de organizador: /liga/<slug> se sirve como index.html.
+    if (/^\/liga\/[a-z0-9-]+\/?$/i.test(path)) return "index.html";
     const page = path.split("/").pop() || "index.html";
     return page.toLowerCase();
   }

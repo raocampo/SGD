@@ -380,6 +380,66 @@ body.ltc-landing {
   color: #1f3d61;
 }
 
+/* ── Tema visual de la landing por organizador (body.ltc-org-theme) ──────────
+   Las variables --org-* las setea portal.js segun portal_config.color_tema.
+   Sin la clase todo queda igual que antes (los selectores no aplican). */
+body.ltc-org-theme .ltc-hero-showcase {
+  background:
+    linear-gradient(
+      130deg,
+      color-mix(in srgb, var(--org-hero-from, #182c45) 82%, transparent),
+      color-mix(in srgb, var(--org-hero-to, #14426c) 74%, transparent)
+    ),
+    url("../assets/ltc/bannerLTC.jpg") center center / cover no-repeat;
+}
+body.ltc-org-theme .ltc-hero-copy h1 {
+  color: var(--org-hero-heading, #fee174);
+}
+body.ltc-org-theme .ltc-hero-showcase .ltc-demo-text,
+body.ltc-org-theme .ltc-hero-showcase .ltc-hero-chip {
+  border-color: color-mix(in srgb, var(--org-accent, #fee174) 55%, transparent);
+  color: var(--org-accent, #fee174);
+}
+body.ltc-org-theme .ltc-btn-demo,
+body.ltc-org-theme .ltc-btn-back,
+body.ltc-org-theme .ltc-play-btn {
+  background: var(--org-btn-bg, #2f5e96);
+  color: var(--org-btn-fg, #fff);
+}
+body.ltc-org-theme .ltc-section-title h2 {
+  color: var(--org-section-heading, #2f3a4b);
+}
+body.ltc-org-theme .portal-card-btn,
+body.ltc-org-theme .ltc-btn-primary {
+  background: var(--org-btn-bg, #2f5e96);
+  color: var(--org-btn-fg, #fff);
+  border-color: var(--org-btn-bg, #2f5e96);
+}
+body.ltc-org-theme .ltc-organizador-banner {
+  border-color: color-mix(in srgb, var(--org-accent, #c5d8ee) 45%, #c5d8ee);
+}
+
+/* ── Card de cliente enlazada a su landing ─────────────────────────────── */
+a.ltc-cliente-card-link {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+a.ltc-cliente-card-link:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(18, 45, 78, 0.16);
+}
+.ltc-cliente-landing-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ltc-green, #0d9a86);
+}
+
 .ltc-team-welcome-section {
   padding: 0.8rem 0 2.2rem;
 }

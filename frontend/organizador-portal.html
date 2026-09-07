@@ -158,6 +158,16 @@
           <form id="op-config-form">
             <div class="form-grid">
 
+              <div class="form-group form-group-full">
+                <label for="op-landing-slug">Enlace personalizado de tu landing</label>
+                <input id="op-landing-slug" placeholder="tu-liga" maxlength="60" autocomplete="off" />
+                <small class="op-field-hint">
+                  Solo minúsculas, números y guiones. Tu landing quedará en
+                  <code id="op-landing-slug-preview">Se generará automáticamente al guardar.</code>
+                  Si lo dejas vacío se crea a partir del nombre de tu organización.
+                </small>
+              </div>
+
               <div class="form-group">
                 <label for="op-organizacion-nombre">Nombre de organización <span style="color:#ef4444;">*</span></label>
                 <input id="op-organizacion-nombre" placeholder="Ej: Liga Deportiva de Loja" />
@@ -283,6 +293,18 @@
               <h3>Contacto y redes sociales</h3>
             </div>
             <div class="form-grid">
+
+              <div class="form-group">
+                <label for="op-contact-title">Título de la sección de contacto</label>
+                <input id="op-contact-title" placeholder="Ej: Escríbenos" />
+                <small class="op-field-hint">Encabezado del bloque "Contacto" de tu landing. Opcional.</small>
+              </div>
+
+              <div class="form-group form-group-full">
+                <label for="op-contact-description">Texto de la sección de contacto</label>
+                <textarea id="op-contact-description" rows="2" placeholder="Ej: ¿Tienes dudas sobre inscripciones? Escríbenos y te respondemos."></textarea>
+                <small class="op-field-hint">Descripción breve debajo del título de contacto. Opcional.</small>
+              </div>
 
               <div class="form-group">
                 <label for="op-contact-email">Correo de contacto</label>
@@ -515,6 +537,30 @@
   <script src="js/organizador-portal.js"></script>
 
   <script>
+    // Slug de la landing: sanitiza mientras se escribe y actualiza la vista previa.
+    const slugInput = document.getElementById("op-landing-slug");
+    const slugPreview = document.getElementById("op-landing-slug-preview");
+    if (slugInput) {
+      const pintarSlug = () => {
+        slugInput.value = slugInput.value
+          .toLowerCase()
+          .replace(/[^a-z0-9-]+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-+/, "")
+          .slice(0, 60);
+        if (slugPreview) {
+          slugPreview.textContent = slugInput.value
+            ? `${window.location.origin}/liga/${slugInput.value}`
+            : "Se generará automáticamente al guardar.";
+        }
+      };
+      slugInput.addEventListener("input", pintarSlug);
+      slugInput.addEventListener("blur", () => {
+        slugInput.value = slugInput.value.replace(/-+$/, "");
+        pintarSlug();
+      });
+    }
+
     // Tema selector
     document.querySelectorAll(".op-tema-btn").forEach(btn => {
       btn.addEventListener("click", () => {

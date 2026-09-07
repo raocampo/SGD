@@ -78,6 +78,178 @@ async function listarUsuariosVisiblesPorOrganizador(user) {
   });
 }
 
+// Construye el payload de la landing pública de un organizador ya resuelto por id.
+// Devuelve { status, body } para que lo sirvan tanto la ruta por id como la ruta por slug.
+async function construirLandingOrganizador(organizadorId) {
+  try {
+    const userRow = await UsuarioAuth.obtenerPorId(organizadorId);
+    const organizador = UsuarioAuth.limpiarUsuario(userRow);
+    if (!organizador || organizador.activo !== true) {
+      return { status: 404, body: { error: "Organizador no encontrado" } };
+    }
+    if (String(organizador.rol || "").toLowerCase() !== "organizador") {
+      return { status: 404, body: { error: "Perfil no disponible para landing pública" } };
+    }
+
+    if (!planLandingHabilitado(organizador.plan_codigo)) {
+      return {
+        status: 403,
+        body: {
+          error:
+            "La landing pública está disponible solo para organizadores con plan pagado (Base, Competencia o Premium).",
+        },
+      };
+    }
+    if (String(organizador.plan_estado || "activo").toLowerCase() !== "activo") {
+      return {
+        status: 403,
+        body: { error: "La landing pública del organizador está suspendida." },
+      };
+    }
+
+    const campeonatosR = await pool.query(
+      `
+        SELECT
+          c.*,
+          (
+            SELECT COUNT(*)::int
+            FROM eventos e
+            WHERE e.campeonato_id = c.id
+          ) AS total_categorias,
+          (
+            SELECT COUNT(*)::int
+            FROM equipos eq
+            WHERE eq.campeonato_id = c.id
+          ) AS total_equipos,
+          (
+            SELECT COALESCE(
+              json_agg(
+                json_build_object(
+                  'id', e.id,
+                  'nombre', e.nombre,
+                  'total_equipos', (
+                    SELECT COUNT(DISTINCT ee.equipo_id)::int
+                    FROM evento_equipos ee
+                    WHERE ee.evento_id = e.id
+                  )
+                )
+                ORDER BY COALESCE(e.numero_campeonato, 999999), e.id
+              ),
+              '[]'::json
+            )
+            FROM eventos e
+            WHERE e.campeonato_id = c.id
+          ) AS categorias_resumen
+          ,
+          (
+            SELECT COALESCE(
+              json_agg(
+                json_build_object(
+                  'id', eqx.id,
+                  'nombre', eqx.nombre,
+                  'logo_url', eqx.logo_url,
+                  'evento_id', eqx.evento_id,
+                  'evento_nombre', eqx.evento_nombre,
+                  'total_jugadores', eqx.total_jugadores
+                )
+                ORDER BY eqx.sort_nombre, eqx.id
+              ),
+              '[]'::json
+            )
+            FROM (
+              SELECT DISTINCT ON (LOWER(COALESCE(eq.nombre, '')))
+                eq.id,
+                eq.nombre,
+                eq.logo_url,
+                evx.evento_id,
+                evx.evento_nombre,
+                (
+                  SELECT COUNT(*)::int
+                  FROM jugadores j
+                  WHERE j.equipo_id = eq.id
+                    AND (
+                      evx.evento_id IS NULL
+                      OR j.evento_id = evx.evento_id
+                    )
+                ) AS total_jugadores,
+                LOWER(COALESCE(eq.nombre, '')) AS sort_nombre
+              FROM equipos eq
+              LEFT JOIN LATERAL (
+                SELECT ee.evento_id, ev.nombre AS evento_nombre
+                FROM evento_equipos ee
+                JOIN eventos ev ON ev.id = ee.evento_id
+                WHERE ee.equipo_id = eq.id
+                  AND ev.campeonato_id = c.id
+                ORDER BY COALESCE(ev.numero_campeonato, 999999), ev.id
+                LIMIT 1
+              ) evx ON true
+              WHERE eq.campeonato_id = c.id
+              ORDER BY LOWER(COALESCE(eq.nombre, '')), eq.id DESC
+            ) eqx
+          ) AS equipos_participantes
+        FROM campeonatos c
+        WHERE c.creador_usuario_id = $1
+        ORDER BY c.fecha_inicio DESC NULLS LAST, c.id DESC
+      `,
+      [organizadorId]
+    );
+
+    const [portalConfig, auspiciantes, landingGallery] = await Promise.all([
+      OrganizadorPortal.obtenerConfig(organizadorId, pool),
+      OrganizadorPortal.listarAuspiciantesConFallback(organizadorId, pool),
+      OrganizadorPortal.listarMedia(
+        organizadorId,
+        { tipo: "landing_gallery", activo: true, campeonato_id: null },
+        pool
+      ),
+    ]);
+    const campeonatos = await Promise.all(
+      (campeonatosR.rows || []).map(async (campeonato) => {
+        const mediaCard = await OrganizadorPortal.obtenerMediaCardCampeonato(
+          organizadorId,
+          campeonato.id,
+          pool
+        );
+        return {
+          ...campeonato,
+          card_image_url:
+            mediaCard?.imagen_url ||
+            portalConfig?.logo_url ||
+            campeonato.logo_url ||
+            null,
+          organizador_logo_url: portalConfig?.logo_url || null,
+        };
+      })
+    );
+
+    const slug = portalConfig?.landing_slug || "";
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        organizador: {
+          id: organizador.id,
+          nombre: organizador.nombre,
+          organizacion_nombre: organizador.organizacion_nombre || "",
+          email: organizador.email,
+          plan_codigo: organizador.plan_codigo,
+          plan_nombre: obtenerPlan(organizador.plan_codigo)?.nombre || "Plan",
+          landing_slug: slug,
+          landing_url: slug ? `/liga/${slug}` : `/index.html?organizador=${organizador.id}`,
+        },
+        portal_config: portalConfig,
+        auspiciantes,
+        landing_gallery: landingGallery,
+        campeonatos,
+      },
+    };
+  } catch (error) {
+    console.error("Error construirLandingOrganizador:", error);
+    return { status: 500, body: { error: "No se pudo cargar la landing del organizador" } };
+  }
+}
+
 const authController = {
   async bootstrapStatus(req, res) {
     try {
@@ -371,166 +543,26 @@ const authController = {
   },
 
   async landingOrganizadorPublica(req, res) {
-    try {
-      const organizadorId = Number.parseInt(req.params?.id, 10);
-      if (!Number.isFinite(organizadorId) || organizadorId <= 0) {
-        return res.status(400).json({ error: "id de organizador invalido" });
-      }
+    const organizadorId = Number.parseInt(req.params?.id, 10);
+    if (!Number.isFinite(organizadorId) || organizadorId <= 0) {
+      return res.status(400).json({ error: "id de organizador invalido" });
+    }
+    const { status, body } = await construirLandingOrganizador(organizadorId);
+    return res.status(status).json(body);
+  },
 
-      const userRow = await UsuarioAuth.obtenerPorId(organizadorId);
-      const organizador = UsuarioAuth.limpiarUsuario(userRow);
-      if (!organizador || organizador.activo !== true) {
+  async landingOrganizadorPorSlug(req, res) {
+    try {
+      const slug = String(req.params?.slug || "").trim();
+      if (!slug) return res.status(400).json({ error: "slug invalido" });
+      const organizadorId = await OrganizadorPortal.resolverUsuarioIdPorSlug(slug);
+      if (!organizadorId) {
         return res.status(404).json({ error: "Organizador no encontrado" });
       }
-      if (String(organizador.rol || "").toLowerCase() !== "organizador") {
-        return res.status(404).json({ error: "Perfil no disponible para landing pública" });
-      }
-
-      if (!planLandingHabilitado(organizador.plan_codigo)) {
-        return res.status(403).json({
-          error:
-            "La landing pública está disponible solo para organizadores con plan pagado (Base, Competencia o Premium).",
-        });
-      }
-      if (String(organizador.plan_estado || "activo").toLowerCase() !== "activo") {
-        return res.status(403).json({
-          error: "La landing pública del organizador está suspendida.",
-        });
-      }
-
-      const campeonatosR = await pool.query(
-        `
-          SELECT
-            c.*,
-            (
-              SELECT COUNT(*)::int
-              FROM eventos e
-              WHERE e.campeonato_id = c.id
-            ) AS total_categorias,
-            (
-              SELECT COUNT(*)::int
-              FROM equipos eq
-              WHERE eq.campeonato_id = c.id
-            ) AS total_equipos,
-            (
-              SELECT COALESCE(
-                json_agg(
-                  json_build_object(
-                    'id', e.id,
-                    'nombre', e.nombre,
-                    'total_equipos', (
-                      SELECT COUNT(DISTINCT ee.equipo_id)::int
-                      FROM evento_equipos ee
-                      WHERE ee.evento_id = e.id
-                    )
-                  )
-                  ORDER BY COALESCE(e.numero_campeonato, 999999), e.id
-                ),
-                '[]'::json
-              )
-              FROM eventos e
-              WHERE e.campeonato_id = c.id
-            ) AS categorias_resumen
-            ,
-            (
-              SELECT COALESCE(
-                json_agg(
-                  json_build_object(
-                    'id', eqx.id,
-                    'nombre', eqx.nombre,
-                    'logo_url', eqx.logo_url,
-                    'evento_id', eqx.evento_id,
-                    'evento_nombre', eqx.evento_nombre,
-                    'total_jugadores', eqx.total_jugadores
-                  )
-                  ORDER BY eqx.sort_nombre, eqx.id
-                ),
-                '[]'::json
-              )
-              FROM (
-                SELECT DISTINCT ON (LOWER(COALESCE(eq.nombre, '')))
-                  eq.id,
-                  eq.nombre,
-                  eq.logo_url,
-                  evx.evento_id,
-                  evx.evento_nombre,
-                  (
-                    SELECT COUNT(*)::int
-                    FROM jugadores j
-                    WHERE j.equipo_id = eq.id
-                      AND (
-                        evx.evento_id IS NULL
-                        OR j.evento_id = evx.evento_id
-                      )
-                  ) AS total_jugadores,
-                  LOWER(COALESCE(eq.nombre, '')) AS sort_nombre
-                FROM equipos eq
-                LEFT JOIN LATERAL (
-                  SELECT ee.evento_id, ev.nombre AS evento_nombre
-                  FROM evento_equipos ee
-                  JOIN eventos ev ON ev.id = ee.evento_id
-                  WHERE ee.equipo_id = eq.id
-                    AND ev.campeonato_id = c.id
-                  ORDER BY COALESCE(ev.numero_campeonato, 999999), ev.id
-                  LIMIT 1
-                ) evx ON true
-                WHERE eq.campeonato_id = c.id
-                ORDER BY LOWER(COALESCE(eq.nombre, '')), eq.id DESC
-              ) eqx
-            ) AS equipos_participantes
-          FROM campeonatos c
-          WHERE c.creador_usuario_id = $1
-          ORDER BY c.fecha_inicio DESC NULLS LAST, c.id DESC
-        `,
-        [organizadorId]
-      );
-
-      const [portalConfig, auspiciantes, landingGallery] = await Promise.all([
-        OrganizadorPortal.obtenerConfig(organizadorId, pool),
-        OrganizadorPortal.listarAuspiciantesConFallback(organizadorId, pool),
-        OrganizadorPortal.listarMedia(
-          organizadorId,
-          { tipo: "landing_gallery", activo: true, campeonato_id: null },
-          pool
-        ),
-      ]);
-      const campeonatos = await Promise.all(
-        (campeonatosR.rows || []).map(async (campeonato) => {
-          const mediaCard = await OrganizadorPortal.obtenerMediaCardCampeonato(
-            organizadorId,
-            campeonato.id,
-            pool
-          );
-          return {
-            ...campeonato,
-            card_image_url:
-              mediaCard?.imagen_url ||
-              portalConfig?.logo_url ||
-              campeonato.logo_url ||
-              null,
-            organizador_logo_url: portalConfig?.logo_url || null,
-          };
-        })
-      );
-
-      return res.json({
-        ok: true,
-        organizador: {
-          id: organizador.id,
-          nombre: organizador.nombre,
-          organizacion_nombre: organizador.organizacion_nombre || "",
-          email: organizador.email,
-          plan_codigo: organizador.plan_codigo,
-          plan_nombre: obtenerPlan(organizador.plan_codigo)?.nombre || "Plan",
-          landing_url: `/index.html?organizador=${organizador.id}`,
-        },
-        portal_config: portalConfig,
-        auspiciantes,
-        landing_gallery: landingGallery,
-        campeonatos,
-      });
+      const { status, body } = await construirLandingOrganizador(organizadorId);
+      return res.status(status).json(body);
     } catch (error) {
-      console.error("Error landingOrganizadorPublica:", error);
+      console.error("Error landingOrganizadorPorSlug:", error);
       return res.status(500).json({ error: "No se pudo cargar la landing del organizador" });
     }
   },

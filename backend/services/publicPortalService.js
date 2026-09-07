@@ -3,6 +3,7 @@ const Partido = require("../models/Partido");
 const Eliminatoria = require("../models/Eliminatoria");
 const Auspiciante = require("../models/Auspiciante");
 const OrganizadorPortal = require("../models/OrganizadorPortal");
+const { esPlanPagado } = require("./planLimits");
 const tablaController = require("../controllers/tablaController");
 
 const ESTADOS_PUBLICOS = new Set([
@@ -49,12 +50,24 @@ function ordenarJornadas(a, b) {
   return String(a?.numero || "").localeCompare(String(b?.numero || ""));
 }
 
+function landingHabilitadaCampeonato(campeonato) {
+  if (!campeonato) return false;
+  const organizadorId = normalizarEntero(campeonato.creador_usuario_id);
+  if (!organizadorId) return false;
+  if (!campeonato.organizador_landing_slug) return false;
+  if (!esPlanPagado(campeonato.organizador_plan_codigo)) return false;
+  return String(campeonato.organizador_plan_estado || "activo").toLowerCase() === "activo";
+}
+
 function resumirCampeonato(campeonato, extras = {}) {
   if (!campeonato) return null;
   return {
     id: Number(campeonato.id),
     nombre: campeonato.nombre,
     organizador: campeonato.organizador || null,
+    organizador_id: normalizarEntero(campeonato.creador_usuario_id),
+    landing_slug: campeonato.organizador_landing_slug || null,
+    landing_habilitada: landingHabilitadaCampeonato(campeonato),
     fecha_inicio: campeonato.fecha_inicio || null,
     fecha_fin: campeonato.fecha_fin || null,
     estado: campeonato.estado || "borrador",
@@ -263,10 +276,16 @@ async function obtenerResumenCategoriasCampeonatos(ids = []) {
 }
 
 async function obtenerCampeonatoVisible(campeonatoId) {
+  await OrganizadorPortal.asegurarEsquema();
   const q = `
-    SELECT c.*
+    SELECT
+      c.*,
+      u.plan_codigo AS organizador_plan_codigo,
+      u.plan_estado AS organizador_plan_estado,
+      opc.landing_slug AS organizador_landing_slug
     FROM campeonatos c
     LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
+    LEFT JOIN organizador_portal_config opc ON opc.usuario_id = c.creador_usuario_id
     WHERE c.id = $1
       AND ${SQL_FILTRO_PUBLICO_CAMPEONATO}
     LIMIT 1
@@ -304,10 +323,16 @@ async function obtenerEventoPublico(eventoId) {
 
 async function listarCampeonatosPublicos(options = {}) {
   const includeFinalizados = options?.includeFinalizados === true;
+  await OrganizadorPortal.asegurarEsquema();
   const q = `
-    SELECT c.*
+    SELECT
+      c.*,
+      u.plan_codigo AS organizador_plan_codigo,
+      u.plan_estado AS organizador_plan_estado,
+      opc.landing_slug AS organizador_landing_slug
     FROM campeonatos c
     LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
+    LEFT JOIN organizador_portal_config opc ON opc.usuario_id = c.creador_usuario_id
     WHERE ${SQL_FILTRO_PUBLICO_CAMPEONATO}
     ORDER BY c.created_at DESC
   `;

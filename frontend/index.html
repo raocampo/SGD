@@ -3,7 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Base raiz: permite servir este mismo index.html en /liga/<slug> sin romper rutas relativas. -->
+  <base href="/" />
   <title>LT&C | Loja Torneos & Competencias</title>
+  <meta name="description" content="LT&C — Loja Torneos & Competencias. Organiza y sigue torneos deportivos: categorias, fixture, tabla de posiciones, goleadores y transmisiones en vivo." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="LT&C" />
+  <meta property="og:title" content="LT&C | Loja Torneos & Competencias" />
+  <meta property="og:description" content="Organiza y sigue torneos deportivos: categorias, fixture, tabla de posiciones, goleadores y transmisiones en vivo." />
+  <meta property="og:image" content="/assets/ltc/Logo.jpeg" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
@@ -474,5 +483,24 @@
   <script src="js/api.js"></script>
   <script src="js/portal.js"></script>
   <script src="js/public-pricing.js"></script>
+  <script>
+    // Con <base href="/"> los enlaces "#seccion" apuntarian a "/#seccion" y sacarian
+    // al visitante de una landing servida en /liga/<slug>. Interceptamos para hacer
+    // scroll dentro de la pagina actual sin navegar.
+    document.addEventListener("click", (event) => {
+      const link = event.target.closest('a[href^="#"]');
+      if (!link) return;
+      const raw = link.getAttribute("href");
+      if (!raw || raw === "#") return;
+      const id = raw.slice(1);
+      const target = document.getElementById(id) || document.querySelector(raw);
+      if (!target) return;
+      event.preventDefault();
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      try {
+        history.replaceState(null, "", location.pathname + location.search + "#" + id);
+      } catch (_) {}
+    });
+  </script>
 </body>
 </html>

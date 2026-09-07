@@ -35,10 +35,19 @@ const LIMITE_TORNEOS_PORTADA = 6;
 const ESTADOS_TORNEOS_PORTADA = new Set(["en_curso"]);
 const ESTADOS_TORNEOS_LISTADO_PUBLICO = new Set(["en_curso", "inscripcion", "finalizado"]);
 
+// Slug de landing personalizada: /liga/<slug> (servido como index.html via rewrite).
+function leerSlugLandingDesdePath() {
+  const match = String(window.location.pathname || "").match(
+    /^\/liga\/([a-z0-9-]{1,60})\/?$/i
+  );
+  return match ? match[1].toLowerCase() : null;
+}
+
 function leerContextoPortalDesdeUrl() {
   const params = new URLSearchParams(window.location.search);
   const tieneCampeonatoEnUrl = params.has("campeonato");
   const tieneEventoEnUrl = params.has("evento");
+  const organizadorSlug = leerSlugLandingDesdePath();
   const pageKey = ES_PORTAL_PAGE ? "portal.html" : "index.html";
   const routeContext = window.RouteContext?.read?.(pageKey, [
     "campeonato",
@@ -65,6 +74,7 @@ function leerContextoPortalDesdeUrl() {
         ? evento
         : null,
     organizadorId: Number.isFinite(organizador) && organizador > 0 ? organizador : null,
+    organizadorSlug,
   };
 }
 
@@ -827,6 +837,8 @@ async function portalCargarCampeonatos(listaForzada = null, options = {}) {
 function aplicarModoLandingOrganizador(payload) {
   const organizador = payload?.organizador || {};
   const portalConfig = payload?.portal_config || {};
+  aplicarTemaLandingOrganizador(portalConfig.color_tema);
+  aplicarSeoLandingOrganizador(organizador, portalConfig);
   const auspiciantes = Array.isArray(payload?.auspiciantes) ? payload.auspiciantes : [];
   const campeonatos = Array.isArray(payload?.campeonatos) ? payload.campeonatos : [];
   const torneosVisibles = campeonatos.filter((c) => estadoEsVisibleEnPortal(c.estado));
@@ -1019,15 +1031,117 @@ function aplicarModoLandingOrganizador(payload) {
   renderSeccionEquiposLanding(payload, torneosVisibles);
 }
 
+async function procesarPayloadLandingOrganizador(data) {
+  // Si entramos por /liga/<slug> no teniamos el id; lo fijamos ahora para que los
+  // enlaces internos (cards de campeonato, "volver al portal del organizador") lo lleven.
+  const orgId = Number.parseInt(data?.organizador?.id, 10);
+  if (Number.isFinite(orgId) && orgId > 0 && portalContextoActual) {
+    portalContextoActual.organizadorId = orgId;
+    portalContextoActual.organizadorSlug =
+      data?.organizador?.landing_slug || portalContextoActual.organizadorSlug || null;
+  }
+  aplicarModoLandingOrganizador(data);
+  await portalCargarCampeonatos(data.campeonatos || [], { mostrarProximos: false });
+  return data;
+}
+
 async function cargarLandingOrganizador(organizadorId) {
   const resp = await fetch(`${API}/auth/organizadores/${organizadorId}/landing`);
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
     throw new Error(data?.error || "No se pudo cargar la landing del organizador");
   }
-  aplicarModoLandingOrganizador(data);
-  await portalCargarCampeonatos(data.campeonatos || [], { mostrarProximos: false });
-  return data;
+  return procesarPayloadLandingOrganizador(data);
+}
+
+async function cargarLandingOrganizadorPorSlug(slug) {
+  const resp = await fetch(
+    `${API}/auth/organizadores/by-slug/${encodeURIComponent(slug)}/landing`
+  );
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(data?.error || "No se pudo cargar la landing del organizador");
+  }
+  return procesarPayloadLandingOrganizador(data);
+}
+
+// Paletas por tema visual elegido en "Mi Landing". Aplican sobre body.ltc-org-theme.
+const TEMAS_LANDING_ORGANIZADOR = {
+  deportivo: {
+    heroFrom: "#182c45", heroTo: "#14426c", heading: "#fee174",
+    accent: "#fee174", btnBg: "#2f5e96", btnFg: "#ffffff", sectionHeading: "#2f3a4b",
+  },
+  nocturno: {
+    heroFrom: "#041b2e", heroTo: "#00243b", heading: "#67e8f9",
+    accent: "#22d3ee", btnBg: "#0e7490", btnFg: "#ffffff", sectionHeading: "#12303f",
+  },
+  verde: {
+    heroFrom: "#0a5c3f", heroTo: "#0d7a54", heading: "#eafff5",
+    accent: "#34d399", btnBg: "#0d9a86", btnFg: "#ffffff", sectionHeading: "#12463a",
+  },
+  vinotinto: {
+    heroFrom: "#5b1a2b", heroTo: "#7a1f2f", heading: "#f2d98c",
+    accent: "#e5c76b", btnBg: "#7a1f2f", btnFg: "#ffffff", sectionHeading: "#4a1f28",
+  },
+  clasico: {
+    heroFrom: "#1e2a4a", heroTo: "#24365f", heading: "#ffffff",
+    accent: "#c9d6e4", btnBg: "#1e3a5f", btnFg: "#ffffff", sectionHeading: "#26324a",
+  },
+};
+
+function aplicarTemaLandingOrganizador(tema) {
+  const clave = String(tema || "deportivo").trim().toLowerCase();
+  const paleta = TEMAS_LANDING_ORGANIZADOR[clave] || TEMAS_LANDING_ORGANIZADOR.deportivo;
+  const root = document.documentElement;
+  root.style.setProperty("--org-hero-from", paleta.heroFrom);
+  root.style.setProperty("--org-hero-to", paleta.heroTo);
+  root.style.setProperty("--org-hero-heading", paleta.heading);
+  root.style.setProperty("--org-accent", paleta.accent);
+  root.style.setProperty("--org-btn-bg", paleta.btnBg);
+  root.style.setProperty("--org-btn-fg", paleta.btnFg);
+  root.style.setProperty("--org-section-heading", paleta.sectionHeading);
+  document.body.classList.add("ltc-org-theme");
+  document.body.dataset.orgTheme = clave;
+}
+
+function upsertMetaLanding(selector, attrName, attrValue, content) {
+  if (!content) return;
+  let el = document.head.querySelector(selector);
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(attrName, attrValue);
+    document.head.appendChild(el);
+  }
+  el.setAttribute("content", content);
+}
+
+function aplicarSeoLandingOrganizador(organizador = {}, portalConfig = {}) {
+  const nombre =
+    portalConfig.organizacion_nombre ||
+    organizador.organizacion_nombre ||
+    organizador.nombre ||
+    "Organizador";
+  const titulo = `${nombre} · Torneos y competencias`;
+  const descripcion =
+    portalConfig.hero_description ||
+    portalConfig.about_text_1 ||
+    `Landing oficial de ${nombre}: campeonatos, categorias, fixture, tabla de posiciones y goleadores en tiempo real.`;
+  const imagen = normalizarMediaPortal(
+    portalConfig.hero_image_url || portalConfig.logo_url || ""
+  );
+  const url =
+    window.location.origin +
+    (organizador.landing_url || window.location.pathname + window.location.search);
+
+  document.title = titulo;
+  upsertMetaLanding('meta[name="description"]', "name", "description", descripcion);
+  upsertMetaLanding('meta[property="og:title"]', "property", "og:title", titulo);
+  upsertMetaLanding('meta[property="og:description"]', "property", "og:description", descripcion);
+  upsertMetaLanding('meta[property="og:url"]', "property", "og:url", url);
+  upsertMetaLanding('meta[property="og:site_name"]', "property", "og:site_name", nombre);
+  if (imagen) {
+    upsertMetaLanding('meta[property="og:image"]', "property", "og:image", imagen);
+  }
 }
 
 async function cargarNoticiasPublicasPortal() {
@@ -2824,10 +2938,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   portalContextoActual = contexto;
   guardarContextoPortalCompartible(contexto);
 
+  const tieneLandingOrganizador = !!(contexto.organizadorId || contexto.organizadorSlug);
+  const cargarLandingDelContexto = () =>
+    contexto.organizadorSlug
+      ? cargarLandingOrganizadorPorSlug(contexto.organizadorSlug)
+      : cargarLandingOrganizador(contexto.organizadorId);
+
   if (ES_PORTAL_PAGE) {
     const cargarListado = async () => {
-      if (contexto.organizadorId) {
-        const landing = await cargarLandingOrganizador(contexto.organizadorId);
+      if (tieneLandingOrganizador) {
+        const landing = await cargarLandingDelContexto();
         return landing;
       }
       await portalCargarCampeonatos(null, { mostrarProximos: false });
@@ -2835,8 +2955,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     try {
-      const landing = contexto.organizadorId ? await cargarListado() : null;
-      if (!contexto.organizadorId && !contexto.campeonatoId) {
+      const landing = tieneLandingOrganizador ? await cargarListado() : null;
+      if (!tieneLandingOrganizador && !contexto.campeonatoId) {
         await portalCargarCampeonatos(null, { mostrarProximos: false });
       }
       if (contexto.campeonatoId) {
@@ -2864,9 +2984,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   await cargarGaleriaPublica();
   initFormularioContactoPublico();
 
-  if (contexto.organizadorId) {
+  if (tieneLandingOrganizador) {
     try {
-      const landing = await cargarLandingOrganizador(contexto.organizadorId);
+      const landing = await cargarLandingDelContexto();
       if (contexto.campeonatoId) {
         const lista = Array.isArray(landing?.campeonatos) ? landing.campeonatos : [];
         const permitido = lista.some((c) => Number(c.id) === Number(contexto.campeonatoId));
@@ -2897,19 +3017,28 @@ async function cargarClientesPortal() {
     const data = await fetch(`${API}/public/campeonatos`).then((r) => r.json());
     const campeonatos = Array.isArray(data.campeonatos) ? data.campeonatos : [];
 
-    // Agrupar por organizador único
+    // Agrupar por organizador único (preferimos id; el nombre es el fallback histórico)
     const mapaOrg = new Map();
     for (const c of campeonatos) {
       const nombre = String(c.organizador || "").trim();
-      if (!nombre) continue;
-      if (!mapaOrg.has(nombre)) {
-        mapaOrg.set(nombre, {
+      const orgId = Number.parseInt(c.organizador_id, 10) || null;
+      const clave = orgId ? `id:${orgId}` : nombre ? `n:${nombre.toLowerCase()}` : null;
+      if (!clave || !nombre) continue;
+      if (!mapaOrg.has(clave)) {
+        mapaOrg.set(clave, {
           nombre,
           logo: c.organizador_logo_url || null,
+          organizadorId: orgId,
+          landingSlug: c.landing_slug || null,
+          landingHabilitada: c.landing_habilitada === true,
           total: 0,
         });
       }
-      mapaOrg.get(nombre).total += 1;
+      const reg = mapaOrg.get(clave);
+      reg.total += 1;
+      if (!reg.logo && c.organizador_logo_url) reg.logo = c.organizador_logo_url;
+      if (!reg.landingSlug && c.landing_slug) reg.landingSlug = c.landing_slug;
+      if (c.landing_habilitada === true) reg.landingHabilitada = true;
     }
 
     const lista = [...mapaOrg.values()].sort((a, b) => b.total - a.total);
@@ -2919,10 +3048,17 @@ async function cargarClientesPortal() {
       return;
     }
 
+    const hrefLanding = (org) => {
+      if (!org.landingHabilitada) return null;
+      if (org.landingSlug) return `/liga/${encodeURIComponent(org.landingSlug)}`;
+      if (org.organizadorId) return `index.html?organizador=${org.organizadorId}`;
+      return null;
+    };
+
     cont.innerHTML = lista
-      .map(
-        (org) => `
-        <div class="ltc-cliente-card">
+      .map((org) => {
+        const href = hrefLanding(org);
+        const interior = `
           ${
             org.logo
               ? `<img src="${org.logo}" alt="${escPortal(org.nombre)}" class="ltc-cliente-logo" />`
@@ -2930,8 +3066,11 @@ async function cargarClientesPortal() {
           }
           <p class="ltc-cliente-nombre">${escPortal(org.nombre)}</p>
           <span class="ltc-cliente-torneos">${org.total} torneo${org.total !== 1 ? "s" : ""}</span>
-        </div>`
-      )
+          ${href ? '<span class="ltc-cliente-landing-hint">Ver landing <i class="fas fa-arrow-right"></i></span>' : ""}`;
+        return href
+          ? `<a class="ltc-cliente-card ltc-cliente-card-link" href="${escPortal(href)}">${interior}</a>`
+          : `<div class="ltc-cliente-card">${interior}</div>`;
+      })
       .join("");
   } catch (err) {
     console.error("Error cargando clientes:", err);

@@ -13,6 +13,7 @@ router.post("/logout", authController.logout);
 router.post("/password/forgot", authController.solicitarRecuperacionPassword);
 router.post("/password/reset", authController.resetearPassword);
 router.post("/password/change", requireAuth, authController.cambiarPasswordActual);
+router.get("/organizadores/by-slug/:slug/landing", authController.landingOrganizadorPorSlug);
 router.get("/organizadores/:id/landing", authController.landingOrganizadorPublica);
 router.get("/planes/precios", authController.preciosPublicos);
 router.get("/formas-pago", authController.formasPagoPublicas);

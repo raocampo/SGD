@@ -1,0 +1,9 @@
+{
+  "buildCommand": null,
+  "installCommand": null,
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/liga/:slug", "destination": "/index.html" },
+    { "source": "/liga/:slug/", "destination": "/index.html" }
+  ]
+}

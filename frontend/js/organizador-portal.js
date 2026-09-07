@@ -30,6 +30,8 @@
   }
 
   function landingUrl() {
+    const slug = String(state.config?.landing_slug || "").trim();
+    if (slug) return `/liga/${slug}`;
     const userId = Number.parseInt(state.organizador?.id, 10);
     if (!Number.isFinite(userId) || userId <= 0) return "index.html";
     return `index.html?organizador=${userId}`;
@@ -66,6 +68,8 @@
 
   function poblarConfig() {
     const config = state.config || {};
+    llenarInput("op-landing-slug", config.landing_slug || "");
+    actualizarPreviewSlug();
     llenarInput("op-organizacion-nombre", config.organizacion_nombre || state.organizador?.organizacion_nombre || "");
     llenarInput("op-lema", config.lema || "");
     llenarInput("op-hero-title", config.hero_title || "");
@@ -76,6 +80,8 @@
     llenarInput("op-about-title", config.about_title || "");
     llenarInput("op-about-text-1", config.about_text_1 || "");
     llenarInput("op-about-text-2", config.about_text_2 || "");
+    llenarInput("op-contact-title", config.contact_title || "");
+    llenarInput("op-contact-description", config.contact_description || "");
     llenarInput("op-contact-email", config.contact_email || state.organizador?.email || "");
     llenarInput("op-contact-phone", config.contact_phone || "");
     llenarInput("op-facebook-url", config.facebook_url || "");
@@ -90,9 +96,23 @@
     });
 
     // Previsualizaciones de imágenes ya guardadas
-    mostrarImagenPrevia("op-logo-preview", "op-logo-preview-wrap", config.logo);
-    mostrarImagenPrevia("op-hero-preview", "op-hero-preview-wrap", config.hero_image);
-    mostrarImagenPrevia("op-team-preview", "op-team-preview-wrap", config.team_welcome_image);
+    mostrarImagenPrevia("op-logo-preview", "op-logo-preview-wrap", config.logo_url);
+    mostrarImagenPrevia("op-hero-preview", "op-hero-preview-wrap", config.hero_image_url);
+    mostrarImagenPrevia(
+      "op-team-preview",
+      "op-team-preview-wrap",
+      config.equipos_bienvenida_imagen_url
+    );
+  }
+
+  function actualizarPreviewSlug() {
+    const input = document.getElementById("op-landing-slug");
+    const preview = document.getElementById("op-landing-slug-preview");
+    if (!preview) return;
+    const slug = String(input?.value || state.config?.landing_slug || "").trim();
+    preview.textContent = slug
+      ? `${window.location.origin}/liga/${slug}`
+      : "Se generará automáticamente al guardar.";
   }
 
   function resetAuspicianteForm() {
@@ -405,6 +425,7 @@
     event.preventDefault();
     const formData = new FormData();
     [
+      "landing_slug",
       "organizacion_nombre",
       "lema",
       "hero_title",
@@ -413,6 +434,8 @@
       "about_title",
       "about_text_1",
       "about_text_2",
+      "contact_title",
+      "contact_description",
       "contact_email",
       "contact_phone",
       "facebook_url",
@@ -441,9 +464,16 @@
     const colorTema = document.getElementById("op-color-tema")?.value || "deportivo";
     formData.append("color_tema", colorTema);
 
-    await window.OrganizadorPortalAPI.actualizarConfig(formData);
-    window.mostrarNotificacion("Configuración pública actualizada", "success");
-    await cargarContexto();
+    try {
+      await window.OrganizadorPortalAPI.actualizarConfig(formData);
+      window.mostrarNotificacion("Configuración pública actualizada", "success");
+      await cargarContexto();
+    } catch (error) {
+      window.mostrarNotificacion(
+        error?.message || "No se pudo guardar la configuración pública",
+        "error"
+      );
+    }
   }
 
   async function guardarAuspiciante(event) {

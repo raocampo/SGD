@@ -41,12 +41,22 @@ class OrganizadorPortal {
       ALTER TABLE organizador_portal_config
       ADD COLUMN IF NOT EXISTS equipos_bienvenida_titulo VARCHAR(220),
       ADD COLUMN IF NOT EXISTS equipos_bienvenida_descripcion TEXT,
-      ADD COLUMN IF NOT EXISTS equipos_bienvenida_imagen_url TEXT
+      ADD COLUMN IF NOT EXISTS equipos_bienvenida_imagen_url TEXT,
+      ADD COLUMN IF NOT EXISTS landing_slug VARCHAR(80),
+      ADD COLUMN IF NOT EXISTS color_tema VARCHAR(40),
+      ADD COLUMN IF NOT EXISTS contact_title VARCHAR(180),
+      ADD COLUMN IF NOT EXISTS contact_description TEXT
     `);
 
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_organizador_portal_config_usuario
       ON organizador_portal_config(usuario_id)
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_organizador_portal_config_slug
+      ON organizador_portal_config(landing_slug)
+      WHERE landing_slug IS NOT NULL
     `);
 
     await client.query(`
@@ -126,11 +136,57 @@ class OrganizadorPortal {
     return Number.isFinite(id) && id > 0 ? id : null;
   }
 
+  // Palabras que nunca pueden ser un slug de landing (colisiones con rutas / seguridad).
+  static SLUGS_RESERVADOS = new Set([
+    "api", "www", "admin", "app", "static", "assets", "js", "css",
+    "index", "portal", "login", "register", "liga",
+  ]);
+
+  static slugifyLanding(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60)
+      .replace(/-+$/g, "");
+  }
+
+  static async resolverUsuarioIdPorSlug(slug, client = pool) {
+    await this.asegurarEsquema(client);
+    const limpio = this.slugifyLanding(slug);
+    if (!limpio) return null;
+    const result = await client.query(
+      `SELECT usuario_id FROM organizador_portal_config WHERE landing_slug = $1 LIMIT 1`,
+      [limpio]
+    );
+    return this.normalizarId(result.rows[0]?.usuario_id);
+  }
+
+  // Devuelve un slug único disponible a partir de una base, evitando al usuario dado.
+  static async generarSlugDisponible(base, usuarioId, client = pool) {
+    let raiz = this.slugifyLanding(base) || `organizador-${usuarioId}`;
+    if (this.SLUGS_RESERVADOS.has(raiz)) raiz = `${raiz}-liga`;
+    for (let intento = 0; intento < 50; intento += 1) {
+      const candidato = intento === 0 ? raiz : `${raiz}-${intento + 1}`;
+      const result = await client.query(
+        `SELECT usuario_id FROM organizador_portal_config WHERE landing_slug = $1 LIMIT 1`,
+        [candidato]
+      );
+      const dueno = this.normalizarId(result.rows[0]?.usuario_id);
+      if (!dueno || dueno === this.normalizarId(usuarioId)) return candidato;
+    }
+    return `organizador-${usuarioId}`;
+  }
+
   static limpiarConfig(row) {
     if (!row) return null;
     return {
       id: Number(row.id),
       usuario_id: Number(row.usuario_id),
+      landing_slug: row.landing_slug || "",
+      color_tema: row.color_tema || "deportivo",
       organizacion_nombre: row.organizacion_nombre || "",
       logo_url: row.logo_url || "",
       lema: row.lema || "",
@@ -145,6 +201,8 @@ class OrganizadorPortal {
       about_title: row.about_title || "",
       about_text_1: row.about_text_1 || "",
       about_text_2: row.about_text_2 || "",
+      contact_title: row.contact_title || "",
+      contact_description: row.contact_description || "",
       contact_email: row.contact_email || "",
       contact_phone: row.contact_phone || "",
       facebook_url: row.facebook_url || "",
@@ -207,6 +265,8 @@ class OrganizadorPortal {
     if (!uId) throw new Error("usuario_id invalido");
 
     const actual = (await this.obtenerConfig(uId, client)) || {
+      landing_slug: "",
+      color_tema: "deportivo",
       organizacion_nombre: "",
       logo_url: "",
       lema: "",
@@ -221,6 +281,8 @@ class OrganizadorPortal {
       about_title: "",
       about_text_1: "",
       about_text_2: "",
+      contact_title: "",
+      contact_description: "",
       contact_email: "",
       contact_phone: "",
       facebook_url: "",
@@ -231,7 +293,47 @@ class OrganizadorPortal {
       color_acento: "",
     };
 
+    // ── Slug de la landing personalizada (/liga/<slug>) ──────────────────
+    const TEMAS_VALIDOS = new Set(["deportivo", "nocturno", "verde", "vinotinto", "clasico"]);
+    let landingSlug = actual.landing_slug || null;
+    const slugSolicitado =
+      data.landing_slug !== undefined ? this.slugifyLanding(data.landing_slug) : null;
+    if (slugSolicitado) {
+      if (this.SLUGS_RESERVADOS.has(slugSolicitado)) {
+        const err = new Error("Ese enlace personalizado está reservado, elige otro.");
+        err.status = 409;
+        throw err;
+      }
+      const dueno = await client.query(
+        `SELECT usuario_id FROM organizador_portal_config WHERE landing_slug = $1 LIMIT 1`,
+        [slugSolicitado]
+      );
+      const duenoId = this.normalizarId(dueno.rows[0]?.usuario_id);
+      if (duenoId && duenoId !== uId) {
+        const err = new Error("Ese enlace personalizado ya está en uso por otro organizador.");
+        err.status = 409;
+        throw err;
+      }
+      landingSlug = slugSolicitado;
+    } else if (!landingSlug) {
+      landingSlug = await this.generarSlugDisponible(
+        data.organizacion_nombre ?? actual.organizacion_nombre ?? `organizador-${uId}`,
+        uId,
+        client
+      );
+    }
+
+    let colorTema = String(data.color_tema ?? actual.color_tema ?? "deportivo")
+      .trim()
+      .toLowerCase();
+    if (!TEMAS_VALIDOS.has(colorTema)) colorTema = "deportivo";
+
     const payload = {
+      landing_slug: landingSlug || null,
+      color_tema: colorTema,
+      contact_title: String(data.contact_title ?? actual.contact_title ?? "").trim() || null,
+      contact_description:
+        String(data.contact_description ?? actual.contact_description ?? "").trim() || null,
       organizacion_nombre: String(data.organizacion_nombre ?? actual.organizacion_nombre ?? "").trim() || null,
       logo_url: String(data.logo_url ?? actual.logo_url ?? "").trim() || null,
       lema: String(data.lema ?? actual.lema ?? "").trim() || null,
@@ -284,12 +386,16 @@ class OrganizadorPortal {
           whatsapp_url,
           color_primario,
           color_secundario,
-          color_acento
+          color_acento,
+          landing_slug,
+          color_tema,
+          contact_title,
+          contact_description
         )
         VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
           $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-          $21, $22, $23
+          $21, $22, $23, $24, $25, $26, $27
         )
         ON CONFLICT (usuario_id) DO UPDATE
         SET
@@ -315,6 +421,10 @@ class OrganizadorPortal {
           color_primario = EXCLUDED.color_primario,
           color_secundario = EXCLUDED.color_secundario,
           color_acento = EXCLUDED.color_acento,
+          landing_slug = EXCLUDED.landing_slug,
+          color_tema = EXCLUDED.color_tema,
+          contact_title = EXCLUDED.contact_title,
+          contact_description = EXCLUDED.contact_description,
           updated_at = CURRENT_TIMESTAMP
         RETURNING *
       `,
@@ -342,6 +452,10 @@ class OrganizadorPortal {
         payload.color_primario,
         payload.color_secundario,
         payload.color_acento,
+        payload.landing_slug,
+        payload.color_tema,
+        payload.contact_title,
+        payload.contact_description,
       ]
     );
 
