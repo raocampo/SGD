@@ -1,7 +1,8 @@
 ## 2026-09-07 - Portada LT&C, landing de cliente, panel Usuarios jerarquico y tema personalizado
 
-> Sesion de trabajo asistida (Claude Code). Todos los cambios estan en el arbol de
-> trabajo SIN commitear. Al final hay bloque **Pendientes para seguir desde casa**.
+> Sesion de trabajo asistida (Claude Code). **Todo commiteado y pusheado a
+> `origin/main`** (`bbf242a..1704c86`, 4 commits). Al final hay bloque
+> **Pendientes para seguir manana**.
 
 ### 1. Adopcion del diseno de `paginaLTC` en la portada (`frontend/index.html`)
 - Portada reconstruida con la referencia visual de `../paginaLTC`: hero con slider,
@@ -123,23 +124,35 @@ plan `competencia`, 1 campeonato "Otono 2026" en estado `inscripcion`, tema `ver
 - **No se pudieron adjuntar capturas** por limite de imagenes de la sesion;
   la verificacion visual queda pendiente (ver abajo).
 
-### Archivos tocados (arbol de trabajo, sin commit)
+### Commits publicados (`origin/main`)
+| Hash | Commit | Contenido |
+|------|--------|-----------|
+| `885c6f6` | `feat(marca): logos, favicons y paleta oficial LT&C en el frontend` | 65 archivos: rollout de marca acumulado de sesiones previas (favicon SVG -> `assets/ltc/Icono.png`, logo `.jpeg` -> `Logo.png`/`Icono.png`, paleta azul/dorado -> carbon/lima) + activos oficiales (`docs/imagenes/`, `docs/manual de marca.pdf`, `Icono.png`, `Logo.png`, favicon SVG, `torneos/Proximo*.svg`). |
+| `a77736e` | `chore(deploy): dominio productivo, notas Railway/Vercel y gitignore` | `README.md`, `docs/DEPLOY_RENDER.md`, `docs/ESTADO_IMPLEMENTACION_SGD.md`, `docs/PLAN_MODULO_TRANSMISION.md`, `.gitignore` (`.vercel`, `.env*`), `frontend/.gitignore`. |
+| `79f04bf` | `test(qa): cobertura de rutas /liga/<slug> en smokeFrontendRoleGuards` | Expone `getCurrentPage()` en el harness + asserts de rutas `/liga/<slug>` y `/liga/<slug>/` -> `index.html`. |
+| `1704c86` | `feat: portada LT&C, landing de cliente, panel Usuarios jerarquico y tema personalizado` | 32 archivos, +4045/-839. Todo el trabajo funcional de esta sesion (secciones 1-8 de arriba). |
+
+Archivos del commit `1704c86`:
 - Backend: `controllers/authController.js`, `models/OrganizadorPortal.js`.
 - Frontend JS: `js/core.js`, `js/portal.js`, `js/usuarios.js`, `js/organizador-portal.js`.
 - Frontend CSS: `css/portal.css`, `css/style.css`, `css/auth.css`, `css/organizador-portal.css`.
 - Frontend HTML: `index.html`, `torneos.html`, `login.html`, `register.html`,
   `organizador-portal.html`, `auspiciantes.html`.
-- Assets nuevos: `frontend/assets/ltc/home/**`, `frontend/assets/ltc/marca-panel-oscuro.jpeg`,
-  `frontend/assets/ltc/marca-panel-lima.jpeg`, `frontend/assets/ltc/Icono.png`,
-  `frontend/assets/ltc/Logo.png`.
+- Assets nuevos: `frontend/assets/ltc/home/**` (~16 MB de PNG sin optimizar),
+  `frontend/assets/ltc/marca-panel-oscuro.jpeg`, `frontend/assets/ltc/marca-panel-lima.jpeg`.
+- `docs/BITACORA_AVANCES.md`.
 
-### Pendientes para seguir desde casa
+### Pendientes para seguir manana
 
-1. **Reiniciar el backend** (local y/o Railway) para que:
-   - `listarUsuarios` devuelva la jerarquia (si corre con `npm start` y no `nodemon`).
-   - Se pueda GUARDAR `color_tema="personalizado"` (los 5 presets y los 3 colores
-     ya persisten sin reiniciar; solo el valor "personalizado" del `color_tema`
-     depende del `TEMAS_VALIDOS` nuevo).
+1. **Reiniciar el backend en Railway** (redeploy de `api.ltyc.corpsimtelec.com`)
+   para que tomen efecto los cambios de `1704c86`:
+   - `GET /auth/usuarios` (admin) devuelva la jerarquia Organizador->Campeonato
+     (`adjuntarContextoJerarquiaUsuarios`).
+   - Se pueda GUARDAR `color_tema="personalizado"` (`TEMAS_VALIDOS` ampliado). Los
+     5 presets y los 3 colores (`color_primario/secundario/acento`) ya persisten
+     sin redeploy; solo el string "personalizado" del `color_tema` lo necesita.
+   - Vercel redeploya solo el frontend al detectar el push; verificar que tomo
+     `1704c86`.
 
 2. **Verificacion visual en navegador real** (no hecha esta sesion):
    - `/liga/raotorneos`: la card "Otono 2026" aparece; se ven "Sobre nosotros" y
@@ -158,13 +171,11 @@ plan `competencia`, 1 campeonato "Otono 2026" en estado `inscripcion`, tema `ver
    las cards de torneos usan el `onerror` con placeholder. Verificar en prod que
    cargan las imagenes reales de cada campeonato/organizador.
 
-5. **Commits pendientes**: el arbol acumula cambios de esta sesion + anteriores +
-   el stash de respaldo `codex-pre-pull-2026-09-07`. Sugerencia de commits tematicos:
-   - `feat: adoptar diseno portada LT&C + modo landing de cliente`
-   - `feat: panel Usuarios jerarquico por organizador y campeonato`
-   - `feat: tema personalizado de landing + fixes de secciones/cards en /liga`
-   - `fix: header admin (logo LT&C, dropdown de usuario, icono del sidebar)`
-   - `feat: imagenes de marca en login/registro`
+5. **Git**: los 4 commits ya estan en `origin/main` (ver tabla arriba). Sigue
+   pendiente revisar/limpiar stashes de respaldo antiguos:
+   `stash@{0}` `codex-pre-pull-2026-09-07`, `stash@{1}` autostash,
+   `stash@{2}` `codex-pre-pull-2026-04-18` — confirmar que su contenido ya quedo
+   integrado y hacer `git stash drop` de los que sobren.
 
 6. **Pulido / decisiones abiertas**:
    - Las imagenes del hero slider de la portada pesan 2-2.3 MB c/u -> optimizar (webp).
