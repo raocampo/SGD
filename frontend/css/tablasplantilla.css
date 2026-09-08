@@ -88,13 +88,13 @@
   flex-shrink: 0;
 }
 
-.swatch-deportivo  { background: linear-gradient(135deg, #ffd700, #ffb300); }
-.swatch-nocturno   { background: radial-gradient(circle, #0b2b3a, #000); }
-.swatch-clasico    { background: linear-gradient(135deg, #f0f4fa, #d8e2f0); }
-.swatch-azul       { background: linear-gradient(135deg, #1e3c72, #2a5298); }
+.swatch-deportivo  { background: linear-gradient(135deg, #b7e853, #9fd242); }
+.swatch-nocturno   { background: radial-gradient(circle, #313131, #000); }
+.swatch-clasico    { background: linear-gradient(135deg, #f7f8f4, #d8e2f0); }
+.swatch-azul       { background: linear-gradient(135deg, #1e3c72, #3f3f3f); }
 .swatch-vinotinto  { background: linear-gradient(135deg, #6b2737, #3d1520); }
 .swatch-verde      { background: linear-gradient(135deg, #1a4f2e, #0d2c19); }
-.swatch-torneo     { background: linear-gradient(135deg, #1e3a5f, #facc15 180%); }
+.swatch-torneo     { background: linear-gradient(135deg, #313131, #b7e853 180%); }
 .swatch-custom     { background: #e2e8f0; display:flex; align-items:center; justify-content:center; font-size:.7rem; color:#64748b; }
 .swatch-clear      { background: #fee2e2; display:flex; align-items:center; justify-content:center; font-size:.7rem; color:#dc2626; }
 
@@ -107,19 +107,19 @@
 
 /* Tema Deportivo (amarillo) — predeterminado */
 .tblp-poster {
-  --p-bg: linear-gradient(160deg, #ffd700 0%, #ffca00 60%, #f5b800 100%);
-  --p-color: #0d1440;
+  --p-bg: linear-gradient(160deg, #b7e853 0%, #ffca00 60%, #f5b800 100%);
+  --p-color: #313131;
   --p-card-bg: #ffffff;
   --p-card-border: rgba(13,20,64,.12);
-  --p-card-text: #0d1440;
+  --p-card-text: #313131;
   --p-header-bg: rgba(13,20,64,.06);
-  --p-accent: #0d1440;
+  --p-accent: #313131;
   --p-muted: rgba(13,20,64,.55);
   --p-row-even: rgba(255,215,0,.45);
   --p-row-odd: #ffffff;
-  --p-badge-bg: #0d1440;
+  --p-badge-bg: #313131;
   --p-badge-color: #ffffff;
-  --p-title-bg: #0d1440;
+  --p-title-bg: #313131;
   --p-title-color: #ffffff;
   --p-col-gf:   rgba(255,200,0,.35);
   --p-col-gc:   rgba(255,200,0,.35);
@@ -136,22 +136,22 @@
 
 /* Tema Nocturno */
 .tblp-poster.fondo-nocturno {
-  --p-bg: radial-gradient(circle at top, #0b2b3a 0%, #041018 60%, #000 100%);
+  --p-bg: radial-gradient(circle at top, #313131 0%, #1b1b1b 60%, #000 100%);
   --p-color: #fff;
   --p-card-bg: rgba(255,255,255,.08);
   --p-card-border: rgba(255,255,255,.14);
   --p-card-text: #fff;
   --p-header-bg: rgba(255,255,255,.08);
-  --p-accent: #facc15;
+  --p-accent: #b7e853;
   --p-muted: rgba(255,255,255,.55);
   --p-row-even: rgba(255,255,255,.06);
   --p-row-odd: rgba(255,255,255,.02);
-  --p-badge-bg: #facc15;
-  --p-badge-color: #0d1440;
+  --p-badge-bg: #b7e853;
+  --p-badge-color: #313131;
   --p-title-bg: rgba(255,255,255,.12);
-  --p-title-color: #facc15;
-  --p-col-gf:  rgba(250,204,21,.15);
-  --p-col-gc:  rgba(250,204,21,.15);
+  --p-title-color: #b7e853;
+  --p-col-gf:  rgba(183,232,83,.15);
+  --p-col-gc:  rgba(183,232,83,.15);
   --p-col-pts: rgba(251,146,60,.15);
   --p-col-dg:  rgba(239,68,68,.12);
   --p-sponsors-bg: rgba(255,255,255,.10);
@@ -160,31 +160,31 @@
 
 /* Tema Clásico */
 .tblp-poster.fondo-clasico {
-  --p-bg: linear-gradient(150deg, #f0f4fa 0%, #e4eaf4 60%, #d8e2f0 100%);
+  --p-bg: linear-gradient(150deg, #f7f8f4 0%, #e4eaf4 60%, #d8e2f0 100%);
   --p-color: #1a2b4a;
   --p-card-bg: rgba(255,255,255,.85);
-  --p-card-border: rgba(30,58,95,.15);
+  --p-card-border: rgba(49,49,49,.15);
   --p-card-text: #1a2b4a;
-  --p-header-bg: rgba(30,58,95,.07);
-  --p-accent: #1e3a5f;
+  --p-header-bg: rgba(49,49,49,.07);
+  --p-accent: #313131;
   --p-muted: rgba(26,43,74,.55);
-  --p-row-even: rgba(30,58,95,.06);
+  --p-row-even: rgba(49,49,49,.06);
   --p-row-odd: rgba(255,255,255,.80);
-  --p-badge-bg: #1e3a5f;
+  --p-badge-bg: #313131;
   --p-badge-color: #fff;
-  --p-title-bg: #1e3a5f;
+  --p-title-bg: #313131;
   --p-title-color: #fff;
-  --p-col-gf:  rgba(30,58,95,.08);
-  --p-col-gc:  rgba(30,58,95,.08);
-  --p-col-pts: rgba(30,58,95,.14);
+  --p-col-gf:  rgba(49,49,49,.08);
+  --p-col-gc:  rgba(49,49,49,.08);
+  --p-col-pts: rgba(49,49,49,.14);
   --p-col-dg:  rgba(180,60,40,.10);
-  --p-sponsors-bg: #1e3a5f;
+  --p-sponsors-bg: #313131;
   --p-sponsors-color: #fff;
 }
 
 /* Tema Azul */
 .tblp-poster.fondo-azul {
-  --p-bg: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #0a1f4a 100%);
+  --p-bg: linear-gradient(135deg, #1e3c72 0%, #3f3f3f 50%, #313131 100%);
   --p-color: #fff;
   --p-card-bg: rgba(255,255,255,.10);
   --p-card-border: rgba(255,255,255,.18);
@@ -195,7 +195,7 @@
   --p-row-even: rgba(255,255,255,.07);
   --p-row-odd: rgba(0,0,0,.08);
   --p-badge-bg: #60a5fa;
-  --p-badge-color: #0a1f4a;
+  --p-badge-color: #313131;
   --p-title-bg: rgba(0,0,0,.30);
   --p-title-color: #60a5fa;
   --p-col-gf:  rgba(96,165,250,.15);
@@ -256,22 +256,22 @@
 
 /* Tema Torneo */
 .tblp-poster.fondo-torneo {
-  --p-bg: linear-gradient(140deg, var(--t-primario, #1e3a5f) 0%, var(--t-secundario, #0b1f35) 100%);
+  --p-bg: linear-gradient(140deg, var(--t-primario, #313131) 0%, var(--t-secundario, #242424) 100%);
   --p-color: #fff;
   --p-card-bg: rgba(255,255,255,.10);
   --p-card-border: rgba(255,255,255,.20);
   --p-card-text: #fff;
   --p-header-bg: rgba(0,0,0,.20);
-  --p-accent: var(--t-acento, #facc15);
+  --p-accent: var(--t-acento, #b7e853);
   --p-muted: rgba(255,255,255,.55);
   --p-row-even: rgba(255,255,255,.07);
   --p-row-odd: rgba(0,0,0,.05);
-  --p-badge-bg: var(--t-acento, #facc15);
-  --p-badge-color: #0a1f4a;
+  --p-badge-bg: var(--t-acento, #b7e853);
+  --p-badge-color: #313131;
   --p-title-bg: rgba(0,0,0,.25);
-  --p-title-color: var(--t-acento, #facc15);
-  --p-col-gf:  rgba(250,204,21,.15);
-  --p-col-gc:  rgba(250,204,21,.15);
+  --p-title-color: var(--t-acento, #b7e853);
+  --p-col-gf:  rgba(183,232,83,.15);
+  --p-col-gc:  rgba(183,232,83,.15);
   --p-col-pts: rgba(251,146,60,.15);
   --p-col-dg:  rgba(239,68,68,.12);
   --p-sponsors-bg: rgba(0,0,0,.28);
@@ -581,7 +581,7 @@
   padding: 0 .3rem;
 }
 
-.tblp-rank-1 { background: #ffd700; color: #000; }
+.tblp-rank-1 { background: #b7e853; color: #000; }
 .tblp-rank-2 { background: #94a3b8; color: #fff; }
 .tblp-rank-3 { background: #d97706; color: #fff; }
 .tblp-rank-n { background: var(--p-badge-bg); color: var(--p-badge-color); opacity: .8; }

@@ -6,9 +6,9 @@
     </linearGradient>
   </defs>
   <rect width="1200" height="700" fill="url(#g1)"/>
-  <circle cx="180" cy="150" r="120" fill="#f8dc6a" opacity="0.16"/>
-  <circle cx="1030" cy="560" r="170" fill="#f8dc6a" opacity="0.12"/>
+  <circle cx="180" cy="150" r="120" fill="#b7e853" opacity="0.16"/>
+  <circle cx="1030" cy="560" r="170" fill="#b7e853" opacity="0.12"/>
   <path d="M80 560 C 260 420, 420 640, 620 540 S 980 450, 1130 560" fill="none" stroke="#8ecae6" stroke-width="10" opacity="0.45"/>
-  <text x="90" y="290" fill="#f8dc6a" font-family="Arial, sans-serif" font-size="66" font-weight="700">PROXIMO TORNEO</text>
+  <text x="90" y="290" fill="#b7e853" font-family="Arial, sans-serif" font-size="66" font-weight="700">PROXIMO TORNEO</text>
   <text x="90" y="360" fill="#e5f2ff" font-family="Arial, sans-serif" font-size="48" font-weight="600">EMPRESARIAL LT&amp;C</text>
 </svg>

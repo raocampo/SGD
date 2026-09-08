@@ -37,7 +37,7 @@
     return `
       <div style="display:grid; gap:1rem;">
         <div>
-          <h2 style="margin:0; color:#2c3e50;">${titulo}</h2>
+          <h2 style="margin:0; color:#313131;">${titulo}</h2>
           ${resumen}
           <p style="margin-top:10px; color:#64748b;">
             ${esc(formatearFecha(item.publicada_at || item.created_at))} • ${esc(item.autor_nombre || "LT&C")}

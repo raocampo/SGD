@@ -322,9 +322,9 @@
     }
 
     // Colores para tema Torneo
-    poster.style.setProperty("--t-primario", camp.color_primario || "#1e3a5f");
-    poster.style.setProperty("--t-secundario", camp.color_secundario || "#0b1f35");
-    poster.style.setProperty("--t-acento", camp.color_acento || "#facc15");
+    poster.style.setProperty("--t-primario", camp.color_primario || "#313131");
+    poster.style.setProperty("--t-secundario", camp.color_secundario || "#242424");
+    poster.style.setProperty("--t-acento", camp.color_acento || "#b7e853");
 
     // Logo
     const logoEl = document.getElementById("tblp-org-logo");

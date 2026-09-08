@@ -5,20 +5,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LT&C - Panel de Administración</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
+  <link rel="icon" href="assets/ltc/Icono.png" type="image/png" />
+  <link rel="shortcut icon" href="assets/ltc/Icono.png" type="image/png" />
+  <link rel="apple-touch-icon" href="assets/ltc/Icono.png" type="image/png" />
   <link rel="stylesheet" href="css/style.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* ── Fondo y layout con colores LT&C ── */
-    .main { background: #f0f4f8; min-height: 100%; }
+    .main { background: #f7f8f4; min-height: 100%; }
     .container { max-width: 1200px; }
 
     /* Banner superior de bienvenida */
     .dash-hero {
-      background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+      background: linear-gradient(135deg, #313131 0%, #242424 76%, #3f3f3f 100%);
       border-radius: 12px;
       padding: 22px 26px;
       margin-bottom: 22px;
@@ -26,7 +26,7 @@
       align-items: center;
       gap: 18px;
       color: #fff;
-      box-shadow: 0 4px 16px rgba(44,62,80,.25);
+      box-shadow: 0 4px 16px rgba(49,49,49,.25);
     }
     .dash-hero-icon {
       width: 52px; height: 52px;
@@ -56,10 +56,10 @@
       display: flex;
       align-items: center;
       gap: 14px;
-      box-shadow: 0 2px 6px rgba(44,62,80,.07);
+      box-shadow: 0 2px 6px rgba(49,49,49,.07);
       transition: box-shadow .15s;
     }
-    .dash-kpi-card:hover { box-shadow: 0 4px 14px rgba(44,62,80,.12); }
+    .dash-kpi-card:hover { box-shadow: 0 4px 14px rgba(49,49,49,.12); }
 
     .dash-kpi-icon {
       width: 44px; height: 44px;
@@ -67,13 +67,13 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 19px; flex-shrink: 0;
     }
-    .dash-kpi-icon.ltc-azul  { background: #e8f4fd; color: #3498db; }
+    .dash-kpi-icon.ltc-azul  { background: #edf9cf; color: #313131; }
     .dash-kpi-icon.ltc-verde { background: #eafaf1; color: #27ae60; }
-    .dash-kpi-icon.ltc-noche { background: #eaecf0; color: #2c3e50; }
+    .dash-kpi-icon.ltc-noche { background: #eaecf0; color: #313131; }
     .dash-kpi-icon.ltc-ambar { background: #fef9e7; color: #f39c12; }
 
     .dash-kpi-body { min-width: 0; }
-    .dash-kpi-val  { font-size: 23px; font-weight: 800; color: #2c3e50; line-height: 1.1; }
+    .dash-kpi-val  { font-size: 23px; font-weight: 800; color: #313131; line-height: 1.1; }
     .dash-kpi-lbl  { font-size: 11.5px; color: #7f8c8d; margin-top: 2px; }
 
     /* Paneles */
@@ -91,12 +91,12 @@
       border: 1px solid #dde3ec;
       border-radius: 10px;
       padding: 18px 20px;
-      box-shadow: 0 2px 6px rgba(44,62,80,.07);
+      box-shadow: 0 2px 6px rgba(49,49,49,.07);
     }
     .dash-panel-title {
       font-size: 13px;
       font-weight: 700;
-      color: #2c3e50;
+      color: #313131;
       margin-bottom: 14px;
       display: flex;
       align-items: center;
@@ -104,23 +104,23 @@
       padding-bottom: 10px;
       border-bottom: 2px solid #eaf1f8;
     }
-    .dash-panel-title i { color: #3498db; }
+    .dash-panel-title i { color: #5f8f2e; }
     .dash-chart-wrap { height: 200px; position: relative; }
 
     /* Tabla organizadores */
     .dash-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
     .dash-table th {
       text-align: left; padding: 8px 10px;
-      background: #f0f4f8;
-      color: #2c3e50; font-weight: 700;
+      background: #f7f8f4;
+      color: #313131; font-weight: 700;
       border-bottom: 2px solid #dde3ec;
       white-space: nowrap;
     }
     .dash-table th:first-child { border-radius: 6px 0 0 0; }
     .dash-table th:last-child  { border-radius: 0 6px 0 0; }
-    .dash-table td { padding: 8px 10px; border-bottom: 1px solid #f0f4f8; color: #2c3e50; }
+    .dash-table td { padding: 8px 10px; border-bottom: 1px solid #f7f8f4; color: #313131; }
     .dash-table tr:last-child td { border-bottom: none; }
-    .dash-table tr:hover td { background: #f8fbff; }
+    .dash-table tr:hover td { background: #fbfff2; }
     .text-center { text-align: center; }
     .dash-table-wrap { overflow-x: auto; }
 
@@ -130,8 +130,8 @@
       padding: 2px 9px; border-radius: 12px;
       display: inline-block;
     }
-    .badge-plan-demo        { background: #eaecf0; color: #2c3e50; }
-    .badge-plan-free        { background: #d6eaf8; color: #1a5276; }
+    .badge-plan-demo        { background: #eaecf0; color: #313131; }
+    .badge-plan-free        { background: #edf9cf; color: #313131; }
     .badge-plan-base        { background: #d5f5e3; color: #1e8449; }
     .badge-plan-competencia { background: #fdebd0; color: #784212; }
     .badge-plan-premium     { background: #e8daef; color: #6c3483; }
@@ -148,8 +148,8 @@
     .btn-comp-activar:hover { background: #229954; }
     .btn-comp-rechazar { background: #e74c3c; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
     .btn-comp-rechazar:hover { background: #c0392b; }
-    .btn-comp-ver { background: #3498db; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; }
-    .btn-comp-ver:hover { background: #2980b9; }
+    .btn-comp-ver { background: #313131; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-comp-ver:hover { background: #242424; }
 
     /* Métricas globales */
     .dash-global-row {
@@ -161,12 +161,12 @@
     @media (max-width: 600px) { .dash-global-row { grid-template-columns: 1fr; } }
 
     .dash-global-card {
-      background: linear-gradient(135deg, #2c3e50, #34495e);
+      background: linear-gradient(135deg, #313131, #3f3f3f);
       border-radius: 10px;
       padding: 18px 20px;
       text-align: center;
       color: #fff;
-      box-shadow: 0 3px 10px rgba(44,62,80,.2);
+      box-shadow: 0 3px 10px rgba(49,49,49,.2);
     }
     .dash-global-val { font-size: 30px; font-weight: 900; letter-spacing: -1px; }
     .dash-global-lbl { font-size: 12px; opacity: .8; margin-top: 4px; }
@@ -189,7 +189,7 @@
       margin-bottom: 10px;
     }
     .dash-precio-item { display: flex; flex-direction: column; gap: 6px; }
-    .dash-precio-item label { font-size: 12px; font-weight: 600; color: #2c3e50; }
+    .dash-precio-item label { font-size: 12px; font-weight: 600; color: #313131; }
     .dash-precio-item .precio-badge {
       display: inline-block; font-size: 11px; font-weight: 700;
       padding: 2px 9px; border-radius: 10px; margin-bottom: 2px;
@@ -206,13 +206,13 @@
       width: 100%; padding: 8px 11px;
       border: 1.5px solid #dde3ec;
       border-radius: 7px;
-      font-size: 15px; font-weight: 700; color: #2c3e50;
+      font-size: 15px; font-weight: 700; color: #313131;
       transition: border-color .15s;
     }
     .dash-precio-item input[type="number"]:focus {
       outline: none;
-      border-color: #3498db;
-      box-shadow: 0 0 0 3px rgba(52,152,219,.15);
+      border-color: #313131;
+      box-shadow: 0 0 0 3px rgba(183,232,83,.15);
     }
 
     .dash-empty-msg { font-size: 12.5px; color: #95a5a6; padding: 16px 0; text-align: center; }
@@ -227,14 +227,14 @@
     }
     @media (max-width: 600px) { .dash-pago-grid { grid-template-columns: 1fr; } }
     .dash-pago-group { display: flex; flex-direction: column; gap: 5px; }
-    .dash-pago-group label { font-size: 12px; font-weight: 600; color: #2c3e50; }
+    .dash-pago-group label { font-size: 12px; font-weight: 600; color: #313131; }
     .dash-pago-group input,
     .dash-pago-group select,
     .dash-pago-group textarea {
       padding: 8px 11px;
       border: 1.5px solid #dde3ec;
       border-radius: 7px;
-      font-size: 13px; color: #2c3e50;
+      font-size: 13px; color: #313131;
       width: 100%;
       transition: border-color .15s;
       background: #fff;
@@ -243,14 +243,14 @@
     .dash-pago-group input:focus,
     .dash-pago-group select:focus,
     .dash-pago-group textarea:focus {
-      outline: none; border-color: #3498db;
-      box-shadow: 0 0 0 3px rgba(52,152,219,.12);
+      outline: none; border-color: #313131;
+      box-shadow: 0 0 0 3px rgba(183,232,83,.12);
     }
     .dash-pago-group textarea { resize: vertical; min-height: 62px; }
     .dash-pago-full { grid-column: 1 / -1; }
     .dash-pago-check-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
     .dash-pago-check-row input[type="checkbox"] { width: auto; }
-    .dash-pago-check-row label { font-size: 13px; font-weight: 600; color: #2c3e50; margin: 0; cursor: pointer; }
+    .dash-pago-check-row label { font-size: 13px; font-weight: 600; color: #313131; margin: 0; cursor: pointer; }
 
     /* Acceso denegado */
     .dash-forbidden {
@@ -261,7 +261,7 @@
       border: 1px solid #dde3ec;
     }
     .dash-forbidden i  { font-size: 48px; color: #e74c3c; margin-bottom: 16px; display: block; }
-    .dash-forbidden h2 { font-size: 18px; color: #2c3e50; margin-bottom: 8px; }
+    .dash-forbidden h2 { font-size: 18px; color: #313131; margin-bottom: 8px; }
     .dash-forbidden p  { font-size: 13px; color: #7f8c8d; margin-bottom: 20px; }
 
     /* ── Auditoría ── */
@@ -270,22 +270,22 @@
     }
     .dash-audit-input {
       padding: 7px 10px; border: 1.5px solid #dde3ec;
-      border-radius: 7px; font-size: 12.5px; color: #2c3e50;
+      border-radius: 7px; font-size: 12.5px; color: #313131;
       background: #fff; height: 34px;
     }
-    .dash-audit-input:focus { outline: none; border-color: #3498db; }
+    .dash-audit-input:focus { outline: none; border-color: #313131; }
     .dash-audit-btn {
       height: 34px; padding: 0 14px; font-size: 12.5px;
       border-radius: 7px; white-space: nowrap;
     }
     .dash-audit-btn-reset {
-      background: #f0f4f8; color: #2c3e50;
+      background: #f7f8f4; color: #313131;
       border: 1.5px solid #dde3ec;
     }
     .dash-audit-btn-reset:hover { background: #e2e8f0; }
     .dash-audit-footer {
       display: flex; justify-content: space-between; align-items: center;
-      margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f4f8;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid #f7f8f4;
     }
     .badge-audit {
       display: inline-block; font-size: 10.5px; font-weight: 700;
@@ -293,7 +293,7 @@
     }
     .badge-audit-login       { background: #d5f5e3; color: #1e8449; }
     .badge-audit-logout      { background: #eaecf0; color: #566573; }
-    .badge-audit-registro    { background: #d6eaf8; color: #1a5276; }
+    .badge-audit-registro    { background: #edf9cf; color: #313131; }
     .badge-audit-password    { background: #fef9e7; color: #7d6608; }
     .badge-audit-plan        { background: #fdebd0; color: #784212; }
     .badge-audit-activacion  { background: #d4efdf; color: #1e8449; }
@@ -302,7 +302,7 @@
     .badge-audit-fixture     { background: #d1f0f7; color: #0e6c8c; }
     .badge-audit-planilla    { background: #d5f5e3; color: #1d6a47; }
     .badge-audit-finanza     { background: #fef3c7; color: #92400e; }
-    .badge-audit-otro        { background: #f0f4f8; color: #566573; }
+    .badge-audit-otro        { background: #f7f8f4; color: #566573; }
     .dash-audit-detalle {
       font-size: 11px; color: #7f8c8d; max-width: 200px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -319,7 +319,7 @@
       border: 1px solid #dde3ec;
       border-radius: 10px;
       padding: 6px;
-      box-shadow: 0 2px 6px rgba(44,62,80,.07);
+      box-shadow: 0 2px 6px rgba(49,49,49,.07);
     }
     .dash-tab-btn {
       display: flex;
@@ -337,13 +337,13 @@
       white-space: nowrap;
     }
     .dash-tab-btn:hover {
-      background: #f0f4f8;
-      color: #2c3e50;
+      background: #f7f8f4;
+      color: #313131;
     }
     .dash-tab-btn.active {
-      background: linear-gradient(135deg, #2c3e50, #3498db);
+      background: linear-gradient(135deg, #313131, #313131);
       color: #fff;
-      box-shadow: 0 2px 8px rgba(52,152,219,.3);
+      box-shadow: 0 2px 8px rgba(183,232,83,.3);
     }
     .dash-tab-btn .tab-badge {
       background: #ef4444;
@@ -403,7 +403,7 @@
 
         <!-- Loading -->
         <div class="dash-loading" id="dash-admin-loading">
-          <i class="fas fa-spinner fa-spin" style="font-size:28px; color:#3498db; display:block; margin-bottom:12px;"></i>
+          <i class="fas fa-spinner fa-spin" style="font-size:28px; color:#313131; display:block; margin-bottom:12px;"></i>
           Cargando dashboard...
         </div>
 
@@ -683,12 +683,12 @@
   <!-- Modal: Gestión de estado de organizador -->
   <div id="modal-org-estado" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,.55); align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(3px);" role="dialog" aria-modal="true">
     <div style="background:#fff; border-radius:14px; width:100%; max-width:420px; box-shadow:0 20px 56px rgba(0,0,0,.22); padding:28px 28px 22px;">
-      <h3 style="font-size:16px; font-weight:800; color:#2c3e50; margin:0 0 4px;" id="modal-org-nombre">—</h3>
+      <h3 style="font-size:16px; font-weight:800; color:#313131; margin:0 0 4px;" id="modal-org-nombre">—</h3>
       <p style="font-size:12px; color:#7f8c8d; margin:0 0 20px;" id="modal-org-email">—</p>
 
       <div style="margin-bottom:16px;">
-        <label style="font-size:12px; font-weight:700; color:#2c3e50; display:block; margin-bottom:6px;">Plan</label>
-        <select id="modal-org-plan" style="width:100%; padding:9px 11px; border:1.5px solid #dde3ec; border-radius:8px; font-size:13px; color:#2c3e50; background:#fff;">
+        <label style="font-size:12px; font-weight:700; color:#313131; display:block; margin-bottom:6px;">Plan</label>
+        <select id="modal-org-plan" style="width:100%; padding:9px 11px; border:1.5px solid #dde3ec; border-radius:8px; font-size:13px; color:#313131; background:#fff;">
           <option value="demo">Demo</option>
           <option value="free">Free</option>
           <option value="base">Base</option>
@@ -698,7 +698,7 @@
       </div>
 
       <div style="margin-bottom:22px;">
-        <label style="font-size:12px; font-weight:700; color:#2c3e50; display:block; margin-bottom:6px;">Estado de cuenta</label>
+        <label style="font-size:12px; font-weight:700; color:#313131; display:block; margin-bottom:6px;">Estado de cuenta</label>
         <div style="display:flex; flex-direction:column; gap:8px;">
           <label style="display:flex; align-items:center; gap:10px; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:9px; cursor:pointer;">
             <input type="radio" name="modal-org-estado-radio" value="activo" style="accent-color:#27ae60;" />
@@ -716,7 +716,7 @@
       </div>
 
       <div style="display:flex; gap:10px;">
-        <button id="modal-org-guardar" style="flex:1; background:#2c3e50; color:#fff; border:none; border-radius:9px; padding:12px; font-size:14px; font-weight:700; cursor:pointer;">
+        <button id="modal-org-guardar" style="flex:1; background:#313131; color:#fff; border:none; border-radius:9px; padding:12px; font-size:14px; font-weight:700; cursor:pointer;">
           <i class="fas fa-save"></i> Guardar cambios
         </button>
         <button id="modal-org-cancelar" style="flex:1; background:none; border:1.5px solid #dde3ec; border-radius:9px; padding:12px; font-size:14px; color:#64748b; cursor:pointer;">

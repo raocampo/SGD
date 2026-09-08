@@ -19,9 +19,9 @@ let contexto = {
   eventoNombre: "",
   logoUrl: null,
   auspiciantes: [],
-  colorPrimario: "#1e3a5f",
-  colorSecundario: "#0b1f35",
-  colorAcento: "#facc15",
+  colorPrimario: "#313131",
+  colorSecundario: "#242424",
+  colorAcento: "#b7e853",
   fondoPersonalizado: "",
 };
 
@@ -75,9 +75,9 @@ async function cargarContexto() {
       eventoNombre: contexto.eventoNombre,
       logoUrl: normalizarLogoUrl(camp.logo_url || null),
       auspiciantes: await cargarAuspiciantesFixture(campeonatoId),
-      colorPrimario: camp.color_primario || "#1e3a5f",
-      colorSecundario: camp.color_secundario || "#0b1f35",
-      colorAcento: camp.color_acento || "#facc15",
+      colorPrimario: camp.color_primario || "#313131",
+      colorSecundario: camp.color_secundario || "#242424",
+      colorAcento: camp.color_acento || "#b7e853",
       fondoPersonalizado: "",
     };
     // Aplicar colores del torneo como CSS vars para el tema "torneo"

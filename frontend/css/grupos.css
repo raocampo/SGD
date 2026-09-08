@@ -61,7 +61,7 @@ body {
 }
 
 .page-gruposgen .grupos-main-tab {
-  border: 1px solid rgba(30, 64, 175, 0.25);
+  border: 1px solid rgba(36, 36, 36, 0.25);
   background: #eef4ff;
   color: #1d3b66;
   border-radius: 999px;
@@ -202,19 +202,19 @@ body {
 }
 .btn-poster-tema.active,
 .btn-poster-tema:hover {
-  background: #1e3a5f;
+  background: #313131;
   color: #fff;
-  border-color: #1e3a5f;
+  border-color: #313131;
 }
 
 /* ── Temas del poster ── */
 .poster {
-  --poster-bg: radial-gradient(circle at top, #0b2b3a 0%, #041018 60%, #000 100%);
+  --poster-bg: radial-gradient(circle at top, #313131 0%, #1b1b1b 60%, #000 100%);
   --poster-color: #fff;
   --poster-card-bg: rgba(255,255,255,.08);
   --poster-card-border: rgba(255,255,255,.15);
   --poster-card-text: #fff;
-  --poster-accent: #facc15;
+  --poster-accent: #b7e853;
   width: min(108rem, 100%);
   margin: 0 auto;
   padding: clamp(1.25rem, 2.4vw, 2.8rem);
@@ -472,7 +472,7 @@ body {
 
 /* Tema: Oscuro (default — ya heredado de .poster sin clase extra) */
 .poster.tema-oscuro {
-  --poster-bg: radial-gradient(circle at top, #0b2b3a 0%, #041018 60%, #000 100%);
+  --poster-bg: radial-gradient(circle at top, #313131 0%, #1b1b1b 60%, #000 100%);
   --poster-color: #fff;
   --poster-card-bg: rgba(255,255,255,.08);
   --poster-card-border: rgba(255,255,255,.15);
@@ -481,22 +481,22 @@ body {
 
 /* Tema: Clásico (blanco / claro) */
 .poster.tema-clasico {
-  --poster-bg: linear-gradient(150deg, #f0f4fa 0%, #e4eaf4 60%, #d8e2f0 100%);
+  --poster-bg: linear-gradient(150deg, #f7f8f4 0%, #e4eaf4 60%, #d8e2f0 100%);
   --poster-color: #1a2b4a;
   --poster-card-bg: rgba(255,255,255,.85);
-  --poster-card-border: rgba(30,58,95,.18);
+  --poster-card-border: rgba(49,49,49,.18);
   --poster-card-text: #1a2b4a;
-  --poster-accent: #1e3a5f;
+  --poster-accent: #313131;
 }
 
 /* Tema: Torneo (colores del campeonato, definidos via JS) */
 .poster.tema-torneo {
-  --poster-bg: linear-gradient(140deg, var(--t-primario, #1e3a5f) 0%, var(--t-secundario, #0b1f35) 100%);
+  --poster-bg: linear-gradient(140deg, var(--t-primario, #313131) 0%, var(--t-secundario, #242424) 100%);
   --poster-color: #fff;
   --poster-card-bg: rgba(255,255,255,.10);
   --poster-card-border: rgba(255,255,255,.20);
   --poster-card-text: #fff;
-  --poster-accent: var(--t-acento, #facc15);
+  --poster-accent: var(--t-acento, #b7e853);
 }
 
 /* Usar variables en cards de grupos */
@@ -536,7 +536,7 @@ body {
   color: inherit;
 }
 .poster-partido-badge.badge-finalizado { background: #16a34a; color: #fff; }
-.poster-partido-badge.badge-programado { background: #2563eb; color: #fff; }
+.poster-partido-badge.badge-programado { background: #313131; color: #fff; }
 .poster-partido-badge.badge-en-curso   { background: #d97706; color: #fff; }
 .poster-partido-badge.badge-suspendido { background: #6b7280; color: #fff; }
 .poster-partido-meta {
@@ -659,15 +659,15 @@ body {
 }
 
 .poster.tema-clasico .team-logo {
-  background: rgba(30,58,95,.08);
+  background: rgba(49,49,49,.08);
 }
 
 .poster.tema-clasico .team-logo.placeholder {
-  background: rgba(30,58,95,.10);
+  background: rgba(49,49,49,.10);
 }
 
 .poster.tema-clasico .poster-liga-card-head {
-  background: rgba(30,58,95,.07);
+  background: rgba(49,49,49,.07);
 }
 
 @media (max-width: 780px) {

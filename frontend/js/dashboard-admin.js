@@ -120,7 +120,7 @@
           <td>${formatearFecha(o.created_at)}</td>
           <td class="text-center">
             <button class="btn-gestionar-org" data-id="${o.id}"
-              style="background:#3498db; color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer;">
+              style="background:#313131; color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer;">
               <i class="fas fa-edit"></i> Gestionar
             </button>
           </td>
@@ -283,7 +283,7 @@
 
         <!-- Transferencia bancaria -->
         <div class="dash-pago-group dash-pago-full" style="border-top:1.5px solid #e2e8f0;padding-top:14px;margin-top:4px;">
-          <label style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-university" style="color:#3498db;"></i> Transferencia / Depósito bancario</label>
+          <label style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-university" style="color:#313131;"></i> Transferencia / Depósito bancario</label>
         </div>
         <div class="dash-pago-group">
           <label>Banco</label>
@@ -573,7 +573,7 @@
             <tr>
               <td style="white-space:nowrap;font-size:11.5px;">${formatFechaAudit(r.created_at)}</td>
               <td>
-                <div style="font-size:12px;font-weight:700;color:#2c3e50;">${r.usuario_nombre || "Sistema"}</div>
+                <div style="font-size:12px;font-weight:700;color:#313131;">${r.usuario_nombre || "Sistema"}</div>
                 <div style="font-size:10.5px;color:#7f8c8d;">${r.usuario_email || "—"}</div>
               </td>
               <td style="font-size:11.5px;color:#566573;text-transform:capitalize;">${r.usuario_rol || "—"}</td>
@@ -650,7 +650,7 @@
             <tr>
               <td style="font-size:11.5px;white-space:nowrap;">${fecha}</td>
               <td>
-                <div style="font-size:12px;font-weight:700;color:#2c3e50;">${c.usuario_nombre || "—"}</div>
+                <div style="font-size:12px;font-weight:700;color:#313131;">${c.usuario_nombre || "—"}</div>
                 <div style="font-size:10.5px;color:#7f8c8d;">${c.usuario_email || ""}</div>
               </td>
               <td><span class="badge-plan-min badge-plan-${c.plan_codigo || 'free'}">${planLabel}</span></td>

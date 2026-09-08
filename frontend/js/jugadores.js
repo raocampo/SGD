@@ -3971,7 +3971,7 @@ function actualizarResumenJugadores() {
   const cuposJuveniles = normalizarCuposJuvenilEvento(eventoCarnetMeta?.categoria_juvenil_cupos, 0);
 
   let texto = `Jugadores registrados: ${total}`;
-  let color = "#2c3e50";
+  let color = "#313131";
 
   if (maxJugadoresPorEquipo) {
     texto += ` / ${maxJugadoresPorEquipo}`;

@@ -5,16 +5,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LT&C - Portal Deportivo</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
+  <link rel="icon" href="assets/ltc/Icono.png" type="image/png" />
+  <link rel="shortcut icon" href="assets/ltc/Icono.png" type="image/png" />
+  <link rel="apple-touch-icon" href="assets/ltc/Icono.png" type="image/png" />
   <link rel="stylesheet" href="css/style.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* ── Hero banner ── */
     .dash-hero {
-      background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+      background: linear-gradient(135deg, #313131 0%, #242424 76%, #3f3f3f 100%);
+      border: 1px solid rgba(183, 232, 83, 0.28);
       border-radius: 12px;
       padding: 18px 22px;
       margin-bottom: 18px;
@@ -36,7 +37,7 @@
       flex-shrink: 0;
     }
     .badge-plan-demo        { background: rgba(255,255,255,.15); color: #fff; }
-    .badge-plan-free        { background: #dbeafe; color: #1d4ed8; }
+    .badge-plan-free        { background: #edf9cf; color: #242424; }
     .badge-plan-base        { background: #dcfce7; color: #166534; }
     .badge-plan-competencia { background: #fef9c3; color: #854d0e; }
     .badge-plan-premium     { background: #ede9fe; color: #6d28d9; }
@@ -74,13 +75,13 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 17px; flex-shrink: 0;
     }
-    .ltc-noche { background: #e8edf2; color: #2c3e50; }
-    .ltc-azul  { background: #d6eaf8; color: #2980b9; }
+    .ltc-noche { background: #e8edf2; color: #313131; }
+    .ltc-azul  { background: #edf9cf; color: #242424; }
     .ltc-verde { background: #d5f5e3; color: #1e8449; }
     .ltc-ambar { background: #fdebd0; color: #ca6f1e; }
 
     .dash-kpi-body  { min-width: 0; }
-    .dash-kpi-val   { font-size: 21px; font-weight: 700; color: #0f172a; line-height: 1.1; }
+    .dash-kpi-val   { font-size: 21px; font-weight: 700; color: #242424; line-height: 1.1; }
     .dash-kpi-lbl   { font-size: 11px; color: #64748b; margin-top: 2px; }
 
     /* ── Tabs ── */
@@ -105,8 +106,8 @@
       gap: 6px;
       transition: color .15s, border-color .15s;
     }
-    .dash-tab-btn:hover { color: #2c3e50; }
-    .dash-tab-btn.active { color: #3498db; border-bottom-color: #3498db; }
+    .dash-tab-btn:hover { color: #313131; }
+    .dash-tab-btn.active { color: #313131; border-bottom-color: #b7e853; }
     .dash-tab-panel { display: none; }
     .dash-tab-panel.active { display: block; }
 
@@ -129,19 +130,19 @@
     .dash-panel-title {
       font-size: 12.5px;
       font-weight: 700;
-      color: #2c3e50;
+      color: #313131;
       margin-bottom: 10px;
       display: flex;
       align-items: center;
       gap: 7px;
     }
-    .dash-panel-title i { color: #3498db; }
+    .dash-panel-title i { color: #5f8f2e; }
     .dash-chart-wrap { height: 185px; position: relative; }
 
     .dash-encuentro-card { border-bottom: 1px solid #f1f5f9; padding: 7px 0; }
     .dash-encuentro-card:last-child { border-bottom: none; }
     .dash-encuentro-fecha  { font-size: 11px; color: #64748b; }
-    .dash-encuentro-equipos { font-size: 13px; font-weight: 600; color: #0f172a; margin: 1px 0; }
+    .dash-encuentro-equipos { font-size: 13px; font-weight: 600; color: #242424; margin: 1px 0; }
     .dash-vs   { color: #94a3b8; font-weight: 400; margin: 0 5px; }
     .dash-encuentro-meta { font-size: 11px; color: #94a3b8; }
 
@@ -179,8 +180,8 @@
       align-items: center;
       gap: 7px;
     }
-    .dash-shortcut:hover { background: #d6eaf8; border-color: #3498db; color: #2c3e50; }
-    .dash-shortcut i { font-size: 20px; color: #3498db; }
+    .dash-shortcut:hover { background: #edf9cf; border-color: #b7e853; color: #313131; }
+    .dash-shortcut i { font-size: 20px; color: #313131; }
 
     /* ── Landing card ── */
     .dash-landing-card {
@@ -190,8 +191,8 @@
       padding: 18px 20px;
       box-shadow: 0 1px 3px rgba(0,0,0,.05);
     }
-    .dash-landing-card h3 { font-size: 14px; font-weight: 700; color: #2c3e50; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
-    .dash-landing-card h3 i { color: #3498db; }
+    .dash-landing-card h3 { font-size: 14px; font-weight: 700; color: #313131; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+    .dash-landing-card h3 i { color: #313131; }
     .dash-landing-card p { font-size: 12.5px; color: #475569; margin-bottom: 12px; }
     .dash-landing-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 

@@ -145,7 +145,7 @@
       html += `
       <div class="ltc-pago-metodo">
         <div class="ltc-pago-metodo-titulo"><i class="fas fa-money-bill-wave"></i> Pago en efectivo</div>
-        <p style="font-size:12.5px;color:#0f172a;margin:0;">${ef.instrucciones || 'Coordina por WhatsApp.'}</p>
+        <p style="font-size:12.5px;color:#242424;margin:0;">${ef.instrucciones || 'Coordina por WhatsApp.'}</p>
       </div>`;
     }
 

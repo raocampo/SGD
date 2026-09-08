@@ -19,9 +19,9 @@ let ctxJ = {
   tipoFutbol: "",
   eventoNombre: "",
   logoUrl: null,
-  colorPrimario: "#1e3a5f",
-  colorSecundario: "#0b1f35",
-  colorAcento: "#facc15",
+  colorPrimario: "#313131",
+  colorSecundario: "#242424",
+  colorAcento: "#b7e853",
   auspiciantes: [],
 };
 
@@ -74,9 +74,9 @@ async function cargarContextoJ() {
       tipoFutbol: (camp.tipo_futbol || "").replaceAll("_", " ").toUpperCase(),
       eventoNombre: ctxJ.eventoNombre,
       logoUrl: normalizarLogoUrlJ(camp.logo_url || null),
-      colorPrimario: camp.color_primario || "#1e3a5f",
-      colorSecundario: camp.color_secundario || "#0b1f35",
-      colorAcento: camp.color_acento || "#facc15",
+      colorPrimario: camp.color_primario || "#313131",
+      colorSecundario: camp.color_secundario || "#242424",
+      colorAcento: camp.color_acento || "#b7e853",
       auspiciantes: (ausResp.auspiciantes || []).filter((a) => a.visible_portal),
     };
 

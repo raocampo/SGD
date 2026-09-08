@@ -2402,7 +2402,7 @@ function filtrarAscendentes(lado) {
       return `<div class="planilla-asc-item ${agregado ? "is-added" : ""}"
         ${agregado ? "" : `onclick="agregarAscendente('${lado}', ${j.id})"`}>
         <span><strong>${escapeHtml(j.apellido || "")} ${escapeHtml(j.nombre || "")}</strong> &mdash; ${escapeHtml(j.equipo_nombre || "")} <small style="color:#6b7280">(${escapeHtml(j.evento_origen_nombre || "")})</small></span>
-        ${agregado ? "<small style='color:#6b7280'>Agregado</small>" : "<span style='color:#1d4ed8;font-weight:700;font-size:0.8rem'>+ Agregar</span>"}
+        ${agregado ? "<small style='color:#6b7280'>Agregado</small>" : "<span style='color:#242424;font-weight:700;font-size:0.8rem'>+ Agregar</span>"}
       </div>`;
     })
     .join("");
@@ -6178,7 +6178,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
         sectionTitle: {
           bold: true,
           fontSize: modoUltraCompactoPdf ? 7.1 : modoCompactoPdf ? 7.6 : 8.6,
-          color: "#0f172a",
+          color: "#242424",
         },
         teamHead: {
           bold: true,

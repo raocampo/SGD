@@ -383,9 +383,9 @@ async function cargarCabeceraCampeonato(campeonatoId, eventoNombre = "") {
     // Guardar colores del campeonato para el tema "Torneo"
     const poster = document.getElementById("zona-grupos-export");
     if (poster) {
-      const primario = camp.color_primario || "#1e3a5f";
-      const secundario = camp.color_secundario || "#0b1f35";
-      const acento = camp.color_acento || "#facc15";
+      const primario = camp.color_primario || "#313131";
+      const secundario = camp.color_secundario || "#242424";
+      const acento = camp.color_acento || "#b7e853";
       poster.style.setProperty("--t-primario", primario);
       poster.style.setProperty("--t-secundario", secundario);
       poster.style.setProperty("--t-acento", acento);

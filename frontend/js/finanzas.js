@@ -1690,7 +1690,7 @@ function abrirVentanaReporteFinanzas({
         margin: 0;
         padding: 16px;
         font-family: "Segoe UI", Arial, sans-serif;
-        color: #0f172a;
+        color: #242424;
         background: #ffffff;
       }
       .fin-doc {
@@ -1734,12 +1734,12 @@ function abrirVentanaReporteFinanzas({
       .fin-membrete-org {
         font-size: 0.95rem;
         font-weight: 700;
-        color: #0f172a;
+        color: #242424;
       }
       .fin-membrete-camp {
         font-size: 1.12rem;
         font-weight: 900;
-        color: #0f172a;
+        color: #242424;
       }
       .fin-report-wrap {
         border: 1px solid #cbd5e1;
