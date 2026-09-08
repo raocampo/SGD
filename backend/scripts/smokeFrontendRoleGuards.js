@@ -70,7 +70,7 @@ function createElementStub(extra = {}) {
 function loadCoreGuards() {
   const corePath = path.resolve(__dirname, "../../frontend/js/core.js");
   let source = fs.readFileSync(corePath, "utf8");
-  source = source.replace(/\}\)\(\);\s*$/, "window.__qa = { canAccessPage, getDefaultPageByRole };})();");
+  source = source.replace(/\}\)\(\);\s*$/, "window.__qa = { canAccessPage, getCurrentPage, getDefaultPageByRole };})();");
 
   const documentHead = createElementStub();
 
@@ -121,7 +121,14 @@ function loadCoreGuards() {
   if (!qa || typeof qa.canAccessPage !== "function" || typeof qa.getDefaultPageByRole !== "function") {
     throw new Error("No se pudo extraer canAccessPage/getDefaultPageByRole desde core.js");
   }
-  return qa;
+  return {
+    ...qa,
+    setLocation(pathname, search = "") {
+      context.window.location.pathname = pathname;
+      context.window.location.search = search;
+      context.window.location.href = `http://127.0.0.1:5500${pathname}${search}`;
+    },
+  };
 }
 
 function user(role) {
@@ -134,6 +141,18 @@ function user(role) {
 }
 
 function runAssertions(qa) {
+  const pageChecks = [
+    { pathname: "/frontend/index.html", expected: "index.html", label: "page-index" },
+    { pathname: "/frontend/portal.html", expected: "portal.html", label: "page-portal" },
+    { pathname: "/liga/loja-torneos", expected: "index.html", label: "page-landing-slug" },
+    { pathname: "/liga/cliente-demo/", expected: "index.html", label: "page-landing-slug-trailing-slash" },
+  ].map((item) => {
+    qa.setLocation(item.pathname);
+    const actual = qa.getCurrentPage();
+    const ok = actual === item.expected;
+    return { role: "anonimo", ...item, actual, ok };
+  });
+
   const assertions = [
     // Publico sin sesion.
     { role: null, page: "index.html", expected: true, label: "anon-public-index" },
@@ -215,7 +234,7 @@ function runAssertions(qa) {
     };
   });
 
-  return { access: results, defaults: defaultPageChecks };
+  return { pages: pageChecks, access: results, defaults: defaultPageChecks };
 }
 
 function printResults(groupName, rows) {
@@ -229,11 +248,12 @@ function printResults(groupName, rows) {
 function main() {
   const qa = loadCoreGuards();
   const results = runAssertions(qa);
+  printResults("frontend-page", results.pages);
   printResults("frontend-access", results.access);
   printResults("frontend-default", results.defaults);
 
-  const total = results.access.length + results.defaults.length;
-  const failed = [...results.access, ...results.defaults].filter((row) => !row.ok);
+  const total = results.pages.length + results.access.length + results.defaults.length;
+  const failed = [...results.pages, ...results.access, ...results.defaults].filter((row) => !row.ok);
   console.log(`[frontend-guards] total=${total} passed=${total - failed.length} failed=${failed.length}`);
   if (failed.length > 0) process.exitCode = 1;
 }
