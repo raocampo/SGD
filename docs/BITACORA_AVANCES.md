@@ -1,3 +1,73 @@
+## 2026-09-08 - Tarjetas de torneo modelo paginaLTC, footer y planes de pago 4x4
+
+> Todo commiteado y pusheado a `origin/main` (`d9ac5d1`, `fb21336`).
+
+### Tarjetas de torneo (`d9ac5d1`)
+- `renderCardTorneoPrincipal` (portal.js) replica el modelo de `../paginaLTC`:
+  badge de estado **superpuesto sobre la imagen**, pastilla de deporte, fecha en
+  **formato largo** con icono, chips de categoria (N equipos / "Por confirmar"),
+  boton "Ver torneo" con icono. Aplica en portada, `torneos.html` y landing
+  `/liga/<slug>` (todos usan `.ltc-card-grid-v2`).
+- CSS `.ltc-card-grid-v2` reescrito para igualar paginaLTC; usa tokens
+  `--ltc-home-*` -> en la landing del organizador las tarjetas recoloran segun
+  su tema (`body.ltc-org-theme`). Estados: en_curso=acento, inscripcion=azul,
+  finalizado=gris, borrador=ambar.
+- Helpers nuevos portal.js: `formatearFechaLargaPortal`, `rangoFechaLargoPortal`,
+  `etiquetaDeportePortal`. `renderMetaCardPortal` ya no se usa en la card.
+- Footer: logo mas pequeno (`height: 2rem`, `max-width: 50%`, `object-fit: contain`).
+- Hero CTA: "Empieza una demo" -> **"Empieza gratis"** + `register.html?plan=free`.
+
+### Planes de pago 4x4 (`fb21336`)
+Modelo nuevo: **4 planes** (Pequeño / Intermedio / Grande / Profesional) x
+**4 periodos** (Mensual / Trimestral / Semestral / Anual) = 16 precios. Free sin cambios.
+- Backend `planLimits.js`: `PLANES_PAGO_TARJETAS` + 16 entradas
+  `tarjeta_<plan>_<periodo>` en `CATALOGO_PRECIOS_PUBLICOS` (familia `"tarjeta"`).
+  Se siembran/editan por el flujo existente (`configuracion_sistema` +
+  `actualizarPrecioPlan`), **sin migracion ni rutas nuevas**.
+  Defaults: Pequeño 4.70/14.10/28.20/56.40 · Intermedio 6/18/36/72 ·
+  Grande 7.50/22.50/45/90 · Profesional 10.30/30.90/61.80/123.60 (USD).
+- Backend `authController.js`: `mapearPlanCatalogo()` compartido; propaga
+  `grupo_plan`, `periodo`, `orden` a `/auth/planes/precios` y `/auth/admin/planes/precios`.
+- Admin `dashboard-admin.js` + `admin.html`: pestaña **Planes** ahora muestra una
+  **matriz 4x4 editable** (fila = plan, columna = periodo), `step 0.01`. Las
+  familias del comparador detallado (`planes.html`) quedan en un `<details>`.
+  **Bug corregido**: `guardarPrecios` leia de `#dash-admin-precios-inputs` (id
+  inexistente); ahora lee de `#dash-admin-precios-wrap` -> "Guardar precios" funciona.
+- Portada `index.html` + `public-pricing.js`: tarjetas `#precios` -> Pequeño /
+  Intermedio / Grande / Profesional con `data-price-plan`; las pestañas
+  Mensual/Trimestral/Semestral/Anual ahora **cambian el precio en vivo**
+  (`applyTarjetaPricing` + `bindBillingTabs`). Botones "Suscribirse al plan" ->
+  `register.html?plan=base|competencia|premium`.
+
+### Verificacion
+- `node -c` de planLimits.js, authController.js, portal.js, public-pricing.js,
+  dashboard-admin.js. Llaves CSS OK. Smoke role-guards 49/49.
+- `/api/auth/planes/precios` sirve las 16 entradas `tarjeta_*` con `grupo_plan`/`periodo`.
+- Eval de `applyTarjetaPricing`: mensual -> `$4,70 /mes` ... anual -> `$56,40 /año` (per plan).
+- Eval de `renderPreciosPlanes`: matriz 4 filas x (Plan + 4 periodos), 16 inputs, `step 0.01`.
+- Eval de `renderCardTorneoPrincipal`: badge en media, "Fútbol 7", fecha larga, boton OK.
+- **Sin verificacion visual en navegador** (limite de imagenes de la sesion).
+
+### Pendientes para seguir manana
+1. **Verificacion visual** en navegador real: portada (#precios con tabs de periodo,
+   tarjetas de torneo), `torneos.html`, landing `/liga/raotorneos` (tarjetas con tema),
+   footer, y **panel admin -> pestaña Planes** (matriz 4x4, guardar y ver que la
+   portada toma los valores).
+2. Definir con el cliente los **precios reales** de los 16 valores (los defaults
+   son de referencia).
+3. `planes.html` (comparador detallado) sigue con el modelo viejo de familias
+   (mensual/campeonato/anual). Decidir si se migra al modelo de 4 planes o se retira.
+4. Revisar el **mapeo plan -> limites de registro**: hoy Pequeño/Intermedio/Grande/
+   Profesional -> base/competencia/premium/premium. Si Profesional debe ser un
+   tier propio (ilimitado), crear el plan en `PLANES` y ajustar `register.html`.
+5. Redeploy backend en Railway (para `mapearPlanCatalogo` + catalogo nuevo) y
+   confirmar que Vercel tomo el frontend.
+6. Pendientes previos aun vigentes: redeploy para jerarquia de Usuarios y
+   `color_tema="personalizado"`; optimizar hero slider (~16 MB PNG -> webp);
+   limpiar stashes viejos; `#ltc-feature-cards` del CRM global sin render en la portada.
+
+---
+
 ## 2026-09-07 - Portada LT&C, landing de cliente, panel Usuarios jerarquico y tema personalizado
 
 > Sesion de trabajo asistida (Claude Code). **Todo commiteado y pusheado a
