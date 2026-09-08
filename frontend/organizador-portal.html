@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LT&C - Mi Landing</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
+  <link rel="icon" href="assets/ltc/Icono.png" type="image/png" />
+  <link rel="shortcut icon" href="assets/ltc/Icono.png" type="image/png" />
+  <link rel="apple-touch-icon" href="assets/ltc/Icono.png" type="image/png" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/organizador-portal.css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
@@ -122,30 +122,72 @@
             <h3>Tema visual de tu landing</h3>
           </div>
           <p style="font-size:.83rem; color:#64748b; margin-bottom:1rem;">
-            Elige un tema base. Puedes personalizar colores desde el sistema más adelante.
+            Elige un tema base o crea uno con tus propios colores. La previsualización de la derecha
+            se actualiza al instante.
           </p>
-          <div class="op-temas-grid">
-            <button type="button" class="op-tema-btn activo" data-tema="deportivo" title="Azul y amarillo deportivo">
-              <div class="op-tema-preview" style="background:linear-gradient(135deg,#1e3a5f 0%,#facc15 100%);"></div>
-              Deportivo
-            </button>
-            <button type="button" class="op-tema-btn" data-tema="nocturno" title="Fondo oscuro, acento cian">
-              <div class="op-tema-preview" style="background:linear-gradient(135deg,#0b2b3a 0%,#06b6d4 100%);"></div>
-              Nocturno
-            </button>
-            <button type="button" class="op-tema-btn" data-tema="verde" title="Verde campo de fútbol">
-              <div class="op-tema-preview" style="background:linear-gradient(135deg,#14532d 0%,#86efac 100%);"></div>
-              Verde campo
-            </button>
-            <button type="button" class="op-tema-btn" data-tema="vinotinto" title="Vinotinto y dorado">
-              <div class="op-tema-preview" style="background:linear-gradient(135deg,#6b2737 0%,#fbbf24 100%);"></div>
-              Vinotinto
-            </button>
-            <button type="button" class="op-tema-btn" data-tema="clasico" title="Blanco y azul marino clásico">
-              <div class="op-tema-preview" style="background:linear-gradient(135deg,#f0f4fa 0%,#1e3a5f 100%);"></div>
-              Clásico
-            </button>
+          <div class="op-tema-layout">
+            <div class="op-temas-grid">
+              <button type="button" class="op-tema-btn activo" data-tema="deportivo" title="Tema oficial LT&C">
+                <div class="op-tema-preview" style="background:linear-gradient(135deg,#313131 0%,#b7e853 100%);"></div>
+                LT&C oficial
+              </button>
+              <button type="button" class="op-tema-btn" data-tema="nocturno" title="Fondo oscuro, acento lima">
+                <div class="op-tema-preview" style="background:linear-gradient(135deg,#1f1f1f 0%,#b7e853 100%);"></div>
+                Nocturno
+              </button>
+              <button type="button" class="op-tema-btn" data-tema="verde" title="Verde campo de fútbol">
+                <div class="op-tema-preview" style="background:linear-gradient(135deg,#14532d 0%,#86efac 100%);"></div>
+                Verde campo
+              </button>
+              <button type="button" class="op-tema-btn" data-tema="vinotinto" title="Vinotinto y lima">
+                <div class="op-tema-preview" style="background:linear-gradient(135deg,#6b2737 0%,#b7e853 100%);"></div>
+                Vinotinto
+              </button>
+              <button type="button" class="op-tema-btn" data-tema="clasico" title="Blanco, carbón y lima">
+                <div class="op-tema-preview" style="background:linear-gradient(135deg,#f7f8f4 0%,#313131 100%);"></div>
+                Clásico
+              </button>
+              <button type="button" class="op-tema-btn" data-tema="personalizado" title="Elige tus propios colores">
+                <div class="op-tema-preview" style="background:conic-gradient(from 90deg,#ef4444,#f59e0b,#22c55e,#3b82f6,#a855f7,#ef4444);"></div>
+                Personalizado
+              </button>
+            </div>
+
+            <div class="op-tema-preview-live" id="op-tema-preview-live" aria-hidden="true">
+              <div class="op-tpl-hero">
+                <span class="op-tpl-chip">Vista previa</span>
+                <strong class="op-tpl-title">Título de tu portada</strong>
+                <span class="op-tpl-btn">Ver torneos</span>
+              </div>
+              <div class="op-tpl-card">
+                <span class="op-tpl-card-org">Tu organización</span>
+                <span class="op-tpl-card-name">Campeonato 2026</span>
+                <span class="op-tpl-card-btn">Ver torneo</span>
+              </div>
+            </div>
           </div>
+
+          <div class="op-colores-personalizado" id="op-colores-personalizado" style="display:none;">
+            <p class="op-field-hint" style="margin-bottom:.6rem;">
+              Elige los colores de tu marca. <strong>Principal</strong> = fondo de la portada ·
+              <strong>Secundario</strong> = degradado inferior · <strong>Acento</strong> = títulos, botones y detalles.
+            </p>
+            <div class="op-colores-grid">
+              <label class="op-color-field">
+                <span>Color principal</span>
+                <input type="color" id="op-color-primario" value="#313131" />
+              </label>
+              <label class="op-color-field">
+                <span>Color secundario</span>
+                <input type="color" id="op-color-secundario" value="#1f1f1f" />
+              </label>
+              <label class="op-color-field">
+                <span>Color de acento</span>
+                <input type="color" id="op-color-acento" value="#b7e853" />
+              </label>
+            </div>
+          </div>
+
           <input type="hidden" id="op-color-tema" value="deportivo" />
         </div>
 
@@ -561,15 +603,8 @@
       });
     }
 
-    // Tema selector
-    document.querySelectorAll(".op-tema-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".op-tema-btn").forEach(b => b.classList.remove("activo"));
-        btn.classList.add("activo");
-        const temaInput = document.getElementById("op-color-tema");
-        if (temaInput) temaInput.value = btn.dataset.tema || "deportivo";
-      });
-    });
+    // El selector de tema + colores personalizados + preview en vivo se maneja
+    // en organizador-portal.js (initTemaSelector).
 
     // Sincronizar enlace inferior con el superior
     const openTop = document.getElementById("op-open-landing");

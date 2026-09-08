@@ -2,17 +2,21 @@
    VARIABLES Y RESET
 ============================ */
 :root {
-  --primary-color: #2c3e50;
-  --secondary-color: #3498db;
-  --success-color: #27ae60;
-  --warning-color: #f39c12;
-  --danger-color: #e74c3c;
-  --light-color: #ecf0f1;
-  --dark-color: #2c3e50;
+  --brand-lime: #b7e853;
+  --brand-charcoal: #313131;
+  --brand-charcoal-soft: #3f3f3f;
+  --brand-lime-soft: #edf9cf;
+  --primary-color: #313131;
+  --secondary-color: #3f3f3f;
+  --success-color: #5f8f2e;
+  --warning-color: #f3b712;
+  --danger-color: #d94343;
+  --light-color: #f4f6f0;
+  --dark-color: #313131;
 
-  --bg-soft: #f8f9fa;
-  --radius-card: 12px;
-  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --bg-soft: #f7f8f4;
+  --radius-card: 8px;
+  --shadow-soft: 0 4px 12px rgba(49, 49, 49, 0.08);
 }
 
 * {
@@ -22,9 +26,9 @@
 }
 
 body {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Isidora Sans Alt", "Sora", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: var(--bg-soft);
-  color: #333;
+  color: var(--brand-charcoal);
   line-height: 1.6;
 }
 
@@ -52,11 +56,11 @@ body.app-layout {
   left: 0;
   width: 260px;
   height: 100vh;
-  background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(180deg, #313131 0%, #252525 100%);
   color: white;
   z-index: 10020;
   transition: transform 0.3s ease, width 0.3s ease;
-  box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+  box-shadow: 4px 0 20px rgba(49, 49, 49, 0.18);
   overflow-y: auto;
 }
 .sidebar.collapsed {
@@ -68,9 +72,27 @@ body.app-layout {
 }
 .sidebar-header {
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgba(255,255,255,0.2);
+  border-bottom: 1px solid rgba(183, 232, 83, 0.24);
   font-size: 1.1rem;
   font-weight: 600;
+}
+.sidebar-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.sidebar-header-brand .sidebar-brand-img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.sidebar-header-brand .sidebar-brand-text {
+  font-family: "Barlow Condensed", "Sora", sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  color: var(--lime, #b7e853);
 }
 .sidebar-nav {
   padding: 1rem 0.75rem;
@@ -108,7 +130,8 @@ body.app-layout {
 }
 .sidebar-nav .nav-btn:hover,
 .sidebar-nav .nav-btn.active {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(183, 232, 83, 0.16);
+  color: #f8ffe8;
 }
 
 /* ── Submenú CMS / CRM ── */
@@ -130,7 +153,7 @@ body.app-layout {
   transition: background .2s;
 }
 .nav-group-toggle:hover,
-.nav-group-toggle.active { background: rgba(255,255,255,.2); }
+.nav-group-toggle.active { background: rgba(183, 232, 83, 0.16); }
 .nav-group-toggle > i:first-child { justify-self: center; }
 .nav-chevron { font-size: 11px; justify-self: end; transition: transform .2s; opacity: .7; }
 
@@ -165,7 +188,7 @@ body.app-layout {
   margin-left: 0;
 }
 .top-bar {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(135deg, #313131 0%, #252525 100%);
   color: white;
   padding: 0.75rem 1.5rem;
   display: flex;
@@ -179,7 +202,7 @@ body.app-layout {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.2);
+  background: rgba(183, 232, 83, 0.16);
   border: none;
   color: white;
   width: 40px;
@@ -190,7 +213,7 @@ body.app-layout {
   transition: background 0.2s;
 }
 .top-bar .nav-toggle:hover {
-  background: rgba(255,255,255,0.35);
+  background: rgba(183, 232, 83, 0.28);
 }
 .top-bar h1 {
   font-size: 1.4rem;
@@ -202,7 +225,7 @@ body.app-layout {
 
 /* Fallback para páginas sin app-layout (portal, etc) */
 .header {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(135deg, #313131 0%, #252525 100%);
   color: white;
   padding: 1rem 0;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -344,8 +367,8 @@ body.app-layout {
 .stat-card {
   background: linear-gradient(
     135deg,
-    var(--secondary-color),
-    var(--primary-color)
+    #3f3f3f,
+    #313131
   );
   color: white;
   padding: 1.4rem;
@@ -665,7 +688,7 @@ body.app-layout {
 }
 
 .sgd-toast-info {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.97), rgba(30, 64, 175, 0.97));
+  background: linear-gradient(135deg, rgba(49, 49, 49, 0.97), rgba(36, 36, 36, 0.97));
 }
 
 .sgd-toast-warning .sgd-toast-close,
@@ -791,7 +814,7 @@ body.app-layout {
 .sgd-dialog-header h3 {
   margin: 0;
   font-size: 1.12rem;
-  color: #0f172a;
+  color: #242424;
 }
 
 .sgd-dialog-body {
@@ -858,7 +881,7 @@ body.app-layout {
 .sgd-field-control:focus {
   outline: none;
   border-color: var(--secondary-color);
-  box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.16);
+  box-shadow: 0 0 0 4px rgba(183, 232, 83, 0.24);
 }
 
 .sgd-field-hint {
@@ -1075,8 +1098,8 @@ body.app-layout {
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-  color: #1d4ed8;
+  background: linear-gradient(135deg, #edf9cf, #d8decf);
+  color: #313131;
   font-weight: 800;
 }
 
@@ -1127,7 +1150,7 @@ body.app-layout {
    SORTEO – CONFIGURACIÓN
 ============================ */
 .sorteo-config {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #313131 0%, #5f7e27 100%);
   border-radius: 15px;
   padding: 2rem;
   margin-bottom: 2rem;
@@ -1207,7 +1230,7 @@ body.app-layout {
 .ruleta-container {
   flex: 1;
   text-align: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #313131 0%, #5f7e27 100%);
   border-radius: 20px;
   padding: 1.5rem 1.5rem 2rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
@@ -1337,7 +1360,7 @@ body.app-layout {
 }
 
 .equipo-en-grupo {
-  background: #e8f4fd;
+  background: #edf9cf;
   padding: 0.55rem;
   margin: 0.3rem 0;
   border-radius: 5px;
@@ -1485,9 +1508,9 @@ body.app-layout {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border: 1px solid #dbeafe;
+  border: 1px solid #edf9cf;
   border-radius: 999px;
-  background: #eff6ff;
+  background: #f7f8f4;
   color: #1e3a8a;
   font-size: 0.82rem;
   font-weight: 700;
@@ -1589,10 +1612,10 @@ body.app-layout {
 }
 
 .top-user-actions {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
   gap: 0.65rem;
   margin-left: auto;
 }
@@ -1604,6 +1627,98 @@ body.app-layout {
 
 .top-user-logout-btn {
   box-shadow: none;
+}
+
+/* ── Disparador del menú de usuario en la top-bar ── */
+.top-user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 6px 12px;
+  border: 1px solid rgba(183, 232, 83, 0.32);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.top-user-trigger:hover {
+  background: rgba(183, 232, 83, 0.18);
+  border-color: rgba(183, 232, 83, 0.5);
+}
+.top-user-trigger .top-user-avatar {
+  font-size: 18px;
+  color: var(--lime, #b7e853);
+  flex-shrink: 0;
+}
+.top-user-trigger .top-user-badge-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.top-user-trigger .top-user-caret {
+  font-size: 10px;
+  opacity: 0.75;
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
+}
+.top-user-actions.open .top-user-trigger .top-user-caret {
+  transform: rotate(180deg);
+}
+
+/* ── Menú desplegable ── */
+.top-user-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10030;
+  min-width: 200px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #dde3ec;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
+}
+.top-user-actions.open .top-user-menu {
+  display: flex;
+}
+.top-user-menu .btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+/* ── Botón toggle con ícono de marca LT&C (layout sidebar) ── */
+.nav-toggle-brandable {
+  padding: 0;
+  overflow: hidden;
+  background: #fff;
+}
+.nav-toggle-brandable:hover {
+  background: #f1f4e9;
+}
+.nav-toggle-brandable .nav-toggle-brand {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+}
+.nav-toggle-brandable.is-open {
+  background: rgba(183, 232, 83, 0.16);
+}
+.nav-toggle-brandable .nav-toggle-close {
+  display: none;
+  font-size: 1.2rem;
+}
+.nav-toggle-brandable.is-open .nav-toggle-brand {
+  display: none;
+}
+.nav-toggle-brandable.is-open .nav-toggle-close {
+  display: inline-flex;
 }
 
 .item-index {
@@ -1688,7 +1803,7 @@ body.app-layout {
 }
 
 .alerta-operativa-card strong {
-  color: #0f172a;
+  color: #242424;
   font-size: 1.05rem;
 }
 
@@ -1704,8 +1819,8 @@ body.app-layout {
 }
 
 .alerta-operativa-card-info {
-  background: #eff6ff;
-  border-color: #93c5fd;
+  background: #f7f8f4;
+  border-color: #b7e853;
 }
 
 #lista-campeonatos.list-mode-table,
@@ -1739,7 +1854,7 @@ body.app-layout {
 }
 
 .list-view-btn.active {
-  background: #2563eb;
+  background: #313131;
   color: #ffffff;
 }
 
@@ -1853,9 +1968,9 @@ body.app-layout {
 }
 
 .equipo-alerta-cargando {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-color: #93c5fd;
+  background: #f7f8f4;
+  color: #313131;
+  border-color: #b7e853;
 }
 
 #partidos-alertas-operativas {
@@ -1933,6 +2048,172 @@ body.app-layout {
 .usuarios-list-table td:nth-child(11) {
   min-width: 180px;
 }
+
+/* ============================================================
+   Panel de Usuarios — vista jerárquica (Organizador → Campeonato)
+   ============================================================ */
+.usuarios-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.usuarios-tree .usuarios-list-table {
+  min-width: 640px;
+}
+.usuarios-tree .usuarios-list-table th:nth-child(n),
+.usuarios-tree .usuarios-list-table td:nth-child(n) {
+  min-width: 0;
+  width: auto;
+}
+.usuarios-grupo-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #313131;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #eaf1f8;
+}
+.usuarios-grupo-title i {
+  color: #5f8f2e;
+}
+.usuarios-grupo-title-warn i {
+  color: #d97706;
+}
+.usuarios-grupo-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+.usuarios-empty-mini {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.usuarios-org-card {
+  border: 1px solid #dde3ec;
+  border-radius: 12px;
+  background: #fff;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 6px rgba(49, 49, 49, 0.06);
+  overflow: hidden;
+}
+.usuarios-org-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+  background: linear-gradient(135deg, #f8faf3 0%, #eef3e3 100%);
+}
+.usuarios-org-summary::-webkit-details-marker { display: none; }
+.usuarios-org-card[open] .usuarios-org-summary {
+  border-bottom: 1px solid #e2e8f0;
+}
+.usuarios-org-ident {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 220px;
+  flex: 1 1 260px;
+}
+.usuarios-org-ico {
+  font-size: 20px;
+  color: #5f8f2e;
+}
+.usuarios-org-nombre {
+  font-size: 15px;
+  font-weight: 800;
+  color: #313131;
+}
+.usuarios-org-meta {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 1px;
+}
+.usuarios-org-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.usuarios-org-subcount {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+.usuarios-org-landing {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e6b2e;
+  text-decoration: none;
+}
+.usuarios-org-landing:hover { text-decoration: underline; }
+.usuarios-org-acciones {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.usuarios-org-body {
+  padding: 12px 16px 16px;
+}
+.usuarios-camp-block {
+  margin-top: 12px;
+}
+.usuarios-camp-block:first-child { margin-top: 4px; }
+.usuarios-camp-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #334155;
+}
+.usuarios-camp-title i { color: #b78300; }
+.usuarios-camp-title-warn { color: #b45309; }
+.usuarios-camp-title-warn i { color: #d97706; }
+.usuarios-camp-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.usuarios-acciones,
+.usuarios-org-acciones {
+  white-space: nowrap;
+}
+.usuarios-list-table .btn-sm {
+  padding: 5px 9px;
+  font-size: 12px;
+  min-height: 0;
+  line-height: 1;
+}
+.badge-rol {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #eaecf0;
+  color: #313131;
+}
+.badge-rol-organizador { background: #edf9cf; color: #3f5a12; }
+.badge-rol-dirigente   { background: #dcecff; color: #1c4f95; }
+.badge-rol-tecnico     { background: #e8daef; color: #6c3483; }
+.badge-rol-jugador     { background: #d5f5e3; color: #1e8449; }
+.badge-rol-administrador { background: #fde2e2; color: #a02020; }
 
 @media (min-width: 1200px) {
   #lista-equipos {
@@ -2223,7 +2504,7 @@ body.modal-open {
   font-weight: 500;
 }
 .estado-borrador, .estado-planificacion { background: #e2e8f0; color: #475569; }
-.estado-inscripcion { background: #dbeafe; color: #1d4ed8; }
+.estado-inscripcion { background: #edf9cf; color: #313131; }
 .estado-en_curso { background: #dcfce7; color: #166534; }
 .estado-finalizado { background: #f1f5f9; color: #64748b; }
 .estado-archivado { background: #fef3c7; color: #92400e; }
@@ -2502,8 +2783,8 @@ body.modal-open {
 }
 
 .partidos-main-tab.active {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: #313131;
+  border-color: #313131;
   color: #fff;
 }
 
@@ -2542,7 +2823,7 @@ body.modal-open {
   border: 0;
   margin: 0;
   flex: 0 0 auto;
-  accent-color: #1d4ed8;
+  accent-color: #313131;
 }
 
 .checkbox-inline-control label {
@@ -2781,7 +3062,7 @@ body.modal-open {
   font-size: 0.58rem;
   font-weight: 700;
   text-align: center;
-  color: #0f172a;
+  color: #242424;
   background: #fff;
 }
 
@@ -2880,7 +3161,7 @@ body.modal-open {
   justify-content: center;
   font-size: 0.54rem;
   font-weight: 800;
-  color: #0f172a;
+  color: #242424;
 }
 
 .planilla-head-score-box {
@@ -2896,14 +3177,14 @@ body.modal-open {
 .planilla-head-score-name {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #0f172a;
+  color: #242424;
   text-wrap: balance;
 }
 
 .planilla-head-score-sep {
   font-size: 1rem;
   font-weight: 900;
-  color: #0f172a;
+  color: #242424;
 }
 
 .planilla-score-grid {
@@ -2937,7 +3218,7 @@ body.modal-open {
 
 .planilla-special-check .checkbox-label {
   font-weight: 700;
-  color: #0f172a;
+  color: #242424;
 }
 
 .planilla-special-check .form-hint {
@@ -3065,7 +3346,7 @@ body.modal-open {
 
 .planilla-faltas-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: #2563eb;
+  border-color: #313131;
 }
 
 .planilla-faltas-btn:disabled {
@@ -3074,8 +3355,8 @@ body.modal-open {
 }
 
 .planilla-faltas-btn.is-active {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #edf9cf;
+  color: #313131;
   border-color: #60a5fa;
   font-weight: 700;
 }
@@ -3126,13 +3407,13 @@ body.modal-open {
 }
 
 .planilla-plantel-item.is-goalkeeper {
-  border-color: #93c5fd;
-  background: #eff6ff;
+  border-color: #b7e853;
+  background: #f7f8f4;
 }
 
 .planilla-plantel-item.is-goalkeeper strong,
 .planilla-plantel-item.is-goalkeeper small {
-  color: #1d4ed8;
+  color: #313131;
 }
 
 .planilla-plantel-item.is-suspended {
@@ -3166,7 +3447,7 @@ body.modal-open {
 
 .planilla-captura-card h5 {
   margin: 0 0 0.45rem;
-  color: #0f172a;
+  color: #242424;
 }
 
 .planilla-captura-actions {
@@ -3216,14 +3497,14 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  background: #dbeafe;
-  border: 1px solid #93c5fd;
+  background: #edf9cf;
+  border: 1px solid #b7e853;
   border-radius: 6px;
   padding: 0.3rem 0.55rem;
   font-size: 0.85rem;
 }
 .planilla-asc-tag .badge-ascendente {
-  background: #1d4ed8;
+  background: #313131;
   color: #fff;
   border-radius: 4px;
   font-size: 0.72rem;
@@ -3265,7 +3546,7 @@ body.modal-open {
 
 .planilla-captura-table th {
   background: #eef4fb;
-  color: #0f172a;
+  color: #242424;
   font-weight: 700;
   text-align: center;
 }
@@ -3294,11 +3575,11 @@ body.modal-open {
 }
 
 .planilla-captura-table .planilla-player-row.is-goalkeeper td {
-  background: #eff6ff;
+  background: #f7f8f4;
 }
 
 .planilla-captura-table .planilla-player-row.is-goalkeeper td strong {
-  color: #1d4ed8;
+  color: #313131;
 }
 
 .planilla-captura-table .planilla-player-row.is-suspended td {
@@ -3407,7 +3688,7 @@ body.modal-open {
   width: 1rem;
   min-width: 1rem;
   height: 1rem;
-  accent-color: #2563eb;
+  accent-color: #313131;
 }
 
 .planilla-preview-table .planilla-col-convocatoria,
@@ -3574,7 +3855,7 @@ body.modal-open {
 .planilla-preview-toolbar h3 {
   margin: 0;
   font-size: 1.02rem;
-  color: #0f172a;
+  color: #242424;
 }
 
 .planilla-preview-toolbar-actions {
@@ -3596,8 +3877,8 @@ body.modal-open {
 }
 
 .planilla-preview-mode-switch .btn.active {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: #313131;
+  border-color: #313131;
   color: #ffffff;
 }
 
@@ -3808,7 +4089,7 @@ body.modal-open {
 .planilla-oficial-sheet {
   margin: 0.6rem;
   background: #ffffff;
-  color: #0f172a;
+  color: #242424;
   border: 1px solid #cfd8e3;
   border-radius: 10px;
   padding: 0.58rem;
@@ -4020,8 +4301,8 @@ body.modal-open {
 }
 
 .planilla-oficial-faltas-grid span.is-active {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #edf9cf;
+  color: #313131;
   border-color: #60a5fa;
   font-weight: 700;
 }
@@ -4064,8 +4345,8 @@ body.modal-open {
 }
 
 .planilla-oficial-table tr.is-goalkeeper td {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: #f7f8f4;
+  color: #313131;
 }
 
 .planilla-oficial-table td:nth-child(1),
@@ -4690,7 +4971,7 @@ body.modal-open {
 
 .page-tablas .tabla-estadistica th {
   background: #eff5fc;
-  color: #0f172a;
+  color: #242424;
   font-weight: 700;
 }
 
@@ -4856,7 +5137,7 @@ body.modal-open {
 
 .eli-reclasificaciones-block h5 {
   margin: 0 0 0.7rem;
-  color: #0f172a;
+  color: #242424;
   font-size: 0.98rem;
 }
 
@@ -4937,7 +5218,7 @@ body.modal-open {
 
 .nomina-head-main h3 {
   margin: 0 0 0.35rem;
-  color: #0f172a;
+  color: #242424;
   font-size: 1.25rem;
 }
 
@@ -4972,7 +5253,7 @@ body.modal-open {
 
 .nomina-table th {
   background: #eef4fb;
-  color: #0f172a;
+  color: #242424;
   font-weight: 700;
 }
 
@@ -5008,7 +5289,7 @@ body.modal-open {
 .sanciones-resumen-card strong {
   display: block;
   font-size: 1.45rem;
-  color: #0f172a;
+  color: #242424;
 }
 
 .sanciones-resumen-label {
@@ -5090,11 +5371,11 @@ body.modal-open {
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: var(--color-primary, #1e3a5f);
+  accent-color: var(--color-primary, #313131);
 }
 /* Carnet seleccionado: borde azul */
 .carnet-card:has(.carnet-sel-chk:checked) {
-  outline: 3px solid var(--color-primary, #1e3a5f);
+  outline: 3px solid var(--color-primary, #313131);
   outline-offset: 2px;
 }
 @media print {
@@ -5629,8 +5910,8 @@ body.modal-open {
 }
 
 .estado-chip-info {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #edf9cf;
+  color: #313131;
 }
 
 .jugador-ficha-sheet {
@@ -5664,14 +5945,14 @@ body.modal-open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: #f7f8f4;
+  color: #313131;
   font-weight: 800;
 }
 
 .jugador-ficha-brand h3 {
   margin: 0 0 0.35rem;
-  color: #0f172a;
+  color: #242424;
 }
 
 .jugador-ficha-brand p,
@@ -5817,8 +6098,8 @@ body.modal-open {
 }
 
 .jugadores-main-tab.active {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: #313131;
+  border-color: #313131;
   color: #fff;
 }
 
@@ -5879,7 +6160,7 @@ body.modal-open {
 
 .reportes-jugadores-col h4 {
   margin: 0 0 0.55rem;
-  color: #0f172a;
+  color: #242424;
   font-size: 0.95rem;
 }
 
@@ -6176,7 +6457,7 @@ body.page-finanzas {
 
 .page-finanzas .tabla-estadistica th {
   background: #eef4fb;
-  color: #0f172a;
+  color: #242424;
   font-weight: 700;
   position: sticky;
   top: 0;
@@ -6410,7 +6691,7 @@ body.page-finanzas {
 
 .page-pases .pases-hist-chip-value {
   display: block;
-  color: #0f172a;
+  color: #242424;
   font-size: 0.95rem;
   font-weight: 700;
 }
@@ -6438,8 +6719,8 @@ body.page-finanzas {
 }
 
 .page-pases .pas-estado-pagado {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: #f7f8f4;
+  color: #313131;
 }
 
 .page-pases .pas-estado-aprobado {
@@ -6481,9 +6762,9 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-main-tab {
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border: 1px solid #d8decf;
+  background: #f7f8f4;
+  color: #313131;
   border-radius: 999px;
   padding: 0.78rem 1rem;
   font-weight: 800;
@@ -6496,21 +6777,21 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-main-tab:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
+  background: #edf9cf;
+  border-color: #b7e853;
 }
 
 .page-eliminatorias .eli-main-tab.active {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  border-color: #1d4ed8;
+  background: linear-gradient(135deg, #313131 0%, #313131 100%);
+  border-color: #313131;
   color: #ffffff;
-  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.18);
+  box-shadow: 0 14px 28px rgba(49, 49, 49, 0.18);
 }
 
 .page-eliminatorias #btn-eli-toggle-plantilla.is-active {
-  background: #1d4ed8;
+  background: #313131;
   color: #ffffff;
-  border-color: #1d4ed8;
+  border-color: #313131;
 }
 
 .page-eliminatorias .eli-tab-panel {
@@ -6585,7 +6866,7 @@ body.page-finanzas {
 
 .page-eliminatorias .eli-cruces-preview-card {
   border: 1px dashed #bfd4ff;
-  background: linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%);
+  background: linear-gradient(180deg, #f7f8f4 0%, #f8fbff 100%);
   border-radius: 0.85rem;
   padding: 0.85rem 0.95rem;
   display: grid;
@@ -6614,7 +6895,7 @@ body.page-finanzas {
   min-height: 2.25rem;
   padding: 0.45rem 0.65rem;
   border-radius: 999px;
-  background: #dbeafe;
+  background: #edf9cf;
   color: #1e3a8a;
   font-size: 0.84rem;
   font-weight: 700;
@@ -6659,7 +6940,7 @@ body.page-finanzas {
   min-height: 3.75rem;
   padding: 0.8rem 0.9rem;
   border-radius: 0.9rem;
-  background: linear-gradient(180deg, #4f86d8 0%, #3b6ec0 100%);
+  background: linear-gradient(180deg, #3f3f3f 0%, #313131 100%);
   color: #ffffff;
   font-weight: 700;
   line-height: 1.35;
@@ -6755,7 +7036,7 @@ body.page-finanzas {
   justify-content: space-between;
   gap: 0.6rem;
   font-size: 0.85rem;
-  color: #0f172a;
+  color: #242424;
 }
 
 .page-eliminatorias .eli-team-row {
@@ -6796,7 +7077,7 @@ body.page-finanzas {
   justify-content: center;
   font-size: 0.58rem;
   font-weight: 800;
-  color: #0f172a;
+  color: #242424;
 }
 
 .page-eliminatorias .eli-team-row small {
@@ -6809,7 +7090,7 @@ body.page-finanzas {
   min-width: 1.8rem;
   text-align: center;
   font-weight: 800;
-  color: #1d4ed8;
+  color: #313131;
 }
 
 .page-eliminatorias .eli-winner {
@@ -6854,7 +7135,7 @@ body.page-finanzas {
 
 .page-eliminatorias .eli-admin-card-head h4 {
   margin: 0;
-  color: #0f172a;
+  color: #242424;
 }
 
 .page-eliminatorias .eli-admin-badges {
@@ -6977,12 +7258,12 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-export-poster.is-preview-style {
-  background: linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%);
+  background: linear-gradient(180deg, #f7f8f4 0%, #f8fbff 100%);
   background-image:
     linear-gradient(to right, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(148, 163, 184, 0.16) 1px, transparent 1px);
   background-size: 24px 24px;
-  color: #0f172a;
+  color: #242424;
   border: 1px solid #dbe3f1;
 }
 
@@ -7070,7 +7351,7 @@ body.page-finanzas {
 .page-eliminatorias .eli-export-organizador {
   font-size: clamp(0.72rem, 1.1vw, 0.95rem);
   opacity: 0.92;
-  color: #dbeafe;
+  color: #edf9cf;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
@@ -7091,7 +7372,7 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-export-poster.is-preview-style .eli-export-titulo {
-  color: #0f172a;
+  color: #242424;
   text-shadow: none;
 }
 
@@ -7142,7 +7423,7 @@ body.page-finanzas {
   text-align: center;
   font-size: clamp(1.3rem, 1.6vw, 2rem);
   font-weight: 900;
-  color: #dbeafe;
+  color: #edf9cf;
   text-transform: uppercase;
   letter-spacing: 0.45px;
 }
@@ -7156,7 +7437,7 @@ body.page-finanzas {
 .page-eliminatorias .eli-export-subround h5 {
   margin: 0 0 0.55rem;
   text-align: center;
-  color: #dbeafe;
+  color: #edf9cf;
   text-transform: uppercase;
   font-size: 0.94rem;
   letter-spacing: 0.04em;
@@ -7176,7 +7457,7 @@ body.page-finanzas {
 .page-eliminatorias .eli-export-match {
   border: 1px solid #2f5da7;
   border-radius: 14px;
-  background: linear-gradient(180deg, #3f70c4 0%, #3a68b7 100%);
+  background: linear-gradient(180deg, #3f3f3f 0%, #313131 100%);
   overflow: visible;
   position: relative;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
@@ -7277,7 +7558,7 @@ body.page-finanzas {
   width: min(100%, 5.5cm);
   padding: 0.5rem 0.58rem;
   border-radius: 0.95rem;
-  background: linear-gradient(180deg, #4f86d8 0%, #3b6ec0 100%);
+  background: linear-gradient(180deg, #3f3f3f 0%, #313131 100%);
   color: #ffffff;
   display: grid;
   align-content: center;
@@ -7330,7 +7611,7 @@ body.page-finanzas {
 .page-eliminatorias .eli-plantilla-preview-card {
   border: 1px solid #dbe3f1;
   border-radius: 1rem;
-  background: linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%);
+  background: linear-gradient(180deg, #f7f8f4 0%, #f8fbff 100%);
   padding: 1rem;
   display: grid;
   gap: 0.65rem;
@@ -7420,7 +7701,7 @@ body.page-finanzas {
   width: min(100%, 5.5cm);
   padding: 0.5rem 0.58rem;
   border-radius: 0.95rem;
-  background: linear-gradient(180deg, #4f86d8 0%, #3b6ec0 100%);
+  background: linear-gradient(180deg, #3f3f3f 0%, #313131 100%);
   color: #ffffff;
   box-shadow: 0 14px 28px rgba(30, 58, 138, 0.14);
   display: grid;
@@ -8508,7 +8789,7 @@ body.page-finanzas {
   letter-spacing: 0.3px;
   vertical-align: middle;
 }
-.badge-partido-programado  { background: #dbeafe; color: #1d4ed8; }
+.badge-partido-programado  { background: #edf9cf; color: #313131; }
 .badge-partido-pendiente   { background: #f3f4f6; color: #6b7280; }
 .badge-partido-finalizado  { background: #d1fae5; color: #065f46; }
 .badge-partido-np          { background: #fce7f3; color: #9d174d; }
@@ -8526,10 +8807,10 @@ body.page-finanzas {
   gap: 0.75rem;
   font-size: 1rem;
   font-weight: 700;
-  color: var(--color-primary, #1e3a5f);
+  color: var(--color-primary, #313131);
   padding: 0.45rem 0.75rem;
-  background: #f0f4fa;
-  border-left: 4px solid var(--color-primary, #1e3a5f);
+  background: #f7f8f4;
+  border-left: 4px solid var(--color-primary, #313131);
   border-radius: 4px;
   margin-bottom: 0.75rem;
 }
@@ -8659,13 +8940,13 @@ body.page-finanzas {
   color: #94a3b8; cursor: pointer; line-height: 1;
   transition: color .15s;
 }
-.ltc-pago-modal-close:hover { color: #0f172a; }
+.ltc-pago-modal-close:hover { color: #242424; }
 .ltc-pago-modal-header {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 18px;
 }
-.ltc-pago-modal-header i { font-size: 20px; color: #3498db; }
-.ltc-pago-modal-header h2 { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; }
+.ltc-pago-modal-header i { font-size: 20px; color: #313131; }
+.ltc-pago-modal-header h2 { margin: 0; font-size: 18px; font-weight: 700; color: #242424; }
 
 .ltc-pago-plan-resumen {
   display: flex; align-items: center; justify-content: space-between;
@@ -8676,7 +8957,7 @@ body.page-finanzas {
   margin-bottom: 20px;
 }
 .ltc-pago-plan-nombre { font-size: 14px; font-weight: 700; color: #0369a1; }
-.ltc-pago-plan-precio { font-size: 20px; font-weight: 800; color: #0f172a; }
+.ltc-pago-plan-precio { font-size: 20px; font-weight: 800; color: #242424; }
 
 .ltc-pago-metodo {
   border: 1.5px solid #e2e8f0;
@@ -8689,14 +8970,14 @@ body.page-finanzas {
   font-size: 13.5px; font-weight: 700; color: #1e293b;
   margin-bottom: 10px;
 }
-.ltc-pago-metodo-titulo i { color: #3498db; font-size: 15px; }
+.ltc-pago-metodo-titulo i { color: #313131; font-size: 15px; }
 .ltc-pago-metodo-fila {
   display: flex; justify-content: space-between; align-items: flex-start;
   font-size: 12.5px; margin-bottom: 5px; gap: 8px;
 }
 .ltc-pago-metodo-fila:last-child { margin-bottom: 0; }
 .ltc-pago-metodo-lbl { color: #64748b; font-weight: 600; white-space: nowrap; }
-.ltc-pago-metodo-val { color: #0f172a; text-align: right; word-break: break-all; }
+.ltc-pago-metodo-val { color: #242424; text-align: right; word-break: break-all; }
 .ltc-pago-metodo-val strong { font-weight: 700; }
 
 .ltc-pago-instrucciones {
@@ -8726,20 +9007,20 @@ body.page-finanzas {
 .ltc-pago-modal-footer { display: flex; flex-direction: column; gap: 8px; }
 .ltc-pago-btn-continuar {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  background: #3498db; color: #fff;
+  background: #313131; color: #fff;
   border: none; border-radius: 8px;
   padding: 12px 20px; font-size: 14px; font-weight: 700;
   cursor: pointer; text-decoration: none;
   transition: background .15s;
 }
-.ltc-pago-btn-continuar:hover { background: #2980b9; color: #fff; }
+.ltc-pago-btn-continuar:hover { background: #242424; color: #fff; }
 .ltc-pago-btn-cancelar {
   background: none; border: 1.5px solid #e2e8f0;
   border-radius: 8px; padding: 10px; font-size: 13px;
   color: #64748b; cursor: pointer;
   transition: border-color .15s, color .15s;
 }
-.ltc-pago-btn-cancelar:hover { border-color: #94a3b8; color: #0f172a; }
+.ltc-pago-btn-cancelar:hover { border-color: #94a3b8; color: #242424; }
 .ltc-pago-cargando { text-align: center; color: #94a3b8; font-size: 13px; padding: 20px 0; }
 
 .ltc-pago-link-btn {
@@ -8754,8 +9035,8 @@ body.page-finanzas {
 .ltc-pago-metodo-tarjeta { border-color: #c7d2fe; background: #f5f3ff; }
 .ltc-pago-metodo-tarjeta .ltc-pago-metodo-titulo { color: #4c1d95; }
 .ltc-pago-metodo-tarjeta .ltc-pago-metodo-titulo i { color: #7c3aed; }
-.ltc-pago-metodo-paypal  { border-color: #bfdbfe; background: #eff6ff; }
-.ltc-pago-metodo-paypal .ltc-pago-metodo-titulo  { color: #1e3a5f; }
+.ltc-pago-metodo-paypal  { border-color: #d8decf; background: #f7f8f4; }
+.ltc-pago-metodo-paypal .ltc-pago-metodo-titulo  { color: #313131; }
 .ltc-pago-metodo-paypal .ltc-pago-metodo-titulo i { color: #003087; }
 
 /* ===== MODAL CUENTA PENDIENTE DE PAGO (login.html) ===== */
@@ -8785,7 +9066,7 @@ body.page-finanzas {
   color: #ea580c;
 }
 .ltc-pendiente-titulo {
-  font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 8px;
+  font-size: 18px; font-weight: 800; color: #242424; margin-bottom: 8px;
 }
 .ltc-pendiente-texto {
   font-size: 13.5px; color: #475569; line-height: 1.6; margin-bottom: 20px;
@@ -8814,7 +9095,7 @@ body.page-finanzas {
   color: #64748b; cursor: pointer;
   transition: border-color .15s, color .15s;
 }
-.ltc-pendiente-btn-cerrar:hover { border-color: #94a3b8; color: #0f172a; }
+.ltc-pendiente-btn-cerrar:hover { border-color: #94a3b8; color: #242424; }
 
 /* ===== BADGES DE ESTADO (admin dashboard) ===== */
 .badge-estado-activo   { background: #d5f5e3; color: #1e8449; font-size: 11px; padding: 2px 9px; border-radius: 12px; font-weight: 600; }
@@ -8854,7 +9135,7 @@ body.page-finanzas {
 }
 .gasto-badge-total {
   margin-left: auto;
-  background: #1e40af;
+  background: #313131;
   color: #fff;
   border-radius: 20px;
   padding: 4px 14px;
@@ -8876,7 +9157,7 @@ body.page-finanzas {
   padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;
   white-space: nowrap;
 }
-.badge-arbitraje       { background: #dbeafe; color: #1e40af; }
+.badge-arbitraje       { background: #edf9cf; color: #313131; }
 .badge-delegado        { background: #ede9fe; color: #5b21b6; }
 .badge-alquiler_cancha { background: #d1fae5; color: #065f46; }
 .badge-tizado          { background: #fef9c3; color: #854d0e; }
@@ -8913,7 +9194,7 @@ body.page-finanzas {
 
 .page-eliminatorias .eli-manual-seeding-toolbar strong {
   display: block;
-  color: #0f172a;
+  color: #242424;
   font-size: 0.98rem;
 }
 
@@ -8934,9 +9215,9 @@ body.page-finanzas {
 }
 
 .page-eliminatorias .eli-manual-seeding-index {
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border: 1px solid #d8decf;
+  background: #f7f8f4;
+  color: #313131;
   border-radius: 0.75rem;
   padding: 0.7rem 0.75rem;
   font-weight: 800;

@@ -6,16 +6,18 @@
   <!-- Base raiz: permite servir este mismo index.html en /liga/<slug> sin romper rutas relativas. -->
   <base href="/" />
   <title>LT&C | Loja Torneos & Competencias</title>
-  <meta name="description" content="LT&C — Loja Torneos & Competencias. Organiza y sigue torneos deportivos: categorias, fixture, tabla de posiciones, goleadores y transmisiones en vivo." />
+  <meta name="description" content="LT&C Loja Torneos & Competencias. Gestion profesional de campeonatos, clientes, equipos, estadisticas y portales publicos de torneos." />
+  <meta name="keywords" content="LT&C, Loja Torneos, torneos Loja, campeonatos, futbol, basquetbol, sistema deportivo" />
+  <meta name="theme-color" content="#B7E853" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="LT&C" />
   <meta property="og:title" content="LT&C | Loja Torneos & Competencias" />
   <meta property="og:description" content="Organiza y sigue torneos deportivos: categorias, fixture, tabla de posiciones, goleadores y transmisiones en vivo." />
-  <meta property="og:image" content="/assets/ltc/Logo.jpeg" />
+  <meta property="og:image" content="/assets/ltc/Logo.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="assets/ltc/Logo.jpeg" type="image/jpeg" />
+  <link rel="icon" href="assets/ltc/Icono.png" type="image/png" />
+  <link rel="shortcut icon" href="assets/ltc/Icono.png" type="image/png" />
+  <link rel="apple-touch-icon" href="assets/ltc/Icono.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -24,126 +26,240 @@
   />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/portal.css" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
 </head>
-<body class="ltc-landing">
+<body class="ltc-landing ltc-home-page">
   <header class="ltc-site-header">
     <div class="container ltc-header-inner">
-      <a class="ltc-header-brand" href="#home">
-        <img src="assets/ltc/Logo.jpeg" alt="LT&C" />
-        <span>LT&C</span>
-        <span class="ltc-header-brand-sub">(Loja Torneos & Competencias)</span>
+      <a class="ltc-header-brand ltc-home-brand-link" href="#inicio" aria-label="LT&C inicio">
+        <img src="assets/ltc/home/ltc-logo-dark-horizontal-crop.jpeg" alt="LT&C Loja Torneo & Competencias" class="ltc-home-brand-logo" />
       </a>
 
-      <button class="ltc-nav-toggle" id="ltc-nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+      <button class="ltc-nav-toggle" id="ltc-nav-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">
         <i class="fas fa-bars"></i>
       </button>
 
-      <nav class="ltc-header-nav" id="ltc-nav">
-        <a href="#home">Inicio</a>
+      <nav class="ltc-header-nav ltc-home-nav" id="ltc-nav">
+        <a href="#inicio">Inicio</a>
         <a href="#torneos">Torneos</a>
-        <a href="torneos.html">Ver todos</a>
-        <div class="ltc-nav-item ltc-nav-item-submenu">
-          <a href="planes.html" id="ltc-nav-link-planes">Planes</a>
-          <div class="ltc-nav-submenu">
-            <a href="planes.html#mensual">Plan mensual</a>
-            <a href="planes.html#campeonato">Plan campeonato</a>
-            <a href="planes.html#anual">Plan anual</a>
-          </div>
-        </div>
-        <a href="#galeria">Galería</a>
+        <a href="#precios" id="ltc-nav-link-precios">Planes</a>
         <a href="#auspiciantes">Auspiciantes</a>
-        <a href="#nosotros">Nosotros</a>
         <a href="#contacto">Contacto</a>
-        <a href="register.html?plan=demo" id="ltc-nav-register" class="ltc-nav-auth-link ltc-nav-auth-link-ghost" target="_blank" rel="noopener noreferrer">Registrarse</a>
-        <a href="login.html" id="ltc-nav-login" class="ltc-nav-auth-link ltc-nav-auth-link-solid" target="_blank" rel="noopener noreferrer">Ingresar</a>
+        <a href="register.html?plan=demo" id="ltc-nav-register" class="ltc-nav-auth-link ltc-nav-auth-link-ghost" target="_blank" rel="noopener noreferrer">
+          <i class="fas fa-user-plus"></i>
+          Registrarse
+        </a>
+        <a href="login.html" id="ltc-nav-login" class="ltc-nav-auth-link ltc-nav-auth-link-solid" target="_blank" rel="noopener noreferrer">
+          <i class="fas fa-right-to-bracket"></i>
+          Iniciar sesion
+        </a>
       </nav>
 
       <div class="ltc-header-actions">
-        <a href="register.html?plan=demo" id="ltc-head-register" class="ltc-head-btn ltc-head-btn-ghost" target="_blank" rel="noopener noreferrer">Registrarse</a>
-        <a href="login.html" id="ltc-head-login" class="ltc-head-btn ltc-head-btn-solid" target="_blank" rel="noopener noreferrer">Ingresar</a>
+        <a href="register.html?plan=demo" id="ltc-head-register" class="ltc-head-btn ltc-head-btn-ghost" target="_blank" rel="noopener noreferrer">
+          <i class="fas fa-user-plus"></i>
+          Registrarse
+        </a>
+        <a href="login.html" id="ltc-head-login" class="ltc-head-btn ltc-head-btn-solid" target="_blank" rel="noopener noreferrer">
+          <i class="fas fa-right-to-bracket"></i>
+          Iniciar sesion
+        </a>
       </div>
     </div>
   </header>
 
-  <main class="ltc-main" id="home">
-    <section class="ltc-hero-showcase">
-      <div class="container ltc-hero-wrap">
-        <div class="ltc-hero-copy">
-          <h1 id="ltc-hero-title">Organiza tus torneos de forma rápida</h1>
-          <p id="ltc-hero-description">
-            Gestiona campeonatos de <strong>Fútbol</strong> y <strong>Básquetbol</strong>
-            con una plataforma clara, moderna y enfocada en el rendimiento deportivo.
+  <main class="ltc-main" id="inicio">
+    <section class="ltc-home-hero">
+      <div class="ltc-home-hero-slider" aria-hidden="true">
+        <img src="assets/ltc/home/slider/hero-organizamos.png" alt="" />
+        <img src="assets/ltc/home/slider/hero-vive-deporte.png" alt="" />
+        <img src="assets/ltc/home/slider/hero-gloria.png" alt="" />
+        <img src="assets/ltc/home/slider/hero-banner.jpeg" alt="" />
+      </div>
+      <div class="ltc-home-hero-shade"></div>
+      <div class="container ltc-home-hero-inner">
+        <div class="ltc-home-hero-copy">
+          <p class="ltc-home-eyebrow" id="ltc-hero-chip">Gestion deportiva desde Loja</p>
+          <h1 id="ltc-hero-title">Organiza tus torneos de forma rapida</h1>
+          <p class="ltc-home-hero-text" id="ltc-hero-description">
+            Gestiona campeonatos de futbol y basquetbol con una plataforma clara,
+            moderna y enfocada en el rendimiento deportivo.
           </p>
-          <div class="ltc-hero-actions">
-            <span class="ltc-demo-text" id="ltc-hero-chip">EMPIEZA UNA DEMO</span>
-            <a href="register.html?plan=demo" id="ltc-hero-cta" class="ltc-btn ltc-btn-enter" target="_blank" rel="noopener noreferrer">Entra</a>
-          </div>
-        </div>
-        <div class="ltc-hero-media">
-          <div class="ltc-hero-media-shape">
-            <img src="assets/ltc/bannerLTC.jpg" alt="LT&C Banner" />
-          </div>
-          <button class="ltc-play-btn" aria-label="Ver presentación">
-            <i class="fas fa-play"></i>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── DEPORTES SOPORTADOS ──────────────────────────────────────── -->
-    <section class="ltc-sports-section">
-      <div class="container">
-        <div class="ltc-section-title">
-          <h2>DEPORTES QUE GESTIONAMOS</h2>
-          <p>Una sola plataforma para múltiples disciplinas deportivas.</p>
-        </div>
-        <div class="ltc-sports-grid">
-          <div class="ltc-sport-card">
-            <div class="ltc-sport-icon ltc-sport-icon--futbol">
-              <i class="fas fa-futbol"></i>
-            </div>
-            <h3>Fútbol</h3>
-            <p>Fútbol 11, 9, 8, 7, 6, 5 · Futsala · Indor</p>
-            <ul class="ltc-sport-features">
-              <li><i class="fas fa-check"></i> Fixture y jornadas</li>
-              <li><i class="fas fa-check"></i> Tabla de posiciones</li>
-              <li><i class="fas fa-check"></i> Goleadores y tarjetas</li>
-              <li><i class="fas fa-check"></i> Control de planillas</li>
-            </ul>
-          </div>
-          <div class="ltc-sport-card ltc-sport-card--new">
-            <span class="ltc-sport-badge">NUEVO</span>
-            <div class="ltc-sport-icon ltc-sport-icon--basket">
-              <i class="fas fa-basketball-ball"></i>
-            </div>
-            <h3>Básquetbol</h3>
-            <p>Campeonatos masculinos, femeninos y mixtos</p>
-            <ul class="ltc-sport-features">
-              <li><i class="fas fa-check"></i> Fixture por cuartos</li>
-              <li><i class="fas fa-check"></i> Tabla PF / PC / DP</li>
-              <li><i class="fas fa-check"></i> Anotadores y faltas</li>
-              <li><i class="fas fa-check"></i> Control de planillas</li>
-            </ul>
+          <div class="ltc-home-actions">
+            <a class="ltc-home-btn ltc-home-btn-lime" href="register.html?plan=demo" id="ltc-hero-cta" target="_blank" rel="noopener noreferrer">
+              <i class="fas fa-bolt"></i>
+              Empieza una demo
+            </a>
+            <a class="ltc-home-btn ltc-home-btn-outline-light ltc-home-only" href="torneos.html">
+              <i class="fas fa-trophy"></i>
+              Ver torneos activos
+            </a>
+            <a class="ltc-home-btn ltc-home-btn-ghost ltc-home-only" href="login.html" target="_blank" rel="noopener noreferrer">
+              <i class="fas fa-right-to-bracket"></i>
+              Entrar
+            </a>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="ltc-section ltc-teams-section" id="torneos">
+    <section class="ltc-home-live-strip ltc-home-only" aria-label="Resumen publico LT&C">
+      <div class="container ltc-home-live-grid" id="ltc-home-stats">
+        <article class="ltc-home-stat-tile">
+          <span class="ltc-home-stat-value" data-ltc-stat="torneos">0</span>
+          <span class="ltc-home-stat-label">Torneos publicados</span>
+        </article>
+        <article class="ltc-home-stat-tile">
+          <span class="ltc-home-stat-value" data-ltc-stat="equipos">0</span>
+          <span class="ltc-home-stat-label">Equipos registrados</span>
+        </article>
+        <article class="ltc-home-stat-tile">
+          <span class="ltc-home-stat-value" data-ltc-stat="categorias">0</span>
+          <span class="ltc-home-stat-label">Categorias visibles</span>
+        </article>
+        <article class="ltc-home-stat-tile ltc-home-stat-tile-accent">
+          <span class="ltc-home-stat-value" data-ltc-stat="clientes">0</span>
+          <span class="ltc-home-stat-label">Clientes activos</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="ltc-home-section ltc-home-sports-section ltc-home-only" id="deportes">
       <div class="container">
-        <div class="ltc-section-title">
-          <h2 id="ltc-torneos-title">TORNEOS Y EQUIPOS EN LT&C</h2>
-          <p id="ltc-torneos-subtitle">Competiciones activas y organización profesional para cada categoría.</p>
+        <div class="ltc-home-section-heading ltc-home-split-heading">
+          <div>
+            <p class="ltc-home-eyebrow">Deportes que gestionamos</p>
+            <h2>Una sola plataforma para multiples disciplinas</h2>
+          </div>
+          <p>
+            La operacion cubre fixtures, tablas, goleadores, tarjetas, planillas,
+            equipos, categorias y portales publicos para cada competencia.
+          </p>
+        </div>
+
+        <div class="ltc-home-sports-grid">
+          <article class="ltc-home-sport-card">
+            <i class="fas fa-futbol"></i>
+            <h3>Futbol</h3>
+            <p>Futbol 11, 9, 8, 7, 6, 5, futsala e indor con calendarios y estadisticas.</p>
+          </article>
+          <article class="ltc-home-sport-card">
+            <i class="fas fa-basketball-ball"></i>
+            <h3>Basquetbol</h3>
+            <p>Campeonatos masculinos, femeninos y mixtos con tabla PF, PC, DP y control de faltas.</p>
+          </article>
+          <article class="ltc-home-sport-card ltc-home-sport-card-dark">
+            <i class="fas fa-display"></i>
+            <h3>Portal publico</h3>
+            <p>Cada cliente conserva su vitrina de torneos, equipos, resultados y transmisiones.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="ltc-home-section ltc-home-access-section ltc-home-only" id="sistemas">
+      <div class="container">
+        <div class="ltc-home-section-heading ltc-home-split-heading">
+          <div>
+            <p class="ltc-home-eyebrow">Ingreso a sistemas</p>
+            <h2>Accesos operativos LT&C</h2>
+          </div>
+          <p>
+            Entrada directa a los modulos que sostienen la operacion:
+            administracion, registro, portal publico y consulta de torneos.
+          </p>
+        </div>
+
+        <div class="ltc-home-access-grid">
+          <a class="ltc-home-access-card" href="login.html" target="_blank" rel="noopener noreferrer">
+            <i class="fas fa-table-columns"></i>
+            <span>Panel administrativo</span>
+            <small>Organizadores, operadores y control del campeonato.</small>
+          </a>
+          <a class="ltc-home-access-card" href="register.html?plan=demo" target="_blank" rel="noopener noreferrer">
+            <i class="fas fa-id-card"></i>
+            <span>Registro de usuarios</span>
+            <small>Organizadores, dirigentes, tecnicos y jugadores.</small>
+          </a>
+          <a class="ltc-home-access-card" href="torneos.html">
+            <i class="fas fa-ranking-star"></i>
+            <span>Torneos del sistema</span>
+            <small>Listado oficial conectado a los campeonatos publicados.</small>
+          </a>
+          <a class="ltc-home-access-card" href="#contacto">
+            <i class="fas fa-headset"></i>
+            <span>Soporte LT&C</span>
+            <small>Contacto directo para alta, pagos y acompanamiento.</small>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="ltc-home-section ltc-home-promo-section ltc-home-only" id="promocion-torneos">
+      <div class="container ltc-home-promo-grid">
+        <div class="ltc-home-promo-copy">
+          <p class="ltc-home-eyebrow">Promocion de torneos</p>
+          <h2>Liga Interempresarial LT&C Futbol 7</h2>
+          <p>
+            Un espacio destacado para impulsar inscripciones, auspiciantes, fechas de inicio,
+            categorias y toda la informacion comercial de cada campeonato.
+          </p>
+          <div class="ltc-home-promo-pills">
+            <span><i class="fas fa-calendar-days"></i> Inicio 19 de septiembre</span>
+            <span><i class="fas fa-futbol"></i> Futbol 7</span>
+            <span><i class="fas fa-building"></i> Equipos empresariales</span>
+          </div>
+          <div class="ltc-home-actions">
+            <a class="ltc-home-btn ltc-home-btn-lime" href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer">
+              <i class="fab fa-whatsapp"></i>
+              Inscribir equipo
+            </a>
+            <a class="ltc-home-btn ltc-home-btn-outline-light" href="torneos.html">
+              <i class="fas fa-trophy"></i>
+              Ver torneos
+            </a>
+          </div>
+        </div>
+
+        <div class="ltc-home-promo-slider" aria-label="Publicidad Liga Interempresarial LT&C">
+          <img src="assets/ltc/home/slider/liga-interempresarial-wide.png" alt="Publicidad Liga Interempresarial LT&C" />
+          <img src="assets/ltc/home/slider/liga-interempresarial-wide-2.png" alt="Publicidad Liga Interempresarial futbol 7" />
+          <img src="assets/ltc/home/slider/liga-interempresarial-square.png" alt="Inscripciones Liga Interempresarial" />
+        </div>
+      </div>
+    </section>
+
+    <section class="ltc-home-section ltc-home-tournaments-section" id="torneos">
+      <div class="container">
+        <div class="ltc-home-section-heading ltc-home-center-heading">
+          <p class="ltc-home-eyebrow">Torneos en funcionamiento</p>
+          <h2 id="ltc-torneos-title">Competencias publicadas por cliente</h2>
+          <p id="ltc-torneos-subtitle">La vitrina se actualiza desde el sistema oficial.</p>
         </div>
         <div id="ltc-organizador-banner" class="ltc-organizador-banner" style="display:none;"></div>
 
+        <div class="ltc-home-tournament-feature ltc-home-only">
+          <img src="assets/ltc/home/slider/liga-interempresarial-wide.png" alt="Liga Interempresarial LT&C Futbol 7" />
+          <div class="ltc-home-feature-copy">
+            <span class="ltc-home-tag">LT&C en cancha</span>
+            <h3>Cada torneo con su portal publico</h3>
+            <p>
+              Resultados, categorias, equipos, tablas, goleadores, tarjetas,
+              eliminatorias y auspiciantes se consultan desde enlaces compartibles.
+            </p>
+            <a class="ltc-home-btn ltc-home-btn-lime" href="torneos.html">
+              <i class="fas fa-arrow-up-right-from-square"></i>
+              Ver torneos activos
+            </a>
+          </div>
+        </div>
+
         <section id="portal-inicio" class="portal-section active">
-          <div id="portal-lista-campeonatos" class="portal-campeonatos-grid">
+          <div id="portal-lista-campeonatos" class="portal-campeonatos-grid ltc-home-tournament-grid">
             <p class="empty-msg">Cargando torneos...</p>
           </div>
           <div class="ltc-ver-todos-wrap">
-            <a id="ltc-ver-todos-torneos" href="torneos.html" class="ltc-btn ltc-btn-ver-todos" style="display:none;">
+            <a id="ltc-ver-todos-torneos" href="torneos.html" class="ltc-home-btn ltc-home-btn-dark" style="display:none;">
               <i class="fas fa-th-large"></i> Ver todos los torneos
             </a>
           </div>
@@ -170,312 +286,344 @@
             </p>
           </div>
           <div class="ltc-team-welcome-media">
-            <img id="ltc-team-welcome-image" src="assets/ltc/bannerLTC.jpg" alt="Bienvenida a equipos" />
+            <img id="ltc-team-welcome-image" src="assets/ltc/home/slider/hero-vive-deporte.png" alt="Bienvenida a equipos" />
           </div>
         </div>
         <div id="ltc-team-welcome-groups" class="ltc-team-welcome-groups"></div>
       </div>
     </section>
 
-    <section class="ltc-feature-section">
+    <section class="ltc-home-section ltc-home-clients-section ltc-home-only" id="clientes">
       <div class="container">
-        <div id="ltc-feature-cards" class="ltc-feature-grid">
-          <article class="ltc-feature-card">
-            <i class="fas fa-layer-group"></i>
-            <h3>Gestión clara</h3>
-            <p>Organiza torneos, equipos y cronogramas con una operación centralizada.</p>
-          </article>
-          <article class="ltc-feature-card">
-            <i class="fas fa-clipboard-list"></i>
-            <h3>Control deportivo</h3>
-            <p>Administra planillas, estadísticas, reportes y seguimiento competitivo.</p>
-          </article>
-          <article class="ltc-feature-card">
-            <i class="fas fa-globe"></i>
-            <h3>Portal institucional</h3>
-            <p>Publica novedades, galería y contacto oficial de LT&C desde el CMS.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="ltc-news-section">
-      <div class="container ltc-news-grid">
-        <div class="ltc-news-ball">
-          <div class="ltc-ball-shape">
-            <img src="assets/ltc/bannerLTC.jpg" alt="Noticias LT&C" />
+        <div class="ltc-home-section-heading ltc-home-split-heading">
+          <div>
+            <p class="ltc-home-eyebrow">Clientes</p>
+            <h2>Organizadores conectados</h2>
           </div>
-        </div>
-        <article class="ltc-news-copy">
-          <h3 id="ltc-news-title">Últimas noticias</h3>
-          <p id="ltc-news-description">
-            LT&C continúa fortaleciendo la experiencia del torneo con reportes deportivos,
-            control de planillas, carnés y módulos financieros para cada equipo.
+          <p>
+            Cada cliente conserva su presencia publica y sus torneos enlazados al sistema operativo LT&C.
           </p>
-          <span id="ltc-news-author">Loja Torneos & Competencias</span>
-          <div class="ltc-news-actions">
-            <a id="ltc-news-link" class="ltc-btn ltc-btn-enter" href="blog.html">Ver blog</a>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <section class="ltc-about-section" id="nosotros">
-      <div class="container ltc-about-grid">
-        <article class="ltc-about-copy">
-          <h3 id="ltc-about-title">Loja Torneos & Competencias</h3>
-          <p id="ltc-about-text-1">
-            LT&C impulsa campeonatos de <strong>fútbol y básquetbol</strong> con una gestión ordenada de equipos,
-            jugadores, calendarios, reportes y control administrativo.
-          </p>
-          <p id="ltc-about-text-2">
-            Nuestro objetivo es brindar una experiencia clara tanto para organizadores
-            como para dirigentes y aficionados.
-          </p>
-        </article>
-        <div class="ltc-about-banner">
-          <img id="ltc-about-image" src="assets/ltc/bannerLTC.jpg" alt="Banner LT&C" />
         </div>
-      </div>
-    </section>
-
-    <!-- ── SERVICIO DE STREAMING ────────────────────────────────────── -->
-    <section class="ltc-stream-section" id="streaming">
-      <div class="container">
-        <div class="ltc-stream-inner">
-          <div class="ltc-stream-copy">
-            <span class="ltc-stream-chip"><i class="fas fa-circle ltc-live-dot"></i> EN VIVO</span>
-            <h2>Transmisión en vivo de tus partidos</h2>
-            <p>
-              LT&C ahora ofrece servicio de transmisión en directo para tus campeonatos.
-              Conecta YouTube, Facebook Live o cualquier plataforma y lleva cada partido
-              a tus hinchas en tiempo real.
-            </p>
-            <ul class="ltc-stream-features">
-              <li><i class="fas fa-play-circle"></i> Compatible con YouTube, Facebook Live y más</li>
-              <li><i class="fas fa-link"></i> Enlace de transmisión vinculado a cada partido</li>
-              <li><i class="fas fa-eye"></i> Badge <em>🔴 EN VIVO</em> visible en el portal público</li>
-              <li><i class="fas fa-star"></i> Transmisiones destacadas en portada</li>
-            </ul>
-            <a href="#contacto" class="ltc-btn ltc-btn-stream">Solicitar el servicio</a>
-          </div>
-          <div class="ltc-stream-media">
-            <div class="ltc-stream-screen">
-              <div class="ltc-stream-screen-bar">
-                <span class="ltc-stream-dot ltc-stream-dot-red"></span>
-                <span class="ltc-stream-dot ltc-stream-dot-yellow"></span>
-                <span class="ltc-stream-dot ltc-stream-dot-green"></span>
-              </div>
-              <div class="ltc-stream-screen-body">
-                <div class="ltc-stream-live-badge"><i class="fas fa-circle"></i> EN VIVO</div>
-                <div class="ltc-stream-score">
-                  <span class="ltc-stream-team">EQUIPO A</span>
-                  <span class="ltc-stream-result">2 — 1</span>
-                  <span class="ltc-stream-team">EQUIPO B</span>
-                </div>
-                <div class="ltc-stream-bar-line"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── NUESTROS CLIENTES ─────────────────────────────────────────── -->
-    <section class="ltc-clientes-section" id="clientes">
-      <div class="container">
-        <div class="ltc-section-title">
-          <h2>NUESTROS CLIENTES</h2>
-          <p>Organizadores que confían en LT&C para gestionar sus campeonatos.</p>
-        </div>
-        <div id="ltc-clientes-grid" class="ltc-clientes-grid">
+        <div id="ltc-clientes-grid" class="ltc-clientes-grid ltc-home-client-grid">
           <p class="empty-msg">Cargando clientes...</p>
         </div>
       </div>
     </section>
 
-    <section class="ltc-pricing-section" id="precios">
-      <div class="container">
-        <div class="ltc-section-title">
-          <h2>PLANES Y PRECIOS</h2>
-          <p>Elige la modalidad que mejor se adapta a tu actividad deportiva.</p>
+    <section class="ltc-home-section ltc-home-streaming-section ltc-home-only" id="streaming">
+      <div class="container ltc-home-streaming-grid">
+        <div class="ltc-home-streaming-copy">
+          <span class="ltc-home-live-badge"><i class="fas fa-circle"></i> En vivo</span>
+          <h2>Transmision en vivo de tus partidos</h2>
+          <p>
+            LT&C ofrece transmision en directo para campeonatos. Conecta YouTube,
+            Facebook Live o cualquier plataforma y lleva cada partido a tus hinchas en tiempo real.
+          </p>
+          <div class="ltc-home-streaming-list">
+            <span><i class="fas fa-circle-play"></i> Compatible con YouTube, Facebook Live y mas</span>
+            <span><i class="fas fa-link"></i> Enlace de transmision vinculado a cada partido</span>
+            <span><i class="fas fa-eye"></i> Badge en vivo visible en el portal publico</span>
+            <span><i class="fas fa-star"></i> Transmisiones destacadas en portada</span>
+          </div>
+          <a class="ltc-home-btn ltc-home-btn-live" href="#contacto">
+            <i class="fab fa-whatsapp"></i>
+            Solicitar el servicio
+          </a>
         </div>
 
-        <div class="ltc-plan-summary-grid ltc-plan-summary-grid-4">
-
-          <!-- MENSUAL -->
-          <article class="ltc-pricing-card ltc-pricing-card-summary">
-            <div class="ltc-plan-card-header">
-              <span class="ltc-plan-chip">Mensual</span>
-              <span class="ltc-plan-icon">📅</span>
+        <div class="ltc-home-streaming-preview" aria-label="Marcador de transmision en vivo">
+          <div class="ltc-home-preview-top">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="ltc-home-preview-body">
+            <span class="ltc-home-preview-live">En vivo</span>
+            <div class="ltc-home-preview-score">
+              <small>Equipo A</small>
+              <strong>2 - 1</strong>
+              <small>Equipo B</small>
             </div>
-            <h3>Plan mensual</h3>
-            <p class="ltc-plan-note">Para ligas con operación continua mes a mes.</p>
-            <p class="ltc-pricing-amount" data-price-family-min="mensual">Desde $20 <span>/ mes</span></p>
-            <ul class="ltc-plan-features">
-              <li><i class="fas fa-check"></i> Básico, Competencia y Premium</li>
-              <li><i class="fas fa-check"></i> Hasta 20 campeonatos activos</li>
-              <li><i class="fas fa-check"></i> Carnés digitales (Competencia+)</li>
-              <li><i class="fas fa-check"></i> Registro directo en la plataforma</li>
-            </ul>
-            <a href="planes.html#mensual" class="ltc-pricing-btn">Ver planes mensuales →</a>
-          </article>
-
-          <!-- CAMPEONATO -->
-          <article class="ltc-pricing-card ltc-pricing-card-commercial ltc-pricing-card-summary">
-            <div class="ltc-plan-card-header">
-              <span class="ltc-plan-chip">Por campeonato</span>
-              <span class="ltc-plan-icon">🏆</span>
-            </div>
-            <h3>Plan campeonato</h3>
-            <p class="ltc-plan-note">Pago único por torneo, sin suscripción mensual.</p>
-            <p class="ltc-pricing-amount" data-price-family-min="campeonato">Desde $200 <span>/ campeonato</span></p>
-            <ul class="ltc-plan-features">
-              <li><i class="fas fa-check"></i> Básico, Competencia y Premium</li>
-              <li><i class="fas fa-check"></i> Sin compromiso de permanencia</li>
-              <li><i class="fas fa-check"></i> Carnés digitales (Competencia+)</li>
-              <li><i class="fas fa-check"></i> Acceso completo durante el torneo</li>
-            </ul>
-            <a href="planes.html#campeonato" class="ltc-pricing-btn">Ver planes por campeonato →</a>
-          </article>
-
-          <!-- ANUAL -->
-          <article class="ltc-pricing-card ltc-pricing-card-highlight ltc-pricing-card-summary">
-            <div class="ltc-plan-card-header">
-              <span class="ltc-plan-chip ltc-plan-chip-hot">⭐ Anual</span>
-              <span class="ltc-plan-icon">🗓️</span>
-            </div>
-            <h3>Plan anual</h3>
-            <p class="ltc-plan-note">El precio más bajo del mercado, un año de gestión completa.</p>
-            <p class="ltc-pricing-amount" data-price-family-min="anual">Desde $49 <span>/ año</span></p>
-            <ul class="ltc-plan-features">
-              <li><i class="fas fa-check"></i> Básico, Competencia y Premium</li>
-              <li><i class="fas fa-check"></i> Hasta 20 campeonatos anuales</li>
-              <li><i class="fas fa-check"></i> Carnés digitales (Competencia+)</li>
-              <li><i class="fas fa-check"></i> Streaming incluido en Premium</li>
-            </ul>
-            <a href="planes.html#anual" class="ltc-pricing-btn">Ver planes anuales →</a>
-          </article>
-
-          <!-- FREE -->
-          <article class="ltc-pricing-card ltc-pricing-card-free ltc-pricing-card-summary">
-            <div class="ltc-plan-card-header">
-              <span class="ltc-plan-chip ltc-plan-chip-free">Free</span>
-              <span class="ltc-plan-icon">🆓</span>
-            </div>
-            <h3>Plan Free</h3>
-            <p class="ltc-plan-note">Empieza sin costo, sin tarjeta de crédito.</p>
-            <p class="ltc-pricing-amount ltc-pricing-amount-free">$0 <span>/ siempre gratis</span></p>
-            <ul class="ltc-plan-features">
-              <li><i class="fas fa-check"></i> 2 campeonatos activos</li>
-              <li><i class="fas fa-check"></i> 3 categorías por campeonato</li>
-              <li><i class="fas fa-check"></i> Hasta 32 equipos por categoría</li>
-              <li><i class="fas fa-check"></i> Sin carnés digitales</li>
-            </ul>
-            <a href="register.html?plan=free" class="ltc-pricing-btn ltc-pricing-btn-free" target="_blank" rel="noopener noreferrer">Empezar gratis →</a>
-          </article>
-
-        </div>
-
-      </div>
-    </section>
-
-    <section class="ltc-sponsors-section" id="auspiciantes">
-      <div class="container">
-        <div class="ltc-section-title">
-          <h2 id="ltc-sponsors-title">AUSPICIANTES</h2>
-          <p id="ltc-sponsors-subtitle">Marcas que respaldan LT&C y el desarrollo deportivo local.</p>
-        </div>
-        <div class="ltc-sponsors-strip" aria-label="Auspiciantes LT&C">
-          <div id="ltc-sponsors-track" class="ltc-sponsors-track">
-            <img src="assets/ltc/auspiciantes/CorpSimtelec.jpeg" alt="CorpSimtelec" />
-            <img src="assets/ltc/auspiciantes/DeportivoCat.jpeg" alt="Deportivo CAT" />
-            <img src="assets/ltc/auspiciantes/Rafa.jpeg" alt="Rafa" />
-            <img src="assets/ltc/auspiciantes/CorpSimtelec.jpeg" alt="" aria-hidden="true" />
-            <img src="assets/ltc/auspiciantes/DeportivoCat.jpeg" alt="" aria-hidden="true" />
-            <img src="assets/ltc/auspiciantes/Rafa.jpeg" alt="" aria-hidden="true" />
+            <div class="ltc-home-preview-line"></div>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="ltc-gallery-section" id="galeria">
-      <div class="container">
-        <div class="ltc-section-title">
-          <h2 id="ltc-gallery-title">GALERÍA</h2>
-          <p id="ltc-gallery-subtitle">Momentos, comunidad y actividad institucional de LT&C.</p>
+    <section class="ltc-home-section ltc-home-about-section" id="nosotros">
+      <div class="container ltc-home-about-layout">
+        <div class="ltc-home-gallery-copy">
+          <p class="ltc-home-eyebrow">Galeria y novedades</p>
+          <h2 id="ltc-news-title">Ultimas noticias</h2>
+          <p id="ltc-news-description">
+            LT&C continua fortaleciendo la experiencia del torneo con reportes deportivos,
+            control de planillas, carnes y modulos financieros para cada equipo.
+          </p>
+          <span id="ltc-news-author">Loja Torneos & Competencias</span>
+          <a id="ltc-news-link" class="ltc-home-btn ltc-home-btn-outline-dark" href="blog.html">
+            <i class="fas fa-newspaper"></i>
+            Ver blog
+          </a>
         </div>
-        <div id="ltc-gallery-grid" class="ltc-gallery-grid">
-          <p class="empty-msg">Cargando galería...</p>
+
+        <div class="ltc-home-about-feature">
+          <div>
+            <p class="ltc-home-eyebrow" id="ltc-about-eyebrow">Loja Torneos & Competencias</p>
+            <h2 id="ltc-about-title">Experiencias deportivas profesionales</h2>
+            <p id="ltc-about-text-1">
+              Impulsamos campeonatos de futbol y basquetbol con una gestion ordenada de equipos,
+              jugadores, calendarios, reportes y control administrativo.
+            </p>
+            <p id="ltc-about-text-2">
+              Nuestro objetivo es brindar una experiencia clara tanto para organizadores
+              como para dirigentes y aficionados.
+            </p>
+          </div>
+          <img id="ltc-about-image" src="assets/ltc/home/slider/hero-gloria.png" alt="LT&C donde nace la gloria deportiva" />
         </div>
       </div>
     </section>
 
-    <section class="ltc-contact-section" id="contacto">
+    <section class="ltc-home-section ltc-home-gallery-section" id="galeria">
       <div class="container">
-        <h2 id="ltc-contact-title">Escríbenos</h2>
-        <p id="ltc-contact-description">
-          Si quieres organizar tu campeonato con LT&C, contáctanos y te ayudamos a
-          implementar todo el flujo deportivo.
-        </p>
-
-        <div class="ltc-contact-grid">
-          <aside class="ltc-contact-aside">
-            <h4>Email</h4>
-            <a id="ltc-contact-email" href="mailto:lojatorneosycompetencia@gmail.com">lojatorneosycompetencia@gmail.com</a>
-
-            <h4>Teléfono</h4>
-            <a id="ltc-contact-phone" href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer">593982413081</a>
-
-            <h4>Sociales</h4>
-            <div class="ltc-contact-social-icons">
-              <a id="ltc-social-facebook" href="https://www.facebook.com/LojaTorneosCompetencia" target="_blank" rel="noopener noreferrer" aria-label="Facebook LT&C">
-                <i class="fab fa-facebook-f"></i>
-              </a>
-              <a id="ltc-social-instagram" href="https://www.instagram.com/lojatorneoycompetencia" target="_blank" rel="noopener noreferrer" aria-label="Instagram LT&C">
-                <i class="fab fa-instagram"></i>
-              </a>
-              <a id="ltc-social-whatsapp" href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp LT&C">
-                <i class="fab fa-whatsapp"></i>
-              </a>
-            </div>
-          </aside>
-
-          <form id="ltc-contact-form" class="ltc-contact-form">
-            <input
-              id="ltc-contact-website-input"
-              name="website"
-              type="text"
-              autocomplete="off"
-              tabindex="-1"
-              style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px;pointer-events:none;"
-              aria-hidden="true"
-            />
-            <div class="ltc-contact-row">
-              <input id="ltc-contact-name-input" type="text" placeholder="Nombre" />
-              <input id="ltc-contact-phone-input" type="tel" placeholder="Teléfono" />
-            </div>
-            <input id="ltc-contact-email-input" type="email" placeholder="Email" />
-            <textarea id="ltc-contact-message-input" rows="5" placeholder="Tu mensaje..."></textarea>
-            <button id="ltc-contact-submit" type="submit">Enviar</button>
-          </form>
+        <div class="ltc-home-gallery-feature ltc-home-only">
+          <img src="assets/ltc/home/slider/trofeo-interempresarial.png" alt="Trofeo Liga Interempresarial LT&C" />
         </div>
+        <div id="ltc-gallery-grid" class="ltc-gallery-grid ltc-home-gallery-feed">
+          <p class="empty-msg">Cargando galeria...</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="ltc-home-section ltc-home-sponsors-section" id="auspiciantes">
+      <div class="container">
+        <div class="ltc-home-section-heading ltc-home-split-heading">
+          <div>
+            <p class="ltc-home-eyebrow">Auspiciantes</p>
+            <h2 id="ltc-sponsors-title">Marcas que respaldan el deporte local</h2>
+          </div>
+          <p id="ltc-sponsors-subtitle">
+            Espacios visibles para instituciones, marcas y aliados que acompanan
+            el crecimiento competitivo de cada campeonato.
+          </p>
+        </div>
+        <div class="ltc-sponsors-strip ltc-home-sponsors-marquee" aria-label="Auspiciantes LT&C">
+          <div id="ltc-sponsors-track" class="ltc-sponsors-track ltc-home-sponsors-track">
+            <a class="ltc-home-sponsor-card" href="https://corpsimtelec.com/" target="_blank" rel="noopener noreferrer">
+              <span class="ltc-home-sponsor-logo"><img src="assets/ltc/home/sponsors/CorpSimtelec.png" alt="CorpSimtelec" /></span>
+              <strong>CorpSimtelec</strong>
+            </a>
+            <a class="ltc-home-sponsor-card" href="https://www.facebook.com/p/Deportivo-Cat-100089317714099/" target="_blank" rel="noopener noreferrer">
+              <span class="ltc-home-sponsor-logo"><img src="assets/ltc/home/sponsors/DeportivoCat.jpeg" alt="Deportivo CAT" /></span>
+              <strong>Deportivo CAT</strong>
+            </a>
+            <a class="ltc-home-sponsor-card" href="https://www.facebook.com/CDonRafa/" target="_blank" rel="noopener noreferrer">
+              <span class="ltc-home-sponsor-logo"><img src="assets/ltc/home/sponsors/Rafa.jpeg" alt="Complejo Deportivo Don Rafa" /></span>
+              <strong>Don Rafa</strong>
+            </a>
+            <a class="ltc-home-sponsor-card ltc-home-sponsor-card-accent" href="#streaming">
+              <span class="ltc-home-sponsor-logo ltc-home-sponsor-logo-text">LT&C</span>
+              <strong>LT&C Media</strong>
+            </a>
+            <a class="ltc-home-sponsor-card" href="https://corpsimtelec.com/" target="_blank" rel="noopener noreferrer" aria-hidden="true" tabindex="-1">
+              <span class="ltc-home-sponsor-logo"><img src="assets/ltc/home/sponsors/CorpSimtelec.png" alt="" /></span>
+              <strong>CorpSimtelec</strong>
+            </a>
+            <a class="ltc-home-sponsor-card" href="https://www.facebook.com/p/Deportivo-Cat-100089317714099/" target="_blank" rel="noopener noreferrer" aria-hidden="true" tabindex="-1">
+              <span class="ltc-home-sponsor-logo"><img src="assets/ltc/home/sponsors/DeportivoCat.jpeg" alt="" /></span>
+              <strong>Deportivo CAT</strong>
+            </a>
+            <a class="ltc-home-sponsor-card" href="https://www.facebook.com/CDonRafa/" target="_blank" rel="noopener noreferrer" aria-hidden="true" tabindex="-1">
+              <span class="ltc-home-sponsor-logo"><img src="assets/ltc/home/sponsors/Rafa.jpeg" alt="" /></span>
+              <strong>Don Rafa</strong>
+            </a>
+            <a class="ltc-home-sponsor-card ltc-home-sponsor-card-accent" href="#streaming" aria-hidden="true" tabindex="-1">
+              <span class="ltc-home-sponsor-logo ltc-home-sponsor-logo-text">LT&C</span>
+              <strong>LT&C Media</strong>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ltc-home-section ltc-home-plans-section ltc-home-only" id="precios">
+      <div class="container">
+        <div class="ltc-home-section-heading ltc-home-plans-heading">
+          <p class="ltc-home-eyebrow">Planes y precios</p>
+          <h2>Nuestros planes</h2>
+          <p>Tenemos planes que se ajustan a tu presupuesto.</p>
+        </div>
+
+        <div class="ltc-home-billing-tabs" aria-label="Periodos de pago">
+          <button class="is-active" type="button">Mensual</button>
+          <button type="button">Trimestral</button>
+          <button type="button">Semestral</button>
+          <button type="button">Anual</button>
+        </div>
+
+        <div class="ltc-home-plans-grid">
+          <article class="ltc-home-plan-card">
+            <span>Torneos</span>
+            <h3>Pequeno</h3>
+            <div class="ltc-home-plan-icon"><i class="far fa-star"></i></div>
+            <p class="ltc-home-plan-price" data-price-family-min="mensual">Desde $20 <small>/mes</small></p>
+            <ul>
+              <li>Hasta 300 jugadores por torneo</li>
+              <li>Hasta 3 patrocinadores por torneo</li>
+              <li>Torneo sin anuncios</li>
+              <li>Campeonatos ilimitados</li>
+              <li>URL personalizada</li>
+            </ul>
+            <a class="ltc-home-btn ltc-home-btn-outline-dark" href="register.html?plan=demo" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
+          </article>
+          <article class="ltc-home-plan-card">
+            <span>Torneos</span>
+            <h3>Intermedio</h3>
+            <div class="ltc-home-plan-icon ltc-home-plan-icon-accent"><i class="fas fa-trophy"></i></div>
+            <p class="ltc-home-plan-price" data-price-family-min="campeonato">Desde $200 <small>/campeonato</small></p>
+            <ul>
+              <li>Hasta 600 jugadores por torneo</li>
+              <li>Hasta 6 patrocinadores por torneo</li>
+              <li>Torneo sin anuncios</li>
+              <li>Campeonatos ilimitados</li>
+              <li>Resumen e informes</li>
+            </ul>
+            <a class="ltc-home-btn ltc-home-btn-lime" href="register.html?plan=demo" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
+          </article>
+          <article class="ltc-home-plan-card">
+            <span>Torneos</span>
+            <h3>Grande</h3>
+            <div class="ltc-home-plan-icon"><i class="far fa-gem"></i></div>
+            <p class="ltc-home-plan-price" data-price-family-min="anual">Desde $49 <small>/ano</small></p>
+            <ul>
+              <li>Hasta 900 jugadores por campeonato</li>
+              <li>Hasta 12 patrocinadores por campeonato</li>
+              <li>Torneo sin anuncios</li>
+              <li>Archivos adjuntos</li>
+              <li>Mejor resolucion de imagen</li>
+            </ul>
+            <a class="ltc-home-btn ltc-home-btn-outline-dark" href="register.html?plan=demo" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
+          </article>
+          <article class="ltc-home-plan-card ltc-home-plan-card-featured">
+            <span>Organizador</span>
+            <h3>Profesional</h3>
+            <div class="ltc-home-plan-icon ltc-home-plan-icon-accent"><i class="far fa-gem"></i></div>
+            <p class="ltc-home-plan-price">$0 <small>/plan free</small></p>
+            <ul>
+              <li>Numero ilimitado de jugadores</li>
+              <li>Numero ilimitado de patrocinadores</li>
+              <li>URL personalizada</li>
+              <li>Imprimir informes</li>
+              <li>Acceso a la API JSON</li>
+            </ul>
+            <a class="ltc-home-btn ltc-home-btn-lime" href="register.html?plan=free" target="_blank" rel="noopener noreferrer">Empezar gratis</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="ltc-home-section ltc-home-app-section ltc-home-only" id="app">
+      <div class="container ltc-home-app-grid">
+        <div class="ltc-home-app-copy">
+          <p class="ltc-home-eyebrow">Aplicacion movil</p>
+          <h2>Proximamente en Google Play e iOS</h2>
+          <p>
+            Todo para organizar tu torneo desde el telefono: partidos automaticos,
+            clasificacion personalizada, fotos, videos, noticias, estadisticas y registro de equipos.
+          </p>
+          <div class="ltc-home-app-checks">
+            <span><i class="fas fa-check"></i> Generador de partidos automatico</span>
+            <span><i class="fas fa-check"></i> Resumen impreso de partidos</span>
+            <span><i class="fas fa-check"></i> Estadisticas en tiempo real</span>
+          </div>
+          <div class="ltc-home-store-badges" aria-label="Tiendas proximamente">
+            <span><i class="fab fa-google-play"></i> Google Play</span>
+            <span><i class="fab fa-apple"></i> App Store</span>
+          </div>
+        </div>
+
+        <a class="ltc-home-app-video-card" href="#contacto" aria-label="Vista previa movil LT&C">
+          <img src="assets/ltc/home/slider/hero-vive-deporte.png" alt="Vista previa de la app movil LT&C" />
+          <span class="ltc-home-video-play"><i class="fas fa-play"></i></span>
+          <strong>Demo movil en preparacion</strong>
+        </a>
+      </div>
+    </section>
+
+    <section class="ltc-home-section ltc-home-contact-section" id="contacto">
+      <div class="container ltc-home-contact-grid">
+        <div class="ltc-home-contact-copy">
+          <p class="ltc-home-eyebrow">Contacto</p>
+          <h2 id="ltc-contact-title">Organiza tu campeonato con LT&C</h2>
+          <p id="ltc-contact-description">
+            Para activar un torneo, publicar tu cliente o coordinar el acceso al sistema,
+            escribenos y dejamos listo el flujo deportivo.
+          </p>
+
+          <div class="ltc-home-contact-links">
+            <a id="ltc-contact-email" href="mailto:lojatorneosycompetencia@gmail.com">
+              <i class="fas fa-envelope"></i>
+              lojatorneosycompetencia@gmail.com
+            </a>
+            <a id="ltc-contact-phone" href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer">
+              <i class="fab fa-whatsapp"></i>
+              098 241 3081
+            </a>
+            <a id="ltc-social-instagram" href="https://www.instagram.com/lojatorneoycompetencia" target="_blank" rel="noopener noreferrer">
+              <i class="fab fa-instagram"></i>
+              @lojatorneoycompetencia
+            </a>
+          </div>
+          <div class="ltc-contact-social-icons ltc-home-social-icons">
+            <a id="ltc-social-facebook" href="https://www.facebook.com/LojaTorneosCompetencia" target="_blank" rel="noopener noreferrer" aria-label="Facebook LT&C">
+              <i class="fab fa-facebook-f"></i>
+            </a>
+            <a id="ltc-social-whatsapp" href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp LT&C">
+              <i class="fab fa-whatsapp"></i>
+            </a>
+          </div>
+        </div>
+
+        <form id="ltc-contact-form" class="ltc-home-contact-form">
+          <input
+            id="ltc-contact-website-input"
+            name="website"
+            type="text"
+            autocomplete="off"
+            tabindex="-1"
+            style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px;pointer-events:none;"
+            aria-hidden="true"
+          />
+          <label for="ltc-contact-name-input">Nombre</label>
+          <input id="ltc-contact-name-input" name="nombre" type="text" autocomplete="name" required />
+
+          <label for="ltc-contact-phone-input">Telefono</label>
+          <input id="ltc-contact-phone-input" name="telefono" type="tel" autocomplete="tel" />
+
+          <label for="ltc-contact-email-input">Email</label>
+          <input id="ltc-contact-email-input" name="email" type="email" autocomplete="email" required />
+
+          <label for="ltc-contact-message-input">Mensaje</label>
+          <textarea id="ltc-contact-message-input" name="mensaje" rows="5" required></textarea>
+
+          <button id="ltc-contact-submit" class="ltc-home-btn ltc-home-btn-lime" type="submit">
+            <i class="fab fa-whatsapp"></i>
+            Enviar mensaje
+          </button>
+        </form>
       </div>
     </section>
   </main>
 
-  <footer class="ltc-footer">
-    <div class="container ltc-footer-inner">
+  <footer class="ltc-footer ltc-home-footer">
+    <div class="container ltc-footer-inner ltc-home-footer-inner">
+      <img id="ltc-footer-logo" src="assets/ltc/home/ltc-logo-dark-horizontal-crop.jpeg" alt="LT&C Loja Torneo & Competencias" />
+      <p class="ltc-footer-copy" id="ltc-footer-copy">LT&C &copy; 2026. Loja Torneos & Competencias. Desarrollado por CorpSimtelec.</p>
       <div class="ltc-footer-social">
-        <a href="https://www.facebook.com/LojaTorneosCompetencia" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
-        <a href="https://www.instagram.com/lojatorneoycompetencia" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-        <a href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        <a id="ltc-footer-facebook" href="https://www.facebook.com/LojaTorneosCompetencia" target="_blank" rel="noopener noreferrer" aria-label="Facebook LT&C"><i class="fab fa-facebook-f"></i></a>
+        <a id="ltc-footer-instagram" href="https://www.instagram.com/lojatorneoycompetencia" target="_blank" rel="noopener noreferrer" aria-label="Instagram LT&C"><i class="fab fa-instagram"></i></a>
+        <a id="ltc-footer-whatsapp" href="https://wa.me/593982413081" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp LT&C"><i class="fab fa-whatsapp"></i></a>
       </div>
-      <p class="ltc-footer-copy">LT&C &copy; Derechos reservados 2026</p>
-      <p class="ltc-footer-copy">
-        Desarrollado por
-        <a href="https://www.corpsimtelec.com" target="_blank" rel="noopener noreferrer">CorpSimtelec</a>
-      </p>
     </div>
   </footer>
 

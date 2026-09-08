@@ -1,3 +1,275 @@
+## 2026-09-07 - Portada LT&C, landing de cliente, panel Usuarios jerarquico y tema personalizado
+
+> Sesion de trabajo asistida (Claude Code). Todos los cambios estan en el arbol de
+> trabajo SIN commitear. Al final hay bloque **Pendientes para seguir desde casa**.
+
+### 1. Adopcion del diseno de `paginaLTC` en la portada (`frontend/index.html`)
+- Portada reconstruida con la referencia visual de `../paginaLTC`: hero con slider,
+  franja de metricas en vivo, showcase de torneos, bienvenida a equipos, clientes,
+  streaming, galeria, marquee de auspiciantes, planes, app movil y contacto WhatsApp.
+- Assets copiados a `frontend/assets/ltc/home/` (slider, sponsors) con rutas locales
+  relativas (funciona en localhost y prod).
+- `frontend/css/portal.css`: capa nueva encapsulada `body.ltc-home-page` / `.ltc-home-*`.
+- `frontend/js/portal.js`:
+  - `actualizarResumenHomeLanding()` alimenta la franja de metricas desde los
+    campeonatos publicos reales.
+  - El slider del hero se conecta a `portalConfig.hero_image_url` del organizador.
+- `frontend/auspiciantes.html`: cards duplicadas en el marquee para loop sin huecos.
+
+### 2. Landing de cliente vs portada LT&C (mismo `index.html`)
+- Convencion: toda seccion que sea marketing propio de la plataforma LT&C lleva
+  la clase **`ltc-home-only`**.
+- En modo landing (`/liga/<slug>` o `?organizador=ID`) `portal.js` agrega
+  **`body.ltc-landing-mode`** (sincrono en `DOMContentLoaded` + dentro de
+  `aplicarModoLandingOrganizador`); `portal.css` las oculta con
+  `body.ltc-landing-mode .ltc-home-only { display:none !important }`.
+- De-brandeo por JS en landing: `#ltc-about-eyebrow`, footer
+  (`#ltc-footer-logo/copy/facebook/instagram/whatsapp`).
+- Hero slider en landing: solo la 1ra imagen, sin animacion.
+
+### 3. Botones del header publico
+- `.ltc-head-btn` (`css/portal.css`): `display:inline-flex` + `align-items/justify-content:center`
+  + `gap` + `line-height:1` para centrar icono y texto (antes quedaban pegados arriba).
+
+### 4. Tarjetas de torneos unificadas (`torneos.html` = portada)
+- Clase compartida **`.ltc-card-grid-v2`** en `#portal-lista-campeonatos` (index)
+  y `#torneos-grid` (torneos). Los selectores de card del home en `portal.css`
+  pasaron de `body.ltc-home-page #portal-lista-campeonatos` a `.ltc-card-grid-v2`.
+- Tokens `--ltc-home-*` redeclarados dentro de `.ltc-card-grid-v2` para paginas
+  que no son `body.ltc-home-page`.
+- `torneos.html` `renderGrid()` ahora reutiliza `renderCardTorneoPrincipal()` de
+  `portal.js` (mismo markup, badge, chips, boton "Ver torneo").
+- `renderCardTorneoPrincipal`: `onerror` de la imagen con placeholder por estado.
+
+### 5. Panel de administracion: logo, menu de usuario, icono del sidebar
+- `frontend/js/core.js` `inyectarLogoSidebar()`: reemplaza el `⚽ LT&C` hardcodeado
+  en `.sidebar-header` (~27 paginas) por `<img assets/ltc/Icono.png>` + texto "LT&C" en lima.
+- `inyectarUsuarioTopbar` reescrito: el chip de usuario es un **disparador**;
+  "Cambiar clave" y "Salir" viven en un **menu desplegable** (`.top-user-menu`)
+  que abre al hacer clic y cierra con clic-fuera / `Esc`.
+- `#nav-toggle` en layout con sidebar: muestra el **icono LT&C** cuando esta
+  contraido y una "X" cuando esta abierto (clase `.nav-toggle-brandable` / `.is-open`).
+- CSS nuevo en `css/style.css`: `.top-user-trigger`, `.top-user-menu`,
+  `.sidebar-header-brand`, `.nav-toggle-brandable`.
+
+### 6. Acceso al sistema: imagenes de marca reales
+- `docs/imagenes/imagenLtyc (4).jpeg` -> `frontend/assets/ltc/marca-panel-oscuro.jpeg` (login).
+- `docs/imagenes/imagenLtyc (6).jpeg` -> `frontend/assets/ltc/marca-panel-lima.jpeg` (register).
+- `login.html` / `register.html`: `.auth-shape img` usa esas imagenes en vez de `bannerLTC.jpg`.
+- `css/auth.css`: `.auth-shape` con fondo de respaldo, `scale(1.12)` -> `1.06`.
+
+### 7. Panel Usuarios: jerarquia Organizador -> Campeonato -> sub-usuarios
+- **Backend** `controllers/authController.js`: `adjuntarContextoJerarquiaUsuarios()`
+  (solo rama admin de `listarUsuarios`). Cadena de datos:
+  `usuario_equipos -> equipos.campeonato_id -> campeonatos.creador_usuario_id -> usuario organizador`.
+  Agrega a cada usuario: `equipos_detalle[]`, `campeonatos[]`, `organizadores[]`,
+  `organizador_id`; para organizadores `campeonatos_propios[]`. Campos previos intactos.
+- **Frontend** `js/usuarios.js` `renderUsuarios()` rehecho en 3 grupos:
+  1. **Plataforma LT&C** (administrador / operador / operador_sistema).
+  2. **Organizadores** — card `<details>` por organizador con sus campeonatos y,
+     bajo cada uno, la tabla de dirigentes/tecnicos/jugadores.
+  3. **Sin organizador asignado** — sub-usuarios sin equipo o cuyo equipo no esta
+     ligado a un campeonato con organizador.
+  Fallback `renderUsuariosPlano()` si el backend no envia la jerarquia.
+- CSS `.usuarios-tree` / `.usuarios-org-card` / `.badge-rol` en `css/style.css`.
+- Validado contra BD real: los dirigentes 14/15/16 caen bajo "JD CUP Torneos y
+  Competencias" -> "Copa Velocity Master"; 18/21/23 quedan en "Sin organizador".
+
+### 8. Fixes de la landing del cliente (`/liga/<slug>`)
+Diagnosticado con la landing real de "Torneos R@0" (`/liga/raotorneos`, org id 22,
+plan `competencia`, 1 campeonato "Otono 2026" en estado `inscripcion`, tema `verde`).
+- **No mostraba la card del campeonato**: `portalCargarCampeonatos()` trataba la
+  landing como portada (`esPortadaInicio`) y filtraba a `en_curso`. Ahora
+  `esPortadaInicio` excluye `body.ltc-landing-mode` -> la landing lista TODOS los
+  torneos visibles del organizador (en_curso + inscripcion + finalizado). El boton
+  "Ver todos" queda oculto en la landing.
+- **"Sobre nosotros" (paso 4 del CRM) no aparecia**: `#nosotros` estaba anidado en
+  `#galeria`, que `aplicarModoLandingOrganizador` oculta cuando el organizador no
+  tiene fotos. Movido a su propia `<section class="ltc-home-about-section">`.
+- **"Bienvenida a equipos" (paso 3) no aparecia**: `renderSeccionEquiposLanding` la
+  ocultaba sin equipos inscritos. Ahora se muestra si el organizador configuro el
+  titulo; placeholder mientras no haya equipos.
+- **Los temas de color no funcionaban**: el CSS `body.ltc-org-theme` apuntaba a un
+  maquetado anterior (`.ltc-hero-showcase`, `.ltc-btn-demo`...). Se agregaron reglas
+  `body.ltc-org-theme .ltc-home-*` que aplican `--org-hero-from/to`, `--org-accent`,
+  `--org-btn-bg/fg`, `--org-section-heading` al maquetado actual (hero, titulos,
+  botones y tarjetas v2).
+- **Tema "Personalizado"** (nuevo):
+  - `organizador-portal.html` (Mi Landing): boton `data-tema="personalizado"`,
+    3 `<input type="color">` (`#op-color-primario/secundario/acento`) y una
+    **previsualizacion en vivo** (`#op-tema-preview-live`: mini hero + card).
+  - `js/organizador-portal.js`: `initTemaSelector()` + `refrescarPreviewTema()` +
+    `paletaTemaActual()`; carga/guarda `color_primario/secundario/acento`.
+  - `js/portal.js`: `paletaPersonalizadaPortal()` + `textoLegibleSobrePortal()`
+    (contraste de texto de boton por luminancia). Llamada:
+    `aplicarTemaLandingOrganizador(portalConfig.color_tema, portalConfig)`.
+  - **Backend** `models/OrganizadorPortal.js`: `"personalizado"` agregado a
+    `TEMAS_VALIDOS`. Reutiliza las columnas `color_primario/secundario/acento`
+    que YA existian en `organizador_portal_config` (sin migracion).
+
+### Verificacion local
+- `node --check` OK: `frontend/js/portal.js`, `frontend/js/core.js`,
+  `frontend/js/usuarios.js`, `frontend/js/organizador-portal.js`,
+  `backend/controllers/authController.js`, `backend/models/OrganizadorPortal.js`.
+- Llaves balanceadas en `css/portal.css`, `css/style.css`, `css/auth.css`,
+  `css/organizador-portal.css`.
+- `<section>` 17/17 y `<div>` 76/76 en `frontend/index.html`.
+- `node backend/scripts/smokeFrontendRoleGuards.js` -> 49/49 PASS.
+- Payload real `GET /api/auth/organizadores/by-slug/raotorneos/landing`: devuelve
+  `campeonatos:["Otono 2026 [inscripcion]"]`, `color_tema:"verde"`,
+  `about_title:"Quienes Somos"`, `equipos_bienvenida_titulo` presente.
+- Archivos servidos en `http://localhost:5000` contienen los cambios (portal.js,
+  organizador-portal.js, portal.css, organizador-portal.html, index.html).
+- **No se pudieron adjuntar capturas** por limite de imagenes de la sesion;
+  la verificacion visual queda pendiente (ver abajo).
+
+### Archivos tocados (arbol de trabajo, sin commit)
+- Backend: `controllers/authController.js`, `models/OrganizadorPortal.js`.
+- Frontend JS: `js/core.js`, `js/portal.js`, `js/usuarios.js`, `js/organizador-portal.js`.
+- Frontend CSS: `css/portal.css`, `css/style.css`, `css/auth.css`, `css/organizador-portal.css`.
+- Frontend HTML: `index.html`, `torneos.html`, `login.html`, `register.html`,
+  `organizador-portal.html`, `auspiciantes.html`.
+- Assets nuevos: `frontend/assets/ltc/home/**`, `frontend/assets/ltc/marca-panel-oscuro.jpeg`,
+  `frontend/assets/ltc/marca-panel-lima.jpeg`, `frontend/assets/ltc/Icono.png`,
+  `frontend/assets/ltc/Logo.png`.
+
+### Pendientes para seguir desde casa
+
+1. **Reiniciar el backend** (local y/o Railway) para que:
+   - `listarUsuarios` devuelva la jerarquia (si corre con `npm start` y no `nodemon`).
+   - Se pueda GUARDAR `color_tema="personalizado"` (los 5 presets y los 3 colores
+     ya persisten sin reiniciar; solo el valor "personalizado" del `color_tema`
+     depende del `TEMAS_VALIDOS` nuevo).
+
+2. **Verificacion visual en navegador real** (no hecha esta sesion):
+   - `/liga/raotorneos`: la card "Otono 2026" aparece; se ven "Sobre nosotros" y
+     "Bienvenida a equipos"; el tema `verde` se aplica (hero, titulos, botones, cards).
+   - `usuarios.html` como admin: 3 grupos; los 3 dirigentes bajo "JD CUP ... / Copa
+     Velocity Master"; crear/editar/eliminar siguen funcionando.
+   - `admin.html`: menu desplegable del usuario; icono LT&C en el toggle; logo en sidebar.
+   - `login.html` / `register.html`: imagenes de marca en el panel inclinado.
+   - `torneos.html`: cards identicas a la portada.
+
+3. **Probar el flujo completo del tema Personalizado** en "Mi Landing": elegir
+   colores -> ver preview -> Guardar -> abrir la landing y confirmar que los
+   colores se aplican de verdad.
+
+4. **Imagenes `/uploads/...` en local dan 404** (solo existen en prod). En local
+   las cards de torneos usan el `onerror` con placeholder. Verificar en prod que
+   cargan las imagenes reales de cada campeonato/organizador.
+
+5. **Commits pendientes**: el arbol acumula cambios de esta sesion + anteriores +
+   el stash de respaldo `codex-pre-pull-2026-09-07`. Sugerencia de commits tematicos:
+   - `feat: adoptar diseno portada LT&C + modo landing de cliente`
+   - `feat: panel Usuarios jerarquico por organizador y campeonato`
+   - `feat: tema personalizado de landing + fixes de secciones/cards en /liga`
+   - `fix: header admin (logo LT&C, dropdown de usuario, icono del sidebar)`
+   - `feat: imagenes de marca en login/registro`
+
+6. **Pulido / decisiones abiertas**:
+   - Las imagenes del hero slider de la portada pesan 2-2.3 MB c/u -> optimizar (webp).
+   - Tema "Personalizado": si el color principal es muy claro el texto del hero
+     puede quedar con bajo contraste -> evaluar validacion o un 4to control
+     ("color de texto del hero").
+   - `contenido-portal.html` (CRM global LT&C) sigue teniendo "3 Cards destacadas"
+     (`cards_json` -> `#ltc-feature-cards`) que la NUEVA portada ya no renderiza.
+     Decidir: recuperar esa seccion en el nuevo diseno o quitarla del CRM.
+   - Revisar en mobile la portada nueva y la landing (secciones largas).
+
+---
+
+## 2026-09-07 - Pull al dia y cobertura QA para landing por slug
+
+### Estado git
+- Se ejecuto `git pull --ff-only` sobre `main`.
+- Como habia cambios locales sin commitear, se resguardaron temporalmente con `git stash push -u -m "codex-pre-pull-2026-09-07"`.
+- El pull avanzo de `68e922e` a `bbf242a`.
+- Commit recibido:
+  - `bbf242a feat: URL personalizada /liga/<slug> por cliente + tema visual real y SEO en la landing`.
+- Al re aplicar el stash, Git conservo el stash porque `frontend/vercel.json` ya existe como archivo versionado del remoto.
+- La version local de `frontend/vercel.json` guardada en el stash coincide con la version traida por `HEAD`.
+- El stash `codex-pre-pull-2026-09-07` queda como respaldo temporal.
+- Produccion actual para QA y operacion: `https://ltyc.corpsimtelec.com/`.
+
+### Documentacion revisada
+- `docs/INDICE_DOCUMENTACION.md`
+- `docs/ESTADO_IMPLEMENTACION_SGD.md`
+- `docs/BITACORA_AVANCES.md`
+- `docs/PLAN_CMS_PORTAL_PUBLICO.md`
+- `docs/GUIA_DESPLIEGUE_CMS_PORTAL_PUBLICO.md`
+- `README.md`
+
+### Cambio aplicado
+- Se amplio `backend/scripts/smokeFrontendRoleGuards.js` para exponer `getCurrentPage()` en el harness QA.
+- Se agrego cobertura directa para rutas personalizadas:
+  - `/liga/loja-torneos`
+  - `/liga/cliente-demo/`
+- Ambas deben resolverse como `index.html`, evitando que el guard frontend trate la landing personalizada como ruta privada o desconocida.
+
+### Ajuste de marca LT&C
+- Se reviso `docs/manual de marca.pdf` como referencia visual, separando su contenido de las instrucciones del usuario.
+- Paleta aplicada desde el manual:
+  - Carbon: `#313131`.
+  - Lima: `#b7e853`.
+- Se copiaron los activos oficiales desde `docs/imagenes/` hacia `frontend/assets/ltc/`:
+  - `Logo.png`
+  - `Icono.png`
+- Se reemplazaron las referencias publicas al logo `.jpeg` anterior por `Logo.png`/`Icono.png`.
+- Se actualizaron favicon, apple-touch-icon y fallback global en `frontend/js/core.js` para usar el icono oficial PNG.
+- Se alinio la base visual de:
+  - layout interno (`frontend/css/style.css`),
+  - login/registro (`frontend/css/auth.css`),
+  - portal publico y landings (`frontend/css/portal.css`),
+  - dashboards con estilos inline principales,
+  - defaults visuales de plantillas/posters.
+- En `Mi Landing`, el tema por defecto `deportivo` queda como `LT&C oficial` con carbon/lima.
+
+### Verificacion local
+- `node --check backend/controllers/authController.js`
+- `node --check backend/models/OrganizadorPortal.js`
+- `node --check backend/services/publicPortalService.js`
+- `node --check backend/routes/authRoutes.js`
+- `node --check frontend/js/core.js`
+- `node --check frontend/js/portal.js`
+- `node --check frontend/js/organizador-portal.js`
+- Busqueda sin residuos de `Logo.jpeg`, favicon SVG directo y paleta anterior azul/dorada en HTML/CSS/JS.
+- Servidor estatico local `http://127.0.0.1:5173`:
+  - `index.html`, `portal.html`, `login.html`, `register.html` -> `200 OK`.
+  - `css/style.css`, `css/portal.css`, `css/auth.css`, `js/core.js`, `js/portal.js` -> `200 OK`.
+  - `assets/ltc/Logo.png`, `assets/ltc/Icono.png` -> `200 OK`.
+- Activos oficiales revisados visualmente en local:
+  - `frontend/assets/ltc/Logo.png`
+  - `frontend/assets/ltc/Icono.png`
+- No se pudo cerrar captura visual automatizada:
+  - el Browser runtime no reporto navegadores conectados,
+  - Edge headless cargo `index.html`, pero no genero archivo de screenshot en esta instalacion.
+- `git diff --check`
+- `npm --prefix backend run smoke:frontend` -> `49/49 PASS`
+
+### Pendientes inmediatos recomendados
+1. Validar en produccion una landing real por slug:
+   - `https://ltyc.corpsimtelec.com/liga/<slug-real>`
+   - confirmar carga de tema, SEO basico, enlaces internos y torneos del organizador.
+2. Validar en Vercel/frontend separado que `frontend/vercel.json` reescribe `/liga/:slug` hacia `index.html`.
+3. Probar desde `Mi Landing`:
+   - editar slug,
+   - guardar color/tema,
+   - verificar vista previa y URL publica.
+4. Mantener pendientes de QA visual publico documentados el 2026-06-12:
+   - mobile `390x844`,
+   - tablet `768x1024`,
+   - fichas `equipo-publico.html` y `jugador-publico.html`,
+   - playoff con datos reales.
+5. Completar QA visual en navegador real para el rebrand LT&C:
+   - `index.html`,
+   - `portal.html`,
+   - `login.html`,
+   - `register.html`,
+   - `portal-admin.html`,
+   - `organizador-portal.html`.
+
+---
+
 ## 2026-06-12 - QA responsive publico: estabilidad mobile
 
 ### Cambio aplicado
@@ -87,7 +359,7 @@
 - `npm --prefix backend run smoke:frontend` -> `45/45 PASS`.
 
 ### Pendiente
-- Validar en Render despues del deploy: desde `https://ltyc.onrender.com/portal.html`, abrir un torneo/categoria y confirmar que **Equipos** aparece primero, carga el listado sin clic extra y cada card entra a `equipo-publico.html` sin redirigir al sistema interno.
+- Validar en produccion despues del deploy: desde `https://ltyc.corpsimtelec.com/portal.html`, abrir un torneo/categoria y confirmar que **Equipos** aparece primero, carga el listado sin clic extra y cada card entra a `equipo-publico.html` sin redirigir al sistema interno.
 
 ---
 
@@ -129,9 +401,9 @@
 - `git diff --check` OK.
 
 ### Pendientes para arrancar manana
-1. Verificar Render despues del deploy:
-   - `https://ltyc.onrender.com/index.html`,
-   - `https://ltyc.onrender.com/torneos.html`.
+1. Verificar produccion despues del deploy:
+   - `https://ltyc.corpsimtelec.com/index.html`,
+   - `https://ltyc.corpsimtelec.com/torneos.html`.
 2. Confirmar visualmente:
    - cards compactas y centradas en escritorio grande,
    - portada solo con torneos `en_curso`,
@@ -143,7 +415,7 @@
    - 768px,
    - 390px.
 4. Si el cambio no aparece en produccion:
-   - esperar deploy de Render,
+   - esperar deploy de produccion,
    - hacer recarga dura del navegador,
    - revisar logs de build/deploy.
 5. Retomar pendientes generales:

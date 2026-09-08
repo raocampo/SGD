@@ -601,6 +601,7 @@ function renderCardTorneoPrincipal(torneo) {
     { borrador: "Borrador", inscripcion: "Inscripción", en_curso: "En Curso", finalizado: "Finalizado" }[estado] ||
     "Activo";
   const imagenCard = obtenerImagenCardPortal(torneo);
+  const imagenCardFallback = estado === "en_curso" ? IMG_TORNEO_ACTIVO : IMG_TORNEO_PROXIMO;
   const fechaInicio = formatearFechaPortal(torneo?.fecha_inicio);
   const fechaFin = formatearFechaPortal(torneo?.fecha_fin);
   const campeonatoId = Number.parseInt(torneo?.id, 10) || 0;
@@ -620,7 +621,7 @@ function renderCardTorneoPrincipal(torneo) {
       tabindex="0"
     >
       <div class="portal-card-media">
-        <img src="${imagenCard}" alt="${nombre}" />
+        <img src="${imagenCard}" alt="${nombre}" onerror="this.onerror=null;this.src='${imagenCardFallback}';" />
       </div>
       <div class="portal-card-body">
         <span class="badge-estado estado-${estado}">${labelEstado}</span>
@@ -720,12 +721,16 @@ function renderSeccionEquiposLanding(payload = {}, torneosVisibles = []) {
     (item) => Array.isArray(item?.equipos_participantes) && item.equipos_participantes.length
   );
 
-  if (!campeonatosConEquipos.length) {
+  const tituloConfigurado = String(portalConfig.equipos_bienvenida_titulo || "").trim();
+
+  // La sección aparece si hay equipos inscritos O si el organizador la configuró
+  // desde "Mi Landing" (paso 3). Antes se ocultaba siempre que no hubiera equipos.
+  if (!campeonatosConEquipos.length && !tituloConfigurado) {
     section.style.display = "none";
     return;
   }
 
-  title.textContent = portalConfig.equipos_bienvenida_titulo || "Bienvenida a equipos participantes";
+  title.textContent = tituloConfigurado || "Bienvenida a equipos participantes";
   description.textContent =
     portalConfig.equipos_bienvenida_descripcion ||
     "Estos son los equipos que ya forman parte de los campeonatos visibles del organizador.";
@@ -735,9 +740,11 @@ function renderSeccionEquiposLanding(payload = {}, torneosVisibles = []) {
   const fallbackImage =
     document.getElementById("ltc-about-image")?.getAttribute("src") || "assets/ltc/bannerLTC.jpg";
   image.src = imagenBienvenida ? normalizarMediaPortal(imagenBienvenida) : fallbackImage;
-  groups.innerHTML = campeonatosConEquipos
-    .map((campeonato) => renderBloqueEquiposParticipantesLanding(campeonato))
-    .join("");
+  groups.innerHTML = campeonatosConEquipos.length
+    ? campeonatosConEquipos
+        .map((campeonato) => renderBloqueEquiposParticipantesLanding(campeonato))
+        .join("")
+    : '<p class="empty-msg">Los equipos participantes aparecerán aquí conforme se inscriban en los campeonatos.</p>';
   section.style.display = "";
 }
 
@@ -770,6 +777,38 @@ function estadoEsVisibleEnPortada(estado) {
   return ESTADOS_TORNEOS_PORTADA.has(normalizarEstadoTorneoPortal(estado));
 }
 
+function actualizarResumenHomeLanding(campeonatos = []) {
+  const targets = document.querySelectorAll("[data-ltc-stat]");
+  if (!targets.length) return;
+
+  const visibles = (Array.isArray(campeonatos) ? campeonatos : []).filter((c) =>
+    estadoEsVisibleEnPortal(c?.estado)
+  );
+  const clientes = new Set();
+  let equipos = 0;
+  let categorias = 0;
+
+  visibles.forEach((item) => {
+    const organizador = String(item?.organizador || item?.organizador_nombre || "").trim();
+    if (organizador) clientes.add(organizador.toLowerCase());
+    equipos += Number(item?.total_equipos || 0);
+    const resumenCategorias = normalizarCategoriasResumenPortal(item?.categorias_resumen);
+    categorias += resumenCategorias.length || Number(item?.total_eventos || item?.total_categorias || 0);
+  });
+
+  const resumen = {
+    torneos: visibles.length,
+    equipos,
+    categorias,
+    clientes: clientes.size,
+  };
+
+  targets.forEach((el) => {
+    const key = el.getAttribute("data-ltc-stat");
+    el.textContent = Number(resumen[key] || 0).toLocaleString("es-EC");
+  });
+}
+
 function renderErrorPortal(mensaje) {
   const cont = document.getElementById("portal-lista-campeonatos");
   if (!cont) return;
@@ -792,14 +831,23 @@ async function portalCargarCampeonatos(listaForzada = null, options = {}) {
           : await fetch(url).then((r) => r.json());
       lista = data.campeonatos || data || [];
     }
+    // La landing de un organizador (/liga/<slug>) comparte index.html con la portada
+    // LT&C, pero NO es la portada: debe listar TODOS los torneos del organizador
+    // (en curso, inscripción y finalizados), no solo los "en curso".
+    const esLandingOrganizador = document.body.classList.contains("ltc-landing-mode");
     const esPortadaInicio =
       !ES_PORTAL_PAGE &&
+      !esLandingOrganizador &&
       document.body.classList.contains("ltc-landing") &&
       !document.body.classList.contains("ltc-torneos-page");
     const listables = ordenarTorneosPortal((lista || []).filter((c) => estadoEsVisibleEnPortal(c.estado)));
     const destacados = esPortadaInicio
       ? ordenarTorneosPortal((lista || []).filter((c) => estadoEsVisibleEnPortada(c.estado)))
       : listables;
+
+    if (esPortadaInicio) {
+      actualizarResumenHomeLanding(listables);
+    }
 
     if (!destacados.length) {
       cont.innerHTML = esPortadaInicio
@@ -837,7 +885,8 @@ async function portalCargarCampeonatos(listaForzada = null, options = {}) {
 function aplicarModoLandingOrganizador(payload) {
   const organizador = payload?.organizador || {};
   const portalConfig = payload?.portal_config || {};
-  aplicarTemaLandingOrganizador(portalConfig.color_tema);
+  document.body.classList.add("ltc-landing-mode");
+  aplicarTemaLandingOrganizador(portalConfig.color_tema, portalConfig);
   aplicarSeoLandingOrganizador(organizador, portalConfig);
   const auspiciantes = Array.isArray(payload?.auspiciantes) ? payload.auspiciantes : [];
   const campeonatos = Array.isArray(payload?.campeonatos) ? payload.campeonatos : [];
@@ -864,11 +913,18 @@ function aplicarModoLandingOrganizador(payload) {
   const contactPhone = document.getElementById("ltc-contact-phone");
   const contactTitle = document.getElementById("ltc-contact-title");
   const contactDescription = document.getElementById("ltc-contact-description");
+  const aboutEyebrow = document.getElementById("ltc-about-eyebrow");
   const aboutTitle = document.getElementById("ltc-about-title");
   const aboutText1 = document.getElementById("ltc-about-text-1");
   const aboutText2 = document.getElementById("ltc-about-text-2");
   const aboutImage = document.getElementById("ltc-about-image");
+  const footerLogo = document.getElementById("ltc-footer-logo");
+  const footerCopy = document.getElementById("ltc-footer-copy");
+  const footerFacebook = document.getElementById("ltc-footer-facebook");
+  const footerInstagram = document.getElementById("ltc-footer-instagram");
+  const footerWhatsapp = document.getElementById("ltc-footer-whatsapp");
   const heroMediaImage = document.querySelector(".ltc-hero-media-shape img");
+  const homeHeroSliderImage = document.querySelector(".ltc-home-hero-slider img");
   const socialFacebook = document.getElementById("ltc-social-facebook");
   const socialInstagram = document.getElementById("ltc-social-instagram");
   const socialWhatsapp = document.getElementById("ltc-social-whatsapp");
@@ -953,6 +1009,9 @@ function aplicarModoLandingOrganizador(payload) {
   if (heroMediaImage && portalConfig.hero_image_url) {
     heroMediaImage.src = normalizarMediaPortal(portalConfig.hero_image_url);
   }
+  if (homeHeroSliderImage && portalConfig.hero_image_url) {
+    homeHeroSliderImage.src = normalizarMediaPortal(portalConfig.hero_image_url);
+  }
   if (socialFacebook && portalConfig.facebook_url) {
     socialFacebook.href = portalConfig.facebook_url;
   }
@@ -963,13 +1022,32 @@ function aplicarModoLandingOrganizador(payload) {
     socialWhatsapp.href = portalConfig.whatsapp_url;
   }
 
+  const nombreOrganizador =
+    portalConfig.organizacion_nombre ||
+    organizador.organizacion_nombre ||
+    organizador.nombre ||
+    "Organizador";
+
   const brandLogo = normalizarMediaPortal(portalConfig.logo_url);
   if (brandLogo) {
     brandImages.forEach((img) => {
       img.src = brandLogo;
-      img.alt = portalConfig.organizacion_nombre || organizador.organizacion_nombre || organizador.nombre || "Organizador";
+      img.alt = nombreOrganizador;
     });
   }
+
+  // De-brandeo del resto de la portada para que la landing no se lea como la web de LT&C.
+  if (aboutEyebrow) aboutEyebrow.textContent = nombreOrganizador;
+  if (footerLogo && brandLogo) {
+    footerLogo.src = brandLogo;
+    footerLogo.alt = nombreOrganizador;
+  }
+  if (footerCopy) {
+    footerCopy.textContent = `${nombreOrganizador} © ${new Date().getFullYear()}. Portal deportivo impulsado por LT&C.`;
+  }
+  if (footerFacebook && portalConfig.facebook_url) footerFacebook.href = portalConfig.facebook_url;
+  if (footerInstagram && portalConfig.instagram_url) footerInstagram.href = portalConfig.instagram_url;
+  if (footerWhatsapp && portalConfig.whatsapp_url) footerWhatsapp.href = portalConfig.whatsapp_url;
 
   if (gallerySection) {
     const landingGallery = Array.isArray(payload?.landing_gallery) ? payload.landing_gallery : [];
@@ -1068,30 +1146,72 @@ async function cargarLandingOrganizadorPorSlug(slug) {
 // Paletas por tema visual elegido en "Mi Landing". Aplican sobre body.ltc-org-theme.
 const TEMAS_LANDING_ORGANIZADOR = {
   deportivo: {
-    heroFrom: "#182c45", heroTo: "#14426c", heading: "#fee174",
-    accent: "#fee174", btnBg: "#2f5e96", btnFg: "#ffffff", sectionHeading: "#2f3a4b",
+    heroFrom: "#313131", heroTo: "#252525", heading: "#b7e853",
+    accent: "#b7e853", btnBg: "#313131", btnFg: "#b7e853", sectionHeading: "#313131",
   },
   nocturno: {
-    heroFrom: "#041b2e", heroTo: "#00243b", heading: "#67e8f9",
-    accent: "#22d3ee", btnBg: "#0e7490", btnFg: "#ffffff", sectionHeading: "#12303f",
+    heroFrom: "#1f1f1f", heroTo: "#080808", heading: "#b7e853",
+    accent: "#b7e853", btnBg: "#b7e853", btnFg: "#313131", sectionHeading: "#313131",
   },
   verde: {
-    heroFrom: "#0a5c3f", heroTo: "#0d7a54", heading: "#eafff5",
-    accent: "#34d399", btnBg: "#0d9a86", btnFg: "#ffffff", sectionHeading: "#12463a",
+    heroFrom: "#45651f", heroTo: "#233414", heading: "#ffffff",
+    accent: "#b7e853", btnBg: "#313131", btnFg: "#b7e853", sectionHeading: "#313131",
   },
   vinotinto: {
     heroFrom: "#5b1a2b", heroTo: "#7a1f2f", heading: "#f2d98c",
     accent: "#e5c76b", btnBg: "#7a1f2f", btnFg: "#ffffff", sectionHeading: "#4a1f28",
   },
   clasico: {
-    heroFrom: "#1e2a4a", heroTo: "#24365f", heading: "#ffffff",
-    accent: "#c9d6e4", btnBg: "#1e3a5f", btnFg: "#ffffff", sectionHeading: "#26324a",
+    heroFrom: "#f7f8f4", heroTo: "#dfe8d0", heading: "#313131",
+    accent: "#b7e853", btnBg: "#313131", btnFg: "#b7e853", sectionHeading: "#313131",
   },
 };
 
-function aplicarTemaLandingOrganizador(tema) {
+// Devuelve "#ffffff" o "#141414" según el contraste sobre el color de fondo dado.
+function textoLegibleSobrePortal(hex) {
+  const c = String(hex || "").replace("#", "");
+  if (c.length !== 6) return "#141414";
+  const r = parseInt(c.slice(0, 2), 16) / 255;
+  const g = parseInt(c.slice(2, 4), 16) / 255;
+  const b = parseInt(c.slice(4, 6), 16) / 255;
+  const lin = (v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return L > 0.45 ? "#141414" : "#ffffff";
+}
+
+function oscurecerHexPortal(hex, factor = 0.72) {
+  const c = String(hex || "").replace("#", "");
+  if (c.length !== 6) return hex;
+  const ch = (i) =>
+    Math.max(0, Math.min(255, Math.round(parseInt(c.slice(i, i + 2), 16) * factor)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${ch(0)}${ch(2)}${ch(4)}`;
+}
+
+// Construye la paleta del tema "personalizado" a partir de los 3 colores que el
+// organizador eligió en "Mi Landing" (color_primario / secundario / acento).
+function paletaPersonalizadaPortal(cfg = {}) {
+  const primario = String(cfg.color_primario || "").trim() || "#313131";
+  const secundario = String(cfg.color_secundario || "").trim() || oscurecerHexPortal(primario, 0.7);
+  const acento = String(cfg.color_acento || "").trim() || "#b7e853";
+  return {
+    heroFrom: primario,
+    heroTo: secundario,
+    heading: acento,
+    accent: acento,
+    btnBg: acento,
+    btnFg: textoLegibleSobrePortal(acento),
+    sectionHeading: "#313131",
+  };
+}
+
+function aplicarTemaLandingOrganizador(tema, portalConfig = {}) {
   const clave = String(tema || "deportivo").trim().toLowerCase();
-  const paleta = TEMAS_LANDING_ORGANIZADOR[clave] || TEMAS_LANDING_ORGANIZADOR.deportivo;
+  const paleta =
+    clave === "personalizado"
+      ? paletaPersonalizadaPortal(portalConfig)
+      : TEMAS_LANDING_ORGANIZADOR[clave] || TEMAS_LANDING_ORGANIZADOR.deportivo;
   const root = document.documentElement;
   root.style.setProperty("--org-hero-from", paleta.heroFrom);
   root.style.setProperty("--org-hero-to", paleta.heroTo);
@@ -1196,6 +1316,7 @@ function aplicarContenidoPortal(contenido) {
   const aboutText1 = document.getElementById("ltc-about-text-1");
   const aboutText2 = document.getElementById("ltc-about-text-2");
   const aboutImage = document.getElementById("ltc-about-image");
+  const homeHeroSliderImage = document.querySelector(".ltc-home-hero-slider img");
   const contactTitle = document.getElementById("ltc-contact-title");
   const contactDescription = document.getElementById("ltc-contact-description");
   const contactEmail = document.getElementById("ltc-contact-email");
@@ -1216,7 +1337,10 @@ function aplicarContenidoPortal(contenido) {
   if (aboutText1) aboutText1.textContent = contenido.about_text_1 || aboutText1.textContent;
   if (aboutText2) aboutText2.textContent = contenido.about_text_2 || aboutText2.textContent;
   if (aboutImage && contenido.about_image_url) {
-    aboutImage.src = contenido.about_image_url;
+    aboutImage.src = normalizarMediaPortal(contenido.about_image_url);
+  }
+  if (homeHeroSliderImage && (contenido.hero_image_url || contenido.about_image_url)) {
+    homeHeroSliderImage.src = normalizarMediaPortal(contenido.hero_image_url || contenido.about_image_url);
   }
 
   if (contactTitle) contactTitle.textContent = contenido.contact_title || contactTitle.textContent;
@@ -2939,6 +3063,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   guardarContextoPortalCompartible(contexto);
 
   const tieneLandingOrganizador = !!(contexto.organizadorId || contexto.organizadorSlug);
+  // Marca sincrona: evita el "flash" de las secciones de marketing propias de LT&C
+  // (planes, deportes que gestionamos, streaming, app, etc.) antes de que resuelva el fetch.
+  if (tieneLandingOrganizador) {
+    document.body.classList.add("ltc-landing-mode");
+  }
   const cargarLandingDelContexto = () =>
     contexto.organizadorSlug
       ? cargarLandingOrganizadorPorSlug(contexto.organizadorSlug)

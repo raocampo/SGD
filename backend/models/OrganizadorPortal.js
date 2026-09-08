@@ -294,7 +294,7 @@ class OrganizadorPortal {
     };
 
     // ── Slug de la landing personalizada (/liga/<slug>) ──────────────────
-    const TEMAS_VALIDOS = new Set(["deportivo", "nocturno", "verde", "vinotinto", "clasico"]);
+    const TEMAS_VALIDOS = new Set(["deportivo", "nocturno", "verde", "vinotinto", "clasico", "personalizado"]);
     let landingSlug = actual.landing_slug || null;
     const slugSolicitado =
       data.landing_slug !== undefined ? this.slugifyLanding(data.landing_slug) : null;

@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Torneos | LT&C</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/ltc/Icono.png" type="image/png" />
+  <link rel="shortcut icon" href="assets/ltc/Icono.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -21,7 +21,7 @@
   <header class="ltc-site-header">
     <div class="container ltc-header-inner">
       <a class="ltc-header-brand" href="index.html">
-        <img src="assets/ltc/Logo.jpeg" alt="LT&C" />
+        <img src="assets/ltc/Icono.png" alt="LT&C" />
         <span>LT&C</span>
         <span class="ltc-header-brand-sub">(Loja Torneos &amp; Competencias)</span>
       </a>
@@ -95,7 +95,7 @@
     <!-- Grid de torneos -->
     <section class="ltc-torneos-grid-section">
       <div class="container">
-        <div id="torneos-grid" class="portal-campeonatos-grid ltc-torneos-grid">
+        <div id="torneos-grid" class="portal-campeonatos-grid ltc-torneos-grid ltc-card-grid-v2">
           <p class="empty-msg">Cargando torneos...</p>
         </div>
       </div>
@@ -201,6 +201,12 @@
       function renderGrid(lista) {
         if (!lista.length) {
           grid.innerHTML = '<p class="empty-msg">No se encontraron torneos con esos filtros.</p>';
+          return;
+        }
+        // Reutiliza el mismo render de tarjetas de la portada (portal.js) para
+        // que "Todos los torneos" se vea idéntico a la página principal.
+        if (typeof renderCardTorneoPrincipal === "function") {
+          grid.innerHTML = lista.map((t) => renderCardTorneoPrincipal(t)).join("");
           return;
         }
         grid.innerHTML = lista

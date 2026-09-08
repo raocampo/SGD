@@ -78,6 +78,88 @@ async function listarUsuariosVisiblesPorOrganizador(user) {
   });
 }
 
+// Enriquece la lista de usuarios con la jerarquía Organizador → Campeonato → Equipo
+// para que el panel de administración pueda agrupar y saber a qué organizador y
+// campeonato pertenece cada dirigente/técnico/jugador.
+async function adjuntarContextoJerarquiaUsuarios(usuarios = []) {
+  if (!Array.isArray(usuarios) || !usuarios.length) return usuarios;
+
+  const [campRes, ueRes] = await Promise.all([
+    pool.query(`
+      SELECT c.id, c.nombre,
+             c.creador_usuario_id AS organizador_id,
+             org.nombre AS organizador_nombre,
+             org.organizacion_nombre AS organizacion_nombre
+      FROM campeonatos c
+      LEFT JOIN usuarios org ON org.id = c.creador_usuario_id
+    `),
+    pool.query(`
+      SELECT ue.usuario_id, e.id AS equipo_id, e.nombre AS equipo_nombre, e.campeonato_id
+      FROM usuario_equipos ue
+      JOIN equipos e ON e.id = ue.equipo_id
+    `),
+  ]);
+
+  const campById = new Map();
+  const campeonatosPorOrganizador = new Map();
+  for (const row of campRes.rows) {
+    campById.set(Number(row.id), row);
+    const orgId = Number(row.organizador_id) || null;
+    if (!orgId) continue;
+    if (!campeonatosPorOrganizador.has(orgId)) campeonatosPorOrganizador.set(orgId, []);
+    campeonatosPorOrganizador.get(orgId).push({ id: Number(row.id), nombre: row.nombre });
+  }
+
+  const equiposPorUsuario = new Map();
+  for (const row of ueRes.rows) {
+    const uid = Number(row.usuario_id);
+    if (!equiposPorUsuario.has(uid)) equiposPorUsuario.set(uid, []);
+    equiposPorUsuario.get(uid).push(row);
+  }
+
+  return usuarios.map((u) => {
+    const rol = String(u.rol || "").toLowerCase();
+    const out = { ...u, equipos_detalle: [], campeonatos: [], organizadores: [], organizador_id: null };
+
+    if (rol === "organizador") {
+      out.campeonatos_propios = campeonatosPorOrganizador.get(Number(u.id)) || [];
+    }
+
+    const filas = equiposPorUsuario.get(Number(u.id)) || [];
+    if (!filas.length) return out;
+
+    const campMap = new Map();
+    const orgMap = new Map();
+    out.equipos_detalle = filas.map((f) => {
+      const camp = f.campeonato_id ? campById.get(Number(f.campeonato_id)) : null;
+      if (camp) {
+        campMap.set(Number(camp.id), { id: Number(camp.id), nombre: camp.nombre });
+        if (camp.organizador_id) {
+          orgMap.set(Number(camp.organizador_id), {
+            id: Number(camp.organizador_id),
+            nombre: camp.organizador_nombre || "",
+            organizacion_nombre: camp.organizacion_nombre || "",
+          });
+        }
+      }
+      return {
+        id: Number(f.equipo_id),
+        nombre: f.equipo_nombre || `Equipo ${f.equipo_id}`,
+        campeonato_id: camp ? Number(camp.id) : null,
+        campeonato_nombre: camp ? camp.nombre : null,
+        organizador_id: camp && camp.organizador_id ? Number(camp.organizador_id) : null,
+      };
+    });
+    out.campeonatos = [...campMap.values()];
+    out.organizadores = [...orgMap.values()];
+    const primerOrg = out.organizadores[0] || null;
+    out.organizador_id = primerOrg ? primerOrg.id : null;
+    out.organizador_nombre = primerOrg ? primerOrg.nombre : null;
+    out.organizacion_nombre_ref = primerOrg ? primerOrg.organizacion_nombre : null;
+    return out;
+  });
+}
+
 // Construye el payload de la landing pública de un organizador ya resuelto por id.
 // Devuelve { status, body } para que lo sirvan tanto la ruta por id como la ruta por slug.
 async function construirLandingOrganizador(organizadorId) {
@@ -526,6 +608,7 @@ const authController = {
       let usuarios = [];
       if (esAdministrador(req.user)) {
         usuarios = await UsuarioAuth.listar();
+        usuarios = await adjuntarContextoJerarquiaUsuarios(usuarios);
       } else if (isOrganizador(req.user)) {
         usuarios = await listarUsuariosVisiblesPorOrganizador(req.user);
       } else {

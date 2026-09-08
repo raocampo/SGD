@@ -42,6 +42,84 @@
     if (el) el.value = value ?? "";
   }
 
+  // ── Tema visual + previsualización en vivo ─────────────────────────────────
+  // Debe reflejar TEMAS_LANDING_ORGANIZADOR de portal.js.
+  const TEMAS_PREVIEW = {
+    deportivo: { from: "#313131", to: "#252525", accent: "#b7e853", heading: "#b7e853" },
+    nocturno: { from: "#1f1f1f", to: "#080808", accent: "#b7e853", heading: "#b7e853" },
+    verde: { from: "#45651f", to: "#233414", accent: "#b7e853", heading: "#ffffff" },
+    vinotinto: { from: "#5b1a2b", to: "#7a1f2f", accent: "#e5c76b", heading: "#f2d98c" },
+    clasico: { from: "#f7f8f4", to: "#dfe8d0", accent: "#b7e853", heading: "#313131" },
+  };
+
+  function textoLegibleSobre(hex) {
+    const c = String(hex || "").replace("#", "");
+    if (c.length !== 6) return "#141414";
+    const lin = (v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    const L =
+      0.2126 * lin(parseInt(c.slice(0, 2), 16)) +
+      0.7152 * lin(parseInt(c.slice(2, 4), 16)) +
+      0.0722 * lin(parseInt(c.slice(4, 6), 16));
+    return L > 0.45 ? "#141414" : "#ffffff";
+  }
+
+  function paletaTemaActual() {
+    const tema = document.getElementById("op-color-tema")?.value || "deportivo";
+    if (tema === "personalizado") {
+      const from = document.getElementById("op-color-primario")?.value || "#313131";
+      const to = document.getElementById("op-color-secundario")?.value || "#1f1f1f";
+      const accent = document.getElementById("op-color-acento")?.value || "#b7e853";
+      return { from, to, accent, heading: accent };
+    }
+    return TEMAS_PREVIEW[tema] || TEMAS_PREVIEW.deportivo;
+  }
+
+  function refrescarPreviewTema() {
+    const box = document.getElementById("op-tema-preview-live");
+    if (!box) return;
+    const p = paletaTemaActual();
+    box.style.setProperty("--tpl-hero-from", p.from);
+    box.style.setProperty("--tpl-hero-to", p.to);
+    box.style.setProperty("--tpl-accent", p.accent);
+    box.style.setProperty("--tpl-accent-fg", textoLegibleSobre(p.accent));
+    box.style.setProperty("--tpl-heading", p.heading);
+  }
+
+  function toggleBloqueColoresPersonalizado() {
+    const tema = document.getElementById("op-color-tema")?.value || "deportivo";
+    const bloque = document.getElementById("op-colores-personalizado");
+    if (bloque) bloque.style.display = tema === "personalizado" ? "block" : "none";
+  }
+
+  function initTemaSelector() {
+    document.querySelectorAll(".op-tema-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".op-tema-btn").forEach((b) => b.classList.remove("activo"));
+        btn.classList.add("activo");
+        const temaInput = document.getElementById("op-color-tema");
+        if (temaInput) temaInput.value = btn.dataset.tema || "deportivo";
+        toggleBloqueColoresPersonalizado();
+        refrescarPreviewTema();
+      });
+    });
+    ["op-color-primario", "op-color-secundario", "op-color-acento"].forEach((id) => {
+      document.getElementById(id)?.addEventListener("input", () => {
+        const temaInput = document.getElementById("op-color-tema");
+        if (temaInput && temaInput.value !== "personalizado") {
+          temaInput.value = "personalizado";
+          document.querySelectorAll(".op-tema-btn").forEach((b) =>
+            b.classList.toggle("activo", b.dataset.tema === "personalizado")
+          );
+          toggleBloqueColoresPersonalizado();
+        }
+        refrescarPreviewTema();
+      });
+    });
+  }
+
   function renderResumen() {
     const resumen = document.getElementById("op-resumen");
     const open = document.getElementById("op-open-landing");
@@ -94,6 +172,11 @@
     document.querySelectorAll(".op-tema-btn").forEach(btn => {
       btn.classList.toggle("activo", btn.dataset.tema === tema);
     });
+    llenarInput("op-color-primario", config.color_primario || "#313131");
+    llenarInput("op-color-secundario", config.color_secundario || "#1f1f1f");
+    llenarInput("op-color-acento", config.color_acento || "#b7e853");
+    toggleBloqueColoresPersonalizado();
+    refrescarPreviewTema();
 
     // Previsualizaciones de imágenes ya guardadas
     mostrarImagenPrevia("op-logo-preview", "op-logo-preview-wrap", config.logo_url);
@@ -463,6 +546,9 @@
     // Tema visual seleccionado
     const colorTema = document.getElementById("op-color-tema")?.value || "deportivo";
     formData.append("color_tema", colorTema);
+    formData.append("color_primario", document.getElementById("op-color-primario")?.value || "");
+    formData.append("color_secundario", document.getElementById("op-color-secundario")?.value || "");
+    formData.append("color_acento", document.getElementById("op-color-acento")?.value || "");
 
     try {
       await window.OrganizadorPortalAPI.actualizarConfig(formData);
@@ -599,6 +685,7 @@
   }
 
   function bindEvents() {
+    initTemaSelector();
     document.getElementById("op-config-form")?.addEventListener("submit", async (event) => {
       try {
         await guardarConfig(event);

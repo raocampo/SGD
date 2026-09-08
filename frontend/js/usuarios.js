@@ -313,23 +313,16 @@
     }
   }
 
-  function renderUsuarios() {
-    const cont = document.getElementById("usuarios-tabla-wrap");
-    if (!cont) return;
+  const ROLES_PLATAFORMA = new Set(["administrador", "operador", "operador_sistema"]);
+  const ROLES_SUB = new Set(["dirigente", "tecnico", "jugador"]);
 
-    if (!usuariosCache.length) {
-      cont.innerHTML = "<p>No hay usuarios registrados.</p>";
-      return;
-    }
-
+  // Fallback: tabla plana (compatibilidad si el backend aún no envía la jerarquía).
+  function renderUsuariosPlano(cont) {
     const meId = usuarioActualId();
     const rows = usuariosCache
       .map((u) => {
-        const equipoIds = Array.isArray(u.equipo_ids) && u.equipo_ids.length
-          ? u.equipo_ids.join(", ")
-          : "-";
-        const disabledDelete = Number(u.id) === meId;
-        const showEdit = esAdminActual();
+        const equipoIds =
+          Array.isArray(u.equipo_ids) && u.equipo_ids.length ? u.equipo_ids.join(", ") : "-";
         const esOrganizador = String(u.rol || "").toLowerCase() === "organizador";
         const landing =
           esOrganizador && esPlanPagado(u.plan_codigo)
@@ -346,54 +339,261 @@
             <td>${esc(formatearPlan(u.plan_codigo))}</td>
             <td>${esc(String(u.plan_estado || "activo"))}</td>
             <td>${equipoIds}</td>
-            <td>${u.activo ? '<span class="badge status-finalizado">Activo</span>' : '<span class="badge status-pendiente">Inactivo</span>'}</td>
-            <td>${
-              u.debe_cambiar_password === true
-                ? '<span class="badge status-pendiente">Pendiente</span>'
-                : '<span class="badge status-finalizado">OK</span>'
-            }</td>
+            <td>${badgeEstado(u)}</td>
+            <td>${badgeClave(u)}</td>
             <td>${landing}</td>
-            <td>
-              ${
-                showEdit
-                  ? `<button class="btn btn-warning" onclick="window.UsuariosUI.editar(${Number(u.id)})">
-                  <i class="fas fa-edit"></i> Editar
-                </button>`
-                  : ""
-              }
-              <button class="btn btn-danger" ${disabledDelete ? "disabled" : ""} onclick="window.UsuariosUI.eliminar(${Number(u.id)})">
-                <i class="fas fa-trash"></i> Eliminar
-              </button>
-            </td>
-          </tr>
-        `;
+            <td class="usuarios-acciones">${accionesUsuario(u)}</td>
+          </tr>`;
       })
       .join("");
-
     cont.innerHTML = `
       <div class="list-table-wrap usuarios-table-wrap">
         <table class="list-table usuarios-list-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nombre</th>
-              <th>Usuario</th>
-              <th>Correo</th>
-              <th>Rol</th>
-              <th>Organización</th>
-              <th>Plan</th>
-              <th>Estado plan</th>
-              <th>Equipos</th>
-              <th>Estado</th>
-              <th>Cambio clave</th>
-              <th>Landing</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th>ID</th><th>Nombre</th><th>Usuario</th><th>Correo</th><th>Rol</th><th>Organización</th>
+            <th>Plan</th><th>Estado plan</th><th>Equipos</th><th>Estado</th><th>Cambio clave</th><th>Landing</th><th>Acciones</th>
+          </tr></thead>
           <tbody>${rows}</tbody>
         </table>
-      </div>
-    `;
+      </div>`;
+  }
+
+  function badgeEstado(u) {
+    return u.activo
+      ? '<span class="badge status-finalizado">Activo</span>'
+      : '<span class="badge status-pendiente">Inactivo</span>';
+  }
+  function badgeClave(u) {
+    return u.debe_cambiar_password === true
+      ? '<span class="badge status-pendiente">Cambio pendiente</span>'
+      : '<span class="badge status-finalizado">OK</span>';
+  }
+  function accionesUsuario(u) {
+    const meId = usuarioActualId();
+    const disabledDelete = Number(u.id) === meId;
+    const editBtn = esAdminActual()
+      ? `<button class="btn btn-warning btn-sm" onclick="window.UsuariosUI.editar(${Number(u.id)})"><i class="fas fa-edit"></i></button>`
+      : "";
+    return `${editBtn}
+      <button class="btn btn-danger btn-sm" ${disabledDelete ? "disabled" : ""} onclick="window.UsuariosUI.eliminar(${Number(u.id)})"><i class="fas fa-trash"></i></button>`;
+  }
+  function nombreEquiposUsuario(u) {
+    if (Array.isArray(u.equipos_detalle) && u.equipos_detalle.length) {
+      return u.equipos_detalle.map((e) => esc(e.nombre)).join(", ");
+    }
+    return Array.isArray(u.equipo_ids) && u.equipo_ids.length ? u.equipo_ids.join(", ") : "—";
+  }
+
+  function filaSub(u) {
+    return `
+      <tr>
+        <td>${Number(u.id || 0)}</td>
+        <td>${esc(u.nombre || "-")}</td>
+        <td>${esc(u.username || "-")}</td>
+        <td>${esc(u.email || "-")}</td>
+        <td><span class="badge badge-rol badge-rol-${esc(String(u.rol || "").toLowerCase())}">${esc((u.rol || "-").toUpperCase())}</span></td>
+        <td>${nombreEquiposUsuario(u)}</td>
+        <td>${badgeEstado(u)}</td>
+        <td>${badgeClave(u)}</td>
+        <td class="usuarios-acciones">${accionesUsuario(u)}</td>
+      </tr>`;
+  }
+
+  function tablaSub(lista) {
+    if (!lista.length) return '<p class="usuarios-empty-mini">Sin usuarios.</p>';
+    return `
+      <div class="list-table-wrap">
+        <table class="list-table usuarios-list-table usuarios-sub-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Nombre</th><th>Usuario</th><th>Correo</th>
+              <th>Rol</th><th>Equipo(s)</th><th>Estado</th><th>Cambio clave</th><th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>${lista.map(filaSub).join("")}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // Agrupa los usuarios en: plataforma LT&C, un bloque por organizador
+  // (con sus campeonatos y los sub-usuarios de cada uno) y huérfanos sin organizador.
+  function agruparUsuarios(usuarios) {
+    const plataforma = [];
+    const huerfanos = [];
+    const orgs = new Map(); // orgId -> { orgUser, campMap: Map<campId,{nombre, users:[]}>, sinCampeonato: [] }
+
+    const organizadoresUser = usuarios.filter((u) => String(u.rol || "").toLowerCase() === "organizador");
+    organizadoresUser.forEach((orgUser) => {
+      const campMap = new Map();
+      (orgUser.campeonatos_propios || []).forEach((c) => {
+        campMap.set(Number(c.id), { nombre: c.nombre || `Campeonato ${c.id}`, users: [] });
+      });
+      orgs.set(Number(orgUser.id), { orgUser, campMap, sinCampeonato: [] });
+    });
+
+    usuarios.forEach((u) => {
+      const rol = String(u.rol || "").toLowerCase();
+      if (rol === "organizador") return;
+      if (ROLES_PLATAFORMA.has(rol)) {
+        plataforma.push(u);
+        return;
+      }
+      if (!ROLES_SUB.has(rol)) {
+        plataforma.push(u);
+        return;
+      }
+      const orgId = Number(u.organizador_id) || null;
+      const bucket = orgId ? orgs.get(orgId) : null;
+      if (!bucket) {
+        huerfanos.push(u);
+        return;
+      }
+      const camps = Array.isArray(u.campeonatos) ? u.campeonatos : [];
+      if (!camps.length) {
+        bucket.sinCampeonato.push(u);
+        return;
+      }
+      camps.forEach((c) => {
+        const cid = Number(c.id);
+        if (!bucket.campMap.has(cid)) {
+          bucket.campMap.set(cid, { nombre: c.nombre || `Campeonato ${cid}`, users: [] });
+        }
+        bucket.campMap.get(cid).users.push(u);
+      });
+    });
+
+    return { plataforma, huerfanos, orgs };
+  }
+
+  function renderOrganizadorCard(bucket) {
+    const o = bucket.orgUser;
+    const orgNombre = o.organizacion_nombre || o.nombre || `Organizador ${o.id}`;
+    const landing =
+      esPlanPagado(o.plan_codigo)
+        ? `<a class="usuarios-org-landing" href="${esc(obtenerLandingUrl(o.id))}" target="_blank" rel="noopener noreferrer"><i class="fas fa-arrow-up-right-from-square"></i> Landing</a>`
+        : "";
+    const totalSub =
+      [...bucket.campMap.values()].reduce((acc, c) => acc + c.users.length, 0) + bucket.sinCampeonato.length;
+
+    const campeonatosHtml = [...bucket.campMap.entries()]
+      .map(
+        ([cid, c]) => `
+        <div class="usuarios-camp-block">
+          <h5 class="usuarios-camp-title"><i class="fas fa-trophy"></i> ${esc(c.nombre)}
+            <span class="usuarios-camp-count">${c.users.length} usuario(s)</span>
+          </h5>
+          ${tablaSub(c.users)}
+        </div>`
+      )
+      .join("");
+
+    const sinCampHtml = bucket.sinCampeonato.length
+      ? `<div class="usuarios-camp-block">
+           <h5 class="usuarios-camp-title usuarios-camp-title-warn"><i class="fas fa-circle-question"></i> Sin campeonato / equipo asignado</h5>
+           ${tablaSub(bucket.sinCampeonato)}
+         </div>`
+      : "";
+
+    return `
+      <details class="usuarios-org-card" open>
+        <summary class="usuarios-org-summary">
+          <div class="usuarios-org-ident">
+            <i class="fas fa-building usuarios-org-ico"></i>
+            <div>
+              <div class="usuarios-org-nombre">${esc(orgNombre)}</div>
+              <div class="usuarios-org-meta">
+                ${esc(o.nombre || "")}${o.username ? " · @" + esc(o.username) : ""}${o.email ? " · " + esc(o.email) : ""}
+              </div>
+            </div>
+          </div>
+          <div class="usuarios-org-tags">
+            <span class="badge badge-plan-min">Plan: ${esc(formatearPlan(o.plan_codigo))}</span>
+            <span class="badge ${o.plan_estado === "suspendido" ? "status-pendiente" : "status-finalizado"}">${esc(String(o.plan_estado || "activo"))}</span>
+            <span class="badge ${o.activo ? "status-finalizado" : "status-pendiente"}">${o.activo ? "Activo" : "Inactivo"}</span>
+            <span class="usuarios-org-subcount">${totalSub} sub-usuario(s)</span>
+            ${landing}
+          </div>
+          <div class="usuarios-org-acciones" onclick="event.preventDefault();event.stopPropagation();">
+            ${accionesUsuario(o)}
+          </div>
+        </summary>
+        <div class="usuarios-org-body">
+          ${campeonatosHtml || '<p class="usuarios-empty-mini">Este organizador todavía no tiene campeonatos.</p>'}
+          ${sinCampHtml}
+        </div>
+      </details>`;
+  }
+
+  function renderUsuarios() {
+    const cont = document.getElementById("usuarios-tabla-wrap");
+    if (!cont) return;
+
+    if (!usuariosCache.length) {
+      cont.innerHTML = "<p>No hay usuarios registrados.</p>";
+      return;
+    }
+
+    // Si la respuesta no trae el contexto de jerarquía (backend sin actualizar),
+    // caemos a una tabla plana para no dejar todo como "sin organizador".
+    const enriquecido = usuariosCache.every((u) => Array.isArray(u.organizadores));
+    if (!enriquecido) {
+      renderUsuariosPlano(cont);
+      return;
+    }
+
+    const { plataforma, huerfanos, orgs } = agruparUsuarios(usuariosCache);
+
+    const plataformaHtml = `
+      <section class="usuarios-grupo">
+        <h4 class="usuarios-grupo-title"><i class="fas fa-shield-halved"></i> Plataforma LT&C
+          <span class="usuarios-grupo-count">${plataforma.length}</span>
+        </h4>
+        ${
+          plataforma.length
+            ? `<div class="list-table-wrap"><table class="list-table usuarios-list-table">
+                <thead><tr><th>ID</th><th>Nombre</th><th>Usuario</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Cambio clave</th><th>Acciones</th></tr></thead>
+                <tbody>${plataforma
+                  .map(
+                    (u) => `<tr>
+                      <td>${Number(u.id || 0)}</td>
+                      <td>${esc(u.nombre || "-")}</td>
+                      <td>${esc(u.username || "-")}</td>
+                      <td>${esc(u.email || "-")}</td>
+                      <td><span class="badge badge-rol badge-rol-${esc(String(u.rol || "").toLowerCase())}">${esc((u.rol || "-").toUpperCase())}</span></td>
+                      <td>${badgeEstado(u)}</td>
+                      <td>${badgeClave(u)}</td>
+                      <td class="usuarios-acciones">${accionesUsuario(u)}</td>
+                    </tr>`
+                  )
+                  .join("")}</tbody>
+              </table></div>`
+            : '<p class="usuarios-empty-mini">Sin usuarios de plataforma.</p>'
+        }
+      </section>`;
+
+    const orgsHtml = `
+      <section class="usuarios-grupo">
+        <h4 class="usuarios-grupo-title"><i class="fas fa-people-group"></i> Organizadores
+          <span class="usuarios-grupo-count">${orgs.size}</span>
+        </h4>
+        ${
+          orgs.size
+            ? [...orgs.values()].map(renderOrganizadorCard).join("")
+            : '<p class="usuarios-empty-mini">No hay organizadores registrados.</p>'
+        }
+      </section>`;
+
+    const huerfanosHtml = huerfanos.length
+      ? `<section class="usuarios-grupo">
+           <h4 class="usuarios-grupo-title usuarios-grupo-title-warn"><i class="fas fa-triangle-exclamation"></i> Sin organizador asignado
+             <span class="usuarios-grupo-count">${huerfanos.length}</span>
+           </h4>
+           <p class="usuarios-empty-mini">Dirigentes/técnicos/jugadores sin equipo o cuyo equipo no está ligado a un campeonato con organizador.</p>
+           ${tablaSub(huerfanos)}
+         </section>`
+      : "";
+
+    cont.innerHTML = `<div class="usuarios-tree">${plataformaHtml}${orgsHtml}${huerfanosHtml}</div>`;
   }
 
   async function cargarUsuarios() {

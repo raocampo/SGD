@@ -81,7 +81,7 @@
 
 /* Header */
 .op-diag-zona.zona-header {
-  background: #1e3a5f;
+  background: #313131;
   color: #fff;
   align-items: center;
   padding: .6rem .8rem;
@@ -89,7 +89,7 @@
 
 /* Hero */
 .op-diag-zona.zona-hero {
-  background: linear-gradient(135deg, #1e3a5f 0%, #2a5298 100%);
+  background: linear-gradient(135deg, #313131 0%, #3f3f3f 100%);
   color: #fff;
   padding: 1rem .8rem;
   flex-direction: column;
@@ -101,7 +101,7 @@
 .op-diag-zona.zona-bienvenida { background: #f8fafc; }
 .op-diag-zona.zona-nosotros { background: #f1f5f9; }
 .op-diag-zona.zona-contacto {
-  background: #1e3a5f;
+  background: #313131;
   color: #fff;
   justify-content: center;
   font-size: .7rem;
@@ -121,8 +121,8 @@
   flex-shrink: 0;
 }
 
-.zona-hero .op-diag-badge { background: #facc15; color: #0a1f4a; }
-.zona-contacto .op-diag-badge { background: #facc15; color: #0a1f4a; }
+.zona-hero .op-diag-badge { background: #b7e853; color: #313131; }
+.zona-contacto .op-diag-badge { background: #b7e853; color: #313131; }
 
 .op-diag-logo-placeholder {
   width: 2rem;
@@ -140,8 +140,8 @@
 
 .op-diag-chip {
   display: inline-block;
-  background: #facc15;
-  color: #0a1f4a;
+  background: #b7e853;
+  color: #313131;
   border-radius: 999px;
   padding: .1rem .5rem;
   font-size: .6rem;
@@ -233,6 +233,118 @@
   height: 30px;
   border-radius: 6px;
   border: 1px solid rgba(0,0,0,.08);
+}
+
+/* ── Layout tema + previsualización en vivo ───────────────────────────────── */
+.op-tema-layout {
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, 300px);
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .op-tema-layout { grid-template-columns: 1fr; }
+}
+
+.op-tema-preview-live {
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  --tpl-hero-from: #313131;
+  --tpl-hero-to: #1f1f1f;
+  --tpl-accent: #b7e853;
+  --tpl-accent-fg: #141414;
+  --tpl-heading: #b7e853;
+}
+.op-tpl-hero {
+  padding: 18px 16px 20px;
+  background: linear-gradient(150deg, var(--tpl-hero-from) 0%, var(--tpl-hero-to) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+}
+.op-tpl-chip {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tpl-accent);
+  border: 1px solid color-mix(in srgb, var(--tpl-accent) 55%, transparent);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+.op-tpl-title {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--tpl-heading);
+}
+.op-tpl-btn,
+.op-tpl-card-btn {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 7px 14px;
+  border-radius: 7px;
+  background: var(--tpl-accent);
+  color: var(--tpl-accent-fg);
+}
+.op-tpl-card {
+  margin: 14px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  text-align: center;
+}
+.op-tpl-card-org {
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: color-mix(in srgb, var(--tpl-accent) 78%, #313131);
+}
+.op-tpl-card-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #141414;
+}
+
+/* ── Selectores de color personalizado ───────────────────────────────────── */
+.op-colores-personalizado {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px dashed var(--border-color, #cbd5e1);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.op-colores-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.op-color-field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  font-size: .78rem;
+  font-weight: 700;
+  color: #475569;
+}
+.op-color-field input[type="color"] {
+  width: 68px;
+  height: 40px;
+  padding: 2px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
 }
 
 /* ── Previsualización de imágenes actuales ────────────────────────────────── */

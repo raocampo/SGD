@@ -1,8 +1,10 @@
 .auth-page {
   min-height: 100vh;
   margin: 0;
-  font-family: "Sora", "Segoe UI", Tahoma, sans-serif;
-  background: linear-gradient(140deg, #7f82be, #a3b6db);
+  font-family: "Isidora Sans Alt", "Sora", "Segoe UI", Tahoma, sans-serif;
+  background:
+    linear-gradient(140deg, rgba(49, 49, 49, 0.88), rgba(49, 49, 49, 0.66)),
+    url("../assets/ltc/bannerLTC.jpg") center center / cover no-repeat;
 }
 
 .auth-shell {
@@ -16,9 +18,9 @@
 .auth-card {
   width: min(1080px, 100%);
   min-height: 620px;
-  background: #f5f7fb;
-  border: 6px solid #7f82be;
-  box-shadow: 0 16px 44px rgba(15, 23, 42, 0.26);
+  background: #f7f8f4;
+  border: 6px solid #b7e853;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
   border-radius: 8px;
   display: grid;
   grid-template-columns: minmax(280px, 440px) minmax(320px, 1fr);
@@ -34,22 +36,22 @@
 }
 
 .auth-logo {
-  width: 44px;
-  height: 44px;
+  width: min(220px, 78%);
+  height: auto;
   object-fit: contain;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .auth-title {
   margin: 0;
-  color: #1f5f65;
+  color: #313131;
   font-size: clamp(1.5rem, 2.8vw, 2rem);
   font-weight: 500;
 }
 
 .auth-brand {
   margin: 0.45rem 0 1rem;
-  color: #425f8a;
+  color: #4f4f4f;
   font-size: 0.78rem;
 }
 
@@ -60,9 +62,9 @@
   align-self: flex-start;
   padding: 0.24rem 0.6rem;
   border-radius: 999px;
-  background: #e8f1ff;
-  border: 1px solid #bfd1e8;
-  color: #2f5e96;
+  background: #edf9cf;
+  border: 1px solid rgba(183, 232, 83, 0.8);
+  color: #313131;
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -78,7 +80,7 @@
 .auth-form-group label {
   display: block;
   font-size: 0.86rem;
-  color: #1e3048;
+  color: #313131;
   font-weight: 600;
   margin-bottom: 0.32rem;
 }
@@ -86,19 +88,19 @@
 .auth-input,
 .auth-select {
   width: 100%;
-  border: 1px solid #ccd6e4;
+  border: 1px solid #d8decf;
   border-radius: 8px;
   padding: 0.62rem 0.74rem;
   background: #fff;
-  color: #0f172a;
+  color: #242424;
   font-size: 0.9rem;
 }
 
 .auth-input:focus,
 .auth-select:focus {
-  border-color: #199f9b;
+  border-color: #b7e853;
   outline: 0;
-  box-shadow: 0 0 0 3px rgba(25, 159, 155, 0.18);
+  box-shadow: 0 0 0 3px rgba(183, 232, 83, 0.26);
 }
 
 .auth-actions {
@@ -122,27 +124,27 @@
 }
 
 .auth-btn-primary {
-  background: #0ea089;
-  color: #fff;
+  background: #313131;
+  color: #b7e853;
 }
 
 .auth-btn-outline {
   background: #fff;
-  border: 1px solid #c8d5e5;
-  color: #2a4165;
+  border: 1px solid #d8decf;
+  color: #313131;
 }
 
 .auth-links {
   margin-top: 0.65rem;
   font-size: 0.76rem;
-  color: #73849b;
+  color: #666;
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
 }
 
 .auth-links a {
-  color: #139f89;
+  color: #313131;
   text-decoration: none;
   font-weight: 700;
 }
@@ -160,7 +162,7 @@
 .auth-help-panel {
   margin-top: 1rem;
   background: #ffffff;
-  border: 1px solid #d7e1ee;
+  border: 1px solid #d8decf;
   border-radius: 10px;
   padding: 0.8rem;
 }
@@ -168,13 +170,13 @@
 .auth-help-panel h3 {
   margin: 0 0 0.4rem;
   font-size: 0.9rem;
-  color: #153b62;
+  color: #313131;
 }
 
 .auth-help-panel p {
   margin: 0 0 0.58rem;
   font-size: 0.79rem;
-  color: #556f8e;
+  color: #5c5c5c;
 }
 
 .auth-media-pane {
@@ -191,15 +193,16 @@
   border-radius: 28% 12% 24% 18%;
   transform: rotate(19deg);
   overflow: hidden;
-  box-shadow: 0 20px 36px rgba(17, 72, 90, 0.34);
-  border: 3px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 20px 36px rgba(0, 0, 0, 0.3);
+  border: 3px solid rgba(183, 232, 83, 0.8);
+  background: #242424;
 }
 
 .auth-shape img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: rotate(-19deg) scale(1.12);
+  transform: rotate(-19deg) scale(1.06);
 }
 
 .auth-mobile-banner {
@@ -231,7 +234,7 @@
   align-items: center;
   gap: 0.35rem;
   font-size: 0.83rem;
-  color: #304a66;
+  color: #414141;
 }
 
 .auth-field-msg {
@@ -244,7 +247,7 @@
 .auth-terms-row {
   margin-top: 0.2rem;
   font-size: 0.75rem;
-  color: #2f435a;
+  color: #414141;
 }
 
 .auth-terms-row label {
@@ -277,7 +280,7 @@
 
   .auth-shape {
     width: min(280px, 65%);
-    box-shadow: 0 14px 24px rgba(17, 72, 90, 0.28);
+    box-shadow: 0 14px 24px rgba(0, 0, 0, 0.24);
   }
 
   .auth-grid-2 {

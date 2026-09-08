@@ -41,8 +41,7 @@
   const AUTH_IDLE_WARNING_MS = 5 * 60 * 1000;
   const AUTH_ACTIVITY_DEBOUNCE_MS = 15000;
   const ROUTE_CONTEXT_PREFIX = "sgd_route_ctx:";
-  const BRAND_FAVICON_SVG = "favicon.svg";
-  const BRAND_FAVICON_FALLBACK = "assets/ltc/Logo.jpeg";
+  const BRAND_FAVICON = "assets/ltc/Icono.png";
   const PUBLIC_PAGES = new Set([
     "index.html",
     "portal.html",
@@ -166,8 +165,8 @@
       #sgd-auth-loader-spinner {
         width: 40px;
         height: 40px;
-        border: 4px solid #dbeafe;
-        border-top-color: #2563eb;
+        border: 4px solid #edf9cf;
+        border-top-color: #313131;
         border-radius: 50%;
         animation: sgd-spin 0.7s linear infinite;
       }
@@ -221,9 +220,9 @@
 
   function aplicarIconoGlobal() {
     if (!document?.head) return;
-    asegurarLinkHead({ rel: "icon", href: BRAND_FAVICON_SVG, type: "image/svg+xml" });
-    asegurarLinkHead({ rel: "shortcut icon", href: BRAND_FAVICON_FALLBACK, type: "image/jpeg" });
-    asegurarLinkHead({ rel: "apple-touch-icon", href: BRAND_FAVICON_FALLBACK, type: "image/jpeg" });
+    asegurarLinkHead({ rel: "icon", href: BRAND_FAVICON, type: "image/png" });
+    asegurarLinkHead({ rel: "shortcut icon", href: BRAND_FAVICON, type: "image/png" });
+    asegurarLinkHead({ rel: "apple-touch-icon", href: BRAND_FAVICON, type: "image/png" });
   }
 
   aplicarIconoGlobal();
@@ -1428,7 +1427,18 @@
     sincronizarEstadoModalBody();
   };
 
+  function inyectarLogoSidebar() {
+    const header = document.querySelector(".sidebar .sidebar-header");
+    if (!header || header.dataset.brandReady === "true") return;
+    header.dataset.brandReady = "true";
+    header.classList.add("sidebar-header-brand");
+    header.innerHTML =
+      '<img class="sidebar-brand-img" src="assets/ltc/Icono.png" alt="LT&C" />' +
+      '<span class="sidebar-brand-text">LT&C</span>';
+  }
+
   function aplicarSidebarPorRol(user) {
+    inyectarLogoSidebar();
     const sidebarNav = document.querySelector(".sidebar-nav");
     if (!sidebarNav) return;
 
@@ -1727,45 +1737,84 @@
       topBar.appendChild(actions);
     }
 
-    let badge = actions.querySelector(".top-user-badge");
-    if (!badge) {
-      badge = document.createElement("div");
-      badge.className = "top-user-badge";
-      badge.style.padding = "6px 10px";
-      badge.style.borderRadius = "8px";
-      badge.style.background = "rgba(15,23,42,.08)";
-      badge.style.fontSize = "12px";
-      badge.style.fontWeight = "700";
-      actions.appendChild(badge);
+    // Disparador: el nombre del usuario. Cambiar clave / Salir viven dentro del
+    // menú desplegable que se abre al hacer clic sobre él.
+    let trigger = actions.querySelector(".top-user-trigger");
+    if (!trigger) {
+      trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "top-user-badge top-user-trigger";
+      trigger.setAttribute("aria-haspopup", "true");
+      trigger.setAttribute("aria-expanded", "false");
+      trigger.innerHTML =
+        '<i class="fas fa-user-circle top-user-avatar"></i>' +
+        '<span class="top-user-badge-text"></span>' +
+        '<i class="fas fa-chevron-down top-user-caret"></i>';
+      actions.appendChild(trigger);
     }
+
     const rol = String(user.rol || "").toUpperCase();
     const lectura = user?.solo_lectura === true ? " | SOLO LECTURA" : "";
     const passwordPendiente = user?.debe_cambiar_password === true ? " | CAMBIO CLAVE PENDIENTE" : "";
-    badge.textContent = `${user.nombre || user.email || "Usuario"} (${rol}${lectura})`;
-    badge.textContent += passwordPendiente;
+    trigger.querySelector(".top-user-badge-text").textContent =
+      `${user.nombre || user.email || "Usuario"} (${rol}${lectura})${passwordPendiente}`;
 
-    let btnPassword = actions.querySelector(".top-user-password-btn");
+    let menu = actions.querySelector(".top-user-menu");
+    if (!menu) {
+      menu = document.createElement("div");
+      menu.className = "top-user-menu";
+      actions.appendChild(menu);
+    }
+
+    let btnPassword = menu.querySelector(".top-user-password-btn");
     if (!btnPassword) {
       btnPassword = document.createElement("button");
       btnPassword.type = "button";
       btnPassword.className = "btn btn-outline top-user-password-btn";
       btnPassword.innerHTML = '<i class="fas fa-key"></i> Cambiar clave';
       btnPassword.addEventListener("click", async () => {
+        cerrarMenu();
         await window.Auth.promptChangePassword({ forced: false });
       });
-      actions.appendChild(btnPassword);
+      menu.appendChild(btnPassword);
     }
 
-    let btnLogoutTop = actions.querySelector(".top-user-logout-btn");
+    let btnLogoutTop = menu.querySelector(".top-user-logout-btn");
     if (!btnLogoutTop) {
       btnLogoutTop = document.createElement("button");
       btnLogoutTop.type = "button";
       btnLogoutTop.className = "btn btn-danger top-user-logout-btn";
       btnLogoutTop.innerHTML = '<i class="fas fa-right-from-bracket"></i> Salir';
       btnLogoutTop.addEventListener("click", () => {
+        cerrarMenu();
         window.Auth.logout();
       });
-      actions.appendChild(btnLogoutTop);
+      menu.appendChild(btnLogoutTop);
+    }
+
+    function cerrarMenu() {
+      actions.classList.remove("open");
+      trigger.setAttribute("aria-expanded", "false");
+    }
+    function alternarMenu() {
+      const abierto = actions.classList.toggle("open");
+      trigger.setAttribute("aria-expanded", abierto ? "true" : "false");
+    }
+
+    if (trigger.dataset.menuBound !== "true") {
+      trigger.dataset.menuBound = "true";
+      trigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        alternarMenu();
+      });
+      document.addEventListener("click", (e) => {
+        if (actions.classList.contains("open") && !actions.contains(e.target)) {
+          cerrarMenu();
+        }
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") cerrarMenu();
+      });
     }
   }
 
@@ -1864,6 +1913,16 @@
     const target = sidebar || nav;
     if (!target) return;
 
+    // En el layout con sidebar el botón muestra el ícono de LT&C cuando el menú
+    // está contraído y una "X" cuando está abierto (en vez del ícono hamburguesa).
+    if (toggle && sidebar && toggle.dataset.brandReady !== "true") {
+      toggle.dataset.brandReady = "true";
+      toggle.classList.add("nav-toggle-brandable");
+      toggle.innerHTML =
+        '<img class="nav-toggle-brand" src="assets/ltc/Icono.png" alt="Menú LT&C" />' +
+        '<i class="fas fa-xmark nav-toggle-close" aria-hidden="true"></i>';
+    }
+
     const SIDEBAR_MOBILE_BREAKPOINT = sidebar ? 1200 : 768;
     function isMobile() {
       return window.innerWidth <= SIDEBAR_MOBILE_BREAKPOINT;
@@ -1872,6 +1931,7 @@
       if (!toggle) return;
       const opened = target.classList.contains("nav-open") || !target.classList.contains("collapsed");
       toggle.setAttribute("aria-expanded", opened ? "true" : "false");
+      toggle.classList.toggle("is-open", opened);
     }
     function setInitialState() {
       if (sidebar) {
