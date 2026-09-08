@@ -2,6 +2,8 @@
 
 Ultima actualizacion: 2026-03-10
 
+Produccion actual: `https://ltyc.corpsimtelec.com/`. Las referencias `*.onrender.com` de esta guia son ejemplos o antecedentes de despliegue; para QA operativo usar el dominio productivo actual.
+
 ## Enfoque recomendado
 Este proyecto ya esta preparado para desplegarse como un solo Web Service en Render:
 
@@ -118,7 +120,7 @@ Checklist minima:
 5. modulo financiero y planillaje leyendo datos reales
 
 Estado actual del despliegue de referencia:
-- servicio operativo validado: `https://ltyc.onrender.com`
+- servicio operativo validado actualmente: `https://ltyc.corpsimtelec.com/`
 - checks completados:
   - `/salud`
   - `/testDb`

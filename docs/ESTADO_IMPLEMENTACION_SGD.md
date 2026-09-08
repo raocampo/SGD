@@ -1,3 +1,41 @@
+## 2026-09-07 - Sincronizacion y estado para continuar
+
+### Estado actualizado
+- Proyecto sincronizado con `origin/main` hasta:
+  - `bbf242a feat: URL personalizada /liga/<slug> por cliente + tema visual real y SEO en la landing`.
+- La landing publica de organizador ahora puede abrirse por ruta personalizada `/liga/<slug>`.
+- `frontend/vercel.json` queda versionado para reescribir `/liga/:slug` y `/liga/:slug/` hacia `index.html`.
+- El guard frontend reconoce `/liga/<slug>` como `index.html`.
+- `portal.js` resuelve slug desde el path, carga la landing por endpoint publico y conserva el contexto de organizador para enlaces internos.
+- `Mi Landing` permite editar slug/tema y guardar claves de configuracion visual que antes no se persistian correctamente.
+- Se agrego cobertura QA al smoke frontend para verificar que `/liga/<slug>` resuelva como pagina publica.
+- Produccion actual para QA y operacion: `https://ltyc.corpsimtelec.com/`.
+- Se aplico el manual de marca LT&C al frontend:
+  - paleta base `#313131` / `#b7e853`,
+  - logo e icono oficiales desde `docs/imagenes/`,
+  - favicon PNG oficial,
+  - login/registro, portal publico, dashboard base, tema de landing y defaults de plantillas/posters alineados.
+
+### Verificacion local
+- Checks de sintaxis backend/frontend sobre los archivos tocados por el pull.
+- Busqueda sin residuos de `Logo.jpeg`, favicon SVG directo y paleta anterior azul/dorada en HTML/CSS/JS.
+- Verificacion HTTP local con servidor estatico:
+  - paginas base, CSS/JS criticos y PNG oficiales responden `200 OK`.
+- Activos oficiales `Logo.png` e `Icono.png` revisados visualmente en local.
+- Captura visual automatizada queda pendiente porque no hubo navegador conectado en Browser runtime y Edge headless no genero archivo de screenshot.
+- `git diff --check` OK.
+- `npm --prefix backend run smoke:frontend` -> `49/49 PASS`.
+
+### Pendientes inmediatos
+1. Validar en produccion una URL real `https://ltyc.corpsimtelec.com/liga/<slug-real>`.
+2. Validar el mismo flujo en frontend separado/Vercel, confirmando el rewrite de `frontend/vercel.json`.
+3. Probar desde `organizador-portal.html` el alta/edicion de slug y tema visual.
+4. Revisar SEO basico en navegador real: `title`, `description`, Open Graph y enlaces compartidos.
+5. Continuar QA visual pendiente de portal publico en mobile/tablet y fichas por categoria con datos reales.
+6. Completar QA visual del rebrand LT&C en navegador real para portada, portal, login/registro y dashboards.
+
+---
+
 ## 2026-06-02 - Cierre portal publico y pendientes para continuar el 2026-06-03
 
 ### Estado actualizado
@@ -20,14 +58,14 @@
 - `git diff --check` OK.
 
 ### Pendientes inmediatos para el 2026-06-03
-1. Revisar deploy en Render:
-   - `https://ltyc.onrender.com/index.html`,
-   - `https://ltyc.onrender.com/torneos.html`.
+1. Revisar deploy en produccion:
+   - `https://ltyc.corpsimtelec.com/index.html`,
+   - `https://ltyc.corpsimtelec.com/torneos.html`.
 2. Validar que la portada muestre solo `en_curso` y que `torneos.html` no muestre `borrador`, `planificacion` ni `suspendido`.
 3. Validar composicion visual en escritorio grande: cards centradas, no demasiado anchas, con lectura equilibrada.
 4. Validar header publico en escritorio/laptop: enlaces y botones sin encimarse.
 5. Probar responsive en 1920px, 1366px, 768px y 390px.
-6. Si Render no refleja el cambio, confirmar estado del deploy y hacer recarga dura por cache del navegador.
+6. Si produccion no refleja el cambio, confirmar estado del deploy y hacer recarga dura por cache del navegador.
 
 ---
 

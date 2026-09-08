@@ -14,7 +14,7 @@ de PC o celular, y compartir en redes sociales.
 
 ### ¿Qué es Render y por qué importa?
 
-**Render** es el servicio de hosting donde vive la aplicación (`ltyc.onrender.com`).
+La aplicacion productiva se accede actualmente en `https://ltyc.corpsimtelec.com/`. En este plan, las menciones a Render/onrender corresponden a la infraestructura o dominio anterior usado durante la implementacion inicial.
 El plan actual es gratuito (Free). Esto significa:
 - RAM: 512 MB — suficiente para lógica de negocio y mensajes en tiempo real
 - CPU: compartida — suficiente para Socket.io (mensajes JSON pequeños)

@@ -2,6 +2,8 @@
 
 Sistema web para administracion de campeonatos: eventos/categorias, equipos, jugadores, sorteo, grupos, fixture, planillaje oficial, tablas, portal publico y modulo financiero base.
 
+Produccion actual: `https://ltyc.corpsimtelec.com/`.
+
 Estado del proyecto (cierre 2026-06-02 America/Guayaquil, continuar 2026-06-03): funcional en flujo principal; CMS institucional en cierre operativo, coexistencia web/mobile validada con QA automatizado, modulo de pases extendido con contabilidad e historial por jugador/equipo, tablas con clasificacion por grupo, eliminacion automatica/manual por categoria, configuracion compartida de playoff y clasificacion manual sugerida con candidatos externos del evento. Despliegue Render ya validado con PostgreSQL remoto y soporte para `uploads` en disco persistente. Portal publico ya expone `Playoff` por categoria, incorpora base de branding/publicidad por organizador, endurece filtros de publicacion y evita exponer cedulas en fichas/nominas publicas. La portada publica ahora muestra solo torneos `en_curso`, con grilla compacta 3/2/1 y cards centradas para pantallas grandes; `torneos.html` lista solamente torneos `en_curso`, `inscripcion` y `finalizado`, dejando fuera `borrador`, `planificacion` y `suspendido`. El panel web ya cierra sesion por inactividad tras 1 hora y la gestion de jugadores permite reutilizar la misma cedula en distintas categorias, manteniendo el bloqueo solo dentro de la misma categoria/evento. La nomina de jugadores ya puede quedar asociada directamente al `evento_id`, de modo que un mismo equipo reutilizado en varias categorias deje de compartir plantel por accidente. El ajuste de foto para carné ahora guarda un recorte estable para que preview y PDF coincidan, y el encuadre puede ajustarse con arrastre directo, guia visual de rostro y accion de restablecer. En eliminatorias ya se soporta la plantilla `Mejores perdedores (24 -> 12vos -> 8vos)` con cupos `MP1..MP4` calculados segun ranking deportivo; la categoria es la fuente de verdad para `playoff_plantilla` y `playoff_tercer_puesto`, y la llave permite editar manualmente cruces pendientes sin repetir equipos dentro de la misma ronda. Ademas ya existe la plantilla `manual_asistida`, que parte de una sugerencia balanceada y deja al organizador definir el orden `P1..Pn` antes de generar la llave real. La plantilla publicable del playoff ya admite fondo personalizado, conectores reforzados, anchos dinamicos por texto y bloque compacto de `Tercer y cuarto` para exportacion `PNG/PDF`. La API mobile queda ampliada para crear campeonatos y categorias con colores, morosidad, tabla acumulada, playoff, carnet, juveniles, ascendentes y estados normalizados de planilla.
 
 ## Tabla de Contenidos
@@ -33,7 +35,7 @@ Flujo principal operativo:
 ## Novedades Recientes (2026-06-02)
 - Sincronizacion y publicacion:
   - `git pull` ejecutado sobre `main`; resultado `Already up to date`.
-  - Commits publicados en `origin/main` para revisar en Render:
+  - Commits publicados en `origin/main` para revisar en produccion:
     - `db45378 fix: ajustar torneos visibles en portal publico`.
     - `e8f62af fix: compactar cards de torneos en portada`.
 - Portal publico:
@@ -50,7 +52,7 @@ Flujo principal operativo:
   - `GET http://localhost:5000/api/public/campeonatos?include_finalizados=true` -> `NO_PERMITIDOS=0`.
   - `git diff --check` OK.
 - Pendiente inmediato:
-  - QA visual en Render de `https://ltyc.onrender.com/index.html` y `https://ltyc.onrender.com/torneos.html` en escritorio grande, laptop, tablet y movil.
+  - QA visual en produccion de `https://ltyc.corpsimtelec.com/index.html` y `https://ltyc.corpsimtelec.com/torneos.html` en escritorio grande, laptop, tablet y movil.
 
 ## Novedades Recientes (2026-05-28)
 - Sincronizacion:

@@ -75,3 +75,6 @@ docs/reportes/
 
 # Archivos de configuración local
 config.local.js
+
+.vercel
+.env*
