@@ -5367,6 +5367,8 @@ body.ltc-home-page .ltc-home-sponsors-track {
   border: 0;
   border-radius: 999px;
   font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .ltc-home-billing-tabs button.is-active {

@@ -134,6 +134,10 @@
     });
   }
 
+  function escHtmlDash(t) {
+    return String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
   function renderPreciosPlanes(planes) {
     const wrap = document.getElementById("dash-admin-precios-wrap");
     const btn = document.getElementById("dash-admin-precios-guardar");
@@ -144,38 +148,93 @@
       return;
     }
 
+    // ── Matriz de planes de pago para las tarjetas de la portada (4 planes x 4 periodos) ──
+    const tarjetas = planes.filter((p) => String(p.familia).toLowerCase() === "tarjeta");
+    let matrizHtml = "";
+    if (tarjetas.length) {
+      const planesOrden = [];
+      const periodosOrden = [];
+      const porClave = {};
+      tarjetas.forEach((p) => {
+        porClave[`${p.grupo_plan}|${p.periodo}`] = p;
+        if (!planesOrden.some((x) => x.id === p.grupo_plan)) {
+          planesOrden.push({ id: p.grupo_plan, nombre: p.grupo_plan_nombre || p.grupo_plan, orden: p.orden_plan ?? 99 });
+        }
+        if (!periodosOrden.some((x) => x.id === p.periodo)) {
+          periodosOrden.push({ id: p.periodo, nombre: p.periodo_nombre || p.periodo, orden: p.orden_periodo ?? 99 });
+        }
+      });
+      planesOrden.sort((a, b) => a.orden - b.orden);
+      periodosOrden.sort((a, b) => a.orden - b.orden);
+
+      matrizHtml = `
+        <section class="dash-precios-group dash-precios-tarjetas">
+          <div class="dash-precios-group-title">Planes de pago (tarjetas de la portada) — USD</div>
+          <div class="dash-precios-matrix-scroll">
+            <table class="dash-precios-matrix">
+              <thead>
+                <tr>
+                  <th>Plan</th>
+                  ${periodosOrden.map((per) => `<th>${escHtmlDash(per.nombre)}</th>`).join("")}
+                </tr>
+              </thead>
+              <tbody>
+                ${planesOrden.map((plan) => `
+                  <tr>
+                    <th scope="row">${escHtmlDash(plan.nombre)}</th>
+                    ${periodosOrden.map((per) => {
+                      const p = porClave[`${plan.id}|${per.id}`];
+                      if (!p) return "<td></td>";
+                      return `
+                        <td>
+                          <input
+                            type="number" min="0" step="0.01" inputmode="decimal"
+                            value="${p.precio_mensual}"
+                            data-plan-codigo="${escHtmlDash(p.codigo)}"
+                            id="precio-plan-${escHtmlDash(p.codigo)}"
+                            aria-label="${escHtmlDash(plan.nombre + ' ' + per.nombre)} (USD)"
+                          />
+                        </td>`;
+                    }).join("")}
+                  </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>
+          <p class="dash-precios-hint">Estos valores alimentan las tarjetas de <strong>Planes</strong> en la portada pública. El plan Free se configura aparte.</p>
+        </section>`;
+    }
+
+    // ── Familias heredadas (comparador detallado planes.html) ──
     const ordenFamilias = ["pruebas", "mensual", "campeonato", "anual"];
     const titulosFamilia = {
       pruebas: "Pruebas y acceso gratuito",
-      mensual: "Planes mensuales",
-      campeonato: "Planes por campeonato",
-      anual: "Planes anuales",
+      mensual: "Planes mensuales (comparador detallado)",
+      campeonato: "Planes por campeonato (comparador detallado)",
+      anual: "Planes anuales (comparador detallado)",
     };
-
     const grupos = planes.reduce((acc, p) => {
       const familia = String(p.familia || "general").toLowerCase();
+      if (familia === "tarjeta") return acc;
       if (!acc[familia]) acc[familia] = [];
       acc[familia].push(p);
       return acc;
     }, {});
 
-    wrap.innerHTML = ordenFamilias
+    const legacyHtml = ordenFamilias
       .filter((familia) => Array.isArray(grupos[familia]) && grupos[familia].length)
       .map((familia) => `
         <section class="dash-precios-group">
           <div class="dash-precios-group-title">${titulosFamilia[familia] || familia}</div>
-          <div class="dash-precios-grid" id="dash-admin-precios-inputs-${familia}">
+          <div class="dash-precios-grid">
             ${grupos[familia].map((p) => `
               <div class="dash-precio-item">
-                <span class="precio-badge precio-badge-familia-${familia} precio-badge-nivel-${String(p.nivel || "").toLowerCase()}">${p.nombre}</span>
-                <label>Precio ${p.periodicidad || "(USD)"}</label>
+                <span class="precio-badge precio-badge-familia-${familia} precio-badge-nivel-${String(p.nivel || "").toLowerCase()}">${escHtmlDash(p.nombre)}</span>
+                <label>Precio ${escHtmlDash(p.periodicidad || "(USD)")}</label>
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
+                  type="number" min="0" step="0.01" inputmode="decimal"
                   value="${p.precio_mensual}"
-                  data-plan-codigo="${p.codigo}"
-                  id="precio-plan-${p.codigo}"
+                  data-plan-codigo="${escHtmlDash(p.codigo)}"
+                  id="precio-plan-${escHtmlDash(p.codigo)}"
                 />
               </div>
             `).join("")}
@@ -184,13 +243,16 @@
       `)
       .join("");
 
+    wrap.innerHTML = matrizHtml
+      + (legacyHtml ? `<details class="dash-precios-legacy"><summary>Tarifas del comparador detallado (planes.html)</summary>${legacyHtml}</details>` : "");
+
     if (btn) btn.style.display = "";
   }
 
   async function guardarPrecios() {
     const btn = document.getElementById("dash-admin-precios-guardar");
     const msg = document.getElementById("dash-admin-precios-msg");
-    const inputs = document.querySelectorAll("#dash-admin-precios-inputs input[data-plan-codigo]");
+    const inputs = document.querySelectorAll("#dash-admin-precios-wrap input[data-plan-codigo]");
     if (!inputs.length) return;
 
     const precios = {};

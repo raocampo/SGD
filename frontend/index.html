@@ -454,19 +454,19 @@
           <p>Tenemos planes que se ajustan a tu presupuesto.</p>
         </div>
 
-        <div class="ltc-home-billing-tabs" aria-label="Periodos de pago">
-          <button class="is-active" type="button">Mensual</button>
-          <button type="button">Trimestral</button>
-          <button type="button">Semestral</button>
-          <button type="button">Anual</button>
+        <div class="ltc-home-billing-tabs" id="ltc-home-billing-tabs" aria-label="Periodos de pago">
+          <button class="is-active" type="button" data-periodo="mensual">Mensual</button>
+          <button type="button" data-periodo="trimestral">Trimestral</button>
+          <button type="button" data-periodo="semestral">Semestral</button>
+          <button type="button" data-periodo="anual">Anual</button>
         </div>
 
         <div class="ltc-home-plans-grid">
           <article class="ltc-home-plan-card">
             <span>Torneos</span>
-            <h3>Pequeno</h3>
+            <h3>Pequeño</h3>
             <div class="ltc-home-plan-icon"><i class="far fa-star"></i></div>
-            <p class="ltc-home-plan-price" data-price-family-min="mensual">Desde $20 <small>/mes</small></p>
+            <p class="ltc-home-plan-price" data-price-plan="pequeno">$4.70 <small>/mes</small></p>
             <ul>
               <li>Hasta 300 jugadores por torneo</li>
               <li>Hasta 3 patrocinadores por torneo</li>
@@ -474,13 +474,13 @@
               <li>Campeonatos ilimitados</li>
               <li>URL personalizada</li>
             </ul>
-            <a class="ltc-home-btn ltc-home-btn-outline-dark" href="register.html?plan=demo" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
+            <a class="ltc-home-btn ltc-home-btn-outline-dark" href="register.html?plan=base" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
           </article>
           <article class="ltc-home-plan-card">
             <span>Torneos</span>
             <h3>Intermedio</h3>
             <div class="ltc-home-plan-icon ltc-home-plan-icon-accent"><i class="fas fa-trophy"></i></div>
-            <p class="ltc-home-plan-price" data-price-family-min="campeonato">Desde $200 <small>/campeonato</small></p>
+            <p class="ltc-home-plan-price" data-price-plan="intermedio">$6.00 <small>/mes</small></p>
             <ul>
               <li>Hasta 600 jugadores por torneo</li>
               <li>Hasta 6 patrocinadores por torneo</li>
@@ -488,13 +488,13 @@
               <li>Campeonatos ilimitados</li>
               <li>Resumen e informes</li>
             </ul>
-            <a class="ltc-home-btn ltc-home-btn-lime" href="register.html?plan=demo" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
+            <a class="ltc-home-btn ltc-home-btn-lime" href="register.html?plan=competencia" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
           </article>
           <article class="ltc-home-plan-card">
             <span>Torneos</span>
             <h3>Grande</h3>
             <div class="ltc-home-plan-icon"><i class="far fa-gem"></i></div>
-            <p class="ltc-home-plan-price" data-price-family-min="anual">Desde $49 <small>/ano</small></p>
+            <p class="ltc-home-plan-price" data-price-plan="grande">$7.50 <small>/mes</small></p>
             <ul>
               <li>Hasta 900 jugadores por campeonato</li>
               <li>Hasta 12 patrocinadores por campeonato</li>
@@ -502,13 +502,13 @@
               <li>Archivos adjuntos</li>
               <li>Mejor resolucion de imagen</li>
             </ul>
-            <a class="ltc-home-btn ltc-home-btn-outline-dark" href="register.html?plan=demo" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
+            <a class="ltc-home-btn ltc-home-btn-outline-dark" href="register.html?plan=premium" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
           </article>
           <article class="ltc-home-plan-card ltc-home-plan-card-featured">
             <span>Organizador</span>
             <h3>Profesional</h3>
             <div class="ltc-home-plan-icon ltc-home-plan-icon-accent"><i class="far fa-gem"></i></div>
-            <p class="ltc-home-plan-price">$0 <small>/plan free</small></p>
+            <p class="ltc-home-plan-price" data-price-plan="profesional">$10.30 <small>/mes</small></p>
             <ul>
               <li>Numero ilimitado de jugadores</li>
               <li>Numero ilimitado de patrocinadores</li>
@@ -516,7 +516,7 @@
               <li>Imprimir informes</li>
               <li>Acceso a la API JSON</li>
             </ul>
-            <a class="ltc-home-btn ltc-home-btn-lime" href="register.html?plan=free" target="_blank" rel="noopener noreferrer">Empezar gratis</a>
+            <a class="ltc-home-btn ltc-home-btn-lime" href="register.html?plan=premium" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
           </article>
         </div>
       </div>

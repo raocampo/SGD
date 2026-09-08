@@ -180,6 +180,54 @@
     .dash-precios-group {
       margin-bottom: 18px;
     }
+    /* Matriz de planes de pago (portada) */
+    .dash-precios-matrix-scroll { overflow-x: auto; }
+    .dash-precios-matrix {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 460px;
+    }
+    .dash-precios-matrix th,
+    .dash-precios-matrix td {
+      padding: 8px 10px;
+      text-align: center;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .dash-precios-matrix thead th {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #4b5563;
+      background: #f7f8f4;
+    }
+    .dash-precios-matrix tbody th {
+      text-align: left;
+      font-size: 13px;
+      font-weight: 800;
+      color: #313131;
+      white-space: nowrap;
+    }
+    .dash-precios-matrix td input {
+      width: 92px;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 13px;
+      text-align: right;
+    }
+    .dash-precios-tarjetas { background: #fbfff2; border: 1px solid #e6f0cf; border-radius: 10px; padding: 14px 16px; }
+    .dash-precios-hint { font-size: 12px; color: #64748b; margin: 10px 0 0; }
+    .dash-precios-legacy { margin-top: 8px; }
+    .dash-precios-legacy > summary {
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748b;
+      padding: 8px 0;
+    }
+    .dash-precios-legacy[open] > summary { margin-bottom: 10px; }
     .dash-precios-group-title {
       font-size: 12px;
       font-weight: 800;

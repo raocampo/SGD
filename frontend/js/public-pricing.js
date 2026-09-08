@@ -12,6 +12,32 @@
     anual_premium: { codigo: 'anual_premium', nombre: 'Premium anual', familia: 'anual', nivel: 'premium', registrable: false, plan_registro: null, periodicidad: '/ año', precio_mensual: 1000 },
   };
 
+  // Planes de pago de las tarjetas de la portada: 4 planes x 4 periodos.
+  const TARJETA_PLANES = ['pequeno', 'intermedio', 'grande', 'profesional'];
+  const TARJETA_PERIODOS = {
+    mensual: { sufijo: '/mes' },
+    trimestral: { sufijo: '/trimestre' },
+    semestral: { sufijo: '/semestre' },
+    anual: { sufijo: '/año' },
+  };
+  const TARJETA_DEFAULTS = {
+    pequeno: { mensual: 4.7, trimestral: 14.1, semestral: 28.2, anual: 56.4 },
+    intermedio: { mensual: 6, trimestral: 18, semestral: 36, anual: 72 },
+    grande: { mensual: 7.5, trimestral: 22.5, semestral: 45, anual: 90 },
+    profesional: { mensual: 10.3, trimestral: 30.9, semestral: 61.8, anual: 123.6 },
+  };
+  TARJETA_PLANES.forEach((plan) => {
+    Object.keys(TARJETA_PERIODOS).forEach((periodo) => {
+      const codigo = `tarjeta_${plan}_${periodo}`;
+      PRICE_CATALOG_FALLBACK[codigo] = {
+        codigo, familia: 'tarjeta', grupo_plan: plan, periodo,
+        periodicidad: TARJETA_PERIODOS[periodo].sufijo,
+        precio_mensual: TARJETA_DEFAULTS[plan][periodo],
+      };
+    });
+  });
+  let periodoTarjetaActivo = 'mensual';
+
   let catalogByCode = { ...PRICE_CATALOG_FALLBACK };
   let formasPagoCache = null;
   let planActual = { codigo: '', nombre: '', precio: '', planRegistro: null, registrable: false };
@@ -40,6 +66,26 @@
     return `$${amount.toLocaleString('es-EC')} <span>${suffix || ''}</span>`;
   }
 
+  function formatPlanCardPrice(value, suffix) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return `A convenir <small>${suffix || ''}</small>`;
+    }
+    const txt = amount.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `$${txt} <small>${suffix || ''}</small>`;
+  }
+
+  // Tarjetas de la portada: precio del plan segun el periodo activo.
+  function applyTarjetaPricing() {
+    const periodo = TARJETA_PERIODOS[periodoTarjetaActivo] ? periodoTarjetaActivo : 'mensual';
+    document.querySelectorAll('[data-price-plan]').forEach((el) => {
+      const plan = String(el.dataset.pricePlan || '').trim().toLowerCase();
+      const item = catalogByCode[`tarjeta_${plan}_${periodo}`]
+        || PRICE_CATALOG_FALLBACK[`tarjeta_${plan}_${periodo}`];
+      if (item) el.innerHTML = formatPlanCardPrice(item.precio_mensual, TARJETA_PERIODOS[periodo].sufijo);
+    });
+  }
+
   function applyPricingToElements() {
     Object.values(catalogByCode).forEach((plan) => {
       const el = document.querySelector(`[data-price-code="${plan.codigo}"]`) || document.getElementById(`precio-plan-${plan.codigo}`);
@@ -53,6 +99,21 @@
       const minimo = positivos.length ? Math.min(...positivos) : 0;
       const suffix = items[0]?.periodicidad || '';
       el.innerHTML = formatPrice(minimo, suffix).replace('$', 'Desde $');
+    });
+
+    applyTarjetaPricing();
+  }
+
+  function bindBillingTabs() {
+    const tabs = document.getElementById('ltc-home-billing-tabs');
+    if (!tabs || tabs.dataset.bound === 'true') return;
+    tabs.dataset.bound = 'true';
+    tabs.querySelectorAll('button[data-periodo]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        periodoTarjetaActivo = btn.dataset.periodo || 'mensual';
+        tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('is-active', b === btn));
+        applyTarjetaPricing();
+      });
     });
   }
 
@@ -230,6 +291,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     setupNav();
+    bindBillingTabs();
     applyPricingToElements();
     fetchPublicPrices();
     bindModalTriggers();

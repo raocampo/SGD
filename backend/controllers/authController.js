@@ -45,6 +45,28 @@ function planLandingHabilitado(planCodigo) {
   return esPlanPagado(planCodigo);
 }
 
+// Normaliza una entrada del catálogo de precios para el frontend (público y admin).
+function mapearPlanCatalogo(item, precios = {}) {
+  return {
+    codigo: item.codigo,
+    nombre: item.nombre,
+    tipo: item.tipo,
+    familia: item.familia || "general",
+    nivel: item.nivel || item.codigo,
+    registrable: item.registrable === true,
+    plan_registro: item.plan_registro || null,
+    periodicidad: item.sufijo_precio || "/ mes",
+    precio_mensual: precios[item.codigo] ?? item.precio_default ?? 0,
+    // Solo presentes en la familia "tarjeta" (planes de portada 4x4).
+    grupo_plan: item.grupo_plan || null,
+    grupo_plan_nombre: item.grupo_plan_nombre || null,
+    periodo: item.periodo || null,
+    periodo_nombre: item.periodo_nombre || null,
+    orden_plan: Number.isFinite(item.orden_plan) ? item.orden_plan : null,
+    orden_periodo: Number.isFinite(item.orden_periodo) ? item.orden_periodo : null,
+  };
+}
+
 async function sincronizarPerfilOrganizador(usuario, data = {}) {
   if (String(usuario?.rol || "").toLowerCase() !== "organizador") return;
 
@@ -945,17 +967,7 @@ const authController = {
     try {
       const precios = await obtenerPreciosPlanes();
       const catalogo = obtenerCatalogoPreciosPublicos();
-      const planes = Object.values(catalogo).map((item) => ({
-        codigo: item.codigo,
-        nombre: item.nombre,
-        tipo: item.tipo,
-        familia: item.familia || "general",
-        nivel: item.nivel || item.codigo,
-        registrable: item.registrable === true,
-        plan_registro: item.plan_registro || null,
-        periodicidad: item.sufijo_precio || "/ mes",
-        precio_mensual: precios[item.codigo] ?? item.precio_default ?? 0,
-      }));
+      const planes = Object.values(catalogo).map((item) => mapearPlanCatalogo(item, precios));
       return res.json({ ok: true, planes });
     } catch (error) {
       console.error("Error preciosPublicos:", error);
@@ -970,17 +982,7 @@ const authController = {
       }
       const precios = await obtenerPreciosPlanes();
       const catalogo = obtenerCatalogoPreciosPublicos();
-      const planes = Object.values(catalogo).map((item) => ({
-        codigo: item.codigo,
-        nombre: item.nombre,
-        tipo: item.tipo,
-        familia: item.familia || "general",
-        nivel: item.nivel || item.codigo,
-        registrable: item.registrable === true,
-        plan_registro: item.plan_registro || null,
-        periodicidad: item.sufijo_precio || "/ mes",
-        precio_mensual: precios[item.codigo] ?? item.precio_default ?? 0,
-      }));
+      const planes = Object.values(catalogo).map((item) => mapearPlanCatalogo(item, precios));
       return res.json({ ok: true, planes });
     } catch (error) {
       console.error("Error listarPreciosPlanes:", error);

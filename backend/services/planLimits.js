@@ -259,6 +259,55 @@ const CATALOGO_PRECIOS_PUBLICOS = {
   },
 };
 
+// ── Planes de pago para las tarjetas de la portada (index.html) ───────────────
+// 4 planes × 4 periodos. El precio de cada celda se edita en el panel admin
+// (pestaña Planes) y las tarjetas de la portada lo consumen por periodo activo.
+const PLANES_PAGO_TARJETAS = {
+  planes: [
+    { id: "pequeno", nombre: "Pequeño", plan_registro: "base" },
+    { id: "intermedio", nombre: "Intermedio", plan_registro: "competencia" },
+    { id: "grande", nombre: "Grande", plan_registro: "premium" },
+    { id: "profesional", nombre: "Profesional", plan_registro: "premium" },
+  ],
+  periodos: [
+    { id: "mensual", nombre: "Mensual", sufijo: "/ mes" },
+    { id: "trimestral", nombre: "Trimestral", sufijo: "/ trimestre" },
+    { id: "semestral", nombre: "Semestral", sufijo: "/ semestre" },
+    { id: "anual", nombre: "Anual", sufijo: "/ año" },
+  ],
+};
+
+const PRECIOS_TARJETAS_DEFAULT = {
+  pequeno: { mensual: 4.7, trimestral: 14.1, semestral: 28.2, anual: 56.4 },
+  intermedio: { mensual: 6, trimestral: 18, semestral: 36, anual: 72 },
+  grande: { mensual: 7.5, trimestral: 22.5, semestral: 45, anual: 90 },
+  profesional: { mensual: 10.3, trimestral: 30.9, semestral: 61.8, anual: 123.6 },
+};
+
+PLANES_PAGO_TARJETAS.planes.forEach((plan, iPlan) => {
+  PLANES_PAGO_TARJETAS.periodos.forEach((periodo, iPeriodo) => {
+    const codigo = `tarjeta_${plan.id}_${periodo.id}`;
+    CATALOGO_PRECIOS_PUBLICOS[codigo] = {
+      codigo,
+      nombre: `${plan.nombre} · ${periodo.nombre}`,
+      tipo: "tarjeta",
+      familia: "tarjeta",
+      nivel: plan.id,
+      grupo_plan: plan.id,
+      grupo_plan_nombre: plan.nombre,
+      periodo: periodo.id,
+      periodo_nombre: periodo.nombre,
+      orden_plan: iPlan,
+      orden_periodo: iPeriodo,
+      sufijo_precio: periodo.sufijo,
+      descripcion_precio: `Precio plan ${plan.nombre} (${periodo.nombre}) (USD)`,
+      precio_default: PRECIOS_TARJETAS_DEFAULT[plan.id]?.[periodo.id] ?? 0,
+      registrable: false,
+      plan_registro: plan.plan_registro || null,
+    };
+  });
+});
+
 function obtenerCatalogoPreciosPublicos() {
   return { ...CATALOGO_PRECIOS_PUBLICOS };
 }
@@ -480,6 +529,7 @@ module.exports = {
   PLANES_PUBLICOS,
   PLANES_PAGADOS,
   CATALOGO_PRECIOS_PUBLICOS,
+  PLANES_PAGO_TARJETAS,
   normalizarPlanCodigo,
   esPlanPublico,
   esPlanPagado,
