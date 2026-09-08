@@ -4842,17 +4842,65 @@ body.ltc-landing-mode .ltc-home-hero-slider img:not(:first-child) {
 }
 
 .ltc-card-grid-v2 .portal-card-media {
+  position: relative;
   aspect-ratio: 16 / 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 18px;
   background: linear-gradient(135deg, #f8faf3 0%, #eef3e3 100%);
+  overflow: hidden;
 }
 
 .ltc-card-grid-v2 .portal-card-media img {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
   object-position: center;
   border-radius: 6px;
+  transition: transform 240ms ease;
+}
+
+.ltc-card-grid-v2 .portal-campeonato-card:hover .portal-card-media img {
+  transform: scale(1.025);
+}
+
+/* Badge de estado superpuesto sobre la imagen (modelo paginaLTC) */
+.ltc-card-grid-v2 .portal-card-estado {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  color: #ffffff;
+  background: rgba(20, 20, 20, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.ltc-card-grid-v2 .portal-card-estado.estado-en_curso {
+  color: var(--ltc-home-ink-dark);
+  background: var(--ltc-home-lime);
+  border-color: var(--ltc-home-lime);
+}
+.ltc-card-grid-v2 .portal-card-estado.estado-inscripcion {
+  background: #2f6df6;
+  border-color: #2f6df6;
+}
+.ltc-card-grid-v2 .portal-card-estado.estado-finalizado {
+  background: var(--ltc-home-ink-soft);
+  border-color: var(--ltc-home-ink-soft);
+}
+.ltc-card-grid-v2 .portal-card-estado.estado-borrador {
+  background: #8a6d1f;
+  border-color: #8a6d1f;
 }
 
 .ltc-card-grid-v2 .portal-card-body {
@@ -4862,16 +4910,6 @@ body.ltc-landing-mode .ltc-home-hero-slider img:not(:first-child) {
   gap: 12px;
   padding: 18px;
   text-align: center;
-}
-
-.ltc-card-grid-v2 .badge-estado {
-  align-self: center;
-  border-radius: 8px;
-}
-
-.ltc-card-grid-v2 .estado-en_curso {
-  color: var(--ltc-home-ink-dark);
-  background: var(--ltc-home-lime);
 }
 
 .ltc-card-grid-v2 .portal-card-organizer {
@@ -4890,8 +4928,23 @@ body.ltc-landing-mode .ltc-home-hero-slider img:not(:first-child) {
   line-height: 1.25;
 }
 
-.ltc-card-grid-v2 .portal-card-date,
-.ltc-card-grid-v2 .portal-card-meta {
+/* Pastilla de deporte */
+.ltc-card-grid-v2 .portal-card-sport {
+  align-self: center;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  color: var(--ltc-home-ink-dark);
+  background: var(--ltc-home-lime);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.ltc-card-grid-v2 .portal-card-date {
   width: 100%;
   min-height: 44px;
   display: inline-flex;
@@ -4906,6 +4959,10 @@ body.ltc-landing-mode .ltc-home-hero-slider img:not(:first-child) {
   font-size: 0.82rem;
   font-weight: 800;
   line-height: 1.35;
+}
+.ltc-card-grid-v2 .portal-card-date i {
+  color: var(--ltc-home-lime-strong);
+  flex: 0 0 auto;
 }
 
 .ltc-card-grid-v2 .portal-card-categorias {
@@ -4931,7 +4988,10 @@ body.ltc-landing-mode .ltc-home-hero-slider img:not(:first-child) {
   text-align: left;
   text-transform: uppercase;
 }
-
+.ltc-card-grid-v2 .portal-card-categoria-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .ltc-card-grid-v2 .portal-card-categoria-chip strong {
   min-width: 30px;
   min-height: 26px;
@@ -4945,17 +5005,33 @@ body.ltc-landing-mode .ltc-home-hero-slider img:not(:first-child) {
   font-size: 0.82rem;
   line-height: 1;
 }
+.ltc-card-grid-v2 .portal-card-categoria-chip small {
+  color: var(--ltc-home-ink-soft);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: right;
+}
 
 .ltc-card-grid-v2 .portal-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: auto;
 }
 
 .ltc-card-grid-v2 .portal-card-btn {
-  width: 100%;
+  flex: 1 1 148px;
   min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border-radius: 8px;
   color: var(--ltc-home-ink-dark);
   background: var(--ltc-home-lime);
+  font-weight: 800;
+  text-decoration: none;
 }
 
 .ltc-home-clients-section {
@@ -5594,8 +5670,11 @@ body.ltc-home-page .ltc-home-sponsors-track {
 }
 
 .ltc-home-footer-inner img {
-  width: 236px;
-  padding: 7px;
+  width: auto;
+  max-width: 50%;
+  height: 2rem;
+  object-fit: contain;
+  padding: 4px 8px;
   background: var(--ltc-home-ink);
   border: 1px solid rgba(183, 232, 83, 0.5);
   border-radius: 8px;

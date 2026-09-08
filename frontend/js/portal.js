@@ -408,6 +408,36 @@ function formatearFechaPortal(fecha) {
   });
 }
 
+function formatearFechaLargaPortal(fecha) {
+  const d = parseFechaLocalPortal(fecha);
+  if (!d || Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es-EC", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+// Rango de fechas en formato largo para las tarjetas (mismo modelo que paginaLTC).
+function rangoFechaLargoPortal(torneo) {
+  const ini = formatearFechaLargaPortal(torneo?.fecha_inicio);
+  const fin = formatearFechaLargaPortal(torneo?.fecha_fin);
+  if (ini && fin) return `${ini} - ${fin}`;
+  return ini || fin || "Fechas por publicar";
+}
+
+function etiquetaDeportePortal(torneo) {
+  const raw = String(torneo?.tipo_deporte || torneo?.tipo_futbol || "futbol")
+    .trim()
+    .toLowerCase();
+  if (raw.includes("basquet")) return "Básquetbol";
+  if (raw.includes("futsal") || raw.includes("sala")) return "Futsala";
+  if (raw.includes("indor") || raw.includes("indoor")) return "Indor";
+  if (raw.includes("11")) return "Fútbol 11";
+  if (raw.includes("_9") || raw === "futbol9") return "Fútbol 9";
+  if (raw.includes("_8")) return "Fútbol 8";
+  if (raw.includes("_7") || raw.includes("f7")) return "Fútbol 7";
+  if (raw.includes("_6")) return "Fútbol 6";
+  if (raw.includes("_5")) return "Fútbol 5";
+  return "Fútbol";
+}
+
 function limpiarResumenPortal(texto = "", max = 180) {
   const clean = String(texto || "")
     .replace(/<[^>]*>/g, " ")
@@ -578,13 +608,17 @@ function renderCategoriasResumenCard(torneo) {
   return `
     <div class="portal-card-categorias">
       ${categorias
-        .map(
-          (categoria) => `
+        .map((categoria) => {
+          const n = Number.parseInt(categoria.total_equipos, 10) || 0;
+          const valor = n > 0
+            ? `<strong>${n.toLocaleString("es-EC")}</strong>`
+            : `<small>Por confirmar</small>`;
+          return `
             <span class="portal-card-categoria-chip">
-              ${escPortal(categoria.nombre)} <strong>${categoria.total_equipos}</strong>
-            </span>
-          `
-        )
+              <span>${escPortal(categoria.nombre)}</span>
+              ${valor}
+            </span>`;
+        })
         .join("")}
     </div>
   `;
@@ -602,15 +636,13 @@ function renderCardTorneoPrincipal(torneo) {
     "Activo";
   const imagenCard = obtenerImagenCardPortal(torneo);
   const imagenCardFallback = estado === "en_curso" ? IMG_TORNEO_ACTIVO : IMG_TORNEO_PROXIMO;
-  const fechaInicio = formatearFechaPortal(torneo?.fecha_inicio);
-  const fechaFin = formatearFechaPortal(torneo?.fecha_fin);
   const campeonatoId = Number.parseInt(torneo?.id, 10) || 0;
   const organizadorId = Number.parseInt(portalContextoActual?.organizadorId, 10) || 0;
   const hrefPortal = construirUrlPortalCampeonato(campeonatoId, {
     organizadorId: organizadorId || null,
   });
-  const textoFecha =
-    fechaInicio && fechaFin ? `Fecha: ${fechaInicio} - ${fechaFin}` : fechaInicio ? `Fecha: ${fechaInicio}` : "Fecha por confirmar";
+  const textoFecha = rangoFechaLargoPortal(torneo);
+  const deporte = etiquetaDeportePortal(torneo);
 
   return `
     <article
@@ -621,14 +653,17 @@ function renderCardTorneoPrincipal(torneo) {
       tabindex="0"
     >
       <div class="portal-card-media">
-        <img src="${imagenCard}" alt="${nombre}" onerror="this.onerror=null;this.src='${imagenCardFallback}';" />
+        <img src="${imagenCard}" alt="${nombre}" loading="lazy" onerror="this.onerror=null;this.src='${imagenCardFallback}';" />
+        <span class="portal-card-estado estado-${estado}">${labelEstado}</span>
       </div>
       <div class="portal-card-body">
-        <span class="badge-estado estado-${estado}">${labelEstado}</span>
         ${organizador ? `<p class="portal-card-organizer">${escPortal(organizador)}</p>` : ""}
         <h3>${nombre}</h3>
-        <p class="portal-card-date">${textoFecha}</p>
-        ${renderMetaCardPortal(torneo)}
+        <div class="portal-card-sport"><i class="fas fa-medal"></i> ${escPortal(deporte)}</div>
+        <div class="portal-card-date">
+          <i class="fas fa-calendar-days"></i>
+          <span>${escPortal(textoFecha)}</span>
+        </div>
         ${renderCategoriasResumenCard(torneo)}
         <div class="portal-card-actions">
           <a
@@ -637,7 +672,7 @@ function renderCardTorneoPrincipal(torneo) {
             target="_blank"
             rel="noopener noreferrer"
             onclick="event.stopPropagation(); abrirDetallePortalCampeonato(${campeonatoId}, ${organizadorId || "null"}); return false;"
-          >Ver torneo</a>
+          ><i class="fas fa-arrow-up-right-from-square"></i> Ver torneo</a>
         </div>
       </div>
     </article>
