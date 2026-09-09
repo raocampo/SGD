@@ -1328,8 +1328,18 @@
   }
 
   async function apiFetch(url, opts = {}) {
-    const token = localStorage.getItem("token");
-    const res = await fetch(url, {
+    // El frontend se sirve por separado (Vercel); las rutas /api viven en el
+    // backend (Railway). Resolvemos la base con el helper global de core.js.
+    const token =
+      (window.Auth && typeof window.Auth.getToken === "function" && window.Auth.getToken()) ||
+      localStorage.getItem("sgd_auth_token") ||
+      localStorage.getItem("token") ||
+      "";
+    const base = window.resolveBackendBaseUrl
+      ? window.resolveBackendBaseUrl()
+      : (window.API_BASE_URL || "").replace(/\/api\/?$/, "") || window.location.origin;
+    const fullUrl = /^https?:\/\//i.test(url) ? url : `${base}${url}`;
+    const res = await fetch(fullUrl, {
       method: opts.method || "GET",
       headers: {
         "Content-Type": "application/json",
