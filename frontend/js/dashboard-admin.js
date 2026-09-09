@@ -200,53 +200,19 @@
               </tbody>
             </table>
           </div>
-          <p class="dash-precios-hint">Estos valores alimentan las tarjetas de <strong>Planes</strong> en la portada pública. El plan Free se configura aparte.</p>
+          <p class="dash-precios-hint">Estos valores alimentan las tarjetas de <strong>Planes</strong> de la portada pública y de <strong>planes.html</strong>. El plan Free se configura aparte.</p>
         </section>`;
     }
 
-    // ── Familias heredadas (comparador detallado planes.html) ──
-    const ordenFamilias = ["pruebas", "mensual", "campeonato", "anual"];
-    const titulosFamilia = {
-      pruebas: "Pruebas y acceso gratuito",
-      mensual: "Planes mensuales (comparador detallado)",
-      campeonato: "Planes por campeonato (comparador detallado)",
-      anual: "Planes anuales (comparador detallado)",
-    };
-    const grupos = planes.reduce((acc, p) => {
-      const familia = String(p.familia || "general").toLowerCase();
-      if (familia === "tarjeta") return acc;
-      if (!acc[familia]) acc[familia] = [];
-      acc[familia].push(p);
-      return acc;
-    }, {});
+    // Plan Free: informativo (su configuración no vive aquí).
+    const free = planes.find((p) => String(p.codigo).toLowerCase() === "free");
+    const freeHtml = free
+      ? `<p class="dash-precios-hint" style="margin-top:14px;"><i class="fas fa-circle-info"></i> El <strong>plan Free</strong> se mantiene con su diseño y límites definidos; no se edita el precio aquí.</p>`
+      : "";
 
-    const legacyHtml = ordenFamilias
-      .filter((familia) => Array.isArray(grupos[familia]) && grupos[familia].length)
-      .map((familia) => `
-        <section class="dash-precios-group">
-          <div class="dash-precios-group-title">${titulosFamilia[familia] || familia}</div>
-          <div class="dash-precios-grid">
-            ${grupos[familia].map((p) => `
-              <div class="dash-precio-item">
-                <span class="precio-badge precio-badge-familia-${familia} precio-badge-nivel-${String(p.nivel || "").toLowerCase()}">${escHtmlDash(p.nombre)}</span>
-                <label>Precio ${escHtmlDash(p.periodicidad || "(USD)")}</label>
-                <input
-                  type="number" min="0" step="0.01" inputmode="decimal"
-                  value="${p.precio_mensual}"
-                  data-plan-codigo="${escHtmlDash(p.codigo)}"
-                  id="precio-plan-${escHtmlDash(p.codigo)}"
-                />
-              </div>
-            `).join("")}
-          </div>
-        </section>
-      `)
-      .join("");
+    wrap.innerHTML = (matrizHtml || '<p class="dash-empty-msg">Sin planes de pago configurados.</p>') + freeHtml;
 
-    wrap.innerHTML = matrizHtml
-      + (legacyHtml ? `<details class="dash-precios-legacy"><summary>Tarifas del comparador detallado (planes.html)</summary>${legacyHtml}</details>` : "");
-
-    if (btn) btn.style.display = "";
+    if (btn) btn.style.display = matrizHtml ? "" : "none";
   }
 
   async function guardarPrecios() {

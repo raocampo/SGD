@@ -30,14 +30,7 @@
       <nav class="ltc-header-nav" id="ltc-nav">
         <a href="index.html#home">Inicio</a>
         <a href="index.html#torneos">Torneos</a>
-        <div class="ltc-nav-item ltc-nav-item-submenu">
-          <a href="planes.html">Planes</a>
-          <div class="ltc-nav-submenu">
-            <a href="#mensual">Plan mensual</a>
-            <a href="#campeonato">Plan campeonato</a>
-            <a href="#anual">Plan anual</a>
-          </div>
-        </div>
+        <a href="planes.html">Planes</a>
         <a href="index.html#galeria">Galería</a>
         <a href="index.html#auspiciantes">Auspiciantes</a>
         <a href="index.html#contacto">Contacto</a>
@@ -97,166 +90,80 @@
       </div>
     </section>
 
-    <section class="ltc-plan-family-section" id="mensual">
+    <section class="ltc-plan-family-section" id="planes">
       <div class="container">
         <div class="ltc-section-title ltc-section-title-left">
-          <h2>Plan mensual</h2>
-          <p>Para organizadores que trabajan de forma continua y prefieren una suscripción mes a mes.</p>
+          <h2>Planes de pago</h2>
+          <p>Elige el plan y el periodo de facturación que mejor se adapta a tu operación. Los precios se actualizan al instante según el periodo.</p>
         </div>
+
+        <div class="ltc-home-billing-tabs" id="ltc-home-billing-tabs" aria-label="Periodos de pago">
+          <button class="is-active" type="button" data-periodo="mensual">Mensual</button>
+          <button type="button" data-periodo="trimestral">Trimestral</button>
+          <button type="button" data-periodo="semestral">Semestral</button>
+          <button type="button" data-periodo="anual">Anual</button>
+        </div>
+
         <div class="ltc-plan-family-grid">
           <article class="ltc-plan-offer-card">
             <header>
-              <span class="ltc-plan-chip">Mensual</span>
-              <h3>Básico</h3>
-              <p class="ltc-pricing-amount" data-price-code="mensual_base">$20 <span>/ mes</span></p>
+              <span class="ltc-plan-chip">Torneos</span>
+              <h3>Pequeño</h3>
+              <p class="ltc-pricing-amount" data-price-plan="pequeno">$4.70 <span>/ mes</span></p>
             </header>
             <ul>
-              <li>4 campeonatos / torneos</li>
-              <li>3 categorías por campeonato</li>
-              <li>32 equipos por categoría</li>
-              <li>25 jugadores por equipo</li>
-              <li>Sin auspiciantes, usuarios, carnés, financiero ni reportes PDF</li>
-              <li>Portal básico</li>
+              <li>Hasta 300 jugadores por torneo</li>
+              <li>Hasta 3 patrocinadores por torneo</li>
+              <li>Torneo sin anuncios</li>
+              <li>Campeonatos ilimitados</li>
+              <li>URL personalizada</li>
             </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="mensual_base">Elegir básico mensual</button>
+            <a class="ltc-pricing-btn" href="register.html?plan=base" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
           </article>
           <article class="ltc-plan-offer-card ltc-plan-offer-card-highlight">
             <header>
-              <span class="ltc-plan-chip ltc-plan-chip-hot">Mensual</span>
-              <h3>Competencia</h3>
-              <p class="ltc-pricing-amount" data-price-code="mensual_competencia">$60 <span>/ mes</span></p>
+              <span class="ltc-plan-chip ltc-plan-chip-hot">Torneos</span>
+              <h3>Intermedio</h3>
+              <p class="ltc-pricing-amount" data-price-plan="intermedio">$6.00 <span>/ mes</span></p>
             </header>
             <ul>
-              <li>20 campeonatos / torneos</li>
-              <li>20 categorías por campeonato</li>
-              <li>128 equipos por categoría</li>
-              <li>40 jugadores por equipo</li>
-              <li>Con carnés, reportes PDF, financiero y portal personalizado</li>
+              <li>Hasta 600 jugadores por torneo</li>
+              <li>Hasta 6 patrocinadores por torneo</li>
+              <li>Torneo sin anuncios</li>
+              <li>Campeonatos ilimitados</li>
+              <li>Resumen e informes</li>
             </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="mensual_competencia">Elegir competencia mensual</button>
+            <a class="ltc-pricing-btn" href="register.html?plan=competencia" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
           </article>
           <article class="ltc-plan-offer-card">
             <header>
-              <span class="ltc-plan-chip">Mensual</span>
-              <h3>Premium</h3>
-              <p class="ltc-pricing-amount" data-price-code="mensual_premium">$150 <span>/ mes</span></p>
+              <span class="ltc-plan-chip">Torneos</span>
+              <h3>Grande</h3>
+              <p class="ltc-pricing-amount" data-price-plan="grande">$7.50 <span>/ mes</span></p>
             </header>
             <ul>
-              <li>Sin límites técnicos actuales</li>
-              <li>Con todo el acceso, portal personalizado y prioridad de soporte</li>
-              <li>Módulo de transmisión (servicio streaming)</li>
+              <li>Hasta 900 jugadores por campeonato</li>
+              <li>Hasta 12 patrocinadores por campeonato</li>
+              <li>Torneo sin anuncios</li>
+              <li>Archivos adjuntos</li>
+              <li>Mejor resolución de imagen</li>
             </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="mensual_premium">Elegir premium mensual</button>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="ltc-plan-family-section" id="campeonato">
-      <div class="container">
-        <div class="ltc-section-title ltc-section-title-left">
-          <h2>Plan campeonato</h2>
-          <p>Contratación por torneo específico para operadores que trabajan por evento o por temporada corta.</p>
-        </div>
-        <div class="ltc-plan-family-grid">
-          <article class="ltc-plan-offer-card ltc-plan-offer-card-commercial">
-            <header>
-              <span class="ltc-plan-chip">Campeonato</span>
-              <h3>Básico</h3>
-              <p class="ltc-pricing-amount" data-price-code="campeonato_base">$200 <span>/ campeonato</span></p>
-            </header>
-            <ul>
-              <li>4 campeonatos</li>
-              <li>3 categorías por campeonato</li>
-              <li>32 equipos por categoría</li>
-              <li>25 jugadores por equipo</li>
-              <li>Sin auspiciantes, usuarios, carnés, financiero ni reportes PDF</li>
-              <li>Portal básico</li>
-            </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="campeonato_base">Solicitar plan campeonato</button>
-          </article>
-          <article class="ltc-plan-offer-card ltc-plan-offer-card-commercial ltc-plan-offer-card-highlight">
-            <header>
-              <span class="ltc-plan-chip ltc-plan-chip-hot">Campeonato</span>
-              <h3>Competencia</h3>
-              <p class="ltc-pricing-amount" data-price-code="campeonato_competencia">$500 <span>/ campeonato</span></p>
-            </header>
-            <ul>
-              <li>20 campeonatos</li>
-              <li>20 categorías por campeonato</li>
-              <li>128 equipos por categoría</li>
-              <li>40 jugadores por equipo</li>
-              <li>Con carnés, reportes PDF, financiero y portal personalizado</li>
-            </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="campeonato_competencia">Solicitar competencia campeonato</button>
+            <a class="ltc-pricing-btn" href="register.html?plan=premium" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
           </article>
           <article class="ltc-plan-offer-card ltc-plan-offer-card-commercial">
             <header>
-              <span class="ltc-plan-chip">Campeonato</span>
-              <h3>Premium</h3>
-              <p class="ltc-pricing-amount" data-price-code="campeonato_premium">$1500 <span>/ campeonato</span></p>
+              <span class="ltc-plan-chip">Organizador</span>
+              <h3>Profesional</h3>
+              <p class="ltc-pricing-amount" data-price-plan="profesional">$10.30 <span>/ mes</span></p>
             </header>
             <ul>
-              <li>Sin límites técnicos actuales</li>
-              <li>Con todo el acceso, portal personalizado y prioridad de soporte</li>
-              <li>Módulo de transmisión (servicio streaming)</li>
+              <li>Número ilimitado de jugadores</li>
+              <li>Número ilimitado de patrocinadores</li>
+              <li>URL personalizada</li>
+              <li>Imprimir informes</li>
+              <li>Acceso a la API JSON</li>
             </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="campeonato_premium">Solicitar premium campeonato</button>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="ltc-plan-family-section" id="anual">
-      <div class="container">
-        <div class="ltc-section-title ltc-section-title-left">
-          <h2>Plan anual</h2>
-          <p>Enfocado en ligas u operadores que necesitan continuidad comercial y acompañamiento durante todo el año.</p>
-        </div>
-        <div class="ltc-plan-family-grid">
-          <article class="ltc-plan-offer-card ltc-plan-offer-card-annual">
-            <header>
-              <span class="ltc-plan-chip">Anual</span>
-              <h3>Básico</h3>
-              <p class="ltc-pricing-amount" data-price-code="anual_base">$49 <span>/ año</span></p>
-            </header>
-            <ul>
-              <li>4 campeonatos</li>
-              <li>3 categorías por campeonato</li>
-              <li>32 equipos por categoría</li>
-              <li>25 jugadores por equipo</li>
-              <li>Sin auspiciantes, usuarios, carnés, financiero ni reportes PDF</li>
-              <li>Portal básico</li>
-            </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="anual_base">Solicitar plan anual básico</button>
-          </article>
-          <article class="ltc-plan-offer-card ltc-plan-offer-card-annual ltc-plan-offer-card-highlight">
-            <header>
-              <span class="ltc-plan-chip ltc-plan-chip-hot">Anual</span>
-              <h3>Competencia</h3>
-              <p class="ltc-pricing-amount" data-price-code="anual_competencia">$500 <span>/ año</span></p>
-            </header>
-            <ul>
-              <li>20 campeonatos</li>
-              <li>20 categorías por campeonato</li>
-              <li>128 equipos por categoría</li>
-              <li>40 jugadores por equipo</li>
-              <li>Con carnés, reportes PDF, financiero y portal personalizado</li>
-            </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="anual_competencia">Solicitar plan anual competencia</button>
-          </article>
-          <article class="ltc-plan-offer-card ltc-plan-offer-card-annual">
-            <header>
-              <span class="ltc-plan-chip">Anual</span>
-              <h3>Premium</h3>
-              <p class="ltc-pricing-amount" data-price-code="anual_premium">$1000 <span>/ año</span></p>
-            </header>
-            <ul>
-              <li>Sin límites técnicos actuales</li>
-              <li>Con todo el acceso, portal personalizado y prioridad de soporte</li>
-              <li>Módulo de transmisión (servicio streaming)</li>
-            </ul>
-            <button class="ltc-pricing-btn ltc-pricing-btn-pago" data-plan="anual_premium">Solicitar plan anual premium</button>
+            <a class="ltc-pricing-btn" href="register.html?plan=premium" target="_blank" rel="noopener noreferrer">Suscribirse al plan</a>
           </article>
         </div>
       </div>

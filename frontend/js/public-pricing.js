@@ -69,10 +69,10 @@
   function formatPlanCardPrice(value, suffix) {
     const amount = Number(value);
     if (!Number.isFinite(amount) || amount <= 0) {
-      return `A convenir <small>${suffix || ''}</small>`;
+      return `A convenir <span>${suffix || ''}</span>`;
     }
     const txt = amount.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return `$${txt} <small>${suffix || ''}</small>`;
+    return `$${txt} <span>${suffix || ''}</span>`;
   }
 
   // Tarjetas de la portada: precio del plan segun el periodo activo.
