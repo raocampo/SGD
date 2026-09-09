@@ -1,5 +1,6 @@
 (function () {
   let equiposCache = [];
+  let campeonatosCache = [];
   let usuariosCache = [];
   let usuarioEditandoId = null;
   const organizadorPortalCache = new Map();
@@ -295,22 +296,101 @@
       equipoSel.disabled = !usaEquipo;
       if (!usaEquipo) equipoSel.value = "";
     }
+    const orgRefGroup = document.getElementById("usr-asignacion-org-group");
+    const campRefGroup = document.getElementById("usr-asignacion-camp-group");
+    const orgRef = document.getElementById("usr-organizacion-ref");
+    const campRef = document.getElementById("usr-campeonato-ref");
+    // La cascada Organización → Campeonato → Equipo solo aplica al admin creando
+    // técnico/dirigente/jugador. El organizador ya trabaja acotado a sus equipos.
+    const mostrarCascada = usaEquipo && esAdminActual();
+    if (orgRefGroup) orgRefGroup.style.display = mostrarCascada ? "" : "none";
+    if (campRefGroup) campRefGroup.style.display = mostrarCascada ? "" : "none";
+    if (!mostrarCascada) {
+      if (orgRef) orgRef.value = "";
+      if (campRef) { campRef.value = ""; campRef.disabled = true; }
+    }
   }
 
   async function cargarEquipos() {
     try {
       const data = await ApiClient.get("/equipos");
       equiposCache = data?.equipos || [];
-      const sel = document.getElementById("usr-equipo");
-      if (!sel) return;
-      sel.innerHTML = '<option value="">Sin asignar</option>';
-      equiposCache.forEach((e) => {
-        sel.innerHTML += `<option value="${Number(e.id)}">${esc(e.nombre || `Equipo ${e.id}`)}</option>`;
-      });
+      poblarEquiposRef(document.getElementById("usr-campeonato-ref")?.value || "");
     } catch (error) {
       console.error(error);
       mostrarNotificacion("No se pudieron cargar equipos", "warning");
     }
+  }
+
+  async function cargarCampeonatosAdmin() {
+    if (!esAdminActual()) return;
+    try {
+      const data = await ApiClient.get("/campeonatos");
+      campeonatosCache = data?.campeonatos || [];
+    } catch (error) {
+      console.error(error);
+      campeonatosCache = [];
+    }
+  }
+
+  // Llena el select de organizaciones a partir de los usuarios rol "organizador".
+  function poblarOrganizaciones() {
+    const sel = document.getElementById("usr-organizacion-ref");
+    if (!sel) return;
+    const orgs = usuariosCache
+      .filter((u) => String(u.rol || "").toLowerCase() === "organizador")
+      .sort((a, b) =>
+        String(a.organizacion_nombre || a.nombre || "").localeCompare(
+          String(b.organizacion_nombre || b.nombre || "")
+        )
+      );
+    const actual = sel.value;
+    sel.innerHTML = '<option value="">— Selecciona organización —</option>';
+    orgs.forEach((o) => {
+      const etiqueta = o.organizacion_nombre
+        ? `${o.organizacion_nombre} (${o.nombre || o.email || "org"})`
+        : (o.nombre || o.email || `Organizador ${o.id}`);
+      sel.innerHTML += `<option value="${Number(o.id)}">${esc(etiqueta)}</option>`;
+    });
+    if (actual) sel.value = actual;
+  }
+
+  function poblarCampeonatosRef(organizadorId) {
+    const sel = document.getElementById("usr-campeonato-ref");
+    if (!sel) return;
+    const oid = Number.parseInt(organizadorId, 10);
+    const lista = Number.isFinite(oid) && oid > 0
+      ? campeonatosCache.filter((c) => Number(c.creador_usuario_id) === oid)
+      : [];
+    const actual = sel.value;
+    sel.innerHTML = '<option value="">— Selecciona campeonato —</option>';
+    lista
+      .slice()
+      .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || "")))
+      .forEach((c) => {
+        sel.innerHTML += `<option value="${Number(c.id)}">${esc(c.nombre || `Campeonato ${c.id}`)}</option>`;
+      });
+    sel.disabled = !lista.length;
+    if (actual && lista.some((c) => String(c.id) === String(actual))) sel.value = actual;
+  }
+
+  function poblarEquiposRef(campeonatoId) {
+    const sel = document.getElementById("usr-equipo");
+    if (!sel) return;
+    const cid = Number.parseInt(campeonatoId, 10);
+    const usarCascada = document.getElementById("usr-asignacion-camp-group")?.style.display !== "none";
+    const lista = Number.isFinite(cid) && cid > 0
+      ? equiposCache.filter((e) => Number(e.campeonato_id) === cid)
+      : (usarCascada && esAdminActual() ? [] : equiposCache);
+    const actual = sel.value;
+    sel.innerHTML = '<option value="">Sin asignar</option>';
+    lista
+      .slice()
+      .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || "")))
+      .forEach((e) => {
+        sel.innerHTML += `<option value="${Number(e.id)}">${esc(e.nombre || `Equipo ${e.id}`)}</option>`;
+      });
+    if (actual && lista.some((e) => String(e.id) === String(actual))) sel.value = actual;
   }
 
   const ROLES_PLATAFORMA = new Set(["administrador", "operador", "operador_sistema"]);
@@ -603,6 +683,7 @@
       const data = await AuthAPI.listarUsuarios();
       usuariosCache = data?.usuarios || [];
       renderUsuarios();
+      poblarOrganizaciones();
     } catch (error) {
       console.error(error);
       if (cont) cont.innerHTML = `<p>${esc(error.message || "No se pudieron cargar usuarios")}</p>`;
@@ -616,6 +697,9 @@
     document.getElementById("usr-username").value = "";
     document.getElementById("usr-password").value = "";
     document.getElementById("usr-equipo").value = "";
+    const orgRef = document.getElementById("usr-organizacion-ref");
+    if (orgRef) orgRef.value = "";
+    poblarCampeonatosRef("");
     document.getElementById("usr-activo").value = "true";
     const planSel = document.getElementById("usr-plan");
     const planEstadoSel = document.getElementById("usr-plan-estado");
@@ -649,13 +733,26 @@
     if (planEstadoSel) planEstadoSel.value = String(u.plan_estado || "activo").toLowerCase();
     if (orgInput) orgInput.value = u.organizacion_nombre || "";
 
-    const equipo = Array.isArray(u.equipo_ids) && u.equipo_ids.length ? Number(u.equipo_ids[0]) : "";
-    document.getElementById("usr-equipo").value = equipo ? String(equipo) : "";
     actualizarTituloFormulario();
     actualizarCamposPlan();
     if (String(u.rol || "").toLowerCase() !== "organizador") {
       limpiarPerfilOrganizador();
     }
+
+    // Precarga de la cascada Organización → Campeonato → Equipo (roles con equipo).
+    const equipo = Array.isArray(u.equipo_ids) && u.equipo_ids.length ? Number(u.equipo_ids[0]) : "";
+    const detalle = Array.isArray(u.equipos_detalle) && u.equipos_detalle.length ? u.equipos_detalle[0] : null;
+    const orgRef = document.getElementById("usr-organizacion-ref");
+    if (orgRef && esRolConEquipo(u.rol)) {
+      const orgId = Number(u.organizador_id) || Number(detalle?.organizador_id) || "";
+      orgRef.value = orgId ? String(orgId) : "";
+      poblarCampeonatosRef(orgRef.value);
+      const campId = Number(detalle?.campeonato_id) || "";
+      const campRef = document.getElementById("usr-campeonato-ref");
+      if (campRef) campRef.value = campId ? String(campId) : "";
+      poblarEquiposRef(campId || "");
+    }
+    document.getElementById("usr-equipo").value = equipo ? String(equipo) : "";
   }
 
   async function sincronizarEquipoTecnico(usuarioAntes, rolDestino, equipoDestino) {
@@ -929,11 +1026,22 @@
     document.getElementById("btn-usuarios-cancelar")?.addEventListener("click", limpiarFormulario);
     document.getElementById("btn-usuarios-recargar")?.addEventListener("click", async () => {
       organizadorPortalCache.clear();
-      await Promise.all([cargarEquipos(), cargarUsuarios()]);
+      await Promise.all([cargarEquipos(), cargarCampeonatosAdmin(), cargarUsuarios()]);
+      poblarOrganizaciones();
       mostrarNotificacion("Datos actualizados", "success");
     });
 
-    await Promise.all([cargarEquipos(), cargarUsuarios()]);
+    // Cascada Organización → Campeonato → Equipo
+    document.getElementById("usr-organizacion-ref")?.addEventListener("change", (e) => {
+      poblarCampeonatosRef(e.target.value);
+      poblarEquiposRef("");
+    });
+    document.getElementById("usr-campeonato-ref")?.addEventListener("change", (e) => {
+      poblarEquiposRef(e.target.value);
+    });
+
+    await Promise.all([cargarEquipos(), cargarCampeonatosAdmin(), cargarUsuarios()]);
+    poblarOrganizaciones();
     actualizarCamposPlan();
   });
 
