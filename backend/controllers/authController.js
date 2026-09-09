@@ -558,6 +558,9 @@ const authController = {
         ip_address: req.ip,
       });
 
+      // Marca de última actividad (para bloqueo/eliminación de cuentas inactivas).
+      UsuarioAuth.registrarAcceso(user.id).catch(() => {});
+
       // Auditoría: login exitoso
       registrarAuditoria({
         usuarioId: user.id,

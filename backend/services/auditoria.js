@@ -30,6 +30,8 @@ const ACCIONES = {
   CAMBIO_PASSWORD:          "cambio_password",
   CAMBIO_PLAN_ESTADO:       "cambio_plan_estado",
   ACTIVACION_CUENTA:        "activacion_cuenta",
+  BLOQUEO_CUENTA_INACTIVA:  "bloqueo_cuenta_inactiva",
+  ELIMINACION_CUENTA_INACTIVA: "eliminacion_cuenta_inactiva",
   ELIMINACION_CAMPEONATO:   "eliminacion_campeonato",
   ELIMINACION_EQUIPO:       "eliminacion_equipo",
   ELIMINACION_JUGADOR:      "eliminacion_jugador",

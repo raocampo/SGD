@@ -252,4 +252,12 @@ httpServer.listen(PORT, () => {
   console.log(`   http://localhost:${PORT}/tablas`);
   console.log(`📂 Uploads: http://localhost:${PORT}/uploads`);
   console.log(`📁 Directorio de uploads: ${uploadsDir}`);
+
+  // Bloqueo/eliminación diaria de cuentas inactivas sin vínculo.
+  // Solo aplica cambios si LIMPIEZA_USUARIOS_INACTIVOS=on (si no, solo registra un dry-run).
+  try {
+    require("./services/limpiezaUsuariosInactivos").programarLimpiezaUsuariosInactivos();
+  } catch (error) {
+    console.error("No se pudo programar la limpieza de usuarios inactivos:", error?.message || error);
+  }
 });

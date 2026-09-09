@@ -47,9 +47,23 @@ class UsuarioAuth {
       equipo_ids: Array.isArray(row.equipo_ids)
         ? row.equipo_ids.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0)
         : [],
+      ultimo_acceso_at: row.ultimo_acceso_at || null,
       created_at: row.created_at,
       updated_at: row.updated_at,
     };
+  }
+
+  static async registrarAcceso(usuarioId, client = pool) {
+    const uId = Number.parseInt(usuarioId, 10);
+    if (!Number.isFinite(uId) || uId <= 0) return;
+    try {
+      await client.query(
+        `UPDATE usuarios SET ultimo_acceso_at = CURRENT_TIMESTAMP WHERE id = $1`,
+        [uId]
+      );
+    } catch (error) {
+      console.warn("No se pudo registrar ultimo_acceso_at:", error?.message || error);
+    }
   }
 
   static async asegurarEsquema(client = pool) {
@@ -95,6 +109,17 @@ class UsuarioAuth {
     await client.query(`
       ALTER TABLE usuarios
       ADD COLUMN IF NOT EXISTS plan_estado VARCHAR(20) NOT NULL DEFAULT 'activo'
+    `);
+    // Marca de última actividad real (login), para bloquear/eliminar cuentas
+    // inactivas. Se inicializa con la fecha de creación.
+    await client.query(`
+      ALTER TABLE usuarios
+      ADD COLUMN IF NOT EXISTS ultimo_acceso_at TIMESTAMP
+    `);
+    await client.query(`
+      UPDATE usuarios
+      SET ultimo_acceso_at = COALESCE(ultimo_acceso_at, updated_at, created_at, CURRENT_TIMESTAMP)
+      WHERE ultimo_acceso_at IS NULL
     `);
     await client.query(`
       ALTER TABLE usuarios
