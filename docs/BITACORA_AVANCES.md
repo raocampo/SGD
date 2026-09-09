@@ -1,3 +1,77 @@
+## 2026-09-09 - planes.html 4x4, facturación 404, cascada de usuarios y limpieza de cuentas inactivas
+
+> Todo commiteado y pusheado a `origin/main` (`6468705`, `cb26595`, `b96cb8e`, `589dd5c`).
+
+### Facturación 404 (`6468705`)
+`facturacion.html` tiene su propio `apiFetch` inline que: (1) llamaba rutas
+relativas `/api/...` — **404 en el frontend de Vercel** (no tiene backend);
+(2) leía el token de `localStorage["token"]` (clave inexistente → 401). Ahora
+usa `window.resolveBackendBaseUrl()` + `window.Auth.getToken()` /
+`"sgd_auth_token"`, igual que el resto de la app.
+
+### planes.html + admin + footer (`cb26595`)
+- `planes.html`: se reemplazan las 3 familias (mensual/campeonato/anual, 9
+  tarjetas) por **4 planes** Pequeño/Intermedio/Grande/Profesional con selector
+  de periodo (Mensual/Trimestral/Semestral/Anual). Reutiliza `public-pricing.js`
+  (`applyTarjetaPricing`) para el precio en vivo. Botones →
+  `register.html?plan=base|competencia|premium`. Se quita el submenú de familias.
+- Panel admin (`dashboard-admin.js`): la pestaña **Planes** ya solo muestra la
+  **matriz 4x4**; se quitó el `<details>` "comparador detallado". El plan Free
+  queda como nota informativa.
+- `public-pricing.js`: el sufijo del precio se emite como `<span>` (compatible
+  con index.html y planes.html) + regla CSS `.ltc-home-plan-price span`.
+- **Footer**: el logo recibe más ancho (`width: clamp(150px,24vw,250px)`,
+  `max-height: 2.6rem`, `object-fit: contain`) **sin crecer la altura** del footer.
+
+### Usuarios — cascada Organización → Campeonato → Equipo (`b96cb8e`)
+En el formulario admin, al crear/editar un técnico/dirigente/jugador (incluidos
+los **sin organización**) ahora se elige: organización → campeonato al que
+pertenece/participa → equipo. Filtra client-side con `/campeonatos`
+(`creador_usuario_id`) y `/equipos` (`campeonato_id`); al editar se precarga
+desde `equipos_detalle` del usuario. El organizador sigue acotado a sus equipos.
+
+### Usuarios — bloqueo/eliminación de cuentas inactivas (`589dd5c`)
+- Nueva columna `usuarios.ultimo_acceso_at` (init con `created_at`/`updated_at`,
+  se actualiza en cada login → `UsuarioAuth.registrarAcceso`).
+- `services/limpiezaUsuariosInactivos.js`:
+  · organizador con **0 campeonatos**, o téc/dir/jug con **0 equipos**,
+  · inactivos > `LIMPIEZA_DIAS_BLOQUEO` (30) → `activo = false`,
+  · desactivados e inactivos > `LIMPIEZA_DIAS_ELIMINACION` (60) → `DELETE`
+    (con re-verificación de que sigan sin vínculo).
+  · Nunca toca administrador/operador/operador_sistema ni cuentas con datos.
+  · Audita cada acción (`bloqueo_cuenta_inactiva` / `eliminacion_cuenta_inactiva`).
+- **Runner diario** en `server.js`: DRY-RUN por defecto; **solo aplica si
+  `LIMPIEZA_USUARIOS_INACTIVOS=on`**. Script manual:
+  `node backend/scripts/limpiarUsuariosInactivos.js [--apply]`.
+- Dry-run real actual: a bloquear 5 (organizadores sin campeonatos Ivan Itas /
+  Robert Ocampo id24, y dir/téc huérfanos 18/21/23), a eliminar 0.
+
+### Verificación
+- `node -c` de todos los archivos tocados. Llaves CSS OK. `<section>`/`<div>`
+  balanceados. Smoke role-guards 49/49.
+- `/api/auth/planes/precios` sirve 26 entradas (16 `tarjeta_*` con `grupo_plan`).
+- `applyTarjetaPricing` (eval): mensual `$4,70 /mes` … anual `$56,40 /año`.
+- Matriz admin (eval): 4 filas × 4 periodos, 16 inputs `step 0.01`.
+- `limpiarUsuariosInactivos.js` dry-run corre OK contra la BD real.
+- **Sin verificación visual en navegador** (límite de imágenes).
+
+### Pendientes para mañana
+1. **Verificación visual**: footer (logo), `planes.html` (4 planes + tabs de
+   periodo), admin → Planes (matriz), `facturacion.html` (que ya no dé 404 en
+   Vercel), `usuarios.html` (cascada Org→Campeonato→Equipo al editar un huérfano).
+2. **Activar la limpieza** solo tras revisar el dry-run: setear
+   `LIMPIEZA_USUARIOS_INACTIVOS=on` en Railway (ojo: hoy TODAS las cuentas sin
+   login reciente caen en la ventana de 30d porque `ultimo_acceso_at` arranca en
+   `created_at`; el tracking real empieza desde el primer login tras el deploy).
+   Ajustar `LIMPIEZA_DIAS_BLOQUEO` / `LIMPIEZA_DIAS_ELIMINACION` si se quiere.
+3. **Redeploy backend Railway** (columna `ultimo_acceso_at`, catálogo de planes,
+   `registrarAcceso`) + confirmar Vercel.
+4. Cargar los **precios reales** de la matriz 4x4.
+5. Pendientes previos: mapeo plan→límites (Profesional=premium hoy); optimizar
+   hero slider (~16 MB PNG → webp); limpiar stashes viejos.
+
+---
+
 ## 2026-09-08 - Tarjetas de torneo modelo paginaLTC, footer y planes de pago 4x4
 
 > Todo commiteado y pusheado a `origin/main` (`d9ac5d1`, `fb21336`).
