@@ -53,8 +53,8 @@ class PortalContenido {
         id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
         hero_title TEXT NOT NULL DEFAULT 'Organiza tus torneos de forma rápida',
         hero_description TEXT NOT NULL DEFAULT 'Gestiona campeonatos, categorías y equipos en una plataforma clara, moderna y enfocada en el rendimiento deportivo.',
-        hero_chip VARCHAR(120) NOT NULL DEFAULT 'EMPIEZA UNA DEMO',
-        hero_cta_label VARCHAR(120) NOT NULL DEFAULT 'Entra',
+        hero_chip VARCHAR(120) NOT NULL DEFAULT 'EMPIEZA GRATIS',
+        hero_cta_label VARCHAR(120) NOT NULL DEFAULT 'Empieza gratis',
         about_title VARCHAR(180) NOT NULL DEFAULT 'Loja Torneos & Competencias',
         about_text_1 TEXT NOT NULL DEFAULT 'LT&C impulsa campeonatos de futbol con una gestion ordenada de equipos, jugadores, calendarios, reportes y control administrativo.',
         about_text_2 TEXT NOT NULL DEFAULT 'Nuestro objetivo es brindar una experiencia clara tanto para organizadores como para dirigentes y aficionados.',
@@ -99,6 +99,19 @@ class PortalContenido {
         ]
       );
     }
+
+    // Migración suave: si el CTA/chip siguen con los textos por defecto antiguos
+    // (nunca personalizados en el CMS), se actualizan a "Empieza gratis".
+    await client.query(`
+      UPDATE portal_contenido
+      SET hero_cta_label = 'Empieza gratis', updated_at = CURRENT_TIMESTAMP
+      WHERE id = 1 AND TRIM(hero_cta_label) IN ('Entra', 'Empieza una demo', 'Empezar demo', 'Empieza demo')
+    `);
+    await client.query(`
+      UPDATE portal_contenido
+      SET hero_chip = 'EMPIEZA GRATIS', updated_at = CURRENT_TIMESTAMP
+      WHERE id = 1 AND UPPER(TRIM(hero_chip)) IN ('EMPIEZA UNA DEMO', 'EMPIEZA DEMO', 'DEMO GRATIS', 'PRUEBA GRATIS')
+    `);
 
     if (client === pool) this._schemaReady = true;
   }

@@ -3222,10 +3222,13 @@ async function cargarClientesPortal() {
     cont.innerHTML = lista
       .map((org) => {
         const href = hrefLanding(org);
+        const logoUrl = normalizarMediaPortal(org.logo);
         const interior = `
           ${
-            org.logo
-              ? `<img src="${org.logo}" alt="${escPortal(org.nombre)}" class="ltc-cliente-logo" />`
+            logoUrl
+              ? `<img src="${escPortal(logoUrl)}" alt="${escPortal(org.nombre)}" class="ltc-cliente-logo" loading="lazy"
+                   onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='';" />
+                 <div class="ltc-cliente-avatar" style="display:none;"><i class="fas fa-users"></i></div>`
               : `<div class="ltc-cliente-avatar"><i class="fas fa-users"></i></div>`
           }
           <p class="ltc-cliente-nombre">${escPortal(org.nombre)}</p>
