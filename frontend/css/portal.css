@@ -694,34 +694,9 @@ a.ltc-team-chip-card:hover {
   gap: clamp(0.8rem, 1.5vw, 1.2rem);
 }
 
-body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos.portal-campeonatos-grid {
-  grid-template-columns: repeat(3, minmax(18rem, 24rem));
-  justify-content: center;
-  gap: clamp(1rem, 1.2vw, 1.35rem);
-}
-
-body.ltc-landing:not(.ltc-torneos-page) #portal-inicio {
-  max-width: 78rem;
-  margin-inline: auto;
-}
-
-body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-media {
-  height: clamp(150px, 9vw, 168px);
-}
-
-body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-body {
-  padding: 0.82rem 0.9rem 0.95rem;
-}
-
-body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-body h3 {
-  max-width: 24ch;
-  line-height: 1.32;
-}
-
-body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-date,
-body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-meta {
-  font-size: 0.8rem;
-}
+/* Las tarjetas de torneo de la portada/landing usan el mismo modelo que
+   torneos.html (.ltc-card-grid-v2). Se retiraron los overrides antiguos de
+   #portal-lista-campeonatos que forzaban un layout distinto. */
 
 .portal-campeonato-card {
   display: flex;
@@ -2896,10 +2871,6 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos.portal-campeonatos-grid {
-    grid-template-columns: repeat(2, minmax(17.5rem, 23rem));
-  }
-
   .portal-card-categorias {
     gap: 0.35rem;
   }
@@ -3097,14 +3068,6 @@ body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos .portal-card-m
 
   .portal-campeonatos-grid {
     grid-template-columns: 1fr;
-  }
-
-  body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos.portal-campeonatos-grid {
-    grid-template-columns: 1fr;
-  }
-
-  body.ltc-landing:not(.ltc-torneos-page) #portal-inicio {
-    max-width: 28rem;
   }
 
   .portal-category-panel {
@@ -4464,12 +4427,13 @@ body.ltc-landing-mode .ltc-home-hero-slider img:not(:first-child) {
 
 .ltc-home-hero h1 {
   margin: 0;
-  color: #ffe06a;
+  /* Verde de marca sobre el degradado oscuro del hero (buen contraste). */
+  color: var(--ltc-home-lime);
   font-family: "Barlow Condensed", "Sora", sans-serif;
   font-size: 5.8rem;
   line-height: 0.9;
   text-transform: uppercase;
-  text-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 16px 30px rgba(0, 0, 0, 0.45);
 }
 
 .ltc-home-hero-text {
