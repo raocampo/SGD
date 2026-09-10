@@ -1,3 +1,37 @@
+## 2026-09-10 - Tarjetas de portada, logo de clientes, CTA hero y enlace CorpSimtelec
+
+> Commiteado y pusheado (`620df8d`, `8027691`).
+
+- **Tarjetas de torneo en la portada** (`620df8d`): se veían distintas a las de
+  `torneos.html` (que ya están bien). Causa: reglas antiguas
+  `body.ltc-landing:not(.ltc-torneos-page) #portal-lista-campeonatos ...` (grid
+  de 3 col, media de alto fijo, padding/tipografías propias) que ganaban por
+  especificidad sobre `.ltc-card-grid-v2`. **Se eliminaron** → portada y landing
+  usan el mismo modelo que `torneos.html`.
+- **Título del hero** (`620df8d`): `.ltc-home-hero h1` pasa de `#ffe06a` (dorado)
+  a `var(--ltc-home-lime)` (verde de marca; contrasta bien sobre el hero oscuro).
+- **CTA "Empieza gratis"** (`8027691`): el HTML ya decía "Empieza gratis" pero el
+  CMS global (`portal_contenido`) tenía `hero_cta_label='Entra'` /
+  `hero_chip='EMPIEZA UNA DEMO'` por defecto y **sobreescribía** el texto. Nuevos
+  defaults + **migración suave** que actualiza la fila solo si nunca se
+  personalizó (`PortalContenido.asegurarEsquema`).
+- **Logo de "Nuestros clientes"** (`8027691`): no se veía porque
+  `cargarClientesPortal` usaba `org.logo` crudo (p. ej. `/uploads/...` → 404 en
+  Vercel). Ahora usa `normalizarMediaPortal()` (igual que las tarjetas de torneo)
+  + fallback a avatar si la imagen falla.
+- **"Desarrollado por CorpSimtelec"** (`8027691`): enlace a
+  `https://corpsimtelec.com` en `index.html`; se normaliza `www.corpsimtelec.com`
+  → `corpsimtelec.com` en planes/portal/torneos.
+
+### Pendiente
+- Verificación visual: portada (tarjetas iguales a torneos, hero verde, CTA
+  "Empieza gratis", clientes con logo, footer con enlace).
+- Redeploy Railway para la migración de `portal_contenido` (chip/CTA).
+- Si se prefiere el título del hero en **blanco** en vez de verde, es un cambio
+  de una línea en `.ltc-home-hero h1`.
+
+---
+
 ## 2026-09-09 - planes.html 4x4, facturación 404, cascada de usuarios y limpieza de cuentas inactivas
 
 > Todo commiteado y pusheado a `origin/main` (`6468705`, `cb26595`, `b96cb8e`, `589dd5c`).
