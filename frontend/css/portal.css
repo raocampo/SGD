@@ -4867,6 +4867,13 @@ body.ltc-landing-mode .ltc-home-hero-slider img:not(:first-child) {
   border-color: #8a6d1f;
 }
 
+/* En la portada LT&C solo se listan torneos "en curso", así que el badge de
+   estado es redundante y se oculta. Sí se muestra en torneos.html (varios
+   estados) y en la landing del organizador (que lista todos sus torneos). */
+body.ltc-home-page:not(.ltc-landing-mode) .ltc-card-grid-v2 .portal-card-estado {
+  display: none;
+}
+
 .ltc-card-grid-v2 .portal-card-body {
   display: flex;
   flex: 1;
