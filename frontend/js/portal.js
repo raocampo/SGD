@@ -715,6 +715,24 @@ function renderEquipoParticipanteLanding(equipo = {}) {
   `;
 }
 
+// Avatar chico (solo logo + iniciales de respaldo) para la vista previa
+// "quiénes ya están" del bloque de bienvenida -- a diferencia de
+// renderEquipoParticipanteLanding() (tarjeta completa con nombre/meta),
+// acá el objetivo es una fila compacta de circulos, sin texto.
+function renderAvatarEquipoPreview(equipo = {}) {
+  const nombre = String(equipo?.nombre || "").trim() || "Equipo";
+  const logo = normalizarMediaPortal(equipo?.logo_url || "");
+  return `
+    <span class="ltc-team-preview-avatar" title="${escPortal(nombre)}">
+      ${
+        logo
+          ? `<img src="${logo}" alt="${escPortal(nombre)}" loading="lazy" />`
+          : `<span>${escPortal(nombre.slice(0, 2).toUpperCase())}</span>`
+      }
+    </span>
+  `;
+}
+
 function renderBloqueEquiposParticipantesLanding(campeonato = {}) {
   const equipos = Array.isArray(campeonato?.equipos_participantes)
     ? campeonato.equipos_participantes
@@ -770,6 +788,10 @@ function renderSeccionEquiposLanding(payload = {}, torneosVisibles = []) {
   const description = document.getElementById("ltc-team-welcome-description");
   const image = document.getElementById("ltc-team-welcome-image");
   const groups = document.getElementById("ltc-team-welcome-groups");
+  const stat = document.getElementById("ltc-team-welcome-stat");
+  const statCount = document.getElementById("ltc-team-welcome-stat-count");
+  const statLabel = document.getElementById("ltc-team-welcome-stat-label");
+  const preview = document.getElementById("ltc-team-welcome-preview");
   if (!section || !title || !description || !image || !groups) return;
 
   const portalConfig = payload?.portal_config || {};
@@ -796,6 +818,33 @@ function renderSeccionEquiposLanding(payload = {}, torneosVisibles = []) {
   const fallbackImage =
     document.getElementById("ltc-about-image")?.getAttribute("src") || "assets/ltc/bannerLTC.jpg";
   image.src = imagenBienvenida ? normalizarMediaPortal(imagenBienvenida) : fallbackImage;
+
+  // Todos los equipos de todos los campeonatos visibles, en un solo arreglo,
+  // para el mensaje ("¡X equipos ya confirmados!") y la fila de avatares.
+  // Sin esto, un organizador con 3 campeonatos y 2 equipos cada uno veía el
+  // mismo aviso genérico que uno recién creado sin nadie inscrito todavía.
+  const todosLosEquipos = campeonatosConEquipos.flatMap((item) => item.equipos_participantes);
+  const totalEquipos = todosLosEquipos.length;
+
+  // "Se activa" (fondo y mensaje destacados) apenas hay al menos un equipo
+  // inscrito -- antes la única señal era una tarjeta plegada más abajo, así
+  // que un organizador con equipos ya inscritos se veía igual de "vacío"
+  // que uno sin ninguno.
+  section.classList.toggle("has-teams", totalEquipos > 0);
+  if (stat) stat.hidden = totalEquipos === 0;
+  if (statCount) statCount.textContent = String(totalEquipos);
+  if (statLabel) {
+    statLabel.textContent = totalEquipos === 1 ? "equipo ya confirmado" : "equipos ya confirmados";
+  }
+  if (preview) {
+    const MAX_AVATARES = 10;
+    const visibles = todosLosEquipos.slice(0, MAX_AVATARES);
+    const restantes = totalEquipos - visibles.length;
+    preview.innerHTML =
+      visibles.map((equipo) => renderAvatarEquipoPreview(equipo)).join("") +
+      (restantes > 0 ? `<span class="ltc-team-preview-avatar ltc-team-preview-more">+${restantes}</span>` : "");
+  }
+
   groups.innerHTML = campeonatosConEquipos.length
     ? campeonatosConEquipos
         .map((campeonato) => renderBloqueEquiposParticipantesLanding(campeonato))

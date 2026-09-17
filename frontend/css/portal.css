@@ -560,6 +560,101 @@ a.ltc-cliente-card-link:hover {
   line-height: 1.65;
 }
 
+/* "Gran mensaje" que se activa (ver .has-teams más abajo) apenas hay al
+   menos un equipo inscrito: antes esta tarjeta se veía siempre igual de
+   genérica, con o sin equipos, y había que abrir el acordeón de abajo para
+   enterarse de que alguien ya se había sumado. */
+.ltc-team-welcome-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  padding: 0.55rem 0.9rem;
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--org-btn-bg, #313131);
+  color: var(--org-btn-fg, #fff);
+}
+
+.ltc-team-welcome-stat-count {
+  color: var(--org-accent, #b7e853);
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ltc-team-welcome-stat-label {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+/* Fila de avatares "quiénes ya están": una vista previa inmediata de los
+   equipos inscritos sin tener que abrir el acordeón de abajo. */
+.ltc-team-welcome-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 0.85rem;
+}
+
+.ltc-team-welcome-preview:empty {
+  display: none;
+}
+
+.ltc-team-preview-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin-left: -0.6rem;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(23, 47, 77, 0.18);
+  color: #31577e;
+  font-size: 0.7rem;
+  font-weight: 800;
+  overflow: hidden;
+}
+
+.ltc-team-preview-avatar:first-child {
+  margin-left: 0;
+}
+
+.ltc-team-preview-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.ltc-team-preview-more {
+  background: var(--org-btn-bg, #313131);
+  color: var(--org-btn-fg, #fff);
+}
+
+/* Estado "activado": apenas hay equipos inscritos, la tarjeta y el fondo
+   dejan de ser el gris/blanco genérico y toman el color de marca del
+   organizador (o el verde de LT&C por defecto), para que la bienvenida se
+   sienta viva en vez de un placeholder vacío. */
+.ltc-team-welcome-section.has-teams .ltc-team-welcome-copy {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--org-accent, #b7e853) 16%, #ffffff) 0%,
+      #ffffff 60%
+    );
+  border-color: color-mix(in srgb, var(--org-accent, #b7e853) 55%, #d8decf);
+}
+
+.ltc-team-welcome-section.has-teams .ltc-team-welcome-chip {
+  background: var(--org-accent, #b7e853);
+  border-color: color-mix(in srgb, var(--org-accent, #b7e853) 70%, #313131);
+  color: var(--org-btn-bg, #313131);
+}
+
 .ltc-team-welcome-media {
   overflow: hidden;
   min-height: 220px;
