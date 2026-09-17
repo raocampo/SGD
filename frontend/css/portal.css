@@ -5681,13 +5681,16 @@ body.ltc-home-page .ltc-home-sponsors-track {
   gap: 18px;
 }
 
+/* Mismo tamaño de caja que el logo del header (.ltc-home-brand-link +
+   img.ltc-home-brand-logo): 256px de ancho, 62px de imagen + 7px de padding. */
 .ltc-home-footer-inner img {
-  width: clamp(150px, 24vw, 250px);
-  max-height: 2.6rem;
+  width: 256px;
+  max-width: 60vw;
+  height: 62px;
   object-fit: contain;
-  padding: 3px 10px;
+  padding: 7px;
   background: var(--ltc-home-ink);
-  border: 1px solid rgba(183, 232, 83, 0.5);
+  border: 1px solid rgba(183, 232, 83, 0.68);
   border-radius: 8px;
 }
 
@@ -5713,6 +5716,11 @@ body.ltc-home-page .ltc-home-sponsors-track {
   }
 
   body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
+    height: 50px;
+  }
+
+  .ltc-home-footer-inner img {
+    width: 220px;
     height: 50px;
   }
 
@@ -5813,6 +5821,11 @@ body.ltc-home-page .ltc-home-sponsors-track {
   }
 
   body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
+    height: 44px;
+  }
+
+  .ltc-home-footer-inner img {
+    width: 190px;
     height: 44px;
   }
 
