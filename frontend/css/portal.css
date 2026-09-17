@@ -4155,14 +4155,14 @@ body.ltc-home-page {
 body.ltc-home-page .ltc-site-header {
   position: fixed;
   inset: 0 0 auto;
-  min-height: 200px;
+  min-height: 90px;
   background: var(--ltc-home-ink);
   border-bottom: 1px solid rgba(183, 232, 83, 0.48);
   box-shadow: 0 12px 28px rgba(20, 20, 20, 0.18);
 }
 
 body.ltc-home-page .ltc-header-inner {
-  min-height: 200px;
+  min-height: 90px;
   justify-content: space-between;
   gap: 18px;
 }
@@ -4172,15 +4172,17 @@ body.ltc-home-page .ltc-header-inner {
    de LT&C, 1290x470 ~2.7:1) o cuadrado (ej. logos reales de organizadores
    subidos a 1600x1600, 1:1). Antes la caja tenía un ANCHO fijo (256px) y la
    imagen ocupaba solo el ALTO disponible: para un logo cuadrado eso dejaba
-   ~86px de fondo oscuro vacío a los lados (el "contenedor grande, imagen
-   chica" reportado). Ahora la caja NO tiene ancho fijo: se ajusta (hug) al
-   ancho real que ocupa el logo ya renderizado, sea angosto (cuadrado) o ancho
+   fondo oscuro vacío a los lados (el "contenedor grande, imagen chica"
+   reportado). Ahora la caja NO tiene ancho fijo: se ajusta (hug) al ancho
+   real que ocupa el logo ya renderizado, sea angosto (cuadrado) o ancho
    (wordmark) -- sin recortar ni distorsionar nada y sin casos especiales por
-   forma. El header es "position:fixed", así que el alto de .ltc-home-hero
-   (padding-top) debe quedar siempre por encima de min-height del header. */
+   forma. El tamaño (alto de imagen/caja) vuelve al original compacto: una
+   caja muy grande resta visibilidad al resto del header. El header es
+   "position:fixed", así que el alto de .ltc-home-hero (padding-top) debe
+   quedar siempre por encima de min-height del header. */
 body.ltc-home-page .ltc-home-brand-link {
   justify-content: center;
-  padding: 8px;
+  padding: 7px;
   background: var(--ltc-home-ink);
   border: 1px solid rgba(183, 232, 83, 0.68);
   border-radius: 8px;
@@ -4192,8 +4194,8 @@ body.ltc-home-page .ltc-home-brand-link {
 body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
   display: block;
   width: auto;
-  max-width: 324px;
-  height: 170px;
+  max-width: 220px;
+  height: 62px;
   border-radius: 5px;
   object-fit: contain;
 }
@@ -4400,7 +4402,7 @@ body.ltc-home-page .ltc-main {
   min-height: 86vh;
   display: flex;
   align-items: center;
-  padding: 230px 0 70px;
+  padding: 130px 0 70px;
   color: var(--ltc-home-white);
   overflow: hidden;
 }
@@ -5694,15 +5696,16 @@ body.ltc-home-page .ltc-home-sponsors-track {
 }
 
 /* Mismo criterio que el logo del header: sin ancho fijo (se ajusta al logo
-   real, cuadrado o ancho, sin dejar fondo vacío) y 170px de imagen visible.
-   Acá el padding va en el propio <img> (box-sizing:border-box), por eso el
-   "height" total es 170px + 2x8px de padding = 186px. */
+   real, cuadrado o ancho, sin dejar fondo vacío) y el mismo alto de imagen
+   visible que el header (62px). Acá el padding va en el propio <img>
+   (box-sizing:border-box), por eso el "height" total es 62px + 2x7px de
+   padding = 76px -- igual al alto total de la caja del header. */
 .ltc-home-footer-inner img {
   width: auto;
-  max-width: 340px;
-  height: 186px;
+  max-width: 234px;
+  height: 76px;
   object-fit: contain;
-  padding: 8px;
+  padding: 7px;
   background: var(--ltc-home-ink);
   border: 1px solid rgba(183, 232, 83, 0.68);
   border-radius: 8px;
@@ -5721,17 +5724,17 @@ body.ltc-home-page .ltc-home-sponsors-track {
 @media (max-width: 1120px) {
   body.ltc-home-page .ltc-site-header,
   body.ltc-home-page .ltc-header-inner {
-    min-height: 173px;
+    min-height: 78px;
   }
 
   body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
-    max-width: 261px;
-    height: 137px;
+    max-width: 178px;
+    height: 50px;
   }
 
   .ltc-home-footer-inner img {
-    max-width: 277px;
-    height: 153px;
+    max-width: 192px;
+    height: 64px;
   }
 
   body.ltc-home-page .ltc-header-actions {
@@ -5822,17 +5825,17 @@ body.ltc-home-page .ltc-home-sponsors-track {
 
   body.ltc-home-page .ltc-site-header,
   body.ltc-home-page .ltc-header-inner {
-    min-height: 160px;
+    min-height: 72px;
   }
 
   body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
-    max-width: 230px;
-    height: 121px;
+    max-width: 156px;
+    height: 44px;
   }
 
   .ltc-home-footer-inner img {
-    max-width: 246px;
-    height: 137px;
+    max-width: 170px;
+    height: 58px;
   }
 
   body.ltc-home-page .ltc-header-nav {
@@ -5847,7 +5850,7 @@ body.ltc-home-page .ltc-home-sponsors-track {
 
   .ltc-home-hero {
     min-height: 82vh;
-    padding: 180px 0 54px;
+    padding: 112px 0 54px;
   }
 
   .ltc-home-hero-shade {
