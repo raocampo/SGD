@@ -488,25 +488,6 @@ body.ltc-org-theme .ltc-home-tag {
   color: var(--org-accent, #9ad72f);
 }
 
-/* El logo de un organizador suele ser cuadrado/ícono, no un wordmark horizontal
-   como el de LT&C. La caja ancha y baja (256x62) que usa la portada lo deja
-   chico dentro de mucho espacio vacío. En la landing del organizador se usa una
-   caja más cuadrada y más alta para que el logo real se vea a buen tamaño,
-   igual en header y footer. (Especificidad alta a propósito: debe ganar sobre
-   las reglas de tamaño de la portada y sus breakpoints.) */
-body.ltc-home-page.ltc-org-theme .ltc-home-brand-link {
-  width: clamp(96px, 14vw, 130px);
-  min-height: clamp(56px, 9vw, 90px);
-}
-
-body.ltc-home-page.ltc-org-theme .ltc-header-brand img.ltc-home-brand-logo {
-  height: clamp(50px, 8vw, 78px);
-}
-
-body.ltc-home-page.ltc-org-theme .ltc-home-footer-inner img {
-  width: clamp(96px, 14vw, 130px);
-  height: clamp(50px, 8vw, 78px);
-}
 
 /* ── Card de cliente enlazada a su landing ─────────────────────────────── */
 a.ltc-cliente-card-link {
@@ -4174,23 +4155,28 @@ body.ltc-home-page {
 body.ltc-home-page .ltc-site-header {
   position: fixed;
   inset: 0 0 auto;
-  min-height: 90px;
+  min-height: 106px;
   background: var(--ltc-home-ink);
   border-bottom: 1px solid rgba(183, 232, 83, 0.48);
   box-shadow: 0 12px 28px rgba(20, 20, 20, 0.18);
 }
 
 body.ltc-home-page .ltc-header-inner {
-  min-height: 90px;
+  min-height: 106px;
   justify-content: space-between;
   gap: 18px;
 }
 
+/* Caja general del logo (portada Y landing de cualquier organizador): un logo
+   puede ser horizontal (wordmark) o cuadrado (ícono); en vez de recortar la
+   caja para "adivinar" la forma, se deja ancha y con más alto para que
+   object-fit:contain muestre el logo real grande en cualquiera de los dos
+   casos, sin distorsionarlo ni recortarlo. Misma caja en header y footer. */
 body.ltc-home-page .ltc-home-brand-link {
   width: 256px;
-  min-height: 76px;
+  min-height: 100px;
   justify-content: center;
-  padding: 7px;
+  padding: 8px;
   background: var(--ltc-home-ink);
   border: 1px solid rgba(183, 232, 83, 0.68);
   border-radius: 8px;
@@ -4201,7 +4187,7 @@ body.ltc-home-page .ltc-home-brand-link {
 
 body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
   width: 100%;
-  height: 62px;
+  height: 84px;
   border-radius: 5px;
   object-fit: contain;
 }
@@ -5701,14 +5687,15 @@ body.ltc-home-page .ltc-home-sponsors-track {
   gap: 18px;
 }
 
-/* Mismo tamaño de caja que el logo del header (.ltc-home-brand-link +
-   img.ltc-home-brand-logo): 256px de ancho, 62px de imagen + 7px de padding. */
+/* Misma caja general que el logo del header (.ltc-home-brand-link +
+   img.ltc-home-brand-logo): 256px de ancho, 84px de imagen + 8px de padding.
+   Sirve tanto para logos horizontales como cuadrados (ver comentario arriba). */
 .ltc-home-footer-inner img {
   width: 256px;
   max-width: 60vw;
-  height: 62px;
+  height: 84px;
   object-fit: contain;
-  padding: 7px;
+  padding: 8px;
   background: var(--ltc-home-ink);
   border: 1px solid rgba(183, 232, 83, 0.68);
   border-radius: 8px;
@@ -5727,21 +5714,21 @@ body.ltc-home-page .ltc-home-sponsors-track {
 @media (max-width: 1120px) {
   body.ltc-home-page .ltc-site-header,
   body.ltc-home-page .ltc-header-inner {
-    min-height: 78px;
+    min-height: 92px;
   }
 
   body.ltc-home-page .ltc-home-brand-link {
     width: 220px;
-    min-height: 64px;
+    min-height: 84px;
   }
 
   body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
-    height: 50px;
+    height: 68px;
   }
 
   .ltc-home-footer-inner img {
     width: 220px;
-    height: 50px;
+    height: 68px;
   }
 
   body.ltc-home-page .ltc-header-actions {
@@ -5832,21 +5819,21 @@ body.ltc-home-page .ltc-home-sponsors-track {
 
   body.ltc-home-page .ltc-site-header,
   body.ltc-home-page .ltc-header-inner {
-    min-height: 72px;
+    min-height: 85px;
   }
 
   body.ltc-home-page .ltc-home-brand-link {
     width: 190px;
-    min-height: 58px;
+    min-height: 76px;
   }
 
   body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
-    height: 44px;
+    height: 60px;
   }
 
   .ltc-home-footer-inner img {
     width: 190px;
-    height: 44px;
+    height: 60px;
   }
 
   body.ltc-home-page .ltc-header-nav {
