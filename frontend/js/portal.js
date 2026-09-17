@@ -795,7 +795,16 @@ function renderSeccionEquiposLanding(payload = {}, torneosVisibles = []) {
   if (!section || !title || !description || !image || !groups) return;
 
   const portalConfig = payload?.portal_config || {};
-  const campeonatosConEquipos = torneosVisibles.filter(
+  // "Bienvenida a Equipos" da la bienvenida a quienes se están sumando AHORA,
+  // así que solo debe contar campeonatos con inscripción abierta -- no todo
+  // el historial del organizador. Sin este filtro, un torneo "finalizado" de
+  // hace meses (con toda su planilla completa) o uno "en_curso" ya cerrado
+  // se sumaban al mensaje/avatares de un torneo distinto que recién está
+  // arrancando, mostrando un total inflado y equipos que no corresponden.
+  const torneosEnInscripcion = torneosVisibles.filter(
+    (item) => String(item?.estado || "").trim().toLowerCase() === "inscripcion"
+  );
+  const campeonatosConEquipos = torneosEnInscripcion.filter(
     (item) => Array.isArray(item?.equipos_participantes) && item.equipos_participantes.length
   );
 
