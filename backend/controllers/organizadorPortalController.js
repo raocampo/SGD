@@ -21,12 +21,46 @@ function safeUnlink(urlPath) {
 // (del organizador o de un auspiciante) para que el logo real ocupe toda la
 // caja disponible, sin tocar el contenedor ni requerir casos especiales por
 // forma de logo.
+//
+// Un recorte "al ras" (trim puro) puede dejar el contenido pegado justo a
+// un borde del lienzo si la figura ya tocaba ese borde en el original (ej.
+// un círculo cuyo arco izquierdo coincide con el límite del lienzo): el
+// resultado no pierde ningún píxel real, pero al no quedar margen de ese
+// lado se percibe como "cortado". Por eso, después de recortar, se vuelve
+// a sumar un margen parejo en los 4 lados (relativo al lado más chico del
+// contenido recortado) con el mismo color de fondo detectado.
 async function recortarRellenoLogo(absolutePath) {
   if (!absolutePath) return;
   try {
-    const { data, info } = await sharp(absolutePath).trim().toBuffer({ resolveWithObject: true });
-    if (!info.width || !info.height) return;
-    await fs.promises.writeFile(absolutePath, data);
+    // Color de referencia = pixel de la esquina superior izquierda del
+    // archivo original (mismo criterio que usa sharp trim() por defecto),
+    // para que el margen que agreguemos combine con el resto del fondo.
+    const corner = await sharp(absolutePath)
+      .extract({ left: 0, top: 0, width: 1, height: 1 })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const px = corner.data;
+    const background = {
+      r: px[0],
+      g: px[1],
+      b: px[2],
+      alpha: corner.info.channels >= 4 ? px[3] / 255 : 1,
+    };
+
+    // threshold más alto que el default (10): algunos PNG/JPEG traen ruido
+    // de compresión leve cerca del borde que con el default no se detecta
+    // como "relleno" y el trim no recorta nada.
+    const trimmed = await sharp(absolutePath)
+      .trim({ background, threshold: 24 })
+      .toBuffer({ resolveWithObject: true });
+    if (!trimmed.info.width || !trimmed.info.height) return;
+
+    const margin = Math.max(6, Math.round(Math.min(trimmed.info.width, trimmed.info.height) * 0.15));
+    const padded = await sharp(trimmed.data)
+      .extend({ top: margin, bottom: margin, left: margin, right: margin, background })
+      .toBuffer();
+
+    await fs.promises.writeFile(absolutePath, padded);
   } catch (error) {
     // Si el recorte falla (formato raro, imagen ya ajustada, etc.) se deja
     // el archivo original tal cual: esto nunca debe romper la subida.
