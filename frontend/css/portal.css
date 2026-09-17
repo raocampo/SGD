@@ -488,6 +488,26 @@ body.ltc-org-theme .ltc-home-tag {
   color: var(--org-accent, #9ad72f);
 }
 
+/* El logo de un organizador suele ser cuadrado/ícono, no un wordmark horizontal
+   como el de LT&C. La caja ancha y baja (256x62) que usa la portada lo deja
+   chico dentro de mucho espacio vacío. En la landing del organizador se usa una
+   caja más cuadrada y más alta para que el logo real se vea a buen tamaño,
+   igual en header y footer. (Especificidad alta a propósito: debe ganar sobre
+   las reglas de tamaño de la portada y sus breakpoints.) */
+body.ltc-home-page.ltc-org-theme .ltc-home-brand-link {
+  width: clamp(96px, 14vw, 130px);
+  min-height: clamp(56px, 9vw, 90px);
+}
+
+body.ltc-home-page.ltc-org-theme .ltc-header-brand img.ltc-home-brand-logo {
+  height: clamp(50px, 8vw, 78px);
+}
+
+body.ltc-home-page.ltc-org-theme .ltc-home-footer-inner img {
+  width: clamp(96px, 14vw, 130px);
+  height: clamp(50px, 8vw, 78px);
+}
+
 /* ── Card de cliente enlazada a su landing ─────────────────────────────── */
 a.ltc-cliente-card-link {
   text-decoration: none;
