@@ -571,26 +571,48 @@ a.ltc-cliente-card-link:hover {
   display: block;
 }
 
+/* Un campeonato por fila (usa todo el ancho de la sección) en vez de una grilla
+   de 2 columnas: al desplegar equipos, el panel no queda apretado a la mitad. */
 .ltc-team-welcome-groups {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
 .ltc-team-group-card {
   border: 1px solid #d8decf;
   border-radius: 18px;
   background: #fff;
-  padding: 1rem;
+  overflow: hidden;
   box-shadow: 0 8px 20px rgba(23, 47, 77, 0.08);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
+.ltc-team-group-card.is-open {
+  border-color: #9dbbe0;
+  box-shadow: 0 10px 26px rgba(23, 47, 77, 0.14);
+}
+
+/* El header es un <button> desplegable: click para ver los equipos. */
 .ltc-team-group-head {
   display: flex;
+  width: 100%;
   gap: 0.8rem;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.8rem;
+  align-items: center;
+  padding: 1rem;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ltc-team-group-head:hover,
+.ltc-team-group-head:focus-visible {
+  background: #f7f9f0;
 }
 
 .ltc-team-group-head h3 {
@@ -605,10 +627,26 @@ a.ltc-cliente-card-link:hover {
   font-size: 0.88rem;
 }
 
+.ltc-team-group-chevron {
+  flex: 0 0 auto;
+  color: #5c5c5c;
+  font-size: 0.85rem;
+  transition: transform 0.2s ease;
+}
+
+.ltc-team-group-card.is-open .ltc-team-group-chevron {
+  transform: rotate(180deg);
+}
+
 .ltc-team-chip-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 0.65rem;
+  padding: 0 1rem 1rem;
+}
+
+.ltc-team-chip-grid[hidden] {
+  display: none;
 }
 
 .ltc-team-chip-card {

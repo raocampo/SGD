@@ -727,20 +727,41 @@ function renderBloqueEquiposParticipantesLanding(campeonato = {}) {
     .toLowerCase()
     .replace("planificacion", "borrador");
   const total = Number.parseInt(campeonato?.total_equipos, 10) || equipos.length;
+  // Colapsado por defecto: el header es un botón que despliega los equipos
+  // ocupando todo el ancho de la sección (ver toggle en initTeamGroupToggles).
   return `
     <article class="ltc-team-group-card">
-      <div class="ltc-team-group-head">
+      <button type="button" class="ltc-team-group-head" aria-expanded="false">
         <div>
           <h3>${escPortal(nombre)}</h3>
           <p>${total} equipo(s) inscritos</p>
         </div>
         <span class="badge-estado estado-${escPortal(estado)}">${escPortal(estado.replace(/_/g, " "))}</span>
-      </div>
-      <div class="ltc-team-chip-grid">
+        <i class="fas fa-chevron-down ltc-team-group-chevron" aria-hidden="true"></i>
+      </button>
+      <div class="ltc-team-chip-grid" hidden>
         ${equipos.map((equipo) => renderEquipoParticipanteLanding(equipo)).join("")}
       </div>
     </article>
   `;
+}
+
+// Delegación de eventos: el contenedor se re-renderiza dinámicamente, así que
+// el listener se registra una sola vez en el contenedor padre.
+function initTeamGroupToggles() {
+  const groups = document.getElementById("ltc-team-welcome-groups");
+  if (!groups || groups.dataset.toggleBound === "true") return;
+  groups.dataset.toggleBound = "true";
+  groups.addEventListener("click", (event) => {
+    const head = event.target.closest(".ltc-team-group-head");
+    if (!head || !groups.contains(head)) return;
+    const card = head.closest(".ltc-team-group-card");
+    const grid = card?.querySelector(".ltc-team-chip-grid");
+    if (!grid) return;
+    const abierto = card.classList.toggle("is-open");
+    grid.hidden = !abierto;
+    head.setAttribute("aria-expanded", abierto ? "true" : "false");
+  });
 }
 
 function renderSeccionEquiposLanding(payload = {}, torneosVisibles = []) {
@@ -781,6 +802,7 @@ function renderSeccionEquiposLanding(payload = {}, torneosVisibles = []) {
         .join("")
     : '<p class="empty-msg">Los equipos participantes aparecerán aquí conforme se inscriban en los campeonatos.</p>';
   section.style.display = "";
+  initTeamGroupToggles();
 }
 
 function ordenarTorneosPortal(lista = []) {
