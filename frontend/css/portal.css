@@ -4170,17 +4170,15 @@ body.ltc-home-page .ltc-header-inner {
 /* Caja general del logo (portada Y "Mi Landing" de cualquier organizador, ambas
    sirven el mismo index.html): un logo puede ser horizontal (wordmark, ej. el
    de LT&C, 1290x470 ~2.7:1) o cuadrado (ej. logos reales de organizadores
-   subidos a 1600x1600, 1:1). Con object-fit:contain, el ANCHO no afecta a un
-   logo cuadrado -- lo único que lo agranda es el ALTO disponible, porque queda
-   acotado por el lado más chico de la caja. Por eso el ancho se deja igual
-   (no penaliza al wordmark, que de todas formas queda acotado por el ancho) y
-   el alto se sube bastante para que un logo cuadrado se vea grande también.
-   Misma caja en header y footer, sin casos especiales por página/forma.
-   El header es "position:fixed", así que el alto de .ltc-home-hero (padding-top)
-   debe quedar siempre por encima de min-height del header para no taparlo. */
+   subidos a 1600x1600, 1:1). Antes la caja tenía un ANCHO fijo (256px) y la
+   imagen ocupaba solo el ALTO disponible: para un logo cuadrado eso dejaba
+   ~86px de fondo oscuro vacío a los lados (el "contenedor grande, imagen
+   chica" reportado). Ahora la caja NO tiene ancho fijo: se ajusta (hug) al
+   ancho real que ocupa el logo ya renderizado, sea angosto (cuadrado) o ancho
+   (wordmark) -- sin recortar ni distorsionar nada y sin casos especiales por
+   forma. El header es "position:fixed", así que el alto de .ltc-home-hero
+   (padding-top) debe quedar siempre por encima de min-height del header. */
 body.ltc-home-page .ltc-home-brand-link {
-  width: 256px;
-  min-height: 186px;
   justify-content: center;
   padding: 8px;
   background: var(--ltc-home-ink);
@@ -4192,7 +4190,9 @@ body.ltc-home-page .ltc-home-brand-link {
 }
 
 body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
-  width: 100%;
+  display: block;
+  width: auto;
+  max-width: 324px;
   height: 170px;
   border-radius: 5px;
   object-fit: contain;
@@ -5693,13 +5693,14 @@ body.ltc-home-page .ltc-home-sponsors-track {
   gap: 18px;
 }
 
-/* Misma caja general que el logo del header (.ltc-home-brand-link +
-   img.ltc-home-brand-logo): 256px de ancho, 110px de imagen + 8px de padding.
-   Sirve tanto para logos horizontales como cuadrados (ver comentario arriba). */
+/* Mismo criterio que el logo del header: sin ancho fijo (se ajusta al logo
+   real, cuadrado o ancho, sin dejar fondo vacío) y 170px de imagen visible.
+   Acá el padding va en el propio <img> (box-sizing:border-box), por eso el
+   "height" total es 170px + 2x8px de padding = 186px. */
 .ltc-home-footer-inner img {
-  width: 256px;
-  max-width: 60vw;
-  height: 170px;
+  width: auto;
+  max-width: 340px;
+  height: 186px;
   object-fit: contain;
   padding: 8px;
   background: var(--ltc-home-ink);
@@ -5723,18 +5724,14 @@ body.ltc-home-page .ltc-home-sponsors-track {
     min-height: 173px;
   }
 
-  body.ltc-home-page .ltc-home-brand-link {
-    width: 220px;
-    min-height: 157px;
-  }
-
   body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
+    max-width: 261px;
     height: 137px;
   }
 
   .ltc-home-footer-inner img {
-    width: 220px;
-    height: 137px;
+    max-width: 277px;
+    height: 153px;
   }
 
   body.ltc-home-page .ltc-header-actions {
@@ -5828,18 +5825,14 @@ body.ltc-home-page .ltc-home-sponsors-track {
     min-height: 160px;
   }
 
-  body.ltc-home-page .ltc-home-brand-link {
-    width: 190px;
-    min-height: 142px;
-  }
-
   body.ltc-home-page .ltc-header-brand img.ltc-home-brand-logo {
+    max-width: 230px;
     height: 121px;
   }
 
   .ltc-home-footer-inner img {
-    width: 190px;
-    height: 121px;
+    max-width: 246px;
+    height: 137px;
   }
 
   body.ltc-home-page .ltc-header-nav {
