@@ -1,4 +1,5 @@
 const fs = require("fs");
+const sharp = require("sharp");
 const pool = require("../config/database");
 const OrganizadorPortal = require("../models/OrganizadorPortal");
 const UsuarioAuth = require("../models/UsuarioAuth");
@@ -8,6 +9,29 @@ function safeUnlink(urlPath) {
   if (!urlPath) return;
   const filePath = resolveUploadPath(urlPath);
   fs.unlink(filePath, () => {});
+}
+
+// Muchos logos se suben en un lienzo cuadrado con bastante relleno de un
+// color uniforme alrededor del isotipo real (ej. exportados desde Canva a
+// 1600x1600). En el header/footer el logo se muestra dentro de una caja con
+// "object-fit: contain", así que ese relleno viaja con el archivo y termina
+// mostrando un logo diminuto dentro de una caja "vacía" -- el contenedor no
+// tiene la culpa, el archivo trae recortado de fábrica de más espacio que
+// contenido visible. Se recorta ese margen uniforme apenas se sube el logo
+// (del organizador o de un auspiciante) para que el logo real ocupe toda la
+// caja disponible, sin tocar el contenedor ni requerir casos especiales por
+// forma de logo.
+async function recortarRellenoLogo(absolutePath) {
+  if (!absolutePath) return;
+  try {
+    const { data, info } = await sharp(absolutePath).trim().toBuffer({ resolveWithObject: true });
+    if (!info.width || !info.height) return;
+    await fs.promises.writeFile(absolutePath, data);
+  } catch (error) {
+    // Si el recorte falla (formato raro, imagen ya ajustada, etc.) se deja
+    // el archivo original tal cual: esto nunca debe romper la subida.
+    console.warn("No se pudo recortar el relleno del logo:", error.message);
+  }
 }
 
 function normalizarId(value) {
@@ -124,6 +148,7 @@ const organizadorPortalController = {
       const welcomeFile = req.files?.team_welcome_image?.[0] || null;
 
       if (logoFile) {
+        await recortarRellenoLogo(logoFile.path);
         data.logo_url = `/uploads/portal/organizadores/logos/${logoFile.filename}`;
       }
       if (heroFile) {
@@ -179,6 +204,7 @@ const organizadorPortalController = {
 
       const data = { ...(req.body || {}) };
       if (req.file) {
+        await recortarRellenoLogo(req.file.path);
         data.logo_url = `/uploads/portal/organizadores/auspiciantes/${req.file.filename}`;
       }
 
@@ -210,6 +236,7 @@ const organizadorPortalController = {
 
       const data = { ...(req.body || {}) };
       if (req.file) {
+        await recortarRellenoLogo(req.file.path);
         data.logo_url = `/uploads/portal/organizadores/auspiciantes/${req.file.filename}`;
       }
 
