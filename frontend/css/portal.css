@@ -4846,7 +4846,7 @@ body.ltc-landing-mode .ltc-home-hero-slider img:not(:first-child) {
   object-position: center;
   background: var(--ltc-home-ink-dark);
   opacity: 0;
-  animation: ltcHomePromoFade 18s infinite;
+  animation: ltcHomePromoFade 30s infinite;
 }
 
 .ltc-home-promo-slider img:nth-child(2) {
@@ -4855,6 +4855,14 @@ body.ltc-landing-mode .ltc-home-hero-slider img:not(:first-child) {
 
 .ltc-home-promo-slider img:nth-child(3) {
   animation-delay: 12s;
+}
+
+.ltc-home-promo-slider img:nth-child(4) {
+  animation-delay: 18s;
+}
+
+.ltc-home-promo-slider img:nth-child(5) {
+  animation-delay: 24s;
 }
 
 @keyframes ltcHomePromoFade {
