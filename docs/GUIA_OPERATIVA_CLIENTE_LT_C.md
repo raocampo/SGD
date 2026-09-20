@@ -94,5 +94,6 @@ Cuando reportar al equipo tecnico:
 ## Documentos complementarios
 - `docs/GUIA_PRESENTACION_SISTEMA_LT_C.md`
 - `docs/GUIA_DESPLIEGUE_CMS_PORTAL_PUBLICO.md`
+- `docs/GUIA_ACTUALIZAR_CONTENIDO_WEB.md` — cómo subir imágenes/texto de la página (qué es autogestionable y qué requiere al equipo técnico)
 - `docs/BITACORA_AVANCES.md`
 - `docs/ESTADO_IMPLEMENTACION_SGD.md`

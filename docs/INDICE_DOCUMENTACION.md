@@ -21,6 +21,8 @@ Ultima actualizacion: 2026-05-28
   - Guion operativo recomendado para presentar el sistema LT&C por modulos y roles.
 - `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`
   - Manual operativo para uso diario del cliente y cierre semanal/campeonato.
+- `docs/GUIA_ACTUALIZAR_CONTENIDO_WEB.md`
+  - Cómo actualizar imágenes, texto y contenido de la página: qué se edita desde el panel (CMS/formularios con upload) y qué todavía requiere código + commit + deploy, con mapa completo de `index.html` y checklist de imágenes.
 - `docs/GUIA_VIDEO_TUTORIALES_LT_C.md`
   - Guion maestro para grabacion de videos tutoriales y demo comercial/tecnica.
 - `docs/CHECKLIST_QA_CMS_PORTAL_PUBLICO.md`
