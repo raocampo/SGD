@@ -1,3 +1,73 @@
+## 2026-09-19 - Pull con stash y slides publicitarios Liga Interempresarial (5 banners)
+
+> Commiteado y pusheado (`c2e7506`).
+
+### Pull con conflicto resuelto por stash
+El working tree tenía cambios locales sin commitear en 21 archivos (backend
+auth/organizadorPortal/planLimits/auditoria, frontend admin/facturación/planes/
+portal/torneos/usuarios, etc.) que chocaban con `git pull`. Se confirmó que
+esos cambios eran **idénticos** a los ya publicados en remoto por otra sesión/
+dispositivo (commits hasta `c12889c`, incluye `limpiarUsuariosInactivos.js` +
+`limpiezaUsuariosInactivos.js`): `git stash push -u` → `git pull` (fast-forward
+limpio `14a9940..c12889c`) → `git stash pop`. Tras el pop solo sobrevivieron
+diferencias en `frontend/assets/ltc/home/slider/` (las imágenes no viajan en el
+diff de texto). Se verificó con `git show stash@{0}^3:<archivo>` que los 2
+scripts nuevos del stash eran byte-a-byte idénticos a los ya traídos por el
+pull antes de `git stash drop`.
+
+### Slides publicitarios Liga Interempresarial (`c2e7506`)
+El usuario ya había copiado banners nuevos en
+`frontend/assets/ltc/home/slider/` (borró `liga-interempresarial-square.png` y
+`liga-interempresarial-wide-2.png`, sobrescribió `liga-interempresarial-wide.png`,
+agregó `wide2.png`, `wide3.png`, `square.jpg`, `square2.jpg`) pero
+`index.html` seguía apuntando a los nombres viejos ya borrados → banners rotos
+en el carrusel promo de la home.
+- `index.html` (`.ltc-home-promo-slider`, línea ~224): ahora usa los 5 slides
+  nuevos con alt text descriptivo (premios y distinciones, transmisión en vivo,
+  inscripciones abiertas, 1ra edición ×2).
+- `portal.css` (`.ltc-home-promo-slider img`): estaba hardcodeado para 3
+  slides (`animation: ltcHomePromoFade 18s`, delays 6s/12s por `nth-child`).
+  Se amplió a **30s** con delays **0/6/12/18/24s** (`nth-child(4)`,
+  `nth-child(5)` nuevos) para que las 5 imágenes hagan crossfade sin cortes.
+- Quedaron en disco **sin trackear** (backups del propio usuario, no
+  referenciados por ningún código, no se subieron a git para no abultar el
+  repo ~2MB c/u): `liga-interempresarial-square12.png`,
+  `liga-interempresarial-wide-23.png`, `liga-interempresarial-wide12.png`
+  (versiones anteriores de los banners reemplazados).
+
+### Verificación
+- Server estático local: las 5 rutas nuevas de imagen responden 200 OK.
+- `git diff` de `index.html` + `portal.css` revisado línea por línea antes del commit.
+- **Sin verificación visual en navegador real** (crossfade de 5 slides, mobile/desktop).
+
+### Nota colateral
+Para cerrar el server de prueba se usó `taskkill /IM node.exe /F`, que mata
+**todos** los procesos `node.exe` de la máquina, no solo el de prueba. Si había
+un backend local (`node server.js`) u otro proceso node corriendo, quedó
+terminado y hay que reiniciarlo manualmente.
+
+### Pendientes para la próxima sesión
+1. **Verificación visual del slider** (5 slides, `index.html` sección hero
+   promo): que roten en crossfade sin salto ni "flash" en blanco, que el
+   `object-fit: contain` no corte texto en los banners `wide` (1920×~810) ni en
+   los `square` (más angostos) — probar en desktop y ≤480px.
+2. **Confirmar en Vercel** que el redeploy tomó las imágenes nuevas (cache de
+   CDN de imágenes; forzar hard-refresh o purge si siguen viéndose las viejas).
+3. **Decidir destino de los 3 backups sueltos** en
+   `frontend/assets/ltc/home/slider/` (`square12.png`, `wide-23.png`,
+   `wide12.png`, sin trackear) — borrarlos del disco si ya no sirven, o
+   moverlos fuera del repo de assets servidos.
+4. Si el usuario tenía el backend local corriendo, **reiniciarlo** (lo mató el
+   `taskkill /IM node.exe /F` de esta sesión).
+5. **Pendientes heredados de sesiones previas** (ver `project_pending.md` en
+   memoria y sección `2026-09-07` más abajo — no se tocaron en esta sesión):
+   confirmar en producción `/liga/<slug>` por cliente + backfill de
+   `landing_slug`, QA visual de los 5 temas a 390px/desktop, preview OG,
+   `construirLandingUrl` en `portal-admin.js`, Fase B de activación automática
+   por pago (PayPhone/PayPal, bloqueada por credenciales).
+
+---
+
 ## 2026-09-10 - Tarjetas de portada, logo de clientes, CTA hero y enlace CorpSimtelec
 
 > Commiteado y pusheado (`620df8d`, `8027691`).
