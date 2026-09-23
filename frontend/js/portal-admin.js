@@ -5,10 +5,27 @@
     return PLANES_PAGADOS.has(String(planCodigo || "").trim().toLowerCase());
   }
 
-  function construirLandingUrl(usuarioId) {
+  // Fallback legacy (?organizador=ID) para organizadores sin landing_slug
+  // todavía -- desde el 2026-09-06 toda cuenta nueva ya trae slug solo, así
+  // que esto solo debería usarse para cuentas viejas sin backfillear.
+  function construirLandingUrlLegacy(usuarioId) {
     const url = new URL("index.html", window.location.href);
     url.searchParams.set("organizador", String(usuarioId));
     return url.toString();
+  }
+
+  // La URL "bonita" (/liga/<slug>) es la que se comparte con equipos y
+  // audiencia -- antes esta tarjeta siempre mostraba el enlace viejo
+  // ?organizador=ID aunque el organizador ya tuviera su slug configurado.
+  async function construirLandingUrl(usuarioId) {
+    try {
+      const payload = await window.OrganizadorPortalAPI.obtenerContexto();
+      const slug = String(payload?.config?.landing_slug || "").trim();
+      if (slug) return new URL(`/liga/${slug}`, window.location.origin).toString();
+    } catch (error) {
+      console.warn("No se pudo obtener landing_slug, se usa el enlace legacy:", error);
+    }
+    return construirLandingUrlLegacy(usuarioId);
   }
 
   async function copiarTexto(texto) {
@@ -27,7 +44,7 @@
     document.body.removeChild(aux);
   }
 
-  function renderLandingOrganizadorCard() {
+  async function renderLandingOrganizadorCard() {
     if (!window.location.pathname.endsWith("portal-admin.html")) return;
 
     const card = document.getElementById("landing-organizador-card");
@@ -56,14 +73,16 @@
       return;
     }
 
-    const landingUrl = construirLandingUrl(user.id);
+    const landingUrl = await construirLandingUrl(user.id);
     msg.textContent = "Tu landing pública está activa. Comparte este enlace con tus equipos y audiencia.";
     actions.style.display = "flex";
     openLink.href = landingUrl;
 
+    if (copyBtn.dataset.bound === "true") return;
+    copyBtn.dataset.bound = "true";
     copyBtn.addEventListener("click", async () => {
       try {
-        await copiarTexto(landingUrl);
+        await copiarTexto(openLink.href);
         mostrarNotificacion("Enlace copiado al portapapeles", "success");
       } catch (error) {
         console.error(error);

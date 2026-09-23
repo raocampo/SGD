@@ -1,3 +1,40 @@
+## 2026-09-23 (parte 4) - `construirLandingUrl` en portal-admin.js mostraba el enlace viejo
+
+> Commiteado y pusheado (ver hash abajo).
+
+Siguiente pendiente de la lista tras el backfill. `portal-admin.html` tiene
+una tarjeta "landing pública" (para organizadores con plan pagado) con un
+enlace para copiar/abrir su landing y compartirla. `construirLandingUrl()`
+en `portal-admin.js` construía siempre `index.html?organizador=ID` — la URL
+vieja, previa al feature `/liga/<slug>` del 6-sep. `organizador-portal.js`
+("Mi Landing") ya tenía el patrón correcto (`landingUrl()`, slug-first con
+fallback), nunca se replicó acá.
+
+### Fix
+- `construirLandingUrl(usuarioId)` ahora es async: pide
+  `OrganizadorPortalAPI.obtenerContexto()` (mismo endpoint que ya usa "Mi
+  Landing"), y si el organizador tiene `landing_slug` arma
+  `/liga/<slug>`; si no (cuentas viejas sin backfillear) o si la petición
+  falla, cae al enlace legacy `?organizador=ID` (ahora
+  `construirLandingUrlLegacy`) — nunca rompe la tarjeta.
+- `renderLandingOrganizadorCard()` pasa a async/await para esperar la
+  URL antes de pintarla.
+- De paso: el listener de `copyBtn` se agregaba sin guardia cada vez que
+  la función corría (no causaba bug hoy porque solo se llama una vez desde
+  `DOMContentLoaded`, pero quedaba latente) — se agregó
+  `copyBtn.dataset.bound` como en el resto del código, y el copiado lee
+  `openLink.href` en el momento del click en vez de cerrar sobre la
+  variable vieja.
+
+### Verificación
+- `node -c frontend/js/portal-admin.js` OK.
+- `smokeFrontendRoleGuards.js` 49/49.
+- **Sin verificación visual en navegador real** (no hay Puppeteer/Playwright
+  en el repo) — pendiente que el usuario confirme en `portal-admin.html`
+  con una cuenta de organizador con plan pagado y slug.
+
+---
+
 ## 2026-09-23 (parte 3) - Backfill ejecutado en producción (4 organizadores)
 
 > Commiteado y pusheado (`a5652e4`).
