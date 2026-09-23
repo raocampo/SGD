@@ -1,6 +1,6 @@
 ## 2026-09-23 (parte 7) - Titularidad y sustituciones con reglas FIFA configurables (fútbol 11/9/8)
 
-> Commiteado y pusheado (ver hash abajo). Plan completo en modo plan (`radiant-tumbling-taco.md`).
+> Commiteado y pusheado (`ef0b0c5`). Plan completo en modo plan (`radiant-tumbling-taco.md`).
 
 Pedido del usuario: que las categorías de fútbol 11/9/8 puedan elegir entre
 2 modalidades de sustitución -- "entra y sale" (estilo fútbol sala, sin
