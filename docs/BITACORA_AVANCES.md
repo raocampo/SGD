@@ -1,6 +1,6 @@
 ## 2026-09-23 (parte 10) - PDF/reporte de planilla: entra/sale ahora reales
 
-> Commiteado y pusheado (ver hash abajo).
+> Commiteado y pusheado (`1690eaf`).
 
 Cierra el último pendiente chico que había quedado anotado ("actualizar
 las columnas entra/sale del PDF/reporte para reflejar partido_cambios").
