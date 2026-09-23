@@ -764,6 +764,54 @@ function renderBloqueEquiposParticipantesLanding(campeonato = {}) {
   `;
 }
 
+// Ajusta el font-size de un nombre de equipo para que siempre entre en su
+// tarjeta: arranca en el tamaño más grande permitido (nombres cortos se ven
+// más grandes, llenando mejor la tarjeta) y va bajando de a pasos chicos
+// hasta que el texto entra en 2 líneas, sin recortar ni usar "..." -- el
+// nombre completo siempre queda visible, solo cambia de tamaño.
+function ajustarNombreEquipoFit(el) {
+  if (!el) return;
+  const MIN_REM = 0.66;
+  const MAX_REM = 0.98;
+  const STEP_REM = 0.02;
+  const MAX_LINEAS = 2;
+  const LINE_HEIGHT = 1.25; // debe coincidir con .ltc-team-chip-name
+
+  const rootFontPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  let size = MAX_REM;
+  el.style.fontSize = `${size}rem`;
+
+  const excedeAltura = () => {
+    const maxAlturaPx = size * rootFontPx * LINE_HEIGHT * MAX_LINEAS + 1;
+    return el.scrollHeight > maxAlturaPx;
+  };
+
+  while (size > MIN_REM && excedeAltura()) {
+    size = Math.max(MIN_REM, Math.round((size - STEP_REM) * 100) / 100);
+    el.style.fontSize = `${size}rem`;
+  }
+}
+
+function ajustarNombresEquiposEnGrid(grid) {
+  if (!grid) return;
+  grid.querySelectorAll(".ltc-team-chip-name").forEach(ajustarNombreEquipoFit);
+}
+
+// Re-ajusta todas las grillas de equipos visibles (no las colapsadas, para
+// no medir texto oculto -- scrollHeight da 0 con display:none) cuando cambia
+// el ancho disponible de columna (breakpoints responsive).
+function reajustarNombresEquiposVisibles() {
+  document
+    .querySelectorAll("#ltc-team-welcome-groups .ltc-team-chip-grid:not([hidden])")
+    .forEach(ajustarNombresEquiposEnGrid);
+}
+
+let _reajusteNombresEquiposTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(_reajusteNombresEquiposTimer);
+  _reajusteNombresEquiposTimer = setTimeout(reajustarNombresEquiposVisibles, 200);
+});
+
 // Delegación de eventos: el contenedor se re-renderiza dinámicamente, así que
 // el listener se registra una sola vez en el contenedor padre.
 function initTeamGroupToggles() {
@@ -779,6 +827,9 @@ function initTeamGroupToggles() {
     const abierto = card.classList.toggle("is-open");
     grid.hidden = !abierto;
     head.setAttribute("aria-expanded", abierto ? "true" : "false");
+    // El nombre se mide recién al abrir: mientras está `hidden` (display:none)
+    // scrollHeight siempre da 0 y el ajuste no serviría de nada.
+    if (abierto) ajustarNombresEquiposEnGrid(grid);
   });
 }
 
