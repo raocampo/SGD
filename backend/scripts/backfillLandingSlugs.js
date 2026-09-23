@@ -4,14 +4,27 @@
 // /liga/<slug> funcione para TODOS los organizadores, no solo los que ya
 // entraron al CMS al menos una vez.
 //
-//   node backend/scripts/backfillLandingSlugs.js            → DRY-RUN (solo lista)
-//   node backend/scripts/backfillLandingSlugs.js --apply     → aplica el backfill
+//   node backend/scripts/backfillLandingSlugs.js                    → DRY-RUN (todos)
+//   node backend/scripts/backfillLandingSlugs.js --apply             → aplica a todos
+//   node backend/scripts/backfillLandingSlugs.js --ids=12,13,17,22   → solo esos usuario_id
+//   ...--ids=12,13,17,22 --apply                                     → aplica solo a esos
 //
 // No toca organizadores que ya tienen landing_slug (no sobrescribe nada
 // existente) ni ningún otro campo de su config de portal.
 require("dotenv").config();
 const pool = require("../config/database");
 const OrganizadorPortal = require("../models/OrganizadorPortal");
+
+function parseIdsFiltro() {
+  const arg = process.argv.find((a) => a.startsWith("--ids="));
+  if (!arg) return null;
+  const ids = arg
+    .slice("--ids=".length)
+    .split(",")
+    .map((v) => Number.parseInt(v.trim(), 10))
+    .filter((v) => Number.isFinite(v) && v > 0);
+  return ids.length ? new Set(ids) : null;
+}
 
 async function listarOrganizadoresSinSlug() {
   await OrganizadorPortal.asegurarEsquema(pool);
@@ -59,10 +72,19 @@ async function aplicarBackfill(organizadores) {
 
 (async () => {
   const apply = process.argv.includes("--apply");
-  const organizadores = await listarOrganizadoresSinSlug();
+  const idsFiltro = parseIdsFiltro();
+  let organizadores = await listarOrganizadoresSinSlug();
+
+  if (idsFiltro) {
+    organizadores = organizadores.filter((org) => idsFiltro.has(org.id));
+  }
 
   if (!organizadores.length) {
-    console.log("Todos los organizadores ya tienen landing_slug. Nada que hacer.");
+    console.log(
+      idsFiltro
+        ? "Ninguno de los usuario_id indicados en --ids está sin landing_slug (o no existen)."
+        : "Todos los organizadores ya tienen landing_slug. Nada que hacer."
+    );
     process.exit(0);
   }
 

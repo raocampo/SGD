@@ -1,3 +1,50 @@
+## 2026-09-23 (parte 3) - Backfill ejecutado en producción (4 organizadores)
+
+> Commiteado y pusheado (ver hash abajo).
+
+El usuario compartió la `DATABASE PUBLIC URL` de Railway (en `.env.local`,
+raíz del repo — mezclada con credenciales viejas de Render sin usar; no se
+tocó nada de eso). Con eso se corrió el script contra producción.
+
+Dry-run inicial sin filtro: 13 organizadores sin `landing_slug` (incluía
+cuentas de prueba). El usuario pidió aplicar **solo** a los usuario_id
+`12, 13, 17, 22` — el resto son de pruebas.
+
+### Cambio al script
+`backfillLandingSlugs.js` no tenía forma de aplicar a un subconjunto — se
+agregó el flag `--ids=12,13,17,22` (filtra sobre la misma lista de
+"sin slug", no toca nada fuera de ese conjunto).
+
+### Aplicado en producción
+```
+DATABASE_URL=<railway> DATABASE_SSL=true node scripts/backfillLandingSlugs.js --ids=12,13,17,22 --apply
+```
+- `#12 Jose Luis Guachizaca` -> `/liga/jd-cup-torneos-y-competencias`
+- `#13 Edwin Guerrero` -> `/liga/liga-orillas-del-zamora`
+- `#17 Fernando Maurad` -> `/liga/interecolares-de-padres-de-familia`
+- `#22 Robert Ocampo` -> `/liga/torneos-r-0`
+
+### Verificación
+Se confirmó en vivo contra `api.ltyc.corpsimtelec.com/.../by-slug/<slug>/landing`:
+- `#12`, `#13`, `#17`: responden `ok:true` con los datos del organizador.
+- `#22`: responde `403 "La landing pública del organizador está
+  suspendida."` (`authController.js` línea ~207: chequea
+  `plan_estado === 'activo'`) — **no es un bug del backfill**, el slug
+  quedó bien guardado; esa cuenta simplemente tiene el plan no activo. Si
+  el usuario reactiva el plan, la landing va a andar sin tocar nada más.
+
+### Pendiente
+- Decidir qué hacer con los otros 9 organizadores sin slug que quedaron
+  fuera (mayormente de prueba, pero revisar si alguno es cliente real:
+  ver lista completa en el mensaje del usuario / re-correr el script sin
+  `--ids` para refrescarla).
+- `#22 Robert Ocampo`: confirmar con el usuario si esa cuenta debería
+  tener el plan activo (es la cuenta `rao.ocampo77@gmail.com`, el email
+  del propio usuario del sistema — parece una cuenta personal/de prueba
+  también, a confirmar).
+
+---
+
 ## 2026-09-23 (parte 2) - Script de backfill de landing_slug
 
 > Commiteado y pusheado (`28c27d6`).
