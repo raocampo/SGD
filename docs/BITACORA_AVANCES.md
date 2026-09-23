@@ -1,3 +1,17 @@
+## 2026-09-23 (parte 5) - Confirmación visual del fix de portal-admin.js
+
+Sin commit de código, solo confirmación. Ni el usuario ni esta sesión tienen
+contraseña de un organizador real (`obtenerOrganizadorObjetivo` no tiene
+impersonación admin→organizador en el frontend), pero el usuario logró
+entrar como Liliana Herrera (`#2`) y confirmó con captura de pantalla en
+`https://ltyc.corpsimtelec.com/portal-admin.html`: la tarjeta "Landing
+pública de organizador" muestra "Abrir landing" apuntando a
+`https://ltyc.corpsimtelec.com/liga/interempresarial` (visible en la barra
+de estado del navegador al pasar el mouse) — el fix de `36bfdf0` queda
+verificado en producción con una cuenta real, no solo por código.
+
+---
+
 ## 2026-09-23 (parte 4) - `construirLandingUrl` en portal-admin.js mostraba el enlace viejo
 
 > Commiteado y pusheado (`36bfdf0`).
