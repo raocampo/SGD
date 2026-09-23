@@ -805,8 +805,11 @@ a.ltc-team-chip-card:hover {
   font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.25;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  /* No se fuerza overflow-wrap/word-break acá: el JS (ajustarNombreEquipoFit)
+     controla el corte de palabras en línea, solo lo habilita como último
+     recurso. Forzarlo por CSS hacía que el auto-fit se conformara con partir
+     palabras a la mitad (ej. "CAFRILOSA" -> "CAFRILO"/"SA") en vez de seguir
+     achicando el font-size hasta que la palabra completa entrara. */
 }
 
 .ltc-team-chip-meta {

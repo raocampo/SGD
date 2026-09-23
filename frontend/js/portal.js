@@ -765,31 +765,68 @@ function renderBloqueEquiposParticipantesLanding(campeonato = {}) {
 }
 
 // Ajusta el font-size de un nombre de equipo para que siempre entre en su
-// tarjeta: arranca en el tamaño más grande permitido (nombres cortos se ven
-// más grandes, llenando mejor la tarjeta) y va bajando de a pasos chicos
-// hasta que el texto entra en 2 líneas, sin recortar ni usar "..." -- el
-// nombre completo siempre queda visible, solo cambia de tamaño.
+// tarjeta sin recortar texto ni usar "...". Estrategia en 3 pasos, en orden
+// de preferencia:
+//   1) Entrar en UNA sola línea sin partir ninguna palabra (se prueba con
+//      white-space:nowrap): esto es lo más legible, y cubre tanto nombres
+//      cortos (les toca font-size grande) como largos de una sola palabra
+//      (les toca font-size chico, pero siguen enteros en una línea).
+//   2) Si ni al tamaño mínimo entra en una línea, se permite envolver en
+//      2 líneas -- pero SOLO cortando en espacios (word-break normal), nunca
+//      a mitad de palabra. Sirve para nombres de varias palabras largos
+//      ("DISTRIBUIDORA ROMERO RODAS").
+//   3) Último recurso: si hay una sola palabra tan larga que ni al tamaño
+//      mínimo entra en 2 líneas, recién ahí se permite partirla (overflow-
+//      wrap:anywhere) para que al menos no se salga de la tarjeta.
+// Antes el paso 2 se probaba primero con word-break:break-word habilitado
+// desde el CSS base, y el resultado era que el algoritmo se conformaba con
+// la primera partición "a la mitad de la palabra" que entraba en 2 líneas
+// (ej. "CAFRILOSA" -> "CAFRILO"/"SA") en vez de seguir achicando hasta que
+// la palabra completa entrara en una sola línea.
 function ajustarNombreEquipoFit(el) {
   if (!el) return;
-  const MIN_REM = 0.66;
-  const MAX_REM = 0.98;
+  const MIN_REM = 0.58;
+  const MAX_REM = 0.92;
   const STEP_REM = 0.02;
   const MAX_LINEAS = 2;
   const LINE_HEIGHT = 1.25; // debe coincidir con .ltc-team-chip-name
 
   const rootFontPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+
+  el.style.whiteSpace = "nowrap";
+  el.style.overflowWrap = "normal";
+  el.style.wordBreak = "normal";
+
   let size = MAX_REM;
   el.style.fontSize = `${size}rem`;
+  const cabeEnUnaLinea = () => el.scrollWidth <= el.clientWidth + 1;
 
-  const excedeAltura = () => {
-    const maxAlturaPx = size * rootFontPx * LINE_HEIGHT * MAX_LINEAS + 1;
-    return el.scrollHeight > maxAlturaPx;
-  };
-
-  while (size > MIN_REM && excedeAltura()) {
+  // Paso 1: una sola línea, palabra completa.
+  while (size > MIN_REM && !cabeEnUnaLinea()) {
     size = Math.max(MIN_REM, Math.round((size - STEP_REM) * 100) / 100);
     el.style.fontSize = `${size}rem`;
   }
+  if (cabeEnUnaLinea()) return;
+
+  // Paso 2: permitir 2 líneas partiendo solo en espacios.
+  el.style.whiteSpace = "normal";
+  size = MAX_REM;
+  el.style.fontSize = `${size}rem`;
+
+  const noEntra = () => {
+    const maxAlturaPx = size * rootFontPx * LINE_HEIGHT * MAX_LINEAS + 1;
+    return el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > maxAlturaPx;
+  };
+
+  while (size > MIN_REM && noEntra()) {
+    size = Math.max(MIN_REM, Math.round((size - STEP_REM) * 100) / 100);
+    el.style.fontSize = `${size}rem`;
+  }
+  if (!noEntra()) return;
+
+  // Paso 3: una sola palabra que ni al mínimo entra en 2 líneas sin cortarse.
+  el.style.overflowWrap = "anywhere";
+  el.style.wordBreak = "break-word";
 }
 
 function ajustarNombresEquiposEnGrid(grid) {
@@ -896,13 +933,11 @@ function renderSeccionEquiposLanding(payload = {}, torneosVisibles = []) {
   if (statLabel) {
     statLabel.textContent = totalEquipos === 1 ? "equipo ya confirmado" : "equipos ya confirmados";
   }
+  // Todos los avatares, sin recorte "+N": la fila envuelve en varias líneas
+  // (flex-wrap) usando todo el ancho/alto de la tarjeta, así que ocultar
+  // equipos detrás de un "+N" ya no hace falta y solo escondía información.
   if (preview) {
-    const MAX_AVATARES = 10;
-    const visibles = todosLosEquipos.slice(0, MAX_AVATARES);
-    const restantes = totalEquipos - visibles.length;
-    preview.innerHTML =
-      visibles.map((equipo) => renderAvatarEquipoPreview(equipo)).join("") +
-      (restantes > 0 ? `<span class="ltc-team-preview-avatar ltc-team-preview-more">+${restantes}</span>` : "");
+    preview.innerHTML = todosLosEquipos.map((equipo) => renderAvatarEquipoPreview(equipo)).join("");
   }
 
   groups.innerHTML = campeonatosConEquipos.length
@@ -1247,13 +1282,10 @@ function aplicarModoLandingOrganizador(payload) {
   if (preciosSection) preciosSection.style.display = "none";
   if (navPrecios) navPrecios.style.display = "none";
 
-  document
-    .querySelectorAll(
-      "#ltc-nav-register, #ltc-nav-login, #ltc-head-register, #ltc-head-login"
-    )
-    .forEach((el) => {
-      if (el) el.style.display = "none";
-    });
+  // Registrarse/Iniciar sesión se mantienen visibles también en la landing
+  // del organizador (antes se ocultaban acá) -- el visitante de una landing
+  // de cliente debe poder llegar al login/registro de la plataforma igual
+  // que en la portada de LT&C.
 
   if (sponsorsSection) {
     if (auspiciantes.length && sponsorsTrack) {
