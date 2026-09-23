@@ -1,3 +1,60 @@
+## 2026-09-22 - Avatares de equipos y auto-fit de nombres en "Bienvenida a equipos"
+
+> Commiteado y pusheado (`86568c5`).
+
+Pull previo: `Already up to date` (nada nuevo desde `1608dc3`).
+
+Reporte visual del usuario (captura de la sección "BIENVENIDA A EQUIPOS" +
+grilla de equipos inscritos de un torneo real, 19 equipos): los avatares
+circulares de la tarjeta de bienvenida se veían apretados/superpuestos en una
+esquina dejando mucho espacio vacío en el resto de la tarjeta, y los nombres
+de equipo en las tarjetas de abajo (`.ltc-team-chip-card`) se veían
+inconsistentes — nombres largos ("CORPORACIÓN PROAUTO(MIRA...",
+"DISTRIBUIDORA ROMERO RODAS") ocupaban 2-3 líneas desparejas contra nombres
+cortos en una sola línea, todos al mismo `font-size` fijo.
+
+### Avatares — `.ltc-team-welcome-preview` / `.ltc-team-preview-avatar`
+- Se quita el overlap (`margin-left: -0.6rem` apilando "monedas") → ahora
+  `gap` entre círculos, tamaño 42px→46px.
+- `.ltc-team-welcome-copy` pasa a `display:flex; flex-direction:column` y la
+  fila de avatares usa `margin-top:auto`: aprovecha el alto completo que ya
+  le da el `align-items:stretch` del grid padre (la copy card se estira a la
+  altura de la imagen de al lado) en vez de quedar pegada justo debajo de la
+  descripción con un vacío grande abajo.
+
+### Nombres de equipo — auto-fit por tarjeta (`portal.js`)
+Nueva función `ajustarNombreEquipoFit(el)`: por cada `.ltc-team-chip-name`
+arranca en `0.98rem` (nombres cortos se ven más grandes que antes) y baja de
+a `0.02rem` hasta que el texto entra en **2 líneas** (piso `0.66rem`) —
+**sin** truncar ni usar elipsis, el nombre completo siempre queda visible,
+solo cambia de tamaño. Se ejecuta:
+- Al abrir el acordeón de un campeonato (`initTeamGroupToggles`) — el grid
+  está `hidden` (display:none) hasta ese momento, así que medir antes daría
+  `scrollHeight = 0` siempre.
+- En `resize` (debounced 200ms) sobre las grillas actualmente visibles, para
+  recalcular si cambia el ancho de columna entre breakpoints.
+- `.ltc-team-chip-name` suma `overflow-wrap:anywhere; word-break:break-word`
+  para que tokens largos sin espacios (ej. `"PROAUTO(MIRASOL)"`) puedan
+  partirse en vez de desbordar la tarjeta.
+
+### Verificación
+- `node -c frontend/js/portal.js` OK.
+- Conteo de llaves `{`/`}` de `portal.css` balanceado (934/934).
+- **Sin verificación visual en navegador real** (no hay Puppeteer/Playwright
+  en el repo ni skill `/run` disponible en esta sesión) — pendiente confirmar
+  con el usuario contra un torneo real con muchos equipos y nombres largos.
+
+### Pendientes para la próxima sesión
+1. **Verificación visual real** de ambos cambios contra el torneo de la
+   captura (19 equipos, nombres largos) — desktop y mobile.
+2. Si algún nombre extremo sigue viéndose apretado en el piso de `0.66rem`,
+   evaluar bajar el piso o permitir 3 líneas como último recurso.
+3. Pendientes heredados de sesiones previas sin tocar hoy — ver
+   `project_pending.md` (verificación `/liga/<slug>` en producción, uploader
+   real para galería/noticias/CMS propuesto el 19-sep, Fase B de pagos, etc.).
+
+---
+
 ## 2026-09-19 - Pull con stash y slides publicitarios Liga Interempresarial (5 banners)
 
 > Commiteado y pusheado (`c2e7506`).
