@@ -1,6 +1,6 @@
 ## 2026-09-23 (parte 8) - Fase 2: Titular/Suplente en el perfil público del jugador
 
-> Commiteado y pusheado (ver hash abajo).
+> Commiteado y pusheado (`0e125f2`).
 
 Continuación directa de la parte 7. Cierra el pendiente histórico original
 ("mostrar en jugador-publico.html tab Partidos: Titular/Suplente + minutos",
