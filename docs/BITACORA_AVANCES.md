@@ -1,3 +1,46 @@
+## 2026-09-23 (parte 10) - PDF/reporte de planilla: entra/sale ahora reales
+
+> Commiteado y pusheado (ver hash abajo).
+
+Cierra el último pendiente chico que había quedado anotado ("actualizar
+las columnas entra/sale del PDF/reporte para reflejar partido_cambios").
+
+### El problema
+El PDF/reporte de planilla mostraba `entra`/`sale` leyendo el booleano
+suelto del JSONB viejo (`registro?.entra`) -- el mismo campo que antes de
+la parte 7 nunca se guardaba de verdad (bug del JOIN faltante). Aunque ya
+está corregido el guardado, ese campo sigue siendo un checkbox manual
+aparte, no la fuente real (`partido_cambios`, con minuto/pareja/límite).
+
+### Fix
+- `Partido.obtenerPlanilla()`: `planilla_registro.entra`/`.sale` de cada
+  jugador ahora es `checkbox viejo === true OR aparece en partido_cambios`
+  (derivado, sin duplicar lógica en el frontend -- el PDF/reporte/mobile
+  que ya leían este campo quedan correctos automáticamente, sin tocarlos).
+- `planilla.js`: la columna entra/sale en modo captura sigue igual (solo
+  futbol_11 exacto, checkboxes editables, sin cambios de comportamiento).
+  En modo PDF/reporte (solo lectura) se amplía a futbol_9/8 también, para
+  que coincida con el alcance real de la sección "Cambios" -- antes esas
+  categorías no mostraban nada de esto en el PDF aunque ya se pudiera
+  capturar.
+
+### Verificación
+- `node --check` en ambos archivos: OK. `smokeFrontendRoleGuards.js` 49/49.
+- Prueba funcional real: guardado un cambio de prueba (859 sale, 855
+  entra) en el partido 643, `obtenerPlanilla()` devolvió
+  `sale:true/entra:false` para 859, `entra:true/sale:false` para 855, y
+  `false/false` para un jugador sin cambios -- exactamente lo esperado.
+  Datos de prueba limpiados.
+- Sin verificación visual del PDF renderizado (sin navegador/generador
+  PDF disponible en esta sesión).
+
+Con esto se cierran TODOS los pendientes que había dejado anotados la
+sesión de titularidad/sustituciones (parte 7 a 10). Quedan solo los
+pendientes de más largo plazo sin tocar: Facturación Fase 2/3, Fase B de
+pagos (bloqueada por credenciales) y TURN server.
+
+---
+
 ## 2026-09-23 (parte 9) - Cambios visibles en equipo-publico.html
 
 > Commiteado y pusheado (`105301a`).

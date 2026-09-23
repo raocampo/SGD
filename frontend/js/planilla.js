@@ -4457,7 +4457,15 @@ function obtenerColumnasRegistroPlanilla({ encabezadoCompleto = false, modo = "r
       );
     }
   }
-  if (esPlanillaFutbol11()) {
+  // En captura se deja tal cual estaba (solo futbol_11 exacto) para no
+  // mostrar checkboxes editables de entra/sale duplicando la sección
+  // "Cambios" nueva en 9/8 (esa ya cubre esos 2 formatos). En PDF/reporte
+  // (solo lectura) sí se amplía a 9/8, porque ahí es información derivada
+  // de partido_cambios (ver backend), no un control editable.
+  const mostrarColumnasEntraSale = esCaptura
+    ? esPlanillaFutbol11()
+    : FORMATOS_CAMBIOS_PLANILLA.has(obtenerTipoDeportePlanillaNormalizado());
+  if (mostrarColumnasEntraSale) {
     columnas.push(
       {
         key: "entra",

@@ -3529,6 +3529,14 @@ class Partido {
     const registroLocalPorJugador = construirMapaRegistroPlanilla(registroJugadoresLocal);
     const registroVisitantePorJugador = construirMapaRegistroPlanilla(registroJugadoresVisitante);
 
+    // "entra"/"sale" ahora también se derivan de partido_cambios (fuente de
+    // verdad real desde que existe, con minuto/pareja/límite) además del
+    // viejo booleano suelto del JSONB -- así el PDF/reporte y el checkbox
+    // de captura reflejan los cambios reales sin duplicar la lógica en el
+    // frontend. Ver docs/BITACORA_AVANCES.md 2026-09-23 parte 7.
+    const jugadoresConCambioEntra = new Set(cambiosR.rows.map((c) => Number(c.jugador_entra_id)).filter(Boolean));
+    const jugadoresConCambioSale = new Set(cambiosR.rows.map((c) => Number(c.jugador_sale_id)).filter(Boolean));
+
     const plantelLocalConSuspension = plantelLocal.map((jugador) => {
       const registro = registroLocalPorJugador.get(Number(jugador.id)) || null;
       return {
@@ -3538,8 +3546,8 @@ class Partido {
           numero_camiseta:
             registro?.numero_camiseta ?? Jugador.normalizarNumeroCamiseta(jugador?.numero_camiseta),
           convocatoria: registro?.convocatoria || null,
-          entra: registro?.entra === true,
-          sale: registro?.sale === true,
+          entra: registro?.entra === true || jugadoresConCambioEntra.has(Number(jugador.id)),
+          sale: registro?.sale === true || jugadoresConCambioSale.has(Number(jugador.id)),
         },
       };
     });
@@ -3552,8 +3560,8 @@ class Partido {
           numero_camiseta:
             registro?.numero_camiseta ?? Jugador.normalizarNumeroCamiseta(jugador?.numero_camiseta),
           convocatoria: registro?.convocatoria || null,
-          entra: registro?.entra === true,
-          sale: registro?.sale === true,
+          entra: registro?.entra === true || jugadoresConCambioEntra.has(Number(jugador.id)),
+          sale: registro?.sale === true || jugadoresConCambioSale.has(Number(jugador.id)),
         },
       };
     });
