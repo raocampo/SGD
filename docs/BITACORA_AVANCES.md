@@ -1,3 +1,50 @@
+## 2026-09-23 (parte 2) - Script de backfill de landing_slug
+
+> Commiteado y pusheado (`aabdbfc`).
+
+Siguiente pendiente de la lista tras el pull: "backfill de `landing_slug`
+en organizadores existentes que no lo tengan seteado" — hasta ahora un
+organizador solo obtiene su `landing_slug` (y por lo tanto `/liga/<slug>`)
+la primera vez que abre "Mi Landing" y guarda algo (`OrganizadorPortal.
+guardarConfig` lo genera on-the-fly). Un organizador que nunca entró al
+CMS de su landing no tiene slug ni fila en `organizador_portal_config`.
+
+### `backend/scripts/backfillLandingSlugs.js`
+Script nuevo, mismo patrón que `limpiarUsuariosInactivos.js` (dry-run por
+defecto, `--apply` para ejecutar). Para cada `usuarios` con `rol='organizador'`
+sin `landing_slug` (o sin fila en `organizador_portal_config` siquiera):
+genera un slug único reusando `OrganizadorPortal.generarSlugDisponible()`
+(mismo algoritmo que usa el guardado normal, con manejo de colisiones y
+palabras reservadas) a partir de `organizacion_nombre` o `nombre`, y hace
+`UPDATE`/`INSERT` mínimo — **no toca ningún otro campo** de la config de
+portal de nadie, ni sobrescribe un slug ya existente.
+
+Probado en dry-run contra la base local (`localhost/gestionDeportiva`):
+detectó 8 organizadores sin slug y generó nombres sensatos (ej.
+`loja-torneos-competencias`, `chocolatosos`, `liga-independiente`).
+
+**Importante:** la base local está desactualizada respecto a producción
+(ej. localmente el usuario #2 "Liliana Herrera" figura sin slug, pero en
+producción ya tiene `interempresarial` desde hace días) — el dry-run local
+solo sirvió para validar que el script corre sin errores y genera slugs
+razonables, **no** refleja qué organizadores de producción realmente
+necesitan el backfill. Esta sesión no tiene credenciales de la base de
+Railway, así que no se pudo ejecutar contra producción.
+
+### Pendiente para la próxima sesión / para el usuario
+1. **Ejecutar contra producción** (con acceso a Railway):
+   `railway run node backend/scripts/backfillLandingSlugs.js` (dry-run,
+   revisar la lista) y luego `... --apply` si se ve bien. Alternativa:
+   correrlo localmente apuntando `DB_*`/`DATABASE_URL` del `.env` a la base
+   de Railway.
+2. Confirmar que cada organizador backfilleado puede abrir su
+   `/liga/<slug>` nuevo.
+3. Seguir con el resto de `project_pending.md`: preview Open Graph,
+   `construirLandingUrl` en `portal-admin.js`, QA visual de los otros 4
+   temas de landing.
+
+---
+
 ## 2026-09-23 - Pull, limpieza de backups y QA visual confirmado por el usuario
 
 Sin commit de código (solo housekeeping + confirmación).
