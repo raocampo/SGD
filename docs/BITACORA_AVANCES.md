@@ -1,6 +1,6 @@
 ## 2026-09-23 (parte 3) - Backfill ejecutado en producción (4 organizadores)
 
-> Commiteado y pusheado (ver hash abajo).
+> Commiteado y pusheado (`a5652e4`).
 
 El usuario compartió la `DATABASE PUBLIC URL` de Railway (en `.env.local`,
 raíz del repo — mezclada con credenciales viejas de Render sin usar; no se
