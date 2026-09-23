@@ -61,6 +61,8 @@
     .jp-contrib-gol { background: #fef9c3; color: #854d0e; }
     .jp-contrib-am { background: #fef9c3; color: #92400e; }
     .jp-contrib-roja { background: #fee2e2; color: #991b1b; }
+    .jp-contrib-titular { background: #dcfce7; color: #166534; }
+    .jp-contrib-suplente { background: #e0e7ff; color: #3730a3; }
     .jp-estado-badge { font-size: .65rem; padding: .15rem .5rem; border-radius: 999px; font-weight: 700; }
     .jp-estado-finalizado { background: #dcfce7; color: #166534; }
     .jp-estado-pendiente { background: #f1f5f9; color: #64748b; }
@@ -458,6 +460,19 @@
           }
 
           const contrib = [];
+          // Titular/suplente + minuto de entrada/salida -- solo existe para
+          // categorías de futbol 11/9/8 donde se capturó la planilla con
+          // convocatoria y/o cambios; si no hay datos, no se muestra nada
+          // (mismo comportamiento que antes para el resto de formatos).
+          const t = p.titularidad;
+          if (t?.rol === "titular") {
+            const texto = t.minuto_sale != null ? `Titular (sale min ${t.minuto_sale})` : "Titular";
+            contrib.push(`<span class="jp-contrib-badge jp-contrib-titular">${texto}</span>`);
+          } else if (t?.rol === "suplente" && t.ingreso) {
+            contrib.push(`<span class="jp-contrib-badge jp-contrib-suplente">Suplente (entra min ${t.minuto_entra})</span>`);
+          } else if (t?.rol === "suplente") {
+            contrib.push(`<span class="jp-contrib-badge jp-contrib-suplente">Suplente</span>`);
+          }
           if (p.goles > 0) contrib.push(`<span class="jp-contrib-badge jp-contrib-gol"><i class="fas fa-futbol"></i> ${p.goles} gol${p.goles !== 1 ? "es" : ""}</span>`);
           if (p.tarjetas_amarillas > 0) contrib.push(`<span class="jp-contrib-badge jp-contrib-am">🟨 ${p.tarjetas_amarillas}</span>`);
           if (p.tarjetas_rojas > 0) contrib.push(`<span class="jp-contrib-badge jp-contrib-roja">🟥 ${p.tarjetas_rojas}</span>`);
@@ -484,7 +499,7 @@
         });
 
         cont.innerHTML = `
-          <div style="font-size:.8rem;color:#64748b;margin-bottom:.75rem;"><i class="fas fa-info-circle"></i> ${total} partido${total !== 1 ? "s" : ""} registrado${total !== 1 ? "s" : ""} (con gol o tarjeta)</div>
+          <div style="font-size:.8rem;color:#64748b;margin-bottom:.75rem;"><i class="fas fa-info-circle"></i> ${total} partido${total !== 1 ? "s" : ""} del equipo del jugador</div>
           ${rows.join("")}`;
 
       } catch (e) {

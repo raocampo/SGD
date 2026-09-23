@@ -1,3 +1,61 @@
+## 2026-09-23 (parte 8) - Fase 2: Titular/Suplente en el perfil público del jugador
+
+> Commiteado y pusheado (ver hash abajo).
+
+Continuación directa de la parte 7. Cierra el pendiente histórico original
+("mostrar en jugador-publico.html tab Partidos: Titular/Suplente + minutos",
+documentado desde mayo en `ESTADO_IMPLEMENTACION_SGD.md`/`project_status.md`),
+que se había dejado fuera a propósito de la sesión anterior.
+
+### El problema al combinar las 2 fuentes
+`convocatoria` (P/S) por sí sola no alcanza: un jugador con `convocatoria=S`
+que después entró de cambio sigue siendo técnicamente "suplente", pero la
+experiencia correcta es mostrarlo como "entró al partido", no como banca.
+Se necesitaba combinar `convocatoria` (JSONB de `partido_planillas`) con
+los eventos de `partido_cambios` (de la parte 7) para armar un estado
+único y legible.
+
+### Backend (`backend/services/publicPortalService.js`)
+`listarParticipacionesPublicasJugador()`: por cada partido de la lista, 2
+queries nuevas scoped a esos `partido_id` (una a `partido_planillas` para
+sacar la `convocatoria` de ESE jugador del lado que corresponda según si
+su equipo jugó de local o visitante, otra a `partido_cambios` para sus
+minutos de entrada/salida) + `construirTitularidadPublica()` que las
+combina en un solo campo `titularidad: { rol, ingreso, minuto_entra,
+minuto_sale }` por partido (o `null` si no hay datos, ej. formatos sin
+esta captura -- no rompe nada de lo que ya funcionaba).
+
+### Frontend (`frontend/jugador-publico.html`, tab Partidos)
+Nueva badge (verde "Titular"/"Titular (sale min X)", azul "Suplente (entra
+min X)"/"Suplente") junto a las de gol/tarjeta ya existentes. De paso se
+corrigió el texto del resumen ("... registrados (con gol o tarjeta)") que
+ya estaba desactualizado -- la query trae TODOS los partidos del equipo,
+no solo los que tienen gol/tarjeta (esto no es un cambio de comportamiento,
+solo de texto).
+
+### Verificación
+- `node --check` sobre el bloque `<script>` inline de `jugador-publico.html`: OK.
+- `smokeFrontendRoleGuards.js` 49/49.
+- **Prueba funcional real contra la base local**: se guardó una planilla
+  de prueba (partido 643) con 2 titulares, 2 suplentes y 1 cambio real
+  (título 859 sale min 60, entra 855), y se llamó
+  `listarParticipacionesPublicasJugador()` para cada jugador -- los 5
+  casos devolvieron exactamente lo esperado (titular con salida, suplente
+  que entra con minuto, titular sin salida, suplente en banca, jugador sin
+  datos -> `null`). Datos de prueba limpiados después.
+- **Sin verificación visual** de las badges nuevas en el navegador real —
+  pendiente que el usuario las vea una vez desplegado, con un jugador de
+  una categoría futbol_11/9/8 que ya tenga planilla con convocatoria/cambios
+  capturados (los partidos viejos, guardados antes de la parte 7, no van a
+  mostrar nada ahí porque nunca se capturó esa data).
+
+### Explícitamente fuera de esta fase (para la próxima)
+- `equipo-publico.html`: mostrar alineación/cambios por partido (solo se
+  hizo el lado del jugador individual, que era el pendiente histórico
+  explícito).
+
+---
+
 ## 2026-09-23 (parte 7) - Titularidad y sustituciones con reglas FIFA configurables (fútbol 11/9/8)
 
 > Commiteado y pusheado (`ef0b0c5`). Plan completo en modo plan (`radiant-tumbling-taco.md`).

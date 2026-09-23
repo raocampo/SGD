@@ -1220,6 +1220,49 @@ async function listarParticipacionesPublicasJugador(jugadorId, eventoId = null) 
   );
   const tarjetasMap = new Map(tR.rows.map((r) => [Number(r.partido_id), { amarillas: r.amarillas, rojas: r.rojas }]));
 
+  // Titularidad (convocatoria P/S, dentro del JSONB de planilla) y minutos
+  // de entrada/salida (tabla partido_cambios, futbol_11/9/8 con reglas de
+  // sustitución) para ESTE jugador en cada partido de la lista.
+  const partidoIds = pR.rows.map((p) => Number(p.id));
+  let convocatoriaMap = new Map();
+  let cambiosMap = new Map();
+  if (partidoIds.length) {
+    const planillasR = await pool.query(
+      `SELECT partido_id, registro_jugadores_local, registro_jugadores_visitante
+       FROM partido_planillas WHERE partido_id = ANY($1::int[])`,
+      [partidoIds]
+    );
+    const equipoLocalPorPartido = new Map(pR.rows.map((p) => [Number(p.id), normalizarEntero(p.equipo_local_id)]));
+    planillasR.rows.forEach((row) => {
+      const pid = Number(row.partido_id);
+      const esLocal = equipoLocalPorPartido.get(pid) === equipoId;
+      const registro = esLocal ? row.registro_jugadores_local : row.registro_jugadores_visitante;
+      const entrada = (Array.isArray(registro) ? registro : []).find(
+        (r) => normalizarEntero(r?.jugador_id) === Number(jugadorId)
+      );
+      if (entrada?.convocatoria) convocatoriaMap.set(pid, String(entrada.convocatoria).toUpperCase());
+    });
+
+    const cambiosR = await pool.query(
+      `SELECT partido_id, jugador_sale_id, jugador_entra_id, minuto, tipo
+       FROM partido_cambios
+       WHERE partido_id = ANY($1::int[]) AND (jugador_sale_id = $2::int OR jugador_entra_id = $2::int)`,
+      [partidoIds, jugadorId]
+    );
+    cambiosR.rows.forEach((row) => {
+      const pid = Number(row.partido_id);
+      const actual = cambiosMap.get(pid) || {};
+      if (Number(row.jugador_sale_id) === Number(jugadorId)) {
+        actual.minuto_sale = normalizarEntero(row.minuto);
+        actual.tipo_salida = row.tipo || "normal";
+      }
+      if (Number(row.jugador_entra_id) === Number(jugadorId)) {
+        actual.minuto_entra = normalizarEntero(row.minuto);
+      }
+      cambiosMap.set(pid, actual);
+    });
+  }
+
   return {
     total: pR.rows.length,
     evento_id: eventoFiltroId || null,
@@ -1248,9 +1291,43 @@ async function listarParticipacionesPublicasJugador(jugadorId, eventoId = null) 
         goles: golesMap.get(Number(p.id))?.goles || 0,
         tarjetas_amarillas: tarjetasMap.get(Number(p.id))?.amarillas || 0,
         tarjetas_rojas: tarjetasMap.get(Number(p.id))?.rojas || 0,
+        titularidad: construirTitularidadPublica(
+          convocatoriaMap.get(Number(p.id)) || null,
+          cambiosMap.get(Number(p.id)) || null
+        ),
       };
     }),
   };
+}
+
+// Combina la marca de convocatoria (P/S, del checkbox de planilla) con los
+// cambios registrados en partido_cambios para armar un estado legible de
+// "qué hizo este jugador en este partido" sin exponer los detalles crudos
+// de ambas fuentes -- ver [[portal_publico_pendientes]]: convocatoria por
+// sí sola no distingue "suplente que no jugó" de "suplente que entró", por
+// eso hace falta combinar las dos fuentes acá.
+function construirTitularidadPublica(convocatoria, cambios) {
+  if (!convocatoria && !cambios) return null; // sin datos (formato sin esta captura)
+  if (cambios?.minuto_entra !== null && cambios?.minuto_entra !== undefined) {
+    return {
+      rol: "suplente",
+      ingreso: true,
+      minuto_entra: cambios.minuto_entra,
+      minuto_sale: cambios.minuto_sale ?? null,
+    };
+  }
+  if (convocatoria === "P") {
+    return {
+      rol: "titular",
+      ingreso: false,
+      minuto_entra: null,
+      minuto_sale: cambios?.minuto_sale ?? null,
+    };
+  }
+  if (convocatoria === "S") {
+    return { rol: "suplente", ingreso: false, minuto_entra: null, minuto_sale: null };
+  }
+  return null;
 }
 
 module.exports = {
