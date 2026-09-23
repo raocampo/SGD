@@ -1,6 +1,6 @@
 ## 2026-09-23 (parte 4) - `construirLandingUrl` en portal-admin.js mostraba el enlace viejo
 
-> Commiteado y pusheado (ver hash abajo).
+> Commiteado y pusheado (`36bfdf0`).
 
 Siguiente pendiente de la lista tras el backfill. `portal-admin.html` tiene
 una tarjeta "landing pública" (para organizadores con plan pagado) con un
