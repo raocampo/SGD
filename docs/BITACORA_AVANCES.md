@@ -1,3 +1,67 @@
+## 2026-09-22 (parte 2) - Fix real del auto-fit, todos los avatares y login/registro en landing
+
+> Commiteado y pusheado (`8551c64`).
+
+El usuario mandó una segunda captura contra el fix de `86568c5`: seguía
+mostrando "+9" en vez de los 19 equipos, y los nombres se veían **peor** que
+antes — partidos a mitad de palabra ("CAFRILOSA" → "CAFRILO"/"SA",
+"CONDIMENSA" → "CONDIM"/"ENSA", "NUTRIFARM" → "NUTRIFA"/"RM", etc.) con un
+`font-size` inconsistente (unos muy grandes, otros muy chicos).
+
+### Causa raíz del auto-fit
+El `overflow-wrap: anywhere; word-break: break-word;` que se agregó en el CSS
+base de `.ltc-team-chip-name` en `86568c5` hacía que el algoritmo
+`ajustarNombreEquipoFit()` (que solo verificaba "¿entra en 2 líneas?")
+se conformara con la **primera** partición a mitad de palabra que lograba
+2 líneas, en vez de seguir achicando el font-size hasta que la palabra
+completa entrara en una sola línea. Resultado: texto grande y cortado feo.
+
+### Fix
+- `ajustarNombreEquipoFit()` reescrito en 3 pasos, en orden de preferencia:
+  1. **1 sola línea sin partir palabras** (mide con `white-space:nowrap`,
+     baja el font-size hasta que `scrollWidth <= clientWidth`). Nombres
+     cortos quedan grandes, nombres largos de una sola palabra quedan
+     chicos pero **enteros y en una línea**.
+  2. Si ni al tamaño mínimo entra en 1 línea, se permite **2 líneas
+     partiendo solo en espacios** (word-break normal) — para nombres de
+     varias palabras largos ("DISTRIBUIDORA ROMERO RODAS").
+  3. Único último recurso: una sola palabra tan larga que ni al mínimo
+     entra en 2 líneas sin cortarse — recién ahí se habilita partirla.
+  - Rango de tamaño ajustado a `0.58rem`–`0.92rem` (antes `0.66`–`0.98`).
+- Se quita el `overflow-wrap`/`word-break` forzado del CSS base de
+  `.ltc-team-chip-name` — ahora el JS lo controla como último recurso, no
+  como comportamiento por defecto.
+- **Avatares "Bienvenida a equipos"**: se elimina el corte `MAX_AVATARES=10`
+  + badge `+N` — ahora se muestran **todos** los equipos inscritos (la fila
+  ya envuelve en varias líneas con `flex-wrap`, no había necesidad real de
+  ocultar ninguno; el "+9" solo escondía información).
+
+### Login/Registro en landing de organizador (pedido nuevo, mismo turno)
+El usuario recordó que la landing de cliente (`/liga/<slug>`, la misma de
+las capturas) debe mostrar los botones **Registrarse** / **Iniciar sesión**
+igual que la portada de LT&C. `aplicarModoLandingOrganizador()` los ocultaba
+a propósito (`#ltc-nav-register`, `#ltc-nav-login`, `#ltc-head-register`,
+`#ltc-head-login` → `display:none`) como parte del "de-brandeo" de la
+landing. Se quita ese bloque — quedan visibles en el header (desktop y menú
+hamburguesa mobile) en todas las landings de organizador.
+
+### Verificación
+- `node -c frontend/js/portal.js` OK.
+- **Sin verificación visual en navegador real** (mismo motivo que en la
+  parte 1: sin Puppeteer/Playwright en el repo, sin skill `/run` disponible).
+
+### Pendientes para la próxima sesión
+1. **Verificación visual real** contra el torneo de las capturas: los 19
+   avatares deben verse todos (sin "+N"), los nombres de equipo sin cortes
+   de palabra, y los botones Registrarse/Iniciar sesión visibles en el
+   header de la landing (desktop y mobile).
+2. Confirmar que el hero secundario "Iniciar sesión" (`.ltc-home-only`,
+   dentro del hero) sigue oculto en landing a propósito (no se tocó) — si el
+   usuario también lo quiere visible ahí, es un cambio de una línea en CSS.
+3. Pendientes heredados sin tocar hoy — ver `project_pending.md`.
+
+---
+
 ## 2026-09-22 - Avatares de equipos y auto-fit de nombres en "Bienvenida a equipos"
 
 > Commiteado y pusheado (`86568c5`).
