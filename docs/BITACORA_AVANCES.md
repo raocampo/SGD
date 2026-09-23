@@ -1,6 +1,6 @@
 ## 2026-09-23 (parte 2) - Script de backfill de landing_slug
 
-> Commiteado y pusheado (`aabdbfc`).
+> Commiteado y pusheado (`28c27d6`).
 
 Siguiente pendiente de la lista tras el pull: "backfill de `landing_slug`
 en organizadores existentes que no lo tengan seteado" — hasta ahora un
