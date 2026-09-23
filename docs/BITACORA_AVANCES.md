@@ -1,3 +1,40 @@
+## 2026-09-23 - Pull, limpieza de backups y QA visual confirmado por el usuario
+
+Sin commit de código (solo housekeeping + confirmación).
+
+### Sincronización
+El working tree tenía cambios locales sin commitear (otra sesión/dispositivo
+ya los había implementado y pusheado como `c2e7506`..`ab5c577`). Se comparó
+archivo por archivo (`git stash push -u` → `git pull` → diff stash vs HEAD):
+todo el contenido trackeado del stash era una versión **anterior/superada**
+del mismo trabajo (ej. el diseño de avatares con overlap que `86568c5`
+reemplazó por el de gap+flex-column) — se dropeó. Solo se rescataron del
+stash las 3 imágenes backup sin trackear (`square12.png`, `wide-23.png`,
+`wide12.png`) antes de dropear, para no perderlas sin confirmar con el
+usuario si aún servían.
+
+### QA visual confirmado por el usuario (primera vez desde el 19-sep)
+Pendientes de las últimas 3 sesiones, todos confirmados en producción:
+- Botón Iniciar sesión/Registrarse en el header de la landing del organizador: OK.
+- Slider promo de 5 imágenes: funcionando.
+- `/liga/<slug>` abre bien la landing del organizador.
+- Avatares "Bienvenida a equipos" y tarjetas de equipo (auto-fit de nombres): se visualizan bien.
+
+### Limpieza
+Las 3 imágenes backup sin trackear se borraron del disco a pedido del
+usuario (ya no servían, eran versiones previas de los banners reemplazados
+el 19-sep).
+
+### Pendientes para la próxima sesión
+Ver `project_pending.md` en memoria (creado hoy, consolidando lo que las
+últimas 3 bitácoras citaban sin que el archivo existiera). Quedan sin
+confirmar: backfill de `landing_slug` en el resto de organizadores, preview
+de Open Graph de la landing, QA visual de los otros 4 temas predefinidos
+(solo se probó el de interempresarial), y los pendientes de más largo plazo
+(facturación Fase 2/3, titularidad/suplencia, Fase B de pagos, TURN server).
+
+---
+
 ## 2026-09-22 (parte 2) - Fix real del auto-fit, todos los avatares y login/registro en landing
 
 > Commiteado y pusheado (`8551c64`).
