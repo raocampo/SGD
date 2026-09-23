@@ -1,6 +1,6 @@
 ## 2026-09-23 (parte 6) - OG tags dinámicos por organizador (preview de WhatsApp/Facebook/etc.)
 
-> Commiteado y pusheado (ver hash abajo).
+> Commiteado y pusheado (`eae54d4`).
 
 Siguiente pendiente de la lista: "preview de Open Graph de la landing del
 organizador al compartir el link". Confirmado con `curl` (pide el HTML
