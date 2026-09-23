@@ -3503,6 +3503,51 @@ body.modal-open {
   padding: 0.3rem 0.55rem;
   font-size: 0.85rem;
 }
+/* Cambios / sustituciones (futbol_11/9/8) */
+.planilla-cambios-contador {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #31577e;
+}
+.planilla-cambios-contador.is-over-limit {
+  color: #dc2626;
+}
+.planilla-cambios-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.planilla-cambio-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr 64px 100px auto;
+  gap: 0.35rem;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.3rem;
+}
+.planilla-cambio-fila select,
+.planilla-cambio-fila input {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 0.8rem;
+}
+.planilla-cambio-fila button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+@media (max-width: 640px) {
+  .planilla-cambio-fila {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .planilla-asc-tag .badge-ascendente {
   background: #313131;
   color: #fff;

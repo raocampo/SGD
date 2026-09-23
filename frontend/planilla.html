@@ -243,6 +243,25 @@
                 </div>
               </div>
 
+              <div id="bloque-cambios" style="display:none;">
+                <h4>Cambios</h4>
+                <p class="form-hint" id="hint-cambios"></p>
+                <div class="planilla-captura-grid">
+                  <div class="planilla-captura-card">
+                    <h5 id="cambios-titulo-local">Local — Cambios</h5>
+                    <p class="planilla-cambios-contador" id="cambios-contador-local"></p>
+                    <div id="cambios-local" class="planilla-cambios-lista"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="agregarFilaCambioPlanilla('local')">+ Agregar cambio</button>
+                  </div>
+                  <div class="planilla-captura-card">
+                    <h5 id="cambios-titulo-visitante">Visitante — Cambios</h5>
+                    <p class="planilla-cambios-contador" id="cambios-contador-visitante"></p>
+                    <div id="cambios-visitante" class="planilla-cambios-lista"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="agregarFilaCambioPlanilla('visitante')">+ Agregar cambio</button>
+                  </div>
+                </div>
+              </div>
+
               <div class="planilla-footer-grid">
                 <article class="planilla-footer-team">
                   <h5 id="footer-equipo-local">Local</h5>

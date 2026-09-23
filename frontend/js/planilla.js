@@ -294,7 +294,10 @@ function obtenerTipoDeportePlanillaNormalizado(partido = dataPlanilla?.partido |
 }
 
 function usaConvocatoriaPlanilla(partido = dataPlanilla?.partido || {}) {
-  return new Set(["futbol_9", "futbol_8", "futbol_7", "futbol_6", "futbol_5", "futbol_sala"]).has(
+  // futbol_11 se agrega acá para unificar la marca de titular/suplente en
+  // los 3 formatos "grandes" (11/9/8) -- antes quedaba afuera sin motivo,
+  // ya que la titularidad aplica igual sea cual sea el modo de sustitución.
+  return new Set(["futbol_11", "futbol_9", "futbol_8", "futbol_7", "futbol_6", "futbol_5", "futbol_sala"]).has(
     obtenerTipoDeportePlanillaNormalizado(partido)
   );
 }
@@ -2220,6 +2223,7 @@ async function refrescarPlanillaPreservandoFormulario() {
   renderEncabezado();
   cargarCamposBase();
   renderCapturaOficialPorJugador();
+  renderBloqueCambiosPlanilla();
   actualizarVisibilidadContenidoPlanilla(true);
   await sincronizarSelectoresDesdePlanillaActual();
   restaurarEstadoFormularioPlanilla(snapshot);
@@ -2309,6 +2313,158 @@ function valorNoNegativoEntero(valor, fallback = 0, max = 99) {
   const n = aEntero(valor, fallback);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(Math.max(n, 0), max);
+}
+
+// ---------------------------------------------------------------
+// CAMBIOS / SUSTITUCIONES (futbol_11/9/8, reglas configurables por
+// categoría -- modo estándar FIFA con límite de cambios + salvamento, o
+// "entra y sale" estilo fútbol sala sin límite). Sección aparte de la
+// tabla de jugadores (no toca los checkboxes "entra"/"sale" que ya
+// existían ahí para futbol_11, que se mantienen para no romper reportes/
+// PDF/API móvil que ya los leen).
+// ---------------------------------------------------------------
+const FORMATOS_CAMBIOS_PLANILLA = new Set(["futbol_11", "futbol_9", "futbol_8"]);
+let filaCambioContador = { local: 0, visitante: 0 };
+
+function obtenerReglasSustitucionPlanilla() {
+  const p = dataPlanilla?.partido || {};
+  return {
+    aplica: FORMATOS_CAMBIOS_PLANILLA.has(obtenerTipoDeportePlanillaNormalizado(p)),
+    modo: p.modo_sustitucion === "entra_sale" ? "entra_sale" : "estandar",
+    maxOficiales: Number(p.max_cambios_oficiales) || 5,
+    maxSalvamento: Number(p.max_cambios_salvamento) || 1,
+  };
+}
+
+function opcionesJugadoresCambioPlanilla(lado) {
+  const plantel = lado === "local" ? (dataPlanilla?.plantel_local || []) : (dataPlanilla?.plantel_visitante || []);
+  return plantel
+    .map((j) => `<option value="${j.id}">#${j.numero_camiseta || "-"} ${escapeHtml(nombreJugador(j))}</option>`)
+    .join("");
+}
+
+function renderBloqueCambiosPlanilla() {
+  const bloque = document.getElementById("bloque-cambios");
+  if (!bloque) return;
+  const reglas = obtenerReglasSustitucionPlanilla();
+  bloque.style.display = reglas.aplica ? "" : "none";
+  if (!reglas.aplica) return;
+
+  const hint = document.getElementById("hint-cambios");
+  if (hint) {
+    hint.textContent =
+      reglas.modo === "entra_sale"
+        ? "Modo entra y sale (fútbol sala): cambios ilimitados, un jugador puede reingresar."
+        : `Modo estándar (FIFA): máximo ${reglas.maxOficiales} cambio(s) oficial(es) + ${reglas.maxSalvamento} de salvamento por equipo. Un jugador que sale no puede reingresar.`;
+  }
+  const tLocal = document.getElementById("cambios-titulo-local");
+  const tVisit = document.getElementById("cambios-titulo-visitante");
+  if (tLocal) tLocal.textContent = `${equiposPartido.local.nombre} — Cambios`;
+  if (tVisit) tVisit.textContent = `${equiposPartido.visitante.nombre} — Cambios`;
+
+  ["local", "visitante"].forEach((lado) => {
+    const cont = document.getElementById(`cambios-${lado}`);
+    if (cont) cont.innerHTML = "";
+    filaCambioContador[lado] = 0;
+  });
+
+  // Precarga los cambios ya guardados del partido (modo edición).
+  const equipoLocalId = Number(equiposPartido.local.id);
+  const equipoVisitanteId = Number(equiposPartido.visitante.id);
+  const cambiosGuardados = Array.isArray(dataPlanilla?.cambios) ? dataPlanilla.cambios : [];
+  cambiosGuardados
+    .filter((c) => Number(c.equipo_id) === equipoLocalId)
+    .forEach((c) => agregarFilaCambioPlanilla("local", c));
+  cambiosGuardados
+    .filter((c) => Number(c.equipo_id) === equipoVisitanteId)
+    .forEach((c) => agregarFilaCambioPlanilla("visitante", c));
+
+  actualizarContadorCambios("local");
+  actualizarContadorCambios("visitante");
+}
+
+function agregarFilaCambioPlanilla(lado, datosIniciales = null) {
+  const cont = document.getElementById(`cambios-${lado}`);
+  if (!cont) return;
+  const idx = filaCambioContador[lado]++;
+  const div = document.createElement("div");
+  div.className = "planilla-cambio-fila";
+  div.dataset.idx = String(idx);
+  const opciones = opcionesJugadoresCambioPlanilla(lado);
+  div.innerHTML = `
+    <select class="cambio-sale" aria-label="Jugador que sale">
+      <option value="">Sale…</option>
+      ${opciones}
+    </select>
+    <select class="cambio-entra" aria-label="Jugador que entra">
+      <option value="">Entra…</option>
+      ${opciones}
+    </select>
+    <input class="cambio-minuto" type="number" min="0" max="130" placeholder="Min." />
+    <select class="cambio-tipo" aria-label="Tipo de cambio">
+      <option value="normal">Normal</option>
+      <option value="salvamento">Salvamento</option>
+    </select>
+    <button type="button" class="btn btn-danger btn-sm" aria-label="Quitar cambio">×</button>
+  `;
+  cont.appendChild(div);
+  if (datosIniciales) {
+    if (datosIniciales.jugador_sale_id) div.querySelector(".cambio-sale").value = String(datosIniciales.jugador_sale_id);
+    if (datosIniciales.jugador_entra_id) div.querySelector(".cambio-entra").value = String(datosIniciales.jugador_entra_id);
+    if (datosIniciales.minuto !== null && datosIniciales.minuto !== undefined) {
+      div.querySelector(".cambio-minuto").value = String(datosIniciales.minuto);
+    }
+    if (datosIniciales.tipo) div.querySelector(".cambio-tipo").value = datosIniciales.tipo;
+  }
+  div.querySelector("button")?.addEventListener("click", () => {
+    div.remove();
+    actualizarContadorCambios(lado);
+  });
+  div.querySelectorAll("select, input").forEach((el) => {
+    el.addEventListener("change", () => actualizarContadorCambios(lado));
+  });
+  actualizarContadorCambios(lado);
+}
+
+function recolectarCambiosLado(lado) {
+  const cont = document.getElementById(`cambios-${lado}`);
+  if (!cont) return [];
+  const equipoId = Number(equiposPartido[lado]?.id);
+  return Array.from(cont.querySelectorAll(".planilla-cambio-fila"))
+    .map((fila) => {
+      const jugadorSale = Number(fila.querySelector(".cambio-sale")?.value);
+      const jugadorEntra = Number(fila.querySelector(".cambio-entra")?.value);
+      const minutoRaw = fila.querySelector(".cambio-minuto")?.value ?? "";
+      const tipo = fila.querySelector(".cambio-tipo")?.value || "normal";
+      if ((!Number.isFinite(jugadorSale) || jugadorSale <= 0) && (!Number.isFinite(jugadorEntra) || jugadorEntra <= 0)) {
+        return null; // fila vacía, se ignora
+      }
+      return {
+        equipo_id: equipoId,
+        jugador_sale_id: Number.isFinite(jugadorSale) && jugadorSale > 0 ? jugadorSale : null,
+        jugador_entra_id: Number.isFinite(jugadorEntra) && jugadorEntra > 0 ? jugadorEntra : null,
+        minuto: minutoRaw !== "" && Number.isFinite(Number(minutoRaw)) ? Number(minutoRaw) : null,
+        tipo: tipo === "salvamento" ? "salvamento" : "normal",
+      };
+    })
+    .filter(Boolean);
+}
+
+function actualizarContadorCambios(lado) {
+  const reglas = obtenerReglasSustitucionPlanilla();
+  const contadorEl = document.getElementById(`cambios-contador-${lado}`);
+  if (!contadorEl) return;
+  const cambios = recolectarCambiosLado(lado);
+  const oficiales = cambios.filter((c) => c.tipo === "normal").length;
+  const salvamento = cambios.filter((c) => c.tipo === "salvamento").length;
+
+  if (reglas.modo === "entra_sale") {
+    contadorEl.textContent = "Cambios ilimitados (fútbol sala)";
+    contadorEl.classList.remove("is-over-limit");
+    return;
+  }
+  contadorEl.textContent = `Cambios oficiales: ${oficiales}/${reglas.maxOficiales} · Salvamento: ${salvamento}/${reglas.maxSalvamento}`;
+  contadorEl.classList.toggle("is-over-limit", oficiales > reglas.maxOficiales || salvamento > reglas.maxSalvamento);
 }
 
 // ---------------------------------------------------------------
@@ -2457,6 +2613,7 @@ function renderAscendentesSeleccionados(lado) {
 window.filtrarAscendentes = filtrarAscendentes;
 window.agregarAscendente = agregarAscendente;
 window.quitarAscendente = quitarAscendente;
+window.agregarFilaCambioPlanilla = agregarFilaCambioPlanilla;
 
 function construirStatsInicialesPlanilla() {
   return construirIndicesEventos({
@@ -3957,6 +4114,7 @@ async function cargarPlanilla() {
     renderEncabezado();
     cargarCamposBase();
     renderCapturaOficialPorJugador();
+    renderBloqueCambiosPlanilla();
     actualizarVisibilidadContenidoPlanilla(true);
     await sincronizarSelectoresDesdePlanillaActual();
     actualizarVistaPreviaPlanilla(true);
@@ -4238,6 +4396,7 @@ function recolectarPayloadPlanilla() {
     registro_jugadores_visitante: registroJugadoresVisitante,
     goles,
     tarjetas,
+    cambios: [...recolectarCambiosLado("local"), ...recolectarCambiosLado("visitante")],
   };
 }
 

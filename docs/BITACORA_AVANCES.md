@@ -1,3 +1,83 @@
+## 2026-09-23 (parte 7) - Titularidad y sustituciones con reglas FIFA configurables (fútbol 11/9/8)
+
+> Commiteado y pusheado (ver hash abajo). Plan completo en modo plan (`radiant-tumbling-taco.md`).
+
+Pedido del usuario: que las categorías de fútbol 11/9/8 puedan elegir entre
+2 modalidades de sustitución -- "entra y sale" (estilo fútbol sala, sin
+límite, reingreso libre) o estándar FIFA (cantidad de cambios oficiales
+configurable + cambios de salvamento/conmoción configurable, sin
+reingreso). Antes no existía nada de esto: solo un checkbox P/S de
+"convocatoria" (excluido justo de futbol_11) y dos checkboxes sueltos
+"entra"/"sale" (solo futbol_11, sin minuto, sin pareja, sin límite,
+guardados como JSON opaco).
+
+### Investigación previa (3 agentes en paralelo, modo plan)
+Encontrado: la señal de titular/suplente y de cambio ya existía pero
+desconectada (`convocatoria` P/S y `entra`/`sale` dentro del JSONB
+`partido_planillas.registro_jugadores_*`), nunca llegaba al sitio público,
+sin minuto ni límite. El patrón a replicar para config por categoría era
+`permite_ascenso`/`max_ascendentes_por_partido` en `eventos`.
+
+### Cambios
+- **Migración `070_eventos_reglas_sustitucion.sql`**: `eventos.modo_sustitucion`
+  ('estandar'|'entra_sale', default 'estandar'), `max_cambios_oficiales`
+  (default 5), `max_cambios_salvamento` (default 1) + tabla nueva
+  `partido_cambios` (partido_id, equipo_id, jugador_sale_id,
+  jugador_entra_id, minuto, tipo 'normal'|'salvamento').
+- **`backend/models/Partido.js`**: tabla `partido_cambios` también en
+  `asegurarEsquemaPlanilla()` (mismo patrón cinturón-y-tirantes que
+  goleadores/tarjetas). `obtenerPlanilla()` ahora también devuelve
+  `cambios` (join con nombres de jugador) y los 3 campos de config.
+  `guardarPlanilla()`: normaliza `datos.cambios`, valida límites +
+  no-reingreso en modo estándar (nuevo `validarCambiosEquipoPlanilla`),
+  persiste con DELETE+INSERT igual que goleadores/tarjetas.
+- **Bug preexistente encontrado y corregido de paso**: `guardarPlanilla()`
+  leía `partido.tipo_futbol` de un `SELECT * FROM partidos` que NO tiene esa
+  columna (vive en `campeonatos`) -- `esFutbol11` siempre daba `false` ahí
+  adentro, así que los checkboxes `entra`/`sale` de futbol_11 **nunca se
+  guardaban de verdad** en producción hasta hoy. Se agregó el JOIN con
+  `campeonatos` que faltaba.
+- **`backend/controllers/eventoController.js`**: CRUD completo de los 3
+  campos nuevos (crear + actualizar), mismo patrón que `permite_ascenso`.
+- **`frontend/eventos.html` + `eventos.js`**: selector de modo +
+  2 inputs numéricos en el form de crear categoría y en el modal de editar;
+  toggle de visibilidad de los inputs según el modo elegido
+  (`actualizarVisibilidadSustitucion`).
+- **`frontend/planilla.html` + `planilla.js`**: nueva sección "Cambios" por
+  equipo (selects jugador sale/entra + minuto + tipo + botón agregar),
+  con contador en vivo "oficiales X/max · salvamento X/max" (o "ilimitado"
+  en modo entra_sale). Se agregó **al lado** de la tabla de jugadores, sin
+  tocar los checkboxes `entra`/`sale` existentes (para no arriesgar el PDF/
+  reporte/API móvil que ya los leen) -- desviación consciente del plan
+  original, que proponía reemplazarlos. `usaConvocatoriaPlanilla()` ahora
+  incluye `futbol_11` (antes lo excluía sin motivo), unificando la marca
+  de titular/suplente en 11/9/8.
+
+### Verificación
+- `node --check` en los 5 archivos JS tocados + balance de llaves de
+  `style.css`: OK. `smokeFrontendRoleGuards.js` 49/49.
+- **Prueba funcional real contra la base local** (partido 643, evento 19,
+  futbol_11, con jugadores reales): 5 escenarios probados llamando
+  `Partido.guardarPlanilla()` directo -- exceso de cambios oficiales
+  (rechaza), exceso de salvamento (rechaza), combinación válida (acepta),
+  reingreso explícito en modo estándar (rechaza), y modo entra_sale con
+  reingresos repetidos (acepta) -- los 5 se comportaron exactamente como
+  se esperaba. Round-trip verificado con `obtenerPlanilla()` (nombres de
+  jugador, minuto y tipo se leen bien de vuelta).
+- **Sin verificación visual** de la UI nueva en `planilla.html` (selects,
+  contador, botón agregar) -- sin navegador en esta sesión, pendiente que
+  el usuario la pruebe una vez desplegado.
+
+### Explícitamente fuera de esta fase
+- Mostrar titularidad/cambios en `jugador-publico.html`/`equipo-publico.html`
+  (el pendiente histórico original).
+- Actualizar las columnas `entra`/`sale` del PDF/reporte para reflejar
+  `partido_cambios` en vez de los checkboxes viejos.
+- Formatos más chicos (7/6/5/futsala/indor) -- sin cambios, el usuario pidió
+  solo 11/9/8.
+
+---
+
 ## 2026-09-23 (parte 6) - OG tags dinámicos por organizador (preview de WhatsApp/Facebook/etc.)
 
 > Commiteado y pusheado (`eae54d4`).

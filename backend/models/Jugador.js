@@ -34,7 +34,10 @@ class Jugador {
             await pool.query(`
                 ALTER TABLE eventos
                 ADD COLUMN IF NOT EXISTS permite_ascenso BOOLEAN DEFAULT FALSE,
-                ADD COLUMN IF NOT EXISTS max_ascendentes_por_partido INTEGER DEFAULT 2
+                ADD COLUMN IF NOT EXISTS max_ascendentes_por_partido INTEGER DEFAULT 2,
+                ADD COLUMN IF NOT EXISTS modo_sustitucion VARCHAR(20) NOT NULL DEFAULT 'estandar',
+                ADD COLUMN IF NOT EXISTS max_cambios_oficiales INTEGER NOT NULL DEFAULT 5,
+                ADD COLUMN IF NOT EXISTS max_cambios_salvamento INTEGER NOT NULL DEFAULT 1
             `);
             this._columnasAscensoEventosAseguradas = true;
         })();

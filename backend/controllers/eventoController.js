@@ -335,7 +335,10 @@ async function asegurarEsquemaEventos() {
   await pool.query(`
     ALTER TABLE eventos
     ADD COLUMN IF NOT EXISTS permite_ascenso BOOLEAN DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS max_ascendentes_por_partido INTEGER DEFAULT 2
+    ADD COLUMN IF NOT EXISTS max_ascendentes_por_partido INTEGER DEFAULT 2,
+    ADD COLUMN IF NOT EXISTS modo_sustitucion VARCHAR(20) NOT NULL DEFAULT 'estandar',
+    ADD COLUMN IF NOT EXISTS max_cambios_oficiales INTEGER NOT NULL DEFAULT 5,
+    ADD COLUMN IF NOT EXISTS max_cambios_salvamento INTEGER NOT NULL DEFAULT 1
   `);
 
   await pool.query(`
@@ -468,6 +471,9 @@ const eventoController = {
         fecha_corte_edad,
         permite_ascenso,
         max_ascendentes_por_partido,
+        modo_sustitucion,
+        max_cambios_oficiales,
+        max_cambios_salvamento,
       } = req.body;
 
       if (!campeonato_id || !nombre || !fecha_inicio || !fecha_fin) {
@@ -602,6 +608,19 @@ const eventoController = {
         const n = Number.parseInt(max_ascendentes_por_partido, 10);
         return Number.isFinite(n) && n >= 0 ? n : 2;
       })();
+      const modoSustitucion = ["estandar", "entra_sale"].includes(
+        String(modo_sustitucion || "").trim().toLowerCase()
+      )
+        ? String(modo_sustitucion).trim().toLowerCase()
+        : "estandar";
+      const maxCambiosOficiales = (() => {
+        const n = Number.parseInt(max_cambios_oficiales, 10);
+        return Number.isFinite(n) && n >= 0 ? n : 5;
+      })();
+      const maxCambiosSalvamento = (() => {
+        const n = Number.parseInt(max_cambios_salvamento, 10);
+        return Number.isFinite(n) && n >= 0 ? n : 1;
+      })();
       const fechaCorteEdad = fecha_corte_edad ? String(fecha_corte_edad).slice(0, 10) : null;
       if (edadSubJuvenil && !fechaCorteEdad) {
         return res.status(400).json({
@@ -643,10 +662,11 @@ const eventoController = {
           horario_sab_inicio, horario_sab_fin,
           horario_dom_inicio, horario_dom_fin,
           permite_ascenso, max_ascendentes_por_partido,
+          modo_sustitucion, max_cambios_oficiales, max_cambios_salvamento,
           numero_campeonato
         )
         SELECT
-          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,next_num.next_num
+          $1,$2,$3,$4,$5,'activo',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,next_num.next_num
         FROM next_num
         RETURNING *
       `;
@@ -685,6 +705,9 @@ const eventoController = {
         sunEnd,
         permiteAscenso,
         maxAscendentesPorPartido,
+        modoSustitucion,
+        maxCambiosOficiales,
+        maxCambiosSalvamento,
       ];
 
       const result = await pool.query(query, values);
@@ -1025,6 +1048,36 @@ const eventoController = {
           }
           campos.push(`${k} = $${i}`);
           valores.push(Number.isFinite(n) ? n : 2);
+          i++;
+          continue;
+        }
+        if (k === "modo_sustitucion") {
+          const valor = String(v || "").trim().toLowerCase();
+          if (valor && !["estandar", "entra_sale"].includes(valor)) {
+            return res.status(400).json({ error: "modo_sustitucion invalido. Usa 'estandar' o 'entra_sale'." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(valor || "estandar");
+          i++;
+          continue;
+        }
+        if (k === "max_cambios_oficiales") {
+          const n = v === null || v === "" ? 5 : Number.parseInt(v, 10);
+          if (v !== null && v !== "" && (!Number.isFinite(n) || n < 0)) {
+            return res.status(400).json({ error: "max_cambios_oficiales debe ser un entero mayor o igual a 0." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(Number.isFinite(n) ? n : 5);
+          i++;
+          continue;
+        }
+        if (k === "max_cambios_salvamento") {
+          const n = v === null || v === "" ? 1 : Number.parseInt(v, 10);
+          if (v !== null && v !== "" && (!Number.isFinite(n) || n < 0)) {
+            return res.status(400).json({ error: "max_cambios_salvamento debe ser un entero mayor o igual a 0." });
+          }
+          campos.push(`${k} = $${i}`);
+          valores.push(Number.isFinite(n) ? n : 1);
           i++;
           continue;
         }

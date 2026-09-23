@@ -289,6 +289,26 @@
             </div>
 
             <div class="form-group">
+              <label>Modo de sustitución:</label>
+              <select id="evt-modo-sustitucion" onchange="actualizarVisibilidadSustitucion()">
+                <option value="estandar" selected>Estándar (FIFA, cambios limitados)</option>
+                <option value="entra_sale">Entra y sale (fútbol sala, sin límite)</option>
+              </select>
+              <small class="form-hint">Aplica solo a categorías de fútbol 11, 9 u 8. En otros formatos este campo se ignora.</small>
+            </div>
+
+            <div class="form-group" id="evt-wrap-cambios-oficiales">
+              <label>Cambios oficiales permitidos:</label>
+              <input id="evt-max-cambios-oficiales" type="number" min="0" max="11" step="1" value="5" />
+            </div>
+
+            <div class="form-group" id="evt-wrap-cambios-salvamento">
+              <label>Cambios de salvamento (conmoción) permitidos:</label>
+              <input id="evt-max-cambios-salvamento" type="number" min="0" max="5" step="1" value="1" />
+              <small class="form-hint">No cuentan contra el máximo de cambios oficiales (regla IFAB de sustitución por conmoción).</small>
+            </div>
+
+            <div class="form-group">
               <label>Mostrar edad en carné:</label>
               <select id="evt-carnet-mostrar-edad">
                 <option value="false" selected>No</option>

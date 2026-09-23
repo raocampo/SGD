@@ -213,6 +213,17 @@ function actualizarVisibilidadAscenso() {
   if (wrapMax) wrapMax.style.display = selectAscenso?.value === "true" ? "" : "none";
 }
 
+// Los límites de cambios solo tienen sentido en modo "estandar" (FIFA) --
+// en "entra_sale" (fútbol sala) los cambios son ilimitados por definición.
+function actualizarVisibilidadSustitucion() {
+  const selectModo = document.getElementById("evt-modo-sustitucion");
+  const esEstandar = (selectModo?.value || "estandar") === "estandar";
+  const wrapOficiales = document.getElementById("evt-wrap-cambios-oficiales");
+  const wrapSalvamento = document.getElementById("evt-wrap-cambios-salvamento");
+  if (wrapOficiales) wrapOficiales.style.display = esEstandar ? "" : "none";
+  if (wrapSalvamento) wrapSalvamento.style.display = esEstandar ? "" : "none";
+}
+
 function formatearClasificadosPorGrupo(evento = {}) {
   const metodo = obtenerMetodoCompetenciaVisibleEvento(evento);
   if (!metodoUsaClasificadosPorGrupo(metodo)) return "No aplica";
@@ -619,6 +630,15 @@ async function crearEvento() {
   const max_ascendentes_por_partido = permite_ascenso
     ? (Number.parseInt(document.getElementById("evt-max-ascendentes-por-partido")?.value, 10) || 2)
     : 2;
+  const modo_sustitucion = document.getElementById("evt-modo-sustitucion")?.value === "entra_sale"
+    ? "entra_sale"
+    : "estandar";
+  const max_cambios_oficiales = Number.parseInt(
+    document.getElementById("evt-max-cambios-oficiales")?.value, 10
+  );
+  const max_cambios_salvamento = Number.parseInt(
+    document.getElementById("evt-max-cambios-salvamento")?.value, 10
+  );
   const carnet_mostrar_edad = document.getElementById("evt-carnet-mostrar-edad")?.value === "true";
   const fecha_corte_edad = document.getElementById("evt-fecha-corte-edad")?.value || null;
   const tipoEdad = document.getElementById("evt-tipo-edad")?.value || "libre";
@@ -691,6 +711,9 @@ async function crearEvento() {
       categoria_juvenil_max_diferencia: categoria_juvenil ? categoria_juvenil_max_diferencia : 1,
       permite_ascenso,
       max_ascendentes_por_partido,
+      modo_sustitucion,
+      max_cambios_oficiales: Number.isFinite(max_cambios_oficiales) ? max_cambios_oficiales : 5,
+      max_cambios_salvamento: Number.isFinite(max_cambios_salvamento) ? max_cambios_salvamento : 1,
       carnet_mostrar_edad,
       fecha_corte_edad: edadSubJuvenil ? fecha_corte_edad : null,
     });
@@ -1010,6 +1033,36 @@ async function editarEvento(id) {
         max: 10,
         step: 1,
       },
+      {
+        name: "modo_sustitucion",
+        label: "Modo de sustitución",
+        type: "select",
+        value: evento?.modo_sustitucion === "entra_sale" ? "entra_sale" : "estandar",
+        options: [
+          { value: "estandar", label: "Estándar (FIFA, cambios limitados)" },
+          { value: "entra_sale", label: "Entra y sale (fútbol sala, sin límite)" },
+        ],
+        hint: "Aplica solo a categorías de fútbol 11, 9 u 8.",
+      },
+      {
+        name: "max_cambios_oficiales",
+        label: "Cambios oficiales permitidos",
+        type: "number",
+        value: String(Number.isFinite(Number(evento?.max_cambios_oficiales)) ? Number(evento.max_cambios_oficiales) : 5),
+        min: 0,
+        max: 11,
+        step: 1,
+      },
+      {
+        name: "max_cambios_salvamento",
+        label: "Cambios de salvamento (conmoción) permitidos",
+        type: "number",
+        value: String(Number.isFinite(Number(evento?.max_cambios_salvamento)) ? Number(evento.max_cambios_salvamento) : 1),
+        min: 0,
+        max: 5,
+        step: 1,
+        hint: "No cuentan contra el máximo de cambios oficiales.",
+      },
     ],
   });
   if (!form) return;
@@ -1114,6 +1167,11 @@ async function editarEvento(id) {
     payload.max_ascendentes_por_partido = payload.permite_ascenso
       ? (Number.parseInt(form.max_ascendentes_por_partido, 10) || 2)
       : 2;
+    payload.modo_sustitucion = form.modo_sustitucion === "entra_sale" ? "entra_sale" : "estandar";
+    payload.max_cambios_oficiales = Number.parseInt(form.max_cambios_oficiales, 10);
+    if (!Number.isFinite(payload.max_cambios_oficiales)) payload.max_cambios_oficiales = 5;
+    payload.max_cambios_salvamento = Number.parseInt(form.max_cambios_salvamento, 10);
+    if (!Number.isFinite(payload.max_cambios_salvamento)) payload.max_cambios_salvamento = 1;
     await EventosAPI.actualizar(id, payload);
     mostrarNotificacion("Categoría actualizada", "success");
     await cargarEventos();
@@ -1126,3 +1184,4 @@ async function editarEvento(id) {
 window.cambiarVistaEventos = cambiarVistaEventos;
 window.toggleFormularioCategoria = toggleFormularioCategoria;
 window.actualizarVisibilidadAscenso = actualizarVisibilidadAscenso;
+window.actualizarVisibilidadSustitucion = actualizarVisibilidadSustitucion;

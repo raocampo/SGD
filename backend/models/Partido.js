@@ -21,6 +21,13 @@ const fromMinutesSQL = (min) => {
 const formatYMD = (d) => d.toISOString().split("T")[0];
 const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante", "ambos"]);
 const CONVOCATORIAS_PLANILLA_VALIDAS = new Set(["P", "S"]);
+// Formatos donde aplican las reglas de sustitución configurables por
+// categoría (modo estándar FIFA con límite de cambios, o "entra y sale"
+// estilo fútbol sala). El resto de formatos (7/6/5/futsala/indor) siguen
+// sin límite ni validación, como siempre.
+const FORMATOS_CON_REGLAS_SUSTITUCION = new Set(["futbol_11", "futbol_9", "futbol_8"]);
+const TIPOS_CAMBIO_PLANILLA_VALIDOS = new Set(["normal", "salvamento"]);
+const MODOS_SUSTITUCION_VALIDOS = new Set(["estandar", "entra_sale"]);
 const GOLES_WALKOVER = 3;
 const MAX_FALTAS_PLANILLA = 6;
 let _schemaOverrideCompeticion = null;
@@ -217,6 +224,82 @@ function construirMapaRegistroPlanilla(items = []) {
     });
   });
   return mapa;
+}
+
+// Normaliza los cambios/sustituciones recibidos del formulario de planilla:
+// cada entrada es "el jugador X sale, entra el jugador Y, minuto M, tipo
+// normal|salvamento". No valida límites acá (eso depende de la config de
+// la categoría) -- solo limpia tipos/formatos, ver validarCambiosPlanilla.
+function normalizarCambiosPlanilla(items = [], { equipoIdPermitido = null } = {}) {
+  const cambios = [];
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const equipoId = Number.parseInt(item?.equipo_id, 10);
+    if (!Number.isFinite(equipoId) || equipoId <= 0) return;
+    if (Number.isFinite(Number(equipoIdPermitido)) && Number(equipoIdPermitido) > 0) {
+      if (Number(equipoId) !== Number(equipoIdPermitido)) return;
+    }
+    const jugadorSaleId = Number.parseInt(item?.jugador_sale_id, 10);
+    const jugadorEntraId = Number.parseInt(item?.jugador_entra_id, 10);
+    if (
+      (!Number.isFinite(jugadorSaleId) || jugadorSaleId <= 0) &&
+      (!Number.isFinite(jugadorEntraId) || jugadorEntraId <= 0)
+    ) {
+      return; // fila vacía, se ignora
+    }
+    const minutoParsed = Number.parseInt(item?.minuto, 10);
+    const tipo = String(item?.tipo || "normal").trim().toLowerCase();
+    cambios.push({
+      equipo_id: equipoId,
+      jugador_sale_id: Number.isFinite(jugadorSaleId) && jugadorSaleId > 0 ? jugadorSaleId : null,
+      jugador_entra_id: Number.isFinite(jugadorEntraId) && jugadorEntraId > 0 ? jugadorEntraId : null,
+      minuto: Number.isFinite(minutoParsed) ? minutoParsed : null,
+      tipo: TIPOS_CAMBIO_PLANILLA_VALIDOS.has(tipo) ? tipo : "normal",
+    });
+  });
+  return cambios;
+}
+
+// Valida los cambios de un equipo contra las reglas de sustitución de su
+// categoría (modo estándar FIFA: límite de cambios oficiales + salvamento,
+// sin reingreso; modo "entra_sale": sin límite, reingreso libre). Lanza un
+// error con statusCode 400 (mismo estilo que la validación de ascenso) si
+// se incumple alguna regla. No hace nada si el modo es "entra_sale" o si
+// el formato no está en FORMATOS_CON_REGLAS_SUSTITUCION.
+function validarCambiosEquipoPlanilla(cambiosEquipo, { nombreEquipo, reglas }) {
+  if (!reglas || reglas.modo_sustitucion !== "estandar") return;
+
+  const oficiales = cambiosEquipo.filter((c) => c.tipo === "normal").length;
+  const salvamento = cambiosEquipo.filter((c) => c.tipo === "salvamento").length;
+  const maxOficiales = Number.parseInt(reglas.max_cambios_oficiales, 10) || 5;
+  const maxSalvamento = Number.parseInt(reglas.max_cambios_salvamento, 10) || 1;
+
+  if (oficiales > maxOficiales) {
+    const error = new Error(
+      `El equipo ${nombreEquipo} supera el máximo de ${maxOficiales} cambio${maxOficiales === 1 ? "" : "s"} oficial${maxOficiales === 1 ? "" : "es"} permitido${maxOficiales === 1 ? "" : "s"} en esta categoría.`
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+  if (salvamento > maxSalvamento) {
+    const error = new Error(
+      `El equipo ${nombreEquipo} supera el máximo de ${maxSalvamento} cambio${maxSalvamento === 1 ? "" : "s"} de salvamento permitido${maxSalvamento === 1 ? "" : "s"} en esta categoría.`
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Sin reingreso en modo estándar: un jugador que ya salió del campo no
+  // puede volver a entrar más tarde en el mismo partido.
+  const salieron = new Set(cambiosEquipo.map((c) => c.jugador_sale_id).filter(Boolean));
+  for (const c of cambiosEquipo) {
+    if (c.jugador_entra_id && salieron.has(c.jugador_entra_id)) {
+      const error = new Error(
+        `El equipo ${nombreEquipo} tiene un jugador que reingresa tras haber salido -- no permitido en esta categoría (modo estándar).`
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+  }
 }
 
 function construirEntradasParticipacionCategoria({
@@ -3173,6 +3256,22 @@ class Partido {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_goleadores_partido ON goleadores(partido_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_tarjetas_partido ON tarjetas(partido_id)`);
 
+    // Sustituciones por partido (quién sale, quién entra, minuto, tipo
+    // normal/salvamento) -- ver migración 070 para el detalle de por qué.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS partido_cambios (
+        id SERIAL PRIMARY KEY,
+        partido_id INTEGER REFERENCES partidos(id) ON DELETE CASCADE,
+        equipo_id INTEGER REFERENCES equipos(id) ON DELETE SET NULL,
+        jugador_sale_id INTEGER REFERENCES jugadores(id) ON DELETE SET NULL,
+        jugador_entra_id INTEGER REFERENCES jugadores(id) ON DELETE SET NULL,
+        minuto INTEGER,
+        tipo VARCHAR(20) NOT NULL DEFAULT 'normal',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_partido_cambios_partido ON partido_cambios(partido_id)`);
+
     this._esquemaPlanillaAsegurado = true;
   }
 
@@ -3328,6 +3427,9 @@ class Partido {
              evt.metodo_competencia,
              COALESCE(evt.permite_ascenso, false) AS permite_ascenso,
              COALESCE(evt.max_ascendentes_por_partido, 2) AS max_ascendentes_por_partido,
+             COALESCE(evt.modo_sustitucion, 'estandar') AS modo_sustitucion,
+             COALESCE(evt.max_cambios_oficiales, 5) AS max_cambios_oficiales,
+             COALESCE(evt.max_cambios_salvamento, 1) AS max_cambios_salvamento,
              g.letra_grupo,
              g.nombre_grupo,
              pe.ronda AS playoff_ronda,
@@ -3390,6 +3492,20 @@ class Partido {
       ORDER BY t.id
     `;
     const tarjetasR = await pool.query(tarjetasQ, [partido_id]);
+
+    const cambiosQ = `
+      SELECT c.*,
+             TRIM(CONCAT(COALESCE(js.nombre, ''), ' ', COALESCE(js.apellido, ''))) AS jugador_sale_nombre,
+             TRIM(CONCAT(COALESCE(je.nombre, ''), ' ', COALESCE(je.apellido, ''))) AS jugador_entra_nombre,
+             eq.nombre AS equipo_nombre
+      FROM partido_cambios c
+      LEFT JOIN jugadores js ON js.id = c.jugador_sale_id
+      LEFT JOIN jugadores je ON je.id = c.jugador_entra_id
+      LEFT JOIN equipos eq ON eq.id = c.equipo_id
+      WHERE c.partido_id = $1
+      ORDER BY c.minuto NULLS LAST, c.id
+    `;
+    const cambiosR = await pool.query(cambiosQ, [partido_id]);
 
     const [plantelLocal, plantelVisitante] = await Promise.all([
       Jugador.obtenerPorEquipo(partido.equipo_local_id, partido.evento_id),
@@ -3489,6 +3605,7 @@ class Partido {
       },
       goleadores: goleadoresR.rows,
       tarjetas: tarjetasR.rows,
+      cambios: cambiosR.rows,
       plantel_local: plantelLocalConSuspension,
       plantel_visitante: plantelVisitanteConSuspension,
     };
@@ -3769,8 +3886,18 @@ class Partido {
     try {
       await client.query("BEGIN");
 
+      // OJO: "partidos" no tiene su propia columna tipo_futbol -- vive en
+      // "campeonatos". Sin este JOIN, partido.tipo_futbol queda siempre
+      // undefined acá adentro (bug preexistente: esFutbol11 más abajo
+      // dependía de esto y nunca detectaba futbol_11 correctamente al
+      // guardar -- se corrige de paso, ya que es la misma causa raíz que
+      // necesita la validación de cambios/sustituciones nueva).
       const partidoR = await client.query(
-        `SELECT * FROM partidos WHERE id = $1 LIMIT 1`,
+        `SELECT p.*, c.tipo_futbol
+         FROM partidos p
+         LEFT JOIN campeonatos c ON c.id = p.campeonato_id
+         WHERE p.id = $1
+         LIMIT 1`,
         [partido_id]
       );
       const partido = partidoR.rows[0];
@@ -3812,12 +3939,21 @@ class Partido {
         esFutbol11,
       });
 
+      // Se guarda para reusar más abajo en la validación de cambios/
+      // sustituciones, sin tener que volver a consultar `eventos`.
+      let reglasSustitucionEvento = null;
       if (partido.evento_id) {
         const eventoAscR = await client.query(
-          `SELECT COALESCE(permite_ascenso, false) AS permite_ascenso, COALESCE(max_ascendentes_por_partido, 2) AS max_ascendentes_por_partido FROM eventos WHERE id = $1 LIMIT 1`,
+          `SELECT COALESCE(permite_ascenso, false) AS permite_ascenso,
+                  COALESCE(max_ascendentes_por_partido, 2) AS max_ascendentes_por_partido,
+                  COALESCE(modo_sustitucion, 'estandar') AS modo_sustitucion,
+                  COALESCE(max_cambios_oficiales, 5) AS max_cambios_oficiales,
+                  COALESCE(max_cambios_salvamento, 1) AS max_cambios_salvamento
+             FROM eventos WHERE id = $1 LIMIT 1`,
           [partido.evento_id]
         );
         const eventoAsc = eventoAscR.rows[0];
+        reglasSustitucionEvento = eventoAsc || null;
         if (eventoAsc && eventoAsc.permite_ascenso) {
           const max = Number.parseInt(eventoAsc.max_ascendentes_por_partido, 10) || 2;
           const ascLocal = registroJugadoresLocal.filter((r) => r.es_ascendente === true).length;
@@ -3901,6 +4037,24 @@ class Partido {
       );
       const goles = golesBase.filter((item) => !equipoBloqueado(item?.equipo_id));
       const tarjetas = tarjetasBase.filter((item) => !equipoBloqueado(item?.equipo_id));
+
+      const tipoFutbolPartido = String(partido?.tipo_futbol || "").toLowerCase();
+      const cambiosBase = normalizarCambiosPlanilla(Array.isArray(datos.cambios) ? datos.cambios : []);
+      const cambios = cambiosBase.filter((item) => !equipoBloqueado(item.equipo_id));
+      if (
+        partido.evento_id &&
+        FORMATOS_CON_REGLAS_SUSTITUCION.has(tipoFutbolPartido) &&
+        reglasSustitucionEvento
+      ) {
+        validarCambiosEquipoPlanilla(
+          cambios.filter((c) => c.equipo_id === equipoLocalId),
+          { nombreEquipo: "local", reglas: reglasSustitucionEvento }
+        );
+        validarCambiosEquipoPlanilla(
+          cambios.filter((c) => c.equipo_id === equipoVisitanteId),
+          { nombreEquipo: "visitante", reglas: reglasSustitucionEvento }
+        );
+      }
 
       await validarParticipacionUnicaPorCedulaCategoria(
         client,
@@ -4110,6 +4264,18 @@ class Partido {
             VALUES ($1, $2, $3, $4, $5, $6)
           `,
           [partido_id, jugadorId, equipoId, tipo, minuto, observacion]
+        );
+      }
+
+      await client.query(`DELETE FROM partido_cambios WHERE partido_id = $1`, [partido_id]);
+      for (const item of cambios) {
+        await client.query(
+          `
+            INSERT INTO partido_cambios
+              (partido_id, equipo_id, jugador_sale_id, jugador_entra_id, minuto, tipo)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `,
+          [partido_id, item.equipo_id, item.jugador_sale_id, item.jugador_entra_id, item.minuto, item.tipo]
         );
       }
 
