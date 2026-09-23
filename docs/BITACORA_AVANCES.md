@@ -1,6 +1,6 @@
 ## 2026-09-23 (parte 9) - Cambios visibles en equipo-publico.html
 
-> Commiteado y pusheado (ver hash abajo).
+> Commiteado y pusheado (`105301a`).
 
 Cierra el último punto que había quedado explícitamente fuera de la parte
 8: `equipo-publico.html` (tab Partidos) ahora muestra los cambios
