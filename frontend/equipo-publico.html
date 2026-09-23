@@ -57,6 +57,8 @@
     .ep-partido-logo { width: 24px; height: 24px; border-radius: 50%; object-fit: contain; }
     .ep-partido-resultado { min-width: 48px; text-align: center; font-weight: 900; font-size: .95rem; }
     .ep-fase-badge { display: inline-flex; width: fit-content; margin-top: .18rem; border-radius: 999px; background: #eef2ff; color: #313131; padding: .12rem .45rem; font-size: .66rem; font-weight: 800; }
+    .ep-partido-cambios { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; }
+    .ep-cambio-item { font-size: .68rem; font-weight: 600; color: #3730a3; background: #e0e7ff; border-radius: 999px; padding: .1rem .5rem; white-space: nowrap; }
     .ep-resultado-V { color: #16a34a; }
     .ep-resultado-D { color: #dc2626; }
     .ep-resultado-E { color: #d97706; }
@@ -448,6 +450,15 @@
             const marcador = esPartidoJugado(p) && p.goles_favor !== null
               ? `<span class="ep-resultado-${p.resultado || ""}">${p.goles_favor} — ${p.goles_contra}</span>` : "—";
             const fase = fasePartidoLabel(p);
+            // Cambios (sustituciones) del equipo en este partido, si la
+            // categoría los captura (futbol_11/9/8) -- ver planilla.html.
+            const cambiosHtml = Array.isArray(p.cambios) && p.cambios.length
+              ? `<div class="ep-partido-cambios">${p.cambios.map(c => {
+                  const min = c.minuto != null ? `${c.minuto}'` : "";
+                  const tipoTxt = c.tipo === "salvamento" ? " (salvamento)" : "";
+                  return `<span class="ep-cambio-item">${min} sale ${c.sale || "—"}, entra ${c.entra || "—"}${tipoTxt}</span>`;
+                }).join("")}</div>`
+              : "";
             return `<div class="ep-partido-row">
               <div class="ep-partido-fecha">${fecha}<br><span class="ep-fase-badge">${fase}</span></div>
               <div class="ep-partido-equipos">
@@ -456,6 +467,7 @@
                 <i class="fas fa-arrows-left-right" style="color:#cbd5e1; font-size:.6rem;"></i>
                 ${logoHtml(p.rival?.logo_url, p.rival?.nombre || "", 20)}
                 <span class="ep-partido-rival">${p.rival?.nombre || "—"}</span>
+                ${cambiosHtml}
               </div>
               <div class="ep-partido-resultado">${marcador}</div>
               ${estadoBadge(p.estado)}

@@ -1,3 +1,43 @@
+## 2026-09-23 (parte 9) - Cambios visibles en equipo-publico.html
+
+> Commiteado y pusheado (ver hash abajo).
+
+Cierra el último punto que había quedado explícitamente fuera de la parte
+8: `equipo-publico.html` (tab Partidos) ahora muestra los cambios
+(sustituciones) de ese equipo en cada partido, no solo del jugador
+individual como en `jugador-publico.html`.
+
+### Backend
+`publicPortalService.listarPartidosPublicosPorEquipo()`: una query nueva a
+`partido_cambios` (scoped a los `partido_id` de la lista + `equipo_id` del
+equipo), agrupada por partido con nombre de jugador que sale/entra, minuto
+y tipo. Campo nuevo `cambios: []` por partido (vacío si no hay datos
+capturados, no rompe nada existente).
+
+### Frontend
+`equipo-publico.html`: debajo de cada fila de partido, si hay cambios,
+chips tipo "60' sale X, entra Y" (o "... (salvamento)"). CSS nueva
+`.ep-partido-cambios`/`.ep-cambio-item`, con `flex-basis:100%` para que
+la fila de cambios pase a su propia línea dentro del contenedor flex de
+equipos sin romper el layout existente.
+
+### Verificación
+- `node --check` sobre el script inline + balance de llaves del `<style>`
+  inline: OK. `smokeFrontendRoleGuards.js` 49/49.
+- Prueba funcional real contra la base local: se guardaron 2 cambios de
+  prueba (uno normal, uno de salvamento) en el partido 643 y se llamó
+  `listarPartidosPublicosPorEquipo(129)` -- devolvió los 2 cambios con
+  nombres reales, minuto y tipo correctos. Datos de prueba limpiados.
+- Sin verificación visual en navegador (sin navegador en esta sesión).
+
+Con esto quedan cerrados todos los pendientes de "titularidad y
+sustituciones" que traía la sesión (config por categoría, validación FIFA,
+captura en planilla.html, y visualización pública en ambos perfiles). Ver
+`project_pending.md` para lo que sigue (Facturación Fase 2/3, Fase B de
+pagos, TURN server).
+
+---
+
 ## 2026-09-23 (parte 8) - Fase 2: Titular/Suplente en el perfil público del jugador
 
 > Commiteado y pusheado (`0e125f2`).

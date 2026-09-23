@@ -1011,6 +1011,35 @@ async function listarPartidosPublicosPorEquipo(equipoId, eventoId = null) {
     params
   );
 
+  // Cambios (sustituciones) de este equipo por partido, si el formato de
+  // la categoría los captura (futbol_11/9/8, ver [[project_pending]]).
+  // Sin datos = array vacío, no rompe nada de lo que ya funcionaba.
+  const partidoIdsEquipo = pR.rows.map((p) => Number(p.id));
+  const cambiosPorPartido = new Map();
+  if (partidoIdsEquipo.length) {
+    const cambiosR = await pool.query(
+      `SELECT c.partido_id, c.minuto, c.tipo,
+              TRIM(CONCAT(COALESCE(js.nombre, ''), ' ', COALESCE(js.apellido, ''))) AS sale_nombre,
+              TRIM(CONCAT(COALESCE(je.nombre, ''), ' ', COALESCE(je.apellido, ''))) AS entra_nombre
+       FROM partido_cambios c
+       LEFT JOIN jugadores js ON js.id = c.jugador_sale_id
+       LEFT JOIN jugadores je ON je.id = c.jugador_entra_id
+       WHERE c.partido_id = ANY($1::int[]) AND c.equipo_id = $2::int
+       ORDER BY c.minuto NULLS LAST, c.id`,
+      [partidoIdsEquipo, equipoId]
+    );
+    cambiosR.rows.forEach((row) => {
+      const pid = Number(row.partido_id);
+      if (!cambiosPorPartido.has(pid)) cambiosPorPartido.set(pid, []);
+      cambiosPorPartido.get(pid).push({
+        minuto: normalizarEntero(row.minuto),
+        tipo: row.tipo || "normal",
+        sale: row.sale_nombre || null,
+        entra: row.entra_nombre || null,
+      });
+    });
+  }
+
   return {
     equipo: { id: Number(eqR.rows[0].id), nombre: eqR.rows[0].nombre, logo_url: eqR.rows[0].logo_url || null },
     total: pR.rows.length,
@@ -1047,6 +1076,7 @@ async function listarPartidosPublicosPorEquipo(equipoId, eventoId = null) {
         resultado,
         evento_nombre: p.evento_nombre,
         campeonato_nombre: p.campeonato_nombre,
+        cambios: cambiosPorPartido.get(Number(p.id)) || [],
       };
     }),
   };
