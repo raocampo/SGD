@@ -1,3 +1,66 @@
+## 2026-09-23 (parte 6) - OG tags dinámicos por organizador (preview de WhatsApp/Facebook/etc.)
+
+> Commiteado y pusheado (ver hash abajo).
+
+Siguiente pendiente de la lista: "preview de Open Graph de la landing del
+organizador al compartir el link". Confirmado con `curl` (pide el HTML
+crudo, sin ejecutar JS, igual que un crawler de preview): `/liga/<slug>`
+siempre devolvía `<title>LT&C | Loja Torneos & Competencias</title>` +
+og:image genérico, aunque `portal.js` SÍ personaliza esos meta tags —
+pero solo con JS, DESPUÉS de cargar, y los crawlers de WhatsApp/Facebook/
+Twitter/Telegram/etc. no ejecutan JS. Resultado real: un organizador
+comparte su link y a todo el mundo le sale el preview de LT&C genérico,
+nunca su título/imagen propios.
+
+### Fix: `frontend/middleware.js` (Vercel Edge Middleware, nuevo)
+No hay backend propio sirviendo `index.html` (Vercel estático puro, Root
+Directory = `frontend`, sin build) -- la solución estándar para esto es un
+Edge Middleware que reescribe el HTML solo para crawlers, antes de que
+llegue al bot.
+
+- `matcher: ["/liga/:slug*"]` -- solo corre en rutas de landing de
+  organizador, no en toda la home.
+- Detecta bots de preview por `User-Agent` (facebookexternalhit, Twitterbot,
+  WhatsApp, TelegramBot, LinkedInBot, Slackbot, Discordbot, Googlebot, etc.).
+  **Si es un navegador humano normal, la función devuelve `undefined` de
+  entrada y Vercel sirve el HTML de siempre, sin tocar nada ni sumar
+  latencia** -- la personalización visible en pantalla la sigue haciendo el
+  JS de siempre (`aplicarSeoLandingOrganizador` en portal.js), esto solo
+  resuelve lo que ve un bot que nunca ejecuta ese JS.
+- Para un bot: pide en paralelo el `index.html` estático y
+  `/api/auth/organizadores/by-slug/<slug>/landing` (misma ruta pública que
+  ya usa portal.js), arma título/descripción/imagen con el MISMO criterio
+  de prioridad que `aplicarSeoLandingOrganizador()` (`hero_description ||
+  about_text_1`, `hero_image_url || logo_url`, etc.) y reemplaza
+  `<title>` + `og:title/description/site_name/image/url` + `meta
+  name="description"` por regex antes de devolver el HTML.
+- Si cualquier paso falla (API caída, timeout, slug inexistente, organizador
+  sin esos campos) devuelve `undefined` y Vercel sirve el HTML original sin
+  tocar -- nunca rompe la página, ni para el bot ni para nadie.
+- De paso: `index.html` no tenía tag `og:url` (nada que reemplazar ahí) --
+  se agregó uno con el valor de LT&C por defecto, que el middleware
+  sobrescribe por organizador cuando corresponde.
+
+### Verificación
+Probado localmente importando el middleware real como módulo ES y
+llamándolo con `Request` falsos (Node 24 trae `fetch`/`Request`/`Response`
+nativos, misma superficie de API que el Edge Runtime) contra la API de
+producción real:
+- UA de WhatsApp + slug real (`interempresarial`) -> HTML devuelto con
+  `<title>Loja Torneos &amp; Competencias · Torneos y competencias</title>`,
+  `og:image` apuntando al hero real
+  (`.../uploads/portal/organizadores/heroes/...jpg`), `&` bien escapado.
+- UA de navegador normal -> `undefined` (pasa de largo).
+- UA de bot + slug inexistente -> `undefined` (pasa de largo, no rompe).
+- `smokeFrontendRoleGuards.js` 49/49.
+- **Sin probar contra un crawler real** (Facebook Sharing Debugger,
+  WhatsApp, etc.) porque requiere que el middleware esté desplegado en
+  Vercel primero -- pendiente para la próxima sesión confirmar con
+  https://developers.facebook.com/tools/debug/ contra una URL `/liga/<slug>`
+  real una vez publicado.
+
+---
+
 ## 2026-09-23 (parte 5) - Confirmación visual del fix de portal-admin.js
 
 Sin commit de código, solo confirmación. Ni el usuario ni esta sesión tienen
