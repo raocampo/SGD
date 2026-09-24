@@ -1,3 +1,46 @@
+## 2026-09-24 - equipo-publico.html: pestaña Información simplificada a categorías
+
+> Commiteado y pusheado (`61072e5`).
+
+Pedido del usuario con captura real de `equipo-publico.html` (TELCONET
+LATAM FC): la pestaña "Información" mostraba una lista de campos con
+datos redundantes (Director técnico y contacto ya están en el
+encabezado; "Categoría actual" y "Categorías" mostraban lo mismo dos
+veces) sin desglosar en qué categorías está inscrito el equipo ni cuántos
+jugadores tiene en cada una. Pidió también reordenar las pestañas:
+Información → Jugadores → Partidos (antes Información → Partidos →
+Jugadores).
+
+### Backend
+`publicPortalService.obtenerEquipoPublico()`: el query de eventos del
+equipo suma un `LEFT JOIN` contando jugadores por `evento_id` (un jugador
+queda ligado a una categoría específica del equipo — el plantel puede
+variar de una categoría a otra del mismo equipo). Cada entrada de
+`equipo.eventos[]` ahora trae `total_jugadores`.
+
+### Frontend
+`equipo-publico.html`: la pestaña Información ahora solo lista las
+categorías en las que el equipo está inscrito, con la cantidad de
+jugadores de cada una y un badge "Actual" en la que corresponde al
+contexto de la URL. Pestañas reordenadas a Información → Jugadores →
+Partidos.
+
+### Verificación
+- `node --check` en el script inline: OK. `smokeFrontendRoleGuards.js`
+  49/49.
+- Query real de solo lectura contra producción antes de tocar el
+  frontend (equipo 235 TELCONET LATAM FC → categoría "Abierta", 15
+  jugadores) — sin modificar datos.
+- **Confirmado visualmente con Puppeteer** contra la URL exacta de la
+  captura del usuario (`equipo-publico.html?id=235&evento=34`): pestañas
+  en el orden correcto, tabla de Información mostrando "Abierta [Actual]
+  — 15 jugadores" tal como se pidió. (Nota: el primer intento mostró "0
+  jugadores" porque Railway todavía no había terminado de redesplegar el
+  backend — Railway tarda más que el deploy estático de Vercel; segundo
+  intento unos segundos después ya mostró el valor correcto.)
+
+---
+
 ## 2026-09-23 — RESUMEN DE CIERRE DE SESIÓN (12 partes)
 
 Sesión larga, 12 partes commiteadas y pusheadas. Este resumen es para
