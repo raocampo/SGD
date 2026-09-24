@@ -798,13 +798,23 @@ async function obtenerEquipoPublico(equipoId, eventoId = null) {
     if (!participaR.rows.length) return null;
   }
 
-  // Eventos donde participa el equipo
+  // Eventos (categorías) donde participa el equipo, con la cantidad de
+  // jugadores inscritos en cada una -- un jugador queda ligado a una
+  // categoría específica del equipo (columna jugadores.evento_id), así
+  // que el plantel puede variar de una categoría a otra del mismo equipo.
   const evR = await pool.query(
-    `SELECT ev.id, ev.nombre, ev.modalidad, ev.metodo_competencia
+    `SELECT ev.id, ev.nombre, ev.modalidad, ev.metodo_competencia,
+            COALESCE(jc.total, 0)::int AS total_jugadores
      FROM evento_equipos ee
      JOIN eventos ev ON ev.id = ee.evento_id
      JOIN campeonatos c ON c.id = ev.campeonato_id
      LEFT JOIN usuarios u ON u.id = c.creador_usuario_id
+     LEFT JOIN (
+       SELECT evento_id, COUNT(*) AS total
+       FROM jugadores
+       WHERE equipo_id = $1
+       GROUP BY evento_id
+     ) jc ON jc.evento_id = ev.id
      WHERE ee.equipo_id = $1
        AND ${SQL_FILTRO_PUBLICO_CAMPEONATO}
      ORDER BY ev.id`,
@@ -856,6 +866,7 @@ async function obtenerEquipoPublico(equipoId, eventoId = null) {
     nombre: e.nombre,
     modalidad: e.modalidad,
     metodo_competencia: e.metodo_competencia,
+    total_jugadores: Number(e.total_jugadores) || 0,
   }));
 
   return {

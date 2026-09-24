@@ -188,11 +188,14 @@
 
         <div class="ep-tabs">
           <button class="ep-tab active" data-panel="info"><i class="fas fa-info-circle"></i> Información</button>
-          <button class="ep-tab" data-panel="partidos"><i class="fas fa-futbol"></i> Partidos</button>
           <button class="ep-tab" data-panel="jugadores"><i class="fas fa-users"></i> Jugadores</button>
+          <button class="ep-tab" data-panel="partidos"><i class="fas fa-futbol"></i> Partidos</button>
         </div>
 
-        <!-- Panel: Info -->
+        <!-- Panel: Info -- solo desglose de categorías inscritas + cantidad
+             de jugadores por cada una (el resto de campos ya vive en el
+             encabezado o en la pestaña Jugadores, mostrarlos de nuevo acá
+             era redundante). -->
         <div id="panel-info" class="ep-panel active">
           <div class="ltc-section-card">
             <table style="width:100%; font-size:.9rem; border-collapse:collapse;" id="ep-info-table">
@@ -201,17 +204,17 @@
           </div>
         </div>
 
-        <!-- Panel: Partidos -->
-        <div id="panel-partidos" class="ep-panel">
-          <div class="ltc-section-card" id="ep-partidos-cont">
-            <p class="ep-empty"><i class="fas fa-spinner fa-spin"></i> Cargando partidos...</p>
-          </div>
-        </div>
-
         <!-- Panel: Jugadores -->
         <div id="panel-jugadores" class="ep-panel">
           <div id="ep-jugadores-cont">
             <p class="ep-empty"><i class="fas fa-spinner fa-spin"></i> Cargando nómina...</p>
+          </div>
+        </div>
+
+        <!-- Panel: Partidos -->
+        <div id="panel-partidos" class="ep-panel">
+          <div class="ltc-section-card" id="ep-partidos-cont">
+            <p class="ep-empty"><i class="fas fa-spinner fa-spin"></i> Cargando partidos...</p>
           </div>
         </div>
 
@@ -375,22 +378,22 @@
         document.getElementById("st-gf").textContent = st.gf ?? "—";
         document.getElementById("st-gc").textContent = st.gc ?? "—";
 
-        // Info
-        const rows = [];
-        if (equipo.director_tecnico) rows.push(["Director técnico", equipo.director_tecnico]);
-        if (equipo.asistente_tecnico) rows.push(["Asistente técnico", equipo.asistente_tecnico]);
-        if (equipo.medico) rows.push(["Médico", equipo.medico]);
-        if (equipo.telefono) rows.push(["Teléfono", equipo.telefono]);
-        if (equipo.email) rows.push(["Correo", equipo.email]);
-        if (equipo.numero_campeonato) rows.push(["N° campeonato", equipo.numero_campeonato]);
-        if (equipo.campeonato?.nombre) rows.push(["Campeonato", equipo.campeonato.nombre]);
-        if (eventoActual?.nombre) rows.push(["Categoría actual", eventoActual.nombre]);
-        if (equipo.eventos?.length) rows.push(["Categorías", equipo.eventos.map(e => e.nombre).join(", ")]);
+        // Info: solo el desglose de categorías en las que el equipo está
+        // inscrito, con la cantidad de jugadores registrados en cada una
+        // (el plantel puede variar de una categoría a otra del mismo
+        // equipo). El resto de los datos (DT, contacto) ya se muestran en
+        // el encabezado / no aportan acá.
+        const categorias = Array.isArray(equipo.eventos) ? equipo.eventos : [];
         const tbody = document.querySelector("#ep-info-table tbody");
-        tbody.innerHTML = rows.map(([k, v]) =>
-          `<tr><td style="padding:.5rem .5rem; font-weight:700; color:#64748b; width:45%; white-space:nowrap;">${k}</td>
-               <td style="padding:.5rem .5rem;">${v}</td></tr>`
-        ).join("") || `<tr><td colspan="2" class="ep-empty">Sin información adicional</td></tr>`;
+        tbody.innerHTML = categorias.length
+          ? categorias.map((ev) => {
+              const n = Number(ev.total_jugadores) || 0;
+              return `<tr>
+                <td style="padding:.5rem .5rem; font-weight:700; color:#64748b; width:45%; white-space:nowrap;">Categoría</td>
+                <td style="padding:.5rem .5rem;">${ev.nombre}${ev.id === eventoActual?.id ? ' <span class="ep-fase-badge">Actual</span>' : ""} — ${n} jugador${n === 1 ? "" : "es"}</td>
+              </tr>`;
+            }).join("")
+          : `<tr><td colspan="2" class="ep-empty">Sin categorías registradas</td></tr>`;
 
       } catch (e) {
         document.getElementById("ep-nombre").textContent = "Error al cargar el equipo";
