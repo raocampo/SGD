@@ -1,6 +1,6 @@
 ## 2026-09-23 (parte 11) - QA visual real con Puppeteer + bug encontrado en tema "clásico"
 
-> Commiteado y pusheado (ver hash abajo).
+> Commiteado y pusheado (`d8f9d4a`).
 
 Toda la sesión se venía marcando "sin verificación visual (sin navegador)"
 en cada pendiente. Se instaló Puppeteer en un directorio aislado del
