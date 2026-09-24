@@ -1359,8 +1359,15 @@ const TEMAS_LANDING_ORGANIZADOR = {
     heroFrom: "#5b1a2b", heroTo: "#7a1f2f", heading: "#f2d98c",
     accent: "#e5c76b", btnBg: "#7a1f2f", btnFg: "#ffffff", sectionHeading: "#4a1f28",
   },
+  // El hero SIEMPRE lleva de fondo la foto+degradado (igual que los otros 4
+  // temas) -- por eso, aunque "clasico" es el tema "claro" del resto de la
+  // página (sectionHeading se mantiene oscuro para las secciones de fondo
+  // blanco), el hero usa colores oscuros + texto claro como los demás. Con
+  // heroFrom/heroTo claros y heading oscuro (como estaba antes), el texto
+  // quedaba ilegible sobre la foto real del hero -- confirmado visualmente
+  // con capturas reales, no solo por contraste de color aislado.
   clasico: {
-    heroFrom: "#f7f8f4", heroTo: "#dfe8d0", heading: "#313131",
+    heroFrom: "#1c1c1a", heroTo: "#2f2f2b", heading: "#ffffff",
     accent: "#b7e853", btnBg: "#313131", btnFg: "#b7e853", sectionHeading: "#313131",
   },
 };

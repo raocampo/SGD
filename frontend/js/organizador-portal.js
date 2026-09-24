@@ -49,7 +49,7 @@
     nocturno: { from: "#1f1f1f", to: "#080808", accent: "#b7e853", heading: "#b7e853" },
     verde: { from: "#45651f", to: "#233414", accent: "#b7e853", heading: "#ffffff" },
     vinotinto: { from: "#5b1a2b", to: "#7a1f2f", accent: "#e5c76b", heading: "#f2d98c" },
-    clasico: { from: "#f7f8f4", to: "#dfe8d0", accent: "#b7e853", heading: "#313131" },
+    clasico: { from: "#1c1c1a", to: "#2f2f2b", accent: "#b7e853", heading: "#ffffff" },
   };
 
   function textoLegibleSobre(hex) {

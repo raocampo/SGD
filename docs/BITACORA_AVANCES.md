@@ -1,3 +1,66 @@
+## 2026-09-23 (parte 11) - QA visual real con Puppeteer + bug encontrado en tema "clásico"
+
+> Commiteado y pusheado (ver hash abajo).
+
+Toda la sesión se venía marcando "sin verificación visual (sin navegador)"
+en cada pendiente. Se instaló Puppeteer en un directorio aislado del
+scratchpad (no toca `package.json` del proyecto, es solo una herramienta
+de QA para esta sesión) y **sí funciona en este entorno** -- se pudo lanzar
+Chrome headless y navegar contra producción real.
+
+### Verificado visualmente y CONFIRMADO OK (sin cambios necesarios)
+- Slider promo de 5 imágenes en la home: crossfade correcto, sin flash/salto,
+  `object-fit:contain` no corta texto en los banners `wide`.
+- Botones Registrarse/Iniciar sesión en el header de la landing de
+  organizador: visibles en desktop Y en el menú hamburguesa mobile (390px).
+- "Bienvenida a equipos" en `/liga/interempresarial`: los 19 equipos se ven
+  completos (sin corte "+N"), nombres de equipo bien ajustados, layout
+  responsive limpio a 390px.
+- Temas `deportivo`, `nocturno`, `verde`, `vinotinto`: buen contraste,
+  layout correcto (probado cambiando temporalmente `color_tema` del
+  organizador real en producción, capturando, y revirtiendo a su valor
+  real `deportivo` después de cada prueba -- sin dejar cambios).
+
+### Bug real encontrado: tema "clásico" ilegible
+El tema `clasico` (el único "claro" de los 5) tenía el hero con
+`heroFrom/heroTo` claros (`#f7f8f4`/`#dfe8d0`) y heading oscuro (`#313131`)
+-- mi verificación anterior (solo cálculo de contraste de color, sin
+navegador) había marcado esto como "OK" porque comparaba el color del
+texto contra el color plano del degradado, pero el hero SIEMPRE tiene una
+foto de fondo real detrás del degradado (no un color plano) -- con un
+degradado casi blanco, la foto se ve demasiado a través, y el texto oscuro
++ el subtítulo (hardcodeado blanco, nunca temizado) quedaban ambos
+prácticamente ilegibles sobre la foto. Se vio clarísimo en la captura real.
+
+**Fix**: `clasico` ahora usa el mismo patrón que los otros 4 temas -- el
+hero SIEMPRE es oscuro con texto claro (`heroFrom:#1c1c1a`, `heroTo:#2f2f2b`,
+`heading:#ffffff`), igual que deportivo/nocturno/verde/vinotinto. La
+identidad "clara" del tema se mantiene en el resto de la página
+(`sectionHeading:#313131`, sin cambios, esas secciones sí son fondo blanco
+plano donde el texto oscuro funciona bien). Cambiado en
+`frontend/js/portal.js` (`TEMAS_LANDING_ORGANIZADOR`) y
+`frontend/js/organizador-portal.js` (`TEMAS_PREVIEW`, el swatch del
+selector en el CMS, para que no quede desincronizado del resultado real).
+
+### Verificación
+- `node --check` en ambos archivos: OK. `smokeFrontendRoleGuards.js` 49/49.
+- Contraste calculado del nuevo esquema: heading blanco vs heroFrom 17:1,
+  vs heroTo 13.4:1 (muy por encima del mínimo AA 4.5:1).
+- **Pendiente**: volver a capturar el tema `clasico` real en producción
+  después de este deploy para confirmar visualmente el fix (mismo método:
+  cambiar `color_tema` de un organizador real temporalmente, capturar,
+  revertir).
+
+### Nota metodológica importante
+Los cálculos de contraste WCAG puro (como los de la parte 6, "5 temas
+predefinidos, todos pasan AA") **no son suficientes** cuando el fondo real
+no es un color plano sino una foto+degradado -- hay que verificar contra
+el render real. Puppeteer queda disponible (instalado en el scratchpad de
+esta sesión, no en el repo) para seguir haciendo esto en pendientes
+futuros de esta misma sesión.
+
+---
+
 ## 2026-09-23 (parte 10) - PDF/reporte de planilla: entra/sale ahora reales
 
 > Commiteado y pusheado (`1690eaf`).
