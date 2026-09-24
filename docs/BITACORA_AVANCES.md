@@ -1,3 +1,21 @@
+## 2026-09-24 (parte 2) - Corrección: se quitó demasiado en Información
+
+> Commiteado y pusheado (`cb3a72f`).
+
+El usuario aclaró que la parte 1 se pasó de alcance: solo pedía eliminar
+la fila de categoría duplicada y agregar la cantidad de jugadores — no
+quitar Director técnico/Teléfono/N° campeonato/Campeonato. Se restauran
+esos campos tal como estaban; la única diferencia contra el original es
+que las 2 filas viejas ("Categoría actual" + "Categorías" mostrando lo
+mismo) quedan en una sola fila por categoría con el formato "Categoría |
+Abierta [Actual] — 15 jugadores".
+
+Confirmado visualmente con Puppeteer contra la misma URL real
+(`equipo-publico.html?id=235&evento=34`) — coincide exactamente con lo
+pedido.
+
+---
+
 ## 2026-09-24 - equipo-publico.html: pestaña Información simplificada a categorías
 
 > Commiteado y pusheado (`61072e5`).
