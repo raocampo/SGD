@@ -1,3 +1,91 @@
+## 2026-09-23 — RESUMEN DE CIERRE DE SESIÓN (12 partes)
+
+Sesión larga, 12 partes commiteadas y pusheadas. Este resumen es para
+retomar mañana sin tener que releer las 12 entradas completas — el detalle
+técnico de cada una sigue abajo, en orden cronológico inverso.
+
+### Qué se hizo, agrupado por tema
+
+**1. Sincronización y housekeeping** (partes 1-3, commits `8e06cdd`..`28c27d6`)
+Pull con stash (cambios locales ya superados por otra sesión/dispositivo),
+limpieza de imágenes backup del slider, script `backfillLandingSlugs.js`
+(dry-run + `--apply`) ejecutado en producción para 4 organizadores reales
+que no tenían `landing_slug` (`/liga/<slug>`).
+
+**2. Fix real: landing pública del organizador** (parte 4-5, `36bfdf0`)
+La tarjeta "Landing pública" en `portal-admin.html` mostraba el link viejo
+`?organizador=ID` en vez de `/liga/<slug>` — corregido y confirmado
+visualmente por el usuario con capturas reales.
+
+**3. OG tags dinámicos por organizador** (parte 6, `eae54d4`)
+Nuevo `frontend/middleware.js` (Vercel Edge Middleware): cuando un
+organizador comparte su `/liga/<slug>` en WhatsApp/Facebook/etc., el
+preview del link ahora muestra SU título/imagen, no el genérico de LT&C —
+antes solo funcionaba con JS post-carga, que los crawlers de preview no
+ejecutan.
+
+**4. Titularidad y sustituciones con reglas FIFA (fútbol 11/9/8)** (partes
+7-12, `ef0b0c5`..`8081cd1`) — **el bloque más grande del día**:
+- Config nueva por categoría: modo "estándar" (FIFA, cambios oficiales +
+  salvamento configurables) o "entra y sale" (fútbol sala, ilimitado).
+- Tabla nueva `partido_cambios` + validación real al guardar la planilla
+  (rechaza si se exceden los cambios permitidos o si un jugador reingresa
+  en modo estándar).
+- Bug preexistente encontrado y corregido de paso: `guardarPlanilla()` no
+  detectaba correctamente el tipo de fútbol por un JOIN faltante — los
+  checkboxes viejos de entra/sale de futbol_11 nunca se habían guardado
+  bien en producción.
+- UI de captura nueva en `planilla.html` ("Cambios": jugador sale/entra,
+  minuto, tipo, contador en vivo).
+- Visualización pública: "Titular"/"Suplente" + minuto en
+  `jugador-publico.html`, cambios del equipo en `equipo-publico.html` —
+  cierra el pendiente histórico de mayo.
+- PDF/reporte de planilla actualizado para reflejar los cambios reales.
+- **QA visual con Puppeteer** (instalado en el scratchpad de la sesión, no
+  en el repo): confirmado todo lo anterior con capturas reales en
+  producción, datos de prueba insertados y borrados de forma aislada sin
+  tocar resultados/goleadores/tarjetas de partidos reales.
+- **Bug encontrado y corregido en el camino**: el tema "clásico" de landing
+  (el único claro de los 5) tenía el texto del hero ilegible sobre la foto
+  de fondo — mi verificación de contraste anterior (solo color plano) no
+  lo había detectado. Corregido y confirmado visualmente.
+
+**5. Facturación — corrección de memoria, no de código**
+Se había anotado (erróneamente, desde mayo) que "Facturación Fase 2/3"
+estaba pendiente. Se auditó el código real: **ya estaba completo** desde
+mayo (integración con finanzas, PDF/RIDE, todo funcional). Se confirmó
+además que LT&C puede usar el mismo módulo para facturarle a los
+organizadores por su suscripción (probado con una factura de prueba real,
+borrada después) — sin necesidad de construir nada nuevo.
+
+### Pendientes para retomar mañana
+
+1. **Verificación visual de páginas con login** (`planilla.html` sección
+   "Cambios", `eventos.html` config de modo de sustitución) — Puppeteer no
+   tiene credenciales de organizador/admin. Necesita que el usuario las
+   pruebe él mismo, o me pase acceso.
+2. **Facturación Fase 4 (SRI electrónico)** — bloqueada, necesita
+   certificado digital del cliente/organizador correspondiente.
+3. **Activación automática de pago** (webhook PayPhone + PayPal capture)
+   — bloqueada, necesito credenciales de esas plataformas.
+4. **TURN server para WebRTC** (redes NAT estricto) — requiere elegir y
+   pagar un proveedor (ej. Metered.ca), decisión de costo del usuario.
+5. **LT&C-como-facturador**: falta que alguien complete los datos REALES
+   de LT&C (RUC, razón social) en `facturacion.html` logueado como admin
+   — la prueba de esta sesión usó datos ficticios y los borró.
+6. Pendientes menores sin bloqueo (ver `project_pending.md` en memoria
+   para el detalle completo, se mantiene como fuente única de verdad):
+   confirmar Open Graph con Facebook Sharing Debugger, `construirLandingUrl`
+   ya verificado, preview OG ya funcionando.
+
+**Nota técnica para la próxima sesión:** Puppeteer SÍ funciona en este
+entorno (headless Chrome, instalado vía `npm install puppeteer` en un
+directorio fuera del repo, ej. scratchpad) — no asumir que no hay
+navegador disponible antes de intentarlo. Para páginas autenticadas sigue
+haciendo falta que el usuario provea credenciales o las pruebe él mismo.
+
+---
+
 ## 2026-09-23 (parte 12) - QA visual confirmado: fix del tema clásico + titular/suplente/cambios en producción
 
 Sin commit nuevo de código (solo verificación). Continuación directa de la
