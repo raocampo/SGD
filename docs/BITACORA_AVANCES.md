@@ -1,3 +1,55 @@
+## 2026-09-23 (parte 12) - QA visual confirmado: fix del tema clásico + titular/suplente/cambios en producción
+
+Sin commit nuevo de código (solo verificación). Continuación directa de la
+parte 11.
+
+### Fix del tema "clásico" confirmado visualmente
+Se cambió `color_tema` del organizador real de `interempresarial` a
+`clasico` en producción, se capturó con Puppeteer, y **se confirmó
+corregido**: título y subtítulo del hero ahora blancos y perfectamente
+legibles sobre la foto (antes ilegibles). Se revirtió el `color_tema` a su
+valor real (`deportivo`) inmediatamente después.
+
+### Titular/suplente y cambios confirmados en producción (con datos reales)
+Se insertaron datos de prueba MÍNIMOS Y AISLADOS (solo `partido_planillas.
+registro_jugadores_local` + 1 fila en `partido_cambios`, sin tocar
+`partidos.resultado/estado`, `goleadores`, `tarjetas` ni finanzas) en un
+partido real de un campeonato activo (`partido_id 6023`, BORUSSIA vs
+JUDESA, Copa Velocity Máster, futbol_9, `evento_id 18` -- se verificó
+primero que no tenía planilla guardada, para no pisar nada real):
+- `jugador-publico.html?id=2947` (titular que sale min 55): badge verde
+  **"Titular (sale min 55)"** -- correcto.
+- `jugador-publico.html?id=2950` (suplente que entra min 55): badge azul
+  **"Suplente (entra min 55)"** -- correcto.
+- `equipo-publico.html?id=107` tab Partidos: chip **"55' sale Romel
+  Patricio Sánchez Cabrera, entra Kléver Patricio Romero Aguirre"** en la
+  fila del partido correcto -- correcto.
+
+Los 2 registros de prueba se borraron después (`DELETE` de
+`partido_cambios` y `partido_planillas` para ese `partido_id`), verificado
+con `COUNT(*) = 0` en ambas tablas -- no queda ningún rastro en el partido
+real.
+
+### Balance final de "sin verificación visual" de toda la sesión
+Con esto quedan confirmados visualmente TODOS los pendientes marcados "sin
+navegador" desde el 19-sep: slider de 5 imágenes, botones Registrarse/
+Iniciar sesión (desktop y mobile), avatares "Bienvenida a equipos", los 5
+temas de landing (1 bug real encontrado y corregido), titular/suplente en
+perfil de jugador, y cambios en perfil de equipo. **Solo sigue sin
+verificar** la UI de captura en `planilla.html` (selects de cambios,
+contador en vivo) y el config nuevo en `eventos.html`, porque ambas son
+páginas que requieren login de organizador/admin -- Puppeteer no tiene
+credenciales para entrar ahí, eso sigue siendo un bloqueo real, no de
+herramienta.
+
+Nota para sesiones futuras: Puppeteer quedó instalado solo en el
+scratchpad de esta sesión (temporal, no en el repo) -- si hace falta QA
+visual de nuevo, hay que reinstalarlo (`npm install puppeteer` en un
+directorio aislado) o pedirle al usuario acceso/credenciales para probar
+las páginas autenticadas directamente.
+
+---
+
 ## 2026-09-23 (parte 11) - QA visual real con Puppeteer + bug encontrado en tema "clásico"
 
 > Commiteado y pusheado (`d8f9d4a`).
