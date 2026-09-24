@@ -378,22 +378,30 @@
         document.getElementById("st-gf").textContent = st.gf ?? "—";
         document.getElementById("st-gc").textContent = st.gc ?? "—";
 
-        // Info: solo el desglose de categorías en las que el equipo está
-        // inscrito, con la cantidad de jugadores registrados en cada una
-        // (el plantel puede variar de una categoría a otra del mismo
-        // equipo). El resto de los datos (DT, contacto) ya se muestran en
-        // el encabezado / no aportan acá.
+        // Info
+        const rows = [];
+        if (equipo.director_tecnico) rows.push(["Director técnico", equipo.director_tecnico]);
+        if (equipo.asistente_tecnico) rows.push(["Asistente técnico", equipo.asistente_tecnico]);
+        if (equipo.medico) rows.push(["Médico", equipo.medico]);
+        if (equipo.telefono) rows.push(["Teléfono", equipo.telefono]);
+        if (equipo.email) rows.push(["Correo", equipo.email]);
+        if (equipo.numero_campeonato) rows.push(["N° campeonato", equipo.numero_campeonato]);
+        if (equipo.campeonato?.nombre) rows.push(["Campeonato", equipo.campeonato.nombre]);
+        // Antes había 2 filas ("Categoría actual" + "Categorías") mostrando
+        // lo mismo dos veces -- ahora es una sola fila por categoría, con
+        // la cantidad de jugadores inscritos en cada una (el plantel puede
+        // variar de una categoría a otra del mismo equipo).
         const categorias = Array.isArray(equipo.eventos) ? equipo.eventos : [];
+        categorias.forEach((ev) => {
+          const n = Number(ev.total_jugadores) || 0;
+          const actual = ev.id === eventoActual?.id ? ' <span class="ep-fase-badge">Actual</span>' : "";
+          rows.push(["Categoría", `${ev.nombre}${actual} — ${n} jugador${n === 1 ? "" : "es"}`]);
+        });
         const tbody = document.querySelector("#ep-info-table tbody");
-        tbody.innerHTML = categorias.length
-          ? categorias.map((ev) => {
-              const n = Number(ev.total_jugadores) || 0;
-              return `<tr>
-                <td style="padding:.5rem .5rem; font-weight:700; color:#64748b; width:45%; white-space:nowrap;">Categoría</td>
-                <td style="padding:.5rem .5rem;">${ev.nombre}${ev.id === eventoActual?.id ? ' <span class="ep-fase-badge">Actual</span>' : ""} — ${n} jugador${n === 1 ? "" : "es"}</td>
-              </tr>`;
-            }).join("")
-          : `<tr><td colspan="2" class="ep-empty">Sin categorías registradas</td></tr>`;
+        tbody.innerHTML = rows.map(([k, v]) =>
+          `<tr><td style="padding:.5rem .5rem; font-weight:700; color:#64748b; width:45%; white-space:nowrap;">${k}</td>
+               <td style="padding:.5rem .5rem;">${v}</td></tr>`
+        ).join("") || `<tr><td colspan="2" class="ep-empty">Sin información adicional</td></tr>`;
 
       } catch (e) {
         document.getElementById("ep-nombre").textContent = "Error al cargar el equipo";
