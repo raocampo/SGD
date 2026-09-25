@@ -1,3 +1,69 @@
+## 2026-09-25 (parte 2) - Finanzas: editar/eliminar movimientos + resumen por equipo solo con filtro
+
+> Commiteado y pusheado (`905680d`).
+
+El usuario probó lo entregado en la parte 1 y compartió dos capturas con
+feedback real:
+
+1. En "Movimientos del Equipo" encontró un movimiento duplicado
+   (registrado dos veces, una desde el celular y otra desde la web) y no
+   tenía forma de corregirlo — pidió botones de editar, visualizar,
+   imprimir recibo y eliminar por fila.
+2. En "Resumen por Equipo" (pestaña Filtros) la tabla mostraba todos los
+   equipos de golpe sin agrupar por campeonato — pidió que solo se
+   muestre al filtrar por campeonato.
+
+### Backend
+`Finanza.actualizarMovimiento(id, data)`: permite editar tipo, concepto,
+monto, estado, fechas, método de pago, referencia, descripción y
+categoría — NO permite reasignar equipo_id/campeonato_id (un movimiento
+mal cargado a otro equipo se anula y se vuelve a crear, no se reasigna).
+`Finanza.anularMovimiento(id)`: implementa "Eliminar" como anulación
+(`estado='anulado'`) en vez de DELETE físico — decisión deliberada, no
+consultada previamente: todas las consultas de saldos/morosidad/resumen
+ya excluían `estado <> 'anulado'` en todo el sistema, así que anular un
+movimiento lo saca de los saldos al instante sin perder el rastro de
+auditoría ni romper la numeración de recibos ya emitidos de otros
+movimientos del mismo campeonato. Nuevas rutas `PUT`/`DELETE
+/finanzas/movimientos/:id` con el mismo scoping por campeonato que
+`crearMovimiento`. Nuevas acciones de auditoría
+`MOVIMIENTO_FINANCIERO_ACTUALIZADO`/`_ANULADO`.
+
+### Frontend
+"Movimientos del Equipo": cada fila tiene Ver (modal de solo lectura),
+Editar (reutiliza el formulario "Registrar Movimiento" en modo edición —
+equipo/campeonato quedan bloqueados, título y botón cambian a "Editar
+Movimiento #N"/"Actualizar movimiento", aparece "Cancelar edición"),
+Recibo (ya existía) y Eliminar (confirmación, luego anula). Las filas
+anuladas se muestran tachadas, sin botones de editar/eliminar (ya no
+aplica), pero conservan Ver y Recibo para trazabilidad.
+
+"Resumen por Equipo": ya no carga con campeonato="Todos" por defecto —
+ahora exige seleccionar un campeonato en Filtros antes de consultar
+(mensaje "Selecciona un campeonato...").
+
+### Verificación
+- `node --check` en los 6 archivos backend/frontend tocados, balance de
+  llaves en `style.css`, balance de `<div>` en `finanzas.html`,
+  cross-check automatizado de todos los `getElementById()` de
+  `finanzas.js` contra ids reales del HTML (sin faltantes ni duplicados),
+  `smokeFrontendRoleGuards.js` 49/49.
+- `actualizarMovimiento`/`anularMovimiento` probados end-to-end (modelo +
+  controlador, incluyendo el caso de permiso denegado para un
+  organizador ajeno al campeonato → 403) contra producción con un
+  movimiento de prueba aislado, limpiado después (0 residuos
+  confirmados).
+
+### Hallazgo aparte (fuera de alcance, no tocado)
+Investigando la captura del usuario se confirmó que "80 FC" en Copa
+Ciudad de Loja son **dos equipos distintos** (`equipos.id` 81 y 54, no
+un duplicado de movimiento) — posible alta duplicada del equipo en sí.
+No se tocó: fusionar o eliminar un equipo es una decisión de datos que
+afecta jugadores/partidos/tabla de posiciones, necesita que el usuario
+decida cuál de los dos conservar antes de actuar.
+
+---
+
 ## 2026-09-25 - Finanzas: reorganización en pestañas + fix de impresión en móvil
 
 > Commiteado y pusheado (`66c929e`).
