@@ -202,6 +202,53 @@ const finanzaController = {
     }
   },
 
+  async obtenerResumenEquipos(req, res) {
+    try {
+      const filtros = { ...(req.query || {}) };
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        const equiposPermitidos = await obtenerEquiposPermitidosTecnico(req);
+        if (!equiposPermitidos || !equiposPermitidos.length) {
+          return res.json({ ok: true, total: 0, equipos: [] });
+        }
+
+        if (filtros.equipo_id) {
+          const autorizado = await tecnicoPuedeAccederEquipo(req, filtros.equipo_id);
+          if (!autorizado) {
+            return res.status(403).json({ error: "No autorizado para consultar este equipo" });
+          }
+        } else if (equiposPermitidos.length === 1) {
+          filtros.equipo_id = equiposPermitidos[0];
+        } else {
+          filtros.equipo_ids = equiposPermitidos;
+        }
+      }
+      if (isOrganizador(req.user)) {
+        const campeonatos = await obtenerCampeonatoIdsOrganizador(req.user);
+        if (!campeonatos.length) return res.json({ ok: true, total: 0, equipos: [] });
+        if (filtros.campeonato_id) {
+          const campId = Number.parseInt(filtros.campeonato_id, 10);
+          if (!campeonatos.includes(campId)) {
+            return res.status(403).json({ error: "No autorizado para consultar ese campeonato" });
+          }
+        } else if (campeonatos.length === 1) {
+          filtros.campeonato_id = campeonatos[0];
+        } else {
+          filtros.campeonato_ids = campeonatos;
+        }
+      }
+
+      const equipos = await Finanza.obtenerResumenPorEquipo(filtros);
+      return res.json({
+        ok: true,
+        total: equipos.length,
+        equipos,
+      });
+    } catch (error) {
+      console.error("Error obteniendo resumen por equipo:", error);
+      return res.status(statusParaError(error)).json({ error: error.message });
+    }
+  },
+
   async dashboardOrganizador(req, res) {
     try {
       const user = req.user;

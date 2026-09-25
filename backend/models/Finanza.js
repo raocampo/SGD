@@ -769,6 +769,146 @@ class Finanza {
     return incluirSaldados ? filas : filas.filter((f) => f.saldo > 0);
   }
 
+  static async obtenerResumenPorEquipo(filtros = {}) {
+    await this.asegurarEsquema();
+    await this.sincronizarCargosInscripcion(filtros, pool);
+
+    const where = [];
+    const values = [];
+    let i = 1;
+
+    if (filtros.campeonato_id) {
+      where.push(`fm.campeonato_id = $${i++}`);
+      values.push(this.parseEntero(filtros.campeonato_id, "campeonato_id"));
+    }
+    if (Array.isArray(filtros.campeonato_ids) && filtros.campeonato_ids.length) {
+      const ids = filtros.campeonato_ids
+        .map((x) => this.parseEntero(x, "campeonato_id"))
+        .filter((x) => Number.isFinite(x) && x > 0);
+      if (ids.length) {
+        where.push(`fm.campeonato_id = ANY($${i++}::int[])`);
+        values.push(ids);
+      }
+    }
+    if (filtros.evento_id) {
+      where.push(`fm.evento_id = $${i++}`);
+      values.push(this.parseEntero(filtros.evento_id, "evento_id"));
+    }
+    if (filtros.equipo_id) {
+      where.push(`fm.equipo_id = $${i++}`);
+      values.push(this.parseEntero(filtros.equipo_id, "equipo_id"));
+    }
+
+    const baseWhere = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+    // Las tarjetas amarillas/rojas viven bajo concepto = 'multa'; se distinguen
+    // por origen_clave (cargos/abonos generados desde planilla, ver
+    // Partido.sincronizarFinanzasPlanilla) o, en su defecto, por texto en
+    // descripcion (multas cargadas manualmente).
+    const esTA = `(fm.origen_clave LIKE '%:ta:%' OR fm.descripcion ILIKE '%amarilla%')`;
+    const esTR = `(fm.origen_clave LIKE '%:tr:%' OR fm.descripcion ILIKE '%roja%')`;
+
+    const q = `
+      SELECT
+        e.id AS equipo_id,
+        e.nombre AS equipo_nombre,
+        c.id AS campeonato_id,
+        c.nombre AS campeonato_nombre,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.concepto = 'inscripcion' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS cargos_inscripcion,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' AND fm.concepto = 'inscripcion' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS abonos_inscripcion,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.concepto = 'arbitraje' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS cargos_arbitraje,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' AND fm.concepto = 'arbitraje' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS abonos_arbitraje,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.concepto = 'multa' AND ${esTA} AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS cargos_ta,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' AND fm.concepto = 'multa' AND ${esTA} AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS abonos_ta,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.concepto = 'multa' AND ${esTR} AND NOT ${esTA} AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS cargos_tr,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' AND fm.concepto = 'multa' AND ${esTR} AND NOT ${esTA} AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS abonos_tr,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.concepto = 'multa' AND NOT ${esTA} AND NOT ${esTR} AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS cargos_otras,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' AND fm.concepto = 'multa' AND NOT ${esTA} AND NOT ${esTR} AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS abonos_otras,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS total_cargos,
+        COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS total_abonos
+      FROM finanzas_movimientos fm
+      JOIN equipos e ON e.id = fm.equipo_id
+      JOIN campeonatos c ON c.id = fm.campeonato_id
+      ${baseWhere}
+      GROUP BY e.id, e.nombre, c.id, c.nombre
+      ORDER BY e.nombre ASC
+    `;
+    const r = await pool.query(q, values);
+
+    const estadoRubro = (cargos, abonos) => {
+      const saldo = Number((cargos - abonos).toFixed(2));
+      if (cargos <= 0) return { saldo, estado: "sin_cargo" };
+      if (saldo <= 0) return { saldo, estado: "pagado" };
+      if (abonos > 0) return { saldo, estado: "abonado" };
+      return { saldo, estado: "pendiente" };
+    };
+
+    return r.rows.map((row) => {
+      const cargosInscripcion = Number(row.cargos_inscripcion || 0);
+      const abonosInscripcion = Number(row.abonos_inscripcion || 0);
+      const cargosArbitraje = Number(row.cargos_arbitraje || 0);
+      const abonosArbitraje = Number(row.abonos_arbitraje || 0);
+      const cargosTa = Number(row.cargos_ta || 0);
+      const abonosTa = Number(row.abonos_ta || 0);
+      const cargosTr = Number(row.cargos_tr || 0);
+      const abonosTr = Number(row.abonos_tr || 0);
+      const cargosOtras = Number(row.cargos_otras || 0);
+      const abonosOtras = Number(row.abonos_otras || 0);
+      const totalCargos = Number(row.total_cargos || 0);
+      const totalAbonos = Number(row.total_abonos || 0);
+      const totalSaldo = Number((totalCargos - totalAbonos).toFixed(2));
+
+      const inscripcion = estadoRubro(cargosInscripcion, abonosInscripcion);
+      const arbitraje = estadoRubro(cargosArbitraje, abonosArbitraje);
+      const tarjetasAmarillas = estadoRubro(cargosTa, abonosTa);
+      const tarjetasRojas = estadoRubro(cargosTr, abonosTr);
+      const multasOtras = estadoRubro(cargosOtras, abonosOtras);
+
+      return {
+        equipo_id: row.equipo_id,
+        equipo_nombre: row.equipo_nombre,
+        campeonato_id: row.campeonato_id,
+        campeonato_nombre: row.campeonato_nombre,
+        inscripcion: {
+          cargos: cargosInscripcion,
+          abonos: abonosInscripcion,
+          saldo: inscripcion.saldo,
+          estado: inscripcion.estado,
+        },
+        arbitraje: {
+          cargos: cargosArbitraje,
+          abonos: abonosArbitraje,
+          saldo: arbitraje.saldo,
+          estado: arbitraje.estado,
+        },
+        tarjetas_amarillas: {
+          cargos: cargosTa,
+          abonos: abonosTa,
+          saldo: tarjetasAmarillas.saldo,
+          estado: tarjetasAmarillas.estado,
+        },
+        tarjetas_rojas: {
+          cargos: cargosTr,
+          abonos: abonosTr,
+          saldo: tarjetasRojas.saldo,
+          estado: tarjetasRojas.estado,
+        },
+        multas_otras: {
+          cargos: cargosOtras,
+          abonos: abonosOtras,
+          saldo: multasOtras.saldo,
+          estado: multasOtras.estado,
+        },
+        total: {
+          cargos: totalCargos,
+          abonos: totalAbonos,
+          saldo: totalSaldo,
+          estado: totalSaldo > 0 ? "deudor" : "al_dia",
+        },
+      };
+    });
+  }
+
   static async marcarMovimientoPagado(movimiento_id, data = {}, client = pool) {
     await this.asegurarEsquema(client);
 

@@ -14,9 +14,11 @@ let finanzasState = {
     filas: [],
     resumen: null,
   },
-  ultimoEjecutivoEquipos: {
-    filas: [],
-    resumen: null,
+  ultimoResumenEquipos: [],
+  ultimoMovimientosEquipo: {
+    equipo_id: null,
+    equipo_nombre: "",
+    movimientos: [],
   },
   esTecnico: false,
 };
@@ -47,7 +49,7 @@ async function inicializarFinanzas() {
     cargarMorosidadFinanzas(),
     cargarSancionesFinancieras(),
     cargarResumenEjecutivoFinanzas(),
-    cargarResumenEjecutivoEquiposFinanzas(),
+    cargarResumenPorEquipoFinanzas(),
     cargarEstadoCuentaActual(),
     cargarGastosOperativos(),
   ]);
@@ -58,6 +60,9 @@ function aplicarPermisosFinanzasUI() {
 
   const cardMovimiento = document.getElementById("fin-card-movimiento");
   if (cardMovimiento) cardMovimiento.style.display = "none";
+
+  const cardMovimientosEquipo = document.getElementById("fin-card-movimientos-equipo");
+  if (cardMovimientosEquipo) cardMovimientosEquipo.style.display = "none";
 
   const cardMorosidad = document.querySelector(".fin-card-morosidad");
   if (cardMorosidad) cardMorosidad.style.display = "none";
@@ -75,7 +80,7 @@ function bindEventosFinanzas() {
         cargarMorosidadFinanzas(),
         cargarSancionesFinancieras(),
         cargarResumenEjecutivoFinanzas(),
-        cargarResumenEjecutivoEquiposFinanzas(),
+        cargarResumenPorEquipoFinanzas(),
         cargarEstadoCuentaActual(),
       ]);
     });
@@ -87,7 +92,7 @@ function bindEventosFinanzas() {
       cargarMorosidadFinanzas(),
       cargarSancionesFinancieras(),
       cargarResumenEjecutivoFinanzas(),
-      cargarResumenEjecutivoEquiposFinanzas(),
+      cargarResumenPorEquipoFinanzas(),
       cargarEstadoCuentaActual(),
       cargarGastosOperativos(),
     ]);
@@ -102,7 +107,7 @@ function bindEventosFinanzas() {
       cargarMorosidadFinanzas();
       cargarSancionesFinancieras();
       cargarResumenEjecutivoFinanzas();
-      cargarResumenEjecutivoEquiposFinanzas();
+      cargarResumenPorEquipoFinanzas();
       cargarEstadoCuentaActual();
       cargarGastosOperativos();
       poblarSelectCampeonatosGasto();
@@ -115,7 +120,7 @@ function bindEventosFinanzas() {
       cargarMorosidadFinanzas();
       cargarSancionesFinancieras();
       cargarResumenEjecutivoFinanzas();
-      cargarResumenEjecutivoEquiposFinanzas();
+      cargarResumenPorEquipoFinanzas();
       cargarEstadoCuentaActual();
     });
 
@@ -130,6 +135,10 @@ function bindEventosFinanzas() {
   document
     .getElementById("mov-campeonato")
     ?.addEventListener("change", sincronizarFormularioMovimiento);
+
+  document
+    .getElementById("mov-equipo")
+    ?.addEventListener("change", () => cargarMovimientosEquipoFinanzas());
 
   document
     .getElementById("btn-fin-recibo-ultimo")
@@ -153,8 +162,24 @@ function bindEventosFinanzas() {
     .getElementById("btn-fin-imprimir-ejecutivo")
     ?.addEventListener("click", imprimirReporteEjecutivoFinanzas);
   document
-    .getElementById("btn-fin-imprimir-ejecutivo-equipos")
-    ?.addEventListener("click", imprimirReporteEjecutivoEquiposFinanzas);
+    .getElementById("btn-fin-imprimir-resumen-equipos")
+    ?.addEventListener("click", imprimirReporteResumenEquipos);
+}
+
+function cambiarPestanaFinanzas(tabId) {
+  actualizarPestanasFinanzas(tabId);
+}
+
+function actualizarPestanasFinanzas(tabId) {
+  const objetivo = tabId || "fin-tab-filtros";
+
+  document.querySelectorAll(".finanzas-main-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.getAttribute("data-tab-target") === objetivo);
+  });
+
+  document.querySelectorAll(".finanzas-tab-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.id === objetivo);
+  });
 }
 
 function inicializarTogglesReportes() {
@@ -162,7 +187,6 @@ function inicializarTogglesReportes() {
   configurarToggleReporte("btn-toggle-movimientos", "fin-movimientos-contenido", true);
   configurarToggleReporte("btn-toggle-sanciones", "fin-sanciones-contenido", true);
   configurarToggleReporte("btn-toggle-ejecutivo", "fin-ejecutivo-contenido", true);
-  configurarToggleReporte("btn-toggle-ejecutivo-equipos", "fin-ejecutivo-equipos-contenido", true);
   configurarToggleReporte("btn-toggle-gastos", "fin-gastos-contenido", true);
 }
 
@@ -650,161 +674,24 @@ async function cargarResumenEjecutivoFinanzas() {
   }
 }
 
-function calcularResumenEjecutivoPorEquipo(movimientos = []) {
-  const mapa = new Map();
-
-  (Array.isArray(movimientos) ? movimientos : []).forEach((mov) => {
-    if (String(mov.estado || "").toLowerCase() === "anulado") return;
-
-    const equipoId = Number.parseInt(mov.equipo_id, 10);
-    const equipoNombre = String(mov.equipo_nombre || "Equipo").trim() || "Equipo";
-    const clave = Number.isFinite(equipoId) && equipoId > 0 ? `id:${equipoId}` : `nombre:${equipoNombre}`;
-
-    if (!mapa.has(clave)) {
-      mapa.set(clave, {
-        equipo_id: Number.isFinite(equipoId) ? equipoId : null,
-        equipo_nombre: equipoNombre,
-        campeonato_nombre: String(mov.campeonato_nombre || "Campeonato").trim() || "Campeonato",
-        categorias: new Set(),
-        total_cargos: 0,
-        total_abonos: 0,
-        inscripcion: { cargo: 0, abono: 0, saldo: 0 },
-        arbitraje: { cargo: 0, abono: 0, saldo: 0 },
-        multas: { cargo: 0, abono: 0, saldo: 0 },
-        cargos_abiertos: 0,
-        cargos_vencidos: 0,
-      });
-    }
-
-    const fila = mapa.get(clave);
-    const eventoNombre = String(mov.evento_nombre || "").trim();
-    if (eventoNombre && eventoNombre.toLowerCase() !== "sin categoría") {
-      fila.categorias.add(eventoNombre);
-    }
-
-    const monto = Number.parseFloat(mov.monto || 0);
-    if (!Number.isFinite(monto) || monto <= 0) return;
-
-    const tipo = String(mov.tipo_movimiento || "").toLowerCase();
-    const estado = String(mov.estado || "").toLowerCase();
-    const esCargo = tipo !== "abono";
-
-    if (esCargo) fila.total_cargos += monto;
-    else fila.total_abonos += monto;
-
-    const bucket = clasificarMovimientoCuenta(mov);
-    if (bucket && fila[bucket]) {
-      if (esCargo) fila[bucket].cargo += monto;
-      else fila[bucket].abono += monto;
-    } else if (String(mov.concepto || "").toLowerCase() === "multa") {
-      if (esCargo) fila.multas.cargo += monto;
-      else fila.multas.abono += monto;
-    }
-
-    if (esCargo && ["pendiente", "parcial", "vencido"].includes(estado)) {
-      fila.cargos_abiertos += monto;
-    }
-    if (esCargo && estado === "vencido") {
-      fila.cargos_vencidos += monto;
-    }
-  });
-
-  const filas = Array.from(mapa.values()).map((fila) => {
-    ["inscripcion", "arbitraje", "multas"].forEach((k) => {
-      fila[k].cargo = Number(fila[k].cargo.toFixed(2));
-      fila[k].abono = Number(fila[k].abono.toFixed(2));
-      fila[k].saldo = Number(Math.max(fila[k].cargo - fila[k].abono, 0).toFixed(2));
-    });
-
-    const categorias = Array.from(fila.categorias.values()).sort((a, b) =>
-      a.localeCompare(b, "es", { sensitivity: "base" })
-    );
-    const totalCargos = Number(fila.total_cargos.toFixed(2));
-    const totalAbonos = Number(fila.total_abonos.toFixed(2));
-
-    return {
-      equipo_id: fila.equipo_id,
-      equipo_nombre: fila.equipo_nombre,
-      campeonato_nombre: fila.campeonato_nombre,
-      categorias: categorias.length ? categorias.join(", ") : "Sin categoría",
-      total_cargos: totalCargos,
-      total_abonos: totalAbonos,
-      saldo: Number(Math.max(totalCargos - totalAbonos, 0).toFixed(2)),
-      cargos_abiertos: Number(fila.cargos_abiertos.toFixed(2)),
-      cargos_vencidos: Number(fila.cargos_vencidos.toFixed(2)),
-      inscripcion_saldo: fila.inscripcion.saldo,
-      arbitraje_saldo: fila.arbitraje.saldo,
-      multas_saldo: fila.multas.saldo,
-    };
-  });
-
-  filas.sort((a, b) => {
-    if (b.saldo !== a.saldo) return b.saldo - a.saldo;
-    if (b.cargos_vencidos !== a.cargos_vencidos) return b.cargos_vencidos - a.cargos_vencidos;
-    return String(a.equipo_nombre || "").localeCompare(String(b.equipo_nombre || ""), "es", {
-      sensitivity: "base",
-    });
-  });
-
-  const resumen = filas.reduce(
-    (acc, fila) => {
-      acc.equipos += 1;
-      acc.campeonatos.add(fila.campeonato_nombre || "Campeonato");
-      acc.total_cargos += fila.total_cargos;
-      acc.total_abonos += fila.total_abonos;
-      acc.saldo += fila.saldo;
-      acc.cargos_abiertos += fila.cargos_abiertos;
-      acc.cargos_vencidos += fila.cargos_vencidos;
-      acc.multas_saldo += fila.multas_saldo;
-      return acc;
-    },
-    {
-      equipos: 0,
-      campeonatos: new Set(),
-      total_cargos: 0,
-      total_abonos: 0,
-      saldo: 0,
-      cargos_abiertos: 0,
-      cargos_vencidos: 0,
-      multas_saldo: 0,
-    }
-  );
-
-  resumen.campeonatos = resumen.campeonatos.size;
-  ["total_cargos", "total_abonos", "saldo", "cargos_abiertos", "cargos_vencidos", "multas_saldo"].forEach(
-    (k) => {
-      resumen[k] = Number(resumen[k].toFixed(2));
-    }
-  );
-
-  return { filas, resumen };
-}
-
-async function cargarResumenEjecutivoEquiposFinanzas() {
+async function cargarResumenPorEquipoFinanzas() {
   const params = {
     campeonato_id: document.getElementById("fin-campeonato")?.value || "",
     evento_id: document.getElementById("fin-evento")?.value || "",
     equipo_id: document.getElementById("fin-equipo")?.value || "",
-    tipo_movimiento: document.getElementById("fin-tipo")?.value || "",
-    estado: document.getElementById("fin-estado")?.value || "",
-    desde: document.getElementById("fin-desde")?.value || "",
-    hasta: document.getElementById("fin-hasta")?.value || "",
-    incluir_sistema: "true",
-    limit: 5000,
   };
 
-  const cont = document.getElementById("fin-ejecutivo-equipos-contenido");
+  const cont = document.getElementById("fin-resumen-equipos-contenido");
   if (cont) cont.innerHTML = renderCargando("Cargando resumen por equipo...");
 
   try {
-    const resp = await FinanzasAPI.listarMovimientos(params);
-    const movimientos = resp.movimientos || [];
-    const consolidado = calcularResumenEjecutivoPorEquipo(movimientos);
-    finanzasState.ultimoEjecutivoEquipos = consolidado;
-    renderResumenEjecutivoEquiposFinanzas(consolidado.filas, consolidado.resumen);
+    const resp = await FinanzasAPI.resumenEquipos(params);
+    const equipos = resp.equipos || [];
+    finanzasState.ultimoResumenEquipos = equipos;
+    renderTablaResumenEquipos(equipos);
   } catch (error) {
     console.error(error);
-    finanzasState.ultimoEjecutivoEquipos = { filas: [], resumen: null };
+    finanzasState.ultimoResumenEquipos = [];
     if (cont) cont.innerHTML = renderVacio(error.message || "No se pudo cargar el resumen por equipo.");
   }
 }
@@ -942,6 +829,7 @@ async function guardarMovimientoFinanzas(e) {
   }
 
   const contexto = capturarContextoFormularioMovimiento(payload);
+  const equipoIdGuardado = Number.parseInt(payload.equipo_id, 10);
 
   try {
     const resp = await FinanzasAPI.crearMovimiento(payload);
@@ -958,13 +846,127 @@ async function guardarMovimientoFinanzas(e) {
       cargarMorosidadFinanzas(),
       cargarSancionesFinancieras(),
       cargarResumenEjecutivoFinanzas(),
-      cargarResumenEjecutivoEquiposFinanzas(),
+      cargarResumenPorEquipoFinanzas(),
       cargarEstadoCuentaActual(),
+      cargarMovimientosEquipoFinanzas(equipoIdGuardado),
     ]);
   } catch (error) {
     console.error(error);
     mostrarNotificacion(error.message || "No se pudo registrar movimiento", "error");
   }
+}
+
+async function cargarMovimientosEquipoFinanzas(equipoIdOverride) {
+  const hint = document.getElementById("fin-movimientos-equipo-hint");
+  const cont = document.getElementById("fin-movimientos-equipo-contenido");
+  const equipoId = Number.isFinite(Number(equipoIdOverride)) && Number(equipoIdOverride) > 0
+    ? Number(equipoIdOverride)
+    : Number.parseInt(document.getElementById("mov-equipo")?.value || "", 10);
+
+  if (!Number.isFinite(equipoId) || equipoId <= 0) {
+    finanzasState.ultimoMovimientosEquipo = { equipo_id: null, equipo_nombre: "", movimientos: [] };
+    if (hint) {
+      hint.textContent = 'Selecciona un equipo en "Registrar Movimiento" para ver su historial y reimprimir cualquier recibo.';
+      hint.style.display = "";
+    }
+    if (cont) cont.innerHTML = "";
+    return;
+  }
+
+  if (hint) hint.style.display = "none";
+  if (cont) cont.innerHTML = renderCargando("Cargando movimientos del equipo...");
+
+  try {
+    const resp = await FinanzasAPI.listarMovimientos({ equipo_id: equipoId, limit: 100 });
+    const movimientos = resp.movimientos || [];
+    const equipoNombre = movimientos[0]?.equipo_nombre || obtenerTextoSeleccion("mov-equipo", "");
+    finanzasState.ultimoMovimientosEquipo = { equipo_id: equipoId, equipo_nombre: equipoNombre, movimientos };
+    renderMovimientosEquipoFinanzas(movimientos, equipoNombre);
+  } catch (error) {
+    console.error(error);
+    finanzasState.ultimoMovimientosEquipo = { equipo_id: equipoId, equipo_nombre: "", movimientos: [] };
+    if (cont) cont.innerHTML = renderVacio(error.message || "No se pudo cargar el historial del equipo.");
+  }
+}
+
+function renderMovimientosEquipoFinanzas(movimientos = [], equipoNombre = "") {
+  const cont = document.getElementById("fin-movimientos-equipo-contenido");
+  if (!cont) return;
+
+  if (!Array.isArray(movimientos) || !movimientos.length) {
+    cont.innerHTML = renderVacio(
+      equipoNombre
+        ? `${escaparHtml(equipoNombre)} no tiene movimientos registrados.`
+        : "Este equipo no tiene movimientos registrados."
+    );
+    return;
+  }
+
+  const rows = movimientos
+    .map((m) => {
+      return `
+        <tr>
+          <td class="fin-col-fecha">${escaparHtml(formatearFechaFinanzas(m.fecha_movimiento))}</td>
+          <td>${escaparHtml(m.evento_nombre || "-")}</td>
+          <td><span class="badge">${escaparHtml(m.tipo_movimiento || "-")}</span></td>
+          <td>${escaparHtml(m.concepto || "-")}</td>
+          <td class="fin-col-monto">${formatoMoneda(m.monto)}</td>
+          <td>${escaparHtml(m.estado || "-")}</td>
+          <td>
+            <button type="button" class="fin-resumen-equipos-fila-btn" data-recibo-mov-id="${m.id}">
+              <i class="fas fa-receipt"></i> Recibo
+            </button>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  cont.innerHTML = `
+    <table class="tabla-estadistica tabla-estadistica-compacta">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Categoría</th>
+          <th>Tipo</th>
+          <th>Concepto</th>
+          <th>Monto</th>
+          <th>Estado</th>
+          <th>Recibo</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+
+  cont.querySelectorAll("[data-recibo-mov-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = Number.parseInt(btn.getAttribute("data-recibo-mov-id"), 10);
+      reimprimirReciboMovimiento(id);
+    });
+  });
+}
+
+function reimprimirReciboMovimiento(movimientoId) {
+  const movimientos = finanzasState.ultimoMovimientosEquipo?.movimientos || [];
+  const movimiento = movimientos.find((m) => Number(m.id) === Number(movimientoId));
+  if (!movimiento) {
+    mostrarNotificacion("No se encontró el movimiento para reimprimir", "warning");
+    return;
+  }
+
+  const contexto = {
+    campeonato_id: movimiento.campeonato_id || null,
+    campeonato_numero: obtenerNumeroSecuencial(
+      obtenerCampeonatoPorId(movimiento.campeonato_id)?.numero_organizador
+    ),
+    campeonato_nombre: movimiento.campeonato_nombre || "-",
+    evento_nombre: movimiento.evento_nombre || "Sin categoría",
+    equipo_nombre: movimiento.equipo_nombre || "-",
+  };
+
+  const recibo = construirReciboMovimiento(movimiento, contexto);
+  emitirReciboMovimiento(recibo, true);
 }
 
 function obtenerMovimientosSeleccionadosEstadoCuenta() {
@@ -1586,11 +1588,11 @@ async function imprimirReporteEjecutivoFinanzas() {
   });
 }
 
-async function imprimirReporteEjecutivoEquiposFinanzas() {
-  const data = finanzasState.ultimoEjecutivoEquipos || {};
-  const filasData = Array.isArray(data.filas) ? data.filas : [];
-  const resumen = data.resumen || null;
-  if (!filasData.length || !resumen) {
+async function imprimirReporteResumenEquipos() {
+  const filasData = Array.isArray(finanzasState.ultimoResumenEquipos)
+    ? finanzasState.ultimoResumenEquipos
+    : [];
+  if (!filasData.length) {
     mostrarNotificacion("No hay datos del resumen por equipo para imprimir", "warning");
     return;
   }
@@ -1609,35 +1611,28 @@ async function imprimirReporteEjecutivoEquiposFinanzas() {
           <td>${idx + 1}</td>
           <td>${escaparHtml(x.equipo_nombre || "-")}</td>
           <td>${escaparHtml(x.campeonato_nombre || "-")}</td>
-          <td>${escaparHtml(x.categorias || "Sin categoría")}</td>
-          <td class="num">${formatoMoneda(x.total_cargos)}</td>
-          <td class="num">${formatoMoneda(x.total_abonos)}</td>
-          <td class="num ${x.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.saldo)}</td>
-          <td class="num">${formatoMoneda(x.cargos_abiertos)}</td>
-          <td class="num ${x.cargos_vencidos > 0 ? "deuda" : "ok"}">${formatoMoneda(x.cargos_vencidos)}</td>
-          <td class="num">${formatoMoneda(x.inscripcion_saldo)}</td>
-          <td class="num">${formatoMoneda(x.arbitraje_saldo)}</td>
-          <td class="num">${formatoMoneda(x.multas_saldo)}</td>
+          <td class="num ${x.inscripcion.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.inscripcion.saldo)} (${escaparHtml(x.inscripcion.estado)})</td>
+          <td class="num ${x.arbitraje.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.arbitraje.saldo)}</td>
+          <td class="num ${x.tarjetas_amarillas.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.tarjetas_amarillas.saldo)}</td>
+          <td class="num ${x.tarjetas_rojas.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.tarjetas_rojas.saldo)}</td>
+          <td class="num ${x.multas_otras.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.multas_otras.saldo)}</td>
+          <td class="num ${x.total.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.total.saldo)}</td>
         </tr>
       `;
     })
     .join("");
 
+  const equiposDeudores = filasData.filter((x) => x.total.saldo > 0).length;
+
   const html = `
     <div class="fin-report-wrap">
       <div class="fin-report-header">
-        <h1>Resumen Ejecutivo por Equipo</h1>
+        <h1>Resumen por Equipo</h1>
         <div class="fin-report-sub">Corte: ${escaparHtml(formatearFechaHoraReporte(new Date().toISOString()))}</div>
       </div>
       <div class="fin-report-grid">
-        <div><strong>Equipos:</strong> ${resumen.equipos}</div>
-        <div><strong>Campeonatos:</strong> ${resumen.campeonatos}</div>
-        <div><strong>Total cargos:</strong> ${formatoMoneda(resumen.total_cargos)}</div>
-        <div><strong>Total abonos:</strong> ${formatoMoneda(resumen.total_abonos)}</div>
-        <div><strong>Saldo actual:</strong> <span class="${resumen.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.saldo)}</span></div>
-        <div><strong>Cargos abiertos:</strong> ${formatoMoneda(resumen.cargos_abiertos)}</div>
-        <div><strong>Cargos vencidos:</strong> <span class="${resumen.cargos_vencidos > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.cargos_vencidos)}</span></div>
-        <div><strong>Saldo multas:</strong> <span class="${resumen.multas_saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumen.multas_saldo)}</span></div>
+        <div><strong>Equipos:</strong> ${filasData.length}</div>
+        <div><strong>Equipos con saldo pendiente:</strong> ${equiposDeudores}</div>
       </div>
       <table class="fin-report-table">
         <thead>
@@ -1645,15 +1640,12 @@ async function imprimirReporteEjecutivoEquiposFinanzas() {
             <th>#</th>
             <th>Equipo</th>
             <th>Campeonato</th>
-            <th>Categoría</th>
-            <th class="num">Cargos</th>
-            <th class="num">Abonos</th>
-            <th class="num">Saldo</th>
-            <th class="num">Abiertos</th>
-            <th class="num">Vencidos</th>
-            <th class="num">Saldo inscripción</th>
-            <th class="num">Saldo arbitraje</th>
-            <th class="num">Saldo multas</th>
+            <th class="num">Inscripción</th>
+            <th class="num">Arbitraje</th>
+            <th class="num">T. Amarillas</th>
+            <th class="num">T. Rojas</th>
+            <th class="num">Otras multas</th>
+            <th class="num">Total</th>
           </tr>
         </thead>
         <tbody>${filas}</tbody>
@@ -1663,36 +1655,31 @@ async function imprimirReporteEjecutivoEquiposFinanzas() {
   `;
 
   await abrirVentanaReporteFinanzas({
-    membreteHtml: renderMembreteReporte(campeonato, "Resumen Ejecutivo por Equipo"),
-    tituloVentana: "Resumen Ejecutivo por Equipo",
+    membreteHtml: renderMembreteReporte(campeonato, "Resumen por Equipo"),
+    tituloVentana: "Resumen por Equipo",
     cuerpoHtml: html,
     autoPrint: true,
   });
 }
 
-function abrirVentanaReporteFinanzas({
-  membreteHtml = "",
-  tituloVentana = "Reporte",
-  cuerpoHtml,
-  autoPrint = true,
-}) {
-  const w = window.open("", "_blank", "width=1100,height=900");
-  if (!w) {
-    mostrarNotificacion("El navegador bloqueó la ventana del reporte. Habilita popups.", "warning");
-    return;
-  }
+let finPrintStylesInjected = false;
 
-  const css = `
-    <style>
-      :root { color-scheme: light; }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
+function asegurarEstilosImpresionFinanzas() {
+  if (finPrintStylesInjected) return;
+  const style = document.createElement("style");
+  style.id = "fin-print-styles";
+  style.textContent = `
+      #fin-print-offscreen {
+        position: fixed;
+        left: -9999px;
+        top: 0;
+        width: 820px;
+        background: #ffffff;
         padding: 16px;
         font-family: "Segoe UI", Arial, sans-serif;
         color: #242424;
-        background: #ffffff;
       }
+      #fin-print-offscreen * { box-sizing: border-box; }
       .fin-doc {
         max-width: 980px;
         margin: 0 auto;
@@ -1866,38 +1853,111 @@ function abrirVentanaReporteFinanzas({
       }
       .ok { color: #15803d; font-weight: 700; }
       .deuda { color: #b91c1c; font-weight: 700; }
-      @media print {
-        body { padding: 0; }
-        .fin-doc { max-width: 100%; }
+      #fin-print-offscreen .acciones-gasto { display: none !important; }
+      #fin-print-offscreen table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+      #fin-print-offscreen th,
+      #fin-print-offscreen td {
+        border: 1px solid #cbd5e1;
+        padding: 5px 6px;
+        text-align: left;
       }
-    </style>
+      #fin-print-offscreen th { background: #eef4fb; }
   `;
+  document.head.appendChild(style);
+  finPrintStylesInjected = true;
+}
 
-  const html = `
-    <!DOCTYPE html>
-    <html lang="es">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${escaparHtml(tituloVentana)}</title>
-        ${css}
-      </head>
-      <body>
-        <div class="fin-doc">
-          ${membreteHtml || ""}
-          ${cuerpoHtml}
-        </div>
-      </body>
-    </html>
+async function exportarNodoPDFFinanzas(node, nombreArchivo) {
+  if (!node || !window.html2canvas || !window.jspdf?.jsPDF) {
+    throw new Error("No se pudo preparar la exportación PDF");
+  }
+
+  const canvas = await window.html2canvas(node, {
+    backgroundColor: "#ffffff",
+    scale: 2,
+    useCORS: true,
+    windowWidth: Math.max(node.scrollWidth, node.clientWidth),
+    windowHeight: Math.max(node.scrollHeight, node.clientHeight),
+  });
+
+  const imgData = canvas.toDataURL("image/png");
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+
+  pdf.save(nombreArchivo);
+}
+
+function esperarImagenesReporteFinanzas(container, timeoutMs = 4000) {
+  const imgs = Array.from(container.querySelectorAll("img"));
+  if (!imgs.length) return Promise.resolve();
+  const promesas = imgs.map((img) => {
+    if (img.complete) return Promise.resolve();
+    return new Promise((resolve) => {
+      img.addEventListener("load", resolve, { once: true });
+      img.addEventListener("error", resolve, { once: true });
+    });
+  });
+  return Promise.race([
+    Promise.all(promesas),
+    new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+  ]);
+}
+
+function slugArchivoFinanzas(texto) {
+  const slug = String(texto || "reporte")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug || "reporte";
+}
+
+async function abrirVentanaReporteFinanzas({
+  membreteHtml = "",
+  tituloVentana = "Reporte",
+  cuerpoHtml,
+}) {
+  asegurarEstilosImpresionFinanzas();
+
+  const contenedor = document.createElement("div");
+  contenedor.id = "fin-print-offscreen";
+  contenedor.innerHTML = `
+    <div class="fin-doc">
+      ${membreteHtml || ""}
+      ${cuerpoHtml}
+    </div>
   `;
+  document.body.appendChild(contenedor);
 
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-
-  if (autoPrint) {
-    setTimeout(() => w.print(), 300);
+  try {
+    await esperarImagenesReporteFinanzas(contenedor);
+    const fecha = new Date().toISOString().slice(0, 10);
+    const nombreArchivo = `${slugArchivoFinanzas(tituloVentana)}_${fecha}.pdf`;
+    await exportarNodoPDFFinanzas(contenedor, nombreArchivo);
+    mostrarNotificacion("PDF generado correctamente", "success");
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo generar el PDF del reporte", "error");
+  } finally {
+    contenedor.remove();
   }
 }
 
@@ -1986,61 +2046,65 @@ function renderResumenEjecutivoFinanzas(filas = [], resumen = null) {
   `;
 }
 
-function renderResumenEjecutivoEquiposFinanzas(filas = [], resumen = null) {
-  const cont = document.getElementById("fin-ejecutivo-equipos-contenido");
+function renderBadgeEstadoFinanzas(estado) {
+  const clave = String(estado || "").toLowerCase();
+  const etiquetas = {
+    pagado: "Pagado",
+    abonado: "Abonado",
+    pendiente: "Pendiente",
+    sin_cargo: "Sin cargo",
+    al_dia: "Al día",
+    deudor: "Debe",
+  };
+  const texto = etiquetas[clave] || estado || "-";
+  return `<span class="fin-badge-estado fin-badge-${escaparHtml(clave)}">${escaparHtml(texto)}</span>`;
+}
+
+function renderCeldaRubroFinanzas(rubro) {
+  if (!rubro) return "-";
+  const saldoTexto = rubro.saldo > 0 ? formatoMoneda(rubro.saldo) : formatoMoneda(0);
+  return `${renderBadgeEstadoFinanzas(rubro.estado)}<br><span class="${rubro.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${saldoTexto}</span>`;
+}
+
+function renderTablaResumenEquipos(equipos = []) {
+  const cont = document.getElementById("fin-resumen-equipos-contenido");
   if (!cont) return;
-  if (!Array.isArray(filas) || !filas.length || !resumen) {
-    cont.innerHTML = renderVacio("No hay datos ejecutivos por equipo para los filtros actuales.");
+  if (!Array.isArray(equipos) || !equipos.length) {
+    cont.innerHTML = renderVacio("No hay equipos con movimientos financieros para los filtros actuales.");
     return;
   }
 
-  const rows = filas
+  const rows = equipos
     .map((x, idx) => {
       return `
         <tr>
           <td>${idx + 1}</td>
           <td>${escaparHtml(x.equipo_nombre || "-")}</td>
           <td>${escaparHtml(x.campeonato_nombre || "-")}</td>
-          <td>${escaparHtml(x.categorias || "Sin categoría")}</td>
-          <td>${formatoMoneda(x.total_cargos)}</td>
-          <td>${formatoMoneda(x.total_abonos)}</td>
-          <td class="${x.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(x.saldo)}</td>
-          <td>${formatoMoneda(x.cargos_abiertos)}</td>
-          <td class="${x.cargos_vencidos > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(x.cargos_vencidos)}</td>
-          <td>${formatoMoneda(x.inscripcion_saldo)}</td>
-          <td>${formatoMoneda(x.arbitraje_saldo)}</td>
-          <td>${formatoMoneda(x.multas_saldo)}</td>
+          <td>${renderCeldaRubroFinanzas(x.inscripcion)}</td>
+          <td>${renderCeldaRubroFinanzas(x.arbitraje)}</td>
+          <td>${renderCeldaRubroFinanzas(x.tarjetas_amarillas)}</td>
+          <td>${renderCeldaRubroFinanzas(x.tarjetas_rojas)}</td>
+          <td>${renderCeldaRubroFinanzas(x.multas_otras)}</td>
+          <td>${renderCeldaRubroFinanzas(x.total)}</td>
         </tr>
       `;
     })
     .join("");
 
   cont.innerHTML = `
-    <div class="fin-sanciones-resumen">
-      <div><strong>Equipos:</strong> ${resumen.equipos}</div>
-      <div><strong>Campeonatos:</strong> ${resumen.campeonatos}</div>
-      <div><strong>Total cargos:</strong> ${formatoMoneda(resumen.total_cargos)}</div>
-      <div><strong>Total abonos:</strong> ${formatoMoneda(resumen.total_abonos)}</div>
-      <div><strong>Saldo actual:</strong> <span class="${resumen.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.saldo)}</span></div>
-      <div><strong>Cargos abiertos:</strong> ${formatoMoneda(resumen.cargos_abiertos)}</div>
-      <div><strong>Cargos vencidos:</strong> <span class="${resumen.cargos_vencidos > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.cargos_vencidos)}</span></div>
-      <div><strong>Saldo multas:</strong> <span class="${resumen.multas_saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.multas_saldo)}</span></div>
-    </div>
     <table class="tabla-estadistica tabla-estadistica-compacta">
       <thead>
         <tr>
           <th>#</th>
           <th>Equipo</th>
           <th>Campeonato</th>
-          <th>Categoría</th>
-          <th>Cargos</th>
-          <th>Abonos</th>
-          <th>Saldo</th>
-          <th>Abiertos</th>
-          <th>Vencidos</th>
-          <th>Saldo inscripción</th>
-          <th>Saldo arbitraje</th>
-          <th>Saldo multas</th>
+          <th>Inscripción</th>
+          <th>Arbitraje</th>
+          <th>T. Amarillas</th>
+          <th>T. Rojas</th>
+          <th>Otras multas</th>
+          <th>Total</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -2582,31 +2646,29 @@ async function cargarGastosOperativos() {
   }
 }
 
-function imprimirGastos() {
+async function imprimirGastos() {
   const cont = document.getElementById("fin-gastos-contenido");
   if (!cont || !cont.innerHTML.trim()) {
     mostrarNotificacion("No hay gastos para imprimir", "warning");
     return;
   }
-  const w = window.open("", "_blank");
-  if (!w) return;
-  w.document.write(`<!DOCTYPE html><html><head>
-    <meta charset="UTF-8"><title>Gastos Operativos</title>
-    <style>
-      body { font-family: sans-serif; font-size: 12px; padding: 1rem; }
-      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-      th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
-      th { background: #f0f0f0; }
-      .gastos-resumen-badges { margin-bottom: 1rem; }
-      .gasto-badge-resumen, .gasto-badge-total { margin-right: 1rem; }
-      .acciones-gasto { display: none; }
-      @media print { .acciones-gasto { display: none; } }
-    </style>
-  </head><body>
-    <h2>Gastos Operativos</h2>
-    ${cont.innerHTML}
-  </body></html>`);
-  w.document.close();
-  w.focus();
-  w.print();
+
+  const campeonatoId = Number.parseInt(document.getElementById("gasto-campeonato")?.value || "", 10);
+  const campeonato = obtenerCampeonatoPorId(campeonatoId);
+
+  const html = `
+    <div class="fin-report-wrap">
+      <div class="fin-report-header">
+        <h1>Gastos Operativos</h1>
+        <div class="fin-report-sub">Corte: ${escaparHtml(formatearFechaHoraReporte(new Date().toISOString()))}</div>
+      </div>
+      ${cont.innerHTML}
+    </div>
+  `;
+
+  await abrirVentanaReporteFinanzas({
+    membreteHtml: renderMembreteReporte(campeonato, "Gastos Operativos"),
+    tituloVentana: "Gastos Operativos",
+    cuerpoHtml: html,
+  });
 }

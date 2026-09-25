@@ -2796,6 +2796,36 @@ body.modal-open {
   display: block;
 }
 
+.finanzas-main-tabs {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.finanzas-main-tab {
+  border: 1px solid #c8d6e5;
+  background: #eef4fb;
+  color: #1f2937;
+  border-radius: 10px;
+  padding: 0.55rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.finanzas-main-tab.active {
+  background: #313131;
+  border-color: #313131;
+  color: #fff;
+}
+
+.finanzas-tab-panel {
+  display: none;
+}
+
+.finanzas-tab-panel.active {
+  display: block;
+}
+
 .page-partidos #tab-filtrar .config-card {
   max-width: 92rem;
   margin: 0 auto 1.25rem;
@@ -6477,6 +6507,56 @@ body.page-finanzas {
   font-size: 0.8rem;
 }
 
+.page-finanzas .fin-resumen-equipos-hint {
+  color: #64748b;
+  font-size: 0.88rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.page-finanzas .fin-badge-estado {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.page-finanzas .fin-badge-estado.fin-badge-pagado,
+.page-finanzas .fin-badge-estado.fin-badge-al_dia {
+  background: #d5f5e3;
+  color: #1e8449;
+}
+
+.page-finanzas .fin-badge-estado.fin-badge-abonado {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.page-finanzas .fin-badge-estado.fin-badge-pendiente,
+.page-finanzas .fin-badge-estado.fin-badge-deudor {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.page-finanzas .fin-badge-estado.fin-badge-sin_cargo {
+  background: #eaecf0;
+  color: #7f8c8d;
+}
+
+.page-finanzas .fin-resumen-equipos-fila-btn {
+  background: none;
+  border: none;
+  color: #1d4ed8;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.page-finanzas .fin-resumen-equipos-fila-btn:hover {
+  text-decoration: underline;
+}
+
 .page-finanzas .tabla-scroll {
   width: 100%;
   overflow-x: auto;
@@ -9670,6 +9750,7 @@ body.page-finanzas {
   body.app-layout .partidos-main-tabs,
   body.app-layout .jugadores-main-tabs,
   body.app-layout .grupos-main-tabs,
+  body.app-layout .finanzas-main-tabs,
   body.app-layout .fixture-view-tabs,
   body.app-layout .dash-tabs-bar,
   body.app-layout .list-view-toggle {
@@ -9683,6 +9764,7 @@ body.page-finanzas {
   body.app-layout .partidos-main-tabs::-webkit-scrollbar,
   body.app-layout .jugadores-main-tabs::-webkit-scrollbar,
   body.app-layout .grupos-main-tabs::-webkit-scrollbar,
+  body.app-layout .finanzas-main-tabs::-webkit-scrollbar,
   body.app-layout .fixture-view-tabs::-webkit-scrollbar,
   body.app-layout .dash-tabs-bar::-webkit-scrollbar,
   body.app-layout .list-view-toggle::-webkit-scrollbar {
@@ -9692,6 +9774,7 @@ body.page-finanzas {
   body.app-layout .partidos-main-tab,
   body.app-layout .jugadores-main-tab,
   body.app-layout .grupos-main-tab,
+  body.app-layout .finanzas-main-tab,
   body.app-layout .fixture-view-btn,
   body.app-layout .dash-tab-btn,
   body.app-layout .list-view-toggle .btn,

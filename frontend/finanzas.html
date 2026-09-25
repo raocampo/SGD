@@ -39,6 +39,34 @@
 
     <main class="main">
       <div class="container">
+        <div class="finanzas-main-tabs" id="finanzas-main-tabs">
+          <button type="button" class="finanzas-main-tab active" data-tab-target="fin-tab-filtros" onclick="cambiarPestanaFinanzas('fin-tab-filtros')">
+            Filtros
+          </button>
+          <button type="button" class="finanzas-main-tab" data-tab-target="fin-tab-movimiento" onclick="cambiarPestanaFinanzas('fin-tab-movimiento')">
+            Registrar Movimiento
+          </button>
+          <button type="button" class="finanzas-main-tab" data-tab-target="fin-tab-estado-cuenta" onclick="cambiarPestanaFinanzas('fin-tab-estado-cuenta')">
+            Estado de Cuenta
+          </button>
+          <button type="button" class="finanzas-main-tab" data-tab-target="fin-tab-morosidad" onclick="cambiarPestanaFinanzas('fin-tab-morosidad')">
+            Morosidad
+          </button>
+          <button type="button" class="finanzas-main-tab" data-tab-target="fin-tab-sanciones" onclick="cambiarPestanaFinanzas('fin-tab-sanciones')">
+            Sanciones
+          </button>
+          <button type="button" class="finanzas-main-tab" data-tab-target="fin-tab-ejecutivo" onclick="cambiarPestanaFinanzas('fin-tab-ejecutivo')">
+            Ejecutivo Campeonato
+          </button>
+          <button type="button" class="finanzas-main-tab" data-tab-target="fin-tab-gastos" onclick="cambiarPestanaFinanzas('fin-tab-gastos')">
+            Gastos Operativos
+          </button>
+          <button type="button" class="finanzas-main-tab" data-tab-target="fin-tab-movimientos" onclick="cambiarPestanaFinanzas('fin-tab-movimientos')">
+            Movimientos Financieros
+          </button>
+        </div>
+
+        <div id="fin-tab-filtros" class="finanzas-tab-panel active">
         <div class="config-card finanzas-form-card">
           <h3>Filtros</h3>
           <div class="form-grid finanzas-form-grid">
@@ -94,6 +122,23 @@
           </div>
         </div>
 
+        <div class="card">
+          <div class="fin-card-headline">
+            <h3>Resumen por Equipo</h3>
+            <div class="fin-card-actions">
+              <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-resumen-equipos">
+                <i class="fas fa-print"></i> Imprimir resumen
+              </button>
+            </div>
+          </div>
+          <p class="fin-resumen-equipos-hint">
+            Estado financiero de cada equipo: inscripción, arbitraje, tarjetas amarillas/rojas y otras multas.
+          </p>
+          <div id="fin-resumen-equipos-contenido" class="tabla-scroll"></div>
+        </div>
+        </div>
+
+        <div id="fin-tab-movimiento" class="finanzas-tab-panel">
         <div class="config-card finanzas-form-card" id="fin-card-movimiento">
           <h3>Registrar Movimiento</h3>
           <form id="fin-form-movimiento">
@@ -175,7 +220,18 @@
           </form>
         </div>
 
-        <div class="finanzas-grid-resumen">
+        <div class="card" id="fin-card-movimientos-equipo">
+          <div class="fin-card-headline">
+            <h3>Movimientos del Equipo</h3>
+          </div>
+          <p class="fin-resumen-equipos-hint" id="fin-movimientos-equipo-hint">
+            Selecciona un equipo en "Registrar Movimiento" para ver su historial y reimprimir cualquier recibo.
+          </p>
+          <div id="fin-movimientos-equipo-contenido" class="tabla-scroll"></div>
+        </div>
+        </div>
+
+        <div id="fin-tab-estado-cuenta" class="finanzas-tab-panel">
           <div class="card fin-card-estado">
             <div class="fin-card-headline">
               <h3>Estado de Cuenta (Equipo seleccionado)</h3>
@@ -191,6 +247,9 @@
             <div id="fin-estado-cuenta-resumen" class="fin-resumen-vacio">Selecciona un equipo para visualizar su estado de cuenta.</div>
             <div id="fin-estado-cuenta-movimientos" class="tabla-scroll"></div>
           </div>
+        </div>
+
+        <div id="fin-tab-morosidad" class="finanzas-tab-panel">
           <div class="card fin-card-morosidad">
             <div class="fin-card-headline">
               <h3>Morosidad por Equipo</h3>
@@ -214,6 +273,7 @@
           </div>
         </div>
 
+        <div id="fin-tab-sanciones" class="finanzas-tab-panel">
         <div class="card">
           <div class="fin-card-headline">
             <h3>Consolidado de Sanciones (TA/TR)</h3>
@@ -235,7 +295,9 @@
           </div>
           <div id="fin-sanciones-contenido" class="tabla-scroll"></div>
         </div>
+        </div>
 
+        <div id="fin-tab-ejecutivo" class="finanzas-tab-panel">
         <div class="card">
           <div class="fin-card-headline">
             <h3>Resumen Ejecutivo por Campeonato</h3>
@@ -257,29 +319,9 @@
           </div>
           <div id="fin-ejecutivo-contenido" class="tabla-scroll"></div>
         </div>
-
-        <div class="card">
-          <div class="fin-card-headline">
-            <h3>Resumen Ejecutivo por Equipo</h3>
-            <div class="fin-card-actions">
-              <button type="button" class="btn btn-outline btn-sm" id="btn-fin-imprimir-ejecutivo-equipos">
-                <i class="fas fa-print"></i> Imprimir ejecutivo equipos
-              </button>
-              <button
-                type="button"
-                class="fin-toggle-btn"
-                id="btn-toggle-ejecutivo-equipos"
-                title="Mostrar/ocultar resumen por equipo"
-                aria-label="Mostrar u ocultar resumen por equipo"
-                aria-expanded="true"
-              >
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-          </div>
-          <div id="fin-ejecutivo-equipos-contenido" class="tabla-scroll"></div>
         </div>
 
+        <div id="fin-tab-gastos" class="finanzas-tab-panel">
         <!-- Gastos Operativos -->
         <div class="card" id="bloque-gastos-operativos">
           <div class="fin-card-headline">
@@ -361,7 +403,9 @@
 
           <div id="fin-gastos-contenido" class="tabla-scroll"></div>
         </div>
+        </div>
 
+        <div id="fin-tab-movimientos" class="finanzas-tab-panel">
         <div class="card">
           <div class="fin-card-headline">
             <h3>Movimientos Financieros</h3>
@@ -383,12 +427,15 @@
           </div>
           <div id="fin-movimientos-contenido" class="tabla-scroll"></div>
         </div>
+        </div>
       </div>
     </main>
   </div>
 
   <div class="nav-overlay" id="nav-overlay"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="js/core.js"></script>
   <script src="js/api.js"></script>
   <script src="js/finanzas.js"></script>

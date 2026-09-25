@@ -28,6 +28,12 @@ router.get(
   finanzaController.obtenerMorosidad
 );
 router.get(
+  "/resumen-equipos",
+  requireAuth,
+  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  finanzaController.obtenerResumenEquipos
+);
+router.get(
   "/dashboard",
   requireAuth,
   requireRoles("administrador", "organizador"),
