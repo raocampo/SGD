@@ -1,3 +1,67 @@
+## 2026-09-26 - Facturación: sello y firma por organizador, embebidos en el recibo
+
+> Commiteado y pusheado (`43d6e56`).
+
+Pedido del usuario: "debemos subir un sello y firma para que los recibos
+ya salgan firmados... debe ser configuración para cada organizador".
+
+### Backend
+Migración `071_facturacion_sello_firma.sql`: `facturacion_config.sello_url`/
+`firma_url` (TEXT, URL relativa `/uploads/...`, mismo criterio que el
+resto de imágenes del repo — no base64/bytea). También reflejado dentro
+de `Facturacion.asegurarEsquema()` (`ALTER TABLE ADD COLUMN IF NOT
+EXISTS`) para que el esquema se autorepare en cualquier entorno sin
+depender de correr la migración a mano — confirmado en vivo: al llamar
+`Facturacion.obtenerConfig()` contra producción, el `ALTER TABLE` corrió
+solo y las columnas ya existen en la BD real desde ahora.
+
+Nuevo `Facturacion.actualizarImagenConfig(organizadorId, campo, url)` —
+upsert de una sola imagen (sello o firma) sin tocar el resto de la
+config (RUC, razón social, etc.), deliberadamente separado del
+`guardarConfig` existente para no arriesgar borrar la imagen al guardar
+otro campo del formulario principal. Nuevas rutas `POST`/`DELETE
+/facturacion/config/sello` y `/firma`, mismo patrón multer ya usado en
+`auspicianteRoutes.js` (multer.diskStorage sobre `UPLOADS_DIR`, con
+limpieza del archivo anterior al reemplazar/eliminar). Reutiliza
+`resolverOrganizadorId` ya existente: el admin puede gestionar el
+sello/firma de cualquier organizador pasando `organizador_id`, el
+organizador siempre gestiona el suyo.
+
+### Frontend
+`facturacion.html`: nueva sección "Sello"/"Firma" en el modal
+"Configuración del Emisor" — preview, subir, quitar. El `apiFetch()`
+local de esa página solo hacía JSON; se agregó `apiFetchForm()` para
+multipart (mismo patrón que `ApiClient.requestForm` de `api.js`, que esa
+página no carga).
+
+`finanzas.js`: `emitirReciboMovimiento()` resuelve el `organizador_id`
+del campeonato del movimiento (`campeonato.creador_usuario_id`), pide su
+`facturacion_config` (con caché en `finanzasState` para no repetir la
+consulta en la misma sesión) e inyecta el sello+firma como `<img>` reales
+en el lado "Firma responsable" del recibo — reutilizando
+`normalizarLogoReporte()`, la misma resolución de URL que ya usan los
+logos de campeonato/auspiciantes en los reportes. El lado "Firma equipo"
+queda igual que antes (espacio en blanco para firma física): el
+sello/firma configurado es el del organizador que emite, no el del
+equipo que recibe. Si no hay nada configurado o falla la consulta, el
+recibo cae de vuelta al texto plano de siempre — no rompe la emisión.
+
+### Verificación
+- `node --check` en los 4 archivos backend + `finanzas.js`, balance de
+  `<div>` y de `<style>` en `facturacion.html`, cross-check de
+  `getElementById()` contra ids reales del HTML.
+- Probado end-to-end contra producción con datos de prueba aislados:
+  subida simulada de sello/firma vía el modelo, confirmado que un admin
+  puede consultar el sello/firma de OTRO organizador pasando
+  `organizador_id` explícito y que un organizador ve el suyo propio sin
+  pasar nada; todo revertido/limpiado después (0 residuos).
+- **Pendiente para el usuario**: probar la subida real de una imagen
+  (archivo real desde el navegador, no simulada) y confirmar visualmente
+  que el sello+firma aparecen bien ubicados en el PDF del recibo —
+  requiere login, Puppeteer no puede probarlo.
+
+---
+
 ## 2026-09-25 (parte 2) - Finanzas: editar/eliminar movimientos + resumen por equipo solo con filtro
 
 > Commiteado y pusheado (`905680d`).
