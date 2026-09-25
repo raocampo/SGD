@@ -395,6 +395,12 @@
     crearMovimiento(payload) {
       return window.ApiClient.post("/finanzas/movimientos", payload);
     },
+    actualizarMovimiento(id, payload) {
+      return window.ApiClient.put(`/finanzas/movimientos/${id}`, payload);
+    },
+    eliminarMovimiento(id) {
+      return window.ApiClient.delete(`/finanzas/movimientos/${id}`);
+    },
     estadoCuentaEquipo(equipoId, params = {}) {
       const qs = new URLSearchParams();
       Object.entries(params).forEach(([k, v]) => {

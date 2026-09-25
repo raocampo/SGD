@@ -460,6 +460,121 @@ class Finanza {
     return r.rows[0];
   }
 
+  static async obtenerMovimientoPorId(id, client = pool) {
+    const movimientoId = this.parseEntero(id, "movimiento_id");
+    const r = await client.query(
+      `SELECT * FROM finanzas_movimientos WHERE id = $1 LIMIT 1`,
+      [movimientoId]
+    );
+    if (!r.rows.length) throw new Error("Movimiento no encontrado");
+    return r.rows[0];
+  }
+
+  static async actualizarMovimiento(id, data = {}, client = pool) {
+    await this.asegurarEsquema(client);
+    const movimientoId = this.parseEntero(id, "movimiento_id");
+
+    const actual = await this.obtenerMovimientoPorId(movimientoId, client);
+
+    const tipo_movimiento = this.normalizarTipo(
+      data.tipo_movimiento ?? actual.tipo_movimiento
+    );
+    const concepto = this.normalizarConcepto(data.concepto ?? actual.concepto);
+    const monto = this.parseNumeroPositivo(data.monto ?? actual.monto, "monto");
+    const estado = this.normalizarEstado(
+      data.estado === undefined ? actual.estado : data.estado,
+      tipo_movimiento
+    );
+    const fecha_movimiento =
+      data.fecha_movimiento === undefined
+        ? actual.fecha_movimiento
+        : this.parseFecha(data.fecha_movimiento, "fecha_movimiento") || actual.fecha_movimiento;
+    const fecha_vencimiento =
+      data.fecha_vencimiento === undefined
+        ? actual.fecha_vencimiento
+        : this.parseFecha(data.fecha_vencimiento, "fecha_vencimiento");
+    const descripcion =
+      data.descripcion === undefined
+        ? actual.descripcion
+        : (data.descripcion || "").toString().trim() || null;
+    const metodo_pago =
+      data.metodo_pago === undefined
+        ? actual.metodo_pago
+        : (data.metodo_pago || "").toString().trim() || null;
+    const referencia =
+      data.referencia === undefined
+        ? actual.referencia
+        : (data.referencia || "").toString().trim() || null;
+    const evento_id =
+      data.evento_id === undefined
+        ? actual.evento_id
+        : data.evento_id === null || data.evento_id === ""
+        ? null
+        : this.parseEntero(data.evento_id, "evento_id");
+
+    if (evento_id) {
+      const ev = await client.query(
+        "SELECT id FROM eventos WHERE id = $1 AND campeonato_id = $2 LIMIT 1",
+        [evento_id, actual.campeonato_id]
+      );
+      if (!ev.rows.length) {
+        throw new Error("evento_id no pertenece al campeonato indicado");
+      }
+    }
+
+    const r = await client.query(
+      `UPDATE finanzas_movimientos
+          SET tipo_movimiento   = $1,
+              concepto          = $2,
+              monto             = $3,
+              estado            = $4,
+              fecha_movimiento  = COALESCE($5::date, fecha_movimiento),
+              fecha_vencimiento = $6,
+              descripcion       = $7,
+              metodo_pago       = $8,
+              referencia        = $9,
+              evento_id         = $10,
+              updated_at        = CURRENT_TIMESTAMP
+        WHERE id = $11
+        RETURNING *`,
+      [
+        tipo_movimiento,
+        concepto,
+        monto,
+        estado,
+        fecha_movimiento,
+        fecha_vencimiento,
+        descripcion,
+        metodo_pago,
+        referencia,
+        evento_id,
+        movimientoId,
+      ]
+    );
+    if (!r.rows.length) throw new Error("Movimiento no encontrado");
+    return r.rows[0];
+  }
+
+  // Nota: se implementa como anulación (estado='anulado'), no como DELETE físico.
+  // Todas las consultas de saldos/morosidad/resumen ya excluyen estado='anulado'
+  // (WHERE ... AND estado <> 'anulado'), asi que un movimiento anulado deja de
+  // contar de inmediato sin perder el rastro de auditoria ni romper la
+  // numeracion de recibos ya emitidos.
+  static async anularMovimiento(id, client = pool) {
+    await this.asegurarEsquema(client);
+    const movimientoId = this.parseEntero(id, "movimiento_id");
+    const r = await client.query(
+      `UPDATE finanzas_movimientos
+          SET estado = 'anulado',
+              updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+        RETURNING *`,
+      [movimientoId]
+    );
+    if (!r.rows.length) throw new Error("Movimiento no encontrado");
+    return r.rows[0];
+  }
+
   static async listarMovimientos(filtros = {}) {
     await this.asegurarEsquema();
     await this.sincronizarCargosInscripcion(filtros, pool);

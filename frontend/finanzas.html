@@ -140,8 +140,9 @@
 
         <div id="fin-tab-movimiento" class="finanzas-tab-panel">
         <div class="config-card finanzas-form-card" id="fin-card-movimiento">
-          <h3>Registrar Movimiento</h3>
+          <h3 id="fin-form-movimiento-titulo">Registrar Movimiento</h3>
           <form id="fin-form-movimiento">
+            <input type="hidden" id="mov-id" value="" />
             <div class="form-grid finanzas-form-grid">
               <div class="form-group">
                 <label for="mov-campeonato">Campeonato</label>
@@ -212,7 +213,10 @@
               </div>
             </div>
             <div class="partidos-actions">
-              <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Guardar movimiento</button>
+              <button type="submit" class="btn btn-success" id="btn-fin-guardar-movimiento"><i class="fas fa-plus"></i> Guardar movimiento</button>
+              <button type="button" class="btn btn-outline" id="btn-fin-cancelar-edicion" style="display:none;">
+                <i class="fas fa-times"></i> Cancelar edición
+              </button>
               <button type="button" class="btn btn-outline" id="btn-fin-recibo-ultimo">
                 <i class="fas fa-receipt"></i> Reimprimir último recibo
               </button>
@@ -229,6 +233,14 @@
           </p>
           <div id="fin-movimientos-equipo-contenido" class="tabla-scroll"></div>
         </div>
+        </div>
+
+        <div id="modal-ver-movimiento" class="modal">
+          <div class="modal-content">
+            <span class="close" onclick="cerrarModalVerMovimiento()">&times;</span>
+            <h3>Detalle del Movimiento</h3>
+            <div id="modal-ver-movimiento-cuerpo" class="fin-modal-ver-cuerpo"></div>
+          </div>
         </div>
 
         <div id="fin-tab-estado-cuenta" class="finanzas-tab-panel">

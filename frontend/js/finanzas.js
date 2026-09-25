@@ -144,6 +144,9 @@ function bindEventosFinanzas() {
     .getElementById("btn-fin-recibo-ultimo")
     ?.addEventListener("click", () => emitirReciboMovimiento(finanzasState.ultimoRecibo, true));
   document
+    .getElementById("btn-fin-cancelar-edicion")
+    ?.addEventListener("click", cancelarEdicionMovimientoFinanzas);
+  document
     .getElementById("btn-fin-imprimir-estado")
     ?.addEventListener("click", imprimirReporteEstadoCuenta);
   document
@@ -675,13 +678,25 @@ async function cargarResumenEjecutivoFinanzas() {
 }
 
 async function cargarResumenPorEquipoFinanzas() {
+  const campeonatoId = document.getElementById("fin-campeonato")?.value || "";
+  const cont = document.getElementById("fin-resumen-equipos-contenido");
+
+  if (!campeonatoId) {
+    finanzasState.ultimoResumenEquipos = [];
+    if (cont) {
+      cont.innerHTML = renderVacio(
+        "Selecciona un campeonato en los filtros para ver el resumen por equipo."
+      );
+    }
+    return;
+  }
+
   const params = {
-    campeonato_id: document.getElementById("fin-campeonato")?.value || "",
+    campeonato_id: campeonatoId,
     evento_id: document.getElementById("fin-evento")?.value || "",
     equipo_id: document.getElementById("fin-equipo")?.value || "",
   };
 
-  const cont = document.getElementById("fin-resumen-equipos-contenido");
   if (cont) cont.innerHTML = renderCargando("Cargando resumen por equipo...");
 
   try {
@@ -808,6 +823,9 @@ async function guardarMovimientoFinanzas(e) {
     return;
   }
 
+  const movimientoIdEdicion = Number.parseInt(document.getElementById("mov-id")?.value || "", 10);
+  const esEdicion = Number.isFinite(movimientoIdEdicion) && movimientoIdEdicion > 0;
+
   const payload = {
     campeonato_id: document.getElementById("mov-campeonato")?.value || "",
     evento_id: document.getElementById("mov-evento")?.value || null,
@@ -832,15 +850,107 @@ async function guardarMovimientoFinanzas(e) {
   const equipoIdGuardado = Number.parseInt(payload.equipo_id, 10);
 
   try {
-    const resp = await FinanzasAPI.crearMovimiento(payload);
-    const movimiento = resp?.movimiento || resp || {};
+    if (esEdicion) {
+      // No se permite reasignar campeonato/equipo desde el editor: solo se
+      // envían los campos que el backend acepta actualizar.
+      const { campeonato_id, equipo_id, ...payloadEdicion } = payload;
+      const resp = await FinanzasAPI.actualizarMovimiento(movimientoIdEdicion, payloadEdicion);
+      const movimiento = resp?.movimiento || resp || {};
+      mostrarNotificacion("Movimiento actualizado", "success");
+      cancelarEdicionMovimientoFinanzas();
+      await Promise.all([
+        buscarMovimientosFinanzas(),
+        cargarMorosidadFinanzas(),
+        cargarSancionesFinancieras(),
+        cargarResumenEjecutivoFinanzas(),
+        cargarResumenPorEquipoFinanzas(),
+        cargarEstadoCuentaActual(),
+        cargarMovimientosEquipoFinanzas(Number(movimiento.equipo_id) || equipoIdGuardado),
+      ]);
+    } else {
+      const resp = await FinanzasAPI.crearMovimiento(payload);
+      const movimiento = resp?.movimiento || resp || {};
 
-    finanzasState.ultimoRecibo = construirReciboMovimiento(movimiento, contexto);
-    mostrarNotificacion("Movimiento registrado", "success");
-    emitirReciboMovimiento(finanzasState.ultimoRecibo, true);
+      finanzasState.ultimoRecibo = construirReciboMovimiento(movimiento, contexto);
+      mostrarNotificacion("Movimiento registrado", "success");
+      emitirReciboMovimiento(finanzasState.ultimoRecibo, true);
 
-    document.getElementById("fin-form-movimiento")?.reset();
-    sincronizarFormularioMovimiento();
+      document.getElementById("fin-form-movimiento")?.reset();
+      sincronizarFormularioMovimiento();
+      await Promise.all([
+        buscarMovimientosFinanzas(),
+        cargarMorosidadFinanzas(),
+        cargarSancionesFinancieras(),
+        cargarResumenEjecutivoFinanzas(),
+        cargarResumenPorEquipoFinanzas(),
+        cargarEstadoCuentaActual(),
+        cargarMovimientosEquipoFinanzas(equipoIdGuardado),
+      ]);
+    }
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo guardar el movimiento", "error");
+  }
+}
+
+function editarMovimientoFinanzas(movimientoId) {
+  const movimientos = finanzasState.ultimoMovimientosEquipo?.movimientos || [];
+  const movimiento = movimientos.find((m) => Number(m.id) === Number(movimientoId));
+  if (!movimiento) {
+    mostrarNotificacion("No se encontró el movimiento para editar", "warning");
+    return;
+  }
+
+  document.getElementById("mov-id").value = movimiento.id;
+  document.getElementById("mov-campeonato").value = movimiento.campeonato_id || "";
+  document.getElementById("mov-campeonato").disabled = true;
+  sincronizarFormularioMovimiento();
+
+  setTimeout(() => {
+    document.getElementById("mov-evento").value = movimiento.evento_id || "";
+    document.getElementById("mov-equipo").value = movimiento.equipo_id || "";
+    document.getElementById("mov-equipo").disabled = true;
+  }, 100);
+
+  document.getElementById("mov-tipo").value = movimiento.tipo_movimiento || "cargo";
+  document.getElementById("mov-concepto").value = movimiento.concepto || "otro";
+  document.getElementById("mov-monto").value = movimiento.monto || "";
+  document.getElementById("mov-estado").value = movimiento.estado || "";
+  document.getElementById("mov-fecha").value = (movimiento.fecha_movimiento || "").slice(0, 10);
+  document.getElementById("mov-vencimiento").value = (movimiento.fecha_vencimiento || "").slice(0, 10);
+  document.getElementById("mov-metodo").value = movimiento.metodo_pago || "";
+  document.getElementById("mov-referencia").value = movimiento.referencia || "";
+  document.getElementById("mov-descripcion").value = movimiento.descripcion || "";
+
+  document.getElementById("fin-form-movimiento-titulo").textContent = `Editar Movimiento #${movimiento.id}`;
+  document.getElementById("btn-fin-guardar-movimiento").innerHTML =
+    '<i class="fas fa-save"></i> Actualizar movimiento';
+  document.getElementById("btn-fin-cancelar-edicion").style.display = "";
+
+  actualizarPestanasFinanzas("fin-tab-movimiento");
+  document.getElementById("fin-card-movimiento")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function cancelarEdicionMovimientoFinanzas() {
+  document.getElementById("fin-form-movimiento")?.reset();
+  document.getElementById("mov-id").value = "";
+  document.getElementById("mov-campeonato").disabled = false;
+  document.getElementById("mov-equipo").disabled = false;
+  sincronizarFormularioMovimiento();
+  document.getElementById("fin-form-movimiento-titulo").textContent = "Registrar Movimiento";
+  document.getElementById("btn-fin-guardar-movimiento").innerHTML =
+    '<i class="fas fa-plus"></i> Guardar movimiento';
+  document.getElementById("btn-fin-cancelar-edicion").style.display = "none";
+}
+
+async function eliminarMovimientoFinanzas(movimientoId) {
+  if (!confirm("¿Eliminar este movimiento? Quedará anulado y dejará de sumar en los saldos, pero se conserva para auditoría.")) {
+    return;
+  }
+  try {
+    await FinanzasAPI.eliminarMovimiento(movimientoId);
+    mostrarNotificacion("Movimiento eliminado", "success");
+    const equipoId = finanzasState.ultimoMovimientosEquipo?.equipo_id;
     await Promise.all([
       buscarMovimientosFinanzas(),
       cargarMorosidadFinanzas(),
@@ -848,12 +958,50 @@ async function guardarMovimientoFinanzas(e) {
       cargarResumenEjecutivoFinanzas(),
       cargarResumenPorEquipoFinanzas(),
       cargarEstadoCuentaActual(),
-      cargarMovimientosEquipoFinanzas(equipoIdGuardado),
+      cargarMovimientosEquipoFinanzas(equipoId),
     ]);
   } catch (error) {
     console.error(error);
-    mostrarNotificacion(error.message || "No se pudo registrar movimiento", "error");
+    mostrarNotificacion(error.message || "No se pudo eliminar el movimiento", "error");
   }
+}
+
+function verMovimientoFinanzas(movimientoId) {
+  const movimientos = finanzasState.ultimoMovimientosEquipo?.movimientos || [];
+  const movimiento = movimientos.find((m) => Number(m.id) === Number(movimientoId));
+  if (!movimiento) {
+    mostrarNotificacion("No se encontró el movimiento", "warning");
+    return;
+  }
+
+  const filas = [
+    ["N° recibo", movimiento.numero_recibo_campeonato || "-"],
+    ["Equipo", movimiento.equipo_nombre || "-"],
+    ["Campeonato", movimiento.campeonato_nombre || "-"],
+    ["Categoría", movimiento.evento_nombre || "Sin categoría"],
+    ["Tipo", movimiento.tipo_movimiento || "-"],
+    ["Concepto", movimiento.concepto || "-"],
+    ["Monto", formatoMoneda(movimiento.monto)],
+    ["Estado", movimiento.estado || "-"],
+    ["Fecha movimiento", formatearFechaFinanzas(movimiento.fecha_movimiento)],
+    ["Vencimiento", movimiento.fecha_vencimiento ? formatearFechaFinanzas(movimiento.fecha_vencimiento) : "-"],
+    ["Método pago", movimiento.metodo_pago || "-"],
+    ["Referencia", movimiento.referencia || "-"],
+    ["Descripción", movimiento.descripcion || "-"],
+  ];
+
+  const cuerpo = document.getElementById("modal-ver-movimiento-cuerpo");
+  if (cuerpo) {
+    cuerpo.innerHTML = `<dl class="fin-modal-ver-cuerpo">${filas
+      .map(([k, v]) => `<dt>${escaparHtml(k)}</dt><dd>${escaparHtml(String(v))}</dd>`)
+      .join("")}</dl>`;
+  }
+
+  document.getElementById("modal-ver-movimiento")?.classList.add("open");
+}
+
+function cerrarModalVerMovimiento() {
+  document.getElementById("modal-ver-movimiento")?.classList.remove("open");
 }
 
 async function cargarMovimientosEquipoFinanzas(equipoIdOverride) {
@@ -904,18 +1052,38 @@ function renderMovimientosEquipoFinanzas(movimientos = [], equipoNombre = "") {
 
   const rows = movimientos
     .map((m) => {
+      const anulado = String(m.estado || "").toLowerCase() === "anulado";
       return `
-        <tr>
+        <tr${anulado ? ' class="fin-mov-fila-anulado"' : ""}>
           <td class="fin-col-fecha">${escaparHtml(formatearFechaFinanzas(m.fecha_movimiento))}</td>
           <td>${escaparHtml(m.evento_nombre || "-")}</td>
           <td><span class="badge">${escaparHtml(m.tipo_movimiento || "-")}</span></td>
           <td>${escaparHtml(m.concepto || "-")}</td>
           <td class="fin-col-monto">${formatoMoneda(m.monto)}</td>
           <td>${escaparHtml(m.estado || "-")}</td>
-          <td>
-            <button type="button" class="fin-resumen-equipos-fila-btn" data-recibo-mov-id="${m.id}">
-              <i class="fas fa-receipt"></i> Recibo
-            </button>
+          <td class="fin-col-no-tachar">
+            <div class="fin-mov-acciones">
+              <button type="button" class="fin-mov-accion-btn" data-ver-mov-id="${m.id}" title="Visualizar">
+                <i class="fas fa-eye"></i>
+              </button>
+              ${
+                anulado
+                  ? ""
+                  : `<button type="button" class="fin-mov-accion-btn" data-editar-mov-id="${m.id}" title="Editar">
+                       <i class="fas fa-pen"></i>
+                     </button>`
+              }
+              <button type="button" class="fin-mov-accion-btn" data-recibo-mov-id="${m.id}" title="Imprimir recibo">
+                <i class="fas fa-receipt"></i>
+              </button>
+              ${
+                anulado
+                  ? ""
+                  : `<button type="button" class="fin-mov-accion-btn fin-mov-accion-eliminar" data-eliminar-mov-id="${m.id}" title="Eliminar">
+                       <i class="fas fa-trash"></i>
+                     </button>`
+              }
+            </div>
           </td>
         </tr>
       `;
@@ -932,7 +1100,7 @@ function renderMovimientosEquipoFinanzas(movimientos = [], equipoNombre = "") {
           <th>Concepto</th>
           <th>Monto</th>
           <th>Estado</th>
-          <th>Recibo</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -943,6 +1111,24 @@ function renderMovimientosEquipoFinanzas(movimientos = [], equipoNombre = "") {
     btn.addEventListener("click", () => {
       const id = Number.parseInt(btn.getAttribute("data-recibo-mov-id"), 10);
       reimprimirReciboMovimiento(id);
+    });
+  });
+  cont.querySelectorAll("[data-ver-mov-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = Number.parseInt(btn.getAttribute("data-ver-mov-id"), 10);
+      verMovimientoFinanzas(id);
+    });
+  });
+  cont.querySelectorAll("[data-editar-mov-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = Number.parseInt(btn.getAttribute("data-editar-mov-id"), 10);
+      editarMovimientoFinanzas(id);
+    });
+  });
+  cont.querySelectorAll("[data-eliminar-mov-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = Number.parseInt(btn.getAttribute("data-eliminar-mov-id"), 10);
+      eliminarMovimientoFinanzas(id);
     });
   });
 }

@@ -15,6 +15,18 @@ router.post(
   requireRoles("administrador", "organizador"),
   finanzaController.crearMovimiento
 );
+router.put(
+  "/movimientos/:id",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  finanzaController.actualizarMovimiento
+);
+router.delete(
+  "/movimientos/:id",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  finanzaController.eliminarMovimiento
+);
 router.get(
   "/equipo/:equipo_id/estado-cuenta",
   requireAuth,

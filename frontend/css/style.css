@@ -6557,6 +6557,60 @@ body.page-finanzas {
   text-decoration: underline;
 }
 
+.page-finanzas .fin-mov-acciones {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.page-finanzas .fin-mov-accion-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.95rem;
+  color: #475569;
+  border-radius: 6px;
+}
+
+.page-finanzas .fin-mov-accion-btn:hover {
+  background: #eef4fb;
+}
+
+.page-finanzas .fin-mov-accion-btn.fin-mov-accion-eliminar:hover {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.page-finanzas .fin-mov-fila-anulado {
+  opacity: 0.55;
+}
+
+.page-finanzas .fin-mov-fila-anulado td {
+  text-decoration: line-through;
+}
+
+.page-finanzas .fin-mov-fila-anulado td.fin-col-no-tachar {
+  text-decoration: none;
+}
+
+.page-finanzas .fin-modal-ver-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 2fr;
+  gap: 0.5rem 1rem;
+  padding: 0 1.35rem 1.25rem;
+  font-size: 0.92rem;
+}
+
+.page-finanzas .fin-modal-ver-cuerpo dt {
+  font-weight: 700;
+  color: #64748b;
+}
+
+.page-finanzas .fin-modal-ver-cuerpo dd {
+  margin: 0;
+}
+
 .page-finanzas .tabla-scroll {
   width: 100%;
   overflow-x: auto;

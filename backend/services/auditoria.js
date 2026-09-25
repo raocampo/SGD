@@ -44,6 +44,8 @@ const ACCIONES = {
   RESULTADO_REGISTRADO:     "resultado_registrado",
   // Finanzas
   MOVIMIENTO_FINANCIERO:    "movimiento_financiero",
+  MOVIMIENTO_FINANCIERO_ACTUALIZADO: "movimiento_financiero_actualizado",
+  MOVIMIENTO_FINANCIERO_ANULADO: "movimiento_financiero_anulado",
   GASTO_CREADO:             "gasto_creado",
   GASTO_ELIMINADO:          "gasto_eliminado",
 };

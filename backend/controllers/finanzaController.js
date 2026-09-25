@@ -75,6 +75,86 @@ const finanzaController = {
     }
   },
 
+  async actualizarMovimiento(req, res) {
+    try {
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        return res.status(403).json({ error: "No autorizado para editar movimientos" });
+      }
+      const id = Number.parseInt(req.params.id, 10);
+      const existente = await Finanza.obtenerMovimientoPorId(id);
+      if (isOrganizador(req.user)) {
+        const permitidos = await obtenerCampeonatoIdsOrganizador(req.user);
+        if (!permitidos.includes(Number(existente.campeonato_id))) {
+          return res.status(403).json({ error: "No autorizado para editar este movimiento" });
+        }
+      }
+      const movimiento = await Finanza.actualizarMovimiento(id, req.body || {});
+      registrarAuditoria({
+        usuarioId: req.user?.id,
+        accion: ACCIONES.MOVIMIENTO_FINANCIERO_ACTUALIZADO,
+        entidad: "finanzas",
+        entidadId: movimiento?.id,
+        detalle: {
+          tipo: movimiento?.tipo_movimiento,
+          concepto: movimiento?.concepto,
+          monto: movimiento?.monto,
+          equipo_id: movimiento?.equipo_id,
+        },
+        ip: extraerIp(req),
+      });
+      return res.json({
+        ok: true,
+        mensaje: "Movimiento financiero actualizado",
+        movimiento,
+      });
+    } catch (error) {
+      console.error("Error actualizando movimiento financiero:", error);
+      return res.status(statusParaError(error)).json({ error: error.message });
+    }
+  },
+
+  // Elimina "logicamente": marca el movimiento como anulado en vez de borrarlo
+  // fisicamente, para no perder el rastro de auditoria ni romper la
+  // numeracion de recibos ya emitidos. Los saldos/morosidad/resumen ya
+  // excluyen estado='anulado' en todas sus consultas.
+  async eliminarMovimiento(req, res) {
+    try {
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        return res.status(403).json({ error: "No autorizado para eliminar movimientos" });
+      }
+      const id = Number.parseInt(req.params.id, 10);
+      const existente = await Finanza.obtenerMovimientoPorId(id);
+      if (isOrganizador(req.user)) {
+        const permitidos = await obtenerCampeonatoIdsOrganizador(req.user);
+        if (!permitidos.includes(Number(existente.campeonato_id))) {
+          return res.status(403).json({ error: "No autorizado para eliminar este movimiento" });
+        }
+      }
+      const movimiento = await Finanza.anularMovimiento(id);
+      registrarAuditoria({
+        usuarioId: req.user?.id,
+        accion: ACCIONES.MOVIMIENTO_FINANCIERO_ANULADO,
+        entidad: "finanzas",
+        entidadId: movimiento?.id,
+        detalle: {
+          tipo: movimiento?.tipo_movimiento,
+          concepto: movimiento?.concepto,
+          monto: movimiento?.monto,
+          equipo_id: movimiento?.equipo_id,
+        },
+        ip: extraerIp(req),
+      });
+      return res.json({
+        ok: true,
+        mensaje: "Movimiento financiero anulado",
+        movimiento,
+      });
+    } catch (error) {
+      console.error("Error anulando movimiento financiero:", error);
+      return res.status(statusParaError(error)).json({ error: error.message });
+    }
+  },
+
   async listarMovimientos(req, res) {
     try {
       const filtros = { ...(req.query || {}) };
