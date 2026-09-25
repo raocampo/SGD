@@ -34,6 +34,12 @@ class Facturacion {
     `);
 
     await client.query(`
+      ALTER TABLE facturacion_config
+        ADD COLUMN IF NOT EXISTS sello_url TEXT,
+        ADD COLUMN IF NOT EXISTS firma_url TEXT
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS documentos_facturacion (
         id SERIAL PRIMARY KEY,
         organizador_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -253,6 +259,28 @@ class Facturacion {
         nombre_comercial, direccion_matriz, codigo_establecimiento,
         punto_emision, iva_porcentaje,
       ]
+    );
+    return rows[0];
+  }
+
+  // Actualiza solo la imagen de sello o firma, sin tocar el resto de la
+  // config (RUC, razón social, etc.) — se sube por separado del formulario
+  // principal. Hace upsert: si el organizador aún no tiene fila en
+  // facturacion_config (nunca guardó su RUC), la crea igual, con los
+  // demás campos en sus valores por defecto.
+  static async actualizarImagenConfig(organizadorId, campo, url) {
+    await this.asegurarEsquema();
+    if (campo !== "sello_url" && campo !== "firma_url") {
+      throw new Error("campo inválido");
+    }
+    const { rows } = await pool.query(
+      `INSERT INTO facturacion_config (organizador_id, ${campo})
+       VALUES ($1, $2)
+       ON CONFLICT (organizador_id) DO UPDATE SET
+         ${campo} = EXCLUDED.${campo},
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [organizadorId, url]
     );
     return rows[0];
   }

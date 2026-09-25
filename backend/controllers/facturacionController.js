@@ -1,5 +1,13 @@
+const fs = require("fs");
 const Facturacion = require("../models/Facturacion");
 const { isOrganizador, obtenerCampeonatoIdsOrganizador } = require("../services/organizadorScope");
+const { resolveUploadPath } = require("../config/uploads");
+
+function safeUnlinkImagen(urlPath) {
+  if (!urlPath) return;
+  const filePath = resolveUploadPath(urlPath);
+  fs.unlink(filePath, () => {});
+}
 
 function statusParaError(err) {
   const msg = String(err?.message || "").toLowerCase();
@@ -46,6 +54,72 @@ const facturacionController = {
     try {
       const orgId = resolverOrganizadorId(req);
       const config = await Facturacion.guardarConfig(orgId, req.body || {});
+      res.json(config);
+    } catch (err) {
+      res.status(statusParaError(err)).json({ error: err.message });
+    }
+  },
+
+  async subirSello(req, res) {
+    try {
+      if (req.fileValidationError) {
+        return res.status(400).json({ error: req.fileValidationError });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: "Selecciona una imagen para el sello" });
+      }
+      const orgId = resolverOrganizadorId(req);
+      const previo = await Facturacion.obtenerConfig(orgId);
+      const sello_url = `/uploads/facturacion/sellos/${req.file.filename}`;
+      const config = await Facturacion.actualizarImagenConfig(orgId, "sello_url", sello_url);
+      if (previo?.sello_url && previo.sello_url !== sello_url) {
+        safeUnlinkImagen(previo.sello_url);
+      }
+      res.json(config);
+    } catch (err) {
+      res.status(statusParaError(err)).json({ error: err.message });
+    }
+  },
+
+  async eliminarSello(req, res) {
+    try {
+      const orgId = resolverOrganizadorId(req);
+      const previo = await Facturacion.obtenerConfig(orgId);
+      const config = await Facturacion.actualizarImagenConfig(orgId, "sello_url", null);
+      if (previo?.sello_url) safeUnlinkImagen(previo.sello_url);
+      res.json(config);
+    } catch (err) {
+      res.status(statusParaError(err)).json({ error: err.message });
+    }
+  },
+
+  async subirFirma(req, res) {
+    try {
+      if (req.fileValidationError) {
+        return res.status(400).json({ error: req.fileValidationError });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: "Selecciona una imagen para la firma" });
+      }
+      const orgId = resolverOrganizadorId(req);
+      const previo = await Facturacion.obtenerConfig(orgId);
+      const firma_url = `/uploads/facturacion/firmas/${req.file.filename}`;
+      const config = await Facturacion.actualizarImagenConfig(orgId, "firma_url", firma_url);
+      if (previo?.firma_url && previo.firma_url !== firma_url) {
+        safeUnlinkImagen(previo.firma_url);
+      }
+      res.json(config);
+    } catch (err) {
+      res.status(statusParaError(err)).json({ error: err.message });
+    }
+  },
+
+  async eliminarFirma(req, res) {
+    try {
+      const orgId = resolverOrganizadorId(req);
+      const previo = await Facturacion.obtenerConfig(orgId);
+      const config = await Facturacion.actualizarImagenConfig(orgId, "firma_url", null);
+      if (previo?.firma_url) safeUnlinkImagen(previo.firma_url);
       res.json(config);
     } catch (err) {
       res.status(statusParaError(err)).json({ error: err.message });

@@ -60,6 +60,20 @@
     /* ── Config emisor ───────────────────────────────────────────── */
     .fact-config-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; }
 
+    /* ── Sello y firma ───────────────────────────────────────────── */
+    .fact-sello-firma-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; margin-top:14px; }
+    .fact-sello-firma-box { border:1px solid #dde; border-radius:8px; padding:12px; }
+    .fact-sello-firma-box h4 { margin:0 0 8px; font-size:.9rem; color:#333; }
+    .fact-sello-firma-preview {
+      width:100%; height:90px; border:1px dashed #ccd;
+      border-radius:6px; display:flex; align-items:center; justify-content:center;
+      background:#f8f9fa; margin-bottom:8px; overflow:hidden;
+    }
+    .fact-sello-firma-preview img { max-width:100%; max-height:100%; object-fit:contain; }
+    .fact-sello-firma-preview span { color:#999; font-size:.8rem; }
+    .fact-sello-firma-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+    .fact-sello-firma-actions input[type="file"] { flex:1; min-width:0; font-size:.8rem; }
+
     /* ── Vista detalle/impresión ─────────────────────────────────── */
     #modal-detalle .doc-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
     #modal-detalle .doc-emisor { font-size:.85rem; line-height:1.5; }
@@ -245,6 +259,30 @@
             </div>
           </div>
         </form>
+
+        <div class="fact-sello-firma-grid">
+          <div class="fact-sello-firma-box">
+            <h4><i class="fas fa-stamp"></i> Sello</h4>
+            <div class="fact-sello-firma-preview" id="cfg-sello-preview"><span>Sin sello</span></div>
+            <div class="fact-sello-firma-actions">
+              <input type="file" id="cfg-sello-file" accept="image/png,image/jpeg,image/webp" />
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-subir-sello"><i class="fas fa-upload"></i></button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-quitar-sello" style="display:none;"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+          <div class="fact-sello-firma-box">
+            <h4><i class="fas fa-signature"></i> Firma</h4>
+            <div class="fact-sello-firma-preview" id="cfg-firma-preview"><span>Sin firma</span></div>
+            <div class="fact-sello-firma-actions">
+              <input type="file" id="cfg-firma-file" accept="image/png,image/jpeg,image/webp" />
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-subir-firma"><i class="fas fa-upload"></i></button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-quitar-firma" style="display:none;"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        </div>
+        <p class="form-hint" style="margin-top:8px;">
+          El sello y la firma se usan automáticamente en el recibo de pago (módulo Finanzas) para que salga firmado sin necesidad de firmarlo a mano.
+        </p>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="cerrarModal('modal-config')">Cancelar</button>
@@ -416,7 +454,7 @@
   async function cargarConfigEmisor() {
     try {
       factConfig = await apiFetch("/api/facturacion/config") || {};
-      if (factConfig.ruc_ci) poblarFormConfig(factConfig);
+      poblarFormConfig(factConfig);
     } catch (_) {}
   }
 
@@ -429,7 +467,116 @@
     document.getElementById("cfg-establecimiento").value   = c.codigo_establecimiento || "001";
     document.getElementById("cfg-punto-emision").value     = c.punto_emision || "001";
     document.getElementById("cfg-iva").value               = c.iva_porcentaje ?? 15;
+    poblarPreviewSelloFirma(c);
   }
+
+  function normalizarLogoUrlFacturacion(url) {
+    if (!url) return "";
+    const texto = String(url).trim();
+    if (!texto) return "";
+    if (/^https?:\/\//i.test(texto)) return texto;
+    const base = window.resolveBackendBaseUrl
+      ? window.resolveBackendBaseUrl()
+      : (window.API_BASE_URL || "").replace(/\/api\/?$/, "") || window.location.origin;
+    return texto.startsWith("/") ? `${base}${texto}` : `${base}/${texto}`;
+  }
+
+  function poblarPreviewSelloFirma(c) {
+    const selloPrev = document.getElementById("cfg-sello-preview");
+    const firmaPrev = document.getElementById("cfg-firma-preview");
+    const btnQuitarSello = document.getElementById("btn-quitar-sello");
+    const btnQuitarFirma = document.getElementById("btn-quitar-firma");
+
+    if (c?.sello_url) {
+      selloPrev.innerHTML = `<img src="${normalizarLogoUrlFacturacion(c.sello_url)}" alt="Sello" />`;
+      btnQuitarSello.style.display = "";
+    } else {
+      selloPrev.innerHTML = `<span>Sin sello</span>`;
+      btnQuitarSello.style.display = "none";
+    }
+
+    if (c?.firma_url) {
+      firmaPrev.innerHTML = `<img src="${normalizarLogoUrlFacturacion(c.firma_url)}" alt="Firma" />`;
+      btnQuitarFirma.style.display = "";
+    } else {
+      firmaPrev.innerHTML = `<span>Sin firma</span>`;
+      btnQuitarFirma.style.display = "none";
+    }
+  }
+
+  async function apiFetchForm(url, method, formData) {
+    const token =
+      (window.Auth && typeof window.Auth.getToken === "function" && window.Auth.getToken()) ||
+      localStorage.getItem("sgd_auth_token") ||
+      localStorage.getItem("token") ||
+      "";
+    const base = window.resolveBackendBaseUrl
+      ? window.resolveBackendBaseUrl()
+      : (window.API_BASE_URL || "").replace(/\/api\/?$/, "") || window.location.origin;
+    const fullUrl = /^https?:\/\//i.test(url) ? url : `${base}${url}`;
+    const res = await fetch(fullUrl, {
+      method,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+    return data;
+  }
+
+  document.getElementById("btn-subir-sello").addEventListener("click", async () => {
+    const input = document.getElementById("cfg-sello-file");
+    const file = input.files?.[0];
+    if (!file) { mostrarToast("Selecciona una imagen para el sello", "warning"); return; }
+    const fd = new FormData();
+    fd.append("sello", file);
+    try {
+      factConfig = await apiFetchForm("/api/facturacion/config/sello", "POST", fd);
+      poblarPreviewSelloFirma(factConfig);
+      input.value = "";
+      mostrarToast("Sello guardado", "success");
+    } catch (e) {
+      mostrarToast(e.message || "No se pudo subir el sello", "error");
+    }
+  });
+
+  document.getElementById("btn-quitar-sello").addEventListener("click", async () => {
+    if (!confirm("¿Quitar el sello configurado?")) return;
+    try {
+      factConfig = await apiFetchForm("/api/facturacion/config/sello", "DELETE", null);
+      poblarPreviewSelloFirma(factConfig);
+      mostrarToast("Sello eliminado", "success");
+    } catch (e) {
+      mostrarToast(e.message || "No se pudo eliminar el sello", "error");
+    }
+  });
+
+  document.getElementById("btn-subir-firma").addEventListener("click", async () => {
+    const input = document.getElementById("cfg-firma-file");
+    const file = input.files?.[0];
+    if (!file) { mostrarToast("Selecciona una imagen para la firma", "warning"); return; }
+    const fd = new FormData();
+    fd.append("firma", file);
+    try {
+      factConfig = await apiFetchForm("/api/facturacion/config/firma", "POST", fd);
+      poblarPreviewSelloFirma(factConfig);
+      input.value = "";
+      mostrarToast("Firma guardada", "success");
+    } catch (e) {
+      mostrarToast(e.message || "No se pudo subir la firma", "error");
+    }
+  });
+
+  document.getElementById("btn-quitar-firma").addEventListener("click", async () => {
+    if (!confirm("¿Quitar la firma configurada?")) return;
+    try {
+      factConfig = await apiFetchForm("/api/facturacion/config/firma", "DELETE", null);
+      poblarPreviewSelloFirma(factConfig);
+      mostrarToast("Firma eliminada", "success");
+    } catch (e) {
+      mostrarToast(e.message || "No se pudo eliminar la firma", "error");
+    }
+  });
 
   document.getElementById("btn-guardar-config").addEventListener("click", async () => {
     const datos = {

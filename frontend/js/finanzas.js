@@ -20,6 +20,7 @@ let finanzasState = {
     equipo_nombre: "",
     movimientos: [],
   },
+  facturacionConfigPorOrganizador: {},
   esTecnico: false,
 };
 
@@ -1360,6 +1361,45 @@ function renderPieAuspiciantes(auspiciantes = []) {
   `;
 }
 
+async function obtenerFacturacionConfigParaOrganizador(organizadorId) {
+  const id = Number.parseInt(organizadorId, 10);
+  if (!Number.isFinite(id) || id <= 0) return null;
+
+  const cache = finanzasState.facturacionConfigPorOrganizador;
+  if (Object.prototype.hasOwnProperty.call(cache, id)) return cache[id];
+
+  try {
+    const config = await ApiClient.get(`/facturacion/config?organizador_id=${id}`);
+    cache[id] = config && (config.sello_url || config.firma_url) ? config : null;
+  } catch (error) {
+    console.warn("No se pudo cargar sello/firma del organizador:", error);
+    cache[id] = null;
+  }
+  return cache[id];
+}
+
+function renderBloqueFirmaResponsable(config) {
+  const sello = normalizarLogoReporte(config?.sello_url || "");
+  const firma = normalizarLogoReporte(config?.firma_url || "");
+  if (!sello && !firma) {
+    return `
+      <div class="fin-sign-block">
+        <div class="fin-sign-slot"></div>
+        <div class="fin-sign">Firma responsable</div>
+      </div>
+    `;
+  }
+  return `
+    <div class="fin-sign-block">
+      <div class="fin-sign-slot">
+        ${firma ? `<img src="${escaparHtml(firma)}" alt="Firma" class="fin-sign-img-firma" />` : ""}
+        ${sello ? `<img src="${escaparHtml(sello)}" alt="Sello" class="fin-sign-img-sello" />` : ""}
+      </div>
+      <div class="fin-sign">Firma responsable</div>
+    </div>
+  `;
+}
+
 async function emitirReciboMovimiento(recibo, autoPrint = true) {
   if (!recibo) {
     mostrarNotificacion("No hay recibo reciente para imprimir", "warning");
@@ -1368,6 +1408,9 @@ async function emitirReciboMovimiento(recibo, autoPrint = true) {
 
   const campeonato = obtenerCampeonatoPorId(recibo.campeonato_id);
   const auspiciantes = await cargarAuspiciantesActivosReporte(recibo.campeonato_id);
+  const facturacionConfig = await obtenerFacturacionConfigParaOrganizador(
+    campeonato?.creador_usuario_id
+  );
 
   const html = `
     <div class="fin-report-wrap fin-report-wrap-recibo">
@@ -1395,8 +1438,11 @@ async function emitirReciboMovimiento(recibo, autoPrint = true) {
         <div>${escaparHtml(recibo.descripcion || "-")}</div>
       </div>
       <div class="fin-report-signatures">
-        <div class="fin-sign">Firma responsable</div>
-        <div class="fin-sign">Firma equipo</div>
+        ${renderBloqueFirmaResponsable(facturacionConfig)}
+        <div class="fin-sign-block">
+          <div class="fin-sign-slot"></div>
+          <div class="fin-sign">Firma equipo</div>
+        </div>
       </div>
     </div>
     ${renderPieAuspiciantes(auspiciantes)}
@@ -1964,11 +2010,35 @@ function asegurarEstilosImpresionFinanzas() {
         gap: 22px;
         margin-top: 28px;
       }
+      .fin-sign-block {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .fin-sign-slot {
+        min-height: 50px;
+        width: 100%;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 8px;
+      }
+      .fin-sign-img-firma {
+        max-height: 46px;
+        max-width: 150px;
+        object-fit: contain;
+      }
+      .fin-sign-img-sello {
+        max-height: 50px;
+        max-width: 50px;
+        object-fit: contain;
+        opacity: 0.85;
+      }
       .fin-sign {
         border-top: 1px solid #334155;
         padding-top: 6px;
         text-align: center;
-        min-height: 54px;
+        width: 100%;
         font-size: 0.9rem;
       }
       .fin-report-table {
