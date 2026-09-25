@@ -1,3 +1,70 @@
+## 2026-09-25 - Finanzas: reorganización en pestañas + fix de impresión en móvil
+
+> Commiteado y pusheado (`66c929e`).
+
+Pedido del usuario: el módulo de finanzas estaba todo en una sola
+pantalla larga (9 secciones apiladas); pidió organizarlo en pestañas con
+"Filtros" como la principal mostrando una tabla de todos los equipos con
+su estado por rubro (inscripción, TA/TR, arbitraje, multas). También pidió
+poder reimprimir el recibo de cualquier movimiento pasado desde
+"Registrar Movimiento" (antes solo se podía reimprimir el último), y
+reportó un bug real: en el celular, al enviar a imprimir un recibo no
+sale el diálogo de impresión ni de guardar PDF — el recibo queda varado
+en pantalla.
+
+### Causa raíz del bug de impresión
+Todo el módulo (recibo + 7 reportes con botón "Imprimir") usaba
+`window.open("", "_blank")` → `document.write(html)` →
+`setTimeout(() => w.print(), 300)`. En muchos navegadores móviles ese
+popup no dispara el diálogo nativo de impresión/PDF — coincide
+exactamente con lo reportado.
+
+### Backend
+Nuevo `Finanza.obtenerResumenPorEquipo(filtros)` (generaliza el `CASE
+WHEN` de `obtenerEstadoCuentaEquipo` a `GROUP BY equipo`): por equipo,
+cargos/abonos/saldo/estado de inscripción, arbitraje, tarjetas amarillas,
+tarjetas rojas y otras multas. TA/TR se distinguen vía `origen_clave LIKE
+'%:ta:%'/'%:tr:%'` (generado por `Partido.sincronizarFinanzasPlanilla`)
+con fallback a texto en `descripcion`, igual que el heurístico que ya
+usaba el frontend en "Consolidado de Sanciones". Nueva ruta `GET
+/finanzas/resumen-equipos`.
+
+### Frontend
+`finanzas.html` pasa de una pantalla única a 8 pestañas
+(`.finanzas-main-tab`/`.finanzas-tab-panel`, mismo patrón ya usado en
+partidos.html/jugadores.html): Filtros → Registrar Movimiento → Estado de
+Cuenta → Morosidad → Sanciones → Ejecutivo Campeonato → Gastos Operativos
+→ Movimientos Financieros. La vieja sección "Resumen Ejecutivo por
+Equipo" (se calculaba 100% en cliente trayendo hasta 5000 movimientos
+crudos, sin split TA/TR) se retira y se reemplaza por la tabla nueva
+(backend real) dentro de "Filtros". "Registrar Movimiento" ahora muestra
+el historial del equipo seleccionado con un botón "🖨️ Recibo" por fila.
+
+Fix del bug de impresión: `abrirVentanaReporteFinanzas()` ya no abre un
+popup — monta el reporte en un contenedor oculto dentro de la misma
+página y usa `html2canvas` + `jsPDF` para generar una descarga real de
+PDF (mismo patrón ya probado en 16 archivos del repo, ej.
+`exportarNodoPDFPartidos` en partidos.js). Esto arregla de una sola vez
+el recibo y los 7 reportes con botón "Imprimir". `imprimirGastos()`
+(implementación duplicada) se unifica al mismo camino.
+
+### Verificación
+- `node --check` en los 5 archivos JS tocados, balance de llaves en
+  `style.css`, `smokeFrontendRoleGuards.js` 49/49.
+- `obtenerResumenPorEquipo` probado end-to-end (modelo + controlador)
+  contra producción en modo solo lectura: los totales coinciden
+  exactamente con `obtenerEstadoCuentaEquipo` para equipos reales
+  (ej. equipo 195: cargos 318, abonos 303, saldo 15 en ambos).
+- **Pendiente para el usuario**: verificación visual del fix de
+  impresión en móvil real. Puppeteer no tiene credenciales de
+  organizador/admin para probar `finanzas.html` (requiere login), así
+  que el mecanismo se deja documentado y validado por equivalencia
+  exacta con el patrón ya probado de `partidos.js`, pero no se vio en
+  pantalla. Pedir al usuario que pruebe desde el celular y confirme que
+  ahora sí se genera/descarga el PDF del recibo.
+
+---
+
 ## 2026-09-24 (parte 2) - Corrección: se quitó demasiado en Información
 
 > Commiteado y pusheado (`cb3a72f`).
