@@ -925,6 +925,76 @@ de Open Graph de la landing, QA visual de los otros 4 temas predefinidos
 
 ---
 
+## 2026-09-25 - Edición de grupos post-sorteo (pedido de Liliana Herrera)
+
+> Commiteado y pusheado (`c94a61f`).
+
+Pull previo: fast-forward `ab5c577..76db8f2` resuelto con el mismo patrón de
+`git stash push -u` → pull → `git stash pop` → verificar identidad de los
+archivos sin trackear (`backfillLandingSlugs.js`, migraciones 070/071,
+`frontend/middleware.js`) antes de `git stash drop` — igual que sesiones
+previas, el working tree local ya coincidía con lo pusheado por otra sesión.
+
+**Pedido real de la organizadora de LT&C** (Liliana Herrera): después de
+correr el sorteo de una categoría, se integraron equipos nuevos. Hacía falta
+poder (1) crear un grupo adicional sin perder los ya sorteados y (2) mover
+equipos entre los grupos existentes. Antes la única opción en `sorteo.html`
+era "Reiniciar Sorteo", que **borra todos los grupos y asignaciones** — o el
+modo "Manual directo", que solo sirve para equipos aún pendientes (no
+permite tocar uno ya asignado a un grupo).
+
+### Backend (`Grupo.js` / `grupoController.js` / `grupoRoutes.js`)
+- `Grupo.agregarGrupoAEvento(evento_id, nombre?)` — agrega un grupo más
+  usando la siguiente letra libre (A..J), sin tocar los grupos existentes.
+  `POST /grupos/evento/:evento_id/agregar`.
+- `Grupo.moverEquipoAGrupo(grupo_destino_id, equipo_id)` — mueve un equipo
+  que ya está en OTRO grupo del mismo evento en un solo paso transaccional
+  (antes `asignarEquipo()` rechazaba con "el equipo ya está asignado a Grupo
+  X" porque solo esperaba equipos pendientes). `POST /grupos/:grupo_id/mover-equipo`.
+- `assertSorteoEditable` se generalizó en `_assertSinPartidosNiEliminatorias()`;
+  nuevo `assertGruposEditables()` con el mismo chequeo (bloquea si la
+  categoría ya tiene partidos o eliminatorias generadas) — antes solo lo
+  usaba `eliminar()` (borrar un grupo completo); ahora también protege
+  `asignarEquipo`/`removerEquipo`/`agregarGrupoAEvento`, para que el fixture
+  nunca quede desincronizado de los grupos reales sin avisar. Mensaje de
+  error indica el camino correcto: borrar el fixture desde Partidos, editar
+  grupos, volver a generarlo.
+- `statusForGrupo` ampliado con los nuevos mensajes de validación (antes
+  cualquiera no listado cae en 500 en vez de 400).
+
+### Frontend (`sorteo.html` / `sorteo.js` / `style.css`)
+- Botón **"Agregar grupo"** junto a "Grupos del Sorteo" (prompt de nombre
+  opcional vía `mostrarPrompt`), visible en cuanto ya existen grupos.
+- Cada equipo ya asignado a un grupo suma un `<select>` **"Mover a
+  otro grupo"** (oculto si solo hay 1 grupo) y un botón **"✕ Quitar"** que lo
+  regresa a pendientes.
+- Cada equipo **pendiente** suma un `<select>` **"Asignar a..."** siempre
+  visible una vez que existen grupos — ya no depende de cambiar "Sistema de
+  Sorteo" a "Manual directo"; cubre exactamente el caso de equipos que se
+  integraron después del sorteo.
+- Texto de ayuda contextual que aparece junto al panel de grupos explicando
+  las 3 acciones nuevas.
+
+### Verificación
+- `node -c` en los 4 archivos JS tocados (backend y frontend) OK.
+- Balance de llaves `{`/`}` de `style.css` OK (1754/1754).
+- **Sin verificación funcional contra la BD real ni en navegador** — no hay
+  entorno de pruebas levantado en esta sesión. Pendiente probar contra un
+  evento real con sorteo ya hecho.
+
+### Pendientes para la próxima sesión
+1. **Probar el flujo real** con Liliana: sorteo ya hecho de una categoría →
+   agregar un grupo → mover 1-2 equipos entre grupos → quitar uno → volver a
+   asignarlo. Confirmar que `gruposgen.html` (el póster/export) refleja los
+   cambios al recargar.
+2. Confirmar que el guard nuevo (`assertGruposEditables`) no bloquea de más
+   en categorías donde YA se generó el fixture — si Liliana necesita editar
+   grupos ahí, guiarla: Partidos → Eliminar Fixture → editar grupos → volver
+   a generar fixture.
+3. Pendientes heredados sin tocar hoy — ver `project_pending.md`.
+
+---
+
 ## 2026-09-22 (parte 2) - Fix real del auto-fit, todos los avatares y login/registro en landing
 
 > Commiteado y pusheado (`8551c64`).
