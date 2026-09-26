@@ -978,19 +978,17 @@ permite tocar uno ya asignado a un grupo).
 ### Verificación
 - `node -c` en los 4 archivos JS tocados (backend y frontend) OK.
 - Balance de llaves `{`/`}` de `style.css` OK (1754/1754).
-- **Sin verificación funcional contra la BD real ni en navegador** — no hay
-  entorno de pruebas levantado en esta sesión. Pendiente probar contra un
-  evento real con sorteo ya hecho.
+- **Confirmado funcional por el usuario en producción/uso real, mismo día**:
+  tanto agregar un grupo nuevo como mover/reasignar equipos entre los grupos
+  ya sorteados funcionaron correctamente.
 
 ### Pendientes para la próxima sesión
-1. **Probar el flujo real** con Liliana: sorteo ya hecho de una categoría →
-   agregar un grupo → mover 1-2 equipos entre grupos → quitar uno → volver a
-   asignarlo. Confirmar que `gruposgen.html` (el póster/export) refleja los
-   cambios al recargar.
-2. Confirmar que el guard nuevo (`assertGruposEditables`) no bloquea de más
-   en categorías donde YA se generó el fixture — si Liliana necesita editar
-   grupos ahí, guiarla: Partidos → Eliminar Fixture → editar grupos → volver
-   a generar fixture.
+1. Confirmar que `gruposgen.html` (el póster/export) refleja los cambios de
+   grupos al recargar (no se verificó puntualmente ese paso).
+2. Si Liliana necesita editar grupos en una categoría donde YA se generó el
+   fixture, el guard nuevo (`assertGruposEditables`) lo bloqueará a propósito
+   — confirmar que el mensaje (Partidos → Eliminar Fixture → editar grupos →
+   volver a generar fixture) se entiende bien si llega a darse ese caso.
 3. Pendientes heredados sin tocar hoy — ver `project_pending.md`.
 
 ---
