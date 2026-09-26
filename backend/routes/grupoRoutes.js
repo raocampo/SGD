@@ -13,6 +13,14 @@ router.post(
   requireRoles("administrador", "organizador"),
   grupoController.crearGruposPorEvento
 );
+// Agrega UN grupo más a un evento que ya tiene grupos (post-sorteo), sin
+// tocar los existentes -- distinto de /evento/crear que crea el set inicial.
+router.post(
+  "/evento/:evento_id/agregar",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  grupoController.agregarGrupoAEvento
+);
 router.get("/evento/:evento_id", grupoController.obtenerGruposPorEvento);
 router.get("/evento/:evento_id/completo", grupoController.obtenerGruposPorEventoCompleto);
 // Compatibilidad con frontend que consulta por campeonato
@@ -38,6 +46,14 @@ router.delete(
   requireAuth,
   requireRoles("administrador", "organizador"),
   grupoController.removerEquipo
+);
+// Mueve un equipo directamente a este grupo (venga de otro grupo del mismo
+// evento, o esté pendiente) en un solo paso -- edición post-sorteo.
+router.post(
+  "/:grupo_id/mover-equipo",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  grupoController.moverEquipoAGrupo
 );
 
 // ===============================

@@ -1315,6 +1315,56 @@ body.app-layout {
   color: var(--primary-color);
 }
 
+.grupos-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.grupos-panel-header h3 {
+  margin-bottom: 0;
+}
+
+.grupos-editar-ayuda {
+  margin: -0.3rem 0 0.6rem;
+  color: #6c757d;
+  font-size: 0.82rem;
+}
+
+/* Controles de edición post-sorteo dentro de cada fila de equipo (quitar del
+   grupo / mover directo a otro grupo) -- se agregan al lado del nombre sin
+   romper el layout existente de .equipo-en-grupo (ya es flex con gap). */
+.equipo-en-grupo-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.equipo-mover-select {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.35rem;
+  max-width: 130px;
+}
+
+/* Fila de "asignar a grupo" para un equipo pendiente (grupo destino + botón),
+   siempre visible una vez que ya existen grupos -- no depende del selector
+   "Sistema de Sorteo" como el modo manual-directo original. */
+.pendiente-asignar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.pendiente-asignar select {
+  flex: 1;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.4rem;
+}
+
 /* Tarjetas de grupos */
 .grupos-container {
   display: grid;
@@ -8868,6 +8918,18 @@ body.page-finanzas {
 
   .equipo-en-grupo {
     font-size: 0.82rem;
+    flex-wrap: wrap;
+  }
+
+  .equipo-en-grupo-acciones {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .equipo-mover-select {
+    max-width: none;
+    flex: 1;
   }
 }
 

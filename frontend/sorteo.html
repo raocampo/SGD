@@ -147,7 +147,22 @@
 
             <!-- Panel de Grupos (para modo auto, o si quieres mostrar vista rápida) -->
             <div class="grupos-panel">
-              <h3>Grupos del Sorteo</h3>
+              <div class="grupos-panel-header">
+                <h3>Grupos del Sorteo</h3>
+                <button
+                  id="btn-agregar-grupo"
+                  class="btn btn-secondary btn-xs"
+                  onclick="agregarGrupoNuevo()"
+                  style="display: none"
+                >
+                  <i class="fas fa-plus"></i> Agregar grupo
+                </button>
+              </div>
+              <p class="grupos-editar-ayuda" id="grupos-editar-ayuda" style="display: none">
+                ¿Se integraron equipos después del sorteo? Usa "Agregar grupo" para sumar un
+                grupo nuevo, el selector "Mover a..." junto a cada equipo para cambiarlo de
+                grupo, o la <i class="fas fa-times"></i> para quitarlo (vuelve a pendientes).
+              </p>
               <div id="lista-grupos" class="grupos-container">
                 <!-- Los grupos se generarán aquí -->
               </div>

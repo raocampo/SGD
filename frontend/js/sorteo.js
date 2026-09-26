@@ -236,8 +236,34 @@ function shuffle(arr) {
   return copy;
 }
 
+// Edición post-sorteo: agregar grupo y el "mover a"/"quitar" de cada equipo
+// solo tienen sentido si YA hay grupos creados -- se ocultan si el sorteo ni
+// siquiera arrancó para esta categoría.
+function actualizarControlesEdicionGrupos() {
+  const btnAgregar = document.getElementById("btn-agregar-grupo");
+  const ayuda = document.getElementById("grupos-editar-ayuda");
+  const mostrar = gruposEvento.length > 0;
+  if (btnAgregar) btnAgregar.style.display = mostrar ? "inline-flex" : "none";
+  if (ayuda) ayuda.style.display = mostrar ? "block" : "none";
+}
+
+function opcionesGruposHTML(excluirGrupoId = null, placeholder = "Mover a...") {
+  const gruposOrdenados = [...gruposEvento].sort((a, b) =>
+    String(a.letra_grupo || "").localeCompare(String(b.letra_grupo || ""))
+  );
+  const opciones = gruposOrdenados
+    .filter((g) => excluirGrupoId == null || Number(g.id) !== Number(excluirGrupoId))
+    .map((g) => {
+      const nombre = g.nombre_grupo || `Grupo ${g.letra_grupo || ""}`;
+      return `<option value="${g.id}">${nombre} (${(g.equipos || []).length})</option>`;
+    })
+    .join("");
+  return `<option value="" selected disabled>${placeholder}</option>${opciones}`;
+}
+
 function renderGrupos() {
   const cont = document.getElementById("lista-grupos");
+  actualizarControlesEdicionGrupos();
   if (!cont) return;
 
   if (!gruposEvento.length) {
@@ -248,11 +274,36 @@ function renderGrupos() {
   cont.innerHTML = gruposEvento
     .map((g) => {
       const equipos = g.equipos || [];
+      const puedeMover = gruposEvento.length > 1;
       const items = equipos.length
         ? equipos
             .map(
-              (e, idx) =>
-                `<div class="equipo-en-grupo"><span class="item-index">${idx + 1}.</span><span class="nombre-equipo">${e.nombre}</span></div>`
+              (e, idx) => `
+              <div class="equipo-en-grupo">
+                <span class="item-index">${idx + 1}.</span>
+                <span class="nombre-equipo">${e.nombre}</span>
+                <span class="equipo-en-grupo-acciones">
+                  ${
+                    puedeMover
+                      ? `<select
+                          class="equipo-mover-select"
+                          title="Mover a otro grupo"
+                          onchange="moverEquipoAOtroGrupo(${e.id}, this.value, this)"
+                        >
+                          ${opcionesGruposHTML(g.id)}
+                        </select>`
+                      : ""
+                  }
+                  <button
+                    type="button"
+                    class="btn btn-danger btn-xs"
+                    title="Quitar del grupo"
+                    onclick="quitarEquipoDeGrupo(${g.id}, ${e.id})"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
+                </span>
+              </div>`
             )
             .join("")
         : '<div class="empty-equipos">Sin equipos</div>';
@@ -279,6 +330,8 @@ function renderPendientes() {
     return;
   }
 
+  const hayGrupos = gruposEvento.length > 0;
+
   cont.innerHTML = equiposPendientes
     .map(
       (e, idx) => `
@@ -287,6 +340,15 @@ function renderPendientes() {
           <strong>${idx + 1}. ${e.nombre}</strong>
           <small>${e.cabeza_serie ? "Cabeza de serie" : "Equipo regular"}</small>
         </div>
+        ${
+          hayGrupos
+            ? `<div class="pendiente-asignar">
+                <select onchange="asignarPendienteDesdeFila(${e.id}, this.value, this)">
+                  ${opcionesGruposHTML(null, "Asignar a...")}
+                </select>
+              </div>`
+            : ""
+        }
       </div>
     `
     )
@@ -762,6 +824,110 @@ async function asignarEquipoManualDirecto() {
   }
 }
 
+// ============================================================
+// Edición de grupos post-sorteo: agregar un grupo más, mover un equipo ya
+// asignado a otro grupo, quitarlo de su grupo, o asignar uno pendiente
+// (ej. se integró después del sorteo) sin tener que reiniciar todo.
+// ============================================================
+
+async function agregarGrupoNuevo() {
+  if (!eventoSeleccionado) {
+    mostrarNotificacion("Selecciona una categoría", "warning");
+    return;
+  }
+
+  const nombre = await window.mostrarPrompt({
+    titulo: "Agregar grupo",
+    mensaje: "Nombre del grupo nuevo (déjalo vacío para usar la siguiente letra disponible).",
+    label: "Nombre del grupo",
+    placeholder: "Ej: Grupo E",
+    required: false,
+    textoConfirmar: "Agregar",
+  });
+  if (nombre === null) return; // canceló el modal
+
+  try {
+    await ApiClient.post(`/grupos/evento/${eventoSeleccionado}/agregar`, {
+      nombre_grupo: nombre || null,
+    });
+    mostrarNotificacion("Grupo agregado", "success");
+    await recargarEstadoSorteo();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo agregar el grupo", "error");
+  }
+}
+
+async function quitarEquipoDeGrupo(grupoId, equipoId) {
+  const grupo = gruposEvento.find((g) => Number(g.id) === Number(grupoId));
+  const nombreEquipo = grupo?.equipos?.find((e) => Number(e.id) === Number(equipoId))?.nombre || "";
+
+  const confirmar = await window.mostrarConfirmacion({
+    titulo: "Quitar equipo del grupo",
+    mensaje: `"${nombreEquipo || "Este equipo"}" volverá a la lista de equipos pendientes. ¿Continuar?`,
+    tipo: "warning",
+    textoConfirmar: "Quitar",
+    claseConfirmar: "btn-danger",
+  });
+  if (!confirmar) return;
+
+  try {
+    await ApiClient.delete(`/grupos/${grupoId}/equipos/${equipoId}`);
+    mostrarNotificacion(`${nombreEquipo || "Equipo"} quitado del grupo`, "success");
+    await recargarEstadoSorteo();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo quitar el equipo", "error");
+  }
+}
+
+async function moverEquipoAOtroGrupo(equipoId, grupoDestinoIdRaw, selectEl = null) {
+  const grupoDestinoId = parseInt(grupoDestinoIdRaw, 10);
+  if (!Number.isFinite(grupoDestinoId) || grupoDestinoId <= 0) return;
+
+  try {
+    const grupoDestino = gruposEvento.find((g) => Number(g.id) === grupoDestinoId);
+    const orden = (grupoDestino?.equipos?.length || 0) + 1;
+
+    await ApiClient.post(`/grupos/${grupoDestinoId}/mover-equipo`, {
+      equipo_id: equipoId,
+      orden_sorteo: orden,
+    });
+
+    const nombreDestino = grupoDestino?.nombre_grupo || `Grupo ${grupoDestino?.letra_grupo || ""}`;
+    mostrarNotificacion(`Equipo movido a ${nombreDestino}`, "success");
+    await recargarEstadoSorteo();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo mover el equipo", "error");
+    if (selectEl) selectEl.value = "";
+  }
+}
+
+async function asignarPendienteDesdeFila(equipoId, grupoIdRaw, selectEl = null) {
+  const grupoId = parseInt(grupoIdRaw, 10);
+  if (!Number.isFinite(grupoId) || grupoId <= 0) return;
+
+  try {
+    const grupoDestino = gruposEvento.find((g) => Number(g.id) === grupoId);
+    const orden = (grupoDestino?.equipos?.length || 0) + 1;
+
+    await ApiClient.post(`/grupos/${grupoId}/equipos`, {
+      equipo_id: equipoId,
+      orden_sorteo: orden,
+    });
+
+    const equipoNombre = equiposPendientes.find((e) => e.id === equipoId)?.nombre || "Equipo";
+    const nombreDestino = grupoDestino?.nombre_grupo || `Grupo ${grupoDestino?.letra_grupo || ""}`;
+    mostrarNotificacion(`${equipoNombre} asignado a ${nombreDestino}`, "success");
+    await recargarEstadoSorteo();
+  } catch (error) {
+    console.error(error);
+    mostrarNotificacion(error.message || "No se pudo asignar el equipo", "error");
+    if (selectEl) selectEl.value = "";
+  }
+}
+
 function verGruposSorteo() {
   if (!campeonatoSeleccionado) {
     mostrarNotificacion("Selecciona campeonato", "warning");
@@ -787,3 +953,7 @@ window.asignarEquipoSeleccionado = asignarEquipoSeleccionado;
 window.asignarEquipoManualDirecto = asignarEquipoManualDirecto;
 window.verGruposSorteo = verGruposSorteo;
 window.reiniciarSorteo = reiniciarSorteo;
+window.agregarGrupoNuevo = agregarGrupoNuevo;
+window.quitarEquipoDeGrupo = quitarEquipoDeGrupo;
+window.moverEquipoAOtroGrupo = moverEquipoAOtroGrupo;
+window.asignarPendienteDesdeFila = asignarPendienteDesdeFila;

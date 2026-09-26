@@ -2,7 +2,12 @@
 const pool = require("../config/database");
 
 class Grupo {
-  static async assertSorteoEditable(evento_id, client = pool) {
+  // Chequeo compartido: ni el sorteo completo ni una edición puntual de
+  // grupos (agregar grupo, mover/quitar un equipo) deben tocar nada una vez
+  // que la categoría ya tiene un fixture o eliminatorias generadas -- eso
+  // dejaría el calendario desincronizado de los grupos reales. `mensajeBase`
+  // arma el error según qué operación lo llamó.
+  static async _assertSinPartidosNiEliminatorias(evento_id, mensajeBase, client = pool) {
     const partidosR = await client.query(
       `SELECT COUNT(*)::int AS total FROM partidos WHERE evento_id = $1`,
       [evento_id]
@@ -10,7 +15,10 @@ class Grupo {
     const totalPartidos = Number(partidosR.rows[0]?.total || 0);
     if (totalPartidos > 0) {
       throw new Error(
-        "No se puede reiniciar el sorteo porque la categoría ya tiene partidos programados"
+        `${mensajeBase} porque la categoría ya tiene partidos programados. ` +
+          `El fixture ya se generó a partir de estos grupos: cambiarlos ahora dejaría el ` +
+          `calendario desactualizado. Si de verdad hace falta, primero borra el fixture de ` +
+          `esta categoría desde Partidos, edita los grupos y vuelve a generarlo.`
       );
     }
 
@@ -31,10 +39,27 @@ class Grupo {
     );
     const totalEliminatoria = Number(eliminatoriaR.rows[0]?.total || 0);
     if (totalEliminatoria > 0) {
-      throw new Error(
-        "No se puede reiniciar el sorteo porque la categoría ya tiene eliminatorias generadas"
-      );
+      throw new Error(`${mensajeBase} porque la categoría ya tiene eliminatorias generadas.`);
     }
+  }
+
+  static async assertSorteoEditable(evento_id, client = pool) {
+    return this._assertSinPartidosNiEliminatorias(
+      evento_id,
+      "No se puede reiniciar el sorteo",
+      client
+    );
+  }
+
+  // Igual que assertSorteoEditable pero para ediciones puntuales post-sorteo
+  // (agregar grupo, mover o quitar un equipo) -- mismo chequeo, mensaje
+  // orientado a esa acción en vez de "reiniciar el sorteo".
+  static async assertGruposEditables(evento_id, client = pool) {
+    return this._assertSinPartidosNiEliminatorias(
+      evento_id,
+      "No se pueden editar los grupos",
+      client
+    );
   }
 
   static normalizarMetodoCompetencia(value) {
@@ -189,6 +214,41 @@ class Grupo {
   }
 
   // ===========================
+  // CREATE - Agregar UN grupo más a un evento que ya tiene grupos, sin
+  // tocar los existentes (caso real: sorteo ya hecho, llegan equipos nuevos
+  // y no entran en los grupos actuales -- toca un grupo adicional).
+  // ===========================
+  static async agregarGrupoAEvento(evento_id, nombre_grupo = null, client = pool) {
+    const evento = await this.obtenerEventoBasico(evento_id, client);
+    if (this.normalizarMetodoCompetencia(evento.metodo_competencia) === "liga") {
+      throw new Error(
+        "Esta categoría usa el método 'liga' (un solo grupo con todos los equipos); no admite grupos adicionales."
+      );
+    }
+    await this.assertGruposEditables(evento.id, client);
+
+    const letras = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+    const existentesR = await client.query(
+      `SELECT UPPER(letra_grupo) AS letra FROM grupos WHERE evento_id = $1`,
+      [evento.id]
+    );
+    const usadas = new Set(existentesR.rows.map((r) => String(r.letra || "").toUpperCase()));
+    const siguienteLetra = letras.find((l) => !usadas.has(l));
+    if (!siguienteLetra) {
+      throw new Error(`Máximo ${letras.length} grupos soportados (A..J).`);
+    }
+
+    const nombreFinal =
+      (nombre_grupo && String(nombre_grupo).trim()) || `Grupo ${siguienteLetra}`;
+    const r = await client.query(
+      `INSERT INTO grupos (evento_id, nombre_grupo, letra_grupo)
+       VALUES ($1, $2, $3) RETURNING *`,
+      [evento.id, nombreFinal, siguienteLetra]
+    );
+    return r.rows[0];
+  }
+
+  // ===========================
   // READ - Obtener grupos por EVENTO
   // ===========================
   static async obtenerPorEvento(evento_id) {
@@ -294,6 +354,7 @@ class Grupo {
     const g = await pool.query("SELECT evento_id FROM grupos WHERE id=$1", [grupo_id]);
     if (g.rows.length === 0) throw new Error("Grupo no encontrado");
     const evento_id = g.rows[0].evento_id;
+    await this.assertGruposEditables(evento_id);
 
     // 2) validar que el equipo este asignado al evento via tabla pivote evento_equipos
     const e = await pool.query(
@@ -328,11 +389,79 @@ class Grupo {
   }
 
   static async removerEquipo(grupo_id, equipo_id) {
+    const g = await pool.query("SELECT evento_id FROM grupos WHERE id=$1", [grupo_id]);
+    if (g.rows.length === 0) throw new Error("Grupo no encontrado");
+    await this.assertGruposEditables(g.rows[0].evento_id);
+
     const r = await pool.query(
       "DELETE FROM grupo_equipos WHERE grupo_id=$1 AND equipo_id=$2 RETURNING *",
       [grupo_id, equipo_id]
     );
     return r.rows[0];
+  }
+
+  // Mueve un equipo directamente a otro grupo del mismo evento en un solo
+  // paso (quita de donde estaba, si estaba en alguno, y lo inserta en el
+  // destino) -- evita el error "el equipo ya está asignado a Grupo X" que
+  // tira asignarEquipo() cuando el equipo no está pendiente sino que ya
+  // pertenece a otro grupo del mismo evento.
+  static async moverEquipoAGrupo(grupo_destino_id, equipo_id, orden_sorteo = null) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const destinoR = await client.query(
+        "SELECT id, evento_id, nombre_grupo FROM grupos WHERE id = $1",
+        [grupo_destino_id]
+      );
+      if (!destinoR.rows.length) throw new Error("Grupo destino no encontrado");
+      const { evento_id, nombre_grupo: nombreDestino } = destinoR.rows[0];
+
+      await this.assertGruposEditables(evento_id, client);
+
+      const perteneceR = await client.query(
+        `SELECT 1 FROM evento_equipos WHERE evento_id = $1 AND equipo_id = $2 LIMIT 1`,
+        [evento_id, equipo_id]
+      );
+      if (!perteneceR.rows.length) {
+        throw new Error("El equipo no pertenece a la categoria/evento seleccionado.");
+      }
+
+      const actualR = await client.query(
+        `SELECT ge.grupo_id, g2.nombre_grupo
+           FROM grupo_equipos ge
+           JOIN grupos g2 ON g2.id = ge.grupo_id
+          WHERE ge.equipo_id = $1 AND g2.evento_id = $2`,
+        [equipo_id, evento_id]
+      );
+      const grupoActual = actualR.rows[0] || null;
+
+      if (grupoActual && Number(grupoActual.grupo_id) === Number(grupo_destino_id)) {
+        await client.query("ROLLBACK");
+        throw new Error(`El equipo ya está en ${nombreDestino}`);
+      }
+
+      if (grupoActual) {
+        await client.query(
+          "DELETE FROM grupo_equipos WHERE grupo_id = $1 AND equipo_id = $2",
+          [grupoActual.grupo_id, equipo_id]
+        );
+      }
+
+      const r = await client.query(
+        `INSERT INTO grupo_equipos (grupo_id, equipo_id, orden_sorteo)
+         VALUES ($1, $2, $3) RETURNING *`,
+        [grupo_destino_id, equipo_id, orden_sorteo]
+      );
+
+      await client.query("COMMIT");
+      return { asignacion: r.rows[0], grupoAnterior: grupoActual };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   // ===========================

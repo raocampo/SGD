@@ -5,12 +5,23 @@ function statusForGrupo(error) {
   const msg = String(error?.message || "").toLowerCase();
   if (
     msg.includes("no se puede reiniciar el sorteo") ||
+    msg.includes("no se pueden editar los grupos") ||
     msg.includes("ya tiene partidos programados") ||
     msg.includes("ya tiene eliminatorias generadas") ||
     msg.includes("requerido") ||
     msg.includes("inválido") ||
     msg.includes("invalido") ||
-    msg.includes("no encontrado")
+    msg.includes("no encontrado") ||
+    msg.includes("ya está asignado") ||
+    msg.includes("ya esta asignado") ||
+    msg.includes("ya está en") ||
+    msg.includes("ya esta en") ||
+    msg.includes("no pertenece a la categoria") ||
+    msg.includes("no pertenece a la categoría") ||
+    msg.includes("máximo") ||
+    msg.includes("maximo") ||
+    msg.includes("método 'liga'") ||
+    msg.includes("metodo 'liga'")
   ) {
     return 400;
   }
@@ -34,6 +45,21 @@ exports.crearGruposPorEvento = async (req, res) => {
     res.json({ ok: true, grupos });
   } catch (err) {
     console.error("crearGruposPorEvento:", err);
+    res.status(statusForGrupo(err)).json({ error: err.message });
+  }
+};
+
+exports.agregarGrupoAEvento = async (req, res) => {
+  try {
+    const { evento_id } = req.params;
+    const { nombre_grupo } = req.body || {};
+    const grupo = await Grupo.agregarGrupoAEvento(
+      parseInt(evento_id, 10),
+      nombre_grupo || null
+    );
+    res.json({ ok: true, grupo });
+  } catch (err) {
+    console.error("agregarGrupoAEvento:", err);
     res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
@@ -123,6 +149,26 @@ exports.asignarEquipo = async (req, res) => {
     res.json({ ok: true, asignacion });
   } catch (err) {
     console.error("asignarEquipo:", err);
+    res.status(statusForGrupo(err)).json({ error: err.message });
+  }
+};
+
+exports.moverEquipoAGrupo = async (req, res) => {
+  try {
+    const { grupo_id } = req.params;
+    const { equipo_id, orden_sorteo } = req.body || {};
+
+    if (!equipo_id) return res.status(400).json({ error: "equipo_id es requerido" });
+
+    const resultado = await Grupo.moverEquipoAGrupo(
+      parseInt(grupo_id, 10),
+      parseInt(equipo_id, 10),
+      orden_sorteo ?? null
+    );
+
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error("moverEquipoAGrupo:", err);
     res.status(statusForGrupo(err)).json({ error: err.message });
   }
 };
