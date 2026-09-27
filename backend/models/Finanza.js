@@ -592,8 +592,14 @@ class Finanza {
              NULL::text AS documento_estado`;
     const joinDocumento = incluirDocumento
       ? `
-      LEFT JOIN documentos_pagos dp ON dp.movimiento_id = fm.id
-      LEFT JOIN documentos_facturacion df ON df.id = dp.documento_id`
+      LEFT JOIN LATERAL (
+        SELECT dp2.documento_id
+        FROM documentos_pagos dp2
+        WHERE dp2.movimiento_id = fm.id
+        ORDER BY dp2.id DESC
+        LIMIT 1
+      ) dpx ON true
+      LEFT JOIN documentos_facturacion df ON df.id = dpx.documento_id`
       : "";
 
     const where = [];
@@ -693,8 +699,14 @@ class Finanza {
              NULL::text AS documento_estado`;
     const joinDocumento = incluirDocumento
       ? `
-      LEFT JOIN documentos_pagos dp ON dp.movimiento_id = fm.id
-      LEFT JOIN documentos_facturacion df ON df.id = dp.documento_id`
+      LEFT JOIN LATERAL (
+        SELECT dp2.documento_id
+        FROM documentos_pagos dp2
+        WHERE dp2.movimiento_id = fm.id
+        ORDER BY dp2.id DESC
+        LIMIT 1
+      ) dpx ON true
+      LEFT JOIN documentos_facturacion df ON df.id = dpx.documento_id`
       : "";
 
     const eqId = this.parseEntero(equipo_id, "equipo_id");
