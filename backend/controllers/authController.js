@@ -298,13 +298,34 @@ async function construirLandingOrganizador(organizadorId) {
       [organizadorId]
     );
 
-    const [portalConfig, auspiciantes, landingGallery] = await Promise.all([
+    const [portalConfig, auspiciantes, landingGallery, resultadosRecientesR] = await Promise.all([
       OrganizadorPortal.obtenerConfig(organizadorId, pool),
       OrganizadorPortal.listarAuspiciantesConFallback(organizadorId, pool),
       OrganizadorPortal.listarMedia(
         organizadorId,
         { tipo: "landing_gallery", activo: true, campeonato_id: null },
         pool
+      ),
+      pool.query(
+        `SELECT
+           p.id, p.fecha_partido, p.estado,
+           p.resultado_local, p.resultado_visitante,
+           el.nombre AS equipo_local_nombre, el.logo_url AS equipo_local_logo_url,
+           ev2.nombre AS equipo_visitante_nombre, ev2.logo_url AS equipo_visitante_logo_url,
+           e.nombre AS evento_nombre, e.id AS evento_id,
+           c.id AS campeonato_id, c.nombre AS campeonato_nombre
+         FROM partidos p
+         JOIN campeonatos c ON c.id = p.campeonato_id
+         LEFT JOIN equipos el ON el.id = p.equipo_local_id
+         LEFT JOIN equipos ev2 ON ev2.id = p.equipo_visitante_id
+         LEFT JOIN eventos e ON e.id = p.evento_id
+         WHERE c.creador_usuario_id = $1
+           AND p.estado IN ('finalizado','no_presentaron_ambos','no_presentaron_local','no_presentaron_visitante')
+           AND p.resultado_local IS NOT NULL
+           AND p.resultado_visitante IS NOT NULL
+         ORDER BY p.fecha_partido DESC NULLS LAST, p.id DESC
+         LIMIT 8`,
+        [organizadorId]
       ),
     ]);
     const campeonatos = await Promise.all(
@@ -345,6 +366,7 @@ async function construirLandingOrganizador(organizadorId) {
         portal_config: portalConfig,
         auspiciantes,
         landing_gallery: landingGallery,
+        resultados_recientes: resultadosRecientesR.rows || [],
         campeonatos,
       },
     };

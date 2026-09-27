@@ -1323,6 +1323,18 @@ function aplicarModoLandingOrganizador(payload) {
   }
 
   renderSeccionEquiposLanding(payload, torneosVisibles);
+
+  const resultadosSection = document.getElementById("portal-resultados-recientes");
+  const resultadosGrid = document.getElementById("portal-resultados-recientes-grid");
+  if (resultadosSection && resultadosGrid) {
+    const recientes = Array.isArray(payload?.resultados_recientes) ? payload.resultados_recientes : [];
+    if (recientes.length) {
+      resultadosGrid.innerHTML = renderResultadosRecientesPortal(recientes);
+      resultadosSection.style.display = "";
+    } else {
+      resultadosSection.style.display = "none";
+    }
+  }
 }
 
 async function procesarPayloadLandingOrganizador(data) {
@@ -3115,18 +3127,66 @@ function renderGaleriaPortalItems(items = [], emptyMessage = "No hay imágenes p
   if (!rows.length) {
     return `<p class="empty-msg">${escPortal(emptyMessage)}</p>`;
   }
-  return rows
-    .map(
-      (item) => `
-        <article class="ltc-gallery-card">
-          <img src="${escPortal(normalizarMediaPortal(item.imagen_url))}" alt="${escPortal(item.titulo || "Galería pública")}" />
-          <div class="ltc-gallery-card-copy">
-            <h3>${escPortal(item.titulo || "Imagen destacada")}</h3>
-            <p>${escPortal(item.descripcion || "Contenido público del organizador o campeonato.")}</p>
+  // Agrupar por titulo manteniendo el orden de primera aparición
+  const grupos = new Map();
+  rows.forEach((item) => {
+    const tema = item.titulo || "";
+    if (!grupos.has(tema)) grupos.set(tema, []);
+    grupos.get(tema).push(item);
+  });
+  return Array.from(grupos.entries())
+    .map(([tema, fotos]) => `
+      <div class="portal-gallery-group">
+        ${tema ? `<div class="portal-gallery-group-title">${escPortal(tema)}</div>` : ""}
+        <div class="portal-gallery-group-grid">
+          ${fotos
+            .map((item) => `
+              <figure onclick="abrirLightboxResultado('${escPortal(normalizarMediaPortal(item.imagen_url))}','${escPortal(item.titulo || "")}')">
+                <img src="${escPortal(normalizarMediaPortal(item.imagen_url))}" alt="${escPortal(item.titulo || "Galería pública")}" loading="lazy" />
+              </figure>
+            `)
+            .join("")}
+        </div>
+      </div>
+    `)
+    .join("");
+}
+
+function renderResultadosRecientesPortal(partidos = []) {
+  if (!Array.isArray(partidos) || !partidos.length) return "";
+  return partidos
+    .map((p) => {
+      const rl = p.resultado_local ?? "?";
+      const rv = p.resultado_visitante ?? "?";
+      const localLogo = p.equipo_local_logo_url
+        ? `<img src="${escPortal(normalizarMediaPortal(p.equipo_local_logo_url))}" alt="${escPortal(p.equipo_local_nombre || "")}" onerror="this.style.display='none'" />`
+        : "";
+      const visitanteLogo = p.equipo_visitante_logo_url
+        ? `<img src="${escPortal(normalizarMediaPortal(p.equipo_visitante_logo_url))}" alt="${escPortal(p.equipo_visitante_nombre || "")}" onerror="this.style.display='none'" />`
+        : "";
+      const fecha = p.fecha_partido ? formatearFechaPortal(p.fecha_partido) : "";
+      const evento = p.evento_nombre ? escPortal(p.evento_nombre) : "";
+      return `
+        <div class="portal-resultado-card">
+          <div class="portal-resultado-card-meta">
+            <span>${evento}</span>
+            <span class="portal-resultado-card-badge">Finalizado</span>
           </div>
-        </article>
-      `
-    )
+          <div class="portal-resultado-marcador">
+            <div class="portal-resultado-equipo">
+              ${localLogo}
+              <span>${escPortal(p.equipo_local_nombre || "Local")}</span>
+            </div>
+            <div class="portal-resultado-score">${rl} – ${rv}</div>
+            <div class="portal-resultado-equipo">
+              ${visitanteLogo}
+              <span>${escPortal(p.equipo_visitante_nombre || "Visitante")}</span>
+            </div>
+          </div>
+          ${fecha ? `<div class="portal-resultado-card-footer">${fecha}</div>` : ""}
+        </div>
+      `;
+    })
     .join("");
 }
 

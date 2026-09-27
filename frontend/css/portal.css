@@ -6314,3 +6314,138 @@ body.ltc-home-page .ltc-home-sponsors-track {
 }
 
 .portal-result-lightbox-close:hover { opacity: 1; }
+
+/* ===== Galería agrupada por tema ===== */
+.ltc-gallery-grouped {
+  display: block;
+}
+
+.portal-gallery-group {
+  margin-bottom: 2rem;
+}
+
+.portal-gallery-group-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #1a1a1a;
+  padding: .4rem 0 .8rem;
+  border-bottom: 2px solid #b7e853;
+  margin-bottom: 1rem;
+}
+
+.portal-gallery-group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: .75rem;
+}
+
+.portal-gallery-group-grid figure {
+  margin: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+  background: #f0f0f0;
+  cursor: pointer;
+}
+
+.portal-gallery-group-grid figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .25s ease;
+}
+
+.portal-gallery-group-grid figure:hover img {
+  transform: scale(1.04);
+}
+
+/* ===== Sección últimos resultados en landing ===== */
+.ltc-home-resultados-section {
+  background: #f6f7f5;
+}
+
+.portal-resultados-recientes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.portal-resultado-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.portal-resultado-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: .72rem;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.portal-resultado-card-badge {
+  background: #e8f5d0;
+  color: #3a7a0a;
+  padding: .15rem .5rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: .68rem;
+}
+
+.portal-resultado-marcador {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  justify-content: center;
+}
+
+.portal-resultado-equipo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.portal-resultado-equipo img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+.portal-resultado-equipo span {
+  font-size: .78rem;
+  font-weight: 600;
+  text-align: center;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.portal-resultado-score {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  letter-spacing: .05em;
+  white-space: nowrap;
+}
+
+.portal-resultado-card-footer {
+  font-size: .72rem;
+  color: #999;
+  text-align: center;
+}
