@@ -4512,6 +4512,12 @@ class Partido {
     const cargoTrLocal = valorPositivo(tarjetasLocal.rojas * costoTarjetaRoja);
     const cargoTrVisitante = valorPositivo(tarjetasVisitante.rojas * costoTarjetaRoja);
 
+    // Cap planilla payments so abonos never exceed cargos for the same rubro
+    const pagoTaLocalFinal = Math.min(valorPositivo(montos.pagoTaLocal), cargoTaLocal);
+    const pagoTaVisitanteFinal = Math.min(valorPositivo(montos.pagoTaVisitante), cargoTaVisitante);
+    const pagoTrLocalFinal = Math.min(valorPositivo(montos.pagoTrLocal), cargoTrLocal);
+    const pagoTrVisitanteFinal = Math.min(valorPositivo(montos.pagoTrVisitante), cargoTrVisitante);
+
     const multaInasistenciaLocal =
       inasistenciaEquipo === "ambos" || inasistenciaEquipo === "local"
         ? valorPositivo(costoArbitraje)
@@ -4629,7 +4635,7 @@ class Partido {
         tipo_movimiento: "abono",
         estado: "pagado",
         equipo_id: equipoLocalId,
-        monto: valorPositivo(montos.pagoTaLocal),
+        monto: pagoTaLocalFinal,
         concepto: "multa",
         descripcion: "Pago tarjetas amarillas (planilla de partido)",
         origen_clave: `${keyPrefix}abono:ta:local`,
@@ -4638,7 +4644,7 @@ class Partido {
         tipo_movimiento: "abono",
         estado: "pagado",
         equipo_id: equipoVisitanteId,
-        monto: valorPositivo(montos.pagoTaVisitante),
+        monto: pagoTaVisitanteFinal,
         concepto: "multa",
         descripcion: "Pago tarjetas amarillas (planilla de partido)",
         origen_clave: `${keyPrefix}abono:ta:visitante`,
@@ -4647,7 +4653,7 @@ class Partido {
         tipo_movimiento: "abono",
         estado: "pagado",
         equipo_id: equipoLocalId,
-        monto: valorPositivo(montos.pagoTrLocal),
+        monto: pagoTrLocalFinal,
         concepto: "multa",
         descripcion: "Pago tarjetas rojas (planilla de partido)",
         origen_clave: `${keyPrefix}abono:tr:local`,
@@ -4656,7 +4662,7 @@ class Partido {
         tipo_movimiento: "abono",
         estado: "pagado",
         equipo_id: equipoVisitanteId,
-        monto: valorPositivo(montos.pagoTrVisitante),
+        monto: pagoTrVisitanteFinal,
         concepto: "multa",
         descripcion: "Pago tarjetas rojas (planilla de partido)",
         origen_clave: `${keyPrefix}abono:tr:visitante`,

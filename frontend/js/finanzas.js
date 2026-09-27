@@ -1845,12 +1845,12 @@ async function imprimirReporteResumenEquipos() {
           <td>${escaparHtml(x.campeonato_nombre || "-")}</td>
           <td class="num">
             <div>Pagado: <span class="${x.inscripcion.abonos > 0 ? "ok" : ""}">${formatoMoneda(x.inscripcion.abonos || 0)}</span></div>
-            <div>Debe: <span class="${x.inscripcion.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.inscripcion.saldo)}</span></div>
+            <div>Debe: <span class="${x.inscripcion.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(Math.max(0, x.inscripcion.saldo))}</span></div>
           </td>
-          <td class="num ${x.arbitraje.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.arbitraje.saldo)}</td>
-          <td class="num ${x.tarjetas_amarillas.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.tarjetas_amarillas.saldo)}</td>
-          <td class="num ${x.tarjetas_rojas.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.tarjetas_rojas.saldo)}</td>
-          <td class="num ${x.multas_otras.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.multas_otras.saldo)}</td>
+          <td class="num ${x.arbitraje.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(Math.max(0, x.arbitraje.saldo))}</td>
+          <td class="num ${x.tarjetas_amarillas.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(Math.max(0, x.tarjetas_amarillas.saldo))}</td>
+          <td class="num ${x.tarjetas_rojas.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(Math.max(0, x.tarjetas_rojas.saldo))}</td>
+          <td class="num ${x.multas_otras.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(Math.max(0, x.multas_otras.saldo))}</td>
           <td class="num ${x.total.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.total.saldo)}</td>
         </tr>
       `;
@@ -2326,6 +2326,7 @@ function renderCeldaRubroFinanzas(rubro) {
   }
   const pagado = Number(rubro.abonos || 0);
   const saldo = Number(rubro.saldo || 0);
+  const debeDisplay = Math.max(0, saldo);
   return `
     <div class="fin-rubro-fila">
       <span class="fin-rubro-lbl">Pagado</span>
@@ -2333,7 +2334,7 @@ function renderCeldaRubroFinanzas(rubro) {
     </div>
     <div class="fin-rubro-fila">
       <span class="fin-rubro-lbl">Debe</span>
-      <span class="${saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(saldo)}</span>
+      <span class="${debeDisplay > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(debeDisplay)}</span>
     </div>
   `;
 }
