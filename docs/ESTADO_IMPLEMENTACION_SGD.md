@@ -1100,39 +1100,52 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## CONTINUACIÓN — Próximos pasos para la siguiente sesión
 
-### Prioridad ALTA (acción inmediata)
+> Última actualización: 2026-09-27. Los ítems marcados ✅ ya están implementados en `main`.
+
+### Estado real de módulos (auditado 2026-09-27)
+
+| Módulo | Estado |
+|--------|--------|
+| Facturación Fase 2 — integración con finanzas | ✅ Implementado desde 2026-05-15 |
+| Facturación Fase 3 — PDF/RIDE descargable | ✅ Implementado desde 2026-05-15 |
+| Finanzas en pestañas + editar/eliminar movimientos | ✅ Implementado 2026-09-25 |
+| Facturación sello y firma por organizador | ✅ Implementado 2026-09-26 |
+| Edición de grupos post-sorteo | ✅ Implementado 2026-09-25, confirmado en producción |
+| Transmisiones Fase 2 (WebRTC broadcaster/viewer) | ✅ Implementado — **pendiente prueba en Render** |
+| Transmisiones Fase 3 (UX director, compartir redes) | ✅ Implementado |
+| Portal público (resultados, tabla, goleadores, playoff) | ✅ Operativo |
+| Titularidad y sustituciones con reglas FIFA | ✅ Implementado 2026-09-23 |
+| OG tags dinámicos por organizador (`/liga/<slug>`) | ✅ Implementado 2026-09-23 |
+| Backfill de `landing_slug` para organizadores | ✅ Ejecutado en producción 2026-09-23 |
+
+### Pendientes que requieren acción del usuario
 
 1. **Probar Transmisiones Fase 2 en Render**:
    - Abrir `transmisiones.html` en producción → crear transmisión → botón "Transmitir video" → `broadcast.html`.
-   - Desde otro dispositivo: abrir `viewer.html?tx=<ID>`.
-   - Verificar que el stream WebRTC se establece correctamente.
-   - Si falla por NAT estricto → configurar TURN server en Metered.ca (free tier) y agregar `iceServers` en `broadcast.html` y `viewer.html`.
+   - Desde otro dispositivo: abrir `viewer.html?tx=<ID>` y verificar stream WebRTC.
+   - Si falla por NAT estricto → configurar TURN server (ver ítem 5 abajo).
 
-2. **Facturación Fase 2 — integración con finanzas**:
-   - En `finanzas.html`, agregar botón "Emitir documento" en la sección de estado de cuenta de equipo.
-   - Pasar movimientos seleccionados como ítems pre-llenados al modal de `facturacion.html`.
-   - Crear tabla `documentos_pagos` en `Facturacion.js` (asegurarEsquema).
+2. **Sello y firma facturación** — subir imagen real desde el navegador en `facturacion.html` y confirmar que el sello+firma aparecen correctamente en el PDF del recibo.
 
-### Prioridad MEDIA (sesión siguiente)
+3. **Datos reales de LT&C** — completar RUC, razón social y datos tributarios en `facturacion.html` logueado como admin (la prueba de implementación usó datos ficticios).
 
-3. **Facturación Fase 3 — PDF profesional**:
-   - Usar `jsPDF` (ya disponible en el proyecto) para generar PDF A4 desde el modal de detalle.
-   - Incluir: logo emisor (si tiene), datos SRI, receptor, tabla ítems, totales, QR.
+4. **Open Graph / WhatsApp preview** — confirmar con Facebook Sharing Debugger que `/liga/<slug>` muestra el preview correcto del organizador.
 
-4. **Validar portal público con campeonato real**:
-   - `Copa Ciudad de Loja → Abierta`: confirmar que la pestaña Playoff no muestra cruces con equipos eliminados.
-   - Revisar `Resultados` en jornadas parciales de otros organizadores.
-   - Validar que `Sin jornada` no aparece en ninguna vista pública de eliminatorias.
+5. **QA visual con login** — verificar `planilla.html` sección "Cambios" y `eventos.html` configuración de modo de sustitución (Puppeteer no tiene credenciales de organizador).
 
-5. **Prueba E2E en Render con datos reales**:
-   - `npm run e2e:ops-flow` para validar el flujo completo sin modificar datos.
+### Pendientes bloqueados por dependencia externa
 
-### Prioridad BAJA (roadmap)
+- **Facturación Fase 4 — SRI electrónico**: requiere certificado digital `.p12` del cliente/organizador. No iniciar sin él.
+- **PayPhone / PayPal webhooks**: requiere credenciales de producción de esas plataformas.
+- **TURN server** para redes con NAT simétrico: requiere decisión de costo (Metered.ca free tier — 10 GB/mes gratis; pago a partir de ahí).
 
-6. **TURN server** para redes con NAT simétrico (Metered.ca free tier — 10 GB/mes gratis).
-7. **Facturación Fase 4** — SRI electrónico (requiere certificado del cliente antes de empezar).
-8. **App móvil** — React Native / PWA publicable en Play Store / App Store.
-9. **Onboarding comercial de planes** — integración PayPhone / PayPal para activación automática.
+### Roadmap implementable (próximas sesiones)
+
+1. **Mejoras portal público** — animaciones, fichas de equipo/jugador más ricas, SEO avanzado.
+2. **Baloncesto QA** — prueba funcional completa: registro de partido, planilla, tabla de posiciones.
+3. **TURN server** — cuando se decida el proveedor, agregar `iceServers` en `broadcast.html` y `viewer.html`.
+4. **App móvil** — React Native / PWA publicable en Play Store / App Store.
+5. **Onboarding comercial** — integración PayPhone / PayPal para activación automática de planes.
 
 ---
 

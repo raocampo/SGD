@@ -608,28 +608,42 @@ async function listarMediaPublicaPorCampeonato(campeonatoId) {
   if (!campeonato) return null;
 
   const organizadorId = normalizarEntero(campeonato.creador_usuario_id);
-  const media = organizadorId
-    ? await OrganizadorPortal.listarMedia(organizadorId, {
-        tipo: "campeonato_gallery",
-        campeonato_id: campeonatoId,
-        activo: true,
-      })
-    : [];
+
+  const [gallery, resultados] = organizadorId
+    ? await Promise.all([
+        OrganizadorPortal.listarMedia(organizadorId, {
+          tipo: "campeonato_gallery",
+          campeonato_id: campeonatoId,
+          activo: true,
+        }),
+        OrganizadorPortal.listarMedia(organizadorId, {
+          tipo: "campeonato_resultado",
+          campeonato_id: campeonatoId,
+          activo: true,
+        }),
+      ])
+    : [[], []];
+
+  const serializar = (item) => ({
+    id: Number(item.id),
+    campeonato_id: normalizarEntero(item.campeonato_id),
+    tipo: item.tipo,
+    titulo: item.titulo || "",
+    descripcion: item.descripcion || "",
+    imagen_url: item.imagen_url || "",
+    orden: normalizarEntero(item.orden) || 1,
+    activo: item.activo === true,
+  });
+
+  const media = gallery.map(serializar);
+  const resultados_media = resultados.map(serializar);
 
   return {
     ok: true,
     campeonato: resumirCampeonato(campeonato),
-    total: media.length,
-    media: media.map((item) => ({
-      id: Number(item.id),
-      campeonato_id: normalizarEntero(item.campeonato_id),
-      tipo: item.tipo,
-      titulo: item.titulo || "",
-      descripcion: item.descripcion || "",
-      imagen_url: item.imagen_url || "",
-      orden: normalizarEntero(item.orden) || 1,
-      activo: item.activo === true,
-    })),
+    total: media.length + resultados_media.length,
+    media,
+    resultados_media,
   };
 }
 

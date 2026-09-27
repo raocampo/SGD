@@ -247,7 +247,7 @@
     const tipo = document.getElementById("op-media-tipo");
     const group = document.getElementById("op-media-campeonato-group");
     const select = document.getElementById("op-media-campeonato");
-    const requiere = ["campeonato_card", "campeonato_gallery"].includes(String(tipo?.value || ""));
+    const requiere = ["campeonato_card", "campeonato_gallery", "campeonato_resultado"].includes(String(tipo?.value || ""));
     if (group) group.style.display = requiere ? "" : "none";
     if (select) select.required = requiere;
   }
@@ -594,7 +594,7 @@
     formData.append("descripcion", String(document.getElementById("op-media-descripcion")?.value || "").trim());
     formData.append("orden", String(document.getElementById("op-media-orden")?.value || "1").trim());
     formData.append("activo", String(document.getElementById("op-media-activo")?.value || "true").trim());
-    if (["campeonato_card", "campeonato_gallery"].includes(tipo)) {
+    if (["campeonato_card", "campeonato_gallery", "campeonato_resultado"].includes(tipo)) {
       formData.append("campeonato_id", String(document.getElementById("op-media-campeonato")?.value || "").trim());
     }
     const imagen = document.getElementById("op-media-imagen")?.files?.[0];

@@ -531,6 +531,20 @@ function obtenerMetodoCompetenciaVisiblePortal(item = {}) {
   return String(item?.metodo_competencia || "grupos").trim().toLowerCase();
 }
 
+function renderSkeletonTarjetasTorneo(n = 4) {
+  return Array.from({ length: n }, () => `
+    <div class="portal-skeleton-card" aria-hidden="true">
+      <div class="sk-media"></div>
+      <div class="sk-body">
+        <div class="sk-line sk-title"></div>
+        <div class="sk-line sk-sub"></div>
+        <div class="sk-line sk-meta"></div>
+        <div class="sk-line sk-tags"></div>
+      </div>
+    </div>
+  `).join("");
+}
+
 function renderMetaCardPortal(torneo) {
   const categorias = normalizarCategoriasResumenPortal(torneo?.categorias_resumen);
   if (!categorias.length) return "";
@@ -1019,6 +1033,10 @@ function renderErrorPortal(mensaje) {
 async function portalCargarCampeonatos(listaForzada = null, options = {}) {
   const cont = document.getElementById("portal-lista-campeonatos");
   if (!cont) return;
+  if (!Array.isArray(listaForzada)) {
+    cont.className = "portal-campeonatos-grid";
+    cont.innerHTML = renderSkeletonTarjetasTorneo(4);
+  }
   try {
     let lista = Array.isArray(listaForzada) ? listaForzada : null;
     if (!lista) {
@@ -1938,6 +1956,40 @@ function renderLogoEquipoPortal(logoUrl, nombre) {
   return `<span class="portal-match-logo-placeholder">${escPortal(inicial)}</span>`;
 }
 
+function construirUrlCompartirPartido(partido = {}) {
+  const ctx = portalContextoActual || {};
+  const base = `${location.origin}${location.pathname.replace(/index\.html$/, "")}portal.html`;
+  const params = new URLSearchParams();
+  const campId = ctx.campeonatoId || partido.campeonato_id;
+  const evtId = ctx.eventoId || partido.evento_id;
+  if (campId) params.set("campeonato", campId);
+  if (evtId) params.set("evento", evtId);
+  return params.toString() ? `${base}?${params}` : base;
+}
+
+async function compartirPartidoPortal(btn) {
+  const art = btn.closest("article.portal-jornada-match");
+  const local = art?.dataset?.local || "";
+  const visitante = art?.dataset?.visitante || "";
+  const marcador = art?.dataset?.marcador || "";
+  const url = construirUrlCompartirPartido({ campeonato_id: art?.dataset?.campeonato, evento_id: art?.dataset?.evento });
+  const texto = marcador
+    ? `⚽ ${local} ${marcador} ${visitante}`
+    : `🏆 ${local} vs ${visitante}`;
+  const completo = `${texto}\n${url}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: texto, text: texto, url });
+      return;
+    }
+  } catch {}
+  await navigator.clipboard.writeText(completo).catch(() => {});
+  const prev = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-check"></i> Copiado';
+  btn.disabled = true;
+  setTimeout(() => { btn.innerHTML = prev; btn.disabled = false; }, 2000);
+}
+
 function renderPartidoJornadaPortal(partido = {}) {
   const fecha = formatearFechaPortal(partido.fecha_partido || partido.fecha || partido.fecha_programada);
   const hora = formatearHoraPortal(partido.hora_partido || partido.hora || partido.hora_programada);
@@ -1957,11 +2009,21 @@ function renderPartidoJornadaPortal(partido = {}) {
     ? `<div style="text-align:center;margin-top:.5rem;"><a href="${escPortal(transmision.url_publica)}" target="_blank" rel="noopener noreferrer" class="btn btn-danger" style="font-size:.82rem;padding:.25em .7em;">&#128250; Ver transmision</a></div>`
     : "";
 
+  const localNombre = partido.equipo_local_nombre || "";
+  const visitanteNombre = partido.equipo_visitante_nombre || "";
+  const btnShare = `<button type="button" class="portal-match-share-btn" onclick="compartirPartidoPortal(this)" aria-label="Compartir resultado"><i class="fas fa-share-alt"></i> Compartir</button>`;
+
   return `
-    <article class="portal-jornada-match">
+    <article class="portal-jornada-match"
+      data-local="${escPortal(localNombre)}"
+      data-visitante="${escPortal(visitanteNombre)}"
+      data-marcador="${escPortal(marcador)}"
+      data-campeonato="${escPortal(String(partido.campeonato_id || ""))}"
+      data-evento="${escPortal(String(partido.evento_id || ""))}">
       <div class="portal-jornada-match-head">
         <span class="portal-jornada-match-status estado-${estadoClass}">${escPortal(estado)}</span>${badgeEnVivo}
         ${meta ? `<span class="portal-jornada-match-meta">${escPortal(meta)}</span>` : ""}
+        ${btnShare}
       </div>
       <div class="partido-publico">
         <div class="equipo-col equipo-local">
@@ -2906,6 +2968,10 @@ function renderDetalleCampeonatoPortal(campeonato, eventosData = []) {
           .join("")}
       </div>
       ${eventosData.map((item, index) => renderCategoriaPanelPortal(item, index)).join("")}
+      <section id="portal-detail-resultados-imgs-${campeonato?.id}" class="portal-results-gallery" hidden>
+        <div class="portal-results-gallery-title"><i class="fas fa-trophy"></i> Imágenes de resultados</div>
+        <div id="portal-detail-resultados-grid-${campeonato?.id}" class="portal-results-gallery-grid"></div>
+      </section>
       <section id="portal-detail-galeria-${campeonato?.id}" class="ltc-gallery-section portal-detail-gallery" hidden>
         <div class="ltc-section-title">
           <h2>GALERÍA DEL TORNEO</h2>
@@ -2940,6 +3006,10 @@ async function cargarMediaCampeonatoPublica(campeonatoId, campeonatoNombre = "")
       : "Imágenes públicas del campeonato.";
   }
 
+  const sectionResultados = document.getElementById(`portal-detail-resultados-imgs-${campeonatoId}`);
+  const gridResultados = document.getElementById(`portal-detail-resultados-grid-${campeonatoId}`);
+  if (sectionResultados) sectionResultados.hidden = true;
+
   try {
     const data = window.PortalPublicAPI
       ? await window.PortalPublicAPI.listarMediaPorCampeonato(campeonatoId)
@@ -2950,6 +3020,13 @@ async function cargarMediaCampeonatoPublica(campeonatoId, campeonatoNombre = "")
           return payload;
         })();
     const media = Array.isArray(data?.media) ? data.media : [];
+    const resultadosMedia = Array.isArray(data?.resultados_media) ? data.resultados_media : [];
+
+    if (resultadosMedia.length && sectionResultados && gridResultados) {
+      gridResultados.innerHTML = renderResultadosImgsPortal(resultadosMedia);
+      sectionResultados.hidden = false;
+    }
+
     if (!media.length) return;
     grid.innerHTML = renderGaleriaPortalItems(media, "No hay imágenes públicas del campeonato.");
     section.hidden = false;
@@ -2994,6 +3071,43 @@ function renderTrackAuspiciantesPortal(auspiciantes = [], options = {}) {
       `
     )
     .join("");
+}
+
+function renderResultadosImgsPortal(items = []) {
+  const rows = Array.isArray(items) ? items.filter((i) => i?.imagen_url) : [];
+  if (!rows.length) return "";
+  return rows.map((item) => {
+    const src = escPortal(normalizarMediaPortal(item.imagen_url));
+    const titulo = escPortal(item.titulo || "Resultados");
+    return `
+      <div class="portal-result-img-card" role="button" tabindex="0"
+           onclick="abrirLightboxResultado('${src}', '${titulo}')"
+           onkeydown="if(event.key==='Enter')abrirLightboxResultado('${src}', '${titulo}')">
+        <img src="${src}" alt="${titulo}" loading="lazy" />
+        ${item.titulo ? `<div class="portal-result-img-label">${titulo}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+}
+
+function abrirLightboxResultado(src, alt) {
+  const prev = document.getElementById("portal-result-lightbox");
+  if (prev) prev.remove();
+  const lb = document.createElement("div");
+  lb.id = "portal-result-lightbox";
+  lb.className = "portal-result-lightbox";
+  lb.setAttribute("role", "dialog");
+  lb.setAttribute("aria-modal", "true");
+  lb.setAttribute("aria-label", alt || "Imagen de resultados");
+  lb.innerHTML = `
+    <button class="portal-result-lightbox-close" onclick="this.closest('#portal-result-lightbox').remove()" aria-label="Cerrar">&#215;</button>
+    <img src="${src}" alt="${alt || "Imagen de resultados"}" />
+  `;
+  lb.addEventListener("click", (e) => { if (e.target === lb) lb.remove(); });
+  document.body.appendChild(lb);
+  lb.focus();
+  const onKey = (e) => { if (e.key === "Escape") { lb.remove(); document.removeEventListener("keydown", onKey); } };
+  document.addEventListener("keydown", onKey);
 }
 
 function renderGaleriaPortalItems(items = [], emptyMessage = "No hay imágenes públicas disponibles.") {

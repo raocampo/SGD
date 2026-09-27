@@ -212,9 +212,12 @@
         <!-- Panel: Ficha -->
         <div id="panel-ficha" class="jp-panel active">
           <div class="ltc-section-card">
-            <table class="jp-ficha-table" id="jp-ficha-table">
+            <table class="jp-ficha-table portal-skeleton-table" id="jp-ficha-table">
               <tbody>
-                <tr><td colspan="2" class="jp-empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+                <tr><td><div class="sk-cell" style="width:80px"></div></td><td><div class="sk-cell" style="width:140px"></div></td></tr>
+                <tr><td><div class="sk-cell" style="width:70px"></div></td><td><div class="sk-cell" style="width:110px"></div></td></tr>
+                <tr><td><div class="sk-cell" style="width:90px"></div></td><td><div class="sk-cell" style="width:160px"></div></td></tr>
+                <tr><td><div class="sk-cell" style="width:75px"></div></td><td><div class="sk-cell" style="width:100px"></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -227,7 +230,11 @@
             <span>Se muestran los partidos publicados de la categoría del jugador, con goles y tarjetas cuando existan registros.</span>
           </div>
           <div class="ltc-section-card" id="jp-partidos-cont">
-            <p class="jp-empty"><i class="fas fa-spinner fa-spin"></i> Cargando historial...</p>
+            <table class="portal-skeleton-table" aria-hidden="true"><tbody>
+              <tr><td><div class="sk-cell" style="width:90px"></div></td><td><div class="sk-cell" style="width:55px"></div></td><td><div class="sk-cell" style="width:40px"></div></td><td><div class="sk-cell" style="width:55px"></div></td><td><div class="sk-cell" style="width:90px"></div></td></tr>
+              <tr><td><div class="sk-cell" style="width:80px"></div></td><td><div class="sk-cell" style="width:60px"></div></td><td><div class="sk-cell" style="width:40px"></div></td><td><div class="sk-cell" style="width:60px"></div></td><td><div class="sk-cell" style="width:85px"></div></td></tr>
+              <tr><td><div class="sk-cell" style="width:100px"></div></td><td><div class="sk-cell" style="width:55px"></div></td><td><div class="sk-cell" style="width:40px"></div></td><td><div class="sk-cell" style="width:50px"></div></td><td><div class="sk-cell" style="width:95px"></div></td></tr>
+            </tbody></table>
           </div>
         </div>
 

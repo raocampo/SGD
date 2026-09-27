@@ -68,7 +68,8 @@ class OrganizadorPortal {
           'landing_hero',
           'landing_gallery',
           'campeonato_card',
-          'campeonato_gallery'
+          'campeonato_gallery',
+          'campeonato_resultado'
         )),
         titulo VARCHAR(180),
         descripcion TEXT,
@@ -88,6 +89,22 @@ class OrganizadorPortal {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_organizador_portal_media_campeonato
       ON organizador_portal_media(campeonato_id, tipo, activo, orden, id)
+    `);
+
+    // Ampliar CHECK constraint para incluir 'campeonato_resultado'
+    await client.query(`
+      DO $$
+      BEGIN
+        ALTER TABLE organizador_portal_media
+          DROP CONSTRAINT IF EXISTS organizador_portal_media_tipo_check;
+        ALTER TABLE organizador_portal_media
+          ADD CONSTRAINT organizador_portal_media_tipo_check
+          CHECK (tipo IN (
+            'landing_hero','landing_gallery','campeonato_card',
+            'campeonato_gallery','campeonato_resultado'
+          ));
+      EXCEPTION WHEN OTHERS THEN NULL;
+      END $$
     `);
 
     await client.query(`

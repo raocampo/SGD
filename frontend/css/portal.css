@@ -6089,3 +6089,228 @@ body.ltc-home-page .ltc-home-sponsors-track {
     align-items: flex-start;
   }
 }
+
+/* ============================================================
+   SKELETON LOADERS
+   ============================================================ */
+@keyframes portal-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.portal-skeleton {
+  background: linear-gradient(90deg, #e8edf2 25%, #d8e0e8 50%, #e8edf2 75%);
+  background-size: 800px 100%;
+  animation: portal-shimmer 1.4s infinite linear;
+  border-radius: 8px;
+}
+
+/* --- Tarjeta de torneo skeleton --- */
+.portal-skeleton-card {
+  background: #fff;
+  border: 1px solid #d8decf;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(33, 58, 88, 0.07);
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-skeleton-card .sk-media {
+  width: 100%;
+  height: 180px;
+  background: linear-gradient(90deg, #e8edf2 25%, #d8e0e8 50%, #e8edf2 75%);
+  background-size: 800px 100%;
+  animation: portal-shimmer 1.4s infinite linear;
+}
+
+.portal-skeleton-card .sk-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.portal-skeleton-card .sk-line {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e8edf2 25%, #d8e0e8 50%, #e8edf2 75%);
+  background-size: 800px 100%;
+  animation: portal-shimmer 1.4s infinite linear;
+}
+
+.portal-skeleton-card .sk-line.sk-title  { height: 20px; width: 70%; }
+.portal-skeleton-card .sk-line.sk-sub    { width: 50%; }
+.portal-skeleton-card .sk-line.sk-meta   { width: 40%; }
+.portal-skeleton-card .sk-line.sk-tags   { width: 85%; height: 12px; }
+
+/* --- Header de ficha pública (equipo/jugador) skeleton --- */
+.portal-skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.5rem 0;
+}
+
+.portal-skeleton-header .sk-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #e8edf2 25%, #d8e0e8 50%, #e8edf2 75%);
+  background-size: 800px 100%;
+  animation: portal-shimmer 1.4s infinite linear;
+}
+
+.portal-skeleton-header .sk-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* --- Tabla skeleton --- */
+.portal-skeleton-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.portal-skeleton-table td {
+  padding: 0.55rem 0.4rem;
+}
+
+.portal-skeleton-table .sk-cell {
+  height: 12px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #e8edf2 25%, #d8e0e8 50%, #e8edf2 75%);
+  background-size: 800px 100%;
+  animation: portal-shimmer 1.4s infinite linear;
+}
+
+/* ============================================================
+   SHARE BUTTON en cards de partidos
+   ============================================================ */
+.portal-match-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid #c9d4dc;
+  border-radius: 20px;
+  background: transparent;
+  color: #5a7080;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  line-height: 1;
+}
+
+.portal-match-share-btn:hover {
+  background: #f0f4f8;
+  color: #25a244;
+  border-color: #25a244;
+}
+
+.portal-match-share-btn i {
+  font-size: 0.7rem;
+}
+
+/* ============================================================
+   GALERÍA DE RESULTADOS en portal público
+   ============================================================ */
+.portal-results-gallery {
+  margin-top: 1.5rem;
+}
+
+.portal-results-gallery-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #64748b;
+  margin-bottom: 0.85rem;
+}
+
+.portal-results-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.portal-result-img-card {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0d1a29;
+  aspect-ratio: 4/3;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.portal-result-img-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0,0,0,.22);
+}
+
+.portal-result-img-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.portal-result-img-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(0deg, rgba(0,0,0,.7) 0%, transparent 100%);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* lightbox sencillo para result images */
+.portal-result-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: portal-lightbox-in 0.18s ease;
+}
+
+@keyframes portal-lightbox-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.portal-result-lightbox img {
+  max-width: 94vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.5);
+}
+
+.portal-result-lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  font-size: 1.6rem;
+  color: #fff;
+  cursor: pointer;
+  line-height: 1;
+  background: none;
+  border: none;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.portal-result-lightbox-close:hover { opacity: 1; }
