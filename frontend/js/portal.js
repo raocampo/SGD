@@ -1326,14 +1326,51 @@ function aplicarModoLandingOrganizador(payload) {
 
   const resultadosSection = document.getElementById("portal-resultados-recientes");
   const resultadosGrid = document.getElementById("portal-resultados-recientes-grid");
+  const resultadosFiltros = document.getElementById("portal-resultados-filtros");
   if (resultadosSection && resultadosGrid) {
     const recientes = Array.isArray(payload?.resultados_recientes) ? payload.resultados_recientes : [];
+    const campeonatosEnCurso = Array.isArray(payload?.campeonatos_en_curso) ? payload.campeonatos_en_curso : [];
+    const campeonatoActivoId = payload?.campeonato_activo_id || null;
     if (recientes.length) {
+      if (resultadosFiltros && campeonatosEnCurso.length > 1) {
+        resultadosFiltros.innerHTML = campeonatosEnCurso
+          .map(
+            (c) => `
+            <button class="portal-resultado-filtro-btn${c.id === campeonatoActivoId ? " active" : ""}"
+                    data-campeonato-id="${c.id}"
+                    onclick="filtrarResultadosRecientes(${c.id}, this)">
+              ${escPortal(c.nombre)}
+            </button>
+          `
+          )
+          .join("");
+        resultadosFiltros.style.display = "";
+      } else if (resultadosFiltros) {
+        resultadosFiltros.style.display = "none";
+      }
       resultadosGrid.innerHTML = renderResultadosRecientesPortal(recientes);
       resultadosSection.style.display = "";
     } else {
       resultadosSection.style.display = "none";
     }
+  }
+}
+
+async function filtrarResultadosRecientes(campeonatoId, btnEl) {
+  const grid = document.getElementById("portal-resultados-recientes-grid");
+  if (!grid) return;
+  document.querySelectorAll(".portal-resultado-filtro-btn").forEach((b) => b.classList.remove("active"));
+  if (btnEl) btnEl.classList.add("active");
+  grid.innerHTML = '<p class="empty-msg" style="padding:2rem 0">Cargando...</p>';
+  try {
+    const resp = await fetch(`${API}/public/campeonatos/${campeonatoId}/resultados-recientes`);
+    const data = await resp.json().catch(() => ({}));
+    const resultados = Array.isArray(data?.resultados) ? data.resultados : [];
+    grid.innerHTML = resultados.length
+      ? renderResultadosRecientesPortal(resultados)
+      : '<p class="empty-msg" style="padding:2rem 0">No hay partidos finalizados en este campeonato.</p>';
+  } catch {
+    grid.innerHTML = '<p class="empty-msg" style="padding:2rem 0">No se pudo cargar los resultados.</p>';
   }
 }
 

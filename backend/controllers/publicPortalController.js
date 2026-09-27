@@ -115,6 +115,41 @@ const publicPortalController = {
     }
   },
 
+  async listarResultadosRecientesPorCampeonato(req, res) {
+    try {
+      const campeonatoId = Number.parseInt(req.params.campeonato_id, 10);
+      if (!Number.isFinite(campeonatoId)) {
+        return res.status(400).json({ error: "campeonato_id invalido" });
+      }
+      const pool = require("../config/database");
+      const r = await pool.query(
+        `SELECT
+           p.id, p.fecha_partido, p.estado,
+           p.resultado_local, p.resultado_visitante,
+           el.nombre AS equipo_local_nombre, el.logo_url AS equipo_local_logo_url,
+           ev2.nombre AS equipo_visitante_nombre, ev2.logo_url AS equipo_visitante_logo_url,
+           e.nombre AS evento_nombre, e.id AS evento_id,
+           c.id AS campeonato_id, c.nombre AS campeonato_nombre
+         FROM partidos p
+         JOIN campeonatos c ON c.id = p.campeonato_id
+         LEFT JOIN equipos el ON el.id = p.equipo_local_id
+         LEFT JOIN equipos ev2 ON ev2.id = p.equipo_visitante_id
+         LEFT JOIN eventos e ON e.id = p.evento_id
+         WHERE p.campeonato_id = $1
+           AND p.estado IN ('finalizado','no_presentaron_ambos','no_presentaron_local','no_presentaron_visitante')
+           AND p.resultado_local IS NOT NULL
+           AND p.resultado_visitante IS NOT NULL
+         ORDER BY p.fecha_partido DESC NULLS LAST, p.id DESC
+         LIMIT 8`,
+        [campeonatoId]
+      );
+      return res.json({ ok: true, resultados: r.rows });
+    } catch (error) {
+      console.error("Error listando resultados recientes por campeonato:", error);
+      return res.status(500).json({ error: "Error listando resultados recientes", detalle: error.message });
+    }
+  },
+
   async obtenerPartidosPorEvento(req, res) {
     try {
       const eventoId = Number.parseInt(req.params.evento_id, 10);

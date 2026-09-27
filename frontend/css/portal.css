@@ -6449,3 +6449,35 @@ body.ltc-home-page .ltc-home-sponsors-track {
   color: #999;
   text-align: center;
 }
+
+/* ===== Filtros de campeonato en sección resultados ===== */
+.portal-resultados-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1.25rem;
+}
+
+.portal-resultado-filtro-btn {
+  padding: .4rem 1rem;
+  border-radius: 20px;
+  border: 2px solid #d0d0d0;
+  background: #fff;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #444;
+  transition: border-color .15s, background .15s, color .15s;
+}
+
+.portal-resultado-filtro-btn:hover {
+  border-color: #b7e853;
+  background: #f4fce6;
+  color: #2a5000;
+}
+
+.portal-resultado-filtro-btn.active {
+  border-color: #b7e853;
+  background: #b7e853;
+  color: #1a2e00;
+}

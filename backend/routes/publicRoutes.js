@@ -20,6 +20,10 @@ router.get(
   "/campeonatos/:campeonato_id/media",
   publicPortalController.listarMediaPorCampeonato
 );
+router.get(
+  "/campeonatos/:campeonato_id/resultados-recientes",
+  publicPortalController.listarResultadosRecientesPorCampeonato
+);
 router.get("/eventos/:evento_id/partidos", publicPortalController.obtenerPartidosPorEvento);
 router.get("/eventos/:evento_id/equipos", publicPortalController.listarEquiposPorEvento);
 router.get("/equipos/:equipo_id", publicPortalController.obtenerEquipo);

@@ -298,7 +298,7 @@ async function construirLandingOrganizador(organizadorId) {
       [organizadorId]
     );
 
-    const [portalConfig, auspiciantes, landingGallery, resultadosRecientesR] = await Promise.all([
+    const [portalConfig, auspiciantes, landingGallery, resultadosRecientesR, campeonatosEnCursoR] = await Promise.all([
       OrganizadorPortal.obtenerConfig(organizadorId, pool),
       OrganizadorPortal.listarAuspiciantesConFallback(organizadorId, pool),
       OrganizadorPortal.listarMedia(
@@ -320,11 +320,25 @@ async function construirLandingOrganizador(organizadorId) {
          LEFT JOIN equipos ev2 ON ev2.id = p.equipo_visitante_id
          LEFT JOIN eventos e ON e.id = p.evento_id
          WHERE c.creador_usuario_id = $1
+           AND c.id = COALESCE(
+             (SELECT id FROM campeonatos
+              WHERE creador_usuario_id = $1 AND estado = 'en_curso'
+              ORDER BY fecha_inicio DESC NULLS LAST, id DESC LIMIT 1),
+             (SELECT id FROM campeonatos
+              WHERE creador_usuario_id = $1
+              ORDER BY fecha_inicio DESC NULLS LAST, id DESC LIMIT 1)
+           )
            AND p.estado IN ('finalizado','no_presentaron_ambos','no_presentaron_local','no_presentaron_visitante')
            AND p.resultado_local IS NOT NULL
            AND p.resultado_visitante IS NOT NULL
          ORDER BY p.fecha_partido DESC NULLS LAST, p.id DESC
          LIMIT 8`,
+        [organizadorId]
+      ),
+      pool.query(
+        `SELECT id, nombre FROM campeonatos
+         WHERE creador_usuario_id = $1 AND estado = 'en_curso'
+         ORDER BY fecha_inicio DESC NULLS LAST, id DESC`,
         [organizadorId]
       ),
     ]);
@@ -367,6 +381,8 @@ async function construirLandingOrganizador(organizadorId) {
         auspiciantes,
         landing_gallery: landingGallery,
         resultados_recientes: resultadosRecientesR.rows || [],
+        campeonato_activo_id: resultadosRecientesR.rows[0]?.campeonato_id || null,
+        campeonatos_en_curso: campeonatosEnCursoR.rows || [],
         campeonatos,
       },
     };
