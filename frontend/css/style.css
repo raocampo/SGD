@@ -6594,6 +6594,25 @@ body.page-finanzas {
   color: #7f8c8d;
 }
 
+.page-finanzas .fin-rubro-fila {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+
+.page-finanzas .fin-rubro-lbl {
+  color: #64748b;
+  font-weight: 500;
+  min-width: 3.4rem;
+}
+
+.page-finanzas .fin-rubro-cero {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
 .page-finanzas .fin-resumen-equipos-fila-btn {
   background: none;
   border: none;

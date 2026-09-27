@@ -1843,7 +1843,10 @@ async function imprimirReporteResumenEquipos() {
           <td>${idx + 1}</td>
           <td>${escaparHtml(x.equipo_nombre || "-")}</td>
           <td>${escaparHtml(x.campeonato_nombre || "-")}</td>
-          <td class="num ${x.inscripcion.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.inscripcion.saldo)} (${escaparHtml(x.inscripcion.estado)})</td>
+          <td class="num">
+            <div>Pagado: <span class="${x.inscripcion.abonos > 0 ? "ok" : ""}">${formatoMoneda(x.inscripcion.abonos || 0)}</span></div>
+            <div>Debe: <span class="${x.inscripcion.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.inscripcion.saldo)}</span></div>
+          </td>
           <td class="num ${x.arbitraje.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.arbitraje.saldo)}</td>
           <td class="num ${x.tarjetas_amarillas.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.tarjetas_amarillas.saldo)}</td>
           <td class="num ${x.tarjetas_rojas.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(x.tarjetas_rojas.saldo)}</td>
@@ -2317,9 +2320,22 @@ function renderBadgeEstadoFinanzas(estado) {
 }
 
 function renderCeldaRubroFinanzas(rubro) {
-  if (!rubro) return "-";
-  const saldoTexto = rubro.saldo > 0 ? formatoMoneda(rubro.saldo) : formatoMoneda(0);
-  return `${renderBadgeEstadoFinanzas(rubro.estado)}<br><span class="${rubro.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${saldoTexto}</span>`;
+  if (!rubro) return `<span class="fin-badge-estado fin-badge-sin_cargo">Sin cargo</span>`;
+  if ((rubro.cargos ?? 0) === 0 || rubro.estado === "sin_cargo") {
+    return `<span class="fin-badge-estado fin-badge-sin_cargo">Sin cargo</span>`;
+  }
+  const pagado = Number(rubro.abonos || 0);
+  const saldo = Number(rubro.saldo || 0);
+  return `
+    <div class="fin-rubro-fila">
+      <span class="fin-rubro-lbl">Pagado</span>
+      <span class="${pagado > 0 ? "fin-saldo-ok" : "fin-rubro-cero"}">${formatoMoneda(pagado)}</span>
+    </div>
+    <div class="fin-rubro-fila">
+      <span class="fin-rubro-lbl">Debe</span>
+      <span class="${saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(saldo)}</span>
+    </div>
+  `;
 }
 
 function renderTablaResumenEquipos(equipos = []) {
