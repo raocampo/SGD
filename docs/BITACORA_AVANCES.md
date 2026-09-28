@@ -1,3 +1,116 @@
+## 2026-09-27 - Portal público (galería/resultados/compartir) + batch de 6 fixes en Finanzas
+
+> Commiteado y pusheado por OTRA sesión ("Claude Sonnet 4.6") entre las
+> 15:27 y las 19:53 del 27-sep — 10 commits (`b98ea3f`..`279465f`), sin
+> participación de esta sesión. Documentado retroactivamente el 28-sep
+> tras `git pull`, porque ninguno de los 10 trajo su propia entrada de
+> bitácora (a diferencia del trabajo de "Edición de grupos post-sorteo"
+> del 25-sep, que sí quedó documentado). Reconstruido a partir de los
+> mensajes de commit — el detalle línea por línea puede no ser exacto,
+> pero el resumen técnico sí.
+
+### Portal público
+
+- `b98ea3f` **Skeleton loaders, compartir en partidos, imagen de
+  resultados**: `renderSkeletonTarjetasTorneo` muestra placeholders
+  animados (shimmer) mientras cargan los torneos; `compartirPartidoPortal`
+  añade botón "Compartir" en cada card de partido (`navigator.share` con
+  fallback a portapapeles); `renderResultadosImgsPortal` +
+  `abrirLightboxResultado` muestran imágenes de resultado con lightbox.
+  `equipo-publico.html`/`jugador-publico.html` suman tablas skeleton en
+  los paneles que cargan asíncrono. Nuevo tipo `campeonato_resultado` en
+  el selector de multimedia de `organizador-portal.html` — el CHECK
+  constraint de `OrganizadorPortal` se amplía con un bloque `DO $$...$$`
+  que se autorepara en entornos ya existentes. Migración `072_organizador_
+  media_resultado.sql`. `ESTADO_IMPLEMENTACION_SGD.md` actualizado con el
+  estado real de todos los módulos hasta esa sesión (sección
+  "CONTINUACIÓN — Próximos pasos", auditada 2026-09-27).
+- `aee370c` **Galería agrupada por tema + últimos resultados en landing**:
+  `renderGaleriaPortalItems` agrupa fotos por título (un heading por
+  tema, grid de imágenes con lightbox, en vez de una sola grilla plana);
+  nueva sección `#portal-resultados-recientes` en `index.html`;
+  `authController.construirLandingOrganizador` suma un query de los
+  últimos 8 partidos finalizados como `resultados_recientes` en el
+  payload de la landing.
+- `0cf6b0f` **Filtro por campeonato en Últimos partidos**: la sección de
+  resultados recientes se mueve de posición (ahora entre los torneos y
+  "Bienvenida a equipos"); por defecto muestra el campeonato `en_curso`
+  más reciente del organizador; si hay más de uno `en_curso` aparecen
+  tabs de filtro que hacen fetch a `GET /public/campeonatos/:id/
+  resultados-recientes` (ruta nueva); la sección se oculta por completo
+  si no hay partidos finalizados.
+
+### Finanzas — batch de 6 fixes
+
+- `b1fa1fc` **Pagado/Debe en vez de badge+saldo**: en "Resumen por
+  Equipo" cada rubro (inscripción, arbitraje, TA, TR) ahora muestra dos
+  líneas claras — "Pagado $X" (verde si >0) y "Debe $Y" (rojo si >0) —
+  en vez de un badge de estado + saldo ambiguo. Mismo tratamiento en el
+  reporte impreso.
+- `73c5a6b` **Movimientos duplicados por LEFT JOIN**: `listarMovimientos`
+  y `obtenerEstadoCuentaEquipo` multiplicaban filas cuando un movimiento
+  tenía más de un documento vinculado en `documentos_pagos` (`LEFT JOIN`
+  plano). Corregido con `LEFT JOIN LATERAL ... ORDER BY dp2.id DESC LIMIT 1`
+  para traer solo el documento más reciente.
+- `99e3025` **Saldo negativo en TA/TR** (⚠️ ver nota de `69fde31` abajo,
+  que revirtió la mitad de este fix): causa raíz — al rectificar una
+  planilla (bajar tarjetas), el cargo bajaba pero `pago_ta_local`/
+  `pago_tr_local` quedaba con el valor anterior, generando abono > cargo
+  y saldo negativo. El commit agregó dos cosas: (a) capear el pago al
+  cargo máximo en `Partido.js` antes de insertar en
+  `finanzas_movimientos`, y (b) mostrar `Math.max(0, saldo)` en el
+  frontend (tabla y reporte impreso).
+- `a15b2a8` **Columna inexistente en gastos operativos**:
+  `listarGastos`/`obtenerGastoPorId` referenciaban
+  `p.numero_partido_visible`, columna que no existe en `partidos` — el
+  nombre real es `numero_campeonato`. Corregido en `Finanza.js`.
+- `69fde31` **Revert parcial de `99e3025`**: el cap en `Partido.js`
+  causaba OTRA inconsistencia — `partido_planillas.pago_ta_local`
+  guardaba el valor que el usuario tecleaba en el formulario, pero
+  `finanzas_movimientos` guardaba el valor ya capeado (menor), así que
+  el usuario veía "pago=4" en la planilla y "$2" en finanzas. Se revirtió
+  el cap del backend; **la solución final que quedó viva es solo el
+  `Math.max(0, saldo)` del frontend** — el saldo nunca se muestra
+  negativo, pero ya no hay ningún tope silencioso del lado del servidor.
+  Consecuencia práctica: si un pago de planilla quedó mal ingresado, la
+  corrección es que el usuario reingrese el valor correcto en la
+  planilla — no hace falta ninguna migración de datos históricos (el
+  texto del commit `99e3025` sobre "volver a guardar la planilla de
+  CONDIMENSA" quedó superado por este revert, no es una acción pendiente
+  real — ver [[project_pending]]).
+- `e1c5280` **Egresos y utilidad**: 2 KPI cards nuevos en el dashboard
+  (Egresos del mes, Utilidad del mes) + panel "Egresos por categoría"
+  bajo el gráfico de ingresos (`portal-admin.html` +
+  `dashboard-organizador.js`, con queries nuevas en
+  `GET /finanzas/dashboard`). En "Resumen Ejecutivo" de `finanzas.js`,
+  `calcularResumenEjecutivoPorCampeonato` ahora recibe gastos como
+  segundo argumento y la tabla suma columnas Egresos/Utilidad (ingresos
+  recibidos − gastos). En "Movimientos Financieros",
+  `buscarMovimientosFinanzas` mezcla los gastos operativos en la misma
+  lista, con badge "Egreso" en rojo y concepto legible (Alquiler cancha,
+  Arbitraje, etc.).
+- `279465f` **Fechas UTC+1 + mejoras Estado de Cuenta**: el insert de
+  planilla (`Partido.js`) y el cargo de inscripción (`Finanza.js`) usaban
+  `CURRENT_DATE` del servidor — como Railway corre en UTC, registrar de
+  noche (hora Ecuador) guardaba la fecha de "mañana". Corregido a usar la
+  fecha con el offset de Ecuador explícito. "Estado de Cuenta" (resumen
+  interactivo y reporte impreso) ahora muestra también la columna
+  "Cargo" (antes solo Pago y Saldo) para arbitraje/TA/TR, para que se
+  entienda de dónde sale el saldo; filas anuladas con tachado + opacidad;
+  concepto con etiqueta legible ("multa" → "Tarjeta / Multa"); abonos en
+  verde; descripción visible bajo el concepto.
+
+### Verificación
+
+Ninguno de los 10 commits documenta explícitamente qué verificación
+corrió antes de pushear (no hay notas de `node --check`, smoke test, ni
+pruebas contra producción en los mensajes). **Ninguno de estos cambios
+fue confirmado visualmente todavía** — ni por Puppeteer (esta sesión no
+lo intentó hasta ahora) ni por el usuario. Ver [[project_pending]] para
+el detalle de qué falta confirmar.
+
+---
+
 ## 2026-09-26 - Facturación: sello y firma por organizador, embebidos en el recibo
 
 > Commiteado y pusheado (`43d6e56`).
