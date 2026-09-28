@@ -76,6 +76,16 @@
     }
   }
 
+  const CATEGORIA_LABEL = {
+    arbitraje: "Arbitraje",
+    alquiler_cancha: "Alquiler cancha",
+    tizado: "Tizado",
+    delegado: "Delegado",
+    transporte: "Transporte",
+    comida: "Comida",
+    otro: "Otro",
+  };
+
   function renderChart(porConcepto) {
     const canvas = document.getElementById("dash-chart-concepto");
     if (!canvas) return;
@@ -140,6 +150,30 @@
         },
       },
     });
+  }
+
+  function renderEgresosPorCategoria(porCategoria) {
+    const cont = document.getElementById("dash-egresos-categorias");
+    if (!cont) return;
+    const cats = (porCategoria || []).filter((r) => Number(r.total) > 0);
+    if (!cats.length) {
+      cont.innerHTML = '<p class="dash-empty-msg">Sin egresos registrados este mes.</p>';
+      return;
+    }
+    cont.innerHTML = `
+      <div class="dash-egresos-lista">
+        ${cats.map((r) => `
+          <div class="dash-egreso-item">
+            <span class="dash-egreso-cat">${escaparHtml(CATEGORIA_LABEL[r.categoria] || r.categoria)}</span>
+            <span class="dash-egreso-monto">$${fmt(r.total)}</span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function escaparHtml(str) {
+    return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
   function renderEncuentros(lista) {
@@ -209,9 +243,18 @@
       setKpi("dash-kpi-equipos", fmtNum(data.kpis?.equipos_inscritos));
       setKpi("dash-kpi-jugadores", fmtNum(data.kpis?.jugadores_registrados));
       setKpi("dash-kpi-ingresos", `$${fmt(data.kpis?.ingresos_mes)}`);
+      setKpi("dash-kpi-egresos", `$${fmt(data.kpis?.egresos_mes)}`);
+
+      const utilidad = Number(data.kpis?.utilidad_mes || 0);
+      const elUtil = document.getElementById("dash-kpi-utilidad");
+      if (elUtil) {
+        elUtil.textContent = `${utilidad < 0 ? "-" : ""}$${fmt(Math.abs(utilidad))}`;
+        elUtil.style.color = utilidad < 0 ? "#ef4444" : "";
+      }
 
       renderPlanBadge(data.plan);
       renderChart(data.ingresos_por_concepto);
+      renderEgresosPorCategoria(data.egresos_por_categoria);
       renderEncuentros(data.proximos_encuentros);
       renderMorosos(data.morosos);
 

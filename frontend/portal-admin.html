@@ -52,12 +52,17 @@
     /* ── KPIs ── */
     .dash-kpis {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 12px;
       margin-bottom: 16px;
     }
-    @media (max-width: 900px) { .dash-kpis { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 1100px) { .dash-kpis { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px) { .dash-kpis { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 480px) { .dash-kpis { grid-template-columns: 1fr; } }
+    .dash-egresos-lista { display: flex; flex-direction: column; gap: .35rem; margin-top: .5rem; }
+    .dash-egreso-item { display: flex; justify-content: space-between; font-size: .85rem; padding: .2rem 0; border-bottom: 1px solid #f1f5f9; }
+    .dash-egreso-cat { color: #64748b; }
+    .dash-egreso-monto { font-weight: 600; color: #ef4444; }
 
     .dash-kpi-card {
       background: #fff;
@@ -268,6 +273,20 @@
                 <div class="dash-kpi-lbl">Ingresos este mes</div>
               </div>
             </div>
+            <div class="dash-kpi-card">
+              <div class="dash-kpi-icon" style="background:#fee2e2"><i class="fas fa-receipt" style="color:#ef4444"></i></div>
+              <div class="dash-kpi-body">
+                <div class="dash-kpi-val" id="dash-kpi-egresos">—</div>
+                <div class="dash-kpi-lbl">Egresos este mes</div>
+              </div>
+            </div>
+            <div class="dash-kpi-card">
+              <div class="dash-kpi-icon" style="background:#d1fae5"><i class="fas fa-chart-line" style="color:#059669"></i></div>
+              <div class="dash-kpi-body">
+                <div class="dash-kpi-val" id="dash-kpi-utilidad">—</div>
+                <div class="dash-kpi-lbl">Utilidad este mes</div>
+              </div>
+            </div>
           </div>
 
           <!-- Tabs -->
@@ -291,6 +310,8 @@
                 <div class="dash-chart-wrap">
                   <canvas id="dash-chart-concepto"></canvas>
                 </div>
+                <div class="dash-panel-title" style="margin-top:1rem;"><i class="fas fa-receipt" style="color:#ef4444"></i> Egresos por categoría (mes actual)</div>
+                <div id="dash-egresos-categorias"></div>
               </div>
               <div class="dash-panel">
                 <div class="dash-panel-title"><i class="fas fa-calendar-check"></i> Próximos encuentros (7 días)</div>

@@ -385,6 +385,26 @@ const finanzaController = {
         campParams
       );
 
+      // Gastos operativos mes actual
+      const rGastosMes = await pool.query(
+        `SELECT COALESCE(SUM(monto), 0) AS total
+         FROM gastos_operativos
+         WHERE fecha_gasto >= DATE_TRUNC('month', CURRENT_DATE)
+           AND ${esAdmin ? "1=1" : campeonatoIds.length === 0 ? "campeonato_id = -1" : "campeonato_id = ANY($1::int[])"}`,
+        campParams
+      );
+
+      // Gastos por categoría (mes actual)
+      const rGastosPorCategoria = await pool.query(
+        `SELECT categoria, COALESCE(SUM(monto), 0) AS total
+         FROM gastos_operativos
+         WHERE fecha_gasto >= DATE_TRUNC('month', CURRENT_DATE)
+           AND ${esAdmin ? "1=1" : campeonatoIds.length === 0 ? "campeonato_id = -1" : "campeonato_id = ANY($1::int[])"}
+         GROUP BY categoria
+         ORDER BY total DESC`,
+        campParams
+      );
+
       // Ingresos por concepto (mes actual)
       const rPorConcepto = await pool.query(
         `SELECT fm.concepto, COALESCE(SUM(fm.monto), 0) AS total
@@ -432,15 +452,21 @@ const finanzaController = {
       const planCodigo = normalizarPlanCodigo(user.plan_codigo, "free");
       const plan = PLANES[planCodigo] || PLANES.free;
 
+      const ingresosMes = Number(rIngresosMes.rows[0]?.total || 0);
+      const egresosMes = Number(rGastosMes.rows[0]?.total || 0);
+
       return res.json({
         ok: true,
         kpis: {
           torneos_activos: Number(rTorneos.rows[0]?.total || 0),
           equipos_inscritos: Number(rEquipos.rows[0]?.total || 0),
           jugadores_registrados: Number(rJugadores.rows[0]?.total || 0),
-          ingresos_mes: Number(rIngresosMes.rows[0]?.total || 0),
+          ingresos_mes: ingresosMes,
+          egresos_mes: egresosMes,
+          utilidad_mes: Number((ingresosMes - egresosMes).toFixed(2)),
         },
         ingresos_por_concepto: rPorConcepto.rows,
+        egresos_por_categoria: rGastosPorCategoria.rows,
         proximos_encuentros: rEncuentros.rows,
         morosos: morosos.slice(0, 5),
         plan: {

@@ -380,10 +380,43 @@ async function buscarMovimientosFinanzas() {
   if (cont) cont.innerHTML = renderCargando("Cargando movimientos...");
 
   try {
-    const resp = await FinanzasAPI.listarMovimientos(params);
+    const gastosMovParams = new URLSearchParams();
+    if (params.campeonato_id) gastosMovParams.append("campeonato_id", params.campeonato_id);
+    if (params.desde) gastosMovParams.append("desde", params.desde);
+    if (params.hasta) gastosMovParams.append("hasta", params.hasta);
+
+    const [resp, gastosMovResp] = await Promise.all([
+      FinanzasAPI.listarMovimientos(params),
+      (params.tipo_movimiento && params.tipo_movimiento !== "egreso")
+        ? Promise.resolve({ gastos: [] })
+        : ApiClient.get(`/finanzas/gastos${gastosMovParams.toString() ? "?" + gastosMovParams.toString() : ""}`).catch(() => ({ gastos: [] })),
+    ]);
+
     const movimientos = resp.movimientos || [];
-    finanzasState.ultimoMovimientos = movimientos;
-    renderTablaMovimientos(movimientos);
+    const gastosMov = (gastosMovResp.gastos || []).map((g) => ({
+      id: `gasto_${g.id}`,
+      fecha_movimiento: g.fecha_gasto,
+      campeonato_nombre: g.campeonato_nombre,
+      evento_nombre: g.evento_nombre || "—",
+      equipo_nombre: "—",
+      tipo_movimiento: "egreso",
+      concepto: g.categoria,
+      monto: g.monto,
+      estado: "registrado",
+      descripcion: g.descripcion || "—",
+      _es_gasto: true,
+    }));
+
+    const todos = !params.tipo_movimiento || params.tipo_movimiento === "egreso"
+      ? [...movimientos, ...gastosMov].sort((a, b) => {
+          const fa = new Date(a.fecha_movimiento || 0);
+          const fb = new Date(b.fecha_movimiento || 0);
+          return fb - fa;
+        })
+      : movimientos;
+
+    finanzasState.ultimoMovimientos = todos;
+    renderTablaMovimientos(todos);
   } catch (error) {
     console.error(error);
     finanzasState.ultimoMovimientos = [];
@@ -545,7 +578,7 @@ async function cargarSancionesFinancieras() {
   }
 }
 
-function calcularResumenEjecutivoPorCampeonato(movimientos = []) {
+function calcularResumenEjecutivoPorCampeonato(movimientos = [], gastos = []) {
   const mapa = new Map();
 
   (Array.isArray(movimientos) ? movimientos : []).forEach((mov) => {
@@ -565,6 +598,7 @@ function calcularResumenEjecutivoPorCampeonato(movimientos = []) {
         inscripcion_cargos: 0,
         arbitraje_cargos: 0,
         multas_saldo: 0,
+        total_gastos: 0,
       });
     }
 
@@ -593,12 +627,36 @@ function calcularResumenEjecutivoPorCampeonato(movimientos = []) {
     }
   });
 
+  // Acumular gastos por campeonato
+  (Array.isArray(gastos) ? gastos : []).forEach((g) => {
+    const campId = Number.parseInt(g.campeonato_id, 10);
+    const campNombre = String(g.campeonato_nombre || "Campeonato").trim() || "Campeonato";
+    const clave = Number.isFinite(campId) && campId > 0 ? `id:${campId}` : `nombre:${campNombre}`;
+    if (mapa.has(clave)) {
+      mapa.get(clave).total_gastos += Number(g.monto || 0);
+    } else {
+      mapa.set(clave, {
+        campeonato_id: Number.isFinite(campId) ? campId : null,
+        campeonato_nombre: campNombre,
+        equipos_ids: new Set(),
+        total_cargos: 0,
+        total_abonos: 0,
+        inscripcion_cargos: 0,
+        arbitraje_cargos: 0,
+        multas_saldo: 0,
+        total_gastos: Number(g.monto || 0),
+      });
+    }
+  });
+
   const filas = Array.from(mapa.values()).map((fila) => {
     const equipos = fila.equipos_ids.size;
     const totalCargos = Number(fila.total_cargos.toFixed(2));
     const totalAbonos = Number(fila.total_abonos.toFixed(2));
     const saldo = Number(Math.max(totalCargos - totalAbonos, 0).toFixed(2));
     const multasSaldo = Number(Math.max(fila.multas_saldo, 0).toFixed(2));
+    const totalGastos = Number(fila.total_gastos.toFixed(2));
+    const utilidad = Number((totalAbonos - totalGastos).toFixed(2));
 
     return {
       campeonato_id: fila.campeonato_id,
@@ -610,6 +668,8 @@ function calcularResumenEjecutivoPorCampeonato(movimientos = []) {
       inscripcion_cargos: Number(fila.inscripcion_cargos.toFixed(2)),
       arbitraje_cargos: Number(fila.arbitraje_cargos.toFixed(2)),
       multas_saldo: multasSaldo,
+      total_gastos: totalGastos,
+      utilidad,
     };
   });
 
@@ -630,6 +690,8 @@ function calcularResumenEjecutivoPorCampeonato(movimientos = []) {
       acc.total_abonos += fila.total_abonos;
       acc.saldo += fila.saldo;
       acc.multas_saldo += fila.multas_saldo;
+      acc.total_gastos += fila.total_gastos;
+      acc.utilidad += fila.utilidad;
       return acc;
     },
     {
@@ -639,6 +701,8 @@ function calcularResumenEjecutivoPorCampeonato(movimientos = []) {
       total_abonos: 0,
       saldo: 0,
       multas_saldo: 0,
+      total_gastos: 0,
+      utilidad: 0,
     }
   );
 
@@ -666,9 +730,18 @@ async function cargarResumenEjecutivoFinanzas() {
   if (cont) cont.innerHTML = renderCargando("Cargando resumen ejecutivo...");
 
   try {
-    const resp = await FinanzasAPI.listarMovimientos(params);
+    const gastosParams = new URLSearchParams();
+    if (params.campeonato_id) gastosParams.append("campeonato_id", params.campeonato_id);
+    if (params.desde) gastosParams.append("desde", params.desde);
+    if (params.hasta) gastosParams.append("hasta", params.hasta);
+
+    const [resp, gastosResp] = await Promise.all([
+      FinanzasAPI.listarMovimientos(params),
+      ApiClient.get(`/finanzas/gastos${gastosParams.toString() ? "?" + gastosParams.toString() : ""}`).catch(() => ({ gastos: [] })),
+    ]);
     const movimientos = resp.movimientos || [];
-    const consolidado = calcularResumenEjecutivoPorCampeonato(movimientos);
+    const gastos = gastosResp.gastos || [];
+    const consolidado = calcularResumenEjecutivoPorCampeonato(movimientos, gastos);
     finanzasState.ultimoEjecutivo = consolidado;
     renderResumenEjecutivoFinanzas(consolidado.filas, consolidado.resumen);
   } catch (error) {
@@ -2272,6 +2345,8 @@ function renderResumenEjecutivoFinanzas(filas = [], resumen = null) {
           <td>${formatoMoneda(x.inscripcion_cargos)}</td>
           <td>${formatoMoneda(x.arbitraje_cargos)}</td>
           <td>${formatoMoneda(x.multas_saldo)}</td>
+          <td class="fin-saldo-deuda">${formatoMoneda(x.total_gastos)}</td>
+          <td class="${x.utilidad >= 0 ? "fin-saldo-ok" : "fin-saldo-deuda"}">${formatoMoneda(x.utilidad)}</td>
         </tr>
       `;
     })
@@ -2285,6 +2360,8 @@ function renderResumenEjecutivoFinanzas(filas = [], resumen = null) {
       <div><strong>Total abonos:</strong> ${formatoMoneda(resumen.total_abonos)}</div>
       <div><strong>Saldo global:</strong> <span class="${resumen.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.saldo)}</span></div>
       <div><strong>Saldo multas:</strong> <span class="${resumen.multas_saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumen.multas_saldo)}</span></div>
+      <div><strong>Total egresos:</strong> <span class="fin-saldo-deuda">${formatoMoneda(resumen.total_gastos)}</span></div>
+      <div><strong>Utilidad:</strong> <span class="${resumen.utilidad >= 0 ? "fin-saldo-ok" : "fin-saldo-deuda"}">${formatoMoneda(resumen.utilidad)}</span></div>
     </div>
     <table class="tabla-estadistica tabla-estadistica-compacta">
       <thead>
@@ -2298,6 +2375,8 @@ function renderResumenEjecutivoFinanzas(filas = [], resumen = null) {
           <th>Cargos inscripción</th>
           <th>Cargos arbitraje</th>
           <th>Saldo multas</th>
+          <th>Egresos</th>
+          <th>Utilidad</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -2393,17 +2472,30 @@ function renderTablaMovimientos(movimientos) {
     return;
   }
 
+  const CONCEPTO_MOV_LABEL = {
+    inscripcion: "Inscripción", arbitraje: "Arbitraje", multa: "Multa",
+    pago: "Pago", ajuste: "Ajuste", otro: "Otro",
+    alquiler_cancha: "Alquiler cancha", tizado: "Tizado",
+    delegado: "Delegado", transporte: "Transporte", comida: "Comida",
+  };
+  const TIPO_MOV_LABEL = { cargo: "Cargo", abono: "Abono", egreso: "Egreso" };
+
   const rows = movimientos
     .map((m) => {
+      const esGasto = m._es_gasto === true;
+      const tipoBadge = esGasto
+        ? `<span class="badge" style="background:#fee2e2;color:#b91c1c">Egreso</span>`
+        : `<span class="badge">${escaparHtml(TIPO_MOV_LABEL[m.tipo_movimiento] || m.tipo_movimiento || "-")}</span>`;
+      const montoClass = esGasto ? "fin-saldo-deuda" : (m.tipo_movimiento === "abono" ? "fin-saldo-ok" : "");
       return `
-        <tr>
+        <tr${esGasto ? ' style="background:#fff5f5"' : ""}>
           <td class="fin-col-fecha">${escaparHtml(formatearFechaFinanzas(m.fecha_movimiento))}</td>
           <td>${escaparHtml(m.campeonato_nombre || "-")}</td>
           <td>${escaparHtml(m.evento_nombre || "-")}</td>
           <td>${escaparHtml(m.equipo_nombre || "-")}</td>
-          <td><span class="badge">${escaparHtml(m.tipo_movimiento || "-")}</span></td>
-          <td>${escaparHtml(m.concepto || "-")}</td>
-          <td class="fin-col-monto">${formatoMoneda(m.monto)}</td>
+          <td>${tipoBadge}</td>
+          <td>${escaparHtml(CONCEPTO_MOV_LABEL[m.concepto] || m.concepto || "-")}</td>
+          <td class="fin-col-monto ${montoClass}">${formatoMoneda(m.monto)}</td>
           <td>${escaparHtml(m.estado || "-")}</td>
           <td class="fin-col-descripcion">${escaparHtml(m.descripcion || "-")}</td>
         </tr>
