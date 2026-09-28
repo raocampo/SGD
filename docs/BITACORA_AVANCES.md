@@ -1,3 +1,82 @@
+## 2026-09-28 - Finanzas: desglose de utilidad por rubro + gráfico en dashboard
+
+> Commiteado y pusheado (`83ad50c`).
+
+Pedido del usuario: "algo que en finanzas hay que separar, es inscripción
+con premios, ingresos por arbitraje se cruza con los egresos de arbitraje
+y cancha, y tarjetas amarillas con egresos de taxi o cualquier otro gasto
+operativo... para saber en realidad de la utilidad del campeonato. Igual
+en el dashboard sería bueno graficar estos ingresos vs los egresos."
+
+Investigación previa (2 agentes Explore) confirmó que este cruce **no
+existía en ningún lado** — lo único que había (commit `e1c5280`, 27-sep)
+era una utilidad GLOBAL por campeonato (ingresos totales − gastos
+totales), sin desglose por categoría. Tampoco existía la categoría de
+gasto "premios".
+
+### Backend
+Migración `073_gastos_operativos_premios.sql`: agrega `'premios'` al
+CHECK de `gastos_operativos.categoria` (antes: arbitraje, alquiler_cancha,
+tizado, delegado, transporte, comida, otro). Aplicada ya en producción
+(corrida manual de `runMigrations.js`, el mismo script que corre en cada
+deploy — no hacía falta esperar al deploy de Railway para verificarlo).
+
+`Finanza.js`: constante `CATEGORIAS_GASTO` centralizada (antes duplicada
+inline dentro de `crearGasto`) + `RUBROS_UTILIDAD`, el mapeo de negocio
+acordado:
+- **Inscripción** (ingreso) ↔ **Premios** (egreso)
+- **Arbitraje y cancha** (ingreso: arbitraje) ↔ egresos de arbitraje +
+  alquiler de cancha + tizado
+- **Sanciones/tarjetas** (ingreso: multas TA+TR) ↔ egresos operativos
+  sueltos: transporte, comida, delegado, otro
+
+Nuevo `Finanza.obtenerUtilidadPorRubro(filtros)`: dos queries agregadas
+independientes (`finanzas_movimientos` por concepto, `gastos_operativos`
+por categoría — no hay JOIN natural entre ambas, distinta granularidad)
+combinadas en JS contra el mapeo. Ingreso = abonos efectivamente cobrados
+(`estado <> 'anulado'`), mismo criterio que ya usaba la utilidad global.
+Nueva ruta `GET /finanzas/utilidad-por-rubro`, mismo scoping por
+organizador que `/finanzas/resumen-equipos` pero **sin exponerla a
+técnico/dirigente/jugador** (es información gerencial de rentabilidad,
+no cuenta corriente de un equipo).
+
+### Frontend
+`finanzas.html`: nueva tarjeta "Utilidad por Rubro" en la pestaña
+Ejecutivo Campeonato (tabla Rubro/Ingresos/Egresos/Utilidad + fila
+Total), requiere campeonato seleccionado en Filtros. Opción "Premios"
+agregada al select de "Registrar gasto". Enganchada a los mismos
+triggers que ya recargaban "Resumen por Equipo", y también a guardar/
+eliminar gasto operativo (antes esos 2 no refrescaban ningún cálculo de
+utilidad — gap que se cierra de paso).
+
+Dashboard (`portal-admin.html` + `dashboard-organizador.js`): nuevo
+gráfico de barras agrupadas (Chart.js, mismo patrón que el gráfico de
+"Ingresos por concepto" ya existente — confirmado que Chart.js ya estaba
+cargado, no hizo falta introducir librería nueva) con Ingresos vs
+Egresos de los 4 rubros, sumado de todos los campeonatos del
+organizador, mes actual.
+
+### Verificación
+- `node --check` en los 6 archivos backend/frontend tocados, balance de
+  `<div>` en `finanzas.html`/`portal-admin.html`, balance de llaves en
+  `style.css`, cross-check de `getElementById()`, `smokeFrontendRoleGuards.js`
+  49/49.
+- `obtenerUtilidadPorRubro` probado end-to-end contra producción: la
+  suma de ingresos coincide EXACTAMENTE con los totales ya conocidos de
+  `obtenerResumenPorEquipo` (arbitraje $7202, sanciones $83 en campeonato
+  19); egresos cruzados correctamente en campeonato 20 (arbitraje $96 +
+  alquiler_cancha $97.50 = $193.50, justo el cruce que pidió el usuario).
+- Categoría "premios" probada con un gasto real de prueba: creado,
+  cruzado contra el rubro Inscripción (egresos $55.50 / utilidad
+  -$55.50), verificado, luego eliminado — 0 residuos.
+- **Pendiente para el usuario**: verificación visual (Puppeteer no puede,
+  ambas páginas requieren login) — confirmar que la tarjeta "Utilidad
+  por Rubro" y el gráfico del dashboard se vean bien, y que el mapeo de
+  rubros (qué categoría de gasto cruza contra qué ingreso) tenga sentido
+  para su negocio real.
+
+---
+
 ## 2026-09-27 - Portal público (galería/resultados/compartir) + batch de 6 fixes en Finanzas
 
 > Commiteado y pusheado por OTRA sesión ("Claude Sonnet 4.6") entre las
