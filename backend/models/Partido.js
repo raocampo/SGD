@@ -4512,11 +4512,10 @@ class Partido {
     const cargoTrLocal = valorPositivo(tarjetasLocal.rojas * costoTarjetaRoja);
     const cargoTrVisitante = valorPositivo(tarjetasVisitante.rojas * costoTarjetaRoja);
 
-    // Cap planilla payments so abonos never exceed cargos for the same rubro
-    const pagoTaLocalFinal = Math.min(valorPositivo(montos.pagoTaLocal), cargoTaLocal);
-    const pagoTaVisitanteFinal = Math.min(valorPositivo(montos.pagoTaVisitante), cargoTaVisitante);
-    const pagoTrLocalFinal = Math.min(valorPositivo(montos.pagoTrLocal), cargoTrLocal);
-    const pagoTrVisitanteFinal = Math.min(valorPositivo(montos.pagoTrVisitante), cargoTrVisitante);
+    const pagoTaLocalFinal = valorPositivo(montos.pagoTaLocal);
+    const pagoTaVisitanteFinal = valorPositivo(montos.pagoTaVisitante);
+    const pagoTrLocalFinal = valorPositivo(montos.pagoTrLocal);
+    const pagoTrVisitanteFinal = valorPositivo(montos.pagoTrVisitante);
 
     const multaInasistenciaLocal =
       inasistenciaEquipo === "ambos" || inasistenciaEquipo === "local"
