@@ -2876,6 +2876,22 @@ body.modal-open {
   display: block;
 }
 
+/* Más aire entre la barra de pestañas y las tarjetas, y entre tarjetas
+   consecutivas dentro de una misma pestaña — antes quedaban pegadas. */
+.page-finanzas .finanzas-main-tabs {
+  margin-bottom: 1.5rem;
+}
+
+.page-finanzas .finanzas-tab-panel > .card,
+.page-finanzas .finanzas-tab-panel > .config-card {
+  margin-bottom: 1.5rem;
+}
+
+.page-finanzas .finanzas-tab-panel > .card:last-child,
+.page-finanzas .finanzas-tab-panel > .config-card:last-child {
+  margin-bottom: 0;
+}
+
 .page-partidos #tab-filtrar .config-card {
   max-width: 92rem;
   margin: 0 auto 1.25rem;
@@ -6463,6 +6479,25 @@ body.page-finanzas {
   width: 100%;
 }
 
+.page-finanzas .fin-estado-buscador {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(200px, 1fr));
+  gap: 1rem;
+  max-width: 40rem;
+  margin: 0 0 1.1rem;
+  padding: 0.9rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+  .page-finanzas .fin-estado-buscador {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+}
+
 .page-finanzas .fin-card-headline {
   display: flex;
   align-items: center;
@@ -6742,6 +6777,61 @@ body.page-finanzas {
 
 .page-finanzas .tabla-estadistica-compacta td.fin-col-fecha {
   white-space: nowrap;
+}
+
+/* Tabla resumen "Utilidad por Rubro": pocas filas, necesita aire y que
+   cada columna numérica quede alineada bajo su propio título — usa una
+   clase dedicada en vez de tabla-estadistica(-compacta), pensadas para
+   listados largos con mucha densidad. */
+.page-finanzas .fin-tabla-rubros {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.95rem;
+}
+
+.page-finanzas .fin-tabla-rubros th,
+.page-finanzas .fin-tabla-rubros td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.page-finanzas .fin-tabla-rubros th {
+  background: #eef4fb;
+  color: #242424;
+  font-weight: 700;
+}
+
+.page-finanzas .fin-tabla-rubros th:first-child,
+.page-finanzas .fin-tabla-rubros td:first-child {
+  text-align: left;
+  width: 34%;
+}
+
+.page-finanzas .fin-tabla-rubros th:not(:first-child),
+.page-finanzas .fin-tabla-rubros td:not(:first-child) {
+  text-align: right;
+  width: 22%;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-finanzas .fin-tabla-rubros tfoot td {
+  font-weight: 800;
+  border-top: 2px solid #cbd5e1;
+  border-bottom: none;
+  background: #f8fafc;
+}
+
+@media (max-width: 640px) {
+  .page-finanzas .fin-tabla-rubros {
+    font-size: 0.82rem;
+  }
+  .page-finanzas .fin-tabla-rubros th,
+  .page-finanzas .fin-tabla-rubros td {
+    padding: 0.55rem 0.5rem;
+  }
 }
 
 @media (max-width: 1200px) {

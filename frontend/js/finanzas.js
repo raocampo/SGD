@@ -131,9 +131,15 @@ function bindEventosFinanzas() {
       cargarEstadoCuentaActual();
     });
 
-  document.getElementById("fin-equipo")?.addEventListener("change", async () => {
-    await cargarEstadoCuentaActual();
-  });
+  document
+    .getElementById("fin-estado-campeonato")
+    ?.addEventListener("change", () => {
+      sincronizarSelectorEstadoCuenta();
+      cargarEstadoCuentaActual();
+    });
+  document
+    .getElementById("fin-estado-equipo")
+    ?.addEventListener("change", () => cargarEstadoCuentaActual());
 
   document
     .getElementById("fin-form-movimiento")
@@ -174,6 +180,23 @@ function bindEventosFinanzas() {
   document
     .getElementById("btn-fin-imprimir-resumen-equipos")
     ?.addEventListener("click", imprimirReporteResumenEquipos);
+  document
+    .getElementById("btn-fin-registrar-premios")
+    ?.addEventListener("click", abrirFormularioPremios);
+}
+
+// Atajo desde "Utilidad por Rubro": lleva a Gastos Operativos con el
+// formulario ya abierto y la categoría "Premios" preseleccionada, para
+// que registrar el gasto de premios sea descubrible sin tener que
+// adivinar que vive dentro de "Registrar gasto".
+function abrirFormularioPremios() {
+  actualizarPestanasFinanzas("fin-tab-gastos");
+  limpiarFormGasto();
+  const wrap = document.getElementById("fin-form-gasto-wrap");
+  if (wrap) wrap.style.display = "block";
+  const categoriaSel = document.getElementById("gasto-categoria");
+  if (categoriaSel) categoriaSel.value = "premios";
+  document.getElementById("bloque-gastos-operativos")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function cambiarPestanaFinanzas(tabId) {
@@ -237,11 +260,13 @@ async function cargarCatalogosFinanzas() {
 
     llenarSelectCampeonatos("fin-campeonato", true);
     llenarSelectCampeonatos("mov-campeonato", false);
+    llenarSelectCampeonatos("fin-estado-campeonato", false);
     if (finanzasState.esTecnico && finanzasState.equipos.length > 0) {
       const campeonatoUnico = Number(finanzasState.equipos[0].campeonato_id || 0);
       if (Number.isFinite(campeonatoUnico) && campeonatoUnico > 0) {
         const filtroCamp = document.getElementById("fin-campeonato");
         const movCamp = document.getElementById("mov-campeonato");
+        const estadoCamp = document.getElementById("fin-estado-campeonato");
         if (filtroCamp) {
           filtroCamp.value = String(campeonatoUnico);
           filtroCamp.disabled = true;
@@ -250,10 +275,15 @@ async function cargarCatalogosFinanzas() {
           movCamp.value = String(campeonatoUnico);
           movCamp.disabled = true;
         }
+        if (estadoCamp) {
+          estadoCamp.value = String(campeonatoUnico);
+          estadoCamp.disabled = true;
+        }
       }
     }
     sincronizarSelectoresPorCampeonato();
     sincronizarFormularioMovimiento();
+    sincronizarSelectorEstadoCuenta();
   } catch (error) {
     console.error(error);
     mostrarNotificacion("Error cargando catalogos financieros", "error");
@@ -370,6 +400,46 @@ function sincronizarFormularioMovimiento() {
     equipoSelect.value = prevEquipo;
   }
 }
+
+// Filtro dedicado de la pestaña "Estado de Cuenta": independiente del
+// filtro global de "Filtros" (fin-campeonato/fin-equipo), para poder
+// buscar el estado de cuenta de un equipo sin tener que ir a otra
+// pestaña primero.
+function sincronizarSelectorEstadoCuenta() {
+  const campeonatoId = Number.parseInt(
+    document.getElementById("fin-estado-campeonato")?.value || "",
+    10
+  );
+  const equipoSelect = document.getElementById("fin-estado-equipo");
+  if (!equipoSelect) return;
+
+  const equiposFiltrados = Number.isFinite(campeonatoId)
+    ? finanzasState.equipos.filter((e) => Number(e.campeonato_id) === campeonatoId)
+    : [];
+
+  const prevEquipo = equipoSelect.value;
+
+  equipoSelect.innerHTML = '<option value="">Selecciona equipo</option>';
+  equiposFiltrados.forEach((e) => {
+    const op = document.createElement("option");
+    op.value = String(e.id);
+    op.textContent = e.nombre || "Equipo";
+    equipoSelect.appendChild(op);
+  });
+
+  if ([...equipoSelect.options].some((x) => x.value === prevEquipo)) {
+    equipoSelect.value = prevEquipo;
+  }
+
+  if (finanzasState.esTecnico) {
+    const equipoOpciones = [...equipoSelect.options].filter((x) => x.value);
+    if (equipoOpciones.length === 1) {
+      equipoSelect.value = equipoOpciones[0].value;
+      equipoSelect.disabled = true;
+    }
+  }
+}
+
 async function buscarMovimientosFinanzas() {
   const params = {
     campeonato_id: document.getElementById("fin-campeonato")?.value || "",
@@ -833,9 +903,9 @@ function renderUtilidadPorRubro(data) {
       return `
         <tr>
           <td>${escaparHtml(r.label || r.clave || "-")}</td>
-          <td class="fin-col-monto">${formatoMoneda(r.ingresos)}</td>
-          <td class="fin-col-monto">${formatoMoneda(r.egresos)}</td>
-          <td class="fin-col-monto ${r.utilidad > 0 ? "fin-saldo-ok" : r.utilidad < 0 ? "fin-saldo-deuda" : ""}">${formatoMoneda(r.utilidad)}</td>
+          <td>${formatoMoneda(r.ingresos)}</td>
+          <td>${formatoMoneda(r.egresos)}</td>
+          <td class="${r.utilidad > 0 ? "fin-saldo-ok" : r.utilidad < 0 ? "fin-saldo-deuda" : ""}">${formatoMoneda(r.utilidad)}</td>
         </tr>
       `;
     })
@@ -844,7 +914,7 @@ function renderUtilidadPorRubro(data) {
   const total = data?.total || { ingresos: 0, egresos: 0, utilidad: 0 };
 
   cont.innerHTML = `
-    <table class="tabla-estadistica tabla-estadistica-compacta">
+    <table class="fin-tabla-rubros">
       <thead>
         <tr>
           <th>Rubro</th>
@@ -855,11 +925,11 @@ function renderUtilidadPorRubro(data) {
       </thead>
       <tbody>${rows}</tbody>
       <tfoot>
-        <tr style="font-weight:700;">
+        <tr>
           <td>Total</td>
-          <td class="fin-col-monto">${formatoMoneda(total.ingresos)}</td>
-          <td class="fin-col-monto">${formatoMoneda(total.egresos)}</td>
-          <td class="fin-col-monto ${total.utilidad > 0 ? "fin-saldo-ok" : total.utilidad < 0 ? "fin-saldo-deuda" : ""}">${formatoMoneda(total.utilidad)}</td>
+          <td>${formatoMoneda(total.ingresos)}</td>
+          <td>${formatoMoneda(total.egresos)}</td>
+          <td class="${total.utilidad > 0 ? "fin-saldo-ok" : total.utilidad < 0 ? "fin-saldo-deuda" : ""}">${formatoMoneda(total.utilidad)}</td>
         </tr>
       </tfoot>
     </table>
@@ -914,7 +984,7 @@ function calcularResumenCuentaPorConcepto(movimientos = []) {
 }
 
 async function cargarEstadoCuentaActual() {
-  const equipoId = document.getElementById("fin-equipo")?.value || "";
+  const equipoId = document.getElementById("fin-estado-equipo")?.value || "";
   const resumen = document.getElementById("fin-estado-cuenta-resumen");
   const movimientos = document.getElementById("fin-estado-cuenta-movimientos");
 
@@ -922,7 +992,7 @@ async function cargarEstadoCuentaActual() {
     finanzasState.ultimoEstadoCuenta = null;
     if (resumen) {
       resumen.className = "fin-resumen-vacio";
-      resumen.textContent = "Selecciona un equipo para visualizar su estado de cuenta.";
+      resumen.textContent = "Selecciona un campeonato y un equipo para visualizar su estado de cuenta.";
     }
     if (movimientos) movimientos.innerHTML = "";
     return;
@@ -932,8 +1002,7 @@ async function cargarEstadoCuentaActual() {
 
   try {
     const params = {
-      campeonato_id: document.getElementById("fin-campeonato")?.value || "",
-      evento_id: document.getElementById("fin-evento")?.value || "",
+      campeonato_id: document.getElementById("fin-estado-campeonato")?.value || "",
     };
     const resp = await FinanzasAPI.estadoCuentaEquipo(equipoId, params);
     const r = resp.resumen || {};
@@ -1370,7 +1439,7 @@ function iniciarDocumentoDesdeEstadoCuenta() {
   }
 
   const campeonatoId = (
-    document.getElementById("fin-campeonato")?.value ||
+    document.getElementById("fin-estado-campeonato")?.value ||
     data.equipo.campeonato_id ||
     ""
   );
@@ -1623,7 +1692,7 @@ async function imprimirReporteEstadoCuenta() {
   }
 
   const campeonatoId = Number.parseInt(
-    document.getElementById("fin-campeonato")?.value || "",
+    document.getElementById("fin-estado-campeonato")?.value || "",
     10
   );
   const campeonato = obtenerCampeonatoPorId(campeonatoId);
