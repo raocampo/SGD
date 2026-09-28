@@ -1131,7 +1131,7 @@ class Finanza {
       SELECT g.*,
              c.nombre AS campeonato_nombre,
              e.nombre AS evento_nombre,
-             p.numero_partido_visible AS partido_numero,
+             p.numero_campeonato AS partido_numero,
              u.nombre AS registrado_por
         FROM gastos_operativos g
         LEFT JOIN campeonatos c ON c.id = g.campeonato_id
@@ -1152,7 +1152,7 @@ class Finanza {
         SELECT g.*,
                c.nombre AS campeonato_nombre,
                e.nombre AS evento_nombre,
-               p.numero_partido_visible AS partido_numero,
+               p.numero_campeonato AS partido_numero,
                u.nombre AS registrado_por
           FROM gastos_operativos g
           LEFT JOIN campeonatos c ON c.id = g.campeonato_id
