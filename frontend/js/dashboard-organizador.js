@@ -25,6 +25,7 @@
   };
 
   let chartInstance = null;
+  let chartInstanceRubros = null;
 
   function fmt(n) {
     return Number(n || 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -83,6 +84,7 @@
     delegado: "Delegado",
     transporte: "Transporte",
     comida: "Comida",
+    premios: "Premios",
     otro: "Otro",
   };
 
@@ -170,6 +172,64 @@
         `).join("")}
       </div>
     `;
+  }
+
+  function renderChartRubros(rubros) {
+    const canvas = document.getElementById("dash-chart-rubros");
+    if (!canvas) return;
+
+    if (chartInstanceRubros) {
+      chartInstanceRubros.destroy();
+      chartInstanceRubros = null;
+    }
+
+    const filas = (rubros || []).filter((r) => Number(r.ingresos) > 0 || Number(r.egresos) > 0);
+
+    if (!filas.length) {
+      const wrapper = canvas.parentElement;
+      if (wrapper) {
+        wrapper.innerHTML = '<p class="dash-empty-msg">Sin ingresos ni egresos registrados este mes.</p>';
+      }
+      return;
+    }
+
+    const labels = filas.map((r) => r.label || r.clave);
+    const ingresos = filas.map((r) => Number(r.ingresos || 0));
+    const egresos = filas.map((r) => Number(r.egresos || 0));
+
+    chartInstanceRubros = new window.Chart(canvas, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [
+          { label: "Ingresos ($)", data: ingresos, backgroundColor: "#10b981", borderRadius: 4, borderWidth: 0 },
+          { label: "Egresos ($)", data: egresos, backgroundColor: "#ef4444", borderRadius: 4, borderWidth: 0 },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: "top", labels: { font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.dataset.label}: $${fmt(ctx.parsed.y)}`,
+            },
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { callback: (v) => `$${fmtNum(v)}`, font: { size: 11 } },
+            grid: { color: "#f1f5f9" },
+          },
+          x: {
+            ticks: { font: { size: 11 } },
+            grid: { display: false },
+          },
+        },
+      },
+    });
   }
 
   function escaparHtml(str) {
@@ -265,6 +325,17 @@
       console.error("dashboardOrganizador:", err);
       const loading = document.getElementById("dash-loading");
       if (loading) loading.textContent = "No se pudo cargar el dashboard.";
+    }
+
+    try {
+      const hoy = new Date();
+      const desde = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-01`;
+      const rubrosData = await window.ApiClient.get(
+        `/finanzas/utilidad-por-rubro?desde=${desde}`
+      );
+      if (rubrosData?.ok) renderChartRubros(rubrosData.rubros);
+    } catch (err) {
+      console.error("utilidadPorRubro (dashboard):", err);
     }
   }
 

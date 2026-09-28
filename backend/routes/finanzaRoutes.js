@@ -46,6 +46,12 @@ router.get(
   finanzaController.obtenerResumenEquipos
 );
 router.get(
+  "/utilidad-por-rubro",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  finanzaController.obtenerUtilidadPorRubro
+);
+router.get(
   "/dashboard",
   requireAuth,
   requireRoles("administrador", "organizador"),

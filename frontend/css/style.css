@@ -9423,6 +9423,7 @@ body.page-finanzas {
 .badge-tizado          { background: #fef9c3; color: #854d0e; }
 .badge-transporte      { background: #ffedd5; color: #9a3412; }
 .badge-comida          { background: #fce7f3; color: #9d174d; }
+.badge-premios         { background: #fde68a; color: #92400e; }
 .badge-otro            { background: #f1f5f9; color: #475569; }
 
 @media (max-width: 768px) {

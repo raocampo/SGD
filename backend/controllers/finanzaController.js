@@ -329,6 +329,35 @@ const finanzaController = {
     }
   },
 
+  // Cruce ingresos vs egresos por rubro (inscripción/premios, arbitraje/
+  // cancha, sanciones/operativo) — informe gerencial, no cuenta corriente
+  // de un equipo, por eso no se expone a técnico/dirigente/jugador.
+  async obtenerUtilidadPorRubro(req, res) {
+    try {
+      const filtros = { ...(req.query || {}) };
+      if (isOrganizador(req.user)) {
+        const campeonatos = await obtenerCampeonatoIdsOrganizador(req.user);
+        if (!campeonatos.length) {
+          return res.json({ ok: true, rubros: [], total: { ingresos: 0, egresos: 0, utilidad: 0 } });
+        }
+        if (filtros.campeonato_id) {
+          const campId = Number.parseInt(filtros.campeonato_id, 10);
+          if (!campeonatos.includes(campId)) {
+            return res.status(403).json({ error: "No autorizado para consultar ese campeonato" });
+          }
+        } else {
+          filtros.campeonato_ids = campeonatos;
+        }
+      }
+
+      const data = await Finanza.obtenerUtilidadPorRubro(filtros);
+      return res.json({ ok: true, ...data });
+    } catch (error) {
+      console.error("Error obteniendo utilidad por rubro:", error);
+      return res.status(statusParaError(error)).json({ error: error.message });
+    }
+  },
+
   async dashboardOrganizador(req, res) {
     try {
       const user = req.user;

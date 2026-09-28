@@ -16,6 +16,41 @@ const ESTADOS_MOVIMIENTO = new Set([
   "vencido",
   "anulado",
 ]);
+const CATEGORIAS_GASTO = new Set([
+  "arbitraje",
+  "alquiler_cancha",
+  "tizado",
+  "delegado",
+  "transporte",
+  "comida",
+  "premios",
+  "otro",
+]);
+
+// Mapeo de rubro de utilidad -> concepto(s) de ingreso y categoria(s) de
+// egreso que se cruzan entre si. Ver Finanza.obtenerUtilidadPorRubro().
+const RUBROS_UTILIDAD = {
+  inscripcion: {
+    label: "Inscripción",
+    ingreso_conceptos: ["inscripcion"],
+    egreso_categorias: ["premios"],
+  },
+  arbitraje: {
+    label: "Arbitraje y cancha",
+    ingreso_conceptos: ["arbitraje"],
+    egreso_categorias: ["arbitraje", "alquiler_cancha", "tizado"],
+  },
+  sanciones: {
+    label: "Sanciones (tarjetas)",
+    ingreso_conceptos: ["multa"],
+    egreso_categorias: ["transporte", "comida", "delegado", "otro"],
+  },
+  otros: {
+    label: "Otros",
+    ingreso_conceptos: ["pago", "ajuste", "otro"],
+    egreso_categorias: [],
+  },
+};
 
 class Finanza {
   static _esquemaAsegurado = false;
@@ -1036,6 +1071,120 @@ class Finanza {
     });
   }
 
+  // Cruza ingresos (finanzas_movimientos, lo efectivamente COBRADO, no lo
+  // pendiente) contra egresos (gastos_operativos) por rubro de negocio,
+  // usando el mapeo RUBROS_UTILIDAD: inscripción vs premios, arbitraje vs
+  // arbitraje+cancha, sanciones (tarjetas) vs gastos operativos sueltos.
+  // Dos queries agregadas independientes (no hay JOIN natural entre
+  // finanzas_movimientos y gastos_operativos: distinta granularidad,
+  // una tiene equipo_id y la otra no) que se combinan en JS.
+  static async obtenerUtilidadPorRubro(filtros = {}) {
+    await this.asegurarEsquema();
+
+    const whereMov = [];
+    const valuesMov = [];
+    const whereGasto = [];
+    const valuesGasto = [];
+    let iMov = 1;
+    let iGasto = 1;
+
+    if (filtros.campeonato_id) {
+      const campeonatoId = this.parseEntero(filtros.campeonato_id, "campeonato_id");
+      whereMov.push(`fm.campeonato_id = $${iMov++}`);
+      valuesMov.push(campeonatoId);
+      whereGasto.push(`g.campeonato_id = $${iGasto++}`);
+      valuesGasto.push(campeonatoId);
+    }
+    if (Array.isArray(filtros.campeonato_ids) && filtros.campeonato_ids.length) {
+      const ids = filtros.campeonato_ids
+        .map((x) => this.parseEntero(x, "campeonato_id"))
+        .filter((x) => Number.isFinite(x) && x > 0);
+      if (ids.length) {
+        whereMov.push(`fm.campeonato_id = ANY($${iMov++}::int[])`);
+        valuesMov.push(ids);
+        whereGasto.push(`g.campeonato_id = ANY($${iGasto++}::int[])`);
+        valuesGasto.push(ids);
+      }
+    }
+    if (filtros.desde) {
+      const desde = this.parseFecha(filtros.desde, "desde");
+      whereMov.push(`fm.fecha_movimiento >= $${iMov++}::date`);
+      valuesMov.push(desde);
+      whereGasto.push(`g.fecha_gasto >= $${iGasto++}::date`);
+      valuesGasto.push(desde);
+    }
+    if (filtros.hasta) {
+      const hasta = this.parseFecha(filtros.hasta, "hasta");
+      whereMov.push(`fm.fecha_movimiento <= $${iMov++}::date`);
+      valuesMov.push(hasta);
+      whereGasto.push(`g.fecha_gasto <= $${iGasto++}::date`);
+      valuesGasto.push(hasta);
+    }
+
+    const movQ = `
+      SELECT concepto,
+             COALESCE(SUM(CASE WHEN tipo_movimiento = 'abono' AND estado <> 'anulado' THEN monto ELSE 0 END), 0)::numeric(12,2) AS ingresos
+      FROM finanzas_movimientos fm
+      ${whereMov.length ? `WHERE ${whereMov.join(" AND ")}` : ""}
+      GROUP BY concepto
+    `;
+    const gastoQ = `
+      SELECT categoria,
+             COALESCE(SUM(monto), 0)::numeric(12,2) AS egresos
+      FROM gastos_operativos g
+      ${whereGasto.length ? `WHERE ${whereGasto.join(" AND ")}` : ""}
+      GROUP BY categoria
+    `;
+
+    const [movR, gastoR] = await Promise.all([
+      pool.query(movQ, valuesMov),
+      pool.query(gastoQ, valuesGasto),
+    ]);
+
+    const ingresosPorConcepto = {};
+    movR.rows.forEach((row) => {
+      ingresosPorConcepto[row.concepto] = Number(row.ingresos || 0);
+    });
+    const egresosPorCategoria = {};
+    gastoR.rows.forEach((row) => {
+      egresosPorCategoria[row.categoria] = Number(row.egresos || 0);
+    });
+
+    const rubros = Object.entries(RUBROS_UTILIDAD).map(([clave, def]) => {
+      const ingresos = Number(
+        def.ingreso_conceptos
+          .reduce((sum, c) => sum + (ingresosPorConcepto[c] || 0), 0)
+          .toFixed(2)
+      );
+      const egresos = Number(
+        def.egreso_categorias
+          .reduce((sum, c) => sum + (egresosPorCategoria[c] || 0), 0)
+          .toFixed(2)
+      );
+      return {
+        clave,
+        label: def.label,
+        ingresos,
+        egresos,
+        utilidad: Number((ingresos - egresos).toFixed(2)),
+      };
+    });
+
+    const total = rubros.reduce(
+      (acc, r) => {
+        acc.ingresos += r.ingresos;
+        acc.egresos += r.egresos;
+        return acc;
+      },
+      { ingresos: 0, egresos: 0 }
+    );
+    total.ingresos = Number(total.ingresos.toFixed(2));
+    total.egresos = Number(total.egresos.toFixed(2));
+    total.utilidad = Number((total.ingresos - total.egresos).toFixed(2));
+
+    return { rubros, total };
+  }
+
   static async marcarMovimientoPagado(movimiento_id, data = {}, client = pool) {
     await this.asegurarEsquema(client);
 
@@ -1081,13 +1230,8 @@ class Finanza {
       created_by = null,
     } = data;
 
-    const CATEGORIAS = new Set([
-      "arbitraje", "alquiler_cancha", "tizado",
-      "delegado", "transporte", "comida", "otro",
-    ]);
-
     if (!campeonato_id) throw new Error("campeonato_id es requerido");
-    if (!CATEGORIAS.has(String(categoria || "")))
+    if (!CATEGORIAS_GASTO.has(String(categoria || "")))
       throw new Error(`Categoría inválida: ${categoria}`);
     if (!monto || Number(monto) <= 0) throw new Error("monto debe ser mayor a 0");
 

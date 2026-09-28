@@ -425,6 +425,14 @@
       const suffix = qs.toString() ? `?${qs.toString()}` : "";
       return window.ApiClient.get(`/finanzas/resumen-equipos${suffix}`);
     },
+    utilidadPorRubro(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/finanzas/utilidad-por-rubro${suffix}`);
+    },
   };
 
   window.AuspiciantesAPI = window.AuspiciantesAPI || {

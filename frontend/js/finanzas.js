@@ -15,6 +15,7 @@ let finanzasState = {
     resumen: null,
   },
   ultimoResumenEquipos: [],
+  ultimaUtilidadPorRubro: null,
   ultimoMovimientosEquipo: {
     equipo_id: null,
     equipo_nombre: "",
@@ -51,6 +52,7 @@ async function inicializarFinanzas() {
     cargarSancionesFinancieras(),
     cargarResumenEjecutivoFinanzas(),
     cargarResumenPorEquipoFinanzas(),
+    cargarUtilidadPorRubroFinanzas(),
     cargarEstadoCuentaActual(),
     cargarGastosOperativos(),
   ]);
@@ -82,6 +84,7 @@ function bindEventosFinanzas() {
         cargarSancionesFinancieras(),
         cargarResumenEjecutivoFinanzas(),
         cargarResumenPorEquipoFinanzas(),
+        cargarUtilidadPorRubroFinanzas(),
         cargarEstadoCuentaActual(),
       ]);
     });
@@ -94,6 +97,7 @@ function bindEventosFinanzas() {
       cargarSancionesFinancieras(),
       cargarResumenEjecutivoFinanzas(),
       cargarResumenPorEquipoFinanzas(),
+      cargarUtilidadPorRubroFinanzas(),
       cargarEstadoCuentaActual(),
       cargarGastosOperativos(),
     ]);
@@ -109,6 +113,7 @@ function bindEventosFinanzas() {
       cargarSancionesFinancieras();
       cargarResumenEjecutivoFinanzas();
       cargarResumenPorEquipoFinanzas();
+      cargarUtilidadPorRubroFinanzas();
       cargarEstadoCuentaActual();
       cargarGastosOperativos();
       poblarSelectCampeonatosGasto();
@@ -122,6 +127,7 @@ function bindEventosFinanzas() {
       cargarSancionesFinancieras();
       cargarResumenEjecutivoFinanzas();
       cargarResumenPorEquipoFinanzas();
+      cargarUtilidadPorRubroFinanzas();
       cargarEstadoCuentaActual();
     });
 
@@ -785,6 +791,81 @@ async function cargarResumenPorEquipoFinanzas() {
   }
 }
 
+async function cargarUtilidadPorRubroFinanzas() {
+  const campeonatoId = document.getElementById("fin-campeonato")?.value || "";
+  const cont = document.getElementById("fin-utilidad-rubro-contenido");
+
+  if (!campeonatoId) {
+    finanzasState.ultimaUtilidadPorRubro = null;
+    if (cont) {
+      cont.innerHTML = renderVacio(
+        "Selecciona un campeonato en los filtros para ver la utilidad por rubro."
+      );
+    }
+    return;
+  }
+
+  if (cont) cont.innerHTML = renderCargando("Calculando utilidad por rubro...");
+
+  try {
+    const resp = await FinanzasAPI.utilidadPorRubro({ campeonato_id: campeonatoId });
+    finanzasState.ultimaUtilidadPorRubro = resp;
+    renderUtilidadPorRubro(resp);
+  } catch (error) {
+    console.error(error);
+    finanzasState.ultimaUtilidadPorRubro = null;
+    if (cont) cont.innerHTML = renderVacio(error.message || "No se pudo calcular la utilidad por rubro.");
+  }
+}
+
+function renderUtilidadPorRubro(data) {
+  const cont = document.getElementById("fin-utilidad-rubro-contenido");
+  if (!cont) return;
+
+  const rubros = Array.isArray(data?.rubros) ? data.rubros : [];
+  if (!rubros.length) {
+    cont.innerHTML = renderVacio("No hay datos para calcular la utilidad por rubro.");
+    return;
+  }
+
+  const rows = rubros
+    .map((r) => {
+      return `
+        <tr>
+          <td>${escaparHtml(r.label || r.clave || "-")}</td>
+          <td class="fin-col-monto">${formatoMoneda(r.ingresos)}</td>
+          <td class="fin-col-monto">${formatoMoneda(r.egresos)}</td>
+          <td class="fin-col-monto ${r.utilidad > 0 ? "fin-saldo-ok" : r.utilidad < 0 ? "fin-saldo-deuda" : ""}">${formatoMoneda(r.utilidad)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const total = data?.total || { ingresos: 0, egresos: 0, utilidad: 0 };
+
+  cont.innerHTML = `
+    <table class="tabla-estadistica tabla-estadistica-compacta">
+      <thead>
+        <tr>
+          <th>Rubro</th>
+          <th>Ingresos</th>
+          <th>Egresos</th>
+          <th>Utilidad</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr style="font-weight:700;">
+          <td>Total</td>
+          <td class="fin-col-monto">${formatoMoneda(total.ingresos)}</td>
+          <td class="fin-col-monto">${formatoMoneda(total.egresos)}</td>
+          <td class="fin-col-monto ${total.utilidad > 0 ? "fin-saldo-ok" : total.utilidad < 0 ? "fin-saldo-deuda" : ""}">${formatoMoneda(total.utilidad)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+}
+
 function clasificarMovimientoCuenta(mov = {}) {
   const concepto = String(mov.concepto || "").toLowerCase();
   const descripcion = String(mov.descripcion || "").toLowerCase();
@@ -941,6 +1022,7 @@ async function guardarMovimientoFinanzas(e) {
         cargarSancionesFinancieras(),
         cargarResumenEjecutivoFinanzas(),
         cargarResumenPorEquipoFinanzas(),
+        cargarUtilidadPorRubroFinanzas(),
         cargarEstadoCuentaActual(),
         cargarMovimientosEquipoFinanzas(Number(movimiento.equipo_id) || equipoIdGuardado),
       ]);
@@ -960,6 +1042,7 @@ async function guardarMovimientoFinanzas(e) {
         cargarSancionesFinancieras(),
         cargarResumenEjecutivoFinanzas(),
         cargarResumenPorEquipoFinanzas(),
+        cargarUtilidadPorRubroFinanzas(),
         cargarEstadoCuentaActual(),
         cargarMovimientosEquipoFinanzas(equipoIdGuardado),
       ]);
@@ -1034,6 +1117,7 @@ async function eliminarMovimientoFinanzas(movimientoId) {
       cargarSancionesFinancieras(),
       cargarResumenEjecutivoFinanzas(),
       cargarResumenPorEquipoFinanzas(),
+      cargarUtilidadPorRubroFinanzas(),
       cargarEstadoCuentaActual(),
       cargarMovimientosEquipoFinanzas(equipoId),
     ]);
@@ -2913,7 +2997,7 @@ async function guardarGasto() {
     }
     document.getElementById("fin-form-gasto-wrap").style.display = "none";
     limpiarFormGasto();
-    await cargarGastosOperativos();
+    await Promise.all([cargarGastosOperativos(), cargarUtilidadPorRubroFinanzas()]);
     mostrarNotificacion("Gasto guardado", "success");
   } catch (err) {
     mostrarNotificacion(err.message || "Error al guardar gasto", "error");
@@ -2924,7 +3008,7 @@ async function eliminarGasto(id) {
   if (!confirm("¿Eliminar este gasto?")) return;
   try {
     await ApiClient.delete(`/finanzas/gastos/${id}`);
-    await cargarGastosOperativos();
+    await Promise.all([cargarGastosOperativos(), cargarUtilidadPorRubroFinanzas()]);
     mostrarNotificacion("Gasto eliminado", "success");
   } catch (err) {
     mostrarNotificacion(err.message || "Error al eliminar", "error");
