@@ -1,3 +1,60 @@
+## 2026-09-28 (parte 2) - Finanzas: UX del módulo (alineación, filtro en Estado de Cuenta, título, espaciado)
+
+> Commiteado y pusheado (`eef9c3f`).
+
+El usuario probó lo entregado en la parte 1 y compartió 3 capturas
+reales con feedback concreto:
+
+1. **"Utilidad por Rubro" se veía mal distribuida** — los números no
+   coincidían visualmente con el título de su columna. Causa raíz real
+   (no cosmética menor): los `<td>` de monto tenían `text-align:right`
+   vía `.fin-col-monto`, pero los `<th>` del header seguían con
+   `text-align:left` (heredado del default de `.tabla-estadistica`) — el
+   número quedaba pegado al borde derecho de una celda ancha, lejos de
+   su título, dando la sensación de pertenecer a la columna de al lado.
+   Se reemplazó `tabla-estadistica(-compacta)` — pensada para listados
+   largos y densos, no para un resumen de 4 filas — por una clase
+   dedicada `.fin-tabla-rubros`: mejor padding, columnas de ancho fijo,
+   alineación consistente por posición (afecta `th` y `td` a la vez, no
+   depende de acordarse de poner una clase en cada celda).
+
+2. **"¿En dónde se adiciona el formulario para ingresar premios?"** — la
+   categoría "Premios" vivía dentro de "Registrar gasto" en Gastos
+   Operativos, sin ningún acceso directo desde donde tiene sentido
+   pensarlo (la propia tarjeta de utilidad). Se agregó botón "Registrar
+   premios" en la tarjeta "Utilidad por Rubro" que cambia de pestaña,
+   abre el formulario y preselecciona la categoría.
+
+3. **Título y espaciado general** — "Modulo Financiero" → "Financiero".
+   Más margen entre la barra de pestañas y las tarjetas, y entre
+   tarjetas consecutivas dentro de una misma pestaña (antes sin margen
+   propio, quedaban pegadas — `.card` global no trae `margin-bottom`).
+
+4. **Estado de Cuenta sin forma de buscar ahí mismo** — antes dependía
+   100% del filtro de la pestaña "Filtros" (`fin-campeonato`/`fin-equipo`),
+   obligando a saltar de pestaña para cambiar de equipo. Se agregó un
+   buscador propio (Campeonato + Equipo) dentro de la tarjeta, con sus
+   propios ids (`fin-estado-campeonato`/`fin-estado-equipo`) e
+   independiente del filtro global — `cargarEstadoCuentaActual()`,
+   `imprimirReporteEstadoCuenta()` e `iniciarDocumentoDesdeEstadoCuenta()`
+   se actualizaron para leer de estos selectores dedicados.
+
+### Verificación
+- `node --check`, balance de `<div>` y de llaves CSS, cross-check de
+  `getElementById()`, `smokeFrontendRoleGuards.js` 49/49.
+- **Se intentó verificación visual local** con Puppeteer (servidor
+  estático propio sirviendo `frontend/` + datos simulados inyectados vía
+  `page.evaluate`, para no depender de login real) — no funcionó: el
+  guard de autenticación de `core.js` redirige a `login.html` incluso
+  con un token con estructura de JWT válida en `localStorage` (parece
+  validar contra el backend real, no solo la presencia del token).
+  Documentado el intento y por qué no sirvió, para no repetir el mismo
+  callejón sin salida en una sesión futura.
+- **Pendiente para el usuario**: confirmar visualmente los 4 cambios,
+  igual que el resto de páginas con login de esta sesión.
+
+---
+
 ## 2026-09-28 - Finanzas: desglose de utilidad por rubro + gráfico en dashboard
 
 > Commiteado y pusheado (`83ad50c`).
