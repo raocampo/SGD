@@ -4691,7 +4691,7 @@ class Partido {
             origen_clave
           )
           VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_DATE,
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, (CURRENT_TIMESTAMP AT TIME ZONE 'America/Guayaquil')::date,
             'planilla', $10, 'planilla', $11
           )
           ON CONFLICT (origen_clave)

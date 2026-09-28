@@ -278,7 +278,7 @@ class Finanza {
             VALUES (
               $1, $2, $3, 'cargo', 'inscripcion',
               'Cargo inscripción de categoría',
-              $4, 'pendiente', CURRENT_DATE,
+              $4, 'pendiente', (CURRENT_TIMESTAMP AT TIME ZONE 'America/Guayaquil')::date,
               $5, 'sistema', $6
             )
             ON CONFLICT (origen_clave)

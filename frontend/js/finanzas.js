@@ -870,10 +870,13 @@ async function cargarEstadoCuentaActual() {
         <div><strong>Cargo inscripción:</strong> ${formatoMoneda(resumenConceptos.inscripcion.cargo)}</div>
         <div><strong>Pago inscripción:</strong> ${formatoMoneda(resumenConceptos.inscripcion.abono)}</div>
         <div><strong>Saldo inscripción:</strong> <span class="${resumenConceptos.inscripcion.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumenConceptos.inscripcion.saldo)}</span></div>
+        <div><strong>Cargo arbitraje:</strong> ${formatoMoneda(resumenConceptos.arbitraje.cargo)}</div>
         <div><strong>Pago arbitraje:</strong> ${formatoMoneda(resumenConceptos.arbitraje.abono)}</div>
         <div><strong>Saldo arbitraje:</strong> <span class="${resumenConceptos.arbitraje.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumenConceptos.arbitraje.saldo)}</span></div>
+        <div><strong>Cargo tarjetas amarillas:</strong> ${formatoMoneda(resumenConceptos.ta.cargo)}</div>
         <div><strong>Pago tarjetas amarillas:</strong> ${formatoMoneda(resumenConceptos.ta.abono)}</div>
         <div><strong>Saldo tarjetas amarillas:</strong> <span class="${resumenConceptos.ta.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumenConceptos.ta.saldo)}</span></div>
+        <div><strong>Cargo tarjetas rojas:</strong> ${formatoMoneda(resumenConceptos.tr.cargo)}</div>
         <div><strong>Pago tarjetas rojas:</strong> ${formatoMoneda(resumenConceptos.tr.abono)}</div>
         <div><strong>Saldo tarjetas rojas:</strong> <span class="${resumenConceptos.tr.saldo > 0 ? "fin-saldo-deuda" : "fin-saldo-ok"}">${formatoMoneda(resumenConceptos.tr.saldo)}</span></div>
       `;
@@ -1544,16 +1547,22 @@ async function imprimirReporteEstadoCuenta() {
 
   const movimientos = data.movimientos || [];
   const resumenConceptos = calcularResumenCuentaPorConcepto(movimientos);
+  const CONCEPTO_RPT_LABEL = {
+    inscripcion: "Inscripción", arbitraje: "Arbitraje", multa: "Tarjeta / Multa",
+    pago: "Pago", ajuste: "Ajuste", otro: "Otro",
+  };
   const filas = movimientos
     .map((m) => {
       const tipo = String(m.tipo_movimiento || "").toLowerCase();
+      const anulado = String(m.estado || "").toLowerCase() === "anulado";
       const cargo = tipo === "cargo" ? formatoMoneda(m.monto) : "";
       const abono = tipo === "abono" ? formatoMoneda(m.monto) : "";
+      const rowStyle = anulado ? ' style="opacity:0.4;text-decoration:line-through"' : "";
       return `
-        <tr>
+        <tr${rowStyle}>
           <td>${escaparHtml(formatearFechaFinanzas(m.fecha_movimiento))}</td>
           <td>${escaparHtml(m.evento_nombre || "-")}</td>
-          <td>${escaparHtml(m.concepto || "-")}</td>
+          <td>${escaparHtml(CONCEPTO_RPT_LABEL[m.concepto] || m.concepto || "-")}</td>
           <td>${escaparHtml(m.descripcion || "-")}</td>
           <td class="num">${cargo}</td>
           <td class="num">${abono}</td>
@@ -1573,10 +1582,13 @@ async function imprimirReporteEstadoCuenta() {
         <div><strong>Cargo inscripción:</strong> ${formatoMoneda(resumenConceptos.inscripcion.cargo)}</div>
         <div><strong>Pago inscripción:</strong> ${formatoMoneda(resumenConceptos.inscripcion.abono)}</div>
         <div><strong>Saldo inscripción:</strong> <span class="${resumenConceptos.inscripcion.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumenConceptos.inscripcion.saldo)}</span></div>
+        <div><strong>Cargo arbitraje:</strong> ${formatoMoneda(resumenConceptos.arbitraje.cargo)}</div>
         <div><strong>Pago arbitraje:</strong> ${formatoMoneda(resumenConceptos.arbitraje.abono)}</div>
         <div><strong>Saldo arbitraje:</strong> <span class="${resumenConceptos.arbitraje.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumenConceptos.arbitraje.saldo)}</span></div>
+        <div><strong>Cargo tarjetas amarillas:</strong> ${formatoMoneda(resumenConceptos.ta.cargo)}</div>
         <div><strong>Pago tarjetas amarillas:</strong> ${formatoMoneda(resumenConceptos.ta.abono)}</div>
         <div><strong>Saldo tarjetas amarillas:</strong> <span class="${resumenConceptos.ta.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumenConceptos.ta.saldo)}</span></div>
+        <div><strong>Cargo tarjetas rojas:</strong> ${formatoMoneda(resumenConceptos.tr.cargo)}</div>
         <div><strong>Pago tarjetas rojas:</strong> ${formatoMoneda(resumenConceptos.tr.abono)}</div>
         <div><strong>Saldo tarjetas rojas:</strong> <span class="${resumenConceptos.tr.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(resumenConceptos.tr.saldo)}</span></div>
       </div>
@@ -2628,21 +2640,32 @@ function renderTablaEstadoCuenta(items) {
     return;
   }
 
+  const CONCEPTO_EC_LABEL = {
+    inscripcion: "Inscripción", arbitraje: "Arbitraje", multa: "Tarjeta / Multa",
+    pago: "Pago", ajuste: "Ajuste", otro: "Otro",
+  };
+  const TIPO_EC_COLOR = { cargo: "#fef3c7;color:#92400e", abono: "#d1fae5;color:#065f46" };
+
   const rows = items
     .map((m) => {
       const documentado = Boolean(m.documento_id);
       const estadoMov = String(m.estado || "").toLowerCase();
       const estadoDoc = String(m.documento_estado || "").toLowerCase();
-      const puedeSeleccionar = !documentado && estadoMov !== "anulado";
+      const anulado = estadoMov === "anulado";
+      const puedeSeleccionar = !documentado && !anulado;
       const docNumero = m.documento_numero || (m.documento_id ? `#${m.documento_id}` : "");
       const docBadge = documentado
         ? `<span class="${estadoDoc === "anulado" ? "badge-estado-pendiente" : "badge-estado-activo"}">
             ${estadoDoc === "anulado" ? "Doc. anulada" : "Documentado"} ${escaparHtml(docNumero)}
           </span>`
         : '<span style="color:#94a3b8;">—</span>';
+      const tipoBg = TIPO_EC_COLOR[m.tipo_movimiento] || "";
+      const tipoBadge = `<span class="badge" style="background:${tipoBg}">${escaparHtml(m.tipo_movimiento || "-")}</span>`;
+      const conceptoLabel = CONCEPTO_EC_LABEL[m.concepto] || m.concepto || "-";
+      const descripcionMov = m.descripcion ? `<span style="color:#64748b;font-size:0.82em">${escaparHtml(m.descripcion)}</span>` : "";
 
       return `
-        <tr>
+        <tr${anulado ? ' style="opacity:0.45;text-decoration:line-through"' : ""}>
           <td>
             <input
               type="checkbox"
@@ -2653,9 +2676,9 @@ function renderTablaEstadoCuenta(items) {
             />
           </td>
           <td class="fin-col-fecha">${escaparHtml(formatearFechaFinanzas(m.fecha_movimiento))}</td>
-          <td>${escaparHtml(m.tipo_movimiento || "-")}</td>
-          <td>${escaparHtml(m.concepto || "-")}</td>
-          <td class="fin-col-monto">${formatoMoneda(m.monto)}</td>
+          <td>${tipoBadge}</td>
+          <td>${escaparHtml(conceptoLabel)}<br>${descripcionMov}</td>
+          <td class="fin-col-monto${m.tipo_movimiento === "abono" && !anulado ? " fin-saldo-ok" : ""}">${formatoMoneda(m.monto)}</td>
           <td>${escaparHtml(m.estado || "-")}</td>
           <td>${escaparHtml(m.evento_nombre || "-")}</td>
           <td>${docBadge}</td>
