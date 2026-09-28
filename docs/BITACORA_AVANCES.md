@@ -104,10 +104,42 @@
 
 Ninguno de los 10 commits documenta explícitamente qué verificación
 corrió antes de pushear (no hay notas de `node --check`, smoke test, ni
-pruebas contra producción en los mensajes). **Ninguno de estos cambios
-fue confirmado visualmente todavía** — ni por Puppeteer (esta sesión no
-lo intentó hasta ahora) ni por el usuario. Ver [[project_pending]] para
-el detalle de qué falta confirmar.
+pruebas contra producción en los mensajes).
+
+**Actualización 28-sep (esta sesión), verificación visual con Puppeteer**
+contra la landing real `https://ltyc.corpsimtelec.com/liga/interempresarial`
+(organizador con 2 campeonatos `en_curso`, ideal para probar el filtro):
+
+- ✅ **Sección "Últimos Partidos"** — confirmada en la posición correcta
+  del DOM (`portal-lista-campeonatos` → `portal-resultados-recientes` →
+  `equipos-bienvenida`), visible, con las 8 tarjetas de resultado del
+  campeonato más reciente ("Liga InterEmpresarial 1era Edición") y los 2
+  tabs de filtro ("Liga InterEmpresarial 1era Edición" / "Interjorgas
+  Financiero") con sus nombres reales. Screenshot capturada, coincide
+  exactamente con lo pedido en `0cf6b0f`/`aee370c`.
+- ✅ **Botón "Compartir" en partidos** — confirmado presente en el DOM
+  (61 instancias de `.portal-match-share-btn` en el fixture de
+  "Interjorgas Financiero") y capturado visualmente en una tarjeta real
+  (partido Banco del Austro 5-2 COAC Cristo Rey, botón "Compartir" en la
+  esquina superior derecha). Nota técnica: para capturarlo hubo que
+  forzar visibilidad vía CSS de las subtabs/acordeón de jornadas
+  anidados (Puppeteer no simula bien varios niveles de tabs con estado
+  interno) — el HTML/CSS/JS del botón en sí está correcto, no se probó
+  el flujo completo de clics de un usuario real navegando las pestañas.
+- ⚠️ **Galería agrupada por tema** y **imágenes de tipo
+  `campeonato_resultado`** — no verificables todavía: el organizador de
+  prueba no tiene ninguna foto de galería con `titulo` ni ninguna imagen
+  de resultado subida en producción (confirmado por query de solo
+  lectura). La sección "Galería del Organizador" se ve vacía (placeholders
+  grises) pero no rota. Falta que algún organizador real suba fotos con
+  título para confirmar la agrupación visual.
+- ⚠️ **Skeleton loaders** — no verificados (son animaciones transitorias
+  mientras carga; requeriría interceptar la red para retrasar la
+  respuesta a propósito, no se intentó).
+- Sin errores de consola/JS durante toda la navegación.
+
+El batch de Finanzas (6 fixes, login-gated) sigue sin confirmar — ver
+[[project_pending]] para el detalle completo de qué falta.
 
 ---
 
