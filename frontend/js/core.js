@@ -1642,6 +1642,7 @@
     );
 
     const tecnicoRestricted = [
+      "admin.html",
       "campeonatos.html",
       "eventos.html",
       "sorteo.html",
@@ -1651,6 +1652,12 @@
       "auspiciantes.html",
       "portal-admin.html",
       "usuarios.html",
+      "facturacion.html",
+      "organizador-portal.html",
+      "noticias.html",
+      "galeria-admin.html",
+      "contenido-portal.html",
+      "contacto-admin.html",
     ];
 
     if (esOperadorPortal(user)) {

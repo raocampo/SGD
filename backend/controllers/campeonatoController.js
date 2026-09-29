@@ -3,6 +3,7 @@ const pool = require("../config/database");
 const Campeonato = require("../models/Campeonato");
 const { obtenerPlanUsuarioPorId } = require("../services/planLimits");
 const { resolveUploadPath } = require("../config/uploads");
+const { esTecnicoOdirigente, obtenerCampeonatoIdsPermitidosTecnico } = require("../services/roleScope");
 
 function esOrganizador(user) {
   return String(user?.rol || "").toLowerCase() === "organizador";
@@ -22,21 +23,31 @@ function organizadorCoincideConTexto(user, campeonato) {
 }
 
 async function puedeAccederCampeonato(req, campeonato) {
-  if (!esOrganizador(req?.user)) return true;
   if (!campeonato) return false;
 
-  const creador = Number.parseInt(campeonato.creador_usuario_id, 10);
-  const userId = Number.parseInt(req.user?.id, 10);
-  if (Number.isFinite(creador) && creador > 0) {
-    return creador === userId;
+  if (esOrganizador(req?.user)) {
+    const creador = Number.parseInt(campeonato.creador_usuario_id, 10);
+    const userId = Number.parseInt(req.user?.id, 10);
+    if (Number.isFinite(creador) && creador > 0) {
+      return creador === userId;
+    }
+
+    if (organizadorCoincideConTexto(req.user, campeonato)) {
+      await Campeonato.asignarCreador(campeonato.id, userId);
+      return true;
+    }
+
+    return false;
   }
 
-  if (organizadorCoincideConTexto(req.user, campeonato)) {
-    await Campeonato.asignarCreador(campeonato.id, userId);
-    return true;
+  // Tecnico/dirigente/jugador: solo campeonatos donde tienen algun equipo asociado.
+  if (esTecnicoOdirigente(req?.user?.rol)) {
+    const permitidos = await obtenerCampeonatoIdsPermitidosTecnico(req);
+    if (permitidos === null) return true;
+    return permitidos.includes(Number(campeonato.id));
   }
 
-  return false;
+  return true;
 }
 
 function parseBooleanFlag(value) {
@@ -235,7 +246,7 @@ const campeonatoController = {
       const campeonatosAll = await Campeonato.obtenerTodos();
       let campeonatos = campeonatosAll;
 
-      if (esOrganizador(req.user)) {
+      if (esOrganizador(req.user) || esTecnicoOdirigente(req.user?.rol)) {
         const filtrados = [];
         for (const c of campeonatosAll) {
           if (await puedeAccederCampeonato(req, c)) filtrados.push(c);

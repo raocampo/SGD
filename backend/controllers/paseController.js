@@ -1,4 +1,9 @@
 const Pase = require("../models/Pase");
+const {
+  esTecnicoOdirigente,
+  obtenerEquiposPermitidosTecnico,
+  tecnicoPuedeAccederEquipo,
+} = require("../services/roleScope");
 
 const paseController = {
   async crearPase(req, res) {
@@ -17,7 +22,15 @@ const paseController = {
 
   async listarPases(req, res) {
     try {
-      const pases = await Pase.listar(req.query || {});
+      const filtros = { ...(req.query || {}) };
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        const permitidos = await obtenerEquiposPermitidosTecnico(req);
+        filtros.equipo_ids_alguno = permitidos || [];
+        // No tiene sentido dejar que filtre por un equipo ajeno via query params.
+        delete filtros.equipo_origen_id;
+        delete filtros.equipo_destino_id;
+      }
+      const pases = await Pase.listar(filtros);
       return res.json({
         ok: true,
         total: pases.length,
@@ -31,7 +44,14 @@ const paseController = {
 
   async listarHistorialJugadores(req, res) {
     try {
-      const historial = await Pase.listarHistorialJugadores(req.query || {});
+      const filtros = { ...(req.query || {}) };
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        const permitidos = await obtenerEquiposPermitidosTecnico(req);
+        // Este listado solo acepta un equipo_id -- se acota al primero
+        // (caso tipico: dirigente/tecnico con un solo equipo).
+        filtros.equipo_id = (permitidos && permitidos[0]) || 0;
+      }
+      const historial = await Pase.listarHistorialJugadores(filtros);
       return res.json({
         ok: true,
         total: historial.length,
@@ -53,6 +73,13 @@ const paseController = {
       const resultado = await Pase.obtenerHistorialJugador(jugadorId, req.query || {});
       if (!resultado) return res.status(404).json({ error: "Jugador no encontrado" });
 
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        const puede = await tecnicoPuedeAccederEquipo(req, resultado.jugador?.equipo_id);
+        if (!puede) {
+          return res.status(403).json({ error: "No autorizado para consultar este jugador" });
+        }
+      }
+
       return res.json({
         ok: true,
         jugador: resultado.jugador,
@@ -68,7 +95,13 @@ const paseController = {
 
   async listarHistorialEquipos(req, res) {
     try {
-      const historial = await Pase.listarHistorialEquipos(req.query || {});
+      const filtros = { ...(req.query || {}) };
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        const permitidos = await obtenerEquiposPermitidosTecnico(req);
+        filtros.equipo_ids = permitidos || [];
+        delete filtros.equipo_id;
+      }
+      const historial = await Pase.listarHistorialEquipos(filtros);
       return res.json({
         ok: true,
         total: historial.length,
@@ -85,6 +118,13 @@ const paseController = {
       const equipoId = Number.parseInt(req.params.equipoId, 10);
       if (!Number.isFinite(equipoId) || equipoId <= 0) {
         return res.status(400).json({ error: "equipoId inválido" });
+      }
+
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        const puede = await tecnicoPuedeAccederEquipo(req, equipoId);
+        if (!puede) {
+          return res.status(403).json({ error: "No autorizado para consultar este equipo" });
+        }
       }
 
       const resultado = await Pase.obtenerHistorialEquipo(equipoId, req.query || {});
@@ -111,6 +151,15 @@ const paseController = {
       }
       const pase = await Pase.obtenerPorId(id);
       if (!pase) return res.status(404).json({ error: "Pase no encontrado" });
+
+      if (esTecnicoOdirigente(req.user?.rol)) {
+        const permitidos = await obtenerEquiposPermitidosTecnico(req);
+        const set = new Set(permitidos || []);
+        if (!set.has(Number(pase.equipo_origen_id)) && !set.has(Number(pase.equipo_destino_id))) {
+          return res.status(403).json({ error: "No autorizado para consultar este pase" });
+        }
+      }
+
       return res.json({ ok: true, pase });
     } catch (error) {
       console.error("Error obtenerPase:", error);

@@ -61,17 +61,34 @@ async function inicializarFinanzas() {
 function aplicarPermisosFinanzasUI() {
   if (!finanzasState.esTecnico) return;
 
-  const cardMovimiento = document.getElementById("fin-card-movimiento");
-  if (cardMovimiento) cardMovimiento.style.display = "none";
+  // Dirigente/tecnico/jugador solo necesitan consultar lo de su propio
+  // equipo: Estado de Cuenta, Morosidad y Sanciones (el backend ya acota
+  // esos datos a sus equipos). El resto es gestion financiera exclusiva
+  // del organizador -- el backend tambien la bloquea con 403, asi que
+  // mostrarla aqui solo generaba pestañas rotas/confusas.
+  const pestanasOcultas = [
+    "fin-tab-filtros",
+    "fin-tab-movimiento",
+    "fin-tab-ejecutivo",
+    "fin-tab-gastos",
+    "fin-tab-movimientos",
+  ];
+  pestanasOcultas.forEach((tabId) => {
+    const btn = document.querySelector(`.finanzas-main-tab[data-tab-target="${tabId}"]`);
+    if (btn) btn.style.display = "none";
+    const panel = document.getElementById(tabId);
+    if (panel) panel.style.display = "none";
+  });
 
-  const cardMovimientosEquipo = document.getElementById("fin-card-movimientos-equipo");
-  if (cardMovimientosEquipo) cardMovimientosEquipo.style.display = "none";
-
-  const cardMorosidad = document.querySelector(".fin-card-morosidad");
-  if (cardMorosidad) cardMorosidad.style.display = "none";
+  const btnRegistrarPremiosHeader = document.getElementById("btn-fin-header-registrar-premios");
+  if (btnRegistrarPremiosHeader) btnRegistrarPremiosHeader.style.display = "none";
 
   const btnEmitirDocumento = document.getElementById("btn-fin-emitir-documento");
   if (btnEmitirDocumento) btnEmitirDocumento.style.display = "none";
+
+  // "Filtros" (la pestaña activa por defecto) queda oculta -- arrancar en
+  // Estado de Cuenta, que es donde de verdad pueden ver algo util.
+  actualizarPestanasFinanzas("fin-tab-estado-cuenta");
 }
 
 function bindEventosFinanzas() {

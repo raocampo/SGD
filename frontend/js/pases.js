@@ -7,6 +7,7 @@ let pasesState = {
   historialJugador: null,
   historialEquipo: null,
   esAdminLike: false,
+  esTecnico: false,
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -16,12 +17,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function inicializarPases() {
   pasesState.esAdminLike = !!window.Auth?.isAdminLike?.();
+  pasesState.esTecnico = !!window.Auth?.isTecnico?.();
   aplicarPermisosPasesUI();
   bindEventosPases();
   renderHistorialJugadorVacio("Selecciona un jugador para ver su historial.");
   renderHistorialEquipoVacio("Selecciona un equipo para ver su historial.");
   await cargarCatalogosPases();
   await cargarPases();
+
+  // Dirigente/tecnico: si su equipo nunca ha tenido un pase (en ningun
+  // campeonato), el modulo no les sirve de nada -- mostrar un mensaje claro
+  // en vez de un tablero de filtros vacio y confuso.
+  if (pasesState.esTecnico && pasesState.pases.length === 0) {
+    mostrarPasesModuloNoUtilizado();
+  }
+}
+
+function mostrarPasesModuloNoUtilizado() {
+  const contenido = document.getElementById("pases-main-container");
+  const mensaje = document.getElementById("pas-sin-modulo");
+  if (contenido) contenido.style.display = "none";
+  if (mensaje) mensaje.style.display = "";
 }
 
 function aplicarPermisosPasesUI() {
@@ -328,7 +344,15 @@ async function cargarPases() {
 
   try {
     const resp = await PasesAPI.listar(construirParamsFiltrosPases());
-    pasesState.pases = resp.pases || [];
+    let pases = resp.pases || [];
+    // Dirigente/tecnico: por defecto ("Todos" en el filtro de Estado) solo
+    // interesan los pases pagados o pendientes de pago -- los anulados son
+    // ruido para ellos, salvo que elijan ese estado explicitamente.
+    const filtroEstado = document.getElementById("pas-filtro-estado")?.value || "";
+    if (pasesState.esTecnico && !filtroEstado) {
+      pases = pases.filter((x) => String(x.estado || "").toLowerCase() !== "anulado");
+    }
+    pasesState.pases = pases;
     renderListadoPases();
     renderKPIsPases();
     await cargarHistorialesSeleccionados();

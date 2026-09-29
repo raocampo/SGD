@@ -149,6 +149,21 @@ class Pase {
     this._agregarFiltroNumero(where, vals, "p.equipo_origen_id", filtros.equipo_origen_id);
     this._agregarFiltroNumero(where, vals, "p.equipo_destino_id", filtros.equipo_destino_id);
 
+    // Restringe a pases donde alguno de estos equipos participa (origen o
+    // destino) -- usado para acotar la vista de tecnico/dirigente a "sus"
+    // equipos, sin importar de que lado del pase estén.
+    if (Array.isArray(filtros.equipo_ids_alguno) && filtros.equipo_ids_alguno.length) {
+      const ids = filtros.equipo_ids_alguno
+        .map((x) => Number.parseInt(x, 10))
+        .filter((x) => Number.isFinite(x) && x > 0);
+      if (ids.length) {
+        vals.push(ids);
+        where.push(`(p.equipo_origen_id = ANY($${vals.length}::int[]) OR p.equipo_destino_id = ANY($${vals.length}::int[]))`);
+      } else {
+        where.push("1 = 0");
+      }
+    }
+
     if (filtros.estado) {
       const estado = this.normalizarEstado(filtros.estado, null);
       if (estado) {
@@ -306,6 +321,19 @@ class Pase {
     this._agregarFiltroNumero(where, vals, "t.campeonato_id", filtros.campeonato_id);
     this._agregarFiltroNumero(where, vals, "t.evento_id", filtros.evento_id);
     this._agregarFiltroNumero(where, vals, "t.equipo_id", filtros.equipo_id);
+
+    if (Array.isArray(filtros.equipo_ids) && filtros.equipo_ids.length) {
+      const ids = filtros.equipo_ids
+        .map((x) => Number.parseInt(x, 10))
+        .filter((x) => Number.isFinite(x) && x > 0);
+      if (ids.length) {
+        vals.push(ids);
+        where.push(`t.equipo_id = ANY($${vals.length}::int[])`);
+      } else {
+        where.push("1 = 0");
+      }
+    }
+
     this._agregarFiltroFecha(where, vals, "t.fecha_pase", filtros.fecha_desde, ">=");
     this._agregarFiltroFecha(where, vals, "t.fecha_pase", filtros.fecha_hasta, "<=");
 

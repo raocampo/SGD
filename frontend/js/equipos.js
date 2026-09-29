@@ -10,6 +10,7 @@ let equipoEditandoId = null;
 let alertasOperativasEquipos = new Map();
 let cargandoAlertasOperativas = false;
 let tokenAlertasOperativas = 0;
+let estadoCuentaEquipoPropio = null;
 let vistaEquipos = localStorage.getItem("sgd_vista_equipos") || "cards";
 vistaEquipos = vistaEquipos === "table" ? "table" : "cards";
 const CAMPOS_IMPORTACION_EQUIPOS = [
@@ -172,12 +173,21 @@ function renderResumenAlertasOperativas() {
   if (cargandoAlertasOperativas) {
     cont.style.display = "block";
     cont.innerHTML = `
-      <h3>Alertas Operativas</h3>
+      <h3>${usuarioEsTecnico() ? "Estado de Cuenta de tu Equipo" : "Alertas Operativas"}</h3>
       <div class="empty-state">
         <i class="fas fa-spinner fa-spin"></i>
-        <p>Actualizando disciplina y morosidad de los equipos...</p>
+        <p>Actualizando ${usuarioEsTecnico() ? "el estado de cuenta de tu equipo" : "disciplina y morosidad de los equipos"}...</p>
       </div>
     `;
+    return;
+  }
+
+  // Dirigente/tecnico: un panel de "alertas" agregado entre equipos no
+  // tiene sentido cuando solo ven el suyo -- en vez de eso, el desglose de
+  // saldo pendiente POR RUBRO de su propio equipo (inscripcion, arbitraje,
+  // tarjetas/multas), que es lo que de verdad les sirve.
+  if (usuarioEsTecnico()) {
+    renderEstadoCuentaEquipoPropio(cont);
     return;
   }
 
@@ -228,6 +238,46 @@ function renderResumenAlertasOperativas() {
       </div>
       ${detalleDisciplina}
     </div>
+  `;
+}
+
+function renderEstadoCuentaEquipoPropio(cont) {
+  const resumen = estadoCuentaEquipoPropio?.resumen;
+  if (!resumen) {
+    cont.style.display = "none";
+    cont.innerHTML = "";
+    return;
+  }
+
+  const saldoTotal = Number(resumen.saldo || 0);
+  const esDeudor = saldoTotal > 0;
+
+  cont.style.display = "block";
+  cont.innerHTML = `
+    <h3>Estado de Cuenta de tu Equipo</h3>
+    <div class="alertas-operativas-grid">
+      <div class="alerta-operativa-card ${Number(resumen.saldo_inscripcion || 0) > 0 ? "alerta-operativa-card-deuda" : ""}">
+        <span class="alerta-operativa-label">Inscripción</span>
+        <strong>${formatoMonedaEquipo(resumen.saldo_inscripcion)}</strong>
+      </div>
+      <div class="alerta-operativa-card ${Number(resumen.saldo_arbitraje || 0) > 0 ? "alerta-operativa-card-deuda" : ""}">
+        <span class="alerta-operativa-label">Arbitraje</span>
+        <strong>${formatoMonedaEquipo(resumen.saldo_arbitraje)}</strong>
+      </div>
+      <div class="alerta-operativa-card ${Number(resumen.saldo_multa || 0) > 0 ? "alerta-operativa-card-deuda" : ""}">
+        <span class="alerta-operativa-label">Tarjetas / Multas</span>
+        <strong>${formatoMonedaEquipo(resumen.saldo_multa)}</strong>
+      </div>
+      <div class="alerta-operativa-card ${esDeudor ? "alerta-operativa-card-deuda" : ""}">
+        <span class="alerta-operativa-label">Saldo total pendiente</span>
+        <strong>${formatoMonedaEquipo(saldoTotal)}</strong>
+      </div>
+    </div>
+    <p class="fin-resumen-equipos-hint" style="margin-top:.75rem;">
+      ${esDeudor
+        ? `Tu equipo tiene un saldo pendiente de ${formatoMonedaEquipo(saldoTotal)}. Consulta el detalle en Finanzas &gt; Estado de Cuenta.`
+        : "Tu equipo está al día."}
+    </p>
   `;
 }
 
@@ -636,6 +686,11 @@ function aplicarPermisosEquiposUI() {
   const btnSorteo = document.querySelector('button[onclick="irASorteo()"]');
   if (btnSorteo) btnSorteo.style.display = "none";
 
+  // La carga masiva es una operacion de organizador sobre TODOS los equipos
+  // del campeonato -- no tiene sentido para quien solo ve el suyo.
+  const cardImportacion = document.getElementById("equipos-card-importacion");
+  if (cardImportacion) cardImportacion.style.display = "none";
+
   const btnVolverCategorias = document.querySelector('button[onclick="window.location.href=\'eventos.html\'"]');
   if (btnVolverCategorias) {
     btnVolverCategorias.innerHTML = '<i class="fas fa-arrow-left"></i> Volver a Mi Portal';
@@ -770,6 +825,7 @@ async function cargarAlertasOperativasEquipos(equipos = []) {
   const equiposLista = Array.isArray(equipos) ? equipos : [];
   const tokenActual = ++tokenAlertasOperativas;
   alertasOperativasEquipos = new Map();
+  estadoCuentaEquipoPropio = null;
 
   if (!campeonatoId || !equiposLista.length) {
     cargandoAlertasOperativas = false;
@@ -782,11 +838,32 @@ async function cargarAlertasOperativasEquipos(equipos = []) {
   renderResumenAlertasOperativas();
   renderListadoEquipos();
 
+  // Dirigente/tecnico: ademas de la morosidad (que alimenta el badge "Deuda
+  // $X" de su tarjeta de equipo, igual que para admin/organizador), traemos
+  // el desglose por rubro de su propio equipo para el panel de arriba.
+  const promesaEstadoCuentaPropio = usuarioEsTecnico()
+    ? (async () => {
+        try {
+          const paramsEstado = { campeonato_id: campeonatoId };
+          if (eventoIdSeleccionado) paramsEstado.evento_id = eventoIdSeleccionado;
+          estadoCuentaEquipoPropio = await window.FinanzasAPI.estadoCuentaEquipo(
+            equiposLista[0].id,
+            paramsEstado
+          );
+        } catch (error) {
+          console.error("No se pudo cargar el estado de cuenta del equipo:", error);
+        }
+      })()
+    : Promise.resolve();
+
   try {
     const paramsMorosidad = { campeonato_id: campeonatoId };
     if (eventoIdSeleccionado) paramsMorosidad.evento_id = eventoIdSeleccionado;
 
-    const morosidadResp = await window.FinanzasAPI.morosidad(paramsMorosidad);
+    const [morosidadResp] = await Promise.all([
+      window.FinanzasAPI.morosidad(paramsMorosidad),
+      promesaEstadoCuentaPropio,
+    ]);
     const morosidad = Array.isArray(morosidadResp?.equipos) ? morosidadResp.equipos : [];
     const mapaMorosidad = new Map(
       morosidad.map((item) => [Number(item.equipo_id), item])

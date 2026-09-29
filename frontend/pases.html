@@ -42,6 +42,14 @@
 
     <main class="main">
       <div class="container">
+        <section class="card" id="pas-sin-modulo" style="display:none;">
+          <div class="empty-state">
+            <i class="fas fa-people-arrows"></i>
+            <p>Tu equipo no tiene pases registrados. Este campeonato no utiliza el módulo de pases.</p>
+          </div>
+        </section>
+
+        <div id="pases-main-container">
         <section class="config-card">
           <h3>Filtros de Pases</h3>
           <div class="form-grid pases-form-grid">
@@ -208,6 +216,7 @@
             <div id="pas-hist-equipo-listado" class="tabla-scroll"></div>
           </article>
         </section>
+        </div>
       </div>
     </main>
   </div>
