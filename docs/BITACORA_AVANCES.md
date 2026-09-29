@@ -1,6 +1,70 @@
+## 2026-09-29 - Fix real: jornada actual se calculaba por el número de "jornada" interno, no por fechas jugadas
+
+> Pendiente de commit/push. Corrige/reemplaza el fix de la parte 4 (insuficiente).
+
+El usuario reportó que el fix de la parte 4 **no resolvió el problema** — misma
+captura, mismo error ("jornada 3... Jornada actual: 4") tras el deploy.
+
+### Investigación con datos reales de producción
+Diagnóstico previo (parte 4) asumía que el problema era partidos "programado"
+con planilla precargada colándose en el cálculo. Ese fix era correcto pero
+**no era la causa real de este caso** — se verificó consultando la API pública
+de producción (`api.ltyc.corpsimtelec.com`) contra el campeonato real
+(Liga InterEmpresarial 1era Edición, evento 34 "Abierta", equipo ILELSA):
+
+- Los 8 partidos `finalizado` de este evento (uno por cada uno de los 8
+  equipos que ya jugaron) **son TODOS del mismo y único día real de juego**,
+  `2026-09-26` (fecha de inicio del campeonato).
+- Pero ese único día de juego quedó repartido en el campo `partidos.jornada`
+  con valores **1, 2, 3 y 4 según el partido/grupo** (ej. Grupo A: Velocity/
+  Condimensa = jornada 1, Nutrifarm/Gomotors = jornada 2, Ilelsa/Induglas =
+  jornada 4 — los tres partidos de ese mismo grupo, mismo día, con 3 números
+  de jornada distintos).
+- Ningún equipo tiene más de 1 partido jugado (`partidos_jugados: 1` en todas
+  las tablas de posiciones) — confirma que solo se jugó una fecha real, tal
+  como dijo el usuario.
+
+Conclusión: `partidos.jornada` es solo un índice interno del round-robin
+generado por grupo (`generarRoundRobin`/`generarFixtureEventoUnificado`), y
+una vez que el organizador reprograma partidos individuales a mano (mover la
+fecha de un partido puntual sin tocar su número de jornada — algo normal al
+armar la fecha de inauguración con partidos "estelares" de distintas rondas
+del fixture generado), ese índice deja de representar el orden real de
+juego. Por eso `MAX(jornada)` entre los finalizados daba 4 aunque solo se
+había jugado 1 fecha real.
+
+### Fix
+`Jugador.obtenerEstadoInscripcionPorJornada()`: en vez de
+`MAX(p.jornada)`, ahora cuenta **fechas de partido distintas entre los
+finalizados** (`COUNT(DISTINCT p.fecha_partido::date)`). Esto sí representa
+"cuántas jornadas se jugaron" sin depender de que la numeración interna esté
+sincronizada entre grupos ni de que sobreviva a reprogramaciones manuales.
+Con los datos reales de evento 34: 8 finalizados, 1 sola fecha distinta →
+jornada actual = 1 (antes daba 4) → ya no bloquea con límite 3.
+
+### Verificación
+- `node --check models/Jugador.js`.
+- Query nueva probada contra la BD local (mismo resultado esperado, 1 fecha
+  distinta → 1).
+- Reconstrucción manual del caso real de producción vía la API pública
+  (`/api/public/eventos/34/tablas`, `/api/public/equipos/:id/partidos`) para
+  cada uno de los 16 equipos con partido jugado — confirmado que las 8
+  fechas de partido finalizadas son literalmente la misma fecha
+  (`2026-09-26`) pese a tener jornada 1/2/3/4 en la BD.
+- `smokeFrontendRoleGuards.js` 49/49.
+- **Pendiente para el usuario**: reintentar la importación de ILESLA en
+  Abierta tras el deploy. Nota aparte para una sesión futura (no se toca
+  ahora): la numeración de `jornada` en este evento está genuinamente
+  desincronizada respecto al orden real de juego — si el usuario reprograma
+  partidos a mano seguido, vale la pena revisar si conviene renumerar
+  `jornada` al reprogramar, o si el criterio por fecha (este fix) es
+  suficiente y ya no hace falta que el número esté sincronizado.
+
+---
+
 ## 2026-09-28 (parte 4) - Fix: cierre de inscripción de jugadores contaba jornadas programadas, no jugadas
 
-> Pendiente de commit/push.
+> Commiteado y pusheado (`28b4b95`) — insuficiente, ver fix de 2026-09-29 arriba.
 
 Reporte del usuario (con captura): al importar jugadores del equipo ILESLA
 a la categoría "Abierta", las 16 filas fallaron con "La inscripción de

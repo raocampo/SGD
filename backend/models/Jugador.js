@@ -679,21 +679,28 @@ class Jugador {
             };
         }
 
-        // "Jornada actual" = la jornada más alta que ya se JUGÓ (partido con
-        // resultado real), no la jornada más alta que existe en el fixture ni
-        // la que tiene una planilla precargada. Antes esto también contaba
-        // partidos con una fila en partido_planillas aunque el partido siguiera
-        // "programado" (p.ej. registro anticipado de jugadores/alineación antes
-        // del pitazo inicial), lo que cerraba la inscripción de jugadores
-        // jornadas antes de que se jugaran realmente. Mismo criterio de "partido
-        // terminado" que usa partidoCuentaParaSuspension() en Partido.js.
+        // "Jornada actual" = cuántas fechas de juego distintas ya se JUGARON
+        // realmente, NO el número de jornada más alto que aparece en algún
+        // partido finalizado. El campo partidos.jornada es solo un índice
+        // interno del round-robin generado por grupo, y una vez que el
+        // organizador reprograma partidos individuales a mano (mover fecha
+        // sin renumerar la jornada) ese índice deja de coincidir con el orden
+        // real de juego -- confirmado en producción (evento "Abierta" de LT&C
+        // Interempresarial, campeonato 20): los 8 partidos finalizados del
+        // primer y único día de juego real (2026-09-26) traían jornada 1, 2,
+        // 3 y 4 según el grupo/partido, no todos "jornada 1". Contar
+        // MAX(jornada) ahí daba 4 aunque solo se había jugado 1 fecha, y
+        // bloqueaba la inscripción con el límite en 3. Contar fechas de
+        // partido distintas sí refleja "cuántas jornadas se jugaron" sin
+        // depender de que esa numeración interna esté sincronizada.
         const jornadaResult = await pool.query(
             `
-                SELECT COALESCE(MAX(p.jornada), 0)::int AS jornada_actual
+                SELECT COUNT(DISTINCT p.fecha_partido::date)::int AS jornada_actual
                 FROM partidos p
                 WHERE p.evento_id = $1
                   AND p.jornada IS NOT NULL
                   AND p.jornada > 0
+                  AND p.fecha_partido IS NOT NULL
                   AND p.estado IN (
                     'finalizado', 'no_presentaron_ambos',
                     'no_presentaron_local', 'no_presentaron_visitante'
