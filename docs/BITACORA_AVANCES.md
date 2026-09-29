@@ -1,6 +1,58 @@
-## 2026-09-28 (parte 3) - Feedback tras revisión: acceso a "Registrar premios", skeleton+compartir en resultados de jornada, título de sección
+## 2026-09-28 (parte 4) - Fix: cierre de inscripción de jugadores contaba jornadas programadas, no jugadas
 
 > Pendiente de commit/push.
+
+Reporte del usuario (con captura): al importar jugadores del equipo ILESLA
+a la categoría "Abierta", las 16 filas fallaron con "La inscripción de
+jugadores se cerró al superar la jornada 3... Jornada actual: 4", pero
+según el usuario **solo se había jugado la jornada 1** (la 2 era esa
+semana). Cita textual: "las jornadas no son las creadas si no las
+jugadas".
+
+### Causa raíz
+`Jugador.obtenerEstadoInscripcionPorJornada()` calculaba la "jornada
+actual" como `MAX(p.jornada)` de partidos cuyo estado fuera
+`finalizado`/`no_presentaron_ambos`/`en_curso` **O que tuvieran una fila
+en `partido_planillas`** — pero esa tabla puede tener una fila para un
+partido que sigue `programado` (p.ej. registro anticipado de
+jugadores/alineación en la planilla antes del pitazo inicial, feature de
+la sesión 8-may). Bastaba con que UN partido de una jornada futura
+tuviera la planilla precargada para que esa jornada contara como
+"jugada" y cerrara la inscripción jornadas antes de tiempo.
+
+### Fix
+`backend/models/Jugador.js` `obtenerEstadoInscripcionPorJornada()`: se
+quitó la condición `OR EXISTS (... partido_planillas ...)` y se acotó
+`p.estado` a los estados que realmente representan un partido terminado
+— mismo critero que ya usa `partidoCuentaParaSuspension()` en
+`Partido.js` (`finalizado`, `no_presentaron_ambos`, más
+`no_presentaron_local`/`no_presentaron_visitante` por si el esquema los
+usa a futuro). Se quitó también `en_curso` — un partido que se está
+jugando en este momento todavía no "se jugó".
+
+Único call site afectado: `Jugador.crearJugador()` → cubre tanto alta
+individual como la importación masiva (la del reporte).
+
+### Verificación
+- `node --check models/Jugador.js`.
+- Query nueva probada contra la BD local (evento "Abierta" real de
+  pruebas, jornadas 1-2 en estado `programado`, jornada 3 con 2 partidos
+  `finalizado`) — devuelve `jornada_actual = 3` correctamente, igual que
+  antes del fix en ese caso (confirma que no rompe el caso normal); la
+  diferencia solo se nota cuando hay una planilla precargada en un
+  partido `programado` de una jornada futura (no reproducible en local,
+  la data de prueba no tenía ese caso — el escenario del reporte es de
+  producción).
+- `smokeFrontendRoleGuards.js` 49/49.
+- **Pendiente para el usuario**: reintentar la importación de jugadores
+  de ILESLA en la categoría Abierta tras el deploy y confirmar que ya no
+  bloquea con jornada 4 siendo que solo se jugó la 1.
+
+---
+
+## 2026-09-28 (parte 3) - Feedback tras revisión: acceso a "Registrar premios", skeleton+compartir en resultados de jornada, título de sección
+
+> Commiteado y pusheado (`e7b78e4`).
 
 El usuario revisó lo entregado hasta el momento y confirmó que Finanzas está
 bien, pero reportó 3 puntos concretos:

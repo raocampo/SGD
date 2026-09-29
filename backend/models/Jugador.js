@@ -679,6 +679,14 @@ class Jugador {
             };
         }
 
+        // "Jornada actual" = la jornada más alta que ya se JUGÓ (partido con
+        // resultado real), no la jornada más alta que existe en el fixture ni
+        // la que tiene una planilla precargada. Antes esto también contaba
+        // partidos con una fila en partido_planillas aunque el partido siguiera
+        // "programado" (p.ej. registro anticipado de jugadores/alineación antes
+        // del pitazo inicial), lo que cerraba la inscripción de jugadores
+        // jornadas antes de que se jugaran realmente. Mismo criterio de "partido
+        // terminado" que usa partidoCuentaParaSuspension() en Partido.js.
         const jornadaResult = await pool.query(
             `
                 SELECT COALESCE(MAX(p.jornada), 0)::int AS jornada_actual
@@ -686,13 +694,9 @@ class Jugador {
                 WHERE p.evento_id = $1
                   AND p.jornada IS NOT NULL
                   AND p.jornada > 0
-                  AND (
-                    p.estado IN ('finalizado', 'no_presentaron_ambos', 'en_curso')
-                    OR EXISTS (
-                      SELECT 1
-                      FROM partido_planillas pp
-                      WHERE pp.partido_id = p.id
-                    )
+                  AND p.estado IN (
+                    'finalizado', 'no_presentaron_ambos',
+                    'no_presentaron_local', 'no_presentaron_visitante'
                   )
             `,
             [eventoId]
