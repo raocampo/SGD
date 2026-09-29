@@ -545,6 +545,20 @@ function renderSkeletonTarjetasTorneo(n = 4) {
   `).join("");
 }
 
+function renderSkeletonResultadosRecientes(n = 3) {
+  return Array.from({ length: n }, () => `
+    <div class="portal-resultado-skeleton-card" aria-hidden="true">
+      <div class="sk-meta-line portal-shimmer-bg"></div>
+      <div class="sk-marcador-row">
+        <div class="sk-avatar-sm portal-shimmer-bg"></div>
+        <div class="sk-score-box portal-shimmer-bg"></div>
+        <div class="sk-avatar-sm portal-shimmer-bg"></div>
+      </div>
+      <div class="sk-meta-line portal-shimmer-bg" style="width:30%;align-self:center;"></div>
+    </div>
+  `).join("");
+}
+
 function renderMetaCardPortal(torneo) {
   const categorias = normalizarCategoriasResumenPortal(torneo?.categorias_resumen);
   if (!categorias.length) return "";
@@ -1361,7 +1375,7 @@ async function filtrarResultadosRecientes(campeonatoId, btnEl) {
   if (!grid) return;
   document.querySelectorAll(".portal-resultado-filtro-btn").forEach((b) => b.classList.remove("active"));
   if (btnEl) btnEl.classList.add("active");
-  grid.innerHTML = '<p class="empty-msg" style="padding:2rem 0">Cargando...</p>';
+  grid.innerHTML = renderSkeletonResultadosRecientes(3);
   try {
     const resp = await fetch(`${API}/public/campeonatos/${campeonatoId}/resultados-recientes`);
     const data = await resp.json().catch(() => ({}));
@@ -2016,15 +2030,7 @@ function construirUrlCompartirPartido(partido = {}) {
   return params.toString() ? `${base}?${params}` : base;
 }
 
-async function compartirPartidoPortal(btn) {
-  const art = btn.closest("article.portal-jornada-match");
-  const local = art?.dataset?.local || "";
-  const visitante = art?.dataset?.visitante || "";
-  const marcador = art?.dataset?.marcador || "";
-  const url = construirUrlCompartirPartido({ campeonato_id: art?.dataset?.campeonato, evento_id: art?.dataset?.evento });
-  const texto = marcador
-    ? `⚽ ${local} ${marcador} ${visitante}`
-    : `🏆 ${local} vs ${visitante}`;
+async function compartirTextoUrlPortal(btn, texto, url) {
   const completo = `${texto}\n${url}`;
   try {
     if (navigator.share) {
@@ -2037,6 +2043,30 @@ async function compartirPartidoPortal(btn) {
   btn.innerHTML = '<i class="fas fa-check"></i> Copiado';
   btn.disabled = true;
   setTimeout(() => { btn.innerHTML = prev; btn.disabled = false; }, 2000);
+}
+
+async function compartirPartidoPortal(btn) {
+  const art = btn.closest("article.portal-jornada-match");
+  const local = art?.dataset?.local || "";
+  const visitante = art?.dataset?.visitante || "";
+  const marcador = art?.dataset?.marcador || "";
+  const url = construirUrlCompartirPartido({ campeonato_id: art?.dataset?.campeonato, evento_id: art?.dataset?.evento });
+  const texto = marcador
+    ? `⚽ ${local} ${marcador} ${visitante}`
+    : `🏆 ${local} vs ${visitante}`;
+  await compartirTextoUrlPortal(btn, texto, url);
+}
+
+async function compartirResultadoRecientePortal(btn) {
+  const card = btn.closest(".portal-resultado-card");
+  const local = card?.dataset?.local || "";
+  const visitante = card?.dataset?.visitante || "";
+  const marcador = card?.dataset?.marcador || "";
+  const url = construirUrlCompartirPartido({ campeonato_id: card?.dataset?.campeonato, evento_id: card?.dataset?.evento });
+  const texto = marcador
+    ? `⚽ ${local} ${marcador} ${visitante}`
+    : `🏆 ${local} vs ${visitante}`;
+  await compartirTextoUrlPortal(btn, texto, url);
 }
 
 function renderPartidoJornadaPortal(partido = {}) {
@@ -3203,8 +3233,16 @@ function renderResultadosRecientesPortal(partidos = []) {
         : "";
       const fecha = p.fecha_partido ? formatearFechaPortal(p.fecha_partido) : "";
       const evento = p.evento_nombre ? escPortal(p.evento_nombre) : "";
+      const localNombre = p.equipo_local_nombre || "Local";
+      const visitanteNombre = p.equipo_visitante_nombre || "Visitante";
+      const btnShare = `<button type="button" class="portal-match-share-btn" onclick="compartirResultadoRecientePortal(this)" aria-label="Compartir resultado"><i class="fas fa-share-alt"></i> Compartir</button>`;
       return `
-        <div class="portal-resultado-card">
+        <div class="portal-resultado-card"
+          data-local="${escPortal(localNombre)}"
+          data-visitante="${escPortal(visitanteNombre)}"
+          data-marcador="${escPortal(`${rl} - ${rv}`)}"
+          data-campeonato="${escPortal(String(p.campeonato_id || ""))}"
+          data-evento="${escPortal(String(p.evento_id || ""))}">
           <div class="portal-resultado-card-meta">
             <span>${evento}</span>
             <span class="portal-resultado-card-badge">Finalizado</span>
@@ -3212,15 +3250,18 @@ function renderResultadosRecientesPortal(partidos = []) {
           <div class="portal-resultado-marcador">
             <div class="portal-resultado-equipo">
               ${localLogo}
-              <span>${escPortal(p.equipo_local_nombre || "Local")}</span>
+              <span>${escPortal(localNombre)}</span>
             </div>
             <div class="portal-resultado-score">${rl} – ${rv}</div>
             <div class="portal-resultado-equipo">
               ${visitanteLogo}
-              <span>${escPortal(p.equipo_visitante_nombre || "Visitante")}</span>
+              <span>${escPortal(visitanteNombre)}</span>
             </div>
           </div>
-          ${fecha ? `<div class="portal-resultado-card-footer">${fecha}</div>` : ""}
+          <div class="portal-resultado-card-footer">
+            <span>${fecha}</span>
+            ${btnShare}
+          </div>
         </div>
       `;
     })
@@ -3483,6 +3524,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   // (planes, deportes que gestionamos, streaming, app, etc.) antes de que resuelva el fetch.
   if (tieneLandingOrganizador) {
     document.body.classList.add("ltc-landing-mode");
+    const resultadosGridPre = document.getElementById("portal-resultados-recientes-grid");
+    const resultadosSectionPre = document.getElementById("portal-resultados-recientes");
+    if (resultadosGridPre && resultadosSectionPre) {
+      resultadosGridPre.innerHTML = renderSkeletonResultadosRecientes(3);
+      resultadosSectionPre.style.display = "";
+    }
   }
   const cargarLandingDelContexto = () =>
     contexto.organizadorSlug

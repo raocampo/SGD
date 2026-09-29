@@ -6187,6 +6187,48 @@ body.ltc-home-page .ltc-home-sponsors-track {
   animation: portal-shimmer 1.4s infinite linear;
 }
 
+/* --- Tarjeta de "resultados de la jornada" skeleton --- */
+.portal-shimmer-bg {
+  background: linear-gradient(90deg, #e8edf2 25%, #d8e0e8 50%, #e8edf2 75%);
+  background-size: 800px 100%;
+  animation: portal-shimmer 1.4s infinite linear;
+}
+
+.portal-resultado-skeleton-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+.portal-resultado-skeleton-card .sk-meta-line {
+  height: 10px;
+  width: 45%;
+  border-radius: 6px;
+}
+
+.portal-resultado-skeleton-card .sk-marcador-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .9rem;
+}
+
+.portal-resultado-skeleton-card .sk-avatar-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.portal-resultado-skeleton-card .sk-score-box {
+  width: 46px;
+  height: 26px;
+  border-radius: 6px;
+}
+
 /* ============================================================
    SHARE BUTTON en cards de partidos
    ============================================================ */
@@ -6447,7 +6489,10 @@ body.ltc-home-page .ltc-home-sponsors-track {
 .portal-resultado-card-footer {
   font-size: .72rem;
   color: #999;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
 }
 
 /* ===== Filtros de campeonato en sección resultados ===== */

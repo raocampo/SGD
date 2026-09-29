@@ -183,6 +183,9 @@ function bindEventosFinanzas() {
   document
     .getElementById("btn-fin-registrar-premios")
     ?.addEventListener("click", abrirFormularioPremios);
+  document
+    .getElementById("btn-fin-header-registrar-premios")
+    ?.addEventListener("click", abrirFormularioPremios);
 }
 
 // Atajo desde "Utilidad por Rubro": lleva a Gastos Operativos con el

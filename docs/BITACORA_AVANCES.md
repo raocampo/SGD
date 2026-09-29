@@ -1,3 +1,63 @@
+## 2026-09-28 (parte 3) - Feedback tras revisión: acceso a "Registrar premios", skeleton+compartir en resultados de jornada, título de sección
+
+> Pendiente de commit/push.
+
+El usuario revisó lo entregado hasta el momento y confirmó que Finanzas está
+bien, pero reportó 3 puntos concretos:
+
+1. **"No sé o no encuentro dónde ingresar los datos de los premios del
+   campeonato"** — la categoría "Premios" (migración 073) y el botón
+   "Registrar premios" ya existían, pero solo vivían dentro de la pestaña
+   "Ejecutivo Campeonato" (6ª de 8) → tab "Gastos Operativos" (7ª de 8) →
+   dropdown "Tipo de gasto" con 8 opciones. Cadena de descubribilidad
+   débil. Se agregó un botón "Registrar premios" fijo en el `top-bar` de
+   `finanzas.html` (visible sin importar la pestaña activa, mismo destino:
+   `abrirFormularioPremios()`), y se renombró la pestaña "Gastos
+   Operativos" → "Gastos Operativos y Premios" para que sea reconocible
+   al ojear la barra de pestañas.
+
+2. **Skeleton loaders y botón "Compartir" no se veían en el portal
+   público** — investigado: SÍ existen (commit `b98ea3f`, 27-sep), pero
+   solo en `portalCargarCampeonatos` (grid de torneos) y en
+   `renderPartidoJornadaPortal` (vista de jornada dentro de un
+   campeonato) — NUNCA se implementaron en la sección "Últimos partidos"
+   del landing de organizador (`renderResultadosRecientesPortal`,
+   `#portal-resultados-recientes`), que es donde el usuario los buscaba.
+   Agregado en esta sesión:
+   - `renderSkeletonResultadosRecientes()` — tarjetas skeleton con la
+     misma silueta que `.portal-resultado-card` (línea meta, 2 avatares +
+     marcador, línea de fecha), mostradas apenas se detecta modo landing
+     de organizador (antes del fetch a `/auth/organizadores/.../landing`)
+     y también al cambiar de campeonato con los tabs de filtro
+     (`filtrarResultadosRecientes`, antes mostraba texto plano
+     "Cargando...").
+   - Botón "Compartir" (`compartirResultadoRecientePortal`) en cada
+     tarjeta de `.portal-resultado-card`, mismo comportamiento que el de
+     jornada (`navigator.share` con fallback a portapapeles) — extraída
+     la lógica común a `compartirTextoUrlPortal()` para no duplicarla
+     entre ambas variantes.
+
+3. **Renombrar "Últimos partidos" → "Resultados de la jornada"** en el
+   `<h2>` de la sección `#portal-resultados-recientes` de `index.html`.
+
+### Verificación
+- `node --check` en `portal.js`/`finanzas.js`, balance de llaves en
+  `portal.css`/`style.css` (997/997, 1773/1773), balance de `<div>` en
+  `index.html`/`finanzas.html` (83/83, 91/91), cross-check de IDs
+  referenciados (`portal-resultados-recientes-grid` y afines existen en
+  `index.html`).
+- `smokeFrontendRoleGuards.js` 49/49 (sin regresión en guards de rol).
+- **Pendiente para el usuario**: verificación visual — que el botón
+  "Registrar premios" del header sea claro, que el skeleton se vea al
+  entrar a `/liga/<slug>` (puede ser muy rápido en conexión local; más
+  perceptible en producción o con throttling), que "Compartir" funcione
+  (share nativo en móvil, copiar al portapapeles en desktop), y que el
+  nuevo título "Resultados de la jornada" tenga sentido para el negocio
+  (si el campeonato no juega por jornadas numeradas sino por fecha suelta,
+  confirmar que el término sigue siendo claro).
+
+---
+
 ## 2026-09-28 (parte 2) - Finanzas: UX del módulo (alineación, filtro en Estado de Cuenta, título, espaciado)
 
 > Commiteado y pusheado (`eef9c3f`).
