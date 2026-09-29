@@ -1,3 +1,80 @@
+## 2026-09-29 (parte 2) - Registro público: dirigente/técnico/jugador ya no eligen plan, se asocian a campeonato+equipo
+
+> Commiteado y pusheado (`91cd871`).
+
+El usuario reportó (con captura) que el registro público mostraba "Plan
+seleccionado: Demo" sin importar el rol elegido, incluso para
+Dirigente/Técnico/Jugador — roles que no deberían tener plan (es una
+suscripción paga exclusiva de Organizador). Pidió que estos roles "se
+registren normalmente", pero que al ingresar al portal tengan una
+pantalla para escoger su campeonato y equipo (asociándolos), y que "con
+los datos también se lo debería vincular a como está registrado en el
+sistema".
+
+### Investigación (3 agentes Explore)
+- El bug era de fondo, no solo de UI: `registerPublic()` persistía
+  `plan_codigo`/`plan_estado` reales para los 4 roles por igual.
+- **No existe ningún sistema de invitación por código/link** en todo el
+  proyecto (grep exhaustivo, cero resultados). El flujo que sí funciona
+  hoy en producción es que el organizador/admin crea a sus sub-usuarios
+  desde `usuarios.html`, asignándoles equipo en el mismo acto — sin plan
+  propio.
+- `equipo_ids` ya viene gratis en el objeto de sesión (todas las queries
+  de `UsuarioAuth` hacen `LEFT JOIN usuario_equipos` + `ARRAY_AGG`).
+- El patrón de "paso obligatorio en el primer acceso" ya existía y se
+  reutilizó tal cual: `debe_cambiar_password`, chequeado en el bootstrap
+  compartido de `core.js` que corre en TODA página no pública.
+- Jugadores ya tienen cédula (`jugadores.cedidentidad`) pero no había FK
+  a `usuarios` — para dirigente/técnico no hay cédula en `equipos`
+  (`director_tecnico`/`asistente_tecnico`/`medico` son solo texto libre),
+  así que el "vínculo a como está registrado" solo aplica de forma
+  sólida a **jugador**.
+
+### Backend
+- Migración `074_jugadores_usuario_id.sql`: `jugadores.usuario_id`
+  (nullable, FK a `usuarios` ON DELETE SET NULL). Ya aplicada en
+  producción.
+- `authController.registerPublic`: para rol distinto de `organizador`,
+  ignora cualquier `plan_codigo` del body — fuerza siempre
+  `"free"`/`"activo"` (defensa en profundidad: nadie puede colar un plan
+  pagado armando el payload a mano, aunque el frontend ya no lo pida).
+- Nuevo `GET /equipos/campeonato/:id/para-asociar` — lista TODOS los
+  equipos de un campeonato sin el filtro de "equipos ya asignados" del
+  endpoint existente (ese filtro es circular para este caso).
+- Nuevo `POST /auth/mi-equipo` (`asociarMiEquipo`) — el propio
+  dirigente/técnico/jugador se asocia a un equipo (reutiliza
+  `UsuarioAuth.asignarEquipo`, ya existente). Si es jugador y manda
+  cédula, busca coincidencia en `jugadores` (cédula + equipo, sin
+  `usuario_id` todavía) y vincula — sin coincidencia no es error, solo
+  queda sin ficha vinculada.
+
+### Frontend
+- `register.html`/`register.js`: el bloque "Plan seleccionado" se oculta
+  cuando el rol elegido no es organizador.
+- `core.js`: mismo patrón ya usado para el cambio de contraseña
+  obligatorio — nuevo `Auth.requiereAsociarEquipo()` +
+  `Auth.promptAsociarEquipo()`, 2 modales secuenciales (Campeonato →
+  Equipo, reusando `mostrarFormularioModal` ya existente). Cancelar el
+  modal de Campeonato cierra sesión; cancelar el de Equipo NO cierra
+  sesión (su equipo puede legítimamente no estar cargado todavía, el
+  aviso vuelve a aparecer en la próxima carga de página).
+
+### Verificación
+- `node --check` en los 7 archivos tocados, cross-check de
+  `getElementById()`, `smokeFrontendRoleGuards.js` 49/49.
+- Probado end-to-end contra producción con datos de prueba aislados:
+  registro de un jugador con `plan_codigo=premium` forzado en el
+  payload → queda `activo`, no `pendiente_pago` (SMTP no configurado en
+  este entorno, no se envió correo real). Asociación completa a un
+  equipo real (39 equipos listados correctamente para ese campeonato)
+  con vínculo por cédula a un jugador real ya cargado en planilla
+  (`jugadores.usuario_id` actualizado) — todo revertido después (0
+  residuos confirmados).
+- **Pendiente para el usuario**: verificación visual — todo el flujo
+  vive detrás de login, Puppeteer no puede probarlo.
+
+---
+
 ## 2026-09-29 - Fix real: jornada actual se calculaba por el número de "jornada" interno, no por fechas jugadas
 
 > Commiteado y pusheado (`9618440`). **Confirmado funcionando en producción
