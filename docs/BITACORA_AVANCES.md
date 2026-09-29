@@ -1,3 +1,97 @@
+## 2026-09-29 (parte 3) - Dirigente/técnico/jugador acotados a su propio equipo (campeonatos, pases, finanzas, equipos)
+
+> Commiteado y pusheado (`8aeec3d`).
+
+El usuario probó el flujo de registro+onboarding de la parte 2 contra su
+**base de datos local** (Postgres local, migraciones 070-074 aplicadas al
+día, backend levantado con `npm run dev`) logueado como un dirigente real
+(equipo "Club Deportivo Embajadores", campeonato "Otoño 2026"), y fue
+reportando con capturas, módulo por módulo, que veía datos/acciones que no
+le correspondían — no solo problemas de UX, sino fugas de datos reales de
+otros organizadores/equipos.
+
+### 1. `jugadores.html` — selector de Campeonato sin filtrar (el hallazgo raíz)
+El selector de Campeonato mostraba **los 13 campeonatos del sistema**
+(de cualquier organizador, incluidos varios "QA E2E Mobile..." de
+prueba), no solo los del dirigente. `campeonatoController.obtenerCampeonatos`
+solo filtraba para `organizador` (`esOrganizador`); para
+tecnico/dirigente/jugador no había ningún filtro.
+- Nuevo `roleScope.obtenerCampeonatoIdsPermitidosTecnico(req)` — cruza
+  `usuario_equipos → equipos.campeonato_id` para saber a qué campeonatos
+  pertenece el usuario.
+- `puedeAccederCampeonato()` (ya existía, solo cubría organizador) ahora
+  también cubre tecnico/dirigente/jugador — protege tanto el listado
+  (`GET /campeonatos`) como el detalle (`GET /campeonatos/:id`).
+- Sidebar (`core.js`): `tecnicoRestricted` no incluía **Facturación, Mi
+  Landing, Noticias, Galería, Contenido, Contacto** — quedaban visibles
+  aunque el backend ya las bloqueaba (403). Se agregan a la lista de
+  páginas ocultas. De paso, el link "Inicio" apuntaba a `admin.html`
+  (exclusivo de administrador, redirect roto) — ahora se quita, "Mi
+  Portal" ya cumple ese rol.
+
+### 2. `finanzas.html` — pestañas de gestión del organizador visibles sin poder usarlas
+Dirigente/técnico veían las 8 pestañas completas. Backend ya rechazaba con
+403 varias de ellas (Gastos Operativos, Ejecutivo/Utilidad por Rubro), y
+encima el código existente **ocultaba por error la pestaña útil**
+(Morosidad) mientras dejaba visibles las inútiles.
+- `aplicarPermisosFinanzasUI()`: ahora solo quedan **Estado de Cuenta,
+  Morosidad, Sanciones** (Morosidad deja de ocultarse). Se ocultan
+  Filtros, Registrar Movimiento, Ejecutivo Campeonato, Gastos Operativos
+  y Premios, Movimientos Financieros, y ambos botones "Registrar
+  premios". Pestaña inicial pasa de "Filtros" (oculta) a "Estado de
+  Cuenta".
+
+### 3. Pases — mismo tipo de fuga que en campeonatos, sin detectar hasta ahora
+Al revisar `pases.html` se encontró que, a diferencia de Finanzas,
+`paseController.listarPases` pasaba `req.query` **directo** a `Pase.listar()`
+sin ningún filtro por rol — un dirigente podía ver los pases de
+transferencia de jugadores de cualquier equipo del sistema.
+- `Pase.listar()`: nuevo filtro `equipo_ids_alguno` (equipo origen O
+  destino, `= ANY($1::int[])`). `Pase.listarHistorialEquipos()`: nuevo
+  filtro `equipo_ids` (IN).
+- `paseController`: `listarPases`, `obtenerPase`,
+  `listarHistorialJugadores/Equipos`, `obtenerHistorialJugador/Equipo`
+  ahora acotan a los equipos del usuario para tecnico/dirigente/jugador,
+  reusando `roleScope.js`.
+- `pases.js`: la vista de dirigente/técnico excluye "anulados" por
+  defecto (solo interesan pagados/pendientes); si su equipo nunca tuvo
+  un pase registrado, se reemplaza todo el tablero de filtros por un
+  mensaje claro ("Tu equipo no tiene pases registrados..."). No se tocó
+  el link del sidebar (seguiría requiriendo una llamada extra en cada
+  página para decidir si ocultarlo).
+
+### 4. `equipos.html` — importación masiva visible + alertas pensadas para varios equipos
+- Se oculta la card "Importación de Equipos" (carga masiva sobre *todo*
+  el campeonato, no aplica a quien administra un solo equipo) — antes
+  solo bloqueaba el botón "Importar" con un aviso, dejando ambos botones
+  visibles sin propósito.
+- "Alertas Operativas" (Equipos con deuda / Saldo pendiente total /
+  Equipos con suspendidos / Equipos en seguimiento TA — formato pensado
+  para comparar varios equipos) se reemplaza, solo para
+  dirigente/técnico, por "Estado de Cuenta de tu Equipo": desglose real
+  de saldo pendiente por rubro (Inscripción / Arbitraje / Tarjetas y
+  Multas / Total), reusando el endpoint `GET /finanzas/equipo/:id/estado-cuenta`
+  que ya existía para Finanzas.
+
+### Verificación
+- `node --check` en los 10 archivos tocados (4 backend, 6 frontend).
+- Balance de `<div>` en `equipos.html` y `pases.html`.
+- `smokeFrontendRoleGuards.js`: 49/49.
+- Contra la BD local, con el usuario dirigente real de la prueba:
+  consultas directas confirmando que `obtenerCampeonatoIdsPermitidosTecnico`
+  devuelve exactamente su campeonato (`[13]`, Otoño 2026), que el filtro
+  nuevo de pases da 0 para su equipo (coincide con lo que veía en
+  pantalla, dispara el estado "módulo no utilizado"), y que
+  `estadoCuentaEquipo(168, campeonato 13)` devuelve el mismo desglose
+  ($100 en inscripción) que mostraba el badge "Deuda $100,00" de su
+  tarjeta.
+- **Pendiente para el usuario**: seguir probando en local (u obligar a
+  producción, que ya recibió el push) los módulos restantes con este
+  mismo usuario dirigente — el patrón de "solo lo mío" puede repetirse
+  en otras pantallas no revisadas todavía (partidos, tablas, planilla).
+
+---
+
 ## 2026-09-29 (parte 2) - Registro público: dirigente/técnico/jugador ya no eligen plan, se asocian a campeonato+equipo
 
 > Commiteado y pusheado (`91cd871`).
