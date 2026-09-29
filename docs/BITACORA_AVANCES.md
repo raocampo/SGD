@@ -1,6 +1,9 @@
 ## 2026-09-29 - Fix real: jornada actual se calculaba por el número de "jornada" interno, no por fechas jugadas
 
-> Pendiente de commit/push. Corrige/reemplaza el fix de la parte 4 (insuficiente).
+> Commiteado y pusheado (`9618440`). **Confirmado funcionando en producción
+> por el usuario** el mismo día — la importación de jugadores de ILELSA en
+> la categoría Abierta ya no bloquea. Corrige/reemplaza el fix de la parte 4
+> (insuficiente).
 
 El usuario reportó que el fix de la parte 4 **no resolvió el problema** — misma
 captura, mismo error ("jornada 3... Jornada actual: 4") tras el deploy.
@@ -52,13 +55,15 @@ jornada actual = 1 (antes daba 4) → ya no bloquea con límite 3.
   fechas de partido finalizadas son literalmente la misma fecha
   (`2026-09-26`) pese a tener jornada 1/2/3/4 en la BD.
 - `smokeFrontendRoleGuards.js` 49/49.
-- **Pendiente para el usuario**: reintentar la importación de ILESLA en
-  Abierta tras el deploy. Nota aparte para una sesión futura (no se toca
-  ahora): la numeración de `jornada` en este evento está genuinamente
-  desincronizada respecto al orden real de juego — si el usuario reprograma
-  partidos a mano seguido, vale la pena revisar si conviene renumerar
-  `jornada` al reprogramar, o si el criterio por fecha (este fix) es
-  suficiente y ya no hace falta que el número esté sincronizado.
+- **Confirmado por el usuario en producción** (2026-09-29): reintentó la
+  importación de jugadores de ILELSA en Abierta y ya no bloquea.
+
+Nota aparte para una sesión futura (no se toca ahora, no es urgente): la
+numeración de `jornada` en este evento está genuinamente desincronizada
+respecto al orden real de juego — si el usuario reprograma partidos a mano
+seguido, vale la pena revisar si conviene renumerar `jornada` al
+reprogramar, o si el criterio por fecha (este fix) ya es suficiente y no
+hace falta que ese número esté sincronizado.
 
 ---
 

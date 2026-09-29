@@ -1100,9 +1100,9 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ## CONTINUACIÓN — Próximos pasos para la siguiente sesión
 
-> Última actualización: 2026-09-27. Los ítems marcados ✅ ya están implementados en `main`.
+> Última actualización: 2026-09-29. Los ítems marcados ✅ ya están implementados en `main`.
 
-### Estado real de módulos (auditado 2026-09-27)
+### Estado real de módulos (auditado 2026-09-29)
 
 | Módulo | Estado |
 |--------|--------|
@@ -1111,6 +1111,10 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 | Finanzas en pestañas + editar/eliminar movimientos | ✅ Implementado 2026-09-25 |
 | Facturación sello y firma por organizador | ✅ Implementado 2026-09-26 |
 | Edición de grupos post-sorteo | ✅ Implementado 2026-09-25, confirmado en producción |
+| Finanzas: utilidad por rubro + gráfico dashboard | ✅ Implementado 2026-09-27/28 — **pendiente confirmación visual** |
+| Finanzas: acceso directo "Registrar premios" desde header | ✅ Implementado 2026-09-28 — **pendiente confirmación visual** |
+| Portal: skeleton loader + botón Compartir en "Resultados de la jornada" | ✅ Implementado 2026-09-28 — **pendiente confirmación visual** |
+| Fix cierre de inscripción por jornada (contaba jornada interna, no fechas jugadas) | ✅ Implementado y **confirmado en producción** 2026-09-29 |
 | Transmisiones Fase 2 (WebRTC broadcaster/viewer) | ✅ Implementado — **pendiente prueba en Render** |
 | Transmisiones Fase 3 (UX director, compartir redes) | ✅ Implementado |
 | Portal público (resultados, tabla, goleadores, playoff) | ✅ Operativo |
@@ -1120,18 +1124,31 @@ Documento base revisado: `docs/propuestaDesarrolloSGD.md`
 
 ### Pendientes que requieren acción del usuario
 
-1. **Probar Transmisiones Fase 2 en Render**:
+1. **Finanzas — confirmar visualmente** (sesión 27/28-sep, ver BITACORA):
+   tarjeta "Utilidad por Rubro" + gráfico del dashboard, botón "Registrar
+   premios" en el header de `finanzas.html`, y los 4 fixes de UX (alineación
+   tabla rubros, buscador en Estado de Cuenta, título "Financiero",
+   espaciado). Puppeteer no puede verificarlo (el guard de login valida
+   contra el backend real).
+
+2. **Portal público — confirmar visualmente** (sesión 28-sep): que el
+   skeleton loader se perciba al entrar a `/liga/<slug>` y que el botón
+   "Compartir" funcione en cada tarjeta de "Resultados de la jornada"
+   (share nativo en móvil, copiar enlace en desktop). Confirmar además si
+   el título "Resultados de la jornada" tiene sentido para el negocio real.
+
+3. **Probar Transmisiones Fase 2 en Render**:
    - Abrir `transmisiones.html` en producción → crear transmisión → botón "Transmitir video" → `broadcast.html`.
    - Desde otro dispositivo: abrir `viewer.html?tx=<ID>` y verificar stream WebRTC.
    - Si falla por NAT estricto → configurar TURN server (ver ítem 5 abajo).
 
-2. **Sello y firma facturación** — subir imagen real desde el navegador en `facturacion.html` y confirmar que el sello+firma aparecen correctamente en el PDF del recibo.
+4. **Sello y firma facturación** — subir imagen real desde el navegador en `facturacion.html` y confirmar que el sello+firma aparecen correctamente en el PDF del recibo.
 
-3. **Datos reales de LT&C** — completar RUC, razón social y datos tributarios en `facturacion.html` logueado como admin (la prueba de implementación usó datos ficticios).
+5. **Datos reales de LT&C** — completar RUC, razón social y datos tributarios en `facturacion.html` logueado como admin (la prueba de implementación usó datos ficticios).
 
-4. **Open Graph / WhatsApp preview** — confirmar con Facebook Sharing Debugger que `/liga/<slug>` muestra el preview correcto del organizador.
+6. **Open Graph / WhatsApp preview** — confirmar con Facebook Sharing Debugger que `/liga/<slug>` muestra el preview correcto del organizador.
 
-5. **QA visual con login** — verificar `planilla.html` sección "Cambios" y `eventos.html` configuración de modo de sustitución (Puppeteer no tiene credenciales de organizador).
+7. **QA visual con login** — verificar `planilla.html` sección "Cambios" y `eventos.html` configuración de modo de sustitución (Puppeteer no tiene credenciales de organizador).
 
 ### Pendientes bloqueados por dependencia externa
 
