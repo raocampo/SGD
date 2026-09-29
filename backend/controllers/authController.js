@@ -1,6 +1,7 @@
 const pool = require("../config/database");
 const UsuarioAuth = require("../models/UsuarioAuth");
 const OrganizadorPortal = require("../models/OrganizadorPortal");
+const Jugador = require("../models/Jugador");
 const {
   isOrganizador,
   obtenerEquipoIdsOrganizador,
@@ -473,14 +474,27 @@ const authController = {
           error: "organizacion_nombre es obligatorio para organizador",
         });
       }
-      if (!esPlanPublico(planCodigoRaw)) {
-        return res.status(400).json({ error: "plan invalido. Use: demo, free, base, competencia o premium" });
+      // Los planes (y su cobro) son exclusivos del rol organizador. Para
+      // dirigente/tecnico/jugador se ignora cualquier plan_codigo que venga
+      // del body (defensa en profundidad: aunque el frontend ya no lo pida
+      // para estos roles, si alguien arma la URL/payload a mano no debe
+      // poder quedar en pendiente_pago ni con un plan que no le aplica).
+      let planCodigo;
+      let plan;
+      let planEstadoInicial;
+      if (rolSolicitado === "organizador") {
+        if (!esPlanPublico(planCodigoRaw)) {
+          return res.status(400).json({ error: "plan invalido. Use: demo, free, base, competencia o premium" });
+        }
+        planCodigo = normalizarPlanCodigo(planCodigoRaw, "demo");
+        plan = obtenerPlan(planCodigo);
+        // Planes pagados quedan en pendiente_pago hasta que el admin confirme el cobro
+        planEstadoInicial = esPlanPagado(planCodigo) ? "pendiente_pago" : "activo";
+      } else {
+        planCodigo = "free";
+        plan = obtenerPlan(planCodigo);
+        planEstadoInicial = "activo";
       }
-      const planCodigo = normalizarPlanCodigo(planCodigoRaw, "demo");
-      const plan = obtenerPlan(planCodigo);
-
-      // Planes pagados quedan en pendiente_pago hasta que el admin confirme el cobro
-      const planEstadoInicial = esPlanPagado(planCodigo) ? "pendiente_pago" : "activo";
 
       const creado = await UsuarioAuth.crear({
         nombre,
@@ -782,6 +796,51 @@ const authController = {
           ? 400
           : 500;
       return res.status(status).json({ error: msg || "No se pudo crear usuario" });
+    }
+  },
+
+  // El propio dirigente/tecnico/jugador se asocia a un equipo (pantalla
+  // de onboarding post-registro, ver frontend core.js promptAsociarEquipo).
+  // Si es jugador y manda cedula, intenta vincularlo a su ficha existente
+  // en la planilla del equipo elegido (jugadores.usuario_id) — si no hay
+  // coincidencia no es error, simplemente queda sin vincular a una ficha.
+  async asociarMiEquipo(req, res) {
+    try {
+      const usuarioId = req.user?.id;
+      const equipoId = Number.parseInt(req.body?.equipo_id, 10);
+      const cedula = String(req.body?.cedula || "").trim();
+
+      const usuario = await UsuarioAuth.asignarEquipo(usuarioId, equipoId);
+
+      let vinculadoJugador = false;
+      if (String(req.user?.rol || "").toLowerCase() === "jugador" && cedula) {
+        const cedulaNormalizada = Jugador.normalizarCedidentidad(cedula);
+        if (cedulaNormalizada) {
+          const match = await pool.query(
+            `SELECT id FROM jugadores
+              WHERE cedidentidad = $1 AND equipo_id = $2 AND usuario_id IS NULL
+              LIMIT 1`,
+            [cedulaNormalizada, equipoId]
+          );
+          if (match.rows.length) {
+            await pool.query(`UPDATE jugadores SET usuario_id = $1 WHERE id = $2`, [
+              usuarioId,
+              match.rows[0].id,
+            ]);
+            vinculadoJugador = true;
+          }
+        }
+      }
+
+      return res.json({ ok: true, usuario, vinculado_jugador: vinculadoJugador });
+    } catch (error) {
+      console.error("Error en autoasociación de equipo:", error);
+      const msg = String(error?.message || "");
+      const status =
+        msg.includes("invalido") || msg.includes("encontrado") || msg.includes("Solo se pueden")
+          ? 400
+          : 500;
+      return res.status(status).json({ error: msg || "No se pudo asociar el equipo" });
     }
   },
 

@@ -71,6 +71,16 @@
     }
   }
 
+  // Los planes (con su cobro) son exclusivos de Organizador. Dirigente/
+  // Técnico/Jugador no eligen plan — se asocian a su campeonato y equipo
+  // en la primera vez que ingresan al portal (ver core.js, promptAsociarEquipo).
+  function actualizarVisibilidadPlan() {
+    const rol = obtenerRolSeleccionado();
+    const el = document.getElementById("register-plan-info");
+    if (!el) return;
+    el.style.display = rol === "organizador" ? "block" : "none";
+  }
+
   function validarFormularioRegistro() {
     const email = String(document.getElementById("register-email")?.value || "").trim();
     const nombres = String(document.getElementById("register-nombres")?.value || "").trim();
@@ -130,7 +140,7 @@
         email,
         rol,
         password,
-        plan_codigo: planSeleccionado,
+        plan_codigo: rol === "organizador" ? planSeleccionado : undefined,
         organizacion_nombre: rol === "organizador" ? organizacion : null,
       },
     };
@@ -161,7 +171,13 @@
       if (!token || !usuario) throw new Error("No se pudo crear la cuenta");
 
       window.Auth.setSession(token, usuario, data?.refreshToken || "");
-      mostrarNotificacion(`Cuenta creada en plan ${PLANES_LABEL[planSeleccionado] || "Demo"}`, "success");
+      const rolCreado = obtenerRolSeleccionado();
+      mostrarNotificacion(
+        rolCreado === "organizador"
+          ? `Cuenta creada en plan ${PLANES_LABEL[planSeleccionado] || "Demo"}`
+          : "Cuenta creada correctamente",
+        "success"
+      );
       redirigirPostLogin();
     } catch (error) {
       console.error(error);
@@ -191,6 +207,7 @@
     document.querySelectorAll('input[name="register-rol"]').forEach((r) => {
       r.addEventListener("change", () => {
         actualizarVisibilidadOrganizacion();
+        actualizarVisibilidadPlan();
         validarFormularioRegistro();
       });
     });
@@ -269,6 +286,7 @@
     document.getElementById("register-form")?.addEventListener("submit", onSubmitRegister);
     enlazarValidadores();
     actualizarVisibilidadOrganizacion();
+    actualizarVisibilidadPlan();
     validarFormularioRegistro();
     initSubirComprobanteRegister();
   });

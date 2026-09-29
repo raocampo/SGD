@@ -162,6 +162,9 @@
     quitarEquipo(usuarioId, equipoId) {
       return window.ApiClient.delete(`/auth/usuarios/${usuarioId}/equipos/${equipoId}`);
     },
+    asociarMiEquipo(payload) {
+      return window.ApiClient.post("/auth/mi-equipo", payload);
+    },
   };
 
   window.NoticiasAPI = window.NoticiasAPI || {

@@ -18,6 +18,12 @@ router.get("/organizadores/:id/landing", authController.landingOrganizadorPublic
 router.get("/planes/precios", authController.preciosPublicos);
 router.get("/formas-pago", authController.formasPagoPublicas);
 router.get("/me", requireAuth, authController.me);
+router.post(
+  "/mi-equipo",
+  requireAuth,
+  requireRoles("tecnico", "dirigente", "jugador"),
+  authController.asociarMiEquipo
+);
 
 router.get(
   "/usuarios",

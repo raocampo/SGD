@@ -811,6 +811,15 @@
     requiresPasswordChange() {
       return this.getUser()?.debe_cambiar_password === true;
     },
+    // Dirigente/tecnico/jugador que todavia no tienen ningun equipo
+    // asociado (usuario_equipos vacio) -- necesitan pasar por la pantalla
+    // de "elige tu campeonato y equipo" antes de usar el portal.
+    requiereAsociarEquipo() {
+      const user = this.getUser();
+      if (!esTecnicoOdirigente(user)) return false;
+      const equipoIds = Array.isArray(user?.equipo_ids) ? user.equipo_ids : [];
+      return equipoIds.length === 0;
+    },
     hasIdleExpired() {
       return isIdleExpired();
     },
@@ -849,6 +858,9 @@
     },
     promptChangePassword(opciones = {}) {
       return solicitarCambioPassword(opciones);
+    },
+    promptAsociarEquipo() {
+      return solicitarAsociarEquipo();
     },
   };
 
@@ -948,6 +960,120 @@
           "error"
         );
       }
+    }
+  }
+
+  // Pantalla de onboarding para dirigente/tecnico/jugador sin equipo
+  // asociado: elige Campeonato, luego Equipo (2 modales secuenciales,
+  // reusando mostrarFormularioModal). Cancelar el 1er modal cierra sesion
+  // (no tiene sentido seguir sin elegir nada); cancelar el 2do NO cierra
+  // sesion -- su equipo puede legitimamente no estar cargado todavia, el
+  // aviso volvera a aparecer en la proxima carga de pagina.
+  async function solicitarAsociarEquipo() {
+    const user = window.Auth?.getUser?.();
+    if (!user) return false;
+    const esJugador = String(user.rol || "").toLowerCase() === "jugador";
+
+    let campeonatos = [];
+    try {
+      const data = await window.CampeonatosAPI.obtenerTodos();
+      campeonatos = data?.campeonatos || data || [];
+    } catch (error) {
+      console.error(error);
+      window.mostrarNotificacion("No se pudieron cargar los campeonatos", "error");
+      return false;
+    }
+
+    const valoresCampeonato = await window.mostrarFormularioModal({
+      titulo: "¿A qué campeonato perteneces?",
+      mensaje: "Antes de continuar, cuéntanos a qué campeonato y equipo perteneces.",
+      tipo: "warning",
+      textoConfirmar: "Continuar",
+      textoCancelar: "Cerrar sesión",
+      ancho: "sm",
+      campos: [
+        {
+          name: "campeonato_id",
+          label: "Campeonato",
+          type: "select",
+          required: true,
+          options: campeonatos.map((c) => ({ value: c.id, label: c.nombre })),
+        },
+      ],
+    });
+
+    if (!valoresCampeonato) {
+      window.Auth.logout();
+      return false;
+    }
+
+    const campeonatoId = Number.parseInt(valoresCampeonato.campeonato_id, 10);
+
+    let equipos = [];
+    try {
+      const data = await window.ApiClient.get(`/equipos/campeonato/${campeonatoId}/para-asociar`);
+      equipos = data?.equipos || [];
+    } catch (error) {
+      console.error(error);
+      window.mostrarNotificacion("No se pudieron cargar los equipos de ese campeonato", "error");
+      return false;
+    }
+
+    if (!equipos.length) {
+      window.mostrarNotificacion(
+        "Ese campeonato todavía no tiene equipos registrados. Vuelve a intentarlo más tarde.",
+        "warning"
+      );
+      return false;
+    }
+
+    const camposEquipo = [
+      {
+        name: "equipo_id",
+        label: "Equipo",
+        type: "select",
+        required: true,
+        options: equipos.map((e) => ({ value: e.id, label: e.nombre })),
+      },
+    ];
+    if (esJugador) {
+      camposEquipo.push({
+        name: "cedula",
+        label: "Cédula (opcional)",
+        type: "text",
+        required: false,
+        hint: "Si ya apareces en la planilla de tu equipo, te vinculamos automáticamente a tu ficha.",
+      });
+    }
+
+    const valoresEquipo = await window.mostrarFormularioModal({
+      titulo: "¿A qué equipo perteneces?",
+      tipo: "warning",
+      textoConfirmar: "Asociarme",
+      textoCancelar: "Ahora no",
+      ancho: "sm",
+      campos: camposEquipo,
+    });
+
+    if (!valoresEquipo) return false;
+
+    try {
+      const resp = await window.AuthAPI.asociarMiEquipo({
+        equipo_id: Number.parseInt(valoresEquipo.equipo_id, 10),
+        cedula: esJugador ? valoresEquipo.cedula || "" : "",
+      });
+      if (resp?.usuario) window.Auth.updateUser(resp.usuario);
+      window.mostrarNotificacion(
+        resp?.vinculado_jugador
+          ? "Te asociamos a tu equipo y te vinculamos a tu ficha de jugador"
+          : "Te asociamos a tu equipo correctamente",
+        "success"
+      );
+      return true;
+    } catch (error) {
+      console.error(error);
+      window.mostrarNotificacion(error.message || "No se pudo asociar el equipo", "error");
+      return false;
     }
   }
 
@@ -2069,6 +2195,9 @@
     if (window.Auth.requiresPasswordChange() && !PUBLIC_PAGES.has(getCurrentPage())) {
       const actualizada = await window.Auth.promptChangePassword({ forced: true });
       if (!actualizada) return;
+    }
+    if (window.Auth.requiereAsociarEquipo() && !PUBLIC_PAGES.has(getCurrentPage())) {
+      await window.Auth.promptAsociarEquipo();
     }
     initMenuMovil();
     initPublicHeaderNav();

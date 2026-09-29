@@ -382,6 +382,23 @@ const equipoController = {
     }
   },
 
+  // LEER - Equipos de un campeonato para que un dirigente/tecnico/jugador
+  // se autoasocie (sin el filtro de "equipos ya asignados" que usa
+  // obtenerEquiposPorCampeonato, que sería circular aquí: el usuario
+  // todavía no tiene equipo, por eso necesita ver la lista completa).
+  // Datos mínimos, no sensibles — cualquier rol autenticado puede verla.
+  listarEquiposParaAsociacion: async (req, res) => {
+    try {
+      const { campeonato_id } = req.params;
+      const equiposAll = await Equipo.obtenerPorCampeonato(campeonato_id);
+      const equipos = equiposAll.map((e) => ({ id: e.id, nombre: e.nombre }));
+      res.json({ ok: true, total: equipos.length, equipos });
+    } catch (error) {
+      console.error("Error listando equipos para asociación:", error);
+      res.status(500).json({ error: "Error interno del servidor", detalle: error.message });
+    }
+  },
+
   // LEER - Obtener equipo específico
   obtenerEquipo: async (req, res) => {
     try {

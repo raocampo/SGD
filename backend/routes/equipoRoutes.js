@@ -37,6 +37,11 @@ router.get(
   requireAuth,
   equipoController.obtenerEquiposPorCampeonato
 );
+router.get(
+  "/campeonato/:campeonato_id/para-asociar",
+  requireAuth,
+  equipoController.listarEquiposParaAsociacion
+);
 router.get("/:id", requireAuth, equipoController.obtenerEquipo);
 
 // UPDATE con logo ✅ (aquí estaba el problema)
