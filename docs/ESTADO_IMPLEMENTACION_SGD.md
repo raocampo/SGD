@@ -1,3 +1,34 @@
+## 2026-09-29 - Sincronizacion y estado para continuar (registro/onboarding + scoping por equipo)
+
+### Estado actualizado
+- Proyecto sincronizado con `origin/main` hasta:
+  - `83cba8f docs(bitacora): registrar fixes de scoping por equipo (campeonatos, pases, finanzas, equipos)`.
+- Push ya aplicado a produccion (Railway backend + Vercel frontend se redespliegan solos desde `main`). No hizo falta ninguna migracion nueva en esta ronda — la ultima migracion sigue siendo `074_jugadores_usuario_id.sql`, ya aplicada en produccion.
+- **Se puede probar contra BD local** (confirmado y usado en esta sesion): `backend/.env` ya esta configurado para Postgres local (`gestionDeportiva`). Pasos: `node scripts/runMigrations.js` desde `backend/` (sin `DATABASE_URL`, toma las vars `DB_*` locales) + `npm run dev`. El frontend servido con Live Server (puerto 5500, ver `.env.example` -> `FRONTEND_URL`) o abierto por `file://` detecta solo y apunta a `http://localhost:5000/api` (`resolveApiBaseUrl()` en `frontend/js/api.js`), sin configuracion manual.
+- Trabajo cerrado esta sesion:
+  1. **Registro publico + onboarding** (`91cd871`): dirigente/tecnico/jugador ya no eligen plan al registrarse (antes mostraba "Plan seleccionado: Demo" sin sentido para esos roles); al primer ingreso al portal sin equipo asociado, 2 modales para elegir Campeonato -> Equipo, con vinculo automatico a la ficha de jugador por cedula cuando aplica.
+  2. **4 fixes de scoping por equipo para dirigente/tecnico/jugador** (`8aeec3d`), encontrados por el usuario probando en BD local con una cuenta real de dirigente (Alejandro Ocampo, equipo "Club Deportivo Embajadores", campeonato "Otoño 2026") — no eran solo problemas de UX, sino fugas reales de datos de otros equipos/organizadores:
+     - `campeonatoController`: `GET /campeonatos`/`:id` devolvia TODOS los campeonatos del sistema a estos roles (solo `organizador` estaba filtrado) -> nuevo `roleScope.obtenerCampeonatoIdsPermitidosTecnico()`.
+     - `core.js` (sidebar): Facturacion, Mi Landing, Noticias, Galeria, Contenido, Contacto quedaban visibles en el menu aunque el backend ya las bloqueaba con 403.
+     - `finanzas.js`: pestañas de dirigente/tecnico/jugador acotadas a Estado de Cuenta/Morosidad/Sanciones (antes Morosidad se ocultaba por error mientras las pestañas de gestion del organizador quedaban visibles sin poder usarse).
+     - `paseController`/`Pase.js`: `GET /pases` y los endpoints de historial no filtraban por equipo EN ABSOLUTO para estos roles (a diferencia de Finanzas) -> nuevo filtro `equipo_ids_alguno`/`equipo_ids`; la vista tambien excluye pases anulados por defecto y muestra un estado vacio claro si el equipo nunca tuvo un pase.
+     - `equipos.js`: se oculta la carga masiva de equipos (accion de organizador sobre todo el campeonato); "Alertas Operativas" (pensada para comparar varios equipos) se reemplaza, para estos roles, por el desglose real de saldo pendiente del propio equipo por rubro (Inscripcion/Arbitraje/Tarjetas y Multas).
+  - Detalle linea por linea de cada fix: `docs/BITACORA_AVANCES.md`, secciones "2026-09-29 (parte 2)" y "2026-09-29 (parte 3)".
+
+### Verificacion realizada
+- `node --check` en los 10+7 archivos tocados entre ambas rondas.
+- Balance de `<div>` en los HTML editados.
+- `npm --prefix backend run smoke:frontend` -> `49/49 PASS`.
+- Pruebas con datos reales contra BD local (usuario dirigente real, ver arriba): consultas directas confirmando que cada filtro nuevo devuelve exactamente lo esperado para su equipo/campeonato (campeonatos permitidos = `[13]`, pases de su equipo = 0 -> dispara el estado "modulo no utilizado", estado de cuenta = $100 en inscripcion, coincide con el badge de deuda que ya mostraba la UI).
+- Pendiente: verificacion visual mas amplia con otros roles/pantallas — Puppeteer no puede probarlo (todo vive detras de login), sigue haciendo falta que el usuario lo pruebe el mismo.
+
+### Pendientes para retomar (desde casa u otra sesion)
+1. **Auditar el mismo patron de scoping** en modulos NO revisados todavia: `partidos.html`, `tablas.html`, `planilla.html`, `eliminatorias.html`. No hay garantia de que esten libres de la misma fuga (backend filtrando por rol en unos endpoints si y en otros no).
+2. Confirmar el flujo de **Jugador con cedula** (vinculo automatico a su ficha de planilla via `jugadores.usuario_id`) — implementado en la parte 2 pero no se volvio a probar en esta ronda.
+3. Resto de pendientes heredados de sesiones anteriores (equipo duplicado "80 FC", datos reales de LT&C en facturacion, Facturacion Fase 4/SRI, activacion automatica de pago PayPhone/PayPal, TURN server para WebRTC) — ver memoria `project_pending` / bitacora para el detalle de cada uno, no se tocaron esta sesion.
+
+---
+
 ## 2026-09-07 - Sincronizacion y estado para continuar
 
 ### Estado actualizado
