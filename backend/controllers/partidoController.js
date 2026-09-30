@@ -4,6 +4,7 @@ const Eliminatoria = require("../models/Eliminatoria");
 const Jugador = require("../models/Jugador");
 const pool = require("../config/database");
 const { ACCIONES, registrar: registrarAuditoria, extraerIp } = require("../services/auditoria");
+const { esTecnicoOdirigente, tecnicoPuedeAccederEquipo } = require("../services/roleScope");
 
 function parseBooleanFlag(value) {
   return value === true || String(value || "").trim().toLowerCase() === "true";
@@ -399,6 +400,22 @@ exports.obtenerPlanillaPartido = async (req, res) => {
     const planilla = await Partido.obtenerPlanilla(id);
     if (!planilla) {
       return res.status(404).json({ error: "Partido no encontrado" });
+    }
+
+    if (esTecnicoOdirigente(req.user?.rol)) {
+      // La planilla trae datos personales (cedula/foto) y financieros
+      // (morosidad, pagos de tarjetas/arbitraje) de AMBOS equipos -- sin
+      // este chequeo cualquier dirigente/tecnico/jugador podia leer la
+      // planilla de cualquier partido del sistema con solo probar ids.
+      const equipoLocalId = planilla.partido?.equipo_local_id;
+      const equipoVisitanteId = planilla.partido?.equipo_visitante_id;
+      const [puedeLocal, puedeVisitante] = await Promise.all([
+        tecnicoPuedeAccederEquipo(req, equipoLocalId),
+        tecnicoPuedeAccederEquipo(req, equipoVisitanteId),
+      ]);
+      if (!puedeLocal && !puedeVisitante) {
+        return res.status(403).json({ error: "No autorizado para consultar este partido" });
+      }
     }
 
     return res.json({ ok: true, ...planilla });

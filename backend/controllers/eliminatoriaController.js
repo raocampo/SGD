@@ -5,6 +5,10 @@ const {
   isOrganizador,
   organizadorPuedeAccederCampeonato,
 } = require("../services/organizadorScope");
+const {
+  esTecnicoOdirigente,
+  tecnicoPuedeAccederCampeonato,
+} = require("../services/roleScope");
 
 async function validarAccesoEventoGestion(req, res, eventoId) {
   const r = await pool.query(
@@ -18,6 +22,15 @@ async function validarAccesoEventoGestion(req, res, eventoId) {
   }
   if (isOrganizador(req?.user)) {
     const puede = await organizadorPuedeAccederCampeonato(req.user, evento.campeonato_id);
+    if (!puede) {
+      res.status(403).json({ error: "No autorizado para esta categoría" });
+      return null;
+    }
+  } else if (esTecnicoOdirigente(req?.user?.rol)) {
+    // Esta ruta solo exige requireAuth (sin requireRoles) -- sin este check
+    // cualquier tecnico/dirigente/jugador podia leer la configuracion de
+    // playoff de CUALQUIER organizador con solo adivinar un evento_id.
+    const puede = await tecnicoPuedeAccederCampeonato(req, evento.campeonato_id);
     if (!puede) {
       res.status(403).json({ error: "No autorizado para esta categoría" });
       return null;

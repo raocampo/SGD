@@ -4,6 +4,43 @@ const {
   obtenerEstadosEquiposEvento,
   estaEliminadoCompetencia,
 } = require("../services/competitionStatusService");
+const { esTecnicoOdirigente, tecnicoPuedeAccederCampeonato } = require("../services/roleScope");
+
+// Tecnico/dirigente/jugador: tablas/goleadores/tarjetas/fair-play solo de
+// campeonatos donde tienen algun equipo asociado (organizador/admin sin
+// restriccion adicional aqui, igual que antes de este chequeo).
+async function validarAccesoCampeonatoLecturaTablas(req, res, campeonatoId, mensaje) {
+  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  const puede = await tecnicoPuedeAccederCampeonato(req, campeonatoId);
+  if (puede) return true;
+  res.status(403).json({ error: mensaje || "No autorizado para esta categoría" });
+  return false;
+}
+
+async function validarAccesoEventoLecturaTablas(req, res, eventoId, mensaje) {
+  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  const r = await pool.query(`SELECT campeonato_id FROM eventos WHERE id = $1 LIMIT 1`, [eventoId]);
+  const campeonatoId = r.rows[0]?.campeonato_id;
+  if (!campeonatoId) {
+    res.status(404).json({ error: "Categoría no encontrada" });
+    return false;
+  }
+  return validarAccesoCampeonatoLecturaTablas(req, res, campeonatoId, mensaje);
+}
+
+async function validarAccesoGrupoLecturaTablas(req, res, grupoId, mensaje) {
+  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  const r = await pool.query(
+    `SELECT e.campeonato_id FROM grupos g JOIN eventos e ON e.id = g.evento_id WHERE g.id = $1 LIMIT 1`,
+    [grupoId]
+  );
+  const campeonatoId = r.rows[0]?.campeonato_id;
+  if (!campeonatoId) {
+    res.status(404).json({ error: "Grupo no encontrado" });
+    return false;
+  }
+  return validarAccesoCampeonatoLecturaTablas(req, res, campeonatoId, mensaje);
+}
 
 const REGLAS_DEFAULT = ["puntos", "diferencia_goles", "goles_favor"];
 const PESOS_FAIR_PLAY_DEFAULT = {
@@ -1651,6 +1688,7 @@ const tablaController = {
       if (!Number.isFinite(grupoId)) {
         return res.status(400).json({ error: "grupo_id invalido" });
       }
+      if (!(await validarAccesoGrupoLecturaTablas(req, res, grupoId))) return;
 
       const data = await generarTablaGrupoInterna(grupoId);
       return res.json({
@@ -1677,6 +1715,7 @@ const tablaController = {
       if (!Number.isFinite(campeonatoId)) {
         return res.status(400).json({ error: "campeonato_id invalido" });
       }
+      if (!(await validarAccesoCampeonatoLecturaTablas(req, res, campeonatoId))) return;
 
       const q = `
         SELECT g.id
@@ -1715,6 +1754,7 @@ const tablaController = {
       if (!Number.isFinite(eventoId)) {
         return res.status(400).json({ error: "evento_id invalido" });
       }
+      if (!(await validarAccesoEventoLecturaTablas(req, res, eventoId))) return;
       const data = await generarTablasEventoInterna(eventoId);
       return res.json({ ok: true, ...data });
     } catch (error) {
@@ -1732,6 +1772,7 @@ const tablaController = {
       if (!Number.isFinite(eventoId)) {
         return res.status(400).json({ error: "evento_id invalido" });
       }
+      if (!(await validarAccesoEventoLecturaTablas(req, res, eventoId))) return;
       const data = await obtenerGoleadoresEventoInterno(eventoId);
       return res.json({
         ok: true,
@@ -1756,6 +1797,7 @@ const tablaController = {
       if (!Number.isFinite(eventoId)) {
         return res.status(400).json({ error: "evento_id invalido" });
       }
+      if (!(await validarAccesoEventoLecturaTablas(req, res, eventoId))) return;
       const data = await obtenerTarjetasEventoInterno(eventoId);
       return res.json({
         ok: true,
@@ -1780,6 +1822,7 @@ const tablaController = {
       if (!Number.isFinite(eventoId)) {
         return res.status(400).json({ error: "evento_id invalido" });
       }
+      if (!(await validarAccesoEventoLecturaTablas(req, res, eventoId))) return;
       const data = await obtenerFairPlayEventoInterno(eventoId, req.query || {});
       return res.json(data);
     } catch (error) {

@@ -506,10 +506,21 @@ function actualizarUIPorMetodoCompetencia() {
   if (inputFecha) inputFecha.disabled = false;
 }
 
+function aplicarPermisosPartidosUI() {
+  if (!window.Auth?.isTecnico?.()) return;
+  // Generar/regenerar/crear/eliminar fixture es gestion exclusiva del
+  // organizador -- el backend ya lo rechaza con 403 para dirigente/tecnico/
+  // jugador, pero antes los botones quedaban visibles igual.
+  document.querySelectorAll(".partidos-accion-organizador").forEach((el) => {
+    el.style.display = "none";
+  });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("partidos.html")) return;
   actualizarBotonesVistaPartidos();
   inicializarControlesModoFixture();
+  aplicarPermisosPartidosUI();
 
   const selectJornada = document.getElementById("select-jornada");
   if (selectJornada) {

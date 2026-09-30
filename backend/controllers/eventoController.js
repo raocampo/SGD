@@ -1,7 +1,12 @@
 // controllers/eventoController.js
 const pool = require("../config/database");
 const Grupo = require("../models/Grupo");
-const { obtenerEquiposPermitidosTecnico } = require("../services/roleScope");
+const {
+  obtenerEquiposPermitidosTecnico,
+  obtenerCampeonatoIdsPermitidosTecnico,
+  tecnicoPuedeAccederCampeonato,
+  esTecnicoOdirigente,
+} = require("../services/roleScope");
 const {
   isOrganizador,
   organizadorPuedeAccederCampeonato,
@@ -212,11 +217,24 @@ function esAdministrador(user) {
 }
 
 async function validarAccesoCampeonatoOrganizador(req, res, campeonatoId, mensaje) {
-  if (!isOrganizador(req?.user)) return true;
-  const puede = await organizadorPuedeAccederCampeonato(req.user, campeonatoId);
-  if (puede) return true;
-  res.status(403).json({ error: mensaje || "No autorizado para este campeonato." });
-  return false;
+  if (isOrganizador(req?.user)) {
+    const puede = await organizadorPuedeAccederCampeonato(req.user, campeonatoId);
+    if (puede) return true;
+    res.status(403).json({ error: mensaje || "No autorizado para este campeonato." });
+    return false;
+  }
+
+  // Tecnico/dirigente/jugador: solo categorias de campeonatos donde tienen
+  // algun equipo asociado (mismo alcance que ya se aplica en campeonatos/
+  // pases/finanzas).
+  if (esTecnicoOdirigente(req?.user?.rol)) {
+    const puede = await tecnicoPuedeAccederCampeonato(req, campeonatoId);
+    if (puede) return true;
+    res.status(403).json({ error: mensaje || "No autorizado para este campeonato." });
+    return false;
+  }
+
+  return true;
 }
 
 async function resolverColumnaActualizacionEvento() {
@@ -734,6 +752,13 @@ const eventoController = {
       if (isOrganizador(req.user)) {
         const campeonatoIds = await obtenerCampeonatoIdsOrganizador(req.user);
         if (!campeonatoIds.length) {
+          return res.json({ eventos: [] });
+        }
+        q += ` WHERE e.campeonato_id = ANY($1::int[])`;
+        valores.push(campeonatoIds);
+      } else if (esTecnicoOdirigente(req.user?.rol)) {
+        const campeonatoIds = await obtenerCampeonatoIdsPermitidosTecnico(req);
+        if (!campeonatoIds || !campeonatoIds.length) {
           return res.json({ eventos: [] });
         }
         q += ` WHERE e.campeonato_id = ANY($1::int[])`;

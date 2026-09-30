@@ -114,11 +114,11 @@
                 </button>
               </div>
 
-              <hr class="partidos-divider" />
+              <hr class="partidos-divider partidos-accion-organizador" />
 
-              <h4>Generación de Fixture</h4>
+              <h4 class="partidos-accion-organizador">Generación de Fixture</h4>
 
-              <div class="fixture-generation-options">
+              <div class="fixture-generation-options partidos-accion-organizador">
                 <div class="form-group checkbox-inline-control">
                   <input type="checkbox" id="chk-ida-vuelta" />
                   <label for="chk-ida-vuelta">Fixture ida y vuelta</label>
@@ -136,16 +136,16 @@
               </div>
 
             <div class="fixture-generation-actions">
-              <button class="btn btn-success" onclick="generarFixtureEvento()">
+              <button class="btn btn-success partidos-accion-organizador" onclick="generarFixtureEvento()">
                 <i class="fas fa-calendar-plus"></i> Generar Fixture (categoría)
               </button>
-              <button class="btn btn-warning" onclick="regenerarFixturePreservando()" title="Preserva partidos ya jugados y genera los enfrentamientos faltantes (útil al agregar un equipo nuevo)">
+              <button class="btn btn-warning partidos-accion-organizador" onclick="regenerarFixturePreservando()" title="Preserva partidos ya jugados y genera los enfrentamientos faltantes (útil al agregar un equipo nuevo)">
                 <i class="fas fa-rotate"></i> Regenerar (preservar jugados)
               </button>
-              <button class="btn btn-secondary" onclick="crearPartidoManual()" title="Crea un partido individual eligiendo los equipos manualmente">
+              <button class="btn btn-secondary partidos-accion-organizador" onclick="crearPartidoManual()" title="Crea un partido individual eligiendo los equipos manualmente">
                 <i class="fas fa-plus"></i> Crear Partido Manual
               </button>
-              <button class="btn btn-danger" onclick="eliminarFixtureEvento()" title="Elimina todos los partidos de la categoría seleccionada">
+              <button class="btn btn-danger partidos-accion-organizador" onclick="eliminarFixtureEvento()" title="Elimina todos los partidos de la categoría seleccionada">
                 <i class="fas fa-trash"></i> Eliminar Fixture
               </button>
               <button class="btn btn-outline" onclick="abrirVistaEliminatoria()">
