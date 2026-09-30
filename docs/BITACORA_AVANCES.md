@@ -48,18 +48,44 @@ encontró 4 fugas reales más, la más sensible de toda la sesión:
 - `node --check` en los 6 archivos, balance de `<div>` en `partidos.html`,
   `smokeFrontendRoleGuards.js` 49/49.
 
-### Pendiente — necesita decisión de negocio, no se tocó en este commit
-`PUT /partidos/:id/planilla` excluye a `tecnico`/`dirigente` en la ruta
-(`requireRoles("administrador","organizador","operador_sistema")`), pero
-`planilla.js` (`puedeInscribirJugadoresEnPlanilla()`, ya existente) sí les
-construye toda la UI de captura de su propio partido — si alguna vez la
-usan, reciben un 403 al guardar. Dos lecturas posibles, contradictorias:
-(a) el diseño original SÍ quería que el equipo pueda enviar su propia
-planilla y falta agregar el rol a la ruta (con ownership check para que
-solo puedan tocar partidos de su equipo), o (b) esa UI nunca debió
-mostrárseles y hay que ocultarla. Se le preguntó al usuario cuál es la
-intención real antes de tocar nada — ver respuesta y cierre en la próxima
-entrada de bitácora.
+### Cierre de la decisión pendiente (mismo día, `4efff25`)
+Se le preguntó al usuario cuál era la intención real. Respuesta: la
+captura/edición de planilla es y debe seguir siendo exclusiva del
+organizador — pero agregó que dirigente/técnico sí deberían poder **ver**
+(solo lectura) la planilla de sus propios partidos, programados o
+finalizados.
+
+Implementado:
+- `core.js`: `planilla.html` se agrega a `TECNICO_ALLOWED_PAGES` (antes
+  redirigía siempre a `portal-tecnico.html`, ni siquiera podían entrar) y
+  se quita de la lista de páginas restringidas del sidebar — solo para
+  `tecnico`/`dirigente`, no para `jugador` (que nunca tuvo permiso de
+  planilla, ni siquiera el de inscribir jugadores). `volverAPartidos()`
+  los manda a `portal-tecnico.html` en vez de `partidos.html` (siguen sin
+  acceso a esa página).
+- `planilla.js`: `puedeInscribirJugadoresEnPlanilla()` ya NO incluye
+  `tecnico`/`dirigente` (antes sí, aunque el backend igual rechazaba el
+  guardado) — queda 100% exclusiva de administrador/organizador/
+  operador_sistema. Nueva `aplicarModoSoloLecturaPlanilla()`: deshabilita
+  todo el formulario de captura (números, convocatoria, goles, tarjetas,
+  cambios, pagos, observaciones, estado del partido) y oculta el botón
+  Guardar para estos roles. El selector de partido se filtra client-side
+  a los partidos donde participa su equipo (el backend ya lo protegía con
+  403 desde el fix anterior, esto evita que intenten elegir uno ajeno).
+- `planilla.html`: banner informativo cuando el modo solo-lectura está
+  activo.
+
+Verificado: `node --check`, balance de `<div>`, `smokeFrontendRoleGuards.js`
+49/49. No se pudo probar el caso positivo (ver la planilla de un partido
+propio) contra la BD local porque el campeonato de prueba ("Otoño 2026")
+todavía no tiene fixture generado — queda para que el usuario lo confirme
+cuando haya partidos reales de su equipo.
+
+**Limitación conocida, no resuelta**: el filtro del selector de partido
+solo cubre partidos de fase regular; los cruces de eliminatoria/playoff
+del mismo selector no se filtran todavía por equipo (bajo riesgo — el
+backend igual bloquea con 403 si intentan abrir uno ajeno, solo quedaría
+visible en la lista).
 
 ## 2026-09-29 (parte 3) - Dirigente/técnico/jugador acotados a su propio equipo (campeonatos, pases, finanzas, equipos)
 
