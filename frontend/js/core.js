@@ -108,6 +108,10 @@
     "finanzas.html",
     "pases.html",
     "eliminatorias.html",
+    // Solo lectura: dirigente/tecnico consultan la planilla de sus propios
+    // partidos (programados o finalizados), nunca la capturan/editan --
+    // ver esSoloLecturaPlanillaTecnico() en planilla.js.
+    "planilla.html",
     "index.html",
     "portal.html",
     "login.html",
@@ -1648,7 +1652,6 @@
       "sorteo.html",
       "gruposgen.html",
       "partidos.html",
-      "planilla.html",
       "auspiciantes.html",
       "portal-admin.html",
       "usuarios.html",
@@ -1744,6 +1747,14 @@
       );
       if (esJugador(user)) {
         document.querySelectorAll('a[href="pases.html"]').forEach((lnk) => lnk.remove());
+      } else {
+        // Solo tecnico/dirigente (no jugador): consulta de planilla propia
+        // en modo lectura.
+        ensureNavLink(
+          "planilla.html",
+          '<i class="fas fa-clipboard-list"></i> Planilla',
+          window.location.pathname.endsWith("planilla.html")
+        );
       }
     } else {
       const rol = String(user?.rol || "").toLowerCase();

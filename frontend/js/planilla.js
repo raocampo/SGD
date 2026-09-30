@@ -1136,7 +1136,40 @@ function escapeHtml(valor) {
 function puedeInscribirJugadoresEnPlanilla() {
   const rol = String(window.Auth?.getUser?.()?.rol || "").trim().toLowerCase();
   if (window.Auth?.isReadOnly?.()) return false;
-  return ["administrador", "organizador", "operador_sistema", "tecnico", "dirigente"].includes(rol);
+  // La captura/edicion de planilla (incluida el alta de jugadores desde
+  // acá) es exclusiva de organizador/admin/operador_sistema. Dirigente y
+  // tecnico solo consultan la planilla de su propio equipo en modo
+  // lectura -- ver esSoloLecturaPlanillaTecnico().
+  return ["administrador", "organizador", "operador_sistema"].includes(rol);
+}
+
+function esSoloLecturaPlanillaTecnico() {
+  return !!window.Auth?.isTecnico?.();
+}
+
+function aplicarModoSoloLecturaPlanilla() {
+  if (!esSoloLecturaPlanillaTecnico()) return;
+
+  const form = document.getElementById("form-planilla");
+  if (form) {
+    form.querySelectorAll("input, select, textarea, button").forEach((el) => {
+      el.disabled = true;
+    });
+    form.querySelectorAll('button[type="submit"]').forEach((el) => {
+      el.style.display = "none";
+    });
+    form.querySelectorAll('[onclick^="agregarFilaCambioPlanilla"]').forEach((el) => {
+      el.style.display = "none";
+    });
+  }
+
+  ["estado-partido", "inasistencia-planilla"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+
+  const aviso = document.getElementById("planilla-aviso-solo-lectura");
+  if (aviso) aviso.style.display = "";
 }
 
 function normalizarArchivoUrl(url) {
@@ -3697,8 +3730,21 @@ async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
       ApiClient.get(`/eliminatorias/evento/${eventoNum}`).catch(() => ({ partidos: [] })),
     ]);
 
-    const partidosCrudos = Array.isArray(respPartidos) ? respPartidos : (respPartidos?.partidos || []);
+    let partidosCrudos = Array.isArray(respPartidos) ? respPartidos : (respPartidos?.partidos || []);
     const crucesCrudos = Array.isArray(respEliminatoria) ? respEliminatoria : (respEliminatoria?.partidos || []);
+
+    if (esSoloLecturaPlanillaTecnico()) {
+      // Dirigente/tecnico/jugador: el selector solo debe ofrecer los
+      // partidos de SU equipo (local o visitante) -- el backend ya
+      // rechaza con 403 la planilla de un partido ajeno, esto evita que
+      // lo intenten elegir en primer lugar.
+      const equiposPropios = new Set(
+        (window.Auth?.getUser?.()?.equipo_ids || []).map((id) => Number(id))
+      );
+      partidosCrudos = partidosCrudos.filter(
+        (p) => equiposPropios.has(Number(p?.equipo_local_id)) || equiposPropios.has(Number(p?.equipo_visitante_id))
+      );
+    }
 
     const reclasificaciones = partidosCrudos
       .filter((p) => Boolean(p?.es_reclasificacion_playoff))
@@ -4118,6 +4164,7 @@ async function cargarPlanilla() {
     actualizarVisibilidadContenidoPlanilla(true);
     await sincronizarSelectoresDesdePlanillaActual();
     actualizarVistaPreviaPlanilla(true);
+    aplicarModoSoloLecturaPlanilla();
   } catch (error) {
     console.error("Error cargando planilla:", error);
     mostrarNotificacion(error.message || "Error cargando planilla", "error");
@@ -6635,6 +6682,12 @@ async function exportarPlanillaXLSX() {
 }
 
 function volverAPartidos() {
+  // Dirigente/tecnico/jugador no tienen acceso a partidos.html (es gestion
+  // del organizador) -- los regresamos a su portal en vez de rebotarlos.
+  if (window.Auth?.isTecnico?.()) {
+    window.location.href = "portal-tecnico.html";
+    return;
+  }
   if (debeRegresarAPlayoffTrasGuardar()) {
     regresarAContextoPlanilla();
     return;
