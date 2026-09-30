@@ -1,3 +1,66 @@
+## 2026-09-30 - Auditoría de scoping: eventos, eliminatorias, planilla de partido y tablas
+
+> Commiteado y pusheado (`3a97ebb`).
+
+Continuación directa de la parte 3 (29-sep): el usuario pidió "sigue con
+los pendientes", y el primer pendiente anotado era auditar el mismo
+patrón de fuga (backend sin filtrar por rol) en los módulos que faltaban
+por revisar — `partidos.html`, `tablas.html`, `planilla.html`,
+`eliminatorias.html`. Un agente Explore audituó los 4 backend+frontend y
+encontró 4 fugas reales más, la más sensible de toda la sesión:
+
+- **`eventoController.listarEventos`** (`GET /eventos` sin `campeonato_id`)
+  no filtraba para tecnico/dirigente/jugador — devolvía las categorías de
+  TODOS los organizadores, visible directo en el selector de
+  `eliminatorias.html`. Se corrigió, y de paso se extendió
+  `validarAccesoCampeonatoOrganizador()` (usada por
+  `listarEventosPorCampeonato`, `obtenerEvento`, canchas y
+  equipos-de-evento) para cubrir también a estos roles — un solo fix
+  cierra 5 endpoints.
+- **`eliminatoriaController` — `GET /evento/:id/configuracion`**: la ruta
+  solo exige `requireAuth` (ni `requireRoles`) y el controller solo
+  validaba `organizador` — cualquier dirigente/técnico/jugador podía leer
+  la configuración de playoff de cualquier organizador con solo adivinar
+  un `evento_id`.
+- **`partidoController.obtenerPlanillaPartido` — la fuga más sensible de
+  la sesión**: sin ningún chequeo de rol, exponía documentos personales
+  (cédula/foto) de ambos planteles y datos financieros (morosidad, pagos
+  de tarjetas/arbitraje) de CUALQUIER partido del sistema, con solo
+  probar ids secuenciales pequeños. Ahora exige que el equipo local o
+  visitante esté entre los equipos del usuario.
+- **`tablaController`**: ninguno de sus 6 endpoints de lectura (tabla por
+  grupo/campeonato/evento, goleadores, tarjetas, fair-play) validaba
+  propiedad del campeonato — exponía posiciones/goleadores/tarjetas de
+  competencias ajenas.
+- **`partidos.html`/`partidos.js`**: botones "Generar Fixture",
+  "Regenerar", "Crear Partido Manual", "Eliminar Fixture" quedaban
+  visibles para dirigente/técnico/jugador (backend ya los rechazaba con
+  403) — mismo ruido de UI ya corregido en `equipos.html`/`pases.html`.
+
+### Verificación
+- Probado con datos reales de la BD local (dirigente Alejandro Ocampo,
+  equipo 168, campeonato 13 "Otoño 2026"): `listarEventos` devuelve
+  exactamente sus 2 categorías; `obtenerConfiguracion`/
+  `obtenerPlanillaPartido`/tablas dan 403 contra evento/partido ajeno
+  (ids reales de otro campeonato) y 200 contra los propios;
+  administrador sigue sin ninguna restricción adicional (probado
+  explícitamente para no romper su acceso).
+- `node --check` en los 6 archivos, balance de `<div>` en `partidos.html`,
+  `smokeFrontendRoleGuards.js` 49/49.
+
+### Pendiente — necesita decisión de negocio, no se tocó en este commit
+`PUT /partidos/:id/planilla` excluye a `tecnico`/`dirigente` en la ruta
+(`requireRoles("administrador","organizador","operador_sistema")`), pero
+`planilla.js` (`puedeInscribirJugadoresEnPlanilla()`, ya existente) sí les
+construye toda la UI de captura de su propio partido — si alguna vez la
+usan, reciben un 403 al guardar. Dos lecturas posibles, contradictorias:
+(a) el diseño original SÍ quería que el equipo pueda enviar su propia
+planilla y falta agregar el rol a la ruta (con ownership check para que
+solo puedan tocar partidos de su equipo), o (b) esa UI nunca debió
+mostrárseles y hay que ocultarla. Se le preguntó al usuario cuál es la
+intención real antes de tocar nada — ver respuesta y cierre en la próxima
+entrada de bitácora.
+
 ## 2026-09-29 (parte 3) - Dirigente/técnico/jugador acotados a su propio equipo (campeonatos, pases, finanzas, equipos)
 
 > Commiteado y pusheado (`8aeec3d`).
