@@ -51,15 +51,77 @@ class Grupo {
     );
   }
 
-  // Igual que assertSorteoEditable pero para ediciones puntuales post-sorteo
-  // (agregar grupo, mover o quitar un equipo) -- mismo chequeo, mensaje
-  // orientado a esa acción en vez de "reiniciar el sorteo".
-  static async assertGruposEditables(evento_id, client = pool) {
-    return this._assertSinPartidosNiEliminatorias(
-      evento_id,
-      "No se pueden editar los grupos",
-      client
+  // Chequeo compartido mas fino que _assertSinPartidosNiEliminatorias: solo
+  // bloquea si EL EQUIPO puntual (no la categoria entera) ya tiene partidos
+  // en el fixture. Permite agregar/mover/quitar equipos que todavia no
+  // jugaron (p.ej. equipos recien inscritos despues del sorteo) aunque el
+  // resto de la categoria ya este en curso -- el fixture de ESE equipo se
+  // arma despues con "Regenerar (preservar jugados)" en Partidos, que no
+  // toca los partidos ya jugados/programados de los demas equipos.
+  static async _assertEquipoSinPartidos(evento_id, equipo_id, mensajeBase, client = pool) {
+    const partidosR = await client.query(
+      `SELECT COUNT(*)::int AS total FROM partidos
+        WHERE evento_id = $1 AND (equipo_local_id = $2 OR equipo_visitante_id = $2)`,
+      [evento_id, equipo_id]
     );
+    const total = Number(partidosR.rows[0]?.total || 0);
+    if (total > 0) {
+      throw new Error(
+        `${mensajeBase} porque este equipo ya tiene partidos programados en el fixture ` +
+          `de esta categoría. Para reubicarlo primero hay que ajustar/regenerar su fixture ` +
+          `desde Partidos.`
+      );
+    }
+
+    const existeEliminatoriaR = await client.query(`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'partidos_eliminatoria'
+      ) AS existe
+    `);
+    if (existeEliminatoriaR.rows[0]?.existe !== true) return;
+
+    const eliminatoriaR = await client.query(
+      `SELECT COUNT(*)::int AS total FROM partidos_eliminatoria WHERE evento_id = $1`,
+      [evento_id]
+    );
+    if (Number(eliminatoriaR.rows[0]?.total || 0) > 0) {
+      throw new Error(`${mensajeBase} porque la categoría ya tiene eliminatorias generadas.`);
+    }
+  }
+
+  // Agregar un equipo a un grupo, o moverlo entre grupos, o quitarlo --
+  // mientras ESE equipo no tenga partidos todavia. Caso real: llegan
+  // equipos nuevos despues del sorteo y hay que ubicarlos en grupos que ya
+  // tienen fixture generado para los equipos originales.
+  static async assertEquipoGrupoEditable(evento_id, equipo_id, mensajeBase, client = pool) {
+    return this._assertEquipoSinPartidos(evento_id, equipo_id, mensajeBase, client);
+  }
+
+  // Solo para agregar un grupo NUEVO (sin equipos todavia) -- no hay ningun
+  // equipo puntual que revisar, pero las eliminatorias ya generadas si
+  // deben seguir bloqueando (cambiaria la cantidad de grupos de la fase de
+  // clasificacion a esta altura del torneo).
+  static async assertGrupoNuevoEditable(evento_id, client = pool) {
+    const existeEliminatoriaR = await client.query(`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'partidos_eliminatoria'
+      ) AS existe
+    `);
+    if (existeEliminatoriaR.rows[0]?.existe !== true) return;
+
+    const eliminatoriaR = await client.query(
+      `SELECT COUNT(*)::int AS total FROM partidos_eliminatoria WHERE evento_id = $1`,
+      [evento_id]
+    );
+    if (Number(eliminatoriaR.rows[0]?.total || 0) > 0) {
+      throw new Error("No se puede agregar un grupo porque la categoría ya tiene eliminatorias generadas.");
+    }
   }
 
   static normalizarMetodoCompetencia(value) {
@@ -225,7 +287,7 @@ class Grupo {
         "Esta categoría usa el método 'liga' (un solo grupo con todos los equipos); no admite grupos adicionales."
       );
     }
-    await this.assertGruposEditables(evento.id, client);
+    await this.assertGrupoNuevoEditable(evento.id, client);
 
     const letras = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
     const existentesR = await client.query(
@@ -354,7 +416,7 @@ class Grupo {
     const g = await pool.query("SELECT evento_id FROM grupos WHERE id=$1", [grupo_id]);
     if (g.rows.length === 0) throw new Error("Grupo no encontrado");
     const evento_id = g.rows[0].evento_id;
-    await this.assertGruposEditables(evento_id);
+    await this.assertEquipoGrupoEditable(evento_id, equipo_id, "No se puede agregar el equipo al grupo");
 
     // 2) validar que el equipo este asignado al evento via tabla pivote evento_equipos
     const e = await pool.query(
@@ -391,7 +453,7 @@ class Grupo {
   static async removerEquipo(grupo_id, equipo_id) {
     const g = await pool.query("SELECT evento_id FROM grupos WHERE id=$1", [grupo_id]);
     if (g.rows.length === 0) throw new Error("Grupo no encontrado");
-    await this.assertGruposEditables(g.rows[0].evento_id);
+    await this.assertEquipoGrupoEditable(g.rows[0].evento_id, equipo_id, "No se puede quitar el equipo del grupo");
 
     const r = await pool.query(
       "DELETE FROM grupo_equipos WHERE grupo_id=$1 AND equipo_id=$2 RETURNING *",
@@ -417,7 +479,7 @@ class Grupo {
       if (!destinoR.rows.length) throw new Error("Grupo destino no encontrado");
       const { evento_id, nombre_grupo: nombreDestino } = destinoR.rows[0];
 
-      await this.assertGruposEditables(evento_id, client);
+      await this.assertEquipoGrupoEditable(evento_id, equipo_id, "No se puede mover el equipo de grupo", client);
 
       const perteneceR = await client.query(
         `SELECT 1 FROM evento_equipos WHERE evento_id = $1 AND equipo_id = $2 LIMIT 1`,

@@ -895,7 +895,10 @@ async function moverEquipoAOtroGrupo(equipoId, grupoDestinoIdRaw, selectEl = nul
     });
 
     const nombreDestino = grupoDestino?.nombre_grupo || `Grupo ${grupoDestino?.letra_grupo || ""}`;
-    mostrarNotificacion(`Equipo movido a ${nombreDestino}`, "success");
+    mostrarNotificacion(
+      `Equipo movido a ${nombreDestino}. Si esta categoría ya tiene fixture generado, ve a Partidos y usa "Regenerar (preservar jugados)" para que juegue sus partidos sin tocar los ya programados.`,
+      "success"
+    );
     await recargarEstadoSorteo();
   } catch (error) {
     console.error(error);
@@ -919,7 +922,10 @@ async function asignarPendienteDesdeFila(equipoId, grupoIdRaw, selectEl = null) 
 
     const equipoNombre = equiposPendientes.find((e) => e.id === equipoId)?.nombre || "Equipo";
     const nombreDestino = grupoDestino?.nombre_grupo || `Grupo ${grupoDestino?.letra_grupo || ""}`;
-    mostrarNotificacion(`${equipoNombre} asignado a ${nombreDestino}`, "success");
+    mostrarNotificacion(
+      `${equipoNombre} asignado a ${nombreDestino}. Si esta categoría ya tiene fixture generado, ve a Partidos y usa "Regenerar (preservar jugados)" para que juegue sus partidos sin tocar los ya programados.`,
+      "success"
+    );
     await recargarEstadoSorteo();
   } catch (error) {
     console.error(error);

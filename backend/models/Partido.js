@@ -2823,6 +2823,27 @@ class Partido {
           if (pendientes.length) jornadasPendientes.push(pendientes);
         }
 
+        // Mismo fallback que el modo liga (ver distribuirParesEnJornadas):
+        // si se agregaron o quitaron equipos del grupo desde el sorteo
+        // original, el orden del round-robin recalculado difiere del
+        // original y los pares ya jugados/programados quedan "filtrados"
+        // de forma dispareja entre jornadas, dejando algunas con menos
+        // partidos de los que le tocan. Redistribuir con el algoritmo
+        // greedy evita jornadas ralas al agregar equipos nuevos a un
+        // grupo que ya tenia fixture.
+        if (!ida_y_vuelta) {
+          const expectedSize = Math.floor(equipos.length / 2);
+          const hayIncompletas = jornadasPendientes.some((j) => j.length < expectedSize);
+          if (hayIncompletas) {
+            const paresRestantes = jornadasPendientes.flat();
+            jornadasPendientes.splice(
+              0,
+              jornadasPendientes.length,
+              ...distribuirParesEnJornadas(paresRestantes, equipos.length)
+            );
+          }
+        }
+
         jornadasPorGrupo.push({ grupo: g, jornadas: jornadasPendientes });
       }
 
