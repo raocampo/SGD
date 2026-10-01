@@ -2751,6 +2751,21 @@ class Partido {
   }
 
   static async eliminar(id) {
+    const check = await pool.query(`SELECT id, estado FROM partidos WHERE id = $1`, [id]);
+    if (!check.rows.length) {
+      const err = new Error("Partido no encontrado");
+      err.statusCode = 404;
+      throw err;
+    }
+    const { estado } = check.rows[0];
+    const ESTADOS_PROTEGIDOS = ["finalizado", "no_presentaron_ambos", "en_curso"];
+    if (ESTADOS_PROTEGIDOS.includes(estado)) {
+      const err = new Error(
+        `No se puede eliminar un partido en estado "${estado}". Solo se pueden eliminar partidos pendientes, programados o suspendidos.`
+      );
+      err.statusCode = 409;
+      throw err;
+    }
     const r = await pool.query("DELETE FROM partidos WHERE id = $1 RETURNING *", [id]);
     return r.rows[0];
   }

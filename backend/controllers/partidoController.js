@@ -479,7 +479,7 @@ exports.eliminarPartido = async (req, res) => {
     return res.json({ ok: true, partido });
   } catch (error) {
     console.error("Error eliminando partido:", error);
-    return res.status(500).json({ error: error.message });
+    return res.status(error.statusCode || 500).json({ error: error.message });
   }
 };
 

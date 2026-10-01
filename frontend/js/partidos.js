@@ -1837,7 +1837,7 @@ function actualizarCabeceraFixture() {
 async function eliminarPartido(id) {
   const ok = await window.mostrarConfirmacion({
     titulo: "Eliminar partido",
-    mensaje: "¿Seguro que quieres eliminar este partido?",
+    mensaje: "¿Seguro que quieres eliminar este partido? Los partidos ya jugados (finalizados o en curso) no pueden eliminarse.",
     tipo: "warning",
     textoConfirmar: "Eliminar",
     claseConfirmar: "btn-danger",
@@ -1850,7 +1850,8 @@ async function eliminarPartido(id) {
     cargarPartidos();
   } catch (error) {
     console.error(error);
-    mostrarNotificacion("Error al eliminar el partido.", "error");
+    const msg = error?.data?.error || error?.message || "Error al eliminar el partido.";
+    mostrarNotificacion(msg, "error");
   }
 }
 
