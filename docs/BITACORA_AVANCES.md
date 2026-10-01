@@ -1,3 +1,61 @@
+## 2026-10-01 - Editar grupos post-fixture: permitir equipos nuevos sin afectar partidos ya jugados
+
+> Commiteado y pusheado (`1cfb987`).
+
+El usuario reportó en PRODUCCIÓN (captura de `sorteo.html`): se inscribieron
+5 equipos después del sorteo y, al intentar agregarlos a grupos existentes,
+el sistema rechazaba la operación con "No se pueden editar los grupos
+porque la categoría ya tiene partidos programados... primero borra el
+fixture de esta categoría". Pidió poder editar grupos sin afectar el
+fixture ya generado, y que al regenerar, los partidos ya finalizados no se
+muevan — solo se agreguen los enfrentamientos faltantes.
+
+### Diagnóstico
+El guard `assertGruposEditables` (del fix "Edición de grupos post-sorteo"
+del 25-sep) era binario e indiscriminado: `COUNT(partidos) > 0` bloqueaba
+TODA edición de grupos (agregar equipo, mover, quitar, agregar grupo) sin
+distinguir si el equipo puntual que se tocaba tenía o no partidos reales.
+Separadamente, ya existía "Regenerar (preservar jugados)" en Partidos
+(`regenerarFixturePreservandoJugados`) — pensado justo para este caso
+("útil al agregar un equipo nuevo") — pero nunca se conectó con la edición
+de grupos; el propio guard de grupos no tenía forma de saber que esa
+opción existía. Era fricción conocida y no resuelta: la bitácora del
+25-sep ya anotaba "si Liliana necesita editar grupos con fixture ya
+generado, el guard lo bloqueará a propósito" como pendiente.
+
+### Fix
+- `Grupo.js`: `assertGruposEditables` se reemplaza por un chequeo por
+  EQUIPO (`_assertEquipoSinPartidos`), no por categoría completa — solo
+  bloquea si el equipo puntual que se agrega/mueve/quita ya tiene partidos
+  en el fixture. Agregar grupo nuevo (vacío) ya no depende de si hay
+  partidos en absoluto. Eliminar un grupo completo sigue tan estricto como
+  antes (sin cambios).
+- `Partido.js`: se encontró y corrigió un gap real al investigar —
+  `regenerarFixturePreservandoJugados` en modo "con grupos" no tenía la
+  mitigación de "jornadas incompletas" que el modo liga sí tenía (al
+  cambiar la cantidad de equipos de un grupo, el round-robin recalculado
+  puede dejar jornadas con menos partidos de los que le tocan). Se portó
+  el mismo fallback (`distribuirParesEnJornadas`), ya probado en el modo
+  liga.
+- `sorteo.js`: aviso de éxito al agregar/mover un equipo recuerda usar
+  "Regenerar (preservar jugados)" en Partidos.
+
+### Verificación
+Con datos aislados en BD local (evento QA, grupo con 1 partido finalizado
++ otro grupo con 1 partido programado): equipo CON partido rechazado al
+agregar/mover/quitar (comportamiento preservado donde corresponde); equipo
+SIN partidos permitido en los 3 casos; agregar grupo nuevo permitido
+aunque la categoría ya tenga partidos; `regenerarFixturePreservandoJugados`
+tras agregar un equipo nuevo genera correctamente sus partidos faltantes
+(2 jornadas nuevas) sin tocar ni duplicar los 2 partidos existentes.
+`node --check`, `smokeFrontendRoleGuards.js` 49/49. Datos de prueba
+revertidos (`COUNT=0` confirmado).
+
+**Pendiente para el usuario**: confirmar en producción con los 5 equipos
+reales — agregarlos a sus grupos, luego ir a Partidos → "Regenerar
+(preservar jugados)" para generar sus partidos faltantes sin tocar los ya
+jugados/programados.
+
 ## 2026-09-30 - Auditoría de scoping: eventos, eliminatorias, planilla de partido y tablas
 
 > Commiteado y pusheado (`3a97ebb`).
