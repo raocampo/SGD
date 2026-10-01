@@ -1374,6 +1374,72 @@ function generarRoundRobin(equipos) {
 }
 
 /**
+ * Renumera las jornadas de los partidos preservados (finalizado, programado,
+ * en_curso, suspendido, aplazado) de un evento para que sean consecutivas sin
+ * brechas, agrupando por fecha_partido (misma fecha = misma jornada).
+ * Partidos sin fecha se agrupan por su número de jornada original.
+ * Retorna el número de jornadas efectivas resultantes (nuevo maxJornadaJugada).
+ *
+ * Ejemplo: jornadas 1, 2, 4 con los 3 partidos del 26-sep → pasan a ser
+ * todos jornada 1, y nuevos partidos empiezan desde jornada 2.
+ */
+async function renumerarJornadasPreservadas(evento_id) {
+  const res = await pool.query(
+    `SELECT id, jornada, fecha_partido
+     FROM partidos
+     WHERE evento_id = $1
+       AND estado IN ('finalizado','no_presentaron_ambos','programado','suspendido','aplazado','en_curso')
+     ORDER BY fecha_partido ASC NULLS LAST, COALESCE(jornada, 0) ASC, id ASC`,
+    [evento_id]
+  );
+  if (!res.rows.length) return 0;
+
+  // Agrupar por fecha_partido (non-null) o por jornada original (null-fecha)
+  const grupos = [];
+  const porFecha = new Map();   // "YYYY-MM-DD" → índice en grupos
+  const porJornada = new Map(); // jornada_original → índice en grupos (solo para null-fecha)
+
+  for (const row of res.rows) {
+    const fechaStr = row.fecha_partido ? String(row.fecha_partido).slice(0, 10) : null;
+    if (fechaStr) {
+      if (!porFecha.has(fechaStr)) {
+        porFecha.set(fechaStr, grupos.length);
+        grupos.push({ fecha: fechaStr, ids: [] });
+      }
+      grupos[porFecha.get(fechaStr)].ids.push(row.id);
+    } else {
+      const key = row.jornada ?? -1;
+      if (!porJornada.has(key)) {
+        porJornada.set(key, grupos.length);
+        grupos.push({ fecha: null, jornada: key, ids: [] });
+      }
+      grupos[porJornada.get(key)].ids.push(row.id);
+    }
+  }
+
+  // Ordenar: grupos con fecha primero (asc), luego sin fecha (por jornada original)
+  grupos.sort((a, b) => {
+    if (a.fecha && b.fecha) return a.fecha.localeCompare(b.fecha);
+    if (a.fecha) return -1;
+    if (b.fecha) return 1;
+    return (a.jornada ?? 0) - (b.jornada ?? 0);
+  });
+
+  // Actualizar jornada en DB solo si cambió
+  for (let i = 0; i < grupos.length; i++) {
+    const nuevaJornada = i + 1;
+    const ids = grupos[i].ids;
+    if (!ids.length) continue;
+    await pool.query(
+      `UPDATE partidos SET jornada = $1 WHERE id = ANY($2::int[]) AND jornada IS DISTINCT FROM $1`,
+      [nuevaJornada, ids]
+    );
+  }
+
+  return grupos.length;
+}
+
+/**
  * Distribuye un conjunto de pares (partidos pendientes) en jornadas válidas
  * donde cada jornada tiene exactamente floor(numEquipos/2) partidos y
  * ningún equipo aparece dos veces en la misma jornada.
@@ -2739,18 +2805,16 @@ class Partido {
     const esFormatoLiga = ["liga", "todos", "todos_contra_todos"].includes(metodoCompetencia);
     const tieneGrupos = totalGrupos > 0 && !esFormatoLiga;
 
-    // Jornada máxima de partidos preservados (finalizados + programados + suspendidos/aplazados)
-    const maxJornadaR = await pool.query(
-      `SELECT COALESCE(MAX(jornada), 0)::int AS max_j FROM partidos WHERE evento_id = $1 AND estado IN ('finalizado', 'no_presentaron_ambos', 'programado', 'suspendido', 'aplazado', 'en_curso')`,
-      [evento_id]
-    );
-    const maxJornadaJugada = maxJornadaR.rows[0]?.max_j || 0;
-
     // Eliminar SOLO partidos pendientes — preservar programados, finalizados y demás estados activos
     await pool.query(
       `DELETE FROM partidos WHERE evento_id = $1 AND (estado IS NULL OR estado = 'pendiente')`,
       [evento_id]
     );
+
+    // Renumerar jornadas preservadas para eliminar brechas:
+    // agrupa por fecha_partido (misma fecha = misma jornada) y renumera consecutivamente.
+    // Retorna el número de jornadas efectivas → nuevas jornadas empiezan desde maxJornadaJugada+1.
+    const maxJornadaJugada = await renumerarJornadasPreservadas(evento_id);
 
     const dur = Math.max(1, parseInt(duracion_min || 90));
     const desc = Math.max(0, parseInt(descanso_min || 10));
