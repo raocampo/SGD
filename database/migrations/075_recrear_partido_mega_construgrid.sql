@@ -1,7 +1,6 @@
 -- Migración 075: Recrear partido MEGA SANTIAGO vs CONSTRUGRID (Grupo B)
 -- borrado accidentalmente en producción.
--- El partido es de la misma jornada que los otros dos finalizados del 2026-09-26
--- (TELCONET LATAM FC vs IASA S.A. y CORPORACIÓN PROAUTO vs DISTRI MAJAS).
+-- El partido es de la misma jornada que los otros dos finalizados del 2026-09-26.
 -- Se inserta con estado='finalizado' y fecha=2026-09-26 para que
 -- renumerarJornadasPreservadas lo agrupe en jornada 1 junto a los demás.
 -- El usuario debe re-ingresar el resultado real en la planilla del partido.
@@ -15,16 +14,16 @@ DECLARE
   v_construgrid_id integer;
   v_existe         boolean;
 BEGIN
-  -- Buscar equipos por nombre (insensible a mayúsculas/tildes)
+  -- Buscar equipos por nombre (ILIKE sin unaccent para máxima compatibilidad)
   SELECT id INTO v_mega_id
   FROM equipos
-  WHERE LOWER(unaccent(nombre)) LIKE '%mega santiago%'
+  WHERE nombre ILIKE '%mega santiago%'
   ORDER BY id DESC LIMIT 1;
 
   SELECT id INTO v_construgrid_id
   FROM equipos
-  WHERE LOWER(unaccent(nombre)) LIKE '%construgrid%'
-     OR LOWER(unaccent(nombre)) LIKE '%constructora grid%'
+  WHERE nombre ILIKE '%construgrid%'
+     OR nombre ILIKE '%constructora grid%'
   ORDER BY id DESC LIMIT 1;
 
   IF v_mega_id IS NULL OR v_construgrid_id IS NULL THEN
@@ -37,7 +36,7 @@ BEGIN
   FROM grupos g
   JOIN grupo_equipos ge1 ON ge1.grupo_id = g.id AND ge1.equipo_id = v_mega_id
   JOIN grupo_equipos ge2 ON ge2.grupo_id = g.id AND ge2.equipo_id = v_construgrid_id
-  WHERE (LOWER(g.letra_grupo) = 'b' OR LOWER(g.nombre_grupo) LIKE '%grupo b%')
+  WHERE (g.letra_grupo ILIKE 'b' OR g.nombre_grupo ILIKE '%grupo b%')
   ORDER BY g.id DESC LIMIT 1;
 
   IF v_grupo_id IS NULL THEN
@@ -75,7 +74,7 @@ BEGIN
 
   -- Insertar el partido como finalizado
   -- resultado_local y resultado_visitante quedan en 0/0 como placeholder
-  -- → el usuario debe re-ingresar el resultado real desde la planilla
+  -- El usuario debe re-ingresar el resultado real desde la planilla
   INSERT INTO partidos (
     campeonato_id,
     grupo_id,
@@ -94,14 +93,14 @@ BEGIN
     v_construgrid_id,
     'finalizado',
     '2026-09-26',
-    3,           -- jornada tentativa; será renumerada por regenerarFixturePreservandoJugados
+    3,
     v_evento_id,
-    0,           -- placeholder — actualizar con resultado real desde planilla
-    0            -- placeholder — actualizar con resultado real desde planilla
+    0,
+    0
   );
 
   RAISE NOTICE 'Partido recreado: MEGA SANTIAGO (id=%) vs CONSTRUGRID (id=%) | grupo_id=% evento_id=% campeonato_id=%',
     v_mega_id, v_construgrid_id, v_grupo_id, v_evento_id, v_campeonato_id;
-  RAISE NOTICE 'SIGUIENTE PASO: ir a Partidos → Regenerar (preservar jugados) para que quede en jornada 1.';
+  RAISE NOTICE 'SIGUIENTE PASO: ir a Partidos → Regenerar (preservar jugados).';
   RAISE NOTICE 'PENDIENTE: re-ingresar el resultado real en la planilla del partido recreado.';
 END $$;
