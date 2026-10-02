@@ -1,3 +1,48 @@
+## 2026-10-02 (parte 3) - Auditoría proactiva: GET de partidos/grupos sin requireAuth
+
+> Commiteado y pusheado (`b1a9c89`).
+
+El usuario pidió "revisa si hay otro pendiente para que sigas" — se
+retomó la auditoría de scoping (que ya cubría 9 módulos) revisando los
+que quedaban sin chequear explícitamente: auspiciantes, usuarios,
+sorteo, facturación (todos bien — ya protegidos o intencionalmente
+públicos) y **partidos/grupos**, donde apareció algo más grave que el
+patrón de "tecnico sin scoping" ya conocido:
+
+**11 endpoints GET en `partidoRoutes.js` y `grupoRoutes.js` no tenían ni
+`requireAuth`** — alcanzables por cualquiera sin token, no solo por un
+rol sin scoping. `GET /grupos/:grupo_id/equipos` en particular exponía
+`SELECT e.*` de la tabla `equipos` (incluye teléfono/email/médico del
+cuerpo técnico) sin ningún guard.
+
+Antes de tocar nada se confirmó (grep exhaustivo) que el portal público
+**no depende** de estas rutas internas — ya usa `/api/public/...`
+exclusivamente — y que las páginas internas que sí las llaman
+(`partidos.html`, `gruposgen.html`, `sorteo.html`, `eliminatorias.html`,
+`fixture.html`, `planilla.html`, `jornadasplantilla.html`, `admin.html`)
+ya mandan el token vía `ApiClient` sin excepción, así que agregar
+`requireAuth` no rompe ningún flujo con sesión activa.
+
+Se agregó `requireAuth` + `requireRoles(...)` a los 11 endpoints, y de
+paso el mismo scoping por campeonato/equipo para tecnico/dirigente/
+jugador que ya tenían eventos/tablas/eliminatorias/planilla (resolviendo
+`evento_id`/`grupo_id` → `campeonato_id`, o equipo local/visitante para
+`obtenerPartido`, igual que `obtenerPlanillaPartido`).
+
+### Verificación
+Con datos aislados en BD local (grupo + partido temporales bajo el
+campeonato real de un dirigente de prueba): grupo/partido/campeonato
+ajenos → 403; propios → 200 con los datos correctos; administrador sin
+restricción. `node --check`, `smokeFrontendRoleGuards.js` 49/49. Datos de
+prueba revertidos.
+
+Con esto, el patrón de scoping/auth queda cerrado en los módulos
+principales. Lo único que queda del lado de auditoría (bajo riesgo, no
+urgente): `tablaController`'s check de ownership para organizador mismo
+(hoy solo scopea tecnico/dirigente/jugador, un organizador podría en
+teoría leer tablas de otro organizador llamando el endpoint directo) —
+no reportado por el usuario, anotado solo como nota técnica.
+
 ## 2026-10-02 (parte 2) - Resumen Ejecutivo no debe recortarse por fecha + aclaración sobre "campeonato faltante"
 
 > Commiteado y pusheado (`ba99828`).
