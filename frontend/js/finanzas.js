@@ -915,13 +915,16 @@ function calcularResumenEjecutivoPorCampeonato(movimientos = [], gastos = []) {
 }
 
 async function cargarResumenEjecutivoFinanzas() {
+  // El Resumen Ejecutivo es el acumulado COMPLETO del campeonato (desde que
+  // se crea hasta que se da por finalizado) -- a propósito NO se filtra por
+  // fecha, aunque el usuario haya puesto un rango Desde/Hasta en "Filtros"
+  // para otra vista (ej. Movimientos Financieros). Un corte por mes/día es
+  // util para estadísticas, no para saber la utilidad real del campeonato.
   const params = {
     campeonato_id: document.getElementById("fin-campeonato")?.value || "",
     evento_id: document.getElementById("fin-evento")?.value || "",
     tipo_movimiento: document.getElementById("fin-tipo")?.value || "",
     estado: document.getElementById("fin-estado")?.value || "",
-    desde: document.getElementById("fin-desde")?.value || "",
-    hasta: document.getElementById("fin-hasta")?.value || "",
     incluir_sistema: "true",
     limit: 5000,
   };
@@ -932,8 +935,6 @@ async function cargarResumenEjecutivoFinanzas() {
   try {
     const gastosParams = new URLSearchParams();
     if (params.campeonato_id) gastosParams.append("campeonato_id", params.campeonato_id);
-    if (params.desde) gastosParams.append("desde", params.desde);
-    if (params.hasta) gastosParams.append("hasta", params.hasta);
 
     const [resp, gastosResp] = await Promise.all([
       FinanzasAPI.listarMovimientos(params),
