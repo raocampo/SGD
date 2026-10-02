@@ -46,14 +46,30 @@ router.post(
 // ===============================
 // 📋 CONSULTAS (LECTURA)
 // ===============================
-router.get("/evento/:evento_id", partidoController.obtenerPartidosPorEvento);
-router.get("/grupo/:grupo_id", partidoController.obtenerPartidosPorGrupo);
+const LECTURA_ROLES = ["administrador", "organizador", "operador_sistema", "tecnico", "dirigente", "jugador"];
+
+router.get(
+  "/evento/:evento_id",
+  requireAuth,
+  requireRoles(...LECTURA_ROLES),
+  partidoController.obtenerPartidosPorEvento
+);
+router.get(
+  "/grupo/:grupo_id",
+  requireAuth,
+  requireRoles(...LECTURA_ROLES),
+  partidoController.obtenerPartidosPorGrupo
+);
 router.get(
   "/campeonato/:campeonato_id/jornada/:jornada",
+  requireAuth,
+  requireRoles(...LECTURA_ROLES),
   partidoController.obtenerPartidosPorCampeonatoYJornada
 );
 router.get(
   "/campeonato/:campeonato_id",
+  requireAuth,
+  requireRoles(...LECTURA_ROLES),
   partidoController.obtenerPartidosPorCampeonato
 );
 
@@ -114,6 +130,6 @@ router.get(
   partidoController.obtenerJugadoresAscendentes
 );
 
-router.get("/:id", partidoController.obtenerPartido);
+router.get("/:id", requireAuth, requireRoles(...LECTURA_ROLES), partidoController.obtenerPartido);
 
 module.exports = router;

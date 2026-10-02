@@ -4,7 +4,60 @@ const Eliminatoria = require("../models/Eliminatoria");
 const Jugador = require("../models/Jugador");
 const pool = require("../config/database");
 const { ACCIONES, registrar: registrarAuditoria, extraerIp } = require("../services/auditoria");
-const { esTecnicoOdirigente, tecnicoPuedeAccederEquipo } = require("../services/roleScope");
+const {
+  esTecnicoOdirigente,
+  tecnicoPuedeAccederEquipo,
+  tecnicoPuedeAccederCampeonato,
+} = require("../services/roleScope");
+
+// Tecnico/dirigente/jugador: solo partidos de campeonatos donde tienen
+// algun equipo asociado (organizador/admin/operador_sistema sin
+// restriccion adicional aqui). Estos GET nunca tuvieron requireAuth hasta
+// ahora -- quedaban alcanzables por cualquiera con solo el id.
+async function validarAccesoEventoLecturaPartidos(req, res, eventoId) {
+  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  const r = await pool.query(`SELECT campeonato_id FROM eventos WHERE id = $1 LIMIT 1`, [eventoId]);
+  const campeonatoId = r.rows[0]?.campeonato_id;
+  if (!campeonatoId) {
+    res.status(404).json({ error: "Categoría no encontrada" });
+    return false;
+  }
+  const puede = await tecnicoPuedeAccederCampeonato(req, campeonatoId);
+  if (!puede) {
+    res.status(403).json({ error: "No autorizado para esta categoría" });
+    return false;
+  }
+  return true;
+}
+
+async function validarAccesoCampeonatoLecturaPartidos(req, res, campeonatoId) {
+  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  const puede = await tecnicoPuedeAccederCampeonato(req, campeonatoId);
+  if (!puede) {
+    res.status(403).json({ error: "No autorizado para este campeonato" });
+    return false;
+  }
+  return true;
+}
+
+async function validarAccesoGrupoLecturaPartidos(req, res, grupoId) {
+  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  const r = await pool.query(
+    `SELECT e.campeonato_id FROM grupos g JOIN eventos e ON e.id = g.evento_id WHERE g.id = $1 LIMIT 1`,
+    [grupoId]
+  );
+  const campeonatoId = r.rows[0]?.campeonato_id;
+  if (!campeonatoId) {
+    res.status(404).json({ error: "Grupo no encontrado" });
+    return false;
+  }
+  const puede = await tecnicoPuedeAccederCampeonato(req, campeonatoId);
+  if (!puede) {
+    res.status(403).json({ error: "No autorizado para este grupo" });
+    return false;
+  }
+  return true;
+}
 
 function parseBooleanFlag(value) {
   return value === true || String(value || "").trim().toLowerCase() === "true";
@@ -293,6 +346,7 @@ exports.regenerarFixturePreservando = async (req, res) => {
 exports.obtenerPartidosPorEvento = async (req, res) => {
   try {
     const evento_id = parseInt(req.params.evento_id, 10);
+    if (!(await validarAccesoEventoLecturaPartidos(req, res, evento_id))) return;
     const partidos = await Partido.obtenerPorEvento(evento_id);
     return res.json({ ok: true, partidos });
   } catch (error) {
@@ -304,6 +358,7 @@ exports.obtenerPartidosPorEvento = async (req, res) => {
 exports.obtenerPartidosPorGrupo = async (req, res) => {
   try {
     const grupo_id = parseInt(req.params.grupo_id, 10);
+    if (!(await validarAccesoGrupoLecturaPartidos(req, res, grupo_id))) return;
     const partidos = await Partido.obtenerPorGrupo(grupo_id);
     return res.json({ ok: true, partidos });
   } catch (error) {
@@ -315,6 +370,7 @@ exports.obtenerPartidosPorGrupo = async (req, res) => {
 exports.obtenerPartidosPorCampeonato = async (req, res) => {
   try {
     const campeonato_id = parseInt(req.params.campeonato_id, 10);
+    if (!(await validarAccesoCampeonatoLecturaPartidos(req, res, campeonato_id))) return;
     const partidos = await Partido.obtenerPorCampeonato(campeonato_id);
     return res.json({ ok: true, partidos });
   } catch (error) {
@@ -327,6 +383,7 @@ exports.obtenerPartidosPorCampeonatoYJornada = async (req, res) => {
   try {
     const campeonato_id = parseInt(req.params.campeonato_id, 10);
     const jornada = parseInt(req.params.jornada, 10);
+    if (!(await validarAccesoCampeonatoLecturaPartidos(req, res, campeonato_id))) return;
 
     const partidos = await Partido.obtenerPorCampeonatoYJornada(
       campeonato_id,
@@ -383,6 +440,17 @@ exports.obtenerPartido = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const partido = await Partido.obtenerPorId(id);
+
+    if (partido && esTecnicoOdirigente(req.user?.rol)) {
+      const [puedeLocal, puedeVisitante] = await Promise.all([
+        tecnicoPuedeAccederEquipo(req, partido.equipo_local_id),
+        tecnicoPuedeAccederEquipo(req, partido.equipo_visitante_id),
+      ]);
+      if (!puedeLocal && !puedeVisitante) {
+        return res.status(403).json({ error: "No autorizado para consultar este partido" });
+      }
+    }
+
     return res.json({ ok: true, partido });
   } catch (error) {
     console.error("Error obteniendo partido:", error);

@@ -1,5 +1,56 @@
 // controllers/grupoController.js
 const Grupo = require("../models/Grupo");
+const pool = require("../config/database");
+const { esTecnicoOdirigente, tecnicoPuedeAccederCampeonato } = require("../services/roleScope");
+
+// Tecnico/dirigente/jugador: solo grupos/equipos de campeonatos donde
+// tienen algun equipo asociado (organizador/admin/operador_sistema sin
+// restriccion adicional aqui). Estos GET nunca tuvieron requireAuth hasta
+// ahora -- quedaban alcanzables por cualquiera con solo el id.
+async function validarAccesoEventoLecturaGrupos(req, res, eventoId) {
+  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  const r = await pool.query(`SELECT campeonato_id FROM eventos WHERE id = $1 LIMIT 1`, [eventoId]);
+  const campeonatoId = r.rows[0]?.campeonato_id;
+  if (!campeonatoId) {
+    res.status(404).json({ error: "Categoría no encontrada" });
+    return false;
+  }
+  const puede = await tecnicoPuedeAccederCampeonato(req, campeonatoId);
+  if (!puede) {
+    res.status(403).json({ error: "No autorizado para esta categoría" });
+    return false;
+  }
+  return true;
+}
+
+async function validarAccesoCampeonatoLecturaGrupos(req, res, campeonatoId) {
+  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  const puede = await tecnicoPuedeAccederCampeonato(req, campeonatoId);
+  if (!puede) {
+    res.status(403).json({ error: "No autorizado para este campeonato" });
+    return false;
+  }
+  return true;
+}
+
+async function validarAccesoGrupoLecturaGrupos(req, res, grupoId) {
+  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  const r = await pool.query(
+    `SELECT e.campeonato_id FROM grupos g JOIN eventos e ON e.id = g.evento_id WHERE g.id = $1 LIMIT 1`,
+    [grupoId]
+  );
+  const campeonatoId = r.rows[0]?.campeonato_id;
+  if (!campeonatoId) {
+    res.status(404).json({ error: "Grupo no encontrado" });
+    return false;
+  }
+  const puede = await tecnicoPuedeAccederCampeonato(req, campeonatoId);
+  if (!puede) {
+    res.status(403).json({ error: "No autorizado para este grupo" });
+    return false;
+  }
+  return true;
+}
 
 function statusForGrupo(error) {
   const msg = String(error?.message || "").toLowerCase();
@@ -68,6 +119,7 @@ exports.obtenerGruposPorEvento = async (req, res) => {
   try {
     const { evento_id } = req.params;
     const eventoId = parseInt(evento_id, 10);
+    if (!(await validarAccesoEventoLecturaGrupos(req, res, eventoId))) return;
     await Grupo.asegurarGrupoLigaPorEvento(eventoId);
     const grupos = await Grupo.obtenerPorEvento(eventoId);
     res.json({ ok: true, grupos });
@@ -81,6 +133,7 @@ exports.obtenerGruposPorEventoCompleto = async (req, res) => {
   try {
     const { evento_id } = req.params;
     const eventoId = parseInt(evento_id, 10);
+    if (!(await validarAccesoEventoLecturaGrupos(req, res, eventoId))) return;
     await Grupo.asegurarGrupoLigaPorEvento(eventoId);
     const grupos = await Grupo.obtenerConEquiposPorEvento(eventoId);
     res.json({ ok: true, grupos });
@@ -93,7 +146,9 @@ exports.obtenerGruposPorEventoCompleto = async (req, res) => {
 exports.obtenerGruposPorCampeonato = async (req, res) => {
   try {
     const { campeonato_id } = req.params;
-    const grupos = await Grupo.obtenerPorCampeonato(parseInt(campeonato_id, 10));
+    const campeonatoId = parseInt(campeonato_id, 10);
+    if (!(await validarAccesoCampeonatoLecturaGrupos(req, res, campeonatoId))) return;
+    const grupos = await Grupo.obtenerPorCampeonato(campeonatoId);
     res.json({ ok: true, grupos });
   } catch (err) {
     console.error("obtenerGruposPorCampeonato:", err);
@@ -104,7 +159,9 @@ exports.obtenerGruposPorCampeonato = async (req, res) => {
 exports.obtenerGruposPorCampeonatoCompleto = async (req, res) => {
   try {
     const { campeonato_id } = req.params;
-    const grupos = await Grupo.obtenerConEquiposPorCampeonato(parseInt(campeonato_id, 10));
+    const campeonatoId = parseInt(campeonato_id, 10);
+    if (!(await validarAccesoCampeonatoLecturaGrupos(req, res, campeonatoId))) return;
+    const grupos = await Grupo.obtenerConEquiposPorCampeonato(campeonatoId);
     res.json({ ok: true, grupos });
   } catch (err) {
     console.error("obtenerGruposPorCampeonatoCompleto:", err);
@@ -114,7 +171,9 @@ exports.obtenerGruposPorCampeonatoCompleto = async (req, res) => {
 
 exports.obtenerGrupo = async (req, res) => {
   try {
-    const g = await Grupo.obtenerPorId(parseInt(req.params.id));
+    const grupoId = parseInt(req.params.id, 10);
+    if (!(await validarAccesoGrupoLecturaGrupos(req, res, grupoId))) return;
+    const g = await Grupo.obtenerPorId(grupoId);
     if (!g) return res.status(404).json({ error: "Grupo no encontrado" });
     res.json({ ok: true, grupo: g });
   } catch (err) {
@@ -125,7 +184,9 @@ exports.obtenerGrupo = async (req, res) => {
 
 exports.obtenerEquiposDelGrupo = async (req, res) => {
   try {
-    const equipos = await Grupo.obtenerEquiposDelGrupo(parseInt(req.params.grupo_id));
+    const grupoId = parseInt(req.params.grupo_id, 10);
+    if (!(await validarAccesoGrupoLecturaGrupos(req, res, grupoId))) return;
+    const equipos = await Grupo.obtenerEquiposDelGrupo(grupoId);
     res.json({ ok: true, equipos });
   } catch (err) {
     console.error("obtenerEquiposDelGrupo:", err);

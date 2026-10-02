@@ -21,20 +21,44 @@ router.post(
   requireRoles("administrador", "organizador"),
   grupoController.agregarGrupoAEvento
 );
-router.get("/evento/:evento_id", grupoController.obtenerGruposPorEvento);
-router.get("/evento/:evento_id/completo", grupoController.obtenerGruposPorEventoCompleto);
+const LECTURA_ROLES = ["administrador", "organizador", "operador_sistema", "tecnico", "dirigente", "jugador"];
+
+router.get(
+  "/evento/:evento_id",
+  requireAuth,
+  requireRoles(...LECTURA_ROLES),
+  grupoController.obtenerGruposPorEvento
+);
+router.get(
+  "/evento/:evento_id/completo",
+  requireAuth,
+  requireRoles(...LECTURA_ROLES),
+  grupoController.obtenerGruposPorEventoCompleto
+);
 // Compatibilidad con frontend que consulta por campeonato
-router.get("/campeonato/:campeonato_id", grupoController.obtenerGruposPorCampeonato);
+router.get(
+  "/campeonato/:campeonato_id",
+  requireAuth,
+  requireRoles(...LECTURA_ROLES),
+  grupoController.obtenerGruposPorCampeonato
+);
 router.get(
   "/campeonato/:campeonato_id/completo",
+  requireAuth,
+  requireRoles(...LECTURA_ROLES),
   grupoController.obtenerGruposPorCampeonatoCompleto
 );
 
 // ===============================
 // GRUPO / EQUIPOS
 // ===============================
-router.get("/:id", grupoController.obtenerGrupo);
-router.get("/:grupo_id/equipos", grupoController.obtenerEquiposDelGrupo);
+router.get("/:id", requireAuth, requireRoles(...LECTURA_ROLES), grupoController.obtenerGrupo);
+router.get(
+  "/:grupo_id/equipos",
+  requireAuth,
+  requireRoles(...LECTURA_ROLES),
+  grupoController.obtenerEquiposDelGrupo
+);
 router.post(
   "/:grupo_id/equipos",
   requireAuth,
