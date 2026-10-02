@@ -45,6 +45,7 @@ async function inicializarFinanzas() {
   inicializarTogglesReportes();
   await cargarCatalogosFinanzas();
   inicializarGastosOperativos();
+  inicializarFormPremios();
   poblarSelectCampeonatosGasto();
   await Promise.all([
     buscarMovimientosFinanzas(),
@@ -205,18 +206,121 @@ function bindEventosFinanzas() {
     ?.addEventListener("click", abrirFormularioPremios);
 }
 
-// Atajo desde "Utilidad por Rubro": lleva a Gastos Operativos con el
-// formulario ya abierto y la categoría "Premios" preseleccionada, para
-// que registrar el gasto de premios sea descubrible sin tener que
-// adivinar que vive dentro de "Registrar gasto".
+// Atajo desde "Utilidad por Rubro": lleva a Gastos Operativos y abre el
+// formulario DEDICADO de premios (campeonato + categoría + 1er/2do/3er/4to
+// lugar) -- separado del formulario genérico de gastos, que ya no ofrece
+// "premios" como tipo de gasto (partido y tipo de gasto no aplican acá:
+// el rubro siempre es "premios").
 function abrirFormularioPremios() {
   actualizarPestanasFinanzas("fin-tab-gastos");
-  limpiarFormGasto();
-  const wrap = document.getElementById("fin-form-gasto-wrap");
+  const wrapGasto = document.getElementById("fin-form-gasto-wrap");
+  if (wrapGasto) wrapGasto.style.display = "none";
+  limpiarFormPremios();
+  const wrap = document.getElementById("fin-form-premios-wrap");
   if (wrap) wrap.style.display = "block";
-  const categoriaSel = document.getElementById("gasto-categoria");
-  if (categoriaSel) categoriaSel.value = "premios";
-  document.getElementById("bloque-gastos-operativos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  wrap?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+const PREMIOS_PUESTOS = [
+  { id: "premio-1", label: "Primer lugar" },
+  { id: "premio-2", label: "Segundo lugar" },
+  { id: "premio-3", label: "Tercer lugar" },
+  { id: "premio-4", label: "Cuarto lugar" },
+];
+
+function inicializarFormPremios() {
+  document.getElementById("premios-campeonato")?.addEventListener("change", sincronizarFormPremios);
+  document.getElementById("btn-premios-cancelar")?.addEventListener("click", () => {
+    limpiarFormPremios();
+    document.getElementById("fin-form-premios-wrap").style.display = "none";
+  });
+  document.getElementById("fin-form-premios")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await guardarPremios();
+  });
+}
+
+function limpiarFormPremios() {
+  PREMIOS_PUESTOS.forEach((p) => {
+    const el = document.getElementById(p.id);
+    if (el) el.value = "";
+  });
+
+  const campSel = document.getElementById("premios-campeonato");
+  const finCamp = document.getElementById("fin-campeonato");
+  if (campSel) {
+    campSel.innerHTML = "";
+    (finanzasState.campeonatos || []).forEach((c) => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.nombre;
+      if (finCamp?.value && String(c.id) === String(finCamp.value)) opt.selected = true;
+      campSel.appendChild(opt);
+    });
+  }
+  sincronizarFormPremios();
+}
+
+function sincronizarFormPremios() {
+  const campId = document.getElementById("premios-campeonato")?.value;
+  const evSel = document.getElementById("premios-evento");
+  if (!evSel) return;
+
+  const eventos = (finanzasState.eventos || []).filter(
+    (e) => String(e.campeonato_id) === String(campId)
+  );
+  evSel.innerHTML = '<option value="">Selecciona categoría</option>';
+  eventos.forEach((ev) => {
+    const opt = document.createElement("option");
+    opt.value = ev.id;
+    opt.textContent = ev.nombre;
+    evSel.appendChild(opt);
+  });
+}
+
+async function guardarPremios() {
+  const campeonato_id = document.getElementById("premios-campeonato")?.value;
+  const evento_id = document.getElementById("premios-evento")?.value;
+
+  if (!campeonato_id) {
+    mostrarNotificacion("Selecciona el campeonato", "warning");
+    return;
+  }
+  if (!evento_id) {
+    mostrarNotificacion("Selecciona la categoría", "warning");
+    return;
+  }
+
+  const entradas = PREMIOS_PUESTOS.map((p) => ({
+    ...p,
+    monto: Number(document.getElementById(p.id)?.value || 0),
+  })).filter((p) => p.monto > 0);
+
+  if (!entradas.length) {
+    mostrarNotificacion("Ingresa al menos un monto de premio", "warning");
+    return;
+  }
+
+  try {
+    await Promise.all(
+      entradas.map((p) =>
+        ApiClient.post("/finanzas/gastos", {
+          campeonato_id,
+          evento_id,
+          categoria: "premios",
+          descripcion: `Premio ${p.label.toLowerCase()}`,
+          monto: p.monto,
+        })
+      )
+    );
+    document.getElementById("fin-form-premios-wrap").style.display = "none";
+    limpiarFormPremios();
+    await Promise.all([cargarGastosOperativos(), cargarUtilidadPorRubroFinanzas()]);
+    const total = entradas.reduce((acc, p) => acc + p.monto, 0);
+    mostrarNotificacion(`Premios registrados: $${total.toFixed(2)}`, "success");
+  } catch (err) {
+    mostrarNotificacion(err.message || "Error al guardar los premios", "error");
+  }
 }
 
 function cambiarPestanaFinanzas(tabId) {
@@ -2933,6 +3037,7 @@ const GASTOS_LABELS = {
   tizado:         "Tizado",
   transporte:     "Transporte",
   comida:         "Comida",
+  premios:        "Premios",
   otro:           "Otro",
 };
 
@@ -2943,6 +3048,7 @@ const GASTOS_ICONOS = {
   tizado:          "fas fa-spray-can",
   transporte:      "fas fa-bus",
   comida:          "fas fa-utensils",
+  premios:         "fas fa-trophy",
   otro:            "fas fa-tag",
 };
 
