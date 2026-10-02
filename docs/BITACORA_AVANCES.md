@@ -1,3 +1,34 @@
+## 2026-10-02 (parte 2) - Resumen Ejecutivo no debe recortarse por fecha + aclaración sobre "campeonato faltante"
+
+> Commiteado y pusheado (`ba99828`).
+
+El usuario probó el formulario de premios (parte 1) y reportó dos cosas:
+
+1. **"Resumen Ejecutivo por Campeonato" y "Utilidad por Rubro" deben
+   mostrar el acumulado completo del campeonato** (desde que se crea hasta
+   que se da por finalizado), no recortado por mes/día — eso es para
+   estadísticas, no para saber la utilidad real. Bug real confirmado:
+   `cargarResumenEjecutivoFinanzas()` reenviaba el rango `fin-desde`/
+   `fin-hasta` de la pestaña "Filtros" (pensado para "Movimientos
+   Financieros") también a Resumen Ejecutivo — si quedaba un rango puesto
+   de una búsqueda anterior, el resumen y la utilidad salían recortados.
+   Se quitó `desde`/`hasta` de esa llamada. "Utilidad por Rubro" y
+   "Resumen por Equipo" ya estaban bien (nunca enviaban esos parámetros,
+   verificado antes de tocar nada).
+2. **"No se ve el campeonato Liga InterEmpresarial"** en el selector de
+   Registrar Premios — investigado contra producción Y contra BD local:
+   **no es un bug**. El campeonato existe en producción con
+   `creador_usuario_id` correctamente asignado a la cuenta de la
+   organizadora (`puedeAccederCampeonato` lo dejaría pasar sin problema).
+   Lo que pasó es que está probando contra su **BD local**, que es una
+   copia de un punto anterior a cuando se creó ese campeonato en
+   producción (17-sep) — por eso no existe ahí. Confirmado cruzando los
+   montos exactos de los premios registrados ($1000/$500/$250/$100) y el
+   `created_by` contra la BD local, no producción.
+
+### Verificación
+`node --check`, `smokeFrontendRoleGuards.js` 49/49.
+
 ## 2026-10-02 - Formulario dedicado para registrar premios por puesto
 
 > Commiteado y pusheado (`e40aefd`).
