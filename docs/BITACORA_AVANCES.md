@@ -1,3 +1,75 @@
+## 2026-10-02 - Formulario dedicado para registrar premios por puesto
+
+> Commiteado y pusheado (`e40aefd`).
+
+El usuario compartió captura del formulario "Registrar gasto" (genérico,
+usado también para premios vía `abrirFormularioPremios()`) y pidió uno
+dedicado: Campeonato, Categoría, y el desglose real — Primer/Segundo/
+Tercer lugar (monto, cada uno esperado) y Cuarto lugar (monto, opcional —
+"hay campeonatos que no lo dan de forma económica"). Pidió quitar
+"Partido" y "Tipo de gasto" de este flujo (no aplican: el rubro siempre
+es "premios", no hay partido asociado a un premio de posición final).
+
+- `finanzas.html`: nueva tarjeta `fin-form-premios-wrap` (Campeonato +
+  Categoría + 4 inputs de monto, 4to marcado "(opcional)"), separada del
+  formulario genérico de gastos. El select "Tipo de gasto" del formulario
+  genérico **conserva** la opción "Premios" — necesaria para que editar
+  una fila de premios ya creada (botón "editar" de la tabla) no se rompa
+  silenciosamente (si se quita del `<select>`, asignarle `.value =
+  "premios"` al abrir el editor no selecciona nada y se podría
+  re-categorizar el gasto al guardar sin que el usuario lo note).
+- `finanzas.js`: `abrirFormularioPremios()` abre el formulario nuevo en
+  vez del genérico. `guardarPremios()` valida campeonato+categoría y al
+  menos un monto > 0, y por cada puesto con monto > 0 hace un
+  `POST /finanzas/gastos` independiente (`categoria: "premios"`,
+  `descripcion: "Premio <puesto>"`) — sin cambios de backend:
+  `CATEGORIAS_GASTO` ya incluía `"premios"` y `obtenerUtilidadPorRubro`
+  ya suma por categoría sin importar cuántas filas haya (confirmado
+  investigando antes de implementar). Se agregó `premios` a
+  `GASTOS_LABELS`/`GASTOS_ICONOS` (antes caía al fallback genérico).
+
+Verificado contra BD local: `Finanza.crearGasto()` x3 (150/90/50) con
+`categoria=premios`, `obtenerUtilidadPorRubro()` confirma que los $290 se
+suman correctamente (cruce inscripción↔premios ya existente). `node
+--check`, balance de `<div>`, `smokeFrontendRoleGuards.js` 49/49. Datos de
+prueba revertidos.
+
+**Nota operativa**: al hacer `git status` antes de commitear se detectó
+trabajo concurrente de otra sesión ya pusheado a `origin/main` (ver
+entrada siguiente, "2026-10-01 (otra sesión)") — mismo patrón de checkout
+compartido de siempre; se aplicó `stash` → `pull` → `pop` sin pérdida.
+
+## 2026-10-01 (otra sesión) - Renumeración de jornadas al regenerar + bloqueo de eliminar partidos jugados
+
+Tres commits (`9305f89`, `b44ffde`, `9e55ab6`) hechos por OTRA sesión sin
+participación de esta, encontrados vía `git pull` al ir a commitear el
+formulario de premios (ver entrada de arriba). Sin bitácora propia — se
+documentan acá a partir de los mensajes de commit, no verificados por esta
+sesión. Directamente relacionados con el fix de "Editar grupos post-fixture"
+del día anterior (1cfb987): parece que al usarlo en producción con los 5
+equipos nuevos salieron a la luz dos problemas reales.
+
+- `9305f89` **Renumerar jornadas preservadas al regenerar**: al regenerar
+  fixture preservando jugados, el sistema mantenía los números de jornada
+  originales (ej. 1, 2, 4), dejando brechas vacías. Nueva
+  `renumerarJornadasPreservadas` agrupa los partidos preservados por
+  `fecha_partido` (misma fecha → misma jornada) y asigna números
+  consecutivos (1, 2, 3...); las jornadas nuevas siguen desde
+  `maxJornadaJugada+1` sin brechas.
+- `b44ffde` **Bloquear eliminación de partidos finalizados/en_curso**:
+  `Partido.eliminar()` ahora lanza 409 si el partido está `finalizado`,
+  `no_presentaron_ambos` o `en_curso` (antes se podía borrar cualquier
+  partido sin importar su estado). Incluye migración `075` para recrear
+  un partido real (MEGA SANTIAGO vs CONSTRUGRID, Grupo B) borrado por
+  accidente en producción antes de este fix, como `finalizado` con fecha
+  2026-09-26.
+- `9e55ab6` fix menor: la migración 075 usaba `unaccent()` (requiere
+  extensión Postgres no siempre disponible) — reemplazado por `ILIKE`.
+
+**Pendiente para el usuario**: confirmar que el partido recreado por la
+migración 075 quedó bien, y que "Regenerar (preservar jugados)" ahora
+numera las jornadas sin brechas al agregar equipos nuevos a un grupo.
+
 ## 2026-10-01 - Editar grupos post-fixture: permitir equipos nuevos sin afectar partidos ya jugados
 
 > Commiteado y pusheado (`1cfb987`).
