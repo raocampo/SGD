@@ -1,4 +1,43 @@
+## 2026-10-10 (parte 2) - Llave de playoff interna exige sesión + QA en pantalla de planilla solo lectura
+
+El usuario aprobó cerrar el hallazgo anotado en la entrada de abajo.
+
+- `eliminatoriaRoutes.js`: `GET /api/eliminatorias/evento/:evento_id` ya
+  no es público — `requireAuth` + `requireRoles(administrador,
+  organizador, operador_sistema, tecnico, dirigente, jugador)`.
+- `eliminatoriaController.obtenerPorEvento`: reutiliza
+  `validarAccesoEventoGestion` (organizador solo sus campeonatos;
+  tecnico/dirigente/jugador solo campeonatos donde tienen equipo).
+- Confirmado antes de tocar: el portal público no usa esta ruta (va por
+  `/api/public/eventos/:id/eliminatorias`) y los 4 consumidores internos
+  (`partidos.js`, `planilla.js`, `eliminatorias.js`,
+  `jornadasplantilla.js`) la llaman con `ApiClient`, que ya manda token.
+
+### Verificación
+- HTTP contra el backend local (BD restaurada de producción), 14/14:
+  sin token / token inválido → 401; administrador → 200; organizador
+  propio 200 / ajeno 403; dirigente propio 200 / ajeno 403; evento
+  inexistente → 404; la ruta pública del portal sigue en 200 sin token.
+- QA en pantalla (Brave headless, sesión de un dirigente real, equipo
+  67 "Cuxi 4D", categoría con playoff): el selector ofrece solo sus 8
+  partidos de fase regular y sus 4 cruces de playoff (0 ajenos); al
+  cargar un cruce, banner de solo lectura visible, los 198 campos de
+  captura deshabilitados y ningún botón Guardar. Esto cierra también el
+  "no verificado" de la entrada de abajo y el caso positivo que quedó
+  pendiente el 30-sep.
+- `node --check`, `smokeFrontendRoleGuards.js` 49/49.
+
+### Hallazgo aparte (no tocado, decisión del usuario)
+El aviso de deuda al ingresar (dirigente/técnico/jugador, "Adeudado
+hasta el momento: ...") nunca se muestra: `core.js`
+`obtenerResumenDeudaEquipo` llama a `/finanzas/equipos/:id/estado-cuenta`
+(plural) y la ruta real es `/finanzas/equipo/:id/estado-cuenta` → 404
+silencioso desde el commit `6aef7cc`. El arreglo es una letra, pero
+activa un aviso que hoy ningún usuario ve en producción.
+
 ## 2026-10-10 - Entorno Fedora + cierre de scoping: tablas para organizador y playoff en selector de planilla
+
+> Commiteado y pusheado (`5b35f0d`).
 
 Primera sesión en el equipo Fedora. La carpeta llega por MEGA sin
 archivos que empiezan con punto (`.git`, `.gitignore`, `.env`), así que
@@ -44,13 +83,10 @@ No verificado: la vista real de `planilla.html` en navegador con sesión
 de dirigente (la lógica del filtro se probó sobre la respuesta real del
 modelo, no en pantalla).
 
-### Hallazgo aparte (no tocado)
+### Hallazgo aparte (resuelto en la parte 2, arriba)
 `GET /api/eliminatorias/evento/:evento_id` (`eliminatoriaRoutes.js`) no
-tiene `requireAuth` ni scoping: devuelve la llave de cualquier categoría
-sin token. Sensibilidad baja (la llave ya se publica en el portal), pero
-es el mismo patrón corregido el 02-oct en partidos/grupos y se salta la
-validación con la que el portal decide si publicar el playoff. Pendiente
-de decisión del usuario.
+tenía `requireAuth` ni scoping: devolvía la llave de cualquier categoría
+sin token.
 
 ## 2026-10-02 (parte 3) - Auditoría proactiva: GET de partidos/grupos sin requireAuth
 
