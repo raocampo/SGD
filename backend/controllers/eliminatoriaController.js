@@ -130,6 +130,8 @@ const eliminatoriaController = {
       if (!Number.isFinite(evento_id)) {
         return res.status(400).json({ error: "evento_id inválido" });
       }
+      const evento = await validarAccesoEventoGestion(req, res, evento_id);
+      if (!evento) return;
       const partidos = await Eliminatoria.obtenerPorEvento(evento_id);
       res.json({
         mensaje: "Llave eliminatoria",

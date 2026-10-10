@@ -4,7 +4,14 @@ const router = express.Router();
 const eliminatoriaController = require("../controllers/eliminatoriaController");
 const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 
-router.get("/evento/:evento_id", eliminatoriaController.obtenerPorEvento);
+// La llave publica del portal sale por /api/public/eventos/:id/eliminatorias;
+// esta ruta interna exige sesion y scoping por campeonato.
+router.get(
+  "/evento/:evento_id",
+  requireAuth,
+  requireRoles("administrador", "organizador", "operador_sistema", "tecnico", "dirigente", "jugador"),
+  eliminatoriaController.obtenerPorEvento
+);
 router.get(
   "/evento/:evento_id/configuracion",
   requireAuth,
