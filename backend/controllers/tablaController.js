@@ -5,20 +5,27 @@ const {
   estaEliminadoCompetencia,
 } = require("../services/competitionStatusService");
 const { esTecnicoOdirigente, tecnicoPuedeAccederCampeonato } = require("../services/roleScope");
+const { isOrganizador, organizadorPuedeAccederCampeonato } = require("../services/organizadorScope");
 
 // Tecnico/dirigente/jugador: tablas/goleadores/tarjetas/fair-play solo de
-// campeonatos donde tienen algun equipo asociado (organizador/admin sin
-// restriccion adicional aqui, igual que antes de este chequeo).
+// campeonatos donde tienen algun equipo asociado. Organizador: solo sus
+// propios campeonatos. Administrador/operador sin restriccion adicional.
+function requiereScopeLecturaTablas(user) {
+  return isOrganizador(user) || esTecnicoOdirigente(user?.rol);
+}
+
 async function validarAccesoCampeonatoLecturaTablas(req, res, campeonatoId, mensaje) {
-  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
-  const puede = await tecnicoPuedeAccederCampeonato(req, campeonatoId);
+  if (!requiereScopeLecturaTablas(req?.user)) return true;
+  const puede = isOrganizador(req.user)
+    ? await organizadorPuedeAccederCampeonato(req.user, campeonatoId)
+    : await tecnicoPuedeAccederCampeonato(req, campeonatoId);
   if (puede) return true;
   res.status(403).json({ error: mensaje || "No autorizado para esta categoría" });
   return false;
 }
 
 async function validarAccesoEventoLecturaTablas(req, res, eventoId, mensaje) {
-  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  if (!requiereScopeLecturaTablas(req?.user)) return true;
   const r = await pool.query(`SELECT campeonato_id FROM eventos WHERE id = $1 LIMIT 1`, [eventoId]);
   const campeonatoId = r.rows[0]?.campeonato_id;
   if (!campeonatoId) {
@@ -29,7 +36,7 @@ async function validarAccesoEventoLecturaTablas(req, res, eventoId, mensaje) {
 }
 
 async function validarAccesoGrupoLecturaTablas(req, res, grupoId, mensaje) {
-  if (!esTecnicoOdirigente(req?.user?.rol)) return true;
+  if (!requiereScopeLecturaTablas(req?.user)) return true;
   const r = await pool.query(
     `SELECT e.campeonato_id FROM grupos g JOIN eventos e ON e.id = g.evento_id WHERE g.id = $1 LIMIT 1`,
     [grupoId]

@@ -3731,19 +3731,21 @@ async function cargarPartidosSelectorPorEvento(eventoSeleccionado) {
     ]);
 
     let partidosCrudos = Array.isArray(respPartidos) ? respPartidos : (respPartidos?.partidos || []);
-    const crucesCrudos = Array.isArray(respEliminatoria) ? respEliminatoria : (respEliminatoria?.partidos || []);
+    let crucesCrudos = Array.isArray(respEliminatoria) ? respEliminatoria : (respEliminatoria?.partidos || []);
 
     if (esSoloLecturaPlanillaTecnico()) {
       // Dirigente/tecnico/jugador: el selector solo debe ofrecer los
-      // partidos de SU equipo (local o visitante) -- el backend ya
-      // rechaza con 403 la planilla de un partido ajeno, esto evita que
-      // lo intenten elegir en primer lugar.
+      // partidos de SU equipo (local o visitante), tanto de fase regular
+      // como los cruces de playoff -- el backend ya rechaza con 403 la
+      // planilla de un partido ajeno, esto evita que lo intenten elegir
+      // en primer lugar.
       const equiposPropios = new Set(
         (window.Auth?.getUser?.()?.equipo_ids || []).map((id) => Number(id))
       );
-      partidosCrudos = partidosCrudos.filter(
-        (p) => equiposPropios.has(Number(p?.equipo_local_id)) || equiposPropios.has(Number(p?.equipo_visitante_id))
-      );
+      const esDeEquipoPropio = (p) =>
+        equiposPropios.has(Number(p?.equipo_local_id)) || equiposPropios.has(Number(p?.equipo_visitante_id));
+      partidosCrudos = partidosCrudos.filter(esDeEquipoPropio);
+      crucesCrudos = crucesCrudos.filter(esDeEquipoPropio);
     }
 
     const reclasificaciones = partidosCrudos
