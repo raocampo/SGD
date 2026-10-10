@@ -1,3 +1,57 @@
+## 2026-10-10 - Entorno Fedora + cierre de scoping: tablas para organizador y playoff en selector de planilla
+
+Primera sesión en el equipo Fedora. La carpeta llega por MEGA sin
+archivos que empiezan con punto (`.git`, `.gitignore`, `.env`), así que
+hubo que rearmar el entorno antes de tocar código:
+
+- Carpeta reconectada al repo (`git init` + `fetch` + `reset` a
+  `origin/main`; el contenido era idéntico a `d09e523`, sin cambios
+  locales perdidos). Node 22, PostgreSQL 18 local y `gh` instalados;
+  `npm install` rehecho en Linux (el `node_modules` venía de Windows).
+- `backend/.env` local apunta a PostgreSQL por socket
+  (`DB_HOST=/var/run/postgresql`, usuario del sistema, sin contraseña).
+- BD local restaurada desde un respaldo nuevo de producción (Railway,
+  2026-10-10, solo lectura): `database/backups/railway-20261010-181024.custom.backup`
+  — 6 campeonatos, 3303 jugadores, 815 partidos, migraciones hasta la
+  `075` (sin pendientes al restaurar). El respaldo
+  `railway-migration-20260730` de esa carpeta está vacío (0 bytes).
+
+Con eso se cerraron los dos pendientes de código que quedaban anotados
+de la auditoría de scoping (02-oct y 30-sep):
+
+- `tablaController`: los 6 endpoints de lectura (tabla por grupo/
+  campeonato/evento, goleadores, tarjetas, fair-play) ahora también
+  validan propiedad para `organizador` vía
+  `organizadorPuedeAccederCampeonato` — antes solo se acotaba a
+  tecnico/dirigente/jugador y un organizador podía leer tablas de otro
+  llamando el endpoint directo. Administrador sin cambios.
+- `planilla.js`: en modo solo lectura (dirigente/técnico), el selector
+  de partido filtra por equipo propio también los cruces de playoff que
+  vienen de `/eliminatorias/evento/:id`, no solo los de fase regular.
+
+### Verificación
+Contra la BD local restaurada, con usuarios reales:
+- Tablas: 17/17 casos — organizador con evento/campeonato/grupo propio
+  → 200; ajeno → 403 en los 6 endpoints; organizador sin campeonatos →
+  403; administrador → 200; dirigente propio 200 / ajeno 403; evento
+  inexistente → 404.
+- Playoff: para el equipo 67 (dirigente real con cruces), de 16 cruces
+  de la categoría quedan visibles solo los 4 propios, 0 ajenos; usuario
+  sin equipos → 0.
+- `node --check`, `smokeFrontendRoleGuards.js` 49/49.
+
+No verificado: la vista real de `planilla.html` en navegador con sesión
+de dirigente (la lógica del filtro se probó sobre la respuesta real del
+modelo, no en pantalla).
+
+### Hallazgo aparte (no tocado)
+`GET /api/eliminatorias/evento/:evento_id` (`eliminatoriaRoutes.js`) no
+tiene `requireAuth` ni scoping: devuelve la llave de cualquier categoría
+sin token. Sensibilidad baja (la llave ya se publica en el portal), pero
+es el mismo patrón corregido el 02-oct en partidos/grupos y se salta la
+validación con la que el portal decide si publicar el playoff. Pendiente
+de decisión del usuario.
+
 ## 2026-10-02 (parte 3) - Auditoría proactiva: GET de partidos/grupos sin requireAuth
 
 > Commiteado y pusheado (`b1a9c89`).
