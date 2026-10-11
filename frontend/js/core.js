@@ -1366,8 +1366,9 @@
             <div>
               <h3>${escapeFeedbackHtml(opciones.titulo)}</h3>
             </div>
+            <button type="button" class="sgd-dialog-close" aria-label="Cerrar" title="Cerrar">&times;</button>
           </div>
-          <form class="sgd-dialog-form">
+          <form class="sgd-dialog-form" novalidate>
             <div class="sgd-dialog-body">
               ${bodyMensaje}
               <div class="sgd-form-grid"></div>
@@ -1403,7 +1404,48 @@
         errorBox.textContent = limpio;
       };
 
+      // Lleva al usuario al campo con problema (puede estar fuera de la
+      // parte visible en formularios largos) y lo resalta.
+      const marcarInvalido = (control) => {
+        controls.forEach((item) => item.control.classList.remove("is-invalid"));
+        if (!control) return;
+        control.classList.add("is-invalid");
+        control.scrollIntoView({ block: "center", behavior: "smooth" });
+        control.focus({ preventScroll: true });
+      };
+
+      // Con cambios sin guardar, un clic accidental fuera del dialogo no
+      // debe descartar el formulario.
+      let hayCambios = false;
+      const marcarCambios = () => {
+        hayCambios = true;
+      };
+      form?.addEventListener("input", marcarCambios);
+      form?.addEventListener("change", marcarCambios);
+
       (Array.isArray(opciones.campos) ? opciones.campos : []).forEach((campo) => {
+        if (campo.type === "section") {
+          const seccion = document.createElement("div");
+          seccion.className = "sgd-form-section";
+          const titulo = document.createElement("span");
+          titulo.className = "sgd-form-section-title";
+          if (campo.icon) {
+            const icono = document.createElement("i");
+            icono.className = campo.icon;
+            titulo.appendChild(icono);
+          }
+          titulo.appendChild(document.createTextNode(campo.label || ""));
+          seccion.appendChild(titulo);
+          if (campo.hint) {
+            const ayuda = document.createElement("span");
+            ayuda.className = "sgd-form-section-hint";
+            ayuda.textContent = campo.hint;
+            seccion.appendChild(ayuda);
+          }
+          grid?.appendChild(seccion);
+          return;
+        }
+
         const field = document.createElement("label");
         field.className = `sgd-field ${campo.span === 2 ? "is-full" : ""}`;
         const label = document.createElement("span");
@@ -1457,8 +1499,9 @@
       });
 
       backdrop.querySelector(".sgd-dialog-cancel")?.addEventListener("click", () => cerrar(null));
+      backdrop.querySelector(".sgd-dialog-close")?.addEventListener("click", () => cerrar(null));
       backdrop.addEventListener("click", (event) => {
-        if (event.target === backdrop) cerrar(null);
+        if (event.target === backdrop && !hayCambios) cerrar(null);
       });
       backdrop.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
@@ -1471,20 +1514,21 @@
         event.preventDefault();
         setError("");
 
+        marcarInvalido(null);
         const values = {};
         for (const [name, item] of controls.entries()) {
           const { control, config: campo } = item;
           const value = campo.type === "checkbox" ? Boolean(control.checked) : String(control.value ?? "");
           if (!control.checkValidity()) {
-            setError(control.validationMessage || `Revisa el campo ${campo.label || name}`);
-            control.focus();
+            setError(`${campo.label || name}: ${control.validationMessage || "revisa este campo"}`);
+            marcarInvalido(control);
             return;
           }
           if (typeof campo.validate === "function") {
             const resultado = campo.validate(value, values);
             if (typeof resultado === "string" && resultado.trim()) {
               setError(resultado);
-              control.focus();
+              marcarInvalido(control);
               return;
             }
           }

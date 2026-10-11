@@ -813,8 +813,10 @@ async function editarEvento(id) {
     textoConfirmar: "Guardar cambios",
     ancho: "lg",
     campos: [
+      { type: "section", label: "Datos generales", icon: "fas fa-pen" },
       {
         name: "nombre",
+        span: 2,
         label: "Nombre de la categoría",
         type: "text",
         value: evento?.nombre || "",
@@ -842,6 +844,12 @@ async function editarEvento(id) {
             ? ""
             : "Usa un entero mayor o igual a 0.";
         },
+      },
+      {
+        type: "section",
+        label: "Formato de competencia",
+        icon: "fas fa-sitemap",
+        hint: "Clasificados y llave solo aplican según el método elegido.",
       },
       {
         name: "metodo_competencia",
@@ -892,6 +900,7 @@ async function editarEvento(id) {
       },
       {
         name: "playoff_plantilla",
+        span: 2,
         label: "Armado de llaves / finish",
         type: "select",
         value: String(evento?.playoff_plantilla || "estandar"),
@@ -911,6 +920,12 @@ async function editarEvento(id) {
           { value: "false", label: "No" },
           { value: "true", label: "Sí" },
         ],
+      },
+      {
+        type: "section",
+        label: "Morosidad",
+        icon: "fas fa-wallet",
+        hint: 'Con "Heredar" se usa la política definida en el campeonato.',
       },
       {
         name: "bloquear_morosos",
@@ -937,8 +952,10 @@ async function editarEvento(id) {
             : "";
         },
       },
+      { type: "section", label: "Carné", icon: "fas fa-id-card" },
       {
         name: "carnet_estilo",
+        span: 2,
         label: "Diseño de carné",
         type: "select",
         value: String(evento?.carnet_estilo || "").trim(),
@@ -969,6 +986,17 @@ async function editarEvento(id) {
         value: normalizarColorHexEvento(evento?.carnet_color_acento, coloresCamp.acento),
       },
       {
+        name: "carnet_mostrar_edad",
+        label: "Mostrar edad en carné",
+        type: "select",
+        value: evento?.carnet_mostrar_edad === true ? "true" : "false",
+        options: [
+          { value: "false", label: "No" },
+          { value: "true", label: "Sí" },
+        ],
+      },
+      { type: "section", label: "Edades, juveniles y ascendentes", icon: "fas fa-user-clock" },
+      {
         name: "categoria_juvenil",
         label: "Categoría juvenil",
         type: "select",
@@ -994,16 +1022,6 @@ async function editarEvento(id) {
         options: [
           { value: "1", label: "1 año menor" },
           { value: "2", label: "2 años menor" },
-        ],
-      },
-      {
-        name: "carnet_mostrar_edad",
-        label: "Mostrar edad en carné",
-        type: "select",
-        value: evento?.carnet_mostrar_edad === true ? "true" : "false",
-        options: [
-          { value: "false", label: "No" },
-          { value: "true", label: "Sí" },
         ],
       },
       {
@@ -1033,8 +1051,10 @@ async function editarEvento(id) {
         max: 10,
         step: 1,
       },
+      { type: "section", label: "Sustituciones", icon: "fas fa-right-left" },
       {
         name: "modo_sustitucion",
+        span: 2,
         label: "Modo de sustitución",
         type: "select",
         value: evento?.modo_sustitucion === "entra_sale" ? "entra_sale" : "estandar",

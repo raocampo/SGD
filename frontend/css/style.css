@@ -756,8 +756,14 @@ body.app-layout {
   padding: 1.1rem;
 }
 
+/* El dialogo nunca supera el alto de la pantalla: cabecera y botones quedan
+   fijos y solo el cuerpo hace scroll (formularios largos incluidos). */
 .sgd-dialog {
   width: min(100%, 580px);
+  max-height: calc(100vh - 2.2rem);
+  max-height: calc(100dvh - 2.2rem);
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(180deg, #ffffff, #f8fbff);
   border-radius: 22px;
   border: 1px solid rgba(148, 163, 184, 0.28);
@@ -766,15 +772,24 @@ body.app-layout {
   animation: sgdDialogIn 0.18s ease-out;
 }
 
+.sgd-dialog-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .sgd-dialog-sm {
   max-width: 470px;
 }
 
 .sgd-dialog-md {
+  width: min(100%, 640px);
   max-width: 640px;
 }
 
 .sgd-dialog-lg {
+  width: min(100%, 860px);
   max-width: 860px;
 }
 
@@ -784,6 +799,34 @@ body.app-layout {
   align-items: flex-start;
   padding: 1.15rem 1.25rem 0.9rem;
   border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.sgd-dialog-header > div:not(.sgd-dialog-badge) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sgd-dialog-close {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: -0.2rem -0.35rem 0 0;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #64748b;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sgd-dialog-close:hover,
+.sgd-dialog-close:focus-visible {
+  background: #eef2f7;
+  color: #111827;
+  outline: none;
 }
 
 .sgd-dialog-badge {
@@ -819,6 +862,11 @@ body.app-layout {
 
 .sgd-dialog-body {
   padding: 1rem 1.25rem 1.1rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sgd-dialog-message {
@@ -834,8 +882,12 @@ body.app-layout {
 .sgd-dialog-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.7rem;
-  padding: 0 1.25rem 1.2rem;
+  padding: 0.85rem 1.25rem 1rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
 }
 
 .sgd-form-grid {
@@ -853,6 +905,42 @@ body.app-layout {
 
 .sgd-field.is-full {
   grid-column: 1 / -1;
+}
+
+/* Titulo de seccion dentro de un formulario largo */
+.sgd-form-section {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.55rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sgd-form-section:first-child {
+  margin-top: 0;
+}
+
+.sgd-form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #334155;
+}
+
+.sgd-form-section-title i {
+  color: #5c8a1e;
+}
+
+.sgd-form-section-hint {
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.35;
 }
 
 .sgd-field-label {
@@ -878,6 +966,17 @@ body.app-layout {
   resize: vertical;
 }
 
+.sgd-field input[type="color"].sgd-field-control {
+  padding: 0.3rem 0.4rem;
+  cursor: pointer;
+}
+
+.sgd-field-control.is-invalid,
+.sgd-field-control.is-invalid:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.14);
+}
+
 .sgd-field-control:focus {
   outline: none;
   border-color: var(--secondary-color);
@@ -890,7 +989,12 @@ body.app-layout {
   line-height: 1.35;
 }
 
+/* Pegado al borde inferior del cuerpo: el error se ve aunque el campo
+   quede lejos del final del formulario. */
 .sgd-dialog-error {
+  position: sticky;
+  bottom: -1.1rem;
+  z-index: 1;
   margin-top: 0.9rem;
   padding: 0.8rem 0.9rem;
   border-radius: 14px;
@@ -950,12 +1054,24 @@ body.app-layout {
     width: auto;
   }
 
+  .sgd-dialog-backdrop {
+    padding: 0.6rem;
+  }
+
   .sgd-dialog {
     width: 100%;
+    max-height: calc(100vh - 1.2rem);
+    max-height: calc(100dvh - 1.2rem);
+    border-radius: 18px;
   }
 
   .sgd-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .sgd-dialog-actions .btn {
+    flex: 1 1 8rem;
+    justify-content: center;
   }
 }
 
