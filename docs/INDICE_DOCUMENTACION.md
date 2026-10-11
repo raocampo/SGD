@@ -1,10 +1,11 @@
 # Indice de Documentacion LT&C
 
-Ultima actualizacion: 2026-05-28
+Ultima actualizacion: 2026-10-10
 
 ## Documentos clave
 - `docs/BITACORA_AVANCES.md`
   - Registro vivo por fecha de todo lo implementado y pendientes de la siguiente sesion.
+  - La entrada mas reciente va arriba. El cierre del 2026-10-10 incluye la lista de pendientes vigente y como levantar el proyecto en el equipo Fedora (BD local, Live Server, respaldo de produccion).
 - `docs/ESTADO_IMPLEMENTACION_SGD.md`
   - Estado por modulo frente a la propuesta original.
 - `docs/propuestaDesarrolloSGD.md`

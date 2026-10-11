@@ -1,3 +1,96 @@
+## 2026-10-10 - Estado para continuar (permisos por rol, importación multi-hoja, finanzas por rol)
+
+### Estado actualizado
+- Proyecto sincronizado con `origin/main`. Producción (Railway backend +
+  Vercel frontend) se redespliega sola desde `main`. Sin migraciones
+  nuevas; la última es `075_recrear_partido_mega_construgrid.sql`.
+- Trabajo cerrado el 2026-10-10 (detalle en `docs/BITACORA_AVANCES.md`,
+  entradas "2026-10-10"):
+  1. **Permisos**: `tablaController` valida propiedad del campeonato
+     también para organizador; `GET /api/eliminatorias/evento/:id` exige
+     sesión y scoping; el selector de planilla en solo lectura filtra
+     cruces de playoff por equipo. Con esto la auditoría de scoping
+     iniciada el 29-sep queda sin pendientes conocidos.
+  2. **Importar Jugadores** (`jugadores.html`): lee todas las hojas del
+     Excel, deduce masculino/femenino por nombre de hoja y de
+     categoría/equipo, y pregunta qué hoja importar cuando no hay una
+     única coincidencia. Tolera títulos sobre la tabla.
+  3. **Finanzas por rol**: el aviso de deuda al ingresar funciona y es
+     solo para dirigente/técnico, nunca en páginas públicas; el rol
+     jugador pierde todo acceso a finanzas (rutas web, 2 rutas móviles,
+     página, enlaces y panel de Mi Equipo).
+- Matriz de acceso a finanzas vigente:
+
+| Rol | Finanzas |
+|---|---|
+| administrador | Todo |
+| organizador | Todo lo de sus campeonatos; nada de campeonatos ajenos |
+| dirigente / tecnico | Solo lectura de su equipo: Estado de Cuenta, Morosidad, Sanciones + aviso de deuda |
+| jugador | Sin acceso |
+| público | Sin acceso |
+
+### Verificación realizada
+- Contra BD local restaurada de producción el mismo día: pruebas HTTP
+  por rol (tablas 17/17, llave 14/14, finanzas 6 rutas x 3 roles) y QA
+  en navegador con sesión real (planilla solo lectura, aviso de deuda,
+  finanzas por rol).
+- Importación: lógica ejecutada sobre 38 archivos Excel reales.
+- `npm --prefix backend run smoke:frontend` -> `49/49 PASS`.
+- No ejecutado: `smoke:matrix`, `smoke:roles`, y el clic real de la
+  importación multi-hoja en `jugadores.html`.
+
+### Pendientes para retomar
+
+**A. Por confirmar en producción (los hace el usuario; no bloquean código)**
+1. Importar Jugadores con el Excel real de Induloja (2 hojas) en
+   `jugadores.html`: debe abrir el diálogo "¿Qué hoja quieres importar?",
+   cargar solo la hoja elegida y nombrarla en el resumen. Es lo único de
+   hoy que no se probó con clic real.
+2. Entrar como dirigente o técnico de un equipo con deuda: aviso
+   "Adeudado hasta el momento" y banner en Mi Portal. Entrar como
+   jugador: sin Finanzas en el menú y sin saldos en Mi Equipo.
+3. Entrar como organizador y abrir Tablas, Partidos, Playoff y la
+   plantilla de jornadas de un campeonato propio: deben cargar igual
+   que antes (hoy se endurecieron permisos en tablas y en la llave).
+4. Planilla en solo lectura con una cuenta de dirigente real.
+5. Heredados del 01/02-oct, aún sin confirmar: agregar los 5 equipos
+   nuevos a sus grupos y usar "Regenerar (preservar jugados)"; revisar
+   el partido MEGA SANTIAGO vs CONSTRUGRID recreado por la migración
+   `075`; vínculo automático de jugador por cédula al registrarse.
+
+**B. Código sin bloqueo (candidatos para la próxima sesión)**
+1. `planilla.html` en solo lectura: antes de pulsar "Cargar Planilla"
+   los selectores Estado e Inasistencia se ven habilitados y el banner
+   no aparece (no permite guardar; es solo confuso). Aplicar el modo
+   lectura desde el inicio.
+2. Importación de jugadores: dos formatos libres siguen sin leerse
+   ("PLANILLA EMPRESARIAL ML 2026" y "SERVIENTREGA - NÓMINA
+   JUGADORES") porque no tienen columnas reconocibles. Decidir si se
+   agregan alias o se pide usar la plantilla.
+3. `portal-tecnico.html`: el texto de bienvenida menciona "estado
+   financiero" también para el jugador, que ya no lo ve. Cosmético.
+4. Ejecutar `npm run smoke:matrix` y `npm run smoke:roles` (requieren
+   los usuarios QA sembrados; no se corrieron hoy).
+5. Reporte ejecutivo financiero comparativo por periodos; desempates
+   avanzados en tablas; formatos de playoff no potencia de 2.
+6. QA visual responsive (390x844, 768x1024) con datos reales.
+7. Poner al día el resumen por módulo de
+   `docs/ESTADO_IMPLEMENTACION_SGD.md` (la tabla sigue con fecha
+   2026-05-28).
+
+**C. Bloqueados por decisión o insumos externos**
+1. Equipo duplicado "80 FC" en Copa Ciudad de Loja (`equipos.id` 81 y
+   54): decidir cuál conservar antes de fusionar.
+2. Datos reales de LT&C (RUC, razón social) en Facturación.
+3. Facturación Fase 4 (SRI electrónico): requiere certificado digital.
+4. Activación automática de pago: credenciales PayPhone / PayPal.
+5. TURN para WebRTC: elegir y pagar proveedor; antes, prueba real de
+   transmisiones en producción.
+6. App móvil: `npm run e2e:mobile-flow` con credenciales reales y
+   congelar el contrato con el cliente mobile.
+
+---
+
 ## 2026-09-29 - Sincronizacion y estado para continuar (registro/onboarding + scoping por equipo)
 
 ### Estado actualizado

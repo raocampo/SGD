@@ -1,4 +1,112 @@
+## 2026-10-10 - CIERRE DE SESIÓN (4 partes) y pendientes para continuar
+
+> Todo commiteado y pusheado. `origin/main` = `1548625` + el commit de
+> este cierre. Sin migraciones nuevas: la última sigue siendo la `075`.
+
+### Qué quedó hecho hoy
+| Parte | Cambio | Commit |
+|---|---|---|
+| 1 | Entorno Fedora armado; organizador solo lee tablas de sus campeonatos; planilla solo lectura filtra cruces de playoff | `5b35f0d` |
+| 2 | `GET /api/eliminatorias/evento/:id` exige sesión y scoping; QA en pantalla de planilla solo lectura | `86b6414` |
+| 3 | Importar Jugadores lee todas las hojas del Excel y distingue masculino/femenino | `e32ef5d` |
+| 3 | Aviso de deuda al ingresar: funciona, solo dirigente/técnico, nunca en páginas públicas | `27f9f0d` |
+| 4 | Finanzas del equipo solo para dirigente y técnico; el jugador queda sin acceso (web y móvil) | `35deb9d` |
+
+Detalle y verificación de cada una: entradas "2026-10-10 (parte 2/3/4)"
+y "2026-10-10 - Entorno Fedora" más abajo.
+
+### Reglas de negocio confirmadas por el usuario hoy
+- El **organizador** ve todo lo relacionado con los torneos que
+  organiza, y nada de los torneos de otro organizador.
+- Las **finanzas del equipo** las ven solo **dirigente** y **técnico**
+  (quienes llevan las cuentas). El **jugador** no ve nada financiero.
+- Nada de deuda ni finanzas en páginas públicas.
+- La captura/edición de planilla sigue siendo exclusiva del
+  organizador; dirigente/técnico solo consultan la de su equipo.
+- Flujo de trabajo: cambio hecho y verificado → commit y push a `main`
+  sin pedir confirmación.
+
+### Cómo levantar el proyecto en el equipo Fedora
+- Carpeta en MEGA; MEGA no sincroniza archivos que empiezan con punto
+  (`.git`, `.env*`, `.vscode`), así que eso vive solo en cada equipo.
+- Backend: `cd backend && npm run dev` → `http://localhost:5000`
+  (también sirve el frontend completo en `http://localhost:5000/index.html`).
+- BD: PostgreSQL 18 local, base `gestionDeportiva`, rol del usuario del
+  sistema por socket. `backend/.env`: `DB_HOST=/var/run/postgresql`,
+  `DB_USER=<usuario>`, `DB_PASSWORD=` vacío.
+- Datos: restaurados desde producción el 2026-10-10
+  (`database/backups/railway-20261010-181024.custom.backup`). Para
+  refrescar: `pg_dump "<URL pública de Railway>" -Fc --no-owner --no-acl -f <archivo>`
+  y `pg_restore -d gestionDeportiva --no-owner --no-acl <archivo>` sobre
+  una base vacía. La URL está en `.env.local` de la raíz (fuera de git).
+  Producción solo para lectura/respaldos; las pruebas que escriben van
+  contra la BD local.
+- Live Server: `index.html` usa `<base href="/">` (necesario para
+  `/liga/<slug>`), por eso desde `/frontend/index.html` sale sin estilos.
+  Solución local: `.vscode/settings.json` con
+  `"liveServer.settings.root": "/frontend"` y abrir
+  `http://127.0.0.1:5500/index.html`. En `backend/.env`,
+  `FRONTEND_URL=http://127.0.0.1:5500`.
+- QA en navegador con sesión: funciona con `puppeteer-core` + Brave del
+  sistema (`/usr/bin/brave-browser`, headless), instalados fuera del
+  repo; la sesión se inyecta con un token firmado con el `JWT_SECRET`
+  local (solo contra la BD local).
+- `database/backups/railway-migration-20260730.custom.backup` está vacío
+  (0 bytes): no sirve como respaldo.
+
+### Pendientes para retomar
+
+**A. Por confirmar en producción (los hace el usuario; no bloquean código)**
+1. Importar Jugadores con el Excel real de Induloja (2 hojas) en
+   `jugadores.html`: debe abrir el diálogo "¿Qué hoja quieres importar?",
+   cargar solo la hoja elegida y nombrarla en el resumen. Es lo único de
+   hoy que no se probó con clic real.
+2. Entrar como dirigente o técnico de un equipo con deuda: aviso
+   "Adeudado hasta el momento" y banner en Mi Portal. Entrar como
+   jugador: sin Finanzas en el menú y sin saldos en Mi Equipo.
+3. Entrar como organizador y abrir Tablas, Partidos, Playoff y la
+   plantilla de jornadas de un campeonato propio: deben cargar igual
+   que antes (hoy se endurecieron permisos en tablas y en la llave).
+4. Planilla en solo lectura con una cuenta de dirigente real.
+5. Heredados del 01/02-oct, aún sin confirmar: agregar los 5 equipos
+   nuevos a sus grupos y usar "Regenerar (preservar jugados)"; revisar
+   el partido MEGA SANTIAGO vs CONSTRUGRID recreado por la migración
+   `075`; vínculo automático de jugador por cédula al registrarse.
+
+**B. Código sin bloqueo (candidatos para la próxima sesión)**
+1. `planilla.html` en solo lectura: antes de pulsar "Cargar Planilla"
+   los selectores Estado e Inasistencia se ven habilitados y el banner
+   no aparece (no permite guardar; es solo confuso). Aplicar el modo
+   lectura desde el inicio.
+2. Importación de jugadores: dos formatos libres siguen sin leerse
+   ("PLANILLA EMPRESARIAL ML 2026" y "SERVIENTREGA - NÓMINA
+   JUGADORES") porque no tienen columnas reconocibles. Decidir si se
+   agregan alias o se pide usar la plantilla.
+3. `portal-tecnico.html`: el texto de bienvenida menciona "estado
+   financiero" también para el jugador, que ya no lo ve. Cosmético.
+4. Ejecutar `npm run smoke:matrix` y `npm run smoke:roles` (requieren
+   los usuarios QA sembrados; no se corrieron hoy).
+5. Reporte ejecutivo financiero comparativo por periodos; desempates
+   avanzados en tablas; formatos de playoff no potencia de 2.
+6. QA visual responsive (390x844, 768x1024) con datos reales.
+7. Poner al día el resumen por módulo de
+   `docs/ESTADO_IMPLEMENTACION_SGD.md` (la tabla sigue con fecha
+   2026-05-28).
+
+**C. Bloqueados por decisión o insumos externos**
+1. Equipo duplicado "80 FC" en Copa Ciudad de Loja (`equipos.id` 81 y
+   54): decidir cuál conservar antes de fusionar.
+2. Datos reales de LT&C (RUC, razón social) en Facturación.
+3. Facturación Fase 4 (SRI electrónico): requiere certificado digital.
+4. Activación automática de pago: credenciales PayPhone / PayPal.
+5. TURN para WebRTC: elegir y pagar proveedor; antes, prueba real de
+   transmisiones en producción.
+6. App móvil: `npm run e2e:mobile-flow` con credenciales reales y
+   congelar el contrato con el cliente mobile.
+
 ## 2026-10-10 (parte 4) - Finanzas del equipo solo para dirigente y técnico (el jugador queda fuera)
+
+> Commiteado y pusheado (`35deb9d`).
 
 El usuario confirmó la interpretación de la parte 3 (el aviso es para
 **dirigente** y técnico; el organizador ve todo lo de los torneos que
