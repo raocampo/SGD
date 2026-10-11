@@ -1,3 +1,62 @@
+## 2026-10-11 - Diálogos de formulario con scroll y botones siempre visibles (editar categoría)
+
+El usuario reportó desde producción (`eventos.html`, "Editar categoría")
+que el formulario no tenía scroll y no se podía llegar al botón Guardar.
+
+### Causa
+`.sgd-dialog` (el diálogo común de `mostrarAlerta` /
+`mostrarConfirmacion` / `mostrarFormularioModal` / `mostrarPrompt`) no
+tenía alto máximo y usa `overflow: hidden`: cualquier contenido más alto
+que la pantalla quedaba recortado, botones incluidos. "Editar categoría"
+tiene 24 campos y no cabe en ninguna pantalla normal. Además el ancho
+`lg` nunca se aplicaba (`width: min(100%, 580px)` lo limitaba a 580px).
+
+### Cambios
+`style.css` (componente común, aplica a todos los diálogos `sgd-`):
+- El diálogo se limita al alto de la pantalla (`100dvh`), con cabecera y
+  barra de botones fijas; solo el cuerpo hace scroll.
+- Barra de botones con fondo y borde propios; en móvil los botones
+  ocupan el ancho.
+- Los anchos `md` (640px) y `lg` (860px) ahora sí se aplican.
+- Estilos nuevos: título de sección, campo inválido, input de color, y
+  el mensaje de error queda pegado al borde inferior del cuerpo.
+
+`core.js` (`mostrarFormularioModal`):
+- Nuevo tipo de campo `{ type: "section", label, icon, hint }` para
+  agrupar formularios largos.
+- Botón X para cerrar en la cabecera.
+- Con cambios sin guardar, el clic fuera del diálogo ya no lo cierra
+  (antes descartaba todo el formulario); Cancelar, X y Esc sí cierran.
+- Validación propia en vez del globo nativo del navegador: el error
+  nombra el campo, hace scroll hasta él y lo resalta.
+
+`eventos.js` (`editarEvento`): los mismos 24 campos, sin cambios de
+datos, agrupados en 6 secciones — Datos generales, Formato de
+competencia, Morosidad, Carné, Edades/juveniles/ascendentes y
+Sustituciones. "Mostrar edad en carné" se movió a la sección Carné.
+
+Los otros formularios que usan el mismo componente (`equipos.js`,
+`jugadores.js`, `partidos.js` x3, `eliminatorias.js` x2) heredan el
+scroll, la X y el comportamiento de cierre sin tocar su código.
+
+### Verificación
+Brave headless contra el backend local, sesión de organizadora, abriendo
+"Editar categoría" real en 1366x700, 1280x560 y 390x780 (19/19):
+diálogo dentro de la pantalla; cuerpo con scroll; cabecera y Guardar
+visibles sin desplazar; último campo alcanzable; nombre vacío → no
+guarda, error visible y campo resaltado; clic fuera con cambios no
+cierra; la X cierra; ningún `PUT` enviado. Una confirmación corta sigue
+centrada y sin scroll. Se comparó la lista de `name:` antes/después:
+mismos 24 campos. `node --check`, `smokeFrontendRoleGuards.js` 49/49.
+
+No verificado: guardar de verdad una categoría desde el diálogo nuevo
+(se evitó escribir datos; el armado del payload no cambió) y los otros 7
+formularios en pantalla.
+
+**Pendiente**: revisar los modales antiguos (`.modal-content`, p. ej.
+crear equipo/jugador/campeonato): ya tienen scroll (`max-height: 90vh`),
+pero el botón Guardar se va al final del scroll en vez de quedar fijo.
+
 ## 2026-10-10 - CIERRE DE SESIÓN (4 partes) y pendientes para continuar
 
 > Todo commiteado y pusheado. `origin/main` = `1548625` + el commit de
