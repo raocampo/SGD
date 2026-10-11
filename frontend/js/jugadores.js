@@ -4331,6 +4331,13 @@ const ALIAS_CAMPOS_IMPORTACION = {
     "dni",
     "documento",
     "identificacion",
+    "ced_identidad",
+    "ci",
+    "c_i",
+    "n_cedula",
+    "nro_cedula",
+    "numero_cedula",
+    "numero_de_cedula",
   ],
   fecha_nacimiento: ["fecha_nacimiento", "nacimiento", "fecha_de_nacimiento", "fecha_nac"],
   posicion: ["posicion", "pos", "puesto"],
@@ -4368,6 +4375,14 @@ function valorCedulaImportacion(valor) {
     return str.length === 9 ? "0" + str : str;
   }
   return String(valor).trim();
+}
+
+// Las columnas de foto solo aceptan una URL o ruta; textos de relleno como
+// "Dejar vacio" o "N/A" que algunos equipos dejan en la plantilla se descartan.
+function valorUrlImportacion(valor) {
+  const texto = valorTextoImportacion(valor);
+  if (!texto || /\s/.test(texto)) return "";
+  return /^https?:\/\//i.test(texto) || texto.startsWith("/") || /\.[a-z0-9]{2,5}$/i.test(texto) ? texto : "";
 }
 
 function valorBooleanoImportacion(valor) {
@@ -4480,10 +4495,10 @@ function normalizarFilaImportacionJugador(fila) {
   const es_capitan = valorBooleanoImportacion(
     obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.es_capitan)
   );
-  const foto_cedula_url = valorTextoImportacion(
+  const foto_cedula_url = valorUrlImportacion(
     obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.foto_cedula_url)
   );
-  const foto_carnet_url = valorTextoImportacion(
+  const foto_carnet_url = valorUrlImportacion(
     obtenerValorAliasFila(mapaNormalizado, ALIAS_CAMPOS_IMPORTACION.foto_carnet_url)
   );
 
@@ -4529,38 +4544,54 @@ function leerArchivoComoArrayBuffer(file) {
   });
 }
 
-async function procesarArchivoImportacionJugadores(file) {
-  if (!window.XLSX) {
-    throw new Error("No se cargo la libreria XLSX para importar");
+// Genero (rama) deducido de un texto libre: nombre de hoja, de categoria o
+// de equipo. Devuelve "" cuando no hay pista o cuando hay pistas de ambos.
+function detectarGeneroImportacion(texto) {
+  const n = normalizarClaveImportacion(texto);
+  if (!n) return "";
+  const femenino = /femenin|mujer|dama|senorita|chicas|(^|_)fem(_|$)/.test(n);
+  const masculino = /masculin|hombre|varon|caballero|(^|_)masc(_|$)/.test(n);
+  if (femenino && !masculino) return "femenino";
+  if (masculino && !femenino) return "masculino";
+  return "";
+}
+
+function etiquetaGeneroImportacion(genero) {
+  if (genero === "femenino") return "Femenino";
+  if (genero === "masculino") return "Masculino";
+  return "";
+}
+
+// Fila de encabezados de una hoja: la primera (entre las 25 iniciales) que
+// trae al menos dos columnas de identidad del jugador. Permite hojas con
+// titulos o logos por encima de la tabla, y descarta hojas como
+// "Instrucciones" o "Notas".
+function detectarFilaEncabezadoImportacion(matriz) {
+  const camposIdentidad = ["nombre", "apellido", "nombre_completo", "cedidentidad"];
+  const limite = Math.min(Array.isArray(matriz) ? matriz.length : 0, 25);
+  for (let i = 0; i < limite; i += 1) {
+    const claves = new Set(
+      (Array.isArray(matriz[i]) ? matriz[i] : []).map((celda) => normalizarClaveImportacion(celda)).filter(Boolean)
+    );
+    if (claves.size < 2) continue;
+    const encontrados = camposIdentidad.filter((campo) =>
+      ALIAS_CAMPOS_IMPORTACION[campo].some((alias) => claves.has(alias))
+    );
+    if (encontrados.length >= 2) return i;
   }
+  return -1;
+}
 
-  const arrayBuffer = await leerArchivoComoArrayBuffer(file);
-  // cellDates:true convierte fechas a objetos Date (necesario para valorFechaImportacion).
-  // raw:true preserva esos objetos Date; raw:false los convertiría a texto en formato
-  // locale (MM/DD/YY en SheetJS), rompiendo el parser de fechas DD/MM.
-  const wb = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true });
-  const sheetName = wb.SheetNames[0];
-  const sheet = wb.Sheets[sheetName];
-  if (!sheet) throw new Error("El archivo no contiene hojas válidas");
-
-  const filasRaw = window.XLSX.utils.sheet_to_json(sheet, {
-    defval: "",
-    raw: true,
-  });
-
-  if (!filasRaw.length) {
-    throw new Error("El archivo no tiene filas para importar");
-  }
-
+function convertirFilasImportacionJugadores(filasRaw, filaBase = 0) {
   const jugadores = [];
   const erroresLocales = [];
+  const cedulaObligatoria = esCedulaObligatoriaEnCampeonato();
 
   filasRaw.forEach((fila, idx) => {
-    const nroFila = idx + 2;
+    const nroFila = Number.isInteger(fila?.__rowNum__) ? fila.__rowNum__ + 1 : filaBase + idx + 2;
     const normalizada = normalizarFilaImportacionJugador(fila);
     if (!normalizada) return;
 
-    const cedulaObligatoria = esCedulaObligatoriaEnCampeonato();
     if (
       !normalizada.nombre ||
       !normalizada.apellido ||
@@ -4579,14 +4610,160 @@ async function procesarArchivoImportacionJugadores(file) {
     jugadores.push(normalizada);
   });
 
-  if (!jugadores.length) {
+  return { jugadores, erroresLocales };
+}
+
+// Lee TODAS las hojas visibles del libro y devuelve las que tienen una tabla
+// de jugadores reconocible, con su genero deducido del nombre de la hoja.
+function analizarHojasImportacionJugadores(wb) {
+  const hojas = [];
+  (wb.SheetNames || []).forEach((nombre, idx) => {
+    if (wb.Workbook?.Sheets?.[idx]?.Hidden) return;
+    const sheet = wb.Sheets[nombre];
+    if (!sheet || !sheet["!ref"]) return;
+
+    const matriz = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: true, blankrows: true });
+    const filaEncabezadoRelativa = detectarFilaEncabezadoImportacion(matriz);
+    if (filaEncabezadoRelativa < 0) return;
+
+    const filaEncabezado = window.XLSX.utils.decode_range(sheet["!ref"]).s.r + filaEncabezadoRelativa;
+    // raw:true preserva los objetos Date de cellDates; raw:false los convertiria
+    // a texto en formato locale (MM/DD/YY en SheetJS), rompiendo el parser DD/MM.
+    const filasRaw = window.XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true, range: filaEncabezado });
+    const { jugadores, erroresLocales } = convertirFilasImportacionJugadores(filasRaw, filaEncabezado);
+    hojas.push({
+      nombre,
+      genero: detectarGeneroImportacion(nombre),
+      jugadores,
+      erroresLocales,
+      totalLeidas: filasRaw.length,
+    });
+  });
+  return hojas;
+}
+
+function describirHojaImportacion(hoja) {
+  const genero = etiquetaGeneroImportacion(hoja.genero);
+  const total = hoja.jugadores.length;
+  return `${hoja.nombre.trim()}${genero ? ` — ${genero}` : ""} (${total} jugador${total === 1 ? "" : "es"})`;
+}
+
+// Decide que hoja se importa. Con una sola hoja util se usa esa; con varias,
+// se elige sola la unica cuyo genero coincide con la categoria (o el equipo)
+// de destino, y en cualquier otro caso se le pregunta al usuario: nunca se
+// asume "la primera hoja".
+async function seleccionarHojaImportacionJugadores(hojas) {
+  const utiles = hojas.filter((h) => h.jugadores.length);
+  if (!utiles.length) return null;
+
+  const generoDestino =
+    detectarGeneroImportacion(obtenerNombreEventoActual()) || detectarGeneroImportacion(equipoActual?.nombre);
+  const destinoTxt = `${equipoActual?.nombre || "el equipo"} / ${obtenerNombreEventoActual() || "la categoría"}`;
+
+  let elegida = null;
+  let modo = "unica";
+  if (utiles.length === 1) {
+    elegida = utiles[0];
+  } else {
+    const coincidentes = generoDestino ? utiles.filter((h) => h.genero === generoDestino) : [];
+    if (coincidentes.length === 1) {
+      elegida = coincidentes[0];
+      modo = "automatica";
+    } else {
+      const valores = await window.mostrarFormularioModal({
+        titulo: "¿Qué hoja quieres importar?",
+        mensaje:
+          `El archivo trae ${utiles.length} hojas con jugadores. ` +
+          `Elige la que corresponde a ${destinoTxt}.`,
+        tipo: "info",
+        textoConfirmar: "Importar esta hoja",
+        campos: [
+          {
+            name: "hoja",
+            label: "Hoja del archivo",
+            type: "select",
+            span: 2,
+            value: "",
+            options: [
+              { value: "", label: "- Selecciona una hoja -" },
+              ...utiles.map((h, i) => ({ value: String(i), label: describirHojaImportacion(h) })),
+            ],
+            validate: (valor) => (valor === "" ? "Selecciona la hoja que quieres importar" : ""),
+          },
+        ],
+      });
+      if (!valores) return { cancelado: true };
+      elegida = utiles[Number.parseInt(valores.hoja, 10)] || null;
+      if (!elegida) return { cancelado: true };
+      modo = "manual";
+    }
+  }
+
+  if (modo !== "manual" && generoDestino && elegida.genero && elegida.genero !== generoDestino) {
+    const continuar = await window.mostrarConfirmacion({
+      titulo: "La hoja no coincide con la categoría",
+      mensaje:
+        `La hoja "${elegida.nombre.trim()}" parece ser de ${etiquetaGeneroImportacion(elegida.genero).toLowerCase()} ` +
+        `y vas a importar en ${destinoTxt} (${etiquetaGeneroImportacion(generoDestino).toLowerCase()}).\n` +
+        "¿Importar de todos modos?",
+      tipo: "warning",
+      textoConfirmar: "Importar de todos modos",
+      textoCancelar: "Cancelar",
+    });
+    if (!continuar) return { cancelado: true };
+  }
+
+  return { hoja: elegida, modo, otras: utiles.filter((h) => h !== elegida) };
+}
+
+async function procesarArchivoImportacionJugadores(file) {
+  if (!window.XLSX) {
+    throw new Error("No se cargo la libreria XLSX para importar");
+  }
+
+  const arrayBuffer = await leerArchivoComoArrayBuffer(file);
+  // cellDates:true convierte fechas a objetos Date (necesario para valorFechaImportacion).
+  const wb = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+  if (!wb.SheetNames?.length) throw new Error("El archivo no contiene hojas válidas");
+
+  let hojas = analizarHojasImportacionJugadores(wb);
+  if (!hojas.length) {
+    // Ninguna hoja con encabezados reconocibles: se conserva la lectura
+    // historica (primera hoja, encabezados en la primera fila) para que el
+    // usuario reciba el mismo detalle de errores de siempre.
+    const nombre = wb.SheetNames[0];
+    const filasRaw = window.XLSX.utils.sheet_to_json(wb.Sheets[nombre], { defval: "", raw: true });
+    if (!filasRaw.length) {
+      throw new Error("El archivo no tiene filas para importar");
+    }
+    hojas = [
+      {
+        nombre,
+        genero: detectarGeneroImportacion(nombre),
+        ...convertirFilasImportacionJugadores(filasRaw),
+        totalLeidas: filasRaw.length,
+      },
+    ];
+  }
+
+  const seleccion = await seleccionarHojaImportacionJugadores(hojas);
+  if (seleccion?.cancelado) return { cancelado: true };
+  if (!seleccion) {
+    const erroresLocales = hojas.flatMap((h) => h.erroresLocales);
     const msgError = erroresLocales.length
       ? `No hay filas validas para importar.\n${erroresLocales.slice(0, 8).join("\n")}`
       : "No hay filas validas para importar.";
     throw new Error(msgError);
   }
 
-  return { jugadores, erroresLocales, totalLeidas: filasRaw.length };
+  const { hoja, modo, otras } = seleccion;
+  return {
+    jugadores: hoja.jugadores,
+    erroresLocales: hoja.erroresLocales,
+    totalLeidas: hoja.totalLeidas,
+    hoja: { nombre: hoja.nombre.trim(), genero: hoja.genero, modo },
+    hojasOmitidas: otras.map((h) => describirHojaImportacion(h)),
+  };
 }
 
 function inicializarImportadorJugadores() {
@@ -4606,7 +4783,12 @@ function inicializarImportadorJugadores() {
 
     try {
       mostrarNotificacion("Procesando archivo de jugadores...", "info");
-      const { jugadores, erroresLocales, totalLeidas } = await procesarArchivoImportacionJugadores(file);
+      const procesado = await procesarArchivoImportacionJugadores(file);
+      if (procesado.cancelado) {
+        mostrarNotificacion("Importación cancelada: no se cargó ningún jugador", "info");
+        return;
+      }
+      const { jugadores, erroresLocales, totalLeidas, hoja, hojasOmitidas } = procesado;
 
       const resultado = await ApiClient.post("/jugadores/importar-masivo", {
         equipo_id: equipoId,
@@ -4621,6 +4803,12 @@ function inicializarImportadorJugadores() {
 
       const resumen = [
         `Importacion completada para el equipo ${equipoActual?.nombre || equipoId}.`,
+        `Hoja importada: ${hoja.nombre}${
+          hoja.modo === "automatica"
+            ? ` (elegida automáticamente por ser ${etiquetaGeneroImportacion(hoja.genero).toLowerCase()})`
+            : ""
+        }`,
+        ...(hojasOmitidas.length ? [`Hojas NO importadas: ${hojasOmitidas.join("; ")}`] : []),
         `Filas leidas: ${totalLeidas}`,
         `Filas enviadas: ${jugadores.length}`,
         `Jugadores creados: ${totalCreado}`,
@@ -4879,6 +5067,9 @@ function descargarPlantillaJugadores() {
     ["5) numero_camiseta solo numeros enteros."],
     ["6) foto_cedula_url y foto_carnet_url son opcionales: usa URL publica o ruta ya servida por backend."],
     ["7) Importa por equipo: selecciona campeonato/categoria/equipo antes de subir archivo."],
+    [
+      "8) Si el equipo tiene rama masculina y femenina, usa una hoja por rama y nombrala Masculino / Femenino (o Hombres / Mujeres): el sistema lee todas las hojas y te deja elegir cual importar.",
+    ],
   ];
   const wsInstrucciones = window.XLSX.utils.aoa_to_sheet(instrucciones);
   wsInstrucciones["!cols"] = [{ wch: 95 }];
