@@ -3,10 +3,14 @@ const router = express.Router();
 const finanzaController = require("../controllers/finanzaController");
 const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 
+// Las finanzas del equipo las consultan quienes llevan sus cuentas:
+// dirigente y tecnico (acotados a su equipo). El jugador no tiene acceso.
+const LECTURA_FINANZAS_ROLES = ["administrador", "organizador", "tecnico", "dirigente"];
+
 router.get(
   "/movimientos",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  requireRoles(...LECTURA_FINANZAS_ROLES),
   finanzaController.listarMovimientos
 );
 router.post(
@@ -30,19 +34,19 @@ router.delete(
 router.get(
   "/equipo/:equipo_id/estado-cuenta",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  requireRoles(...LECTURA_FINANZAS_ROLES),
   finanzaController.obtenerEstadoCuentaEquipo
 );
 router.get(
   "/morosidad",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  requireRoles(...LECTURA_FINANZAS_ROLES),
   finanzaController.obtenerMorosidad
 );
 router.get(
   "/resumen-equipos",
   requireAuth,
-  requireRoles("administrador", "organizador", "tecnico", "dirigente", "jugador"),
+  requireRoles(...LECTURA_FINANZAS_ROLES),
   finanzaController.obtenerResumenEquipos
 );
 router.get(

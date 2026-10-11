@@ -4,6 +4,14 @@ const { requireAuth, requireRoles } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
+// El jugador no consulta finanzas (mismo criterio que /api/finanzas).
+function sinAccesoFinanzasJugador(req, res, next) {
+  if (String(req.user?.rol || "").toLowerCase() === "jugador") {
+    return res.status(403).json({ error: "No autorizado para esta acción." });
+  }
+  return next();
+}
+
 router.get("/session", requireAuth, mobileController.session);
 router.get("/dashboard", requireAuth, mobileController.dashboard);
 
@@ -23,7 +31,12 @@ router.post(
 );
 router.get("/campeonatos/:id", requireAuth, mobileController.getCampeonato);
 router.get("/campeonatos/:id/eventos", requireAuth, mobileController.listEventosCampeonato);
-router.get("/campeonatos/:id/finanzas", requireAuth, mobileController.getFinanzasCampeonato);
+router.get(
+  "/campeonatos/:id/finanzas",
+  requireAuth,
+  sinAccesoFinanzasJugador,
+  mobileController.getFinanzasCampeonato
+);
 
 router.get("/eventos/:id", requireAuth, mobileController.getEvento);
 router.get("/eventos/:id/equipos", requireAuth, mobileController.listEquiposEvento);
@@ -115,7 +128,12 @@ router.post(
 );
 router.get("/equipos/:id", requireAuth, mobileController.getEquipo);
 router.get("/equipos/:id/jugadores", requireAuth, mobileController.listJugadoresEquipo);
-router.get("/equipos/:id/estado-cuenta", requireAuth, mobileController.getEstadoCuentaEquipo);
+router.get(
+  "/equipos/:id/estado-cuenta",
+  requireAuth,
+  sinAccesoFinanzasJugador,
+  mobileController.getEstadoCuentaEquipo
+);
 router.get("/jugadores", requireAuth, mobileController.listJugadores);
 router.post(
   "/jugadores",

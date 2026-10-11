@@ -62,7 +62,7 @@ async function inicializarFinanzas() {
 function aplicarPermisosFinanzasUI() {
   if (!finanzasState.esTecnico) return;
 
-  // Dirigente/tecnico/jugador solo necesitan consultar lo de su propio
+  // Dirigente/tecnico (el jugador no entra a Finanzas) solo consultan lo de su propio
   // equipo: Estado de Cuenta, Morosidad y Sanciones (el backend ya acota
   // esos datos a sus equipos). El resto es gestion financiera exclusiva
   // del organizador -- el backend tambien la bloquea con 403, asi que

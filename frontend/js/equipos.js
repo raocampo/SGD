@@ -44,6 +44,12 @@ function usuarioEsTecnico() {
   return !!window.Auth?.isTecnico?.();
 }
 
+// El jugador entra a "Mi Equipo" pero no ve nada financiero (saldo,
+// morosidad, estado de cuenta): eso es de dirigente/tecnico.
+function usuarioVeFinanzasEquipo() {
+  return !window.Auth?.isJugador?.();
+}
+
 function escapeHtml(valor) {
   return String(valor ?? "")
     .replace(/&/g, "&amp;")
@@ -164,7 +170,7 @@ function renderResumenAlertasOperativas() {
   const cont = document.getElementById("equipos-alertas-operativas");
   if (!cont) return;
 
-  if (!campeonatoId || !equiposCache.length) {
+  if (!campeonatoId || !equiposCache.length || !usuarioVeFinanzasEquipo()) {
     cont.style.display = "none";
     cont.innerHTML = "";
     return;
@@ -841,7 +847,7 @@ async function cargarAlertasOperativasEquipos(equipos = []) {
   // Dirigente/tecnico: ademas de la morosidad (que alimenta el badge "Deuda
   // $X" de su tarjeta de equipo, igual que para admin/organizador), traemos
   // el desglose por rubro de su propio equipo para el panel de arriba.
-  const promesaEstadoCuentaPropio = usuarioEsTecnico()
+  const promesaEstadoCuentaPropio = usuarioEsTecnico() && usuarioVeFinanzasEquipo()
     ? (async () => {
         try {
           const paramsEstado = { campeonato_id: campeonatoId };
@@ -861,7 +867,7 @@ async function cargarAlertasOperativasEquipos(equipos = []) {
     if (eventoIdSeleccionado) paramsMorosidad.evento_id = eventoIdSeleccionado;
 
     const [morosidadResp] = await Promise.all([
-      window.FinanzasAPI.morosidad(paramsMorosidad),
+      usuarioVeFinanzasEquipo() ? window.FinanzasAPI.morosidad(paramsMorosidad) : Promise.resolve({ equipos: [] }),
       promesaEstadoCuentaPropio,
     ]);
     const morosidad = Array.isArray(morosidadResp?.equipos) ? morosidadResp.equipos : [];

@@ -200,7 +200,7 @@ function runAssertions(qa) {
 
     // Jugador.
     { role: "jugador", page: "portal-tecnico.html", expected: true, label: "jugador-portal-allow" },
-    { role: "jugador", page: "finanzas.html", expected: true, label: "jugador-finanzas-allow" },
+    { role: "jugador", page: "finanzas.html", expected: false, label: "jugador-finanzas-deny" },
     { role: "jugador", page: "pases.html", expected: false, label: "jugador-pases-deny" },
     { role: "jugador", page: "campeonatos.html", expected: false, label: "jugador-campeonatos-deny" },
     { role: "jugador", page: "portal-cms.html", expected: false, label: "jugador-cms-deny" },

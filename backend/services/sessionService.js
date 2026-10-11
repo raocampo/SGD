@@ -126,7 +126,6 @@ function permisosPorRol(user) {
       "equipos:read",
       "jugadores:read",
       "partidos:read",
-      "finanzas:read",
     ];
   }
 

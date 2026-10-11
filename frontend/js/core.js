@@ -116,12 +116,12 @@
     "portal.html",
     "login.html",
   ]);
+  // Sin finanzas.html: las cuentas del equipo las ven dirigente y tecnico.
   const JUGADOR_ALLOWED_PAGES = new Set([
     "portal-tecnico.html",
     "equipos.html",
     "jugadores.html",
     "tablas.html",
-    "finanzas.html",
     "index.html",
     "portal.html",
     "login.html",
@@ -802,6 +802,9 @@
     },
     isTecnico() {
       return esTecnicoOdirigente(this.getUser());
+    },
+    isJugador() {
+      return esJugador(this.getUser());
     },
     isAdminLike() {
       const rol = String(this.getUser()?.rol || "").toLowerCase();
@@ -1748,7 +1751,11 @@
         window.location.pathname.endsWith("portal-tecnico.html")
       );
       if (esJugador(user)) {
-        document.querySelectorAll('a[href="pases.html"]').forEach((lnk) => lnk.remove());
+        // Pases y Finanzas (menu y accesos directos de la pagina) no
+        // aplican al jugador.
+        document
+          .querySelectorAll('a[href="pases.html"], a[href="finanzas.html"]')
+          .forEach((lnk) => lnk.remove());
       } else {
         // Solo tecnico/dirigente (no jugador): consulta de planilla propia
         // en modo lectura.
@@ -2016,6 +2023,22 @@
       const deudas = resultados.filter((item) => item && item.saldo > 0);
       if (!deudas.length) return;
 
+      const resumen = deudas
+        .slice(0, 3)
+        .map((item) => `${item.equipo_nombre}: ${formatearMoneda(item.saldo)}`)
+        .join(" | ");
+      const extra = deudas.length > 3 ? ` +${deudas.length - 3} equipo(s)` : "";
+      const mensaje = `Adeudado hasta el momento: ${resumen}${extra}`;
+
+      // El banner de "Mi Portal" se mantiene mientras exista la deuda; la
+      // notificacion emergente solo sale una vez por sesion.
+      const banner = document.getElementById("aviso-deuda-equipo");
+      const detalle = document.getElementById("aviso-deuda-equipo-detalle");
+      if (banner && detalle) {
+        detalle.textContent = mensaje;
+        banner.style.display = "block";
+      }
+
       const keyDetalle = deudas
         .map((item) => `${item.equipo_id}:${item.saldo.toFixed(2)}`)
         .sort()
@@ -2028,20 +2051,7 @@
         .forEach((k) => sessionStorage.removeItem(k));
       sessionStorage.setItem(key, "1");
 
-      const resumen = deudas
-        .slice(0, 3)
-        .map((item) => `${item.equipo_nombre}: ${formatearMoneda(item.saldo)}`)
-        .join(" | ");
-      const extra = deudas.length > 3 ? ` +${deudas.length - 3} equipo(s)` : "";
-      const mensaje = `Adeudado hasta el momento: ${resumen}${extra}`;
       mostrarNotificacion(mensaje, "warning");
-
-      const banner = document.getElementById("aviso-deuda-equipo");
-      const detalle = document.getElementById("aviso-deuda-equipo-detalle");
-      if (banner && detalle) {
-        detalle.textContent = mensaje;
-        banner.style.display = "block";
-      }
     } catch (error) {
       console.warn("No se pudo obtener aviso de deuda del equipo:", error?.message || error);
     }
