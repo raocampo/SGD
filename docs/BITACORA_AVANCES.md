@@ -1,4 +1,79 @@
+## 2026-10-10 (parte 3) - Importación de jugadores lee todas las hojas (masculino/femenino) + aviso de deuda solo para dirigente/técnico
+
+### Importar Jugadores: ya no se asume "la primera hoja"
+El usuario reportó que en Liga InterEmpresarial le envían un solo Excel
+por empresa y, al importarlo en el equipo masculino, se cargaba la lista
+del femenino. Causa confirmada con el archivo real de Induloja: trae
+`Datos Mujeres Induloja` (1ra hoja), `Datos Hombres Induloja` e
+`Instrucciones`, y `procesarArchivoImportacionJugadores` leía siempre
+`wb.SheetNames[0]`.
+
+`jugadores.js` (solo frontend, el endpoint `/jugadores/importar-masivo`
+no cambia):
+- Se analizan TODAS las hojas visibles. Una hoja cuenta como lista de
+  jugadores si tiene una fila de encabezados reconocible (2+ columnas de
+  identidad entre nombre/apellido/nombre completo/cédula) dentro de las
+  primeras 25 filas — así `Instrucciones`/`Notas`/`Control` quedan fuera
+  y se toleran hojas con título encima de la tabla.
+- El género de cada hoja se deduce de su nombre (femenino/mujeres/damas…
+  vs masculino/hombres/varones…). El género de destino se deduce del
+  nombre de la categoría y, si no dice nada, del nombre del equipo.
+- Con una sola hoja útil se importa esa. Con varias: si exactamente una
+  coincide con el género de destino se elige sola; si no hay pista (caso
+  real: categoría "Abierta", equipo "INDULOJA") se abre un diálogo para
+  elegir la hoja, mostrando género detectado y cantidad de jugadores.
+  Cancelar no importa nada.
+- Si la única hoja disponible es de un género distinto al de la
+  categoría, se pide confirmación antes de importar.
+- El resumen final indica la hoja importada y las hojas NO importadas.
+- Extras: alias de cédula adicionales (`Ced. Identidad`, `N° Cédula`…),
+  número de fila real en los errores, y las columnas de foto descartan
+  textos de relleno como "Dejar vacío" (venían en el archivo real y se
+  habrían guardado como URL). La plantilla descargable agrega la
+  instrucción 8 (una hoja por rama).
+
+Verificación (lógica extraída de `jugadores.js` y ejecutada en Node con
+SheetJS 0.18.5, la misma versión del frontend, sobre 38 archivos reales
+de InterEmpresas e Interjorgas):
+- Induloja: categoría sin pista → diálogo con las 2 hojas (12 mujeres /
+  20 hombres); "ABIERTA MASCULINO" → hombres (20) automático; "ABIERTA
+  FEMENINO" o equipo "INDULOJA FEMENINO" → mujeres (12) automático.
+- 32 archivos de plantilla estándar: misma hoja y misma cantidad de
+  jugadores que antes. 3 archivos con título sobre la tabla que antes
+  daban 0 filas ahora se leen (ILELSA x2, Induglass).
+- Siguen sin leerse 2 formatos libres (Municipio de Loja "PLANILLA
+  EMPRESARIAL ML", Servientrega "NÓMINA"): no tienen columnas
+  reconocibles, igual que antes.
+- NO probado: el flujo completo en `jugadores.html` con clic real
+  (diálogo de selección y POST de importación). Pendiente del usuario.
+
+### Aviso de deuda al ingresar
+`core.js`: el aviso "Adeudado hasta el momento: …" nunca se mostraba
+(llamaba a `/finanzas/equipos/:id/estado-cuenta`, la ruta real es
+`/finanzas/equipo/…` → 404 silencioso desde `6aef7cc`). Corregido, y por
+indicación del usuario queda solo para quienes llevan las cuentas del
+equipo: `dirigente` y `tecnico` (se quita `jugador`), y nunca en páginas
+públicas (`PUBLIC_PAGES`, incluida la landing `/liga/<slug>`).
+
+El usuario escribió "organizador y técnico"; se interpretó como
+dirigente y técnico porque el aviso se arma con los equipos asociados a
+la cuenta y el organizador no tiene equipos propios (ve la morosidad de
+todos en Finanzas). **Por confirmar con el usuario.**
+
+Verificación en navegador (Brave headless, BD local): dirigente con
+deuda en página interna → aviso visible y `estado-cuenta` 200; técnico
+→ visible; jugador → sin aviso ni llamada; dirigente en `index.html` y
+`torneos.html` → sin aviso ni llamada; dirigente con saldo a favor → sin
+aviso. Nota: una cuenta con cambio de contraseña obligatorio no ve el
+aviso hasta cambiarla (el flujo se detiene antes, comportamiento previo).
+
+**Pendiente menor**: el jugador conserva la pestaña Estado de Cuenta en
+`finanzas.html` y el backend le sigue respondiendo `estado-cuenta`; solo
+se le quitó el aviso. Decidir si también debe dejar de verlo ahí.
+
 ## 2026-10-10 (parte 2) - Llave de playoff interna exige sesión + QA en pantalla de planilla solo lectura
+
+> Commiteado y pusheado (`86b6414`).
 
 El usuario aprobó cerrar el hallazgo anotado en la entrada de abajo.
 
@@ -27,7 +102,7 @@ El usuario aprobó cerrar el hallazgo anotado en la entrada de abajo.
   pendiente el 30-sep.
 - `node --check`, `smokeFrontendRoleGuards.js` 49/49.
 
-### Hallazgo aparte (no tocado, decisión del usuario)
+### Hallazgo aparte (resuelto en la parte 3, arriba)
 El aviso de deuda al ingresar (dirigente/técnico/jugador, "Adeudado
 hasta el momento: ...") nunca se muestra: `core.js`
 `obtenerResumenDeudaEquipo` llama a `/finanzas/equipos/:id/estado-cuenta`
