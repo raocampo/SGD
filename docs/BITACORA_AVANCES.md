@@ -1,4 +1,52 @@
+## 2026-10-10 (parte 4) - Finanzas del equipo solo para dirigente y técnico (el jugador queda fuera)
+
+El usuario confirmó la interpretación de la parte 3 (el aviso es para
+**dirigente** y técnico; el organizador ve todo lo de los torneos que
+organiza, sin cambios) y definió la regla general: lo de finanzas solo
+lo ven dirigente y técnico. El rol `jugador` tenía acceso de lectura en
+varios puntos; se cerró en todos:
+
+- `finanzaRoutes.js`: `movimientos`, `equipo/:id/estado-cuenta`,
+  `morosidad` y `resumen-equipos` pasan a `LECTURA_FINANZAS_ROLES`
+  (administrador, organizador, tecnico, dirigente).
+- `mobileRoutes.js`: `GET /equipos/:id/estado-cuenta` y
+  `GET /campeonatos/:id/finanzas` rechazan al jugador con 403 (antes solo
+  pedían sesión). El resto de roles de la app móvil no cambia.
+- `sessionService.js`: el jugador ya no recibe el permiso
+  `finanzas:read` en su sesión.
+- `core.js`: `finanzas.html` sale de `JUGADOR_ALLOWED_PAGES` (si entra
+  por URL vuelve a Mi Portal) y se le quitan del menú y de los accesos
+  directos todos los enlaces a Finanzas. Nuevo `Auth.isJugador()`.
+- `equipos.js`: para el jugador no se pide morosidad ni estado de
+  cuenta y no se muestra el panel "Estado de Cuenta de tu Equipo" ni el
+  badge de deuda.
+- De paso: el banner "Aviso financiero" de Mi Portal ahora se mantiene
+  mientras exista la deuda; antes solo aparecía si Mi Portal era la
+  primera página de la sesión (compartía el "una vez por sesión" de la
+  notificación emergente).
+- `smokeFrontendRoleGuards.js`: el caso `jugador-finanzas` pasa de
+  permitido a denegado.
+
+### Verificación
+BD local, mismo usuario con equipo y deuda cambiando su rol real (y
+restaurado al final):
+- HTTP, 6 rutas de finanzas (4 web + 2 móvil): jugador 403 en las 6;
+  dirigente y técnico 200 en las 6; administrador 200; organizadora
+  dueña 200; organizador ajeno 403.
+- Navegador (Brave headless): jugador → `finanzas.html` redirige a Mi
+  Portal, 0 enlaces a Finanzas, sin banner, 0 llamadas a `/finanzas`
+  en Mi Portal y Mi Equipo; dirigente → entra a Finanzas, conserva
+  enlaces y banner.
+- `node --check`, `smokeFrontendRoleGuards.js` 49/49.
+- NO ejecutado: `smoke:matrix` (requiere los usuarios QA sembrados).
+
+**Nota**: `pases.html` ya estaba negado al jugador. Las cuentas QA de
+jugador que existan en producción pierden el acceso a Finanzas con este
+deploy — es el efecto buscado.
+
 ## 2026-10-10 (parte 3) - Importación de jugadores lee todas las hojas (masculino/femenino) + aviso de deuda solo para dirigente/técnico
+
+> Commiteado y pusheado (`e32ef5d`, `27f9f0d`).
 
 ### Importar Jugadores: ya no se asume "la primera hoja"
 El usuario reportó que en Liga InterEmpresarial le envían un solo Excel
@@ -58,7 +106,7 @@ públicas (`PUBLIC_PAGES`, incluida la landing `/liga/<slug>`).
 El usuario escribió "organizador y técnico"; se interpretó como
 dirigente y técnico porque el aviso se arma con los equipos asociados a
 la cuenta y el organizador no tiene equipos propios (ve la morosidad de
-todos en Finanzas). **Por confirmar con el usuario.**
+todos en Finanzas). Confirmado por el usuario (ver parte 4).
 
 Verificación en navegador (Brave headless, BD local): dirigente con
 deuda en página interna → aviso visible y `estado-cuenta` 200; técnico
@@ -67,9 +115,8 @@ deuda en página interna → aviso visible y `estado-cuenta` 200; técnico
 aviso. Nota: una cuenta con cambio de contraseña obligatorio no ve el
 aviso hasta cambiarla (el flujo se detiene antes, comportamiento previo).
 
-**Pendiente menor**: el jugador conserva la pestaña Estado de Cuenta en
-`finanzas.html` y el backend le sigue respondiendo `estado-cuenta`; solo
-se le quitó el aviso. Decidir si también debe dejar de verlo ahí.
+**Pendiente menor** (resuelto en la parte 4): el jugador conservaba la
+pestaña Estado de Cuenta en `finanzas.html`.
 
 ## 2026-10-10 (parte 2) - Llave de playoff interna exige sesión + QA en pantalla de planilla solo lectura
 
