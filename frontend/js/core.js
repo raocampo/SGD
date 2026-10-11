@@ -1476,7 +1476,7 @@
         if (campo.inputMode) control.setAttribute("inputmode", campo.inputMode);
         if (campo.autocomplete) control.setAttribute("autocomplete", campo.autocomplete);
 
-        controls.set(campo.name, { control, config: campo });
+        controls.set(campo.name, { control, config: campo, field });
         field.appendChild(control);
 
         if (campo.hint) {
@@ -1488,6 +1488,33 @@
 
         grid?.appendChild(field);
       });
+
+      // Campos dependientes: `visibleWhen(valores)` oculta el campo cuando
+      // no aplica (p. ej. limites de cambios con sustitucion ilimitada). El
+      // campo oculto conserva su valor y no se valida.
+      const leerValores = () => {
+        const actuales = {};
+        controls.forEach(({ control, config: campo }, name) => {
+          actuales[name] = campo.type === "checkbox" ? Boolean(control.checked) : String(control.value ?? "");
+        });
+        return actuales;
+      };
+      const aplicarDependencias = () => {
+        const actuales = leerValores();
+        controls.forEach(({ config: campo, field }) => {
+          if (typeof campo.visibleWhen !== "function") return;
+          let visible = true;
+          try {
+            visible = campo.visibleWhen(actuales) !== false;
+          } catch (_) {
+            visible = true;
+          }
+          field.hidden = !visible;
+        });
+      };
+      form?.addEventListener("input", aplicarDependencias);
+      form?.addEventListener("change", aplicarDependencias);
+      aplicarDependencias();
 
       backdrop.querySelector(".sgd-dialog-cancel")?.addEventListener("click", () => cerrar(null));
       backdrop.querySelector(".sgd-dialog-close")?.addEventListener("click", () => cerrar(null));
@@ -1511,8 +1538,12 @@
         marcarInvalido(null);
         const values = {};
         for (const [name, item] of controls.entries()) {
-          const { control, config: campo } = item;
+          const { control, config: campo, field } = item;
           const value = campo.type === "checkbox" ? Boolean(control.checked) : String(control.value ?? "");
+          if (field?.hidden) {
+            values[name] = value;
+            continue;
+          }
           if (!control.checkValidity()) {
             setError(`${campo.label || name}: ${control.validationMessage || "revisa este campo"}`);
             marcarInvalido(control);

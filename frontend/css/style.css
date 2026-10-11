@@ -956,6 +956,10 @@ body.app-layout {
   grid-column: 1 / -1;
 }
 
+.sgd-field[hidden] {
+  display: none;
+}
+
 /* Titulo de seccion dentro de un formulario largo */
 .sgd-form-section {
   grid-column: 1 / -1;

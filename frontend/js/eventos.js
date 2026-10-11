@@ -868,6 +868,7 @@ async function editarEvento(id) {
       {
         name: "clasificados_por_grupo",
         label: "Clasifican por grupo",
+        visibleWhen: (values) => metodoUsaClasificadosPorGrupo(values.metodo_competencia),
         type: "number",
         value: evento?.clasificados_por_grupo ? String(evento.clasificados_por_grupo) : "2",
         min: 1,
@@ -882,6 +883,7 @@ async function editarEvento(id) {
       {
         name: "eliminatoria_equipos",
         label: "Tamaño de llave eliminatoria",
+        visibleWhen: (values) => ["eliminatoria", "mixto", "tabla_acumulada"].includes(values.metodo_competencia),
         type: "select",
         value: evento?.eliminatoria_equipos ? String(evento.eliminatoria_equipos) : "",
         options: [
@@ -1009,6 +1011,7 @@ async function editarEvento(id) {
       {
         name: "categoria_juvenil_cupos",
         label: "Cupos juveniles permitidos",
+        visibleWhen: (values) => values.categoria_juvenil === "true",
         type: "number",
         value: String(normalizarCuposJuvenilEvento(evento?.categoria_juvenil_cupos, evento?.categoria_juvenil === true ? 2 : 0)),
         min: 0,
@@ -1017,6 +1020,7 @@ async function editarEvento(id) {
       {
         name: "categoria_juvenil_max_diferencia",
         label: "Máximo años menor",
+        visibleWhen: (values) => values.categoria_juvenil === "true",
         type: "select",
         value: String(normalizarDiferenciaJuvenilEvento(evento?.categoria_juvenil_max_diferencia, evento?.categoria_juvenil === true ? 2 : 1)),
         options: [
@@ -1045,6 +1049,7 @@ async function editarEvento(id) {
       {
         name: "max_ascendentes_por_partido",
         label: "Máx. ascendentes por equipo por partido",
+        visibleWhen: (values) => values.permite_ascenso === "true",
         type: "number",
         value: String(Number.isFinite(Number(evento?.max_ascendentes_por_partido)) ? Number(evento.max_ascendentes_por_partido) : 2),
         min: 1,
@@ -1062,11 +1067,12 @@ async function editarEvento(id) {
           { value: "estandar", label: "Estándar (FIFA, cambios limitados)" },
           { value: "entra_sale", label: "Entra y sale (fútbol sala, sin límite)" },
         ],
-        hint: "Aplica solo a categorías de fútbol 11, 9 u 8.",
+        hint: "Aplica solo a categorías de fútbol 11, 9 u 8. En \"Entra y sale\" los cambios son ilimitados, por eso no se piden límites.",
       },
       {
         name: "max_cambios_oficiales",
         label: "Cambios oficiales permitidos",
+        visibleWhen: (values) => values.modo_sustitucion !== "entra_sale",
         type: "number",
         value: String(Number.isFinite(Number(evento?.max_cambios_oficiales)) ? Number(evento.max_cambios_oficiales) : 5),
         min: 0,
@@ -1076,6 +1082,7 @@ async function editarEvento(id) {
       {
         name: "max_cambios_salvamento",
         label: "Cambios de salvamento (conmoción) permitidos",
+        visibleWhen: (values) => values.modo_sustitucion !== "entra_sale",
         type: "number",
         value: String(Number.isFinite(Number(evento?.max_cambios_salvamento)) ? Number(evento.max_cambios_salvamento) : 1),
         min: 0,
@@ -1188,9 +1195,12 @@ async function editarEvento(id) {
       ? (Number.parseInt(form.max_ascendentes_por_partido, 10) || 2)
       : 2;
     payload.modo_sustitucion = form.modo_sustitucion === "entra_sale" ? "entra_sale" : "estandar";
-    payload.max_cambios_oficiales = Number.parseInt(form.max_cambios_oficiales, 10);
+    // En "entra_sale" los limites no aplican y sus campos estan ocultos: se
+    // conservan los que ya tenia la categoria en vez de lo que quedo escrito.
+    const limitesCambios = payload.modo_sustitucion === "entra_sale" ? evento : form;
+    payload.max_cambios_oficiales = Number.parseInt(limitesCambios?.max_cambios_oficiales, 10);
     if (!Number.isFinite(payload.max_cambios_oficiales)) payload.max_cambios_oficiales = 5;
-    payload.max_cambios_salvamento = Number.parseInt(form.max_cambios_salvamento, 10);
+    payload.max_cambios_salvamento = Number.parseInt(limitesCambios?.max_cambios_salvamento, 10);
     if (!Number.isFinite(payload.max_cambios_salvamento)) payload.max_cambios_salvamento = 1;
     await EventosAPI.actualizar(id, payload);
     mostrarNotificacion("Categoría actualizada", "success");
