@@ -236,9 +236,11 @@
     return rol === "tecnico" || rol === "dirigente" || rol === "jugador";
   }
 
+  // El aviso de deuda es solo para quienes llevan las cuentas del equipo
+  // (dirigente y tecnico); el jugador no lo recibe.
   function esUsuarioEquipoConAvisoDeuda(user) {
     const rol = String(user?.rol || "").toLowerCase();
-    return rol === "tecnico" || rol === "dirigente" || rol === "jugador";
+    return rol === "tecnico" || rol === "dirigente";
   }
 
   function esOperadorPortal(user) {
@@ -1980,7 +1982,7 @@
   }
 
   async function obtenerResumenDeudaEquipo(equipoId, token) {
-    const resp = await fetch(`${window.API_BASE_URL}/finanzas/equipos/${equipoId}/estado-cuenta`, {
+    const resp = await fetch(`${window.API_BASE_URL}/finanzas/equipo/${equipoId}/estado-cuenta`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -1998,6 +2000,9 @@
 
   async function mostrarAvisoDeudaEquiposUsuario(user) {
     if (!esUsuarioEquipoConAvisoDeuda(user)) return;
+    // Nunca en paginas publicas (portada, portal, landing /liga/<slug>,
+    // fichas publicas): la deuda solo se muestra dentro del sistema.
+    if (PUBLIC_PAGES.has(getCurrentPage())) return;
     const token = window.Auth?.getToken?.();
     if (!token) return;
 
