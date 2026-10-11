@@ -1,4 +1,46 @@
+## 2026-10-11 (parte 3) - Editar categoría: los campos que no aplican se ocultan (sustitución "Entra y sale")
+
+El usuario mostró que, al elegir "Entra y sale (fútbol sala, sin
+límite)" en Editar categoría, seguían visibles "Cambios oficiales
+permitidos" y "Cambios de salvamento", que no tienen sentido con cambios
+ilimitados. El formulario de **crear** categoría ya los ocultaba
+(`actualizarVisibilidadSustitucion`); el de **editar** no.
+
+- `core.js` (`mostrarFormularioModal`): nueva opción por campo
+  `visibleWhen(valores)`. Se evalúa al abrir y en cada cambio; el campo
+  oculto conserva su valor y no se valida (un valor inválido que quedó
+  oculto no puede bloquear el guardado con un error invisible).
+- `style.css`: `.sgd-field[hidden]` (el `display:flex` del campo anulaba
+  el atributo `hidden`).
+- `eventos.js` (`editarEvento`), mismas reglas que ya usa el formulario
+  de crear y las validaciones existentes:
+
+| Campo | Se muestra cuando |
+|---|---|
+| Cambios oficiales / Cambios de salvamento | Modo de sustitución = Estándar |
+| Máx. ascendentes por partido | Jugadores ascendentes = Sí |
+| Cupos juveniles / Máximo años menor | Categoría juvenil = Sí |
+| Clasifican por grupo | Método = grupos, liga, mixto o tabla acumulada |
+| Tamaño de llave eliminatoria | Método = eliminatoria, mixto o tabla acumulada |
+
+  Al guardar en "Entra y sale" se conservan los límites que ya tenía la
+  categoría (no lo que hubiera quedado escrito en los campos ocultos).
+  El resto del payload no cambia.
+
+### Verificación
+Brave headless, backend local, "Editar categoría" real (evento 34), con
+el `PUT` interceptado para leer el cuerpo sin escribir en la BD (11/11):
+cada campo se oculta/muestra según la tabla; guardar sin tocar nada
+envía los mismos valores guardados (estandar/5/1); en "Entra y sale" un
+límite fuera de rango oculto no bloquea ni se envía; en Estándar el
+mismo valor (99) sí se rechaza con mensaje; la fila de la BD quedó
+idéntica. `node --check`, `smokeFrontendRoleGuards.js` 49/49.
+
+No verificado: un guardado real contra el servidor desde el diálogo.
+
 ## 2026-10-11 (parte 2) - Ningún formulario se cierra con un clic fuera + botones fijos en los modales antiguos
+
+> Commiteado y pusheado (`e53ad2d`).
 
 Dos pedidos del usuario: (1) ningún formulario debe cerrarse al hacer
 clic fuera; (2) hacer el pendiente de la entrada de abajo (botón Guardar
