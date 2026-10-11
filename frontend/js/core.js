@@ -1414,15 +1414,6 @@
         control.focus({ preventScroll: true });
       };
 
-      // Con cambios sin guardar, un clic accidental fuera del dialogo no
-      // debe descartar el formulario.
-      let hayCambios = false;
-      const marcarCambios = () => {
-        hayCambios = true;
-      };
-      form?.addEventListener("input", marcarCambios);
-      form?.addEventListener("change", marcarCambios);
-
       (Array.isArray(opciones.campos) ? opciones.campos : []).forEach((campo) => {
         if (campo.type === "section") {
           const seccion = document.createElement("div");
@@ -1500,8 +1491,11 @@
 
       backdrop.querySelector(".sgd-dialog-cancel")?.addEventListener("click", () => cerrar(null));
       backdrop.querySelector(".sgd-dialog-close")?.addEventListener("click", () => cerrar(null));
-      backdrop.addEventListener("click", (event) => {
-        if (event.target === backdrop && !hayCambios) cerrar(null);
+      // Un formulario nunca se cierra por un clic fuera del dialogo (se
+      // perderia lo escrito): solo con Cancelar, la X o Esc. El clic fuera
+      // tampoco debe quitar el foco del campo (Esc dejaria de responder).
+      backdrop.addEventListener("mousedown", (event) => {
+        if (event.target === backdrop) event.preventDefault();
       });
       backdrop.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {

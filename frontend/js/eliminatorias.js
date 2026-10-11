@@ -724,13 +724,6 @@ function bindEventosEliminatoria() {
   document.getElementById("btn-eli-share")?.addEventListener("click", compartirEliminatoria);
   document.getElementById("eli-export-bg-input")?.addEventListener("change", manejarCambioFondoPublicacion);
   document.getElementById("btn-eli-clear-bg")?.addEventListener("click", limpiarFondoPublicacion);
-  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
-    overlay.addEventListener("click", (event) => {
-      if (event.target !== overlay) return;
-      if (overlay.id === "modal-prog-partido-eli") cerrarModalProgPartidoEli();
-      if (overlay.id === "modal-auto-prog-eli") cerrarModalAutoProgEli();
-    });
-  });
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     if (document.getElementById("modal-prog-partido-eli")?.style.display === "flex") {

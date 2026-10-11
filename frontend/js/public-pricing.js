@@ -284,9 +284,6 @@
 
     document.getElementById('ltc-pago-modal-close')?.addEventListener('click', cerrarModalPago);
     document.getElementById('ltc-pago-cancelar-btn')?.addEventListener('click', cerrarModalPago);
-    document.getElementById('ltc-pago-modal')?.addEventListener('click', function (e) {
-      if (e.target === this) cerrarModalPago();
-    });
   }
 
   document.addEventListener('DOMContentLoaded', () => {

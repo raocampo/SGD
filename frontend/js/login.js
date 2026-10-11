@@ -136,9 +136,6 @@
     if (cerrarBtn) {
       cerrarBtn.onclick = () => { modal.style.display = "none"; };
     }
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.style.display = "none";
-    }, { once: true });
   }
 
   async function onSubmitForgot(e) {

@@ -1516,8 +1516,9 @@
       document.getElementById("filt-campeonato").value = "";
       cargarDocumentos();
     });
-    // Cerrar modales al click fuera
-    document.querySelectorAll(".modal-overlay").forEach(el => {
+    // Cerrar al click fuera solo la vista de detalle: los modales con
+    // formulario (config, documento) no se cierran asi para no perder datos.
+    document.querySelectorAll("#modal-detalle.modal-overlay").forEach(el => {
       el.addEventListener("click", e => { if (e.target === el) el.classList.remove("open"); });
     });
   }

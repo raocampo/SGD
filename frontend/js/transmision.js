@@ -141,7 +141,6 @@
     document.body.appendChild(modal);
 
     document.getElementById("btn-cerrar-modal-transmision").addEventListener("click", cerrarModalTransmision);
-    modal.addEventListener("click", (e) => { if (e.target === modal) cerrarModalTransmision(); });
     document.getElementById("form-transmision").addEventListener("submit", (e) => {
       e.preventDefault();
       guardarTransmision();

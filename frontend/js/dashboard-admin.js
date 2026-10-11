@@ -466,7 +466,6 @@
     modal._orgId = id;
 
     document.getElementById("modal-org-cancelar").onclick = () => { modal.style.display = "none"; };
-    modal.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
     document.getElementById("modal-org-guardar").onclick = () => guardarEstadoOrg(modal, org);
   }
 

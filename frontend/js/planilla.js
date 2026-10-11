@@ -6746,11 +6746,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     actualizarVistaPreviaPlanilla(true);
   });
   formJugadorPlanilla?.addEventListener("submit", guardarJugadorDesdePlanilla);
-  modalJugadorPlanilla?.addEventListener("click", (event) => {
-    if (event.target === modalJugadorPlanilla) {
-      cerrarModalInscripcionPlanilla();
-    }
-  });
   inicializarModoVistaPreviaPlanilla();
 
 document.getElementById("ciudad-planilla")?.addEventListener("input", () => {
