@@ -1,4 +1,71 @@
+## 2026-10-11 (parte 2) - Ningún formulario se cierra con un clic fuera + botones fijos en los modales antiguos
+
+Dos pedidos del usuario: (1) ningún formulario debe cerrarse al hacer
+clic fuera; (2) hacer el pendiente de la entrada de abajo (botón Guardar
+fijo en los modales `.modal-content`), sin dañar lo que ya funciona.
+
+### 1. Clic fuera ya no cierra formularios
+Regla aplicada: si el modal tiene formulario, solo se cierra con
+Cancelar, la X o (donde ya existía) Esc. Las vistas de solo consulta y
+los avisos conservan el cierre con clic fuera. Se quitó el handler en
+los 8 lugares donde existía:
+
+| Archivo | Modal |
+|---|---|
+| `core.js` `mostrarFormularioModal` | todos los formularios `sgd-dialog` (ayer solo se bloqueaba si había cambios; ahora siempre) |
+| `planilla.js` | inscribir jugador desde planilla |
+| `eliminatorias.js` | programar partido y auto-programar llave |
+| `transmision.js` | crear/editar transmisión |
+| `dashboard-admin.js` | plan/estado del organizador |
+| `login.js` | cuenta con pago pendiente (subir comprobante) |
+| `public-pricing.js` | pago de plan |
+| `facturacion.html` | config del emisor y documento; `modal-detalle` (consulta) sí sigue cerrando con clic fuera |
+
+Se verificó antes que cada uno tiene su propio botón de cerrar/cancelar.
+En `core.js`, además, el clic fuera ya no le quita el foco al campo
+(si no, Esc dejaba de responder). `campeonatos`, `equipos`, `jugadores`
+y `finanzas` nunca tuvieron cierre por clic fuera. `app.js` (solo lo
+carga `admin.html`, que no tiene `.modal`) no se tocó.
+
+### 2. Modales antiguos (`.modal-content`): título y botones fijos
+Solo CSS en `style.css`, sin tocar el HTML ni el JS de los 5 modales
+(`modal-campeonato`, `modal-equipo`, `modal-jugador`,
+`modal-planilla-jugador`, `modal-ver-movimiento`): título/cabecera y X
+`position: sticky` arriba, y barra de botones sticky abajo con fondo y
+borde, cubriendo las tres estructuras que existen (`form > .form-actions`,
+`.modal-footer` directo, `.modal-body > form > .modal-footer`).
+
+Hallazgo corregido de paso: en celular la barra superior de la página
+(`z-index` 10010) tapaba el título y la X de estos modales (`z-index`
+9999). `.modal` sube a 10900: sobre la barra y el menú, bajo los
+diálogos de aviso/confirmación (10950).
+
+### Verificación
+Brave headless, backend local, sesión de organizadora:
+- Los 4 modales con formulario, en 1366x600 y 390x700 (24/24): título, X
+  y botones visibles al inicio y al final del scroll; el último campo no
+  queda tapado por la barra ni el primero por el título; sin scroll
+  horizontal; clic fuera no cierra. Título no tapado por la barra
+  superior en ninguno de los 8 casos.
+- Clic fuera: facturación config/doc siguen abiertos, detalle se cierra;
+  los 2 de eliminatorias siguen abiertos; formulario `sgd-dialog` sin
+  cambios sigue abierto y Esc lo cierra; un aviso informativo se cierra
+  como antes.
+- Flujo real: "Nuevo Campeonato" y "Nuevo Equipo" abren con su botón,
+  no se cierran con clic fuera, y Cancelar (visible sin desplazar)
+  cierra. Sin escrituras a la API.
+- Se repitió la batería de "Editar categoría" de la entrada de abajo:
+  19/19. `node --check`, `smokeFrontendRoleGuards.js` 49/49.
+
+No verificado en pantalla: "Nuevo Jugador" abierto por su flujo real
+(requiere campeonato/categoría/equipo elegidos; su diseño se probó
+abriendo el modal directamente) y los modales de transmisión, pago de
+plan, pago pendiente y admin de organizadores (solo se les quitó una
+línea; no se abrieron en navegador).
+
 ## 2026-10-11 - Diálogos de formulario con scroll y botones siempre visibles (editar categoría)
+
+> Commiteado y pusheado (`dde5080`).
 
 El usuario reportó desde producción (`eventos.html`, "Editar categoría")
 que el formulario no tenía scroll y no se podía llegar al botón Guardar.
@@ -53,9 +120,8 @@ No verificado: guardar de verdad una categoría desde el diálogo nuevo
 (se evitó escribir datos; el armado del payload no cambió) y los otros 7
 formularios en pantalla.
 
-**Pendiente**: revisar los modales antiguos (`.modal-content`, p. ej.
-crear equipo/jugador/campeonato): ya tienen scroll (`max-height: 90vh`),
-pero el botón Guardar se va al final del scroll en vez de quedar fijo.
+**Pendiente** (resuelto en la parte 2, arriba): los modales antiguos
+(`.modal-content`) tenían scroll pero el botón Guardar se iba al final.
 
 ## 2026-10-10 - CIERRE DE SESIÓN (4 partes) y pendientes para continuar
 
