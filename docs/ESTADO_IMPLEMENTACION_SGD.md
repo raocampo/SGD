@@ -1,3 +1,87 @@
+## 2026-10-11 - Estado para continuar (experiencia de formularios)
+
+### Estado actualizado
+- Proyecto sincronizado con `origin/main`; último commit de código
+  `96d571c`. Producción se redespliega sola desde `main`. Sin
+  migraciones nuevas (última: `075`). Los cambios del día son solo de
+  frontend (`style.css`, `core.js`, `eventos.js` y la eliminación del
+  cierre por clic fuera en 7 archivos más).
+- Trabajo cerrado el 2026-10-11 (detalle en `docs/BITACORA_AVANCES.md`):
+  1. **Diálogos de formulario**: scroll en el cuerpo con cabecera y
+     botones fijos; antes "Editar categoría" (24 campos) no dejaba
+     llegar a Guardar. Ancho `lg` real, X para cerrar, y el error de
+     validación lleva al campo y lo resalta.
+  2. **Clic fuera**: ningún modal con formulario se cierra así. Las
+     vistas de consulta y los avisos lo conservan.
+  3. **Modales antiguos** (campeonato, equipo, jugador, inscripción en
+     planilla): título, X y barra de botones fijos; ya no quedan bajo la
+     barra superior en celular.
+  4. **Editar categoría**: 6 secciones y campos dependientes que se
+     ocultan cuando no aplican (igual que el formulario de crear).
+
+### Verificación realizada
+- Navegador real (Brave headless) contra backend y BD locales, en
+  escritorio y celular: Editar categoría 19/19, modales antiguos 24/24,
+  campos dependientes 11/11 (con el guardado interceptado: la BD no se
+  modificó), flujo real de Nuevo Campeonato y Nuevo Equipo.
+- `npm --prefix backend run smoke:frontend` -> `49/49 PASS`.
+- No ejecutado: un guardado real desde el diálogo nuevo; abrir en
+  pantalla los modales de transmisión, pago de plan, pago pendiente y
+  administración de organizadores; `smoke:matrix` y `smoke:roles`.
+
+### Pendientes para retomar
+
+**A. Por confirmar en producción (los hace el usuario; no bloquean código)**
+1. Editar categoría: abrir, comprobar scroll y botones fijos, cambiar
+   "Modo de sustitución" a "Entra y sale" (desaparecen los límites) y
+   **guardar de verdad** una categoría. El guardado real desde el diálogo
+   nuevo es lo único de hoy que no se ejecutó contra un servidor.
+2. Abrir en celular Nuevo Campeonato / Nuevo Equipo / Nuevo Jugador:
+   título, X y botones a la vista, y que un clic fuera no los cierre.
+3. Abrir una vez los modales a los que solo se les quitó el cierre por
+   clic fuera y no se vieron en pantalla: transmisión, pago de plan
+   (`planes.html`), cuenta con pago pendiente (login) y plan/estado de
+   organizador (`admin.html`). Deben cerrar con su botón.
+4. Del 10-oct, aún sin confirmar: importar el Excel de Induloja (2
+   hojas) en Jugadores; aviso de deuda como dirigente/técnico y jugador
+   sin Finanzas; Tablas/Partidos/Playoff como organizador; planilla en
+   solo lectura con un dirigente real.
+5. Del 01/02-oct: los 5 equipos nuevos + "Regenerar (preservar
+   jugados)"; partido MEGA SANTIAGO vs CONSTRUGRID (migración `075`);
+   vínculo de jugador por cédula al registrarse.
+
+**B. Código sin bloqueo (candidatos para la próxima sesión)**
+1. Formularios, siguiente paso: los modales de Facturación
+   (`.modal-box`), Playoff (`.modal-overlay`) y Transmisión tienen su
+   propio CSS; revisar que también tengan botones fijos y se vean bien
+   en celular. Evaluar pasar "Nuevo Campeonato" (el más largo, ~1900px
+   de alto) a secciones como Editar categoría.
+2. `planilla.html` en solo lectura: aplicar el modo lectura desde el
+   inicio, no solo al pulsar "Cargar Planilla".
+3. Importación de jugadores: decidir si se soportan los 2 formatos
+   libres que no se leen (Municipio de Loja, Servientrega).
+4. `portal-tecnico.html`: el texto de bienvenida menciona "estado
+   financiero" también para el jugador. Cosmético.
+5. Ejecutar `npm run smoke:matrix` y `npm run smoke:roles` (requieren
+   los usuarios QA sembrados).
+6. Reporte ejecutivo financiero por periodos; desempates avanzados;
+   formatos de playoff no potencia de 2; QA responsive con datos reales.
+7. Actualizar la tabla "Resumen por Módulo" de
+   `docs/ESTADO_IMPLEMENTACION_SGD.md` (sigue con fecha 2026-05-28).
+
+**C. Bloqueados por decisión o insumos externos**
+1. Equipo duplicado "80 FC" en Copa Ciudad de Loja (`equipos.id` 81 y
+   54): decidir cuál conservar.
+2. Datos reales de LT&C (RUC, razón social) en Facturación.
+3. Facturación Fase 4 (SRI electrónico): certificado digital.
+4. Activación automática de pago: credenciales PayPhone / PayPal.
+5. TURN para WebRTC: elegir proveedor; antes, prueba real de
+   transmisiones en producción.
+6. App móvil: `npm run e2e:mobile-flow` con credenciales reales y
+   congelar el contrato con el cliente mobile.
+
+---
+
 ## 2026-10-10 - Estado para continuar (permisos por rol, importación multi-hoja, finanzas por rol)
 
 ### Estado actualizado

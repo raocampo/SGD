@@ -1,4 +1,114 @@
+## 2026-10-11 - CIERRE DE SESIÓN (3 partes) y pendientes para continuar desde la oficina
+
+> Todo commiteado y pusheado a `origin/main`. Sin migraciones nuevas.
+
+### Qué quedó hecho hoy (todo frontend, sin cambios de backend ni de datos)
+| Parte | Cambio | Commit |
+|---|---|---|
+| 1 | Diálogos de formulario (`sgd-dialog`) con scroll, cabecera y botones fijos; "Editar categoría" en 6 secciones; X para cerrar; el error lleva al campo | `dde5080` |
+| 2 | Ningún formulario se cierra con clic fuera (8 lugares); modales antiguos (`.modal-content`) con título, X y botones fijos; modales por encima de la barra superior en celular | `e53ad2d` |
+| 3 | Editar categoría oculta los campos que no aplican (límites de cambios en "Entra y sale", juveniles, ascendentes, clasificados/llave según método) | `96d571c` |
+
+Detalle y verificación: entradas "2026-10-11", "(parte 2)" y "(parte 3)"
+más abajo.
+
+### Criterios de formularios confirmados por el usuario
+- Todo formulario debe poder recorrerse con scroll y tener Guardar /
+  Cancelar siempre visibles.
+- Ningún formulario se cierra por un clic fuera: solo Cancelar, X o Esc.
+  Las ventanas de solo consulta y los avisos sí pueden cerrarse así.
+- Los campos que no aplican según otra opción del mismo formulario se
+  ocultan (o desactivan), no se dejan editables.
+- Cambiar sin dañar lo que ya funciona: verificar en navegador antes de
+  subir.
+
+### Piezas reutilizables que quedaron en `core.js` (`mostrarFormularioModal`)
+- `{ type: "section", label, icon, hint }` → título de sección.
+- `span: 2` → campo a todo el ancho.
+- `visibleWhen: (valores) => boolean` → campo dependiente; oculto no se
+  valida y conserva su valor.
+- `ancho: "lg"` (860px) / `"md"` (640px) / `"sm"`.
+
+### Para continuar desde la oficina (otro equipo)
+La carpeta se sincroniza por MEGA, pero MEGA **no** copia lo que empieza
+con punto: `.git`, `.env`, `.vscode` son propios de cada equipo. Por eso
+en la oficina los archivos llegan actualizados por MEGA mientras el
+`.git` local sigue apuntando a un commit viejo, y `git status` los
+muestra como "modificados" aunque sean idénticos a lo ya subido.
+
+1. Esperar a que MEGA termine de sincronizar.
+2. `git fetch origin`
+3. `git diff --stat origin/main` → si no imprime nada, la carpeta ya es
+   igual a `origin/main`: alinear con `git reset origin/main` (no toca
+   ningún archivo, solo mueve el puntero). `git status` queda limpio.
+4. Si el `diff` sí muestra archivos, **no** hacer `reset`: hay trabajo
+   local sin subir o MEGA no terminó. Revisar antes de continuar.
+5. `cd backend && npm install` solo si `node_modules` llegó de otro
+   sistema operativo (trae binarios de `sharp` de la otra plataforma).
+6. `backend/.env` es el de ese equipo; el de Fedora no viaja. Referencia:
+   `backend/.env.example` y la sección "Cómo levantar el proyecto en el
+   equipo Fedora" del cierre del 2026-10-10.
+7. `index.html` con Live Server: abrir con la raíz en `frontend/`
+   (`.vscode/settings.json` → `"liveServer.settings.root": "/frontend"`)
+   o usar `http://localhost:5000/index.html` del backend.
+
+Último commit de código: `96d571c`. Sin migraciones nuevas (última:
+`075`). Producción: `https://ltyc.corpsimtelec.com/`.
+
+### Pendientes para retomar
+
+**A. Por confirmar en producción (los hace el usuario; no bloquean código)**
+1. Editar categoría: abrir, comprobar scroll y botones fijos, cambiar
+   "Modo de sustitución" a "Entra y sale" (desaparecen los límites) y
+   **guardar de verdad** una categoría. El guardado real desde el diálogo
+   nuevo es lo único de hoy que no se ejecutó contra un servidor.
+2. Abrir en celular Nuevo Campeonato / Nuevo Equipo / Nuevo Jugador:
+   título, X y botones a la vista, y que un clic fuera no los cierre.
+3. Abrir una vez los modales a los que solo se les quitó el cierre por
+   clic fuera y no se vieron en pantalla: transmisión, pago de plan
+   (`planes.html`), cuenta con pago pendiente (login) y plan/estado de
+   organizador (`admin.html`). Deben cerrar con su botón.
+4. Del 10-oct, aún sin confirmar: importar el Excel de Induloja (2
+   hojas) en Jugadores; aviso de deuda como dirigente/técnico y jugador
+   sin Finanzas; Tablas/Partidos/Playoff como organizador; planilla en
+   solo lectura con un dirigente real.
+5. Del 01/02-oct: los 5 equipos nuevos + "Regenerar (preservar
+   jugados)"; partido MEGA SANTIAGO vs CONSTRUGRID (migración `075`);
+   vínculo de jugador por cédula al registrarse.
+
+**B. Código sin bloqueo (candidatos para la próxima sesión)**
+1. Formularios, siguiente paso: los modales de Facturación
+   (`.modal-box`), Playoff (`.modal-overlay`) y Transmisión tienen su
+   propio CSS; revisar que también tengan botones fijos y se vean bien
+   en celular. Evaluar pasar "Nuevo Campeonato" (el más largo, ~1900px
+   de alto) a secciones como Editar categoría.
+2. `planilla.html` en solo lectura: aplicar el modo lectura desde el
+   inicio, no solo al pulsar "Cargar Planilla".
+3. Importación de jugadores: decidir si se soportan los 2 formatos
+   libres que no se leen (Municipio de Loja, Servientrega).
+4. `portal-tecnico.html`: el texto de bienvenida menciona "estado
+   financiero" también para el jugador. Cosmético.
+5. Ejecutar `npm run smoke:matrix` y `npm run smoke:roles` (requieren
+   los usuarios QA sembrados).
+6. Reporte ejecutivo financiero por periodos; desempates avanzados;
+   formatos de playoff no potencia de 2; QA responsive con datos reales.
+7. Actualizar la tabla "Resumen por Módulo" de
+   `docs/ESTADO_IMPLEMENTACION_SGD.md` (sigue con fecha 2026-05-28).
+
+**C. Bloqueados por decisión o insumos externos**
+1. Equipo duplicado "80 FC" en Copa Ciudad de Loja (`equipos.id` 81 y
+   54): decidir cuál conservar.
+2. Datos reales de LT&C (RUC, razón social) en Facturación.
+3. Facturación Fase 4 (SRI electrónico): certificado digital.
+4. Activación automática de pago: credenciales PayPhone / PayPal.
+5. TURN para WebRTC: elegir proveedor; antes, prueba real de
+   transmisiones en producción.
+6. App móvil: `npm run e2e:mobile-flow` con credenciales reales y
+   congelar el contrato con el cliente mobile.
+
 ## 2026-10-11 (parte 3) - Editar categoría: los campos que no aplican se ocultan (sustitución "Entra y sale")
+
+> Commiteado y pusheado (`96d571c`).
 
 El usuario mostró que, al elegir "Entra y sale (fútbol sala, sin
 límite)" en Editar categoría, seguían visibles "Cambios oficiales
