@@ -2844,9 +2844,28 @@ class Partido {
 
     const windows = buildWindowsFromEvento(evento);
 
-    // Cursor de fecha: si el evento tiene fecha_fin y ya pasó, usamos hoy
+    // Cursor de fecha: nunca antes de la fecha ya programada/jugada mas
+    // reciente de esta categoria -- sin este piso, los partidos NUEVOS
+    // (equipos agregados post-sorteo) podian agendarse antes que partidos
+    // ya programados de una jornada mas alta, dejando el numero de jornada
+    // desincronizado del orden cronologico real (reportado: jornada 5
+    // jugada antes que la jornada 1).
+    const fechaMaxExistenteR = await pool.query(
+      `SELECT MAX(fecha_partido) AS max_fecha FROM partidos
+        WHERE evento_id = $1
+          AND estado IN ('finalizado', 'no_presentaron_ambos', 'programado', 'suspendido', 'aplazado', 'en_curso')`,
+      [evento_id]
+    );
+    const fechaMaxExistente = fechaMaxExistenteR.rows[0]?.max_fecha
+      ? new Date(fechaMaxExistenteR.rows[0].max_fecha)
+      : null;
     const hoy = new Date();
     let cursorDate = new Date(hoy);
+    if (fechaMaxExistente) {
+      const pisoFecha = new Date(fechaMaxExistente);
+      pisoFecha.setDate(pisoFecha.getDate() + 1);
+      if (pisoFecha > cursorDate) cursorDate = pisoFecha;
+    }
     let cursorTimeMin = 0;
 
     const creados = [];
