@@ -1385,8 +1385,61 @@ function construirTitularidadPublica(convocatoria, cambios) {
   return null;
 }
 
+// Resultados de la ULTIMA JORNADA JUGADA de cada categoria del campeonato
+// (no un top-N global): antes se traian "los ultimos 8 partidos con
+// resultado del campeonato" sin agrupar por categoria/jornada, asi que si
+// el campeonato tenia mas de una categoria jugando el mismo dia, competian
+// por los mismos cupos y se perdian partidos reales de la jornada mostrada
+// (reportado: 12 partidos / 11 con resultado, solo 8 visibles). Ahora se
+// calcula, POR CADA evento_id, cual fue su ultima jornada con resultado
+// (por numero de jornada si lo tiene; si no, por fecha) y se devuelven
+// TODOS los partidos de esa jornada para cada categoria, sin limite
+// artificial de filas -- solo un tope de seguridad.
+async function obtenerResultadosUltimaJornadaPorCampeonato(campeonatoId, { limite = 60 } = {}) {
+  const id = normalizarEntero(campeonatoId);
+  if (!id) return [];
+
+  const q = `
+    WITH candidatos AS (
+      SELECT
+        p.id, p.fecha_partido, p.estado,
+        p.resultado_local, p.resultado_visitante,
+        p.evento_id,
+        COALESCE(p.jornada::text, p.fecha_partido::text, p.id::text) AS jornada_key,
+        el.nombre AS equipo_local_nombre, el.logo_url AS equipo_local_logo_url,
+        ev2.nombre AS equipo_visitante_nombre, ev2.logo_url AS equipo_visitante_logo_url,
+        e.nombre AS evento_nombre,
+        c.id AS campeonato_id, c.nombre AS campeonato_nombre
+      FROM partidos p
+      JOIN campeonatos c ON c.id = p.campeonato_id
+      LEFT JOIN equipos el ON el.id = p.equipo_local_id
+      LEFT JOIN equipos ev2 ON ev2.id = p.equipo_visitante_id
+      LEFT JOIN eventos e ON e.id = p.evento_id
+      WHERE p.campeonato_id = $1
+        AND p.estado IN ('finalizado','no_presentaron_ambos','no_presentaron_local','no_presentaron_visitante')
+        AND p.resultado_local IS NOT NULL
+        AND p.resultado_visitante IS NOT NULL
+    ),
+    ultima_por_evento AS (
+      SELECT DISTINCT ON (evento_id) evento_id, jornada_key
+      FROM candidatos
+      ORDER BY evento_id, fecha_partido DESC NULLS LAST, id DESC
+    )
+    SELECT cd.*
+    FROM candidatos cd
+    JOIN ultima_por_evento u
+      ON u.evento_id IS NOT DISTINCT FROM cd.evento_id
+     AND u.jornada_key = cd.jornada_key
+    ORDER BY cd.evento_nombre NULLS LAST, cd.fecha_partido DESC NULLS LAST, cd.id DESC
+    LIMIT $2
+  `;
+  const r = await pool.query(q, [id, Math.max(1, Math.min(200, Number.parseInt(limite, 10) || 60))]);
+  return r.rows;
+}
+
 module.exports = {
   listarCampeonatosPublicos,
+  obtenerResultadosUltimaJornadaPorCampeonato,
   obtenerCampeonatoPublico,
   listarEventosPublicosPorCampeonato,
   obtenerPartidosPublicosPorEvento,
