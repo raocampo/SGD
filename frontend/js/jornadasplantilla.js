@@ -111,7 +111,12 @@ async function cargarPartidosJ() {
       const conProgramado = jornadasDisponibles.find((j) =>
         (mapaJornadas.get(j) || []).some((p) => p.estado === "programado")
       );
-      jornadaActualJ = conProgramado || jornadasDisponibles[0] || 1;
+      // Sin jornada por jugar: priorizar la más reciente ya finalizada (lo que el
+      // organizador quiere compartir recién terminó la fecha), no la jornada 1.
+      const finalizadas = [...jornadasDisponibles]
+        .reverse()
+        .find((j) => (mapaJornadas.get(j) || []).some((p) => ["finalizado", "no_presentaron_ambos"].includes(p.estado)));
+      jornadaActualJ = conProgramado || finalizadas || jornadasDisponibles[0] || 1;
     }
   } catch (e) {
     console.warn("No se pudieron cargar partidos:", e);
@@ -224,7 +229,14 @@ function renderJornadaActualRegularJ() {
   if (!zona) return;
 
   const partidos = partidosJ.filter((p) => Number(p.jornada) === jornadaActualJ);
-  const titulo = `${(ctxJ.campeonatoNombre || "TORNEO").toUpperCase()} • JORNADA ${jornadaActualJ || "-"}`;
+  // Si ya se jugaron todos los partidos de la jornada, el poster es de RESULTADOS
+  // (mismo rotulo que usa la landing publica); si todavia hay partidos por jugar,
+  // sigue siendo el anuncio de programacion.
+  const todosFinalizados =
+    partidos.length > 0 &&
+    partidos.every((p) => ["finalizado", "no_presentaron_ambos"].includes(p.estado));
+  const etiquetaJornada = todosFinalizados ? "RESULTADOS JORNADA" : "JORNADA";
+  const titulo = `${(ctxJ.campeonatoNombre || "TORNEO").toUpperCase()} • ${etiquetaJornada} ${jornadaActualJ || "-"}`;
   const rangoFecha = construirRangoFechaJ(partidos);
   const detalle = [ctxJ.tipoFutbol, ctxJ.eventoNombre ? `CATEGORÍA: ${ctxJ.eventoNombre.toUpperCase()}` : "", rangoFecha]
     .filter(Boolean)
@@ -304,8 +316,12 @@ function renderPartidoJornadaJ(p) {
   const logoVisita = normalizarLogoUrlJ(p.equipo_visitante_logo_url);
   const estado = p.estado || "pendiente";
   const finalizado = ["finalizado", "no_presentaron_ambos"].includes(estado);
-  const gL = p.goles_local != null ? p.goles_local : finalizado ? "?" : "-";
-  const gV = p.goles_visitante != null ? p.goles_visitante : finalizado ? "?" : "-";
+  // El campo real en `partidos` es resultado_local/resultado_visitante -- goles_local/
+  // goles_visitante no existe en el payload, por eso un partido finalizado siempre
+  // mostraba "?" en vez del marcador real (bug: la plantilla de jornada nunca pudo
+  // servir como póster de RESULTADOS, solo como anuncio de programación).
+  const gL = p.resultado_local != null ? p.resultado_local : finalizado ? "?" : "-";
+  const gV = p.resultado_visitante != null ? p.resultado_visitante : finalizado ? "?" : "-";
 
   const hora = p.hora_partido ? String(p.hora_partido).slice(0, 5) : "";
   const cancha = p.cancha || "";
