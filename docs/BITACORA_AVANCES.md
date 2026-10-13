@@ -1,3 +1,89 @@
+## 2026-10-13 - Póster de Jornada/Resultados + "Resultados de la jornada" incompletos en la landing
+
+> Commiteado y pusheado (`deb4ad4`, `e71344a`). Datos de producción
+> corregidos puntualmente (2 fechas), sin migración nueva.
+
+### Parte 1 — Pedido inicial: tabla de resultados exportable como imagen
+
+El usuario pidió agregar, dentro del sistema (no solo en la landing
+pública), una tabla de resultados "de acuerdo a las planillas" exportable
+como imagen. Investigando se encontró que la funcionalidad **ya existía**:
+botón "Plantilla Jornada" en Partidos → `jornadasplantilla.html` (póster
+con Exportar PNG/PDF vía `html2canvas`, mismo patrón que fixture/grupos/
+tablas), pero con un bug que la dejaba inservible para resultados: leía
+`p.goles_local`/`p.goles_visitante` — campos que no existen en el payload
+de `GET /partidos/evento/:id` (el campo real es `resultado_local`/
+`resultado_visitante`, confirmado contra datos reales) — así que un
+partido finalizado siempre mostraba "? – ?" en vez del marcador real.
+
+- `jornadasplantilla.js`: usa los campos correctos. El cruce de playoff
+  (`renderCrucePlayoffJ`) ya los leía bien, por eso el bug solo afectaba
+  al póster de jornada regular.
+- Si no hay jornada con partidos "programado", el selector ya no cae por
+  defecto a la jornada 1 — prioriza la última jornada ya finalizada.
+- El título del póster dice "RESULTADOS JORNADA X" en vez de "JORNADA X"
+  cuando todos los partidos de esa jornada ya se jugaron.
+- `partidos.html`: el botón pasa de "Plantilla Jornada" a "Jornada /
+  Resultados" para que se note que también sirve para compartir
+  resultados.
+
+### Parte 2 — "No me presenta todos los resultados de la última fecha jugada"
+
+Mientras se trabajaba en la parte 1, el usuario reportó en producción (captura
+de la landing, campeonato "Liga InterEmpresarial 1era Edición"): 12
+partidos en la última jornada, 11 con resultado cargado, pero la landing
+solo mostraba 8.
+
+**Causa raíz**: la sección "Resultados de la jornada" de la landing (dos
+copias idénticas del mismo SQL, en `authController.construirLandingOrganizador`
+y `publicPortalController.listarResultadosRecientesPorCampeonato`) traía
+"los últimos 8 partidos con resultado del campeonato completo" ordenados
+por fecha/id, **sin agrupar por categoría ni por jornada**. Si el
+campeonato tiene varios grupos/categorías, sus partidos compiten por los
+mismos 8 cupos — se verificó con el campeonato real: la jornada 3 (última
+con resultados) tiene 7 partidos repartidos en 4 grupos (A-D), y el
+`LIMIT 8` dejaba fuera 1 de esos 7 y colaba 2 partidos de una jornada
+anterior (jornada 1) para completar el cupo.
+
+- Nueva `publicPortalService.obtenerResultadosUltimaJornadaPorCampeonato()`:
+  para cada categoría del campeonato calcula su propia última jornada con
+  resultado (por número de jornada; si no tiene, cae a fecha) y devuelve
+  TODOS sus partidos, sin límite artificial (solo un tope de seguridad de
+  60). Los dos controllers ahora llaman a esta única función en vez de
+  repetir el SQL.
+
+**El resto del "12 vs 7" era un problema de datos, no de código**: investigando
+por qué el conteo del usuario no cuadraba exacto, se encontraron 2 fechas
+corruptas en producción (año truncado a 3 dígitos: "0026"/"0001" en vez de
+"2026") que escondían esos partidos de CUALQUIER vista ordenada por
+fecha — ni el `LIMIT 8` viejo ni la nueva agrupación por jornada podían
+mostrarlos mientras su fecha fuera inválida:
+- Partido 6468 (NUTRIFARM 2-2 VELOCITY, jornada 1, finalizado): "0026-10-02"
+  → "2026-10-02" (solo el año estaba truncado, día/mes ya coincidían con
+  el resto de esa jornada).
+- Partido 6735 (SERVIENTREGA vs MOTRICENTRO KIA, jornada 2, programado,
+  sin resultado): fecha placeholder "0001-01-01" → "2026-10-16", alineada
+  con sus 2 partidos hermanos de la misma jornada/grupo.
+
+Se barrió toda la tabla `partidos` de producción buscando años < 2020:
+no aparecieron más casos. Se confirmó además que la numeración de
+`jornada` de este campeonato específico está desordenada respecto a la
+fecha real (ej. jornada 5 jugada el 26-sep, ANTES que jornada 1 el 2-oct)
+— efecto residual de regeneraciones de fixture anteriores (01-oct). No se
+tocó esa numeración; solo se documenta como **pendiente de decisión del
+usuario** si quiere que se renumeren las jornadas para que coincidan con
+el orden cronológico real (afecta solo la etiqueta "Jornada N" mostrada,
+no los resultados/tablas en sí).
+
+### Verificación
+`node --check` en los 5 archivos tocados, columna `resultado_local`/
+`resultado_visitante` confirmada contra datos reales, balance de `<div>`,
+`smokeFrontendRoleGuards.js` 49/49. La nueva función de resultados probada
+contra 2 campeonatos reales de producción (7 y 4 resultados respectivamente)
+y contra un `campeonato_id` inexistente (responde vacío sin error). Las 2
+correcciones de fecha verificadas antes/después directamente en
+producción.
+
 ## 2026-10-11 - CIERRE DE SESIÓN (3 partes) y pendientes para continuar desde la oficina
 
 > Todo commiteado y pusheado a `origin/main`. Sin migraciones nuevas.
