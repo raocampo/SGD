@@ -1,3 +1,100 @@
+## 2026-10-14 - Estado para continuar (resultados de jornada y datos de Liga InterEmpresarial)
+
+### Estado actualizado
+- Proyecto sincronizado con `origin/main` (`e9e8aa4`). Producción se
+  redespliega sola desde `main`. Sin migraciones nuevas (última: `075`).
+- Desde el 11-oct (detalle en `docs/BITACORA_AVANCES.md`, entradas 13 y
+  14-oct):
+  1. **Póster "Jornada / Resultados"** (`jornadasplantilla.html`)
+     muestra el marcador real y prioriza la última jornada jugada; botón
+     visible en la pestaña principal de `partidos.html`.
+  2. **"Resultados de la jornada" en la landing**: una sola función en
+     `publicPortalService` (antes SQL duplicado con `LIMIT 8`); toma la
+     última fecha con resultado de cada grupo y una ventana de 3 días.
+  3. **Regenerar fixture (preservar jugados)**: los partidos nuevos
+     arrancan después de la fecha más reciente ya programada.
+  4. **Datos de producción** (Liga InterEmpresarial, con respaldo): 2
+     fechas corruptas corregidas y jornadas renumeradas por grupo según
+     la fecha real.
+
+### Verificación realizada (según las entradas de la oficina)
+- Funciones de resultados probadas contra campeonatos reales de
+  producción; renumeración aplicada en una transacción tras vista
+  previa, con conteos de partidos y resultados idénticos antes/después.
+- `smokeFrontendRoleGuards.js` 49/49.
+- Revisión de solo lectura en producción el 14-oct desde Fedora (ver
+  bitácora): lo abierto del 13-oct quedó resuelto.
+
+### Pendientes para retomar
+
+**A. Por confirmar en producción (los hace el usuario; no bloquean código)**
+1. Landing de Liga InterEmpresarial: que "Resultados de la jornada"
+   muestre los 12 resultados del fin de semana 02/03-oct, y que el botón
+   "Jornada / Resultados" se encuentre en Partidos sin cambiar de
+   pestaña (14-oct).
+2. Con la nueva numeración por grupo de Liga InterEmpresarial: revisar
+   el póster "Jornada / Resultados" y el selector de jornada en
+   `partidos.html` (14-oct).
+3. Editar una categoría y **guardar de verdad** (cambiar "Modo de
+   sustitución" y comprobar que se ocultan los límites). Abrir en
+   celular Nuevo Campeonato / Equipo / Jugador (11-oct).
+4. Abrir una vez los modales de transmisión, pago de plan, pago
+   pendiente (login) y plan/estado de organizador (`admin.html`); deben
+   cerrar con su botón (11-oct).
+5. Del 10-oct: importar el Excel de Induloja (2 hojas); aviso de deuda
+   como dirigente/técnico y jugador sin Finanzas; Tablas/Partidos/
+   Playoff como organizador; planilla en solo lectura con un dirigente.
+6. Del 01/02-oct: vínculo de jugador por cédula al registrarse.
+
+**B. Datos que requieren decisión del usuario**
+1. **Partidos con fecha pasada que siguen "programados" y sin planilla**
+   (consulta en producción del 14-oct): Interjorgas Financiero 7,
+   CAMPEONATO BARRIAL 1, Copa Ciudad de Loja 1, Torneo Interinst. de
+   Fútsala 1. O se jugaron y falta cargar la planilla, o se
+   suspendieron/aplazaron y conviene cambiarles el estado. Interjorgas es
+   de Liliana Herrera.
+2. **Jornadas fuera de orden cronológico en otros organizadores**
+   (eventos 16 y 18 Copa Velocity Máster, 19 Campeonato Barrial, 30
+   Torneo Interinst. de Fútsala): no se tocaron por ser de otros
+   organizadores. Decidir si se ofrece la misma renumeración por grupo
+   (con respaldo previo, como se hizo con el evento 34).
+3. Equipo duplicado "80 FC" en Copa Ciudad de Loja (`equipos.id` 81 y
+   54): decidir cuál conservar.
+
+**C. Código sin bloqueo (candidatos para la próxima sesión)**
+1. Formularios: revisar los modales de Facturación (`.modal-box`),
+   Playoff (`.modal-overlay`) y Transmisión (CSS propio) para que también
+   tengan botones fijos y se vean bien en celular; evaluar pasar "Nuevo
+   Campeonato" (el más largo) a secciones.
+2. `planilla.html` en solo lectura: aplicar el modo lectura desde el
+   inicio, no solo al pulsar "Cargar Planilla".
+3. Importación de jugadores: decidir si se soportan los 2 formatos
+   libres que no se leen (Municipio de Loja, Servientrega).
+4. `portal-tecnico.html`: texto de bienvenida menciona "estado
+   financiero" también para el jugador. Cosmético.
+5. Ejecutar `npm run smoke:matrix` y `npm run smoke:roles` (requieren
+   usuarios QA sembrados).
+6. Reporte ejecutivo financiero por periodos; desempates avanzados;
+   formatos de playoff no potencia de 2; QA responsive con datos reales.
+7. Actualizar la tabla "Resumen por Módulo" de
+   `docs/ESTADO_IMPLEMENTACION_SGD.md` (sigue con fecha 2026-05-28).
+
+**D. Bloqueados por insumos externos**
+1. Datos reales de LT&C (RUC, razón social) en Facturación.
+2. Facturación Fase 4 (SRI electrónico): certificado digital.
+3. Activación automática de pago: credenciales PayPhone / PayPal.
+4. TURN para WebRTC: elegir proveedor; antes, prueba real de
+   transmisiones en producción.
+5. App móvil: `npm run e2e:mobile-flow` con credenciales reales y
+   congelar el contrato con el cliente mobile.
+
+**Entorno**: la BD local del equipo Fedora es el respaldo del 10-oct
+(sin la renumeración de jornadas, las 2 fechas corregidas ni los equipos
+nuevos de Liga InterEmpresarial). Refrescarla desde producción antes de
+probar algo de ese campeonato.
+
+---
+
 ## 2026-10-11 - Estado para continuar (experiencia de formularios)
 
 ### Estado actualizado

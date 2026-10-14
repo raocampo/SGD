@@ -1,3 +1,101 @@
+## 2026-10-14 - Estado consolidado y pendientes para continuar
+
+> Sincronizado con `origin/main` (`e9e8aa4`) en el equipo Fedora. Sin
+> migraciones nuevas (última: `075`). Sin cambios de código en esta
+> entrada: solo se consolida el estado tras las sesiones del 13 y 14-oct
+> en la oficina.
+
+### Qué cambió desde el cierre del 11-oct
+| Fecha | Cambio | Commit / tipo |
+|---|---|---|
+| 13-oct | Póster "Jornada / Resultados" muestra el marcador real (antes "? – ?") | `deb4ad4` |
+| 13-oct | "Resultados de la jornada" de la landing ya no se corta en 8 partidos | `e71344a` |
+| 13-oct | 2 fechas con año truncado corregidas en producción (partidos 6468, 6735) | datos |
+| 13-oct | Regenerar fixture no agenda partidos nuevos antes de lo ya programado | `70adf1c` |
+| 13-oct | Liga InterEmpresarial: jornadas renumeradas **por grupo** según la fecha real, con respaldo previo (`database/backups/campeonato20_partidos_backup_2026-10-13.json`) | datos |
+| 14-oct | La "última jornada" de la landing se calcula por grupo | `11802ef` |
+| 14-oct | Resultados de la landing con ventana de 3 días (un mismo fin de semana entra completo) y botón "Jornada / Resultados" visible en la pestaña principal de Partidos | `d99d5d7` |
+
+Detalle: entradas del 13 y 14-oct más abajo.
+
+### Revisión en producción (solo lectura, 14-oct)
+- Lo que la entrada "2026-10-13 (parte 2)" dejó abierto quedó resuelto:
+  la numeración en orden cronológico vino de la renumeración por grupo
+  del 13-oct (con respaldo); el partido 6725 (CR NEUMATICOS vs
+  Lactofino) ya está finalizado con planilla; las "jornadas 9 y 10" de
+  LojaSystem son las últimas rondas del Grupo C en su propia numeración,
+  no un error.
+- Nuevo hallazgo, ver pendiente B.1: hay partidos con fecha pasada que
+  siguen "programados" y sin planilla en 4 campeonatos.
+
+### Pendientes para retomar
+
+**A. Por confirmar en producción (los hace el usuario; no bloquean código)**
+1. Landing de Liga InterEmpresarial: que "Resultados de la jornada"
+   muestre los 12 resultados del fin de semana 02/03-oct, y que el botón
+   "Jornada / Resultados" se encuentre en Partidos sin cambiar de
+   pestaña (14-oct).
+2. Con la nueva numeración por grupo de Liga InterEmpresarial: revisar
+   el póster "Jornada / Resultados" y el selector de jornada en
+   `partidos.html` (14-oct).
+3. Editar una categoría y **guardar de verdad** (cambiar "Modo de
+   sustitución" y comprobar que se ocultan los límites). Abrir en
+   celular Nuevo Campeonato / Equipo / Jugador (11-oct).
+4. Abrir una vez los modales de transmisión, pago de plan, pago
+   pendiente (login) y plan/estado de organizador (`admin.html`); deben
+   cerrar con su botón (11-oct).
+5. Del 10-oct: importar el Excel de Induloja (2 hojas); aviso de deuda
+   como dirigente/técnico y jugador sin Finanzas; Tablas/Partidos/
+   Playoff como organizador; planilla en solo lectura con un dirigente.
+6. Del 01/02-oct: vínculo de jugador por cédula al registrarse.
+
+**B. Datos que requieren decisión del usuario**
+1. **Partidos con fecha pasada que siguen "programados" y sin planilla**
+   (consulta en producción del 14-oct): Interjorgas Financiero 7,
+   CAMPEONATO BARRIAL 1, Copa Ciudad de Loja 1, Torneo Interinst. de
+   Fútsala 1. O se jugaron y falta cargar la planilla, o se
+   suspendieron/aplazaron y conviene cambiarles el estado. Interjorgas es
+   de Liliana Herrera.
+2. **Jornadas fuera de orden cronológico en otros organizadores**
+   (eventos 16 y 18 Copa Velocity Máster, 19 Campeonato Barrial, 30
+   Torneo Interinst. de Fútsala): no se tocaron por ser de otros
+   organizadores. Decidir si se ofrece la misma renumeración por grupo
+   (con respaldo previo, como se hizo con el evento 34).
+3. Equipo duplicado "80 FC" en Copa Ciudad de Loja (`equipos.id` 81 y
+   54): decidir cuál conservar.
+
+**C. Código sin bloqueo (candidatos para la próxima sesión)**
+1. Formularios: revisar los modales de Facturación (`.modal-box`),
+   Playoff (`.modal-overlay`) y Transmisión (CSS propio) para que también
+   tengan botones fijos y se vean bien en celular; evaluar pasar "Nuevo
+   Campeonato" (el más largo) a secciones.
+2. `planilla.html` en solo lectura: aplicar el modo lectura desde el
+   inicio, no solo al pulsar "Cargar Planilla".
+3. Importación de jugadores: decidir si se soportan los 2 formatos
+   libres que no se leen (Municipio de Loja, Servientrega).
+4. `portal-tecnico.html`: texto de bienvenida menciona "estado
+   financiero" también para el jugador. Cosmético.
+5. Ejecutar `npm run smoke:matrix` y `npm run smoke:roles` (requieren
+   usuarios QA sembrados).
+6. Reporte ejecutivo financiero por periodos; desempates avanzados;
+   formatos de playoff no potencia de 2; QA responsive con datos reales.
+7. Actualizar la tabla "Resumen por Módulo" de
+   `docs/ESTADO_IMPLEMENTACION_SGD.md` (sigue con fecha 2026-05-28).
+
+**D. Bloqueados por insumos externos**
+1. Datos reales de LT&C (RUC, razón social) en Facturación.
+2. Facturación Fase 4 (SRI electrónico): certificado digital.
+3. Activación automática de pago: credenciales PayPhone / PayPal.
+4. TURN para WebRTC: elegir proveedor; antes, prueba real de
+   transmisiones en producción.
+5. App móvil: `npm run e2e:mobile-flow` con credenciales reales y
+   congelar el contrato con el cliente mobile.
+
+**Entorno**: la BD local del equipo Fedora es el respaldo del 10-oct
+(sin la renumeración de jornadas, las 2 fechas corregidas ni los equipos
+nuevos de Liga InterEmpresarial). Refrescarla desde producción antes de
+probar algo de ese campeonato.
+
 ## 2026-10-14 (parte 2) - "Resultados de la jornada" con ventana de días + botón de exportar más visible
 
 > Commiteado y pusheado (`d99d5d7`).
@@ -147,6 +245,12 @@ ven bien con la nueva numeración para Liga InterEmpresarial.
   previo": ese commit no existe en el repo.
 
 ### Estado observado en producción al retomar (solo lectura, 13-oct)
+> **Actualización 14-oct**: resuelto. La numeración la corrigió la
+> sesión de la oficina el 13-oct, por grupo y con respaldo (ver entrada
+> "2026-10-14 - Renumeración..."); 6725 ya está finalizado; las
+> jornadas 9 y 10 son rondas finales del Grupo C. Se conserva el texto
+> original abajo.
+
 Liga InterEmpresarial, categoría Abierta (evento 34): 28 equipos, 84
 partidos. La numeración de jornadas **ya aparece en orden cronológico**
 (J1 26-sep→02-oct, J2 02→03-oct, J3 03→17-oct, J4 16→17-oct, J5
