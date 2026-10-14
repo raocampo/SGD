@@ -1,3 +1,42 @@
+## 2026-10-13 (parte 2) - Regenerar fixture no agenda partidos nuevos antes de lo ya programado + estado al retomar
+
+> Commiteado y pusheado (`70adf1c`) desde la oficina, sin entrada propia
+> en la bitácora. Se documenta aquí al retomar el 13-oct en el equipo
+> Fedora, a partir del mensaje de commit y del diff; no verificado de
+> nuevo por esta sesión.
+
+- `Partido.js` (`regenerarFixturePreservandoJugados`): el cursor de fecha
+  para los partidos NUEVOS arrancaba siempre en "hoy". Ahora parte del
+  día siguiente a la fecha más reciente entre los partidos preservados
+  de la categoría (finalizado, no_presentaron_ambos, programado,
+  suspendido, aplazado, en_curso), o de hoy si es más tarde. Así una
+  jornada de número mayor nunca queda fechada antes que una ya
+  programada. Aplica a modo grupos y modo liga.
+- Es el fix preventivo del desorden reportado arriba ("jornada 5 jugada
+  el 26-sep, antes que la jornada 1"). El commit dice que la corrección
+  de los datos existentes iría "en un commit aparte, con respaldo
+  previo": ese commit no existe en el repo.
+
+### Estado observado en producción al retomar (solo lectura, 13-oct)
+Liga InterEmpresarial, categoría Abierta (evento 34): 28 equipos, 84
+partidos. La numeración de jornadas **ya aparece en orden cronológico**
+(J1 26-sep→02-oct, J2 02→03-oct, J3 03→17-oct, J4 16→17-oct, J5
+16-oct), es decir, alguien renumeró o reprogramó después del reporte;
+no hay registro de cómo ni respaldo nuevo en `database/backups/`. No hay
+fechas con año inválido en toda la tabla. Quedan tres cosas por revisar
+con el usuario:
+- Partido 6725 (CR NEUMATICOS vs Lactofino), jornada 1, sigue
+  `programado` con fecha 02-oct ya pasada: falta su planilla o no se
+  jugó.
+- Jornadas 9 y 10 con un solo partido cada una (6821 y 6825, ambos de
+  "LojaSystem", pendientes y sin fecha): efecto de agregar ese equipo y
+  regenerar; las jornadas nuevas continúan después de la última.
+- La jornada 3 mezcla 3 partidos jugados (03-oct) con 6 programados
+  (16/17-oct).
+
+La BD local del equipo Fedora sigue siendo el respaldo del 10-oct: no
+tiene las 2 correcciones de fecha ni los equipos/partidos nuevos.
+
 ## 2026-10-13 - Póster de Jornada/Resultados + "Resultados de la jornada" incompletos en la landing
 
 > Commiteado y pusheado (`deb4ad4`, `e71344a`). Datos de producción
