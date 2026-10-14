@@ -1,3 +1,52 @@
+## 2026-10-14 (parte 2) - "Resultados de la jornada" con ventana de días + botón de exportar más visible
+
+> Commiteado y pusheado (`d99d5d7`).
+
+El usuario compartió 5 capturas reales de planillas (partidos del 02-oct,
+recién completados ese mismo día) que seguían sin verse en la landing,
+aunque el fix anterior (parte 1, mismo día) ya mostraba bien los 7
+resultados del 03-oct. También reportó que no encontraba dónde exportar
+los resultados como imagen para el grupo de WhatsApp de los equipos.
+
+### Resultados faltantes — la agrupación por jornada exacta era demasiado estricta
+`obtenerResultadosUltimaJornadaPorCampeonato()` (parte 1) exigía que el
+`jornada_key` coincidiera exacto dentro de cada grupo. Como distintos
+grupos llegan a "su última jornada" en fechas ligeramente distintas (un
+grupo ya en su ronda del 03-oct, otro todavía terminando la del 02-oct),
+los partidos del 02-oct quedaban fuera para los grupos que ya tenían
+resultados un día después — aunque fueran parte del mismo fin de semana
+de juego. El propio conteo original del usuario ("12 partidos, 11 con
+resultado") siempre sumó estos dos días juntos.
+
+- `publicPortalService.js`: en vez de exigir coincidencia exacta de
+  jornada, calcula por `(evento_id, grupo_id)` la fecha más reciente con
+  resultado y devuelve todos los partidos de ese grupo dentro de una
+  **ventana de 3 días hacia atrás** desde esa fecha (parámetro
+  `ventanaDias`, configurable). Una jornada genuinamente anterior (jugada
+  días o semanas antes) sigue quedando afuera por exceder la ventana.
+
+Verificado: Liga InterEmpresarial pasa de 7 a **12 resultados** (los 7 del
+03-oct + los 5 del 02-oct, exactamente las capturas compartidas).
+Interjorgas Financiero (formato liga, sin grupos) da 3 — más correcto que
+el 4 de antes, que incluía un resultado de una fecha distinta por una
+coincidencia de `jornada_key`, no una regresión real.
+
+### Botón de exportar — estaba escondido en una pestaña secundaria
+"Jornada / Resultados" (el póster exportable como PNG para compartir,
+implementado el 13-oct) vivía solo dentro de la pestaña "Plantilla
+Fixture" de `partidos.html` — el usuario no lo encontraba porque la
+pestaña por defecto es "Filtrar Partidos". Se duplicó el mismo botón ahí,
+junto a "Buscar", visible sin tener que cambiar de pestaña.
+
+### Verificación
+`node --check`, balance de `<div>` en `partidos.html`,
+`smokeFrontendRoleGuards.js` 49/49. Probado contra 2 campeonatos reales de
+producción.
+
+**Pendiente para el usuario**: confirmar que los 12 resultados se ven bien
+en la landing, y que ahora encuentra el botón "Jornada / Resultados" sin
+tener que buscarlo.
+
 ## 2026-10-14 - Renumeración de jornadas de Liga InterEmpresarial (datos) + fix de agrupación por grupo
 
 > Commiteado y pusheado (`11802ef`). Cambio de DATOS en producción aplicado
