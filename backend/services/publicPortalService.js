@@ -1385,16 +1385,20 @@ function construirTitularidadPublica(convocatoria, cambios) {
   return null;
 }
 
-// Resultados de la ULTIMA JORNADA JUGADA de cada categoria del campeonato
-// (no un top-N global): antes se traian "los ultimos 8 partidos con
-// resultado del campeonato" sin agrupar por categoria/jornada, asi que si
-// el campeonato tenia mas de una categoria jugando el mismo dia, competian
-// por los mismos cupos y se perdian partidos reales de la jornada mostrada
-// (reportado: 12 partidos / 11 con resultado, solo 8 visibles). Ahora se
-// calcula, POR CADA evento_id, cual fue su ultima jornada con resultado
-// (por numero de jornada si lo tiene; si no, por fecha) y se devuelven
-// TODOS los partidos de esa jornada para cada categoria, sin limite
-// artificial de filas -- solo un tope de seguridad.
+// Resultados de la ULTIMA JORNADA JUGADA de cada GRUPO de cada categoria del
+// campeonato (no un top-N global): antes se traian "los ultimos 8 partidos
+// con resultado del campeonato" sin agrupar por categoria/jornada, asi que
+// si el campeonato tenia mas de una categoria jugando el mismo dia,
+// competian por los mismos cupos y se perdian partidos reales de la jornada
+// mostrada (reportado: 12 partidos / 11 con resultado, solo 8 visibles).
+// Se calcula, POR CADA (evento_id, grupo_id), cual fue su ultima jornada con
+// resultado (por numero de jornada si lo tiene; si no, por fecha) y se
+// devuelven TODOS los partidos de esa jornada, sin limite artificial de
+// filas -- solo un tope de seguridad. Agrupar por GRUPO (no solo por
+// categoria) importa porque cada grupo puede tener su propio avance de
+// jornadas (ej. un grupo con equipos agregados despues del sorteo) -- usar
+// solo el numero de jornada sin el grupo mezclaria rondas de grupos
+// distintos que coinciden en numero por casualidad.
 async function obtenerResultadosUltimaJornadaPorCampeonato(campeonatoId, { limite = 60 } = {}) {
   const id = normalizarEntero(campeonatoId);
   if (!id) return [];
@@ -1404,7 +1408,7 @@ async function obtenerResultadosUltimaJornadaPorCampeonato(campeonatoId, { limit
       SELECT
         p.id, p.fecha_partido, p.estado,
         p.resultado_local, p.resultado_visitante,
-        p.evento_id,
+        p.evento_id, p.grupo_id,
         COALESCE(p.jornada::text, p.fecha_partido::text, p.id::text) AS jornada_key,
         el.nombre AS equipo_local_nombre, el.logo_url AS equipo_local_logo_url,
         ev2.nombre AS equipo_visitante_nombre, ev2.logo_url AS equipo_visitante_logo_url,
@@ -1420,15 +1424,16 @@ async function obtenerResultadosUltimaJornadaPorCampeonato(campeonatoId, { limit
         AND p.resultado_local IS NOT NULL
         AND p.resultado_visitante IS NOT NULL
     ),
-    ultima_por_evento AS (
-      SELECT DISTINCT ON (evento_id) evento_id, jornada_key
+    ultima_por_grupo AS (
+      SELECT DISTINCT ON (evento_id, grupo_id) evento_id, grupo_id, jornada_key
       FROM candidatos
-      ORDER BY evento_id, fecha_partido DESC NULLS LAST, id DESC
+      ORDER BY evento_id, grupo_id, fecha_partido DESC NULLS LAST, id DESC
     )
     SELECT cd.*
     FROM candidatos cd
-    JOIN ultima_por_evento u
+    JOIN ultima_por_grupo u
       ON u.evento_id IS NOT DISTINCT FROM cd.evento_id
+     AND u.grupo_id IS NOT DISTINCT FROM cd.grupo_id
      AND u.jornada_key = cd.jornada_key
     ORDER BY cd.evento_nombre NULLS LAST, cd.fecha_partido DESC NULLS LAST, cd.id DESC
     LIMIT $2
