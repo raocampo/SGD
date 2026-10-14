@@ -1390,18 +1390,24 @@ function construirTitularidadPublica(convocatoria, cambios) {
 // con resultado del campeonato" sin agrupar por categoria/jornada, asi que
 // si el campeonato tenia mas de una categoria jugando el mismo dia,
 // competian por los mismos cupos y se perdian partidos reales de la jornada
-// mostrada (reportado: 12 partidos / 11 con resultado, solo 8 visibles).
-// Se calcula, POR CADA (evento_id, grupo_id), cual fue su ultima jornada con
-// resultado (por numero de jornada si lo tiene; si no, por fecha) y se
-// devuelven TODOS los partidos de esa jornada, sin limite artificial de
-// filas -- solo un tope de seguridad. Agrupar por GRUPO (no solo por
-// categoria) importa porque cada grupo puede tener su propio avance de
-// jornadas (ej. un grupo con equipos agregados despues del sorteo) -- usar
-// solo el numero de jornada sin el grupo mezclaria rondas de grupos
-// distintos que coinciden en numero por casualidad.
-async function obtenerResultadosUltimaJornadaPorCampeonato(campeonatoId, { limite = 60 } = {}) {
+// mostrada. Se calcula, POR CADA (evento_id, grupo_id), la fecha mas
+// reciente con resultado, y se devuelven todos los partidos de ese grupo
+// dentro de una VENTANA de dias hacia atras desde esa fecha (no solo los
+// de la fecha exacta): un "fin de semana" de partidos puede jugarse en mas
+// de un dia (ej. sabado + domingo) y seguir siendo, para el organizador,
+// "la ultima jornada" -- limitar a una sola fecha exacta dejaba afuera
+// partidos reales de ese mismo fin de semana (reportado: 5 partidos del
+// 02-oct no aparecian porque otros grupos ya tenian resultados del 03-oct).
+// Partidos genuinamente mas viejos (de una jornada anterior, jugada dias o
+// semanas antes) quedan fuera porque exceden la ventana. Sin limite
+// artificial de filas -- solo un tope de seguridad.
+async function obtenerResultadosUltimaJornadaPorCampeonato(
+  campeonatoId,
+  { limite = 60, ventanaDias = 3 } = {}
+) {
   const id = normalizarEntero(campeonatoId);
   if (!id) return [];
+  const dias = Math.max(0, Math.min(14, Number.parseInt(ventanaDias, 10) || 3));
 
   const q = `
     WITH candidatos AS (
@@ -1409,7 +1415,6 @@ async function obtenerResultadosUltimaJornadaPorCampeonato(campeonatoId, { limit
         p.id, p.fecha_partido, p.estado,
         p.resultado_local, p.resultado_visitante,
         p.evento_id, p.grupo_id,
-        COALESCE(p.jornada::text, p.fecha_partido::text, p.id::text) AS jornada_key,
         el.nombre AS equipo_local_nombre, el.logo_url AS equipo_local_logo_url,
         ev2.nombre AS equipo_visitante_nombre, ev2.logo_url AS equipo_visitante_logo_url,
         e.nombre AS evento_nombre,
@@ -1420,25 +1425,26 @@ async function obtenerResultadosUltimaJornadaPorCampeonato(campeonatoId, { limit
       LEFT JOIN equipos ev2 ON ev2.id = p.equipo_visitante_id
       LEFT JOIN eventos e ON e.id = p.evento_id
       WHERE p.campeonato_id = $1
+        AND p.fecha_partido IS NOT NULL
         AND p.estado IN ('finalizado','no_presentaron_ambos','no_presentaron_local','no_presentaron_visitante')
         AND p.resultado_local IS NOT NULL
         AND p.resultado_visitante IS NOT NULL
     ),
-    ultima_por_grupo AS (
-      SELECT DISTINCT ON (evento_id, grupo_id) evento_id, grupo_id, jornada_key
+    max_por_grupo AS (
+      SELECT evento_id, grupo_id, MAX(fecha_partido) AS fecha_max
       FROM candidatos
-      ORDER BY evento_id, grupo_id, fecha_partido DESC NULLS LAST, id DESC
+      GROUP BY evento_id, grupo_id
     )
     SELECT cd.*
     FROM candidatos cd
-    JOIN ultima_por_grupo u
-      ON u.evento_id IS NOT DISTINCT FROM cd.evento_id
-     AND u.grupo_id IS NOT DISTINCT FROM cd.grupo_id
-     AND u.jornada_key = cd.jornada_key
+    JOIN max_por_grupo m
+      ON m.evento_id IS NOT DISTINCT FROM cd.evento_id
+     AND m.grupo_id IS NOT DISTINCT FROM cd.grupo_id
+    WHERE cd.fecha_partido >= (m.fecha_max - ($3 || ' days')::interval)
     ORDER BY cd.evento_nombre NULLS LAST, cd.fecha_partido DESC NULLS LAST, cd.id DESC
     LIMIT $2
   `;
-  const r = await pool.query(q, [id, Math.max(1, Math.min(200, Number.parseInt(limite, 10) || 60))]);
+  const r = await pool.query(q, [id, Math.max(1, Math.min(200, Number.parseInt(limite, 10) || 60)), dias]);
   return r.rows;
 }
 
