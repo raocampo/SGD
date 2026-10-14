@@ -1,3 +1,83 @@
+## 2026-10-14 - Renumeración de jornadas de Liga InterEmpresarial (datos) + fix de agrupación por grupo
+
+> Commiteado y pusheado (`11802ef`). Cambio de DATOS en producción aplicado
+> aparte (no es un commit de código): respaldo + renumeración de
+> `partidos.jornada` para el campeonato 20, ver detalle abajo.
+
+Continuación directa de la parte 2 de ayer (fix preventivo `70adf1c`): el
+usuario pidió también corregir los datos ya existentes de "Liga
+InterEmpresarial" (jornadas desordenadas respecto a la fecha real, por
+agregar equipos después del sorteo), con la condición explícita de
+respaldar antes, ser prolijo para no dañar lo ya hecho, y no afectar el
+campeonato en curso.
+
+### 1. Respaldo
+Antes de tocar nada: `database/backups/campeonato20_partidos_backup_2026-10-13.json`
+(gitignored) — 112 filas de `partidos`, 5 `grupos`, 36 `grupo_equipos` del
+campeonato 20, completas, previas a cualquier cambio. También existe un
+backup completo de toda la BD de Railway del 10-oct
+(`database/backups/railway-20261010-181024.custom.backup`, de otra
+sesión) como red de seguridad adicional a nivel de toda la base.
+
+### 2. Alcance: se investigó qué tan extendido estaba el problema
+Un barrido de `partidos` en toda la producción encontró **5 eventos** con
+jornadas fuera de orden cronológico, no solo el de Liga InterEmpresarial:
+eventos 16 y 18 (campeonato "Copa Velocity Máster", organizador Jose Luis
+Guachizaca), 19 ("CAMPEONATO BARRIAL DE FUTBOL", Edwin Guerrero), 30
+("TORNEO INTERINST. DE FÚTSALA...", Fernando Maurad), y 34 ("Liga
+InterEmpresarial", Liliana Herrera — el del usuario). **Solo se tocó el
+34** (y se confirmó que el 35 "Femenino" del mismo campeonato ya estaba
+en orden, no necesitaba nada) — los otros 4 pertenecen a OTROS
+organizadores y no se tocaron sin su conocimiento; quedan anotados como
+pendiente si en algún momento se decide ofrecer la misma corrección.
+
+### 3. Hallazgo clave antes de renumerar: los grupos no comparten avance
+Investigando el campeonato 20 (evento 34 "Abierta", grupos A-D) se
+confirmó que cada grupo tiene su **propio avance de jornadas
+independiente** — ej. el Grupo C tenía partidos en "jornada 2" Y "jornada
+9" programados para la MISMA fecha (16-oct), porque son rondas realmente
+distintas que coincidieron en el calendario al regenerar fixture varias
+veces. Por eso **no se renumeró de forma global por fecha** (eso hubiera
+fusionado rondas distintas de un mismo grupo) — se renumeró **por grupo**:
+dentro de cada grupo, sus propios bloques de jornada (nunca se separan ni
+se fusionan entre sí) se reordenan por fecha real (ascendente, con la
+jornada vieja como desempate si coinciden en fecha, y los bloques sin
+fecha al final en su orden relativo previo) y se renumeran 1, 2, 3...
+
+Vista previa revisada antes de aplicar (33 bloques en total, 26 cambiaron
+de número), aplicada en una sola transacción. Verificado después: 112
+partidos totales sin cambios (ninguno se perdió ni duplicó), 19
+finalizados con resultado sin cambios (solo se tocó la columna
+`jornada`), y los 4 grupos quedaron con numeración estrictamente
+ascendente y coherente con la fecha real.
+
+### 4. Efecto colateral encontrado y corregido: resultados de la landing
+Al renumerar por grupo, `obtenerResultadosUltimaJornadaPorCampeonato()`
+(el fix de ayer, parte 1) dejó de funcionar bien: agrupaba solo por
+`evento_id`, así que si el Grupo A quedaba en su jornada 3 y el Grupo B en
+su jornada 2 para la MISMA fecha real (cada uno con su propio avance),
+la función solo mostraba el grupo cuyo número coincidía con el de mayor
+`id`, dejando fuera a los demás aunque fueran de la fecha correcta.
+
+- `publicPortalService.js`: `ultima_por_grupo` ahora agrupa por
+  `(evento_id, grupo_id)` en vez de solo `evento_id` — cada grupo aporta
+  su propia última jornada con resultado, sin depender de que el número
+  coincida con el de otro grupo.
+
+### Verificación
+Backup confirmado antes de tocar nada. Plan de renumeración revisado en
+vista previa (dry-run) antes de aplicar. Conteos de `partidos` y de
+finalizados-con-resultado verificados idénticos antes/después.
+`obtenerResultadosUltimaJornadaPorCampeonato(20)` vuelve a dar los mismos
+7 resultados correctos que ayer (ahora vía el grupo+jornada real de cada
+uno, no por coincidencia de número); campeonato 8 (Interjorgas) sin
+cambios (4 resultados). `node --check`, `smokeFrontendRoleGuards.js`
+49/49.
+
+**Pendiente para el usuario**: confirmar en producción que `jornadasplantilla.html`
+("Jornada / Resultados") y el selector de jornada de `partidos.html` se
+ven bien con la nueva numeración para Liga InterEmpresarial.
+
 ## 2026-10-13 (parte 2) - Regenerar fixture no agenda partidos nuevos antes de lo ya programado + estado al retomar
 
 > Commiteado y pusheado (`70adf1c`) desde la oficina, sin entrada propia
