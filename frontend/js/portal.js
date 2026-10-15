@@ -2854,15 +2854,35 @@ function renderResumenCategoriaPortal(evento, data) {
   `;
 }
 
+async function cargarPartidosPublicosPortal(eventoId) {
+  try {
+    const respuesta = await fetch(`${API}/public/eventos/${eventoId}/partidos`);
+    if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+    const data = await respuesta.json();
+    if (data.ok === false || !Array.isArray(data.jornadas) || !Array.isArray(data.partidos)) {
+      throw new Error("Respuesta de partidos inválida");
+    }
+    return data;
+  } catch (error) {
+    console.error("Error cargando partidos públicos:", error);
+    return { jornadas: [], partidos: [], errorCarga: true };
+  }
+}
+
 function renderCategoriaPanelPortal(data, index = 0) {
   const evento = data?.evento || {};
   const panelId = `portal-category-panel-${evento.id}`;
   const tipoDeporte = String(evento.tipo_deporte || evento.tipo_futbol || "").toLowerCase();
   const esBasquetbol = tipoDeporte.includes("basquet");
+  const avisoPartidos = data?.errorPartidos
+    ? '<p class="empty-msg" role="alert">No se pudieron cargar las jornadas y los resultados. Vuelve a intentar recargando la página.</p>'
+    : data?.publicacionRestringida && !data?.partidos?.length
+      ? '<p class="empty-msg">El organizador no ha habilitado la publicación de jornadas y resultados para esta categoría.</p>'
+      : null;
   const subtabs = [
     { key: "equipos", label: "Equipos", html: `<div class="portal-equipos-lazy" data-evento-id="${evento.id}" data-loaded=""><p class="portal-empty-msg"><i class="fas fa-spinner fa-spin"></i> Cargando equipos...</p></div>` },
-    { key: "jornadas", label: "Jornadas", html: renderJornadasPortal(data?.jornadas || [], data?.partidos || [], "proximas") },
-    { key: "resultados", label: "Resultados", html: renderResultadosPortal(data?.jornadas || [], data?.partidos || []) },
+    { key: "jornadas", label: "Jornadas", html: avisoPartidos || renderJornadasPortal(data?.jornadas || [], data?.partidos || [], "proximas") },
+    { key: "resultados", label: "Resultados", html: avisoPartidos || renderResultadosPortal(data?.jornadas || [], data?.partidos || []) },
     { key: "posiciones", label: "Tabla de posiciones", html: renderTablasPortal(data?.tablas || [], tipoDeporte) },
     { key: "goleadores", label: esBasquetbol ? "Anotadores" : "Goleadores", html: renderGoleadoresPortal(data?.goleadores || [], esBasquetbol) },
     { key: "fair-play", label: "Fair play", html: renderFairPlayPortal(data?.fairPlay || []) },
@@ -3416,7 +3436,7 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
               ? window.PortalPublicAPI.obtenerEliminatoriasPorEvento(ev.id)
               : fetch(`${API}/public/eventos/${ev.id}/eliminatorias`).then((r) => r.json())
           ).catch(() => ({ rondas: [] })),
-          fetch(`${API}/public/eventos/${ev.id}/partidos`).then((r) => r.json()).catch(() => ({ jornadas: [], partidos: [] })),
+          cargarPartidosPublicosPortal(ev.id),
         ]);
 
         const coleccionesPortal = enriquecerColeccionesPortal(
@@ -3433,6 +3453,8 @@ async function portalVerCampeonato(campeonatoId, options = {}) {
           eliminatorias: coleccionesPortal.eliminatorias,
           jornadas: partidosRes.jornadas || [],
           partidos: coleccionesPortal.partidos,
+          errorPartidos: partidosRes.errorCarga === true,
+          publicacionRestringida: partidosRes.publicacion_restringida === true,
         };
       })
     );

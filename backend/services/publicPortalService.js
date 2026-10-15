@@ -474,6 +474,7 @@ async function obtenerPartidosPublicosPorEvento(eventoId) {
   return {
     evento: resumirEvento(evento),
     total: partidosFiltrados.length,
+    publicacion_restringida: jornadasHabilitadas !== null && partidosFiltrados.length < partidos.length,
     jornadas: jornadasFiltradas,
     partidos: partidosFiltrados,
   };

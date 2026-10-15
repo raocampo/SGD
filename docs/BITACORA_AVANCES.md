@@ -1,3 +1,27 @@
+## 2026-10-14 - Cierre con commit y push
+
+- El usuario establece realizar commit y push al terminar cada tarea; preferencia registrada en la memoria del proyecto.
+- Se publica conjuntamente la corrección preventiva de jornadas, su regresión y la documentación de continuidad de esta sesión. La restauración de visibilidad en Railway ya fue aplicada y verificada.
+- Validación previa: regresión de publicación PASS, guards frontend 49/49 y `git diff --check` OK. Comprobar el despliegue automático tras el push.
+
+## 2026-10-14 - Corrección de publicación de jornadas desde el panel
+
+- Reporte: Liga InterEmpresarial / Abierta muestra posiciones, pero no jornadas ni resultados. Consulta pública actual a `/api/public/eventos/34/partidos`: `ok: true`, `total: 0`, colecciones vacías.
+- Hallazgo reproducido: el panel dibujaba todas las casillas desmarcadas cuando `portal_jornadas_habilitadas = null` (todas visibles); guardar sin cambios enviaba `[]`, ocultando fase regular y sus resultados. Confirmado también en Railway: el evento 34 tenía `[]` y 84 partidos; el evento 35 tenía `null` y 28 partidos.
+- Corrección: casillas marcadas para `null`; guardar sin cambios conserva `null`, incluidas jornadas futuras. Se respetan `[]` y listas específicas; aclarado el texto del panel.
+- El endpoint público indica `publicacion_restringida` cuando el filtro excluye partidos. El portal diferencia publicación restringida sin partidos de errores HTTP/JSON; ya no presenta estos últimos como ausencia de jornadas.
+- Pruebas: `node backend/scripts/qaPublicacionJornadas.js` PASS (null/vacío/parcial, playoff, representación, guardado y errores); guards frontend 49/49; sintaxis de los tres JS modificados OK.
+- Corrección en producción completada: la URL de Railway estaba al final de `.env.local`, fuera de las variables `DATABASE_URL`/`DB_*`; se usó sin divulgar credenciales. Respaldo previo exclusivo en `database/backups/publicacion-evento34-2026-10-14.json` (gitignored), con configuración y los 84 partidos. En una transacción se restauró únicamente `eventos.portal_jornadas_habilitadas=NULL` para el evento 34; comparación completa de partidos antes/después idéntica. Evento 35 sin cambios.
+- Verificación HTTP pública posterior: `ok: true`, 84 partidos, 10 bloques de jornada, 20 finalizados con marcador. La restauración de datos ya surte efecto sin desplegar; la prevención del fallo del panel y los nuevos mensajes siguen locales, pendientes de despliegue.
+
+## 2026-10-14 - Preparación de continuidad y memoria del proyecto
+
+- `git pull` completado: `Already up to date.`; `main` en `fe01e81`, alineada con `origin/main`. Árbol limpio al iniciar.
+- Revisados índice, bitácora reciente, estado de implementación, README y scripts disponibles. El README y partes históricas conservan estados antiguos; para pendientes vigentes usar el consolidado del 14-oct, más abajo.
+- Creada `docs/MEMORIA_PROYECTO.md` y enlazada desde el índice: contexto, pendientes, decisiones externas y advertencia sobre la BD local del 10-oct según la sesión anterior.
+- Verificación actual: `npm --prefix backend run smoke:frontend` -> **49/49 PASS**.
+- Sin cambios funcionales, migraciones ni operaciones sobre bases de datos. No se ejecutaron `smoke:matrix`, `smoke:roles` ni QA visual en producción; continúan pendientes.
+
 ## 2026-10-14 - Estado consolidado y pendientes para continuar
 
 > Sincronizado con `origin/main` (`e9e8aa4`) en el equipo Fedora. Sin

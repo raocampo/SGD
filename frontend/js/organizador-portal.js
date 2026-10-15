@@ -385,7 +385,7 @@
 
     lista.innerHTML = jornadasDisponibles
       .map((j) => {
-        const checked = habSet === null ? false : habSet.has(Number(j));
+        const checked = habSet === null || habSet.has(Number(j));
         return `
           <label class="jornada-portal-item${checked ? " jornada-portal-item--activa" : ""}">
             <input type="checkbox" class="op-jornada-chk" value="${j}" ${checked ? "checked" : ""} />
@@ -461,7 +461,11 @@
     });
 
     try {
-      const resp = await window.OrganizadorPortalAPI.guardarJornadasPortal(eventoId, seleccionadas);
+      // Conservar "sin filtro" al guardar sin cambios: también publica jornadas futuras.
+      const valor = jornadasHabilitadas === null && seleccionadas.length === checkboxes.length
+        ? null
+        : seleccionadas;
+      const resp = await window.OrganizadorPortalAPI.guardarJornadasPortal(eventoId, valor);
       state.jornadasEvento.jornadasHabilitadas = Array.isArray(resp.jornadas_habilitadas)
         ? resp.jornadas_habilitadas
         : null;
