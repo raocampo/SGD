@@ -63,12 +63,24 @@ async function main() {
   assert.equal(saved.length, 0); // Ocultar intencionalmente sigue disponible.
 
   const browser = {
-    window: { location: { origin: 'https://example.test', pathname: '/portal.html' }, addEventListener() {} },
+    window: { API_BASE_URL: 'https://api.example.test/api', location: { origin: 'https://example.test', pathname: '/portal.html' }, addEventListener() {} },
     document: { addEventListener() {} }, console: { error() {} },
     fetch: async () => ({ ok: false, status: 500 }), URLSearchParams, Map, Set,
   };
   vm.createContext(browser);
   vm.runInContext(read('frontend/js/portal.js'), browser);
+  for (const logo of ['/uploads/equipos/logo.png', 'uploads/equipos/logo.png']) {
+    browser.logoPrueba = logo;
+    const html = vm.runInContext('renderLogoEquipoPortal(logoPrueba, "Equipo")', browser);
+    assert.ok(html.includes('src="https://api.example.test/uploads/equipos/logo.png"'));
+  }
+  assert.ok(vm.runInContext('renderLogoEquipoPortal("https://cdn.example.test/logo.png", "Equipo")', browser)
+    .includes('src="https://cdn.example.test/logo.png"'));
+  assert.ok(vm.runInContext('renderLogoEquipoPortal(null, "Equipo")', browser)
+    .includes('portal-match-logo-placeholder">E</span>'));
+  assert.ok(!vm.runInContext('renderLogoEquipoPortal("   ", "Equipo")', browser).includes('<img'));
+  assert.ok(vm.runInContext('renderLogoEquipoPortal("/uploads/equipos/logo.png", "Equipo")', browser)
+    .includes('textContent:this.dataset.inicial'));
   let result = await vm.runInContext('cargarPartidosPublicosPortal(34)', browser);
   assert.equal(result.errorCarga, true);
   browser.fetch = async () => ({ ok: true, json: async () => ({ error: 'fallo' }) });
@@ -82,6 +94,6 @@ async function main() {
   const fallido = vm.runInContext('renderCategoriaPanelPortal({evento:{id:34}, errorPartidos:true})', browser);
   assert.ok(fallido.includes('No se pudieron cargar las jornadas'));
   assert.ok(!fallido.includes('No hay jornadas publicadas'));
-  console.log('PASS: filtros null/[]/parcial, playoff, casillas, guardado y errores de carga.');
+  console.log('PASS: filtros null/[]/parcial, playoff, casillas, guardado, errores de carga y logos con backend separado.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

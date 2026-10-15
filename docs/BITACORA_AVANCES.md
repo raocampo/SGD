@@ -1,3 +1,10 @@
+## 2026-10-14 - Logos de equipos en jornadas, resultados y playoff
+
+- Causa confirmada: la API entrega rutas `/uploads/equipos/...`; `renderLogoEquipoPortal` las usaba sin normalizar, por lo que el navegador pedía los archivos a Vercel (404) en lugar del backend. Los logos estaban cargados correctamente.
+- Corrección en la función compartida: usar `normalizarMediaPortal`, que resuelve rutas contra el backend y conserva URLs absolutas. El reemplazo por inicial sigue disponible para logos ausentes o con error; la inicial se lee de un atributo de datos sin interpolarla dentro del código del manejador.
+- Verificación: los 27 logos distintos de los partidos de Abierta responden HTTP 200 con contenido de imagen desde el backend. Regresión ampliada para rutas relativas, absolutas, vacías y frontend/backend separados; PASS. Guards frontend 49/49; sintaxis JS y `git diff --check` OK.
+- Publicación mediante commit y push a `main`; validar visualmente después del despliegue automático. Sin cambios de BD ni migraciones.
+
 ## 2026-10-14 - Cierre con commit y push
 
 - El usuario establece realizar commit y push al terminar cada tarea; preferencia registrada en la memoria del proyecto.

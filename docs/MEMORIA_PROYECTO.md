@@ -20,6 +20,8 @@ El README conserva un cierre de junio y la tabla histórica de módulos tiene fe
 
 ## Trabajo reciente ya documentado
 
+- Logos de jornadas/resultados/playoff: corregida la resolución de rutas relativas contra el backend en `renderLogoEquipoPortal`. Los 27 logos distintos de Abierta son accesibles; regresión con dominios separados PASS. Cambio listo para publicación en `main`, pendiente confirmación visual tras despliegue.
+
 - Póster «Jornada / Resultados» con marcadores reales y acceso visible en la pestaña principal de Partidos.
 - Resultados de landing centralizados en `publicPortalService`: última fecha con resultado por categoría/grupo y ventana de 3 días; la sesión anterior reportó 12 resultados del 02/03-oct para Liga InterEmpresarial.
 - Regenerar fixture preservando jugados programa lo nuevo después de la fecha más reciente existente.

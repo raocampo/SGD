@@ -2012,10 +2012,11 @@ function obtenerEstadoPartidoPortal(partido) {
 }
 
 function renderLogoEquipoPortal(logoUrl, nombre) {
-  if (logoUrl) {
-    return `<img src="${escPortal(logoUrl)}" alt="${escPortal(nombre || "")}" class="portal-match-logo" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'portal-match-logo-placeholder',textContent:'${escPortal((nombre || "?")[0].toUpperCase())}'}))">`;
-  }
+  const logo = normalizarMediaPortal(logoUrl);
   const inicial = (nombre || "?")[0].toUpperCase();
+  if (logo) {
+    return `<img src="${escPortal(logo)}" alt="${escPortal(nombre || "")}" class="portal-match-logo" loading="lazy" data-inicial="${escPortal(inicial)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'portal-match-logo-placeholder',textContent:this.dataset.inicial}))">`;
+  }
   return `<span class="portal-match-logo-placeholder">${escPortal(inicial)}</span>`;
 }
 
