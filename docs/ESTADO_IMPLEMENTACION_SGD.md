@@ -1,3 +1,12 @@
+## 2026-10-15 - Continuidad verificada en Windows
+
+- `main` actualizada mediante `git pull --ff-only` de `e9e8aa4` a `20f37d9`; los cambios locales previos coincidían íntegramente con los nueve archivos incorporados del remoto. Sin migraciones nuevas; última disponible: `075_recrear_partido_mega_construgrid.sql`.
+- La prevención de ocultar jornadas al guardar (`e9bcbdd`) y los logos resueltos desde el backend (`20f37d9`) ya están publicados en `origin/main`. Confirmación visual del despliegue pendiente; esta sesión no consultó producción.
+- Validación local actual: regresión `qaPublicacionJornadas.js` **PASS**, incluidos logos con dominios separados; guards de frontend **49/49 PASS**. No se verificaron BD, flujos E2E ni UI visual.
+- Continúa vigente la lista A-D del consolidado del 14-oct. Candidatos de código aún pendientes: modo lectura de planilla al iniciar, modales de Facturación/Playoff/Transmisión en celular y bienvenida de jugador sin mención financiera. Revisados contra el código; no implementados en esta sesión.
+- Para retomar: `docs/MEMORIA_PROYECTO.md` y primera entrada de `docs/BITACORA_AVANCES.md`. La advertencia de BD local del respaldo del 10-oct corresponde al equipo Fedora; la antigüedad de la BD de este Windows no se comprobó.
+- Alcance de esta sesión: sincronización y documentación de continuidad. Las secciones históricas inferiores se conservan como referencia; no describen por sí solas el estado vigente.
+
 ## 2026-10-14 - Estado para continuar (resultados de jornada y datos de Liga InterEmpresarial)
 
 ### Estado actualizado

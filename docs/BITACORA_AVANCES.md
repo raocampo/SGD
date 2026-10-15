@@ -1,3 +1,13 @@
+## 2026-10-15 - Sincronización en Windows y actualización de memoria
+
+- `git pull --ff-only` completado en `main`: `e9e8aa4` -> `20f37d9` (tres commits). El primer intento se detuvo para proteger siete archivos modificados y dos nuevos; se creó un stash temporal y se comprobó después que los nueve archivos coincidían íntegramente con `HEAD`. Respaldo retirado tras la verificación; árbol limpio antes de esta actualización documental.
+- Incorporados del remoto: consolidado de documentación (`fe01e81`), prevención de ocultar jornadas al guardar (`e9bcbdd`) y resolución de logos desde el backend (`20f37d9`). Estas correcciones ya están publicadas en Git; sigue pendiente confirmar visualmente su despliegue en producción.
+- Revisados README, índice, memoria, bitácora reciente, estado de implementación, propuesta, planes de CMS/mobile/transmisión/baloncesto y scripts. README y planes iniciales conservan estados históricos; la lista A-D del consolidado del 14-oct sigue vigente, complementada por las entradas posteriores de jornadas/logos.
+- Actualizada `docs/MEMORIA_PROYECTO.md`: sincronización actual, separación entre comprobaciones de hoy y evidencia histórica, pendientes funcionales aún sin implementar y distinción entre este entorno Windows y el otro equipo Fedora. Índice y estado de implementación enlazan esta continuidad.
+- Pendientes inmediatos comprobados en código: modo lectura de planilla desde el inicio; scroll y botones de modales de Facturación/Playoff/Transmisión en móvil; bienvenida de jugador sin referencia financiera. Mantener además QA de producción, decisiones de datos e insumos externos de la lista A-D.
+- Verificación local: `node backend/scripts/qaPublicacionJornadas.js` **PASS**; `npm --prefix backend run smoke:frontend` **49/49 PASS**. Estas pruebas no necesitan BD ni credenciales. Entorno: Windows/PowerShell, Node `v24.14.1`, npm `11.11.0`.
+- Sin cambios funcionales, migraciones, arranque de servicios ni consultas o modificaciones de BD. No se ejecutaron `smoke:matrix`, `smoke:roles`, E2E mobile ni QA visual/productivo; continúan pendientes.
+
 ## 2026-10-14 - Logos de equipos en jornadas, resultados y playoff
 
 - Causa confirmada: la API entrega rutas `/uploads/equipos/...`; `renderLogoEquipoPortal` las usaba sin normalizar, por lo que el navegador pedía los archivos a Vercel (404) en lugar del backend. Los logos estaban cargados correctamente.

@@ -1,15 +1,15 @@
 # Indice de Documentacion LT&C
 
-Ultima actualizacion: 2026-10-14
+Ultima actualizacion: 2026-10-15
 
 ## Documentos clave
 - `docs/MEMORIA_PROYECTO.md`
   - Memoria breve para retomar: sincronización verificada, fuentes vigentes, próximos pasos y límites de las verificaciones realizadas.
 - `docs/BITACORA_AVANCES.md`
   - Registro vivo por fecha de todo lo implementado y pendientes de la siguiente sesion.
-  - La entrada mas reciente va arriba. La entrada "2026-10-14 - Estado consolidado" trae la lista de pendientes vigente; el cierre del 2026-10-11, los pasos para continuar desde otro equipo (MEGA no sincroniza `.git` ni `.env`). El cierre del 2026-10-10 explica como levantar el proyecto en el equipo Fedora (BD local, Live Server, respaldo de produccion).
+  - La entrada mas reciente va arriba. La entrada del 2026-10-15 registra el pull y las verificaciones actuales en Windows; "2026-10-14 - Estado consolidado" trae la lista de pendientes A-D, complementada por las correcciones de jornadas y logos ya publicadas ese dia. El cierre del 2026-10-11 explica como continuar desde otro equipo (MEGA no sincroniza `.git` ni `.env`); el del 2026-10-10, como levantar el equipo Fedora (BD local, Live Server, respaldo de produccion).
 - `docs/ESTADO_IMPLEMENTACION_SGD.md`
-  - Estado por modulo frente a la propuesta original.
+  - Estado por modulo frente a la propuesta original; priorizar la entrada de continuidad del 2026-10-15 sobre las tablas historicas.
 - `docs/propuestaDesarrolloSGD.md`
   - Documento base de alcance funcional del proyecto.
 - `docs/CAMBIOS_IMPLEMENTADOS.md`
