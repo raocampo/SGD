@@ -3,6 +3,8 @@
   let campeonatosCache = [];
   let usuariosCache = [];
   let usuarioEditandoId = null;
+  let cargandoAsignaciones = false;
+  let errorCargaAsignaciones = false;
   const organizadorPortalCache = new Map();
   const PLANES_PAGADOS = new Set(["base", "competencia", "premium"]);
 
@@ -292,44 +294,57 @@
     if (!habilitar && !usuarioEditandoId) {
       limpiarPerfilOrganizador();
     }
-    if (equipoSel) {
-      equipoSel.disabled = !usaEquipo;
-      if (!usaEquipo) equipoSel.value = "";
-    }
     const orgRefGroup = document.getElementById("usr-asignacion-org-group");
     const campRefGroup = document.getElementById("usr-asignacion-camp-group");
     const orgRef = document.getElementById("usr-organizacion-ref");
     const campRef = document.getElementById("usr-campeonato-ref");
-    // La cascada Organización → Campeonato → Equipo solo aplica al admin creando
-    // técnico/dirigente/jugador. El organizador ya trabaja acotado a sus equipos.
-    const mostrarCascada = usaEquipo && esAdminActual();
-    if (orgRefGroup) orgRefGroup.style.display = mostrarCascada ? "" : "none";
-    if (campRefGroup) campRefGroup.style.display = mostrarCascada ? "" : "none";
-    if (!mostrarCascada) {
+    // El admin elige organización; el organizador recibe sus campeonatos de la API.
+    const mostrarOrganizacion = usaEquipo && esAdmin;
+    if (orgRefGroup) orgRefGroup.style.display = mostrarOrganizacion ? "" : "none";
+    if (campRefGroup) campRefGroup.style.display = usaEquipo ? "" : "none";
+    if (orgRef) orgRef.disabled = !mostrarOrganizacion || cargandoAsignaciones;
+    if (campRef) campRef.required = usaEquipo && esOrganizadorActual();
+    if (equipoSel) equipoSel.required = usaEquipo && esOrganizadorActual();
+    if (!usaEquipo) {
       if (orgRef) orgRef.value = "";
-      if (campRef) { campRef.value = ""; campRef.disabled = true; }
+      if (campRef) campRef.value = "";
+      if (equipoSel) equipoSel.value = "";
+    }
+    if (cargandoAsignaciones) {
+      if (campRef) campRef.disabled = true;
+      if (equipoSel) equipoSel.disabled = true;
+    } else {
+      poblarCampeonatosRef();
+      poblarEquiposRef(campRef?.value || "");
     }
   }
 
-  async function cargarEquipos() {
+  async function cargarAsignaciones() {
+    if (cargandoAsignaciones) return false;
+    cargandoAsignaciones = true;
+    errorCargaAsignaciones = false;
+    actualizarCamposPlan();
     try {
-      const data = await ApiClient.get("/equipos");
-      equiposCache = data?.equipos || [];
-      poblarEquiposRef(document.getElementById("usr-campeonato-ref")?.value || "");
+      const [equipos, campeonatos] = await Promise.all([
+        ApiClient.get("/equipos"),
+        ApiClient.get("/campeonatos"),
+      ]);
+      if (!Array.isArray(equipos?.equipos) || !Array.isArray(campeonatos?.campeonatos)) {
+        throw new Error("Respuesta de campeonatos o equipos inválida");
+      }
+      equiposCache = equipos.equipos;
+      campeonatosCache = campeonatos.campeonatos;
+      return true;
     } catch (error) {
       console.error(error);
-      mostrarNotificacion("No se pudieron cargar equipos", "warning");
-    }
-  }
-
-  async function cargarCampeonatosAdmin() {
-    if (!esAdminActual()) return;
-    try {
-      const data = await ApiClient.get("/campeonatos");
-      campeonatosCache = data?.campeonatos || [];
-    } catch (error) {
-      console.error(error);
+      equiposCache = [];
       campeonatosCache = [];
+      errorCargaAsignaciones = true;
+      mostrarNotificacion("No se pudieron cargar los campeonatos y equipos. Pulsa Recargar para reintentar.", "warning");
+      return false;
+    } finally {
+      cargandoAsignaciones = false;
+      actualizarCamposPlan();
     }
   }
 
@@ -355,41 +370,59 @@
     if (actual) sel.value = actual;
   }
 
-  function poblarCampeonatosRef(organizadorId) {
-    const sel = document.getElementById("usr-campeonato-ref");
-    if (!sel) return;
-    const oid = Number.parseInt(organizadorId, 10);
-    const lista = Number.isFinite(oid) && oid > 0
+  function campeonatosAsignables() {
+    if (esOrganizadorActual()) return campeonatosCache;
+    const oid = Number(document.getElementById("usr-organizacion-ref")?.value);
+    return oid > 0
       ? campeonatosCache.filter((c) => Number(c.creador_usuario_id) === oid)
       : [];
+  }
+
+  function poblarCampeonatosRef() {
+    const sel = document.getElementById("usr-campeonato-ref");
+    if (!sel) return;
+    const lista = campeonatosAsignables();
+    const usaEquipo = esRolConEquipo(document.getElementById("usr-rol")?.value);
     const actual = sel.value;
-    sel.innerHTML = '<option value="">— Selecciona campeonato —</option>';
+    const sinOrganizacion = esAdminActual() && !document.getElementById("usr-organizacion-ref")?.value;
+    const etiqueta = errorCargaAsignaciones
+      ? "No se pudieron cargar los campeonatos"
+      : sinOrganizacion
+        ? "Selecciona primero una organización"
+        : !lista.length ? "No hay campeonatos disponibles" : "— Selecciona campeonato —";
+    sel.innerHTML = `<option value="">${etiqueta}</option>`;
     lista
       .slice()
       .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || "")))
       .forEach((c) => {
         sel.innerHTML += `<option value="${Number(c.id)}">${esc(c.nombre || `Campeonato ${c.id}`)}</option>`;
       });
-    sel.disabled = !lista.length;
+    sel.disabled = !usaEquipo || !lista.length || errorCargaAsignaciones;
     if (actual && lista.some((c) => String(c.id) === String(actual))) sel.value = actual;
   }
 
   function poblarEquiposRef(campeonatoId) {
     const sel = document.getElementById("usr-equipo");
     if (!sel) return;
-    const cid = Number.parseInt(campeonatoId, 10);
-    const usarCascada = document.getElementById("usr-asignacion-camp-group")?.style.display !== "none";
-    const lista = Number.isFinite(cid) && cid > 0
+    const cid = Number(campeonatoId);
+    const usaEquipo = esRolConEquipo(document.getElementById("usr-rol")?.value);
+    const campeonatoValido = campeonatosAsignables().some((c) => Number(c.id) === cid);
+    const lista = usaEquipo && campeonatoValido
       ? equiposCache.filter((e) => Number(e.campeonato_id) === cid)
-      : (usarCascada && esAdminActual() ? [] : equiposCache);
+      : [];
     const actual = sel.value;
-    sel.innerHTML = '<option value="">Sin asignar</option>';
+    const etiqueta = !usaEquipo ? "Sin asignar"
+      : errorCargaAsignaciones ? "No se pudieron cargar los equipos"
+        : !campeonatoValido ? "Selecciona primero un campeonato"
+          : !lista.length ? "Este campeonato no tiene equipos" : "Sin asignar";
+    sel.innerHTML = `<option value="">${etiqueta}</option>`;
     lista
       .slice()
       .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || "")))
       .forEach((e) => {
         sel.innerHTML += `<option value="${Number(e.id)}">${esc(e.nombre || `Equipo ${e.id}`)}</option>`;
       });
+    sel.disabled = !lista.length || errorCargaAsignaciones;
     if (actual && lista.some((e) => String(e.id) === String(actual))) sel.value = actual;
   }
 
@@ -699,7 +732,8 @@
     document.getElementById("usr-equipo").value = "";
     const orgRef = document.getElementById("usr-organizacion-ref");
     if (orgRef) orgRef.value = "";
-    poblarCampeonatosRef("");
+    const campRef = document.getElementById("usr-campeonato-ref");
+    if (campRef) campRef.value = "";
     document.getElementById("usr-activo").value = "true";
     const planSel = document.getElementById("usr-plan");
     const planEstadoSel = document.getElementById("usr-plan-estado");
@@ -741,12 +775,15 @@
 
     // Precarga de la cascada Organización → Campeonato → Equipo (roles con equipo).
     const equipo = Array.isArray(u.equipo_ids) && u.equipo_ids.length ? Number(u.equipo_ids[0]) : "";
-    const detalle = Array.isArray(u.equipos_detalle) && u.equipos_detalle.length ? u.equipos_detalle[0] : null;
+    const detalle = (u.equipos_detalle || []).find((e) => Number(e.id) === equipo)
+      || equiposCache.find((e) => Number(e.id) === equipo);
+    const campeonato = campeonatosCache.find((c) => Number(c.id) === Number(detalle?.campeonato_id));
     const orgRef = document.getElementById("usr-organizacion-ref");
     if (orgRef && esRolConEquipo(u.rol)) {
-      const orgId = Number(u.organizador_id) || Number(detalle?.organizador_id) || "";
+      const orgId = Number(detalle?.organizador_id) || Number(campeonato?.creador_usuario_id)
+        || Number(u.organizador_id) || "";
       orgRef.value = orgId ? String(orgId) : "";
-      poblarCampeonatosRef(orgRef.value);
+      poblarCampeonatosRef();
       const campId = Number(detalle?.campeonato_id) || "";
       const campRef = document.getElementById("usr-campeonato-ref");
       if (campRef) campRef.value = campId ? String(campId) : "";
@@ -834,6 +871,21 @@
     if (password && password.length < 6) {
       mostrarNotificacion("La contraseña debe tener al menos 6 caracteres", "warning");
       return;
+    }
+    if (esRolConEquipo(rol)) {
+      if (cargandoAsignaciones || errorCargaAsignaciones) {
+        mostrarNotificacion("Espera a que carguen los campeonatos y equipos o pulsa Recargar para reintentar.", "warning");
+        return;
+      }
+      const campeonatoId = Number(document.getElementById("usr-campeonato-ref")?.value);
+      if ((esOrganizadorActual() || equipo) && !campeonatosAsignables().some((c) => Number(c.id) === campeonatoId)) {
+        mostrarNotificacion("Debes seleccionar un campeonato antes de asignar el equipo", "warning");
+        return;
+      }
+      if (equipo && !equiposCache.some((e) => Number(e.id) === Number(equipo) && Number(e.campeonato_id) === campeonatoId)) {
+        mostrarNotificacion("El equipo no pertenece al campeonato seleccionado", "warning");
+        return;
+      }
     }
     if (esOrganizadorActual() && !equipo) {
       mostrarNotificacion("Debes seleccionar un equipo para el dirigente o técnico", "warning");
@@ -1026,21 +1078,22 @@
     document.getElementById("btn-usuarios-cancelar")?.addEventListener("click", limpiarFormulario);
     document.getElementById("btn-usuarios-recargar")?.addEventListener("click", async () => {
       organizadorPortalCache.clear();
-      await Promise.all([cargarEquipos(), cargarCampeonatosAdmin(), cargarUsuarios()]);
+      const [asignacionesOk] = await Promise.all([cargarAsignaciones(), cargarUsuarios()]);
       poblarOrganizaciones();
-      mostrarNotificacion("Datos actualizados", "success");
+      actualizarCamposPlan();
+      if (asignacionesOk) mostrarNotificacion("Datos actualizados", "success");
     });
 
     // Cascada Organización → Campeonato → Equipo
-    document.getElementById("usr-organizacion-ref")?.addEventListener("change", (e) => {
-      poblarCampeonatosRef(e.target.value);
+    document.getElementById("usr-organizacion-ref")?.addEventListener("change", () => {
+      poblarCampeonatosRef();
       poblarEquiposRef("");
     });
     document.getElementById("usr-campeonato-ref")?.addEventListener("change", (e) => {
       poblarEquiposRef(e.target.value);
     });
 
-    await Promise.all([cargarEquipos(), cargarCampeonatosAdmin(), cargarUsuarios()]);
+    await Promise.all([cargarAsignaciones(), cargarUsuarios()]);
     poblarOrganizaciones();
     actualizarCamposPlan();
   });

@@ -1,10 +1,18 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-10-15 (America/Guayaquil).
+Actualizada: 2026-10-16 (America/Guayaquil).
+
+## Último trabajo: Usuarios y Roles (16-oct)
+
+- Implementado selector Campeonato para organizadores; Equipo solo muestra los del campeonato seleccionado y permanece deshabilitado hasta elegirlo. Administrador conserva Organización -> Campeonato -> Equipo, incluida la edición. Archivos: `frontend/usuarios.html`, `frontend/js/usuarios.js`.
+- Se reutilizan las APIs autenticadas de campeonatos/equipos y sus permisos existentes. Cambiar campeonato limpia el equipo; Recargar conserva selecciones válidas; validación al guardar y mensajes de vacío/error. No requiere migración ni cambios de backend.
+- Verificación local: **14/14 escenarios DOM PASS** con jsdom y API simulada (arnés temporal en `tmp/qa-usuarios-dom/qa.cjs`, gitignored); `smoke:frontend` **49/49 PASS**; `qaPublicacionJornadas.js` **PASS**. No se usaron BD ni credenciales reales.
+- QA visual pendiente: Browser no tiene navegadores disponibles. Confirmar tras despliegue la selección de campeonatos/equipos como organizador y el formulario en celular; las pruebas DOM no verifican renderizado ni guardado real en producción.
+- Base de esta tarea: `0a12a0e`; `git fetch origin` del 16-oct confirmó que no había commits remotos adicionales antes de cerrar.
 
 ## Punto de partida verificado
 
-- `git pull --ff-only` completado en el equipo Windows: `main` avanzó de `e9e8aa4` a `20f37d9`, alineada con `origin/main` antes de actualizar documentación. Los siete archivos modificados y dos nuevos que había al iniciar coincidían íntegramente con los commits remotos; se respaldaron con stash y se retiró ese respaldo solo tras comparar los nueve archivos con `HEAD`. No quedó trabajo local perdido ni pendiente de reaplicar.
+- Sincronización del 15-oct: `git pull --ff-only` completado en Windows de `e9e8aa4` a `20f37d9`. Los siete archivos modificados y dos nuevos coincidían íntegramente con los commits remotos; se respaldaron con stash y se retiró ese respaldo solo tras comparar los nueve archivos con `HEAD`. La documentación se publicó después en `0a12a0e`.
 - Sistema de gestión deportiva LT&C: frontend HTML/CSS/JS y backend Node/Express con PostgreSQL. Scripts operativos en `backend/package.json`.
 - Última migración disponible: `075_recrear_partido_mega_construgrid.sql`. Esta sesión no ejecutó migraciones ni modificó datos.
 - Producción, según la bitácora reciente: backend Railway y frontend Vercel, con despliegue automático desde `main`. Las menciones antiguas a Render son referencias históricas que deben contrastarse antes de operar.
@@ -12,8 +20,8 @@ Actualizada: 2026-10-15 (America/Guayaquil).
 
 ## Fuentes para retomar
 
-1. `docs/BITACORA_AVANCES.md`: entrada del 15-oct para esta sincronización; «2026-10-14 - Estado consolidado» para la lista A–D y las entradas superiores de ese día para jornadas y logos.
-2. `docs/ESTADO_IMPLEMENTACION_SGD.md`: primera entrada del 15-oct; actualización de continuidad sobre el consolidado del 14-oct.
+1. `docs/BITACORA_AVANCES.md`: entrada del 16-oct para Usuarios y Roles; «2026-10-14 - Estado consolidado» para la lista A–D y las entradas superiores de ese día para jornadas y logos.
+2. `docs/ESTADO_IMPLEMENTACION_SGD.md`: primera entrada del 16-oct; implementación de Usuarios y Roles y continuidad del 15-oct.
 3. `docs/INDICE_DOCUMENTACION.md`: mapa de guías y planes.
 
 El README conserva un cierre de junio y la tabla histórica de módulos tiene fecha de mayo. Priorizar las entradas fechadas más recientes; no reabrir tareas antiguas ya resueltas (por ejemplo, Facturación Fases 2 y 3 ya implementadas). Los planes de transmisión y baloncesto también incluyen fases iniciales ya superadas; contrastarlos con la bitácora y el código antes de implementar.
@@ -32,6 +40,7 @@ El README conserva un cierre de junio y la tabla histórica de módulos tiene fe
 
 ## Próximos pasos
 
+- Confirmar en producción Usuarios y Roles: campeonatos propios visibles para organizador, equipos filtrados y equipo anterior limpio al cambiar campeonato; revisar el formulario en celular.
 - Confirmar visualmente en producción las correcciones de jornadas y logos ya presentes en `origin/main`; no necesitan volver a publicarse. Según la sesión del 14-oct, el evento 34 se restauró a `null` con respaldo previo y 84 partidos intactos; la API devolvió 84 partidos, 10 jornadas y 20 finalizados con marcador. Es evidencia histórica, no una consulta del 15-oct.
 - Código pendiente comprobado el 15-oct: aplicar el modo lectura de `planilla.html` desde el inicio (actualmente se aplica al cargar una planilla); revisar scroll y botones fijos de los modales de Facturación, Playoff y Transmisión en celular; adaptar la bienvenida de `portal-tecnico.html` para que el jugador no vea la mención al estado financiero. Son candidatos para la siguiente tarea, todavía sin implementar.
 - Evaluar dividir «Nuevo Campeonato» en secciones, como «Editar categoría», si se continúa el ajuste de formularios.
@@ -49,7 +58,7 @@ El README conserva un cierre de junio y la tabla histórica de módulos tiene fe
 - Esta sesión se ejecutó en Windows/PowerShell, con Node `v24.14.1` y npm `11.11.0`. No se inició servidor ni se consultó o refrescó la BD local o de producción.
 - Según el cierre anterior, la BD local del otro equipo Fedora proviene del respaldo del 10-oct y no contiene las correcciones recientes ni los equipos nuevos de Liga InterEmpresarial. Esa advertencia corresponde a Fedora; la antigüedad de la BD de este Windows no se comprobó. Verificar el destino y la vigencia de la base antes de validar datos reales.
 - MEGA no sincroniza `.git` ni `.env`, según la bitácora. Revisar configuración local antes de iniciar servicios, sin copiar secretos a documentación.
-- Al cerrar trabajo funcional: actualizar bitácora y estado cuando corresponda. El alcance del 15-oct es sincronización, revisión, pruebas locales y documentación de continuidad; no se implementaron pendientes funcionales ni se modificaron datos.
+- Al cerrar trabajo funcional: actualizar bitácora y estado cuando corresponda. El 15-oct fue preparación de continuidad; el 16-oct se implementó el filtro de campeonatos/equipos en Usuarios y Roles. No se modificaron datos reales en estas sesiones.
 
 ## Preferencia de trabajo del usuario
 

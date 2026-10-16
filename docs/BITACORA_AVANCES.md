@@ -1,3 +1,14 @@
+## 2026-10-16 - Usuarios y Roles: campeonato y equipos dependientes
+
+- Solicitud: elegir un campeonato al crear un dirigente/técnico y mostrar únicamente los equipos de ese campeonato.
+- Causa: el formulario ya tenía la cascada Organización -> Campeonato -> Equipo para administrador, pero ocultaba Campeonato al organizador y solo cargaba campeonatos para el administrador. El organizador veía juntos todos sus equipos.
+- Implementación en `frontend/usuarios.html` y `frontend/js/usuarios.js`: selector Campeonato visible para los roles con equipo; organización adicional solo para administrador. Se cargan `/campeonatos` y `/equipos` autenticados para ambos perfiles, aprovechando el alcance existente del backend. Para organizador se conserva también la compatibilidad con campeonatos legacy devueltos por la API.
+- Equipo permanece deshabilitado hasta elegir un campeonato y solo lista sus equipos. Cambiar campeonato/organización o limpiar el formulario elimina selecciones incompatibles; Recargar conserva las válidas. Se informa si no hay campeonatos/equipos o falla la carga y se impide guardar una asignación durante la carga o con un equipo de otro campeonato.
+- Edición de administrador: precarga organización, campeonato y equipo desde el equipo asignado; si falta `equipos_detalle`, usa el catálogo de equipos. Se mantienen los permisos y la posibilidad del administrador de crear usuarios sin equipo.
+- Verificación: **14/14 escenarios PASS** sobre el HTML y JS reales con DOM jsdom y API simulada, mediante arnés temporal `tmp/qa-usuarios-dom/qa.cjs` (gitignored). Incluye alta y reasignación, cambios de rol/campeonato/organización, estados vacíos, recarga lenta, eliminación de selecciones obsoletas, errores/reintento y rechazo de equipo ajeno. Guards frontend **49/49 PASS**; regresión de jornadas/logos **PASS**; sintaxis JS y `git diff --check` OK.
+- Sin cambios de backend, esquema, migraciones ni datos reales. QA visual pendiente: Browser no tiene navegadores disponibles en esta sesión; las pruebas DOM no acreditan renderizado móvil ni guardado real en producción.
+- Para confirmar tras el despliegue: ingresar como organizador a Usuarios y Roles, seleccionar cada campeonato y revisar la lista de equipos; cambiar de campeonato y comprobar que se limpia el equipo anterior. Revisar también el formulario en celular.
+
 ## 2026-10-15 - Sincronización en Windows y actualización de memoria
 
 - `git pull --ff-only` completado en `main`: `e9e8aa4` -> `20f37d9` (tres commits). El primer intento se detuvo para proteger siete archivos modificados y dos nuevos; se creó un stash temporal y se comprobó después que los nueve archivos coincidían íntegramente con `HEAD`. Respaldo retirado tras la verificación; árbol limpio antes de esta actualización documental.

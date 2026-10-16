@@ -1,3 +1,11 @@
+## 2026-10-16 - Usuarios y Roles: filtro de equipos por campeonato
+
+- Organizador: el formulario ahora muestra Campeonato para crear dirigentes/técnicos; Equipo se habilita después y solo muestra los equipos del campeonato elegido. Administrador conserva Organización -> Campeonato -> Equipo para técnico/dirigente/jugador, incluida la precarga al editar.
+- Cambio de campeonato u organización limpia el equipo anterior. Recargar conserva selecciones válidas y elimina las obsoletas; estados vacíos y errores de carga explícitos. Validación de correspondencia equipo/campeonato antes del guardado.
+- Cambios acotados a `frontend/usuarios.html` y `frontend/js/usuarios.js`; se reutilizan `/api/campeonatos` y `/api/equipos` con sus permisos actuales. Sin backend ni migraciones.
+- Validación: **14/14 escenarios DOM PASS** con datos simulados, guards frontend **49/49 PASS**, regresión de jornadas/logos **PASS**, sintaxis y diff OK. QA visual y guardado real en producción pendientes; Browser sin navegadores disponibles.
+- Memoria y bitácora actualizadas. Los demás pendientes del consolidado del 14-oct permanecen vigentes.
+
 ## 2026-10-15 - Continuidad verificada en Windows
 
 - `main` actualizada mediante `git pull --ff-only` de `e9e8aa4` a `20f37d9`; los cambios locales previos coincidían íntegramente con los nueve archivos incorporados del remoto. Sin migraciones nuevas; última disponible: `075_recrear_partido_mega_construgrid.sql`.
