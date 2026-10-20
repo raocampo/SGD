@@ -22,6 +22,7 @@ const {
 const { isOrganizador, obtenerEquipoIdsOrganizador } = require("./organizadorScope");
 const { esTecnicoOdirigente } = require("./roleScope");
 const { hasCompleteFoulPeriods, mapPlanillaFouls, buildPlanillaFouls } = require("./mobilePlanillaFouls");
+const { getPlanillaRules, mapMatchDetails, buildMatchDetails } = require("./mobilePlanillaDetails");
 
 function formatScheduledAt(row) {
   if (!row?.fecha_partido && !row?.hora_partido) return null;
@@ -993,6 +994,8 @@ async function obtenerPlanillaPartido(user, partidoId) {
       awayRedPayment: toNumber(data.planilla?.pago_tr_visitante, 0),
     },
     footballType: data.partido.tipo_futbol || "",
+    rules: getPlanillaRules(data.partido.tipo_futbol || data.partido.tipo_deporte),
+    matchDetails: mapMatchDetails(data.partido),
     requiresEditReason:
       !!data.planilla &&
       ["finalizado", "no_presentaron_ambos"].includes(String(data.partido.estado || "").toLowerCase()),
@@ -1103,12 +1106,19 @@ async function guardarPlanillaPartido(user, partidoId, body = {}) {
     body.absenceStatus || body.inasistenciaEquipo || body.inasistencia_equipo || "ninguno"
   );
 
-  const previousFouls = hasCompleteFoulPeriods(body)
+  const sport = await pool.query(
+    "SELECT COALESCE(NULLIF(tipo_futbol, ''), tipo_deporte, '') AS football_type FROM campeonatos WHERE id = $1",
+    [partido.campeonato_id]
+  );
+  const rules = getPlanillaRules(sport.rows[0]?.football_type);
+  const details = buildMatchDetails(body, rules);
+  const previousFouls = rules.accumulatedFouls && hasCompleteFoulPeriods(body)
     ? {}
     : (await Partido.obtenerPlanilla(Number(partido.id)))?.faltas || {};
-  const faltas = buildPlanillaFouls(body, previousFouls);
+  const faltas = buildPlanillaFouls(rules.accumulatedFouls ? body : {}, previousFouls);
 
   const payloadPlanilla = {
+    ...details,
     resultado_local: homeScore,
     resultado_visitante: awayScore,
     estado: normalizarEstadoPlanillaMovil(body.matchStatus || body.status || body.estado, "finalizado"),

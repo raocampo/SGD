@@ -2,7 +2,16 @@
 
 Actualizada: 2026-10-20 (America/Guayaquil).
 
-## Último trabajo: faltas por tiempo para la app móvil (20-oct)
+## Último trabajo: cabecera y modalidades de la planilla móvil (20-oct)
+
+- API GET/PUT móvil añade `matchDetails` (árbitro, asistentes/segundo árbitro, suplente, delegado, ciudad, número de partido) y `rules`, derivadas del tipo del campeonato. El tipo recibido en el cuerpo no decide las reglas.
+- Faltas acumuladas únicamente en fútbol 7, 6, 5 y sala; fútbol 11/9/8 e indor ocultan esa sección y el backend conserva las faltas previas sin aceptar cambios nuevos de esos formatos.
+- Arbitraje: fútbol 11 central + dos asistentes + suplente; fútbol 5/sala dos árbitros + suplente; 7/6/9/8 e indor central con segundo árbitro opcional. Para indor se adoptó esa última opción al no indicarse otra cantidad. Son campos disponibles según formato; no se exige completar todos los nombres para guardar una planilla en elaboración.
+- Migración aditiva `076_partidos_arbitro_suplente.sql`: columna nullable `partidos.arbitro_suplente`. Incluida también en preparación de esquema, guardado y snapshot de auditoría de `Partido.js`. Los otros campos reutilizan columnas existentes. La web conserva sus campos actuales; el nuevo suplente se captura desde la app y se preserva cuando clientes antiguos lo omiten.
+- Regresión: móvil **31/31 PASS**, backend **22/22 PASS** con dependencias simuladas; TypeScript, sintaxis y revisión de parámetros SQL aprobados. Sin escrituras de planillas reales de prueba. Publicar backend/migración antes de la OTA Android preview runtime 1.0.1; registrar entrega y QA en la memoria móvil.
+- Fuentes: `backend/services/mobilePlanillaDetails.js`, `mobileOperationsService.js`, `models/Partido.js`, `tests/mobile-planilla-fouls.test.js`. Respaldo: `../_codex_backups/gestionDeportivaAppMovil_datosPartido_2026-10-20_before.zip`.
+
+## Trabajo anterior: faltas por tiempo para la app móvil (20-oct)
 
 - La app hermana `../gestionDeportivaAppMovil` reemplaza el contador total de faltas por casillas 1–6 para primer y segundo tiempo de cada equipo. Se retiraron los textos instructivos repetidos de su planilla. La web conserva su implementación actual.
 - `backend/services/mobileOperationsService.js` expone y recibe `fouls.homeFirstHalfFouls`, `homeSecondHalfFouls`, `awayFirstHalfFouls`, `awaySecondHalfFouls`; `mobilePlanillaFouls.js` los adapta a `local_1er`, `local_2do`, `visitante_1er`, `visitante_2do` del modelo existente. Totales derivados de los tiempos, rango 0–6 por tiempo, sin migración.

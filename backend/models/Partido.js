@@ -3287,6 +3287,7 @@ class Partido {
       ADD COLUMN IF NOT EXISTS arbitro TEXT,
       ADD COLUMN IF NOT EXISTS arbitro_linea_1 TEXT,
       ADD COLUMN IF NOT EXISTS arbitro_linea_2 TEXT,
+      ADD COLUMN IF NOT EXISTS arbitro_suplente TEXT,
       ADD COLUMN IF NOT EXISTS delegado_partido TEXT,
       ADD COLUMN IF NOT EXISTS ciudad TEXT
     `);
@@ -3427,6 +3428,7 @@ class Partido {
           arbitro,
           arbitro_linea_1,
           arbitro_linea_2,
+          arbitro_suplente,
           delegado_partido,
           ciudad,
           faltas_local_total,
@@ -3968,6 +3970,9 @@ class Partido {
     const arbitroLinea2 = Object.prototype.hasOwnProperty.call(datos, "arbitro_linea_2")
       ? (datos.arbitro_linea_2 ?? "").toString().trim()
       : null;
+    const arbitroSuplente = Object.prototype.hasOwnProperty.call(datos, "arbitro_suplente")
+      ? (datos.arbitro_suplente ?? "").toString().trim()
+      : null;
     const delegadoPartido = Object.prototype.hasOwnProperty.call(datos, "delegado_partido")
       ? (datos.delegado_partido ?? "").toString().trim()
       : null;
@@ -4260,9 +4265,10 @@ class Partido {
               faltas_local_1er = $15,
               faltas_local_2do = $16,
               faltas_visitante_1er = $17,
-              faltas_visitante_2do = $18
+              faltas_visitante_2do = $18,
+              arbitro_suplente = COALESCE($19, arbitro_suplente)
               ${setTs}
-          WHERE id = $19
+          WHERE id = $20
         `,
         [
           resultadoLocal,
@@ -4283,6 +4289,7 @@ class Partido {
           faltasNormalizadas.local_2do,
           faltasNormalizadas.visitante_1er,
           faltasNormalizadas.visitante_2do,
+          arbitroSuplente,
           partido_id,
         ]
       );

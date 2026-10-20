@@ -1,3 +1,11 @@
+## 2026-10-20 - Planilla móvil: datos del partido y reglas por modalidad
+
+- Cabecera editable con árbitros, delegado, ciudad y número visible del partido. El contrato móvil añade `matchDetails` y `rules`; reutiliza datos web y deriva el formato desde el campeonato, sin confiar en la modalidad del cuerpo de la solicitud.
+- Fútbol 11: tres árbitros en cancha y suplente; sala/5: dos en cancha y suplente; 7/6/9/8: segundo árbitro opcional. Para indor se asumió segundo árbitro opcional. No se exige completar todos los nombres para guardar borradores/planillas en elaboración.
+- Faltas acumuladas visibles/editables únicamente en 7/6/5/sala. Los otros formatos conservan sus datos históricos sin aceptar nuevas faltas acumuladas. No se borran datos ocultos de arbitraje ni campos omitidos por APK antiguos.
+- Nueva migración aditiva 076 para `arbitro_suplente`, con soporte de preparación de esquema, persistencia y auditoría. Sin cambios de interfaz web; su columna nueva se captura desde móvil.
+- Móvil 31/31 y backend 22/22 pruebas aprobadas; TypeScript y sintaxis/modelo SQL revisados. Sin escrituras productivas de planillas de prueba. Publicar backend antes de la OTA preview 1.0.1; QA visual y guardado real pendiente.
+
 ## 2026-10-20 - Planilla móvil: faltas por tiempo
 
 - Ajuste coordinado con `../gestionDeportivaAppMovil`: cuatro conteos por partido (local/visitante, primer/segundo tiempo) con casillas 1–6 acumuladas, selección para limpiar y pantalla sin textos instructivos redundantes.
