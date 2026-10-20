@@ -21,6 +21,7 @@ const {
 } = require("./mobileAccessService");
 const { isOrganizador, obtenerEquipoIdsOrganizador } = require("./organizadorScope");
 const { esTecnicoOdirigente } = require("./roleScope");
+const { hasCompleteFoulPeriods, mapPlanillaFouls, buildPlanillaFouls } = require("./mobilePlanillaFouls");
 
 function formatScheduledAt(row) {
   if (!row?.fecha_partido && !row?.hora_partido) return null;
@@ -995,10 +996,7 @@ async function obtenerPlanillaPartido(user, partidoId) {
     requiresEditReason:
       !!data.planilla &&
       ["finalizado", "no_presentaron_ambos"].includes(String(data.partido.estado || "").toLowerCase()),
-    fouls: {
-      homeTeamFouls: toInteger(data.faltas?.local_total, 0),
-      awayTeamFouls: toInteger(data.faltas?.visitante_total, 0),
-    },
+    fouls: mapPlanillaFouls(data.faltas),
     homeSquad: (data.plantel_local || []).map(mapSquadPlayer),
     awaySquad: (data.plantel_visitante || []).map(mapSquadPlayer),
     scorers: (data.goleadores || []).map((item) => ({
@@ -1105,14 +1103,20 @@ async function guardarPlanillaPartido(user, partidoId, body = {}) {
     body.absenceStatus || body.inasistenciaEquipo || body.inasistencia_equipo || "ninguno"
   );
 
+  const previousFouls = hasCompleteFoulPeriods(body)
+    ? {}
+    : (await Partido.obtenerPlanilla(Number(partido.id)))?.faltas || {};
+  const faltas = buildPlanillaFouls(body, previousFouls);
+
   const payloadPlanilla = {
     resultado_local: homeScore,
     resultado_visitante: awayScore,
     estado: normalizarEstadoPlanillaMovil(body.matchStatus || body.status || body.estado, "finalizado"),
     inasistencia_equipo: absenceStatus || "ninguno",
     ambos_no_presentes: absenceStatus === "ambos",
-    faltas_local_total: Math.max(0, toInteger(body.homeTeamFouls ?? body.fouls?.homeTeamFouls, 0)),
-    faltas_visitante_total: Math.max(0, toInteger(body.awayTeamFouls ?? body.fouls?.awayTeamFouls, 0)),
+    faltas,
+    faltas_local_total: faltas.local_total,
+    faltas_visitante_total: faltas.visitante_total,
     numeros_jugadores: numerosJugadores,
     registro_jugadores_local: registroJugadoresLocal,
     registro_jugadores_visitante: registroJugadoresVisitante,

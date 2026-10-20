@@ -1,3 +1,11 @@
+## 2026-10-20 - Planilla móvil: faltas por tiempo
+
+- Ajuste coordinado con `../gestionDeportivaAppMovil`: cuatro conteos por partido (local/visitante, primer/segundo tiempo) con casillas 1–6 acumuladas, selección para limpiar y pantalla sin textos instructivos redundantes.
+- API móvil GET/PUT conserva los contratos de marcador, tarjetas, pagos y permisos. Añade cuatro campos dentro de `fouls`, los adapta al objeto `faltas` del modelo existente y deriva los totales. Sin cambios de esquema ni migraciones.
+- Compatibilidad: las solicitudes antiguas o parciales conservan los tiempos omitidos, en lugar de ponerlos en cero. Los totales no se reparten arbitrariamente entre tiempos.
+- Regresión del servicio real con dependencias simuladas: **8/8 PASS**; móvil **20/20 PASS**, TypeScript y exportación Android aprobados. Sin escrituras productivas de prueba. QA visual/guardado real pendiente; Browser no tiene navegador disponible.
+- Publicar backend por commit/push según la preferencia del usuario antes de distribuir el nuevo JS de la app. La memoria móvil registra la entrega OTA y sus comprobaciones cuando se complete.
+
 ## 2026-10-16 - Usuarios y Roles: campeonato y equipos dependientes
 
 - Solicitud: elegir un campeonato al crear un dirigente/técnico y mostrar únicamente los equipos de ese campeonato.

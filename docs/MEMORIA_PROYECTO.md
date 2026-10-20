@@ -1,8 +1,17 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-10-16 (America/Guayaquil).
+Actualizada: 2026-10-20 (America/Guayaquil).
 
-## Último trabajo: Usuarios y Roles (16-oct)
+## Último trabajo: faltas por tiempo para la app móvil (20-oct)
+
+- La app hermana `../gestionDeportivaAppMovil` reemplaza el contador total de faltas por casillas 1–6 para primer y segundo tiempo de cada equipo. Se retiraron los textos instructivos repetidos de su planilla. La web conserva su implementación actual.
+- `backend/services/mobileOperationsService.js` expone y recibe `fouls.homeFirstHalfFouls`, `homeSecondHalfFouls`, `awayFirstHalfFouls`, `awaySecondHalfFouls`; `mobilePlanillaFouls.js` los adapta a `local_1er`, `local_2do`, `visitante_1er`, `visitante_2do` del modelo existente. Totales derivados de los tiempos, rango 0–6 por tiempo, sin migración.
+- Los APK antiguos que mandan solo totales conservan los tiempos ya registrados por web/app nueva; sus totales no se usan para inventar un reparto por tiempo. Las actualizaciones parciales conservan los tiempos omitidos. El móvil nuevo bloquea el guardado si el servidor aún no devuelve los cuatro tiempos, evitando pérdida silenciosa durante el despliegue.
+- Verificación: `npm --prefix backend run test:mobile-planilla`, **8/8 PASS** con servicio real y modelo/acceso simulados, sin conexión a BD. Cubre lectura, guardado/reapertura, ceros, límites, clientes antiguos, cambios parciales y permisos. Sintaxis y `git diff --check` sin errores. Móvil: 20/20 pruebas, TypeScript y exportación Android/Hermes aprobados.
+- Publicación: seguir la preferencia de commit/push al cerrar; backend antes de OTA preview del APK 1.0.1. El QA visual y el guardado real en celular siguen pendientes; no se modificaron datos productivos para probar.
+- Respaldo: `../_codex_backups/gestionDeportivaAppMovil_faltas_2026-10-20_before.zip`. Memoria móvil: `../gestionDeportivaAppMovil/docs/retomaMovil_2026-10-20.md`.
+
+## Trabajo anterior: Usuarios y Roles (16-oct)
 
 - Implementado selector Campeonato para organizadores; Equipo solo muestra los del campeonato seleccionado y permanece deshabilitado hasta elegirlo. Administrador conserva Organización -> Campeonato -> Equipo, incluida la edición. Archivos: `frontend/usuarios.html`, `frontend/js/usuarios.js`.
 - Se reutilizan las APIs autenticadas de campeonatos/equipos y sus permisos existentes. Cambiar campeonato limpia el equipo; Recargar conserva selecciones válidas; validación al guardar y mensajes de vacío/error. No requiere migración ni cambios de backend.
