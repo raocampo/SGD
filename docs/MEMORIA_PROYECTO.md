@@ -1,8 +1,17 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-10-20 (America/Guayaquil).
+Actualizada: 2026-10-21 (America/Guayaquil).
 
-## Último trabajo: cabecera y modalidades de la planilla móvil (20-oct)
+## Último trabajo: asociación de equipo al primer ingreso (21-oct)
+
+- Resuelto el selector vacío de una cuenta nueva de dirigente/técnico/jugador: el primer ingreso consultaba `/api/campeonatos`, que exige un equipo previamente asociado. El cambio del 16-oct era del formulario administrativo; este corrige el ingreso de la propia cuenta nueva.
+- Nuevo `GET /api/auth/mi-equipo/opciones`, autenticado y exclusivo de esos tres roles. Devuelve solo IDs/nombres de organizadores activos, campeonatos publicados (`inscripcion`, `en_curso`, `finalizado`) y equipos; admite el vínculo legacy por texto si falta creador. Las lecturas deportivas siguen restringidas al equipo propio.
+- Un diálogo con Organizador -> Campeonato -> Equipo, opciones dependientes y mensajes de vacío/reintento. `POST /api/auth/mi-equipo` valida la relación antes de asignar; sigue aceptando clientes con solo `equipo_id`. Actualiza la sesión y recarga para consultar el equipo e inscribir jugadores. Cédula opcional del jugador conservada.
+- Pruebas: `npm --prefix backend run test:equipo-asociacion` **11/11 PASS**, guards frontend **49/49 PASS** y **12/12 escenarios DOM PASS** en `tmp/qa-usuarios-dom/asociacion.cjs` (temporal gitignored). Autenticación/rutas/controladores reales con modelos/datos simulados; probada la inscripción de jugadores del equipo propio y el rechazo de otro equipo. No se modificaron datos reales.
+- Pendiente: QA visual y asociación/inscripción reales tras desplegar backend y frontend. Browser continúa sin navegadores disponibles. Sin migraciones nuevas. Base de esta tarea: `e3af70d`, alineada con el remoto al iniciar.
+- Archivos principales: `backend/services/equipoAsociacionService.js`, `controllers/authController.js`, `routes/authRoutes.js`, `tests/equipo-asociacion.test.js`, `frontend/js/core.js` y `api.js`.
+
+## Trabajo anterior: cabecera y modalidades de la planilla móvil (20-oct)
 
 - API GET/PUT móvil añade `matchDetails` (árbitro, asistentes/segundo árbitro, suplente, delegado, ciudad, número de partido) y `rules`, derivadas del tipo del campeonato. El tipo recibido en el cuerpo no decide las reglas.
 - Faltas acumuladas únicamente en fútbol 7, 6, 5 y sala; fútbol 11/9/8 e indor ocultan esa sección y el backend conserva las faltas previas sin aceptar cambios nuevos de esos formatos.
@@ -32,14 +41,14 @@ Actualizada: 2026-10-20 (America/Guayaquil).
 
 - Sincronización del 15-oct: `git pull --ff-only` completado en Windows de `e9e8aa4` a `20f37d9`. Los siete archivos modificados y dos nuevos coincidían íntegramente con los commits remotos; se respaldaron con stash y se retiró ese respaldo solo tras comparar los nueve archivos con `HEAD`. La documentación se publicó después en `0a12a0e`.
 - Sistema de gestión deportiva LT&C: frontend HTML/CSS/JS y backend Node/Express con PostgreSQL. Scripts operativos en `backend/package.json`.
-- Última migración disponible: `075_recrear_partido_mega_construgrid.sql`. Esta sesión no ejecutó migraciones ni modificó datos.
+- Última migración disponible: `076_partidos_arbitro_suplente.sql` (20-oct, planilla móvil). La sesión del 21-oct no ejecutó migraciones ni modificó datos reales.
 - Producción, según la bitácora reciente: backend Railway y frontend Vercel, con despliegue automático desde `main`. Las menciones antiguas a Render son referencias históricas que deben contrastarse antes de operar.
 - Validación del 15-oct: `node backend/scripts/qaPublicacionJornadas.js` **PASS** (filtros, guardado, errores y logos con frontend/backend separados); `npm --prefix backend run smoke:frontend` **49/49 PASS**. Son pruebas locales sin BD ni credenciales; no acreditan QA visual ni flujos reales de backend/producción.
 
 ## Fuentes para retomar
 
-1. `docs/BITACORA_AVANCES.md`: entrada del 16-oct para Usuarios y Roles; «2026-10-14 - Estado consolidado» para la lista A–D y las entradas superiores de ese día para jornadas y logos.
-2. `docs/ESTADO_IMPLEMENTACION_SGD.md`: primera entrada del 16-oct; implementación de Usuarios y Roles y continuidad del 15-oct.
+1. `docs/BITACORA_AVANCES.md`: entrada del 21-oct para asociación inicial; las del 20-oct para planilla móvil; «2026-10-14 - Estado consolidado» para la lista A–D, complementada por las entradas posteriores.
+2. `docs/ESTADO_IMPLEMENTACION_SGD.md`: primera entrada del 21-oct; asociación inicial y continuidad de Usuarios y Roles.
 3. `docs/INDICE_DOCUMENTACION.md`: mapa de guías y planes.
 
 El README conserva un cierre de junio y la tabla histórica de módulos tiene fecha de mayo. Priorizar las entradas fechadas más recientes; no reabrir tareas antiguas ya resueltas (por ejemplo, Facturación Fases 2 y 3 ya implementadas). Los planes de transmisión y baloncesto también incluyen fases iniciales ya superadas; contrastarlos con la bitácora y el código antes de implementar.
@@ -58,6 +67,7 @@ El README conserva un cierre de junio y la tabla histórica de módulos tiene fe
 
 ## Próximos pasos
 
+- Confirmar primer ingreso de dirigente/técnico en producción: organizador, campeonato y equipo; después, consultar e inscribir jugadores del equipo elegido. El despliegue requiere tanto backend como frontend; no hay migración de este cambio.
 - Confirmar en producción Usuarios y Roles: campeonatos propios visibles para organizador, equipos filtrados y equipo anterior limpio al cambiar campeonato; revisar el formulario en celular.
 - Confirmar visualmente en producción las correcciones de jornadas y logos ya presentes en `origin/main`; no necesitan volver a publicarse. Según la sesión del 14-oct, el evento 34 se restauró a `null` con respaldo previo y 84 partidos intactos; la API devolvió 84 partidos, 10 jornadas y 20 finalizados con marcador. Es evidencia histórica, no una consulta del 15-oct.
 - Código pendiente comprobado el 15-oct: aplicar el modo lectura de `planilla.html` desde el inicio (actualmente se aplica al cargar una planilla); revisar scroll y botones fijos de los modales de Facturación, Playoff y Transmisión en celular; adaptar la bienvenida de `portal-tecnico.html` para que el jugador no vea la mención al estado financiero. Son candidatos para la siguiente tarea, todavía sin implementar.

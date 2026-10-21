@@ -1,15 +1,15 @@
 # Indice de Documentacion LT&C
 
-Ultima actualizacion: 2026-10-16
+Ultima actualizacion: 2026-10-21
 
 ## Documentos clave
 - `docs/MEMORIA_PROYECTO.md`
   - Memoria breve para retomar: sincronización verificada, fuentes vigentes, próximos pasos y límites de las verificaciones realizadas.
 - `docs/BITACORA_AVANCES.md`
   - Registro vivo por fecha de todo lo implementado y pendientes de la siguiente sesion.
-  - La entrada mas reciente va arriba. La del 2026-10-16 registra el selector Campeonato y los equipos dependientes en Usuarios y Roles; la del 2026-10-15, la sincronizacion en Windows. "2026-10-14 - Estado consolidado" trae la lista de pendientes A-D, complementada por las correcciones de jornadas y logos ya publicadas ese dia. El cierre del 2026-10-11 explica como continuar desde otro equipo (MEGA no sincroniza `.git` ni `.env`); el del 2026-10-10, como levantar el equipo Fedora (BD local, Live Server, respaldo de produccion).
+  - La entrada mas reciente va arriba. La del 2026-10-21 corrige la asociacion inicial de dirigente/tecnico/jugador; las del 2026-10-20 registran planilla movil y migracion 076; la del 2026-10-16, el selector Campeonato en Usuarios y Roles. "2026-10-14 - Estado consolidado" trae la lista de pendientes A-D, complementada por las entradas posteriores. Los cierres del 2026-10-10/11 explican el entorno Fedora y la continuidad entre equipos (MEGA no sincroniza `.git` ni `.env`).
 - `docs/ESTADO_IMPLEMENTACION_SGD.md`
-  - Estado por modulo frente a la propuesta original; priorizar las entradas del 2026-10-16 y de continuidad del 2026-10-15 sobre las tablas historicas.
+  - Estado por modulo frente a la propuesta original; priorizar la entrada del 2026-10-21 y la memoria vigente sobre las tablas historicas.
 - `docs/propuestaDesarrolloSGD.md`
   - Documento base de alcance funcional del proyecto.
 - `docs/CAMBIOS_IMPLEMENTADOS.md`

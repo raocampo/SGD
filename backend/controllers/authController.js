@@ -3,6 +3,7 @@ const UsuarioAuth = require("../models/UsuarioAuth");
 const OrganizadorPortal = require("../models/OrganizadorPortal");
 const Jugador = require("../models/Jugador");
 const publicPortalService = require("../services/publicPortalService");
+const { listarOpcionesAsociacion, validarSeleccionAsociacion } = require("../services/equipoAsociacionService");
 const {
   isOrganizador,
   obtenerEquipoIdsOrganizador,
@@ -791,6 +792,16 @@ const authController = {
     }
   },
 
+  async opcionesMiEquipo(req, res) {
+    try {
+      const organizadores = await listarOpcionesAsociacion();
+      return res.json({ ok: true, organizadores });
+    } catch (error) {
+      console.error("Error cargando opciones de asociación:", error);
+      return res.status(500).json({ error: "No se pudieron cargar los organizadores, campeonatos y equipos" });
+    }
+  },
+
   // El propio dirigente/tecnico/jugador se asocia a un equipo (pantalla
   // de onboarding post-registro, ver frontend core.js promptAsociarEquipo).
   // Si es jugador y manda cedula, intenta vincularlo a su ficha existente
@@ -799,7 +810,7 @@ const authController = {
   async asociarMiEquipo(req, res) {
     try {
       const usuarioId = req.user?.id;
-      const equipoId = Number.parseInt(req.body?.equipo_id, 10);
+      const { equipo_id: equipoId } = await validarSeleccionAsociacion(req.body || {});
       const cedula = String(req.body?.cedula || "").trim();
 
       const usuario = await UsuarioAuth.asignarEquipo(usuarioId, equipoId);
@@ -829,7 +840,7 @@ const authController = {
       console.error("Error en autoasociación de equipo:", error);
       const msg = String(error?.message || "");
       const status =
-        msg.includes("invalido") || msg.includes("encontrado") || msg.includes("Solo se pueden")
+        error.status === 400 || msg.includes("invalido") || msg.includes("encontrado") || msg.includes("Solo se pueden")
           ? 400
           : 500;
       return res.status(status).json({ error: msg || "No se pudo asociar el equipo" });

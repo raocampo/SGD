@@ -1,3 +1,11 @@
+## 2026-10-21 - Asociación de equipo al primer ingreso
+
+- Corregido el ciclo de permisos que dejaba vacío el selector de campeonatos para una cuenta nueva de dirigente/técnico/jugador. El primer ingreso usa un catálogo autenticado mínimo independiente de `/api/campeonatos`; las lecturas operativas siguen acotadas a equipos asociados.
+- Selección dependiente Organizador -> Campeonato -> Equipo en un diálogo, con vacíos y reintento explícitos. El servidor valida la relación antes de asignar y la sesión se actualiza; recarga para consultar e inscribir jugadores del equipo propio.
+- Endpoint nuevo `GET /api/auth/mi-equipo/opciones`; `POST /api/auth/mi-equipo` compatible con el cuerpo anterior de solo `equipo_id`. Sin migración. Última migración del repositorio: `076_partidos_arbitro_suplente.sql`, incorporada el 20-oct para la app móvil.
+- Verificación: **11/11 pruebas de servicio/HTTP PASS**, **12/12 escenarios DOM PASS** con datos simulados, guards frontend **49/49 PASS**. Incluye inscripción permitida para dirigente/técnico en el equipo propio y rechazada en otro; sin cuentas/jugadores reales de prueba.
+- Pendiente: confirmar en producción el catálogo, la asociación real y la carga de jugadores con una cuenta nueva; QA visual en móvil/escritorio. Browser sin navegadores disponibles en esta sesión. Memoria y bitácora actualizadas.
+
 ## 2026-10-16 - Usuarios y Roles: filtro de equipos por campeonato
 
 - Organizador: el formulario ahora muestra Campeonato para crear dirigentes/técnicos; Equipo se habilita después y solo muestra los equipos del campeonato elegido. Administrador conserva Organización -> Campeonato -> Equipo para técnico/dirigente/jugador, incluida la precarga al editar.
