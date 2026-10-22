@@ -2,7 +2,17 @@
 
 Actualizada: 2026-10-21 (America/Guayaquil).
 
-## Último trabajo: asociación de equipo al primer ingreso (21-oct)
+## Último trabajo: contención del incidente de Railway (21-oct)
+
+- Autorizada la rotación de secretos y su conservación en `.env.local` de la raíz. Sesión de Railway renovada por el usuario; proyecto verificado `sgd-ltc/production`. Archivo normalizado, ignorado por Git y restringido por ACL al usuario Windows actual/SYSTEM. Respaldos cifrados DPAPI en `database/backups/`; no publicar secretos ni respaldos.
+- **Aplicado:** revocación transaccional de 16 refresh tokens vigentes, con respaldo previo y comprobación de 0 restantes. Sin cambios de contraseñas de usuarios, jugadores, equipos ni otros datos deportivos.
+- **JWT pendiente de activación:** reemplazo guardado en `JWT_SECRET_NEXT` y en Railway con `skipDeploys: true`, con lectura posterior coincidente. El proceso activo sigue aceptando la firma anterior y rechazando la nueva; los JWT de acceso todavía no están invalidados. Railway rechazó desplegar incluso la imagen existente con `Paused temporarily`.
+- **Postgres pendiente:** contraseña/URLs nuevas preparadas en campos `_NEXT`, sin cambiar el rol ni las variables del servicio hasta coordinar un despliegue del backend que use la nueva conexión. **Gmail pendiente:** debe revocarse la contraseña de aplicación desde Google; campo `SMTP_PASS_NEXT` disponible para guardarla sin chat. No se ha emitido ni revocado una clave Google desde esta sesión.
+- Producción todavía ejecuta `e3af70d` (20-oct); `/salud` 200 y BD responde, pero el catálogo de asociación de `b28f702` sigue en 404. El frontend nuevo ya estaba publicado. Esto explica el modal de error actual; pendiente desplegar y probar asociación/inscripción real.
+- Registros revisados: 42 líneas de Postgres y 67 del backend; errores de archivo frontend inexistente, timeouts de correo y correo duplicado. Auditoría parcial: dos eventos de creación de despliegue. No demuestra ausencia de intrusión. Plan confirmado Hobby: SMTP saliente bloqueado según Railway; rotar Gmail no basta para recuperar el envío de correo.
+- Detalle, evidencia, límites y pasos de cierre: `docs/INCIDENTE_RAILWAY_2026-10-21.md`. Estado por secreto y reemplazos exclusivamente en `.env.local`; **respuesta al incidente incompleta**. Auxiliar local gitignored: `tmp/railway-security.cjs`; no hay reintentos automáticos programados.
+
+## Trabajo anterior: asociación de equipo al primer ingreso (21-oct)
 
 - Resuelto el selector vacío de una cuenta nueva de dirigente/técnico/jugador: el primer ingreso consultaba `/api/campeonatos`, que exige un equipo previamente asociado. El cambio del 16-oct era del formulario administrativo; este corrige el ingreso de la propia cuenta nueva.
 - Nuevo `GET /api/auth/mi-equipo/opciones`, autenticado y exclusivo de esos tres roles. Devuelve solo IDs/nombres de organizadores activos, campeonatos publicados (`inscripcion`, `en_curso`, `finalizado`) y equipos; admite el vínculo legacy por texto si falta creador. Las lecturas deportivas siguen restringidas al equipo propio.
@@ -41,7 +51,7 @@ Actualizada: 2026-10-21 (America/Guayaquil).
 
 - Sincronización del 15-oct: `git pull --ff-only` completado en Windows de `e9e8aa4` a `20f37d9`. Los siete archivos modificados y dos nuevos coincidían íntegramente con los commits remotos; se respaldaron con stash y se retiró ese respaldo solo tras comparar los nueve archivos con `HEAD`. La documentación se publicó después en `0a12a0e`.
 - Sistema de gestión deportiva LT&C: frontend HTML/CSS/JS y backend Node/Express con PostgreSQL. Scripts operativos en `backend/package.json`.
-- Última migración disponible: `076_partidos_arbitro_suplente.sql` (20-oct, planilla móvil). La sesión del 21-oct no ejecutó migraciones ni modificó datos reales.
+- Última migración disponible: `076_partidos_arbitro_suplente.sql` (20-oct, planilla móvil). El cambio de asociación del 21-oct no ejecutó migraciones ni modificó datos reales; la respuesta posterior al incidente sí revocó 16 refresh tokens en producción, con respaldo cifrado.
 - Producción, según la bitácora reciente: backend Railway y frontend Vercel, con despliegue automático desde `main`. Las menciones antiguas a Render son referencias históricas que deben contrastarse antes de operar.
 - Validación del 15-oct: `node backend/scripts/qaPublicacionJornadas.js` **PASS** (filtros, guardado, errores y logos con frontend/backend separados); `npm --prefix backend run smoke:frontend` **49/49 PASS**. Son pruebas locales sin BD ni credenciales; no acreditan QA visual ni flujos reales de backend/producción.
 

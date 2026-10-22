@@ -1,3 +1,13 @@
+## 2026-10-21 - Respuesta parcial al incidente de variables de Railway
+
+- Autorización del usuario: realizar la remediación y guardar credenciales en `.env.local`. Renovó el inicio de sesión de Railway; se comprobó `sgd-ltc/production` con backend y Postgres. Archivo local normalizado y protegido para usuario actual/SYSTEM; secretos y respaldos ignorados por Git.
+- Configuración anterior, variables, sesiones afectadas y registros respaldados mediante DPAPI de Windows en `database/backups/`. Se revocaron 16 refresh tokens activos dentro de una transacción; comprobación posterior: cero. Ningún enlace de recuperación pendiente. Sin cambios de contraseñas de usuarios ni datos deportivos.
+- Generados JWT y contraseña PostgreSQL nuevos en campos `_NEXT`. JWT actualizado en variables de Railway con despliegue omitido y lectura posterior verificada. Railway rechazó el despliegue de la imagen existente (`Paused temporarily`). La prueba de firma con ID inexistente confirma que el proceso activo aún usa JWT anterior; no se presenta como una rotación terminada.
+- PostgreSQL conserva su contraseña hasta poder coordinar la actualización del proceso backend. Gmail requiere revocar la contraseña de aplicación desde la cuenta Google; se pidió guardar el reemplazo directamente en `SMTP_PASS_NEXT`, sin enviarlo al chat. Todavía pendiente.
+- Leídos 42 registros de Postgres, 67 del backend y dos eventos de auditoría desde el 20-oct. Muestra de errores: 47 de `/app/frontend/index.html` inexistente, 14 timeouts de correo y uno de correo ya registrado. No acredita ausencia de intrusión. Workspace Hobby confirmado: Railway bloquea SMTP en ese plan; hace falta API HTTPS o plan compatible para recuperar correo.
+- Backend sigue en `e3af70d`, `/salud` 200 y conexión PostgreSQL verificada; `/api/auth/mi-equipo/opciones` 404 porque aún no se desplegó `b28f702`. Sin reintentos ni tareas automáticas programadas.
+- Registrados alcance, estado real y cierre pendiente en `docs/INCIDENTE_RAILWAY_2026-10-21.md`, memoria, estado e índice. La remediación sigue incompleta: activar JWT nuevo, rotar PostgreSQL de forma coordinada, revocar Gmail y verificar credenciales anteriores rechazadas.
+
 ## 2026-10-21 - Primer ingreso: organizador, campeonato y equipo para dirigente/técnico/jugador
 
 - Reporte: al crear una cuenta de dirigente/técnico, «¿A qué campeonato perteneces?» mostraba un selector vacío y no permitía llegar al equipo ni inscribir jugadores.

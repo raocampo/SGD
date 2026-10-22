@@ -1,3 +1,11 @@
+## 2026-10-21 - Incidente Railway: contención parcial
+
+- `.env.local` raíz normalizado, con ACL restringida y exclusión de Git. Respaldos de configuración y evidencia cifrados DPAPI en `database/backups/`.
+- Revocados 16 refresh tokens, comprobados 0 vigentes. JWT nuevo guardado y configurado en Railway, pero **sin activar en el proceso actual**: despliegue rechazado por `Paused temporarily`. PostgreSQL nuevo preparado, sin cambiar aún la contraseña de la base ni las variables del servicio. Gmail requiere revocar/emitir la credencial desde Google; no completado.
+- Backend activo `e3af70d`, salud 200 y BD disponible. Endpoint de asociación de `b28f702` todavía 404; el modal seguirá fallando hasta desplegarlo.
+- Plan Hobby confirmado: no admite SMTP saliente. Hay timeouts de correo y errores de archivo frontend en los registros revisados; esa muestra parcial no permite descartar intrusión.
+- Prioridad: cerrar rotación y verificar rechazo de credenciales anteriores cuando Railway permita desplegar; completar el paso de Gmail y confirmar el catálogo/asociación real. Evidencia y procedimiento en `docs/INCIDENTE_RAILWAY_2026-10-21.md`. No se cambiaron contraseñas de usuarios ni datos deportivos.
+
 ## 2026-10-21 - Asociación de equipo al primer ingreso
 
 - Corregido el ciclo de permisos que dejaba vacío el selector de campeonatos para una cuenta nueva de dirigente/técnico/jugador. El primer ingreso usa un catálogo autenticado mínimo independiente de `/api/campeonatos`; las lecturas operativas siguen acotadas a equipos asociados.
