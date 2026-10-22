@@ -2,7 +2,16 @@
 
 Actualizada: 2026-10-22 (America/Guayaquil).
 
-## Último trabajo: fallo de build documental y filtros de despliegue (22-oct)
+## Último trabajo: filas impresas según los planteles reales (22-oct)
+
+- Solicitud del usuario: ambos lados de la planilla deben tener `max(inscritos local, inscritos visitante)` filas. Ejemplos: 20/15 -> 20 filas (5 vacías solo en visitante); 15/15 -> 15, sin filas vacías; ambos sin inscritos -> 0 filas de jugadores. La regla aplica a todos los deportes/modelos del sistema.
+- `frontend/js/planilla.js`: vista previa oficial/resumen, impresión y PDF con/sin observaciones usan el plantel real; se retiraron el relleno por `max_jugador`, los mínimos por modalidad y el recorte fijo a 30. Se conserva el orden por apellido, los datos y las estadísticas; el reporte tampoco recorta un plantel ya inscrito que supere el cupo configurado. Los límites de inscripción siguen validándose en backend.
+- XLSX: la hoja del partido se reduce/amplía al mismo máximo real, desplazando celdas, combinaciones y pie de firmas/observaciones/pagos. `LISTAJUGADORES` usa la cantidad real del plantel local. La plantilla base conserva su archivo original; sin migración ni cambios de backend/datos productivos.
+- Regresión reproducible: `node --test frontend/tests/planilla-impresion.test.cjs`, **15/15 PASS**, con 13 modalidades/tipos y diez combinaciones de planteles/cupos, nulos, ceros, 35 inscritos, estadísticas, orden y desplazamiento del pie Excel. Guards frontend **49/49 PASS**; sintaxis y diff correctos.
+- QA de las funciones completas con las mismas versiones de pdfMake/SheetJS que carga la página: **7 PDF y 6 XLSX** de datos sintéticos. PDF renderizados/revisados: 1 página sin observaciones en los casos probados (incluido 35/20) y 2 con observaciones; 20/15 con cinco filas vacías solo en el menor, 15/15 sin relleno. XLSX reabiertos y contados, sin errores de fórmula; sin prueba de impresión física ni revisión en Excel de escritorio. Material temporal gitignored en `tmp/qa-planilla-exports/`.
+- Publicación al cerrar: frontend Vercel y documentación; los Watch Paths del backend excluyen estos cambios. La verificación de pertenencia por código sigue en espera por instrucción del usuario.
+
+## Trabajo anterior: fallo de build documental y filtros de despliegue (22-oct)
 
 - La captura corresponde al build `e11ae716-9407-4a87-ac43-30156553c4f0`, commit documental `3578a8e`, **FAILED antes del despliegue**. Eventos: `BUILD_IMAGE` con error genérico; único registro de build: inicio de builder v4. No hay detalle que permita afirmar la causa exacta ni evidencia de un error de aplicación en ese intento. Evidencia respaldada localmente con DPAPI.
 - La versión funcional `003956f`, despliegue `f21f6b91-c6d6-4031-8ecb-c43f705439f3`, seguía **SUCCESS**: salud 200, catálogo sin token 401 y autenticado 200, 23 inscritos sin nombres repetidos en campeonato 22/categoría 36, frontend actualizado. El fallo documental no revirtió el código ni las credenciales rotadas.

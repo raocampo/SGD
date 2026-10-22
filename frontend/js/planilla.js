@@ -55,7 +55,6 @@ const INASISTENCIAS_PLANILLA_VALIDAS = new Set(["ninguno", "local", "visitante",
 const ESTADOS_PLANILLA_CERRADOS = new Set(["finalizado", "no_presentaron_ambos"]);
 const GOLES_WALKOVER = 3;
 const MAX_FALTAS_PLANILLA = 6;
-const MAX_JUGADORES_REPORTE_PLANILLA = 30;
 const RONDAS_PLAYOFF_PLANILLA = [
   "reclasificacion",
   "32vos",
@@ -1511,6 +1510,71 @@ function limpiarRangoFilas(sheet, filaInicio, filaFin, columnas) {
   }
 }
 
+function ajustarFilasPlantelExcel(sheet, cfg, cantidad) {
+  const inicio = cfg.jugadores.inicio - 1;
+  const fin = cfg.jugadores.fin - 1;
+  const actuales = fin - inicio + 1;
+  const diferencia = cantidad - actuales;
+  if (!diferencia) return cfg;
+  const moverFila = (fila) => {
+    if (fila > fin) return fila + diferencia;
+    if (diferencia < 0 && fila >= inicio + cantidad) return null;
+    return fila;
+  };
+  const celdas = Object.entries(sheet).filter(([ref]) => /^[A-Z]+\d+$/.test(ref));
+  const celdasModelo = celdas.filter(([ref]) => XLSX.utils.decode_cell(ref).r === fin);
+  const merges = sheet["!merges"] || [];
+  const filas = sheet["!rows"] || [];
+  celdas.forEach(([ref]) => delete sheet[ref]);
+  for (const [ref, cell] of celdas) {
+    const pos = XLSX.utils.decode_cell(ref);
+    const fila = moverFila(pos.r);
+    if (fila !== null) sheet[XLSX.utils.encode_cell({ ...pos, r: fila })] = cell;
+  }
+  sheet["!merges"] = merges.flatMap((merge) => {
+    const inicioFila = moverFila(merge.s.r);
+    const finFila = moverFila(merge.e.r);
+    return inicioFila === null || finFila === null ? []
+      : [{ s: { ...merge.s, r: inicioFila }, e: { ...merge.e, r: finFila } }];
+  });
+  sheet["!rows"] = [];
+  filas.forEach((fila, index) => {
+    const destino = moverFila(index);
+    if (destino !== null) sheet["!rows"][destino] = fila;
+  });
+  // Extender la misma fila y sus combinaciones horizontales sin copiar datos.
+  for (let index = 1; index <= diferencia; index += 1) {
+    const nuevaFila = fin + index;
+    for (const [ref, cell] of celdasModelo) {
+      const nueva = { ...cell, t: "s", v: "" };
+      delete nueva.f;
+      delete nueva.w;
+      sheet[XLSX.utils.encode_cell({ ...XLSX.utils.decode_cell(ref), r: nuevaFila })] = nueva;
+    }
+    sheet["!rows"][nuevaFila] = { ...(filas[fin] || {}) };
+    for (const merge of merges.filter((m) => m.s.r === fin && m.e.r === fin)) {
+      sheet["!merges"].push({ s: { ...merge.s, r: nuevaFila }, e: { ...merge.e, r: nuevaFila } });
+    }
+  }
+  const rango = XLSX.utils.decode_range(sheet["!ref"]);
+  rango.e.r += diferencia;
+  sheet["!ref"] = XLSX.utils.encode_range(rango);
+  // Reubicar referencias del pie (observaciones, firmas y pagos), sin
+  // modificar el diseño de las plantillas ni su archivo base.
+  return Object.fromEntries(Object.entries(cfg).map(([key, bloque]) => {
+    if (key === "jugadores") return [key, { ...cfg.jugadores, inicio: inicio + 1, fin: inicio + cantidad }];
+    if (!bloque || typeof bloque !== "object") return [key, bloque];
+    return [key, Object.fromEntries(Object.entries(bloque).map(([campo, valor]) => {
+      if (typeof valor === "number") return [campo, valor > fin + 1 ? valor + diferencia : valor];
+      if (typeof valor === "string" && /^[A-Z]+\d+$/.test(valor)) {
+        const pos = XLSX.utils.decode_cell(valor);
+        return [campo, XLSX.utils.encode_cell({ ...pos, r: moverFila(pos.r) })];
+      }
+      return [campo, valor];
+    }))];
+  }));
+}
+
 function sumarEnMapa(map, key, value = 1) {
   const actual = map.get(key) || 0;
   map.set(key, actual + value);
@@ -1716,7 +1780,7 @@ function construirIndicesEventos(payload) {
 
 function llenarPlantelExcel(sheet, cfg, jugadores, stats) {
   const maxFilas = cfg.jugadores.fin - cfg.jugadores.inicio + 1;
-  const lista = ordenarJugadoresPorApellidoPlanilla(jugadores || []).slice(0, maxFilas);
+  const lista = ordenarJugadoresPorApellidoPlanilla(obtenerPlantelImpresionPlanilla(jugadores)).slice(0, maxFilas);
 
   limpiarRangoFilas(sheet, cfg.jugadores.inicio, cfg.jugadores.fin, [
     cfg.colNumero,
@@ -1750,19 +1814,23 @@ function llenarHojaListaJugadores(wb, partido, plantelLocal = []) {
 
   const categoria = partido.evento_nombre || partido.campeonato_nombre || "Sin categoria";
   const directorTecnico = partido.equipo_local_director_tecnico || "";
+  const jugadores = obtenerJugadoresImpresionPlanilla(plantelLocal);
+  const cfg = ajustarFilasPlantelExcel(sheet, {
+    jugadores: { inicio: 10, fin: 29 }, meta: { directorTecnico: "F36" },
+  }, jugadores.length);
 
   setCellValue(sheet, "E6", partido.equipo_local_nombre || "");
   setCellValue(sheet, "E7", categoria);
-  setCellValue(sheet, "F36", directorTecnico);
+  setCellValue(sheet, cfg.meta.directorTecnico, directorTecnico);
 
-  for (let fila = 10; fila <= 29; fila += 1) {
+  for (let fila = cfg.jugadores.inicio; fila <= cfg.jugadores.fin; fila += 1) {
     setCellValue(sheet, `C${fila}`, "");
     setCellValue(sheet, `D${fila}`, "");
     setCellValue(sheet, `F${fila}`, "");
     setCellValue(sheet, `G${fila}`, "");
   }
 
-  ordenarJugadoresPorApellidoPlanilla(plantelLocal).slice(0, 20).forEach((j, index) => {
+  jugadores.forEach((j, index) => {
     const fila = 10 + index;
     setCellValue(sheet, `C${fila}`, j.numero_camiseta || "");
     setCellValue(sheet, `D${fila}`, j.apellido || "");
@@ -4575,21 +4643,28 @@ function obtenerColumnasPdfPlanilla() {
   return obtenerColumnasRegistroPlanilla({ encabezadoCompleto: true, modo: "pdf" }).map((col) => col.pdfWidth);
 }
 
+function obtenerPlantelImpresionPlanilla(jugadores) {
+  if (!Array.isArray(jugadores)) return [];
+  return jugadores.filter((jugador) => {
+    if (!jugador) return false;
+    const id = Number(jugador.id);
+    return (Number.isFinite(id) && id > 0) || Boolean(nombreJugador(jugador));
+  });
+}
+
 function obtenerJugadoresImpresionPlanilla(jugadores, maxFilas) {
-  const lista = Array.isArray(jugadores)
-    ? jugadores.filter((jugador) => jugador && (Number.isFinite(Number(jugador.id)) || Boolean(nombreJugador(jugador))))
-    : [];
-  const topeBase = Number.isFinite(Number(maxFilas)) && Number(maxFilas) > 0 ? Number(maxFilas) : lista.length;
-  const tope = Math.min(MAX_JUGADORES_REPORTE_PLANILLA, topeBase);
-  const filas = ordenarJugadoresPorApellidoPlanilla(lista).slice(0, tope);
+  const filas = ordenarJugadoresPorApellidoPlanilla(obtenerPlantelImpresionPlanilla(jugadores));
+  // La otra columna puede tener más jugadores. Solo se rellena esa diferencia;
+  // el cupo de inscripción nunca agrega filas ni recorta jugadores registrados.
+  const tope = Math.max(filas.length, Number.isFinite(Number(maxFilas)) ? Math.floor(Number(maxFilas)) : 0);
   while (filas.length < tope) filas.push(null);
   return filas;
 }
 
 function renderFilasVistaPreviaEquipo(jugadores, stats, maxFilas) {
   const filas = [];
-  const jugadoresOrdenados = ordenarJugadoresPorApellidoPlanilla(jugadores || []);
-  for (let i = 0; i < maxFilas; i += 1) {
+  const jugadoresOrdenados = obtenerJugadoresImpresionPlanilla(jugadores, maxFilas);
+  for (let i = 0; i < jugadoresOrdenados.length; i += 1) {
     const j = jugadoresOrdenados[i] || null;
     const esArquero = esPosicionArqueroPlanilla(j?.posicion);
     const jugadorId = Number(j?.id);
@@ -4684,32 +4759,10 @@ function obtenerModeloPlanillaOficial() {
 }
 
 function obtenerMaxFilasVistaPreviaPlanilla() {
-  const maxConfigurado = obtenerMaxJugadoresConfiguradoPlanilla();
-  const localCount = Array.isArray(dataPlanilla?.plantel_local)
-    ? dataPlanilla.plantel_local.length
-    : 0;
-  const visitanteCount = Array.isArray(dataPlanilla?.plantel_visitante)
-    ? dataPlanilla.plantel_visitante.length
-    : 0;
-  return Math.min(
-    MAX_JUGADORES_REPORTE_PLANILLA,
-    Math.max(localCount, visitanteCount, maxConfigurado, 8)
+  return Math.max(
+    obtenerPlantelImpresionPlanilla(dataPlanilla?.plantel_local).length,
+    obtenerPlantelImpresionPlanilla(dataPlanilla?.plantel_visitante).length
   );
-}
-
-function obtenerMaxJugadoresConfiguradoPlanilla(partido = dataPlanilla?.partido || {}) {
-  const maxConfigurado = Number(partido?.max_jugador);
-  if (Number.isFinite(maxConfigurado) && maxConfigurado > 0) {
-    return Math.min(MAX_JUGADORES_REPORTE_PLANILLA, maxConfigurado);
-  }
-
-  const tipo = obtenerTipoDeportePlanillaNormalizado(partido);
-  if (tipo === "futbol_11") return 25;
-
-  const modelo = ["futbol_11", "futbol_9", "futbol_8", "indor"].includes(tipo)
-    ? "futbol_11_indor"
-    : "futbol_7_5_sala";
-  return Math.min(MAX_JUGADORES_REPORTE_PLANILLA, modelo === "futbol_7_5_sala" ? 20 : 18);
 }
 
 function renderFilasVistaPreviaOficialEquipo(jugadores, stats, maxFilas) {
@@ -5882,13 +5935,6 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
       maxFilas
     );
     const totalFilasImpresion = Math.max(plantelLocalImpresion.length, plantelVisitanteImpresion.length, 0);
-    // Jugadores reales (no-null) de ambos equipos — para escalar la fuente sin que las
-    // filas vacías de relleno cuenten como "llenas".
-    const totalJugadoresReales = Math.max(
-      plantelLocalImpresion.filter((j) => j !== null).length,
-      plantelVisitanteImpresion.filter((j) => j !== null).length,
-      0
-    );
     // El PDF operativo debe caber en 1 hoja sin observaciones y en 2 hojas con observaciones.
     // Por eso la salida PDF usa siempre una maqueta compacta; desde 24 filas entra en modo ultra.
     const modoCompactoPdf = true;
@@ -5910,12 +5956,10 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
       ? Math.max(_alturaFilaMin, Math.min(_alturaFilaMax, _espacioParaFilas / _totalFilasConCabecera))
       : _alturaFilaMax;
     const alturaCabeceraPlantel = Math.max(_alturaFilaMin, alturaFilaPlantel * 0.78);
-    // Para no-F11: la fuente escala según el ratio de jugadores REALES vs máximo configurado.
-    // totalFilasImpresion siempre es maxFilas (filas vacías rellenadas), por eso se usan
-    // totalJugadoresReales para que la fuente suba cuando hay pocas inscripciones.
+    // Escalar por filas reales del reporte, sin depender del cupo de inscripción.
     const _fontCeldaBase = modoUltraCompactoPdf ? 6.1 : 7.0;
     const _fontHeaderBase = modoUltraCompactoPdf ? 6.2 : 7.1;
-    const _filasRatio = maxFilas > 0 ? Math.min(1, totalJugadoresReales / maxFilas) : 1;
+    const _filasRatio = Math.min(1, totalFilasImpresion / 20);
     const _fontScale = 1 + (1 - _filasRatio) * 0.22;
     const fontCeldaJugador = Math.min(modoUltraCompactoPdf ? 6.8 : 8.2, _fontCeldaBase * _fontScale);
     const fontHeaderTabla = Math.min(modoUltraCompactoPdf ? 7.0 : 8.4, _fontHeaderBase * _fontScale);
@@ -6533,7 +6577,7 @@ async function exportarPlanillaXLSX() {
   const p = dataPlanilla.partido;
   const payload = recolectarPayloadPlanilla();
   const tipoFutbol = obtenerTipoFutbolPlanilla();
-  const cfg = obtenerConfigExportacionPlanilla(tipoFutbol);
+  let cfg = obtenerConfigExportacionPlanilla(tipoFutbol);
   const mostrarEnBlanco = planillaSinDatosDeJuego(payload);
 
   try {
@@ -6549,6 +6593,8 @@ async function exportarPlanillaXLSX() {
     if (!sheet) {
       throw new Error(`No existe la hoja "${cfg.sheetName}" en la plantilla`);
     }
+
+    cfg = ajustarFilasPlantelExcel(sheet, cfg, obtenerMaxFilasVistaPreviaPlanilla());
 
     const stats = construirIndicesEventos(payload);
 

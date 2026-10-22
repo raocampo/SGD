@@ -1,3 +1,9 @@
+## 2026-10-22 - Impresión de planillas según planteles reales
+
+- Implementado para vista previa oficial/resumen, PDF con/sin observaciones e impresión: número de filas = mayor plantel inscrito del partido, independiente de cupo/deporte. 20/15 -> 20 filas, cinco vacías solo en el menor; 15/15 -> 15 sin relleno. Sin mínimos ni recorte fijo a 30.
+- XLSX ajusta las filas de la hoja del partido y reubica el pie; lista auxiliar del local con sus inscritos reales. La plantilla base y los límites de inscripción se conservan; sin backend, migraciones ni escrituras productivas.
+- Pruebas **15/15**, guards **49/49**, 7 PDF renderizados/revisados y 6 XLSX reabiertos con datos sintéticos. Una página sin observaciones y dos con observaciones en los casos probados; sin impresión física ni QA en Excel de escritorio. Publicación y comprobación del frontend al cierre; Railway no requiere nuevo build por estos archivos.
+
 ## 2026-10-22 - Fallo documental de build y Watch Paths
 
 - El intento documental `e11ae716-9407-4a87-ac43-30156553c4f0` falló antes del despliegue; registros sin causa detallada. La versión funcional `003956f` permanece disponible y verificada (salud 200, 23 inscritos sin nombres repetidos, frontend actualizado).
