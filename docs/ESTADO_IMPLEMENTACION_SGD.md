@@ -5,6 +5,7 @@
 - Backend activo `e3af70d`, salud 200 y BD disponible. Endpoint de asociación de `b28f702` todavía 404; el modal seguirá fallando hasta desplegarlo.
 - Plan Hobby confirmado: no admite SMTP saliente. Hay timeouts de correo y errores de archivo frontend en los registros revisados; esa muestra parcial no permite descartar intrusión.
 - Prioridad: cerrar rotación y verificar rechazo de credenciales anteriores cuando Railway permita desplegar; completar el paso de Gmail y confirmar el catálogo/asociación real. Evidencia y procedimiento en `docs/INCIDENTE_RAILWAY_2026-10-21.md`. No se cambiaron contraseñas de usuarios ni datos deportivos.
+- Seguimiento Gmail: el reemplazo guardado por el usuario en `SMTP_PASS_NEXT` fue rechazado por Google con `EAUTH/535` durante la autenticación SMTP desde este equipo, sin enviar mensajes. No aplicado en Railway. Pendiente corregir la credencial para la cuenta `SMTP_USER` y confirmar la revocación de la anterior; reintento de despliegue aún rechazado por la pausa de Railway.
 
 ## 2026-10-21 - Asociación de equipo al primer ingreso
 

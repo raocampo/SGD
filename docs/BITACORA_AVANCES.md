@@ -1,3 +1,10 @@
+## 2026-10-21 - Validación del reemplazo Gmail: credencial rechazada
+
+- El usuario confirmó que guardó un reemplazo en `SMTP_PASS_NEXT`. Se leyó sin mostrar valores, se respaldó cifrado con DPAPI y se verificó con Nodemailer mediante TLS y autenticación desde el equipo local, sin enviar ningún mensaje.
+- Google rechazó el intento con `EAUTH`, respuesta SMTP **535**. El formato de contraseña de aplicación y su diferencia frente a la anterior no acreditan que pertenezca a la cuenta configurada ni que sea válida. No se aplicó una credencial rechazada a Railway. Se dejó el estado y el resultado en `.env.local` y se normalizó su asignación duplicada.
+- Solicitado al usuario reemplazarla por otra emitida para la cuenta exacta de `SMTP_USER` y confirmar si revocó la anterior; esto último sigue sin verificarse. La comprobación fallida se hizo fuera de Railway, por lo que no debe atribuirse al bloqueo SMTP del plan Hobby.
+- Reconsultado despliegue activo `e3af70d`; nuevo intento de desplegar imagen existente rechazado con `Paused temporarily`. JWT y PostgreSQL mantienen los pendientes descritos en el informe. Sin nuevas escrituras de BD, correos enviados ni cambios de credenciales productivas en este seguimiento.
+
 ## 2026-10-21 - Respuesta parcial al incidente de variables de Railway
 
 - Autorización del usuario: realizar la remediación y guardar credenciales en `.env.local`. Renovó el inicio de sesión de Railway; se comprobó `sgd-ltc/production` con backend y Postgres. Archivo local normalizado y protegido para usuario actual/SYSTEM; secretos y respaldos ignorados por Git.
