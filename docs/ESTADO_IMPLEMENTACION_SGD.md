@@ -1,3 +1,10 @@
+## 2026-10-22 - Asociación: categoría y equipos inscritos
+
+- Corregida la lista del primer ingreso: Organización -> Campeonato -> Evento/Categoría -> Equipo. Solo ofrece equipos inscritos mediante `evento_equipos`; IDs repetidos se deduplican y homónimos distintos conservan identidad. Cambiar selección limpia las dependientes. Backend valida la categoría recibida.
+- Causa confirmada en producción sin escrituras: campeonato 22 con 36 creados, categoría 36 «ABIERTA VARONES» con 23 inscritos y 23 nombres únicos. Los registros sin inscripción ya no se ofrecen. No se elimina ni fusiona información, no hay migración.
+- **Verificación de pertenencia pospuesta por el usuario:** registro y asociación directa siguen vigentes; pendiente diseñar generación de código al registrarse. Sin aprobación de solicitudes, comprobación telefónica ni OTP en este cambio.
+- Backend **12/12**, asociación DOM **13/13**, Usuarios y Roles DOM **14/14**, guards **49/49**. Consulta real en `READ ONLY` confirma los 23 equipos y rechazo de equipo sin categoría/categoría incorrecta. Publicación y verificación de despliegue al cierre; QA visual y carga real de jugadores pendientes.
+
 ## 2026-10-22 - Backend desplegado y credenciales rotadas
 
 - `sgd-ltc` Hobby aceptó despliegues reales: `077a9b8d` y `98c75b86`, ambos **SUCCESS**, fuente `e3b5ed3` con asociación `b28f702`. Salud 200. Sin cambio de plan ni migraciones nuevas.

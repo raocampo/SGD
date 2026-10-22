@@ -18,21 +18,21 @@ function load(relative, dependencies) {
 }
 
 const rows = [
-  { organizador_id: 100, organizador_nombre: "Organizador A", organizacion_nombre: "Liga A", campeonato_id: 10, campeonato_nombre: "Copa A", equipo_id: 11, equipo_nombre: "Unión" },
-  { organizador_id: 100, organizador_nombre: "Organizador A", organizacion_nombre: "Liga A", campeonato_id: 10, campeonato_nombre: "Copa A", equipo_id: 12, equipo_nombre: "Águilas" },
-  { organizador_id: 100, organizador_nombre: "Organizador A", organizacion_nombre: "Liga A", campeonato_id: 20, campeonato_nombre: "Copa B", equipo_id: null, equipo_nombre: null },
-  { organizador_id: 200, organizador_nombre: "Organizador B", organizacion_nombre: null, campeonato_id: 30, campeonato_nombre: "Copa C", equipo_id: 31, equipo_nombre: "Unión" },
+  { organizador_id: 100, organizador_nombre: "Organizador A", organizacion_nombre: "Liga A", campeonato_id: 10, campeonato_nombre: "Copa A", evento_id: 101, evento_nombre: "Abierta", equipo_id: 11, equipo_nombre: "Unión", numero_campeonato: 1 },
+  { organizador_id: 100, organizador_nombre: "Organizador A", organizacion_nombre: "Liga A", campeonato_id: 10, campeonato_nombre: "Copa A", evento_id: 101, evento_nombre: "Abierta", equipo_id: 12, equipo_nombre: "Águilas", numero_campeonato: 2 },
+  { organizador_id: 100, organizador_nombre: "Organizador A", organizacion_nombre: "Liga A", campeonato_id: 20, campeonato_nombre: "Copa B", evento_id: 201, evento_nombre: "Máster", equipo_id: null, equipo_nombre: null },
+  { organizador_id: 200, organizador_nombre: "Organizador B", organizacion_nombre: null, campeonato_id: 30, campeonato_nombre: "Copa C", evento_id: 301, evento_nombre: "Abierta", equipo_id: 31, equipo_nombre: "Unión" },
 ];
-function serviceHarness() {
+function serviceHarness(data = rows) {
   const calls = [];
   const pool = { query: async (sql, params) => {
     calls.push({ sql, params });
-    return { rows: params.length ? rows.filter(r => r.equipo_id === params[0]) : rows };
+    return { rows: params.length ? data.filter(r => r.equipo_id === params[0]) : data };
   } };
   return { calls, pool, service: load("services/equipoAsociacionService.js", { "../config/database": pool }) };
 }
 
-test("catálogo mínimo para usuario sin equipo agrupa organizadores, campeonatos y equipos", async () => {
+test("catálogo mínimo agrupa organización, campeonato, categoría y equipos inscritos", async () => {
   const { service, calls } = serviceHarness();
   const catalog = JSON.parse(JSON.stringify(await service.listarOpcionesAsociacion()));
   assert.equal(catalog.length, 2);
@@ -40,6 +40,8 @@ test("catálogo mínimo para usuario sin equipo agrupa organizadores, campeonato
   assert.equal(catalog[0].campeonatos.length, 2);
   assert.deepEqual(catalog[0].campeonatos[0].equipos.map(e => e.id), [11, 12]);
   assert.deepEqual(catalog[0].campeonatos[1].equipos, []);
+  assert.equal(catalog[0].campeonatos[0].categorias[0].nombre, "Abierta");
+  assert.deepEqual(catalog[0].campeonatos[0].categorias[0].equipos.map(e => e.id), [11, 12]);
   assert.deepEqual(Object.keys(catalog[0]).sort(), ["campeonatos", "id", "nombre"]);
   assert.deepEqual(Object.keys(catalog[0].campeonatos[0].equipos[0]).sort(), ["id", "nombre"]);
   assert.equal(calls.length, 1);
@@ -47,15 +49,17 @@ test("catálogo mínimo para usuario sin equipo agrupa organizadores, campeonato
   assert.match(calls[0].sql, /LOWER\(org\.rol\) = 'organizador'/);
   assert.match(calls[0].sql, /IN \('inscripcion', 'en_curso', 'finalizado'\)/);
   assert.match(calls[0].sql, /c\.creador_usuario_id IS NULL/);
+  assert.match(calls[0].sql, /JOIN evento_equipos ee ON ee.evento_id = ev.id/);
+  assert.match(calls[0].sql, /e.id = ee.equipo_id AND e.campeonato_id = c.id/);
   assert.doesNotMatch(calls[0].sql, /INSERT|UPDATE|DELETE|ALTER|SELECT\s+\*/i);
 });
 
 test("servidor valida el trío y conserva clientes antiguos que solo envían equipo_id", async () => {
   const { service, calls } = serviceHarness();
   const result = await service.validarSeleccionAsociacion({ organizador_id: "100", campeonato_id: "10", equipo_id: "11" });
-  assert.deepEqual({ ...result }, { organizador_id: 100, campeonato_id: 10, equipo_id: 11 });
+  assert.deepEqual({ ...result }, { organizador_id: 100, campeonato_id: 10, evento_id: 101, equipo_id: 11 });
   const legacy = await service.validarSeleccionAsociacion({ equipo_id: 31 });
-  assert.deepEqual({ ...legacy }, { organizador_id: 200, campeonato_id: 30, equipo_id: 31 });
+  assert.deepEqual({ ...legacy }, { organizador_id: 200, campeonato_id: 30, evento_id: 301, equipo_id: 31 });
   assert.match(calls[0].sql, /AND e\.id = \$1/);
   assert.deepEqual(Array.from(calls[0].params), [11]);
 });
@@ -67,6 +71,7 @@ test("combinaciones cruzadas o equipo ya no disponible se rechazan", async () =>
     { organizador_id: 100, campeonato_id: 30, equipo_id: 11 },
     { organizador_id: 100, campeonato_id: 20, equipo_id: 11 },
     { organizador_id: 100, campeonato_id: 10, equipo_id: 999 },
+    { organizador_id: 100, campeonato_id: 10, evento_id: 201, equipo_id: 11 },
   ]) {
     await assert.rejects(service.validarSeleccionAsociacion(input), error => error.status === 400);
   }
@@ -79,7 +84,27 @@ test("IDs inválidos no alcanzan la base de datos", async () => {
   }
   await assert.rejects(service.validarSeleccionAsociacion({ equipo_id: 11, campeonato_id: "10x" }));
   await assert.rejects(service.validarSeleccionAsociacion({ equipo_id: 11, organizador_id: -1 }));
+  await assert.rejects(service.validarSeleccionAsociacion({ equipo_id: 11, evento_id: "101x" }));
   assert.equal(calls.length, 0);
+});
+
+test("IDs repetidos se muestran una vez; equipos homónimos conservan su identidad y número", async () => {
+  const { service } = serviceHarness([
+    rows[0], rows[0], rows[1],
+    { ...rows[0], equipo_id:13, numero_campeonato:3 },
+    { ...rows[0], evento_id:102, evento_nombre:"Juvenil" },
+    { ...rows[2], campeonato_id:40, evento_id:null },
+  ]);
+  const catalog = JSON.parse(JSON.stringify(await service.listarOpcionesAsociacion()));
+  const camp = catalog[0].campeonatos[0];
+  assert.deepEqual(camp.categorias[0].equipos.map(e => e.id), [11,12,13]);
+  assert.deepEqual(camp.categorias[0].equipos.filter(e => e.nombre === "Unión").map(e => e.etiqueta), ["Unión (N.º 1)", "Unión (N.º 3)"]);
+  assert.deepEqual(camp.categorias[1].equipos.map(e => e.id), [11]);
+  assert.deepEqual(camp.equipos.map(e => e.id), [11,12,13]);
+  assert.deepEqual(catalog[0].campeonatos[1].categorias, []);
+  await assert.rejects(service.validarSeleccionAsociacion({ equipo_id:11 }), error => error.status === 400);
+  const selected = await service.validarSeleccionAsociacion({ equipo_id:11, evento_id:102 });
+  assert.equal(selected.evento_id, 102);
 });
 
 test("flujo HTTP autenticado: asociación, alcance operativo e inscripción de jugadores", async (t) => {
@@ -160,14 +185,19 @@ test("flujo HTTP autenticado: asociación, alcance operativo e inscripción de j
       assert.deepEqual((await request(id, "/equipos")).body.equipos, []);
     }
   });
-  await t.test("ninguna escritura al enviar organizador/campeonato incorrectos", async () => {
-    const result = await request(1, "/auth/mi-equipo", { equipo_id: 11, campeonato_id: 30, organizador_id: 200 });
-    assert.equal(result.status, 400);
+  await t.test("ninguna escritura al enviar organización, campeonato o categoría incorrectos", async () => {
+    for (const seleccion of [
+      { equipo_id:11, campeonato_id:30, organizador_id:200 },
+      { equipo_id:11, campeonato_id:10, organizador_id:100, evento_id:201 },
+    ]) {
+      const result = await request(1, "/auth/mi-equipo", seleccion);
+      assert.equal(result.status, 400);
+    }
     assert.equal(assignmentWrites, 0);
   });
   await t.test("dirigente y técnico se asocian y solo ven el campeonato/equipo escogidos", async () => {
     for (const id of [1, 2]) {
-      const result = await request(id, "/auth/mi-equipo", { equipo_id: 11, campeonato_id: 10, organizador_id: 100, usuario_id: 999 });
+      const result = await request(id, "/auth/mi-equipo", { equipo_id: 11, evento_id:101, campeonato_id: 10, organizador_id: 100, usuario_id: 999 });
       assert.equal(result.status, 200);
       assert.equal(result.body.usuario.id, id);
       assert.deepEqual(result.body.usuario.equipo_ids, [11]);

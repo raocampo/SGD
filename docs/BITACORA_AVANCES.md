@@ -1,3 +1,11 @@
+## 2026-10-22 - Primer ingreso: equipos inscritos por categoría
+
+- La captura mostraba nombres repetidos porque se ofrecían todos los registros del campeonato. Confirmación de solo lectura: campeonato 22, 36 creados; evento 36 «ABIERTA VARONES», 23 inscritos y 23 nombres únicos. Diez pares tenían un registro inscrito y otro sin categoría; no se borró ni fusionó ninguno.
+- Implementada cascada Organización -> Campeonato -> Evento/Categoría -> Equipo en `core.js`. El catálogo mínimo usa `evento_equipos`, deduplica IDs y distingue homónimos de la misma categoría por número. La validación backend comprueba también categoría/inscripción. Catálogo plano compatible para clientes anteriores; un equipo inscrito en varias categorías requiere selección explícita de categoría al asociarlo.
+- **Alcance confirmado por el usuario:** la pertenencia por teléfono, aprobación o código queda en espera. Se mantiene el registro y la asociación directa existentes; no se publican solicitudes de aprobación, verificación telefónica ni migración adicional. Pendiente definir cómo generar/entregar un código durante el registro.
+- Pruebas: backend **12/12**, asociación DOM **13/13**, Usuarios y Roles DOM **14/14**, guards **49/49**, sintaxis y diff correctos. SQL nuevo probado en producción dentro de `READ ONLY`: devuelve los 23 inscritos, rechaza el registro sin categoría y una categoría incorrecta. Sin asignaciones ni jugadores reales de prueba. Pendiente QA visual y selección real por el usuario.
+- Se comprobó `origin/main` sin cambios remotos adicionales. Publicación y verificación del despliegue automático al cierre; no hay migración (última: 076). Memoria, estado e índice actualizados.
+
 ## 2026-10-22 - Despliegue de asociación y cierre de rotación de credenciales
 
 - Tras la captura del usuario sin aviso de pausa, se comprobó el proyecto real: Hobby y backend todavía en `e3af70d`. La API aceptó `serviceInstanceDeploy(latestCommit: true)`; despliegue `077a9b8d-66d4-409e-98fe-dd2a16c14890`, fuente `e3b5ed3` que incluye `b28f702`, terminó **SUCCESS**. No se cambió de plan. El aviso público consultado aún indicaba Hobby pendiente, por lo que se priorizó el resultado real del proyecto.

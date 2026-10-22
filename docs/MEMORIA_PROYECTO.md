@@ -2,7 +2,16 @@
 
 Actualizada: 2026-10-22 (America/Guayaquil).
 
-## Último trabajo: despliegue y cierre de rotación de credenciales (22-oct)
+## Último trabajo: equipos inscritos por categoría al primer ingreso (22-oct)
+
+- Causa confirmada con lectura de producción: campeonato 22 con **36 equipos creados**, pero categoría 36 «ABIERTA VARONES» con **23 inscritos**. Diez nombres aparecían dos veces porque el selector incluía un registro inscrito y otro sin categoría. No había nombres duplicados dentro de esa categoría.
+- El primer ingreso pasa a **Organización -> Campeonato -> Evento/Categoría -> Equipo**. El catálogo usa `evento_equipos`, deduplica por ID dentro de cada categoría y conserva equipos homónimos distintos, identificándolos por número si coinciden en la misma categoría. Cambiar cualquier selección limpia las dependientes; vacíos explícitos. No se eliminan ni fusionan equipos y no requiere migración.
+- El servidor valida también `evento_id` y la inscripción del equipo. Los clientes anteriores conservan el catálogo plano de equipos inscritos con categoría en la etiqueta; el cuerpo de solo `equipo_id` se acepta cuando la categoría se puede determinar sin ambigüedad.
+- **Decisión explícita del usuario:** dejar en espera la verificación de pertenencia por teléfono, aprobación o código de registro. Se mantiene la asociación directa existente. No hay solicitudes de aprobación, OTP, cambios al registro ni migración 077. Retomar después para definir cómo generar y entregar el código al registrarse; nombre/apellido y conocer un teléfono no prueban identidad.
+- Verificación: backend **12/12 PASS**, formulario de asociación **13/13 escenarios DOM PASS**, Usuarios y Roles **14/14 DOM PASS**, guards frontend **49/49 PASS**. Consulta nueva ejecutada en transacción `READ ONLY` contra producción: **23 equipos, 23 nombres únicos**, registro sin categoría y categoría incorrecta rechazados. No se asignaron equipos ni se inscribieron jugadores para probar. QA visual y operación real por el usuario pendientes.
+- Publicación: commit/push y comprobación del despliegue automático al cerrar esta tarea. Rotación anterior completada; SMTP saliente de Hobby sigue siendo un pendiente separado.
+
+## Trabajo anterior: despliegue y cierre de rotación de credenciales (22-oct)
 
 - `sgd-ltc/production` continúa en **Hobby**. Railway aceptó el despliegue real aunque su aviso público todavía indicaba Hobby pendiente. Sin cambio de plan. Despliegues `077a9b8d-66d4-409e-98fe-dd2a16c14890` y `98c75b86-90c6-4de8-bf92-8dc93e3dce0f`, **SUCCESS**, fuente `e3b5ed3` que incluye la corrección `b28f702`.
 - **Backend de asociación publicado y comprobado:** `/api/auth/mi-equipo/opciones` ya devuelve 401 sin token y **200 para un dirigente real sin equipo**, con **4 organizadores, 7 campeonatos y 212 equipos**. Frontend publicado contiene la cascada y el método API nuevos. No se asignaron equipos ni se inscribieron jugadores reales de prueba; QA visual y selección/carga del usuario siguen pendientes.
@@ -70,7 +79,7 @@ Actualizada: 2026-10-22 (America/Guayaquil).
 ## Fuentes para retomar
 
 1. `docs/BITACORA_AVANCES.md`: entrada del 22-oct para despliegue y cierre de rotación; entradas del 21-oct para el incidente y asociación inicial; las del 20-oct para planilla móvil; «2026-10-14 - Estado consolidado» para la lista A–D, complementada por las entradas posteriores.
-2. `docs/ESTADO_IMPLEMENTACION_SGD.md`: primera entrada del 21-oct; asociación inicial y continuidad de Usuarios y Roles.
+2. `docs/ESTADO_IMPLEMENTACION_SGD.md`: primera entrada del 22-oct; categorías en la asociación y verificación de pertenencia pospuesta por el usuario.
 3. `docs/INDICE_DOCUMENTACION.md`: mapa de guías y planes.
 
 El README conserva un cierre de junio y la tabla histórica de módulos tiene fecha de mayo. Priorizar las entradas fechadas más recientes; no reabrir tareas antiguas ya resueltas (por ejemplo, Facturación Fases 2 y 3 ya implementadas). Los planes de transmisión y baloncesto también incluyen fases iniciales ya superadas; contrastarlos con la bitácora y el código antes de implementar.
@@ -89,7 +98,8 @@ El README conserva un cierre de junio y la tabla histórica de módulos tiene fe
 
 ## Próximos pasos
 
-- Confirmar primer ingreso de dirigente/técnico en producción: organizador, campeonato y equipo; después, consultar e inscribir jugadores del equipo elegido. El despliegue requiere tanto backend como frontend; no hay migración de este cambio.
+- Confirmar primer ingreso de dirigente/técnico en producción: organizador, campeonato, categoría y equipo; después, consultar e inscribir jugadores del equipo elegido. En campeonato 22/categoría 36 deben mostrarse los 23 inscritos. No hay migración de este cambio.
+- **En espera por instrucción del usuario:** diseñar código de registro/invitación para verificar pertenencia. Mantener la asociación directa hasta retomar esta decisión; no activar validación telefónica ni aprobación sin esa nueva definición.
 - Confirmar en producción Usuarios y Roles: campeonatos propios visibles para organizador, equipos filtrados y equipo anterior limpio al cambiar campeonato; revisar el formulario en celular.
 - Confirmar visualmente en producción las correcciones de jornadas y logos ya presentes en `origin/main`; no necesitan volver a publicarse. Según la sesión del 14-oct, el evento 34 se restauró a `null` con respaldo previo y 84 partidos intactos; la API devolvió 84 partidos, 10 jornadas y 20 finalizados con marcador. Es evidencia histórica, no una consulta del 15-oct.
 - Código pendiente comprobado el 15-oct: aplicar el modo lectura de `planilla.html` desde el inicio (actualmente se aplica al cargar una planilla); revisar scroll y botones fijos de los modales de Facturación, Playoff y Transmisión en celular; adaptar la bienvenida de `portal-tecnico.html` para que el jugador no vea la mención al estado financiero. Son candidatos para la siguiente tarea, todavía sin implementar.

@@ -1014,11 +1014,13 @@
 
     const campeonatosDe = (valores) => organizadores
       .find((org) => String(org.id) === valores.organizador_id)?.campeonatos || [];
-    const equiposDe = (valores) => campeonatosDe(valores)
-      .find((camp) => String(camp.id) === valores.campeonato_id)?.equipos || [];
+    const categoriasDe = (valores) => campeonatosDe(valores)
+      .find((camp) => String(camp.id) === valores.campeonato_id)?.categorias || [];
+    const equiposDe = (valores) => categoriasDe(valores)
+      .find((cat) => String(cat.id) === valores.evento_id)?.equipos || [];
     const opciones = (lista, texto) => [
       { value: "", label: texto },
-      ...lista.map((item) => ({ value: item.id, label: item.nombre })),
+      ...lista.map((item) => ({ value: item.id, label: item.etiqueta || item.nombre })),
     ];
     const camposEquipo = [
       {
@@ -1039,14 +1041,24 @@
           ? "Selecciona un campeonato" : "Selecciona primero un organizador"),
       },
       {
+        name: "evento_id",
+        label: "Evento / Categoría",
+        type: "select",
+        required: true,
+        span: 2,
+        options: (valores) => opciones(categoriasDe(valores), !valores.campeonato_id
+          ? "Selecciona primero un campeonato"
+          : categoriasDe(valores).length ? "Selecciona una categoría" : "Este campeonato no tiene categorías"),
+      },
+      {
         name: "equipo_id",
         label: "Equipo",
         type: "select",
         required: true,
         span: 2,
-        options: (valores) => opciones(equiposDe(valores), !valores.campeonato_id
-          ? "Selecciona primero un campeonato"
-          : equiposDe(valores).length ? "Selecciona tu equipo" : "Este campeonato no tiene equipos registrados"),
+        options: (valores) => opciones(equiposDe(valores), !valores.evento_id
+          ? "Selecciona primero una categoría"
+          : equiposDe(valores).length ? "Selecciona tu equipo" : "Esta categoría no tiene equipos inscritos"),
       },
     ];
     if (esJugador) {
@@ -1062,7 +1074,7 @@
 
     const valoresEquipo = await window.mostrarFormularioModal({
       titulo: "Asocia tu equipo",
-      mensaje: "Elige el organizador, el campeonato en el que participas y tu equipo.",
+      mensaje: "Elige el organizador, el campeonato, la categoría en la que participas y tu equipo.",
       tipo: "warning",
       textoConfirmar: "Asociarme",
       textoCancelar: "Cerrar sesión",
@@ -1076,7 +1088,7 @@
     }
 
     if (!equiposDe(valoresEquipo).some((equipo) => String(equipo.id) === valoresEquipo.equipo_id)) {
-      window.mostrarNotificacion("Selecciona un equipo del organizador y campeonato elegidos", "warning");
+      window.mostrarNotificacion("Selecciona un equipo de la organización, campeonato y categoría elegidos", "warning");
       return false;
     }
 
@@ -1084,6 +1096,7 @@
       const resp = await window.AuthAPI.asociarMiEquipo({
         organizador_id: Number(valoresEquipo.organizador_id),
         campeonato_id: Number(valoresEquipo.campeonato_id),
+        evento_id: Number(valoresEquipo.evento_id),
         equipo_id: Number.parseInt(valoresEquipo.equipo_id, 10),
         cedula: esJugador ? valoresEquipo.cedula || "" : "",
       });
