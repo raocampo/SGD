@@ -1,3 +1,9 @@
+## 2026-10-22 - Fallo documental de build y Watch Paths
+
+- El intento documental `e11ae716-9407-4a87-ac43-30156553c4f0` falló antes del despliegue; registros sin causa detallada. La versión funcional `003956f` permanece disponible y verificada (salud 200, 23 inscritos sin nombres repetidos, frontend actualizado).
+- Watch Paths del backend aplicados a código, base de datos y archivos de construcción/configuración; commits solo documentales/frontend ya no deben disparar builds del backend. Comprobadas lectura posterior y coincidencia de patrones. Sin cambios de credenciales, datos deportivos ni aplicación.
+- Reintento único `21fce9f8-1340-4576-a75b-698060e37888`, mismo commit `3578a8e`, **SUCCESS**, único activo. Salud 200; catálogo autenticado 200 con 23 inscritos sin nombres repetidos; sin token 401; frontend vigente y Watch Paths conservados. Recuperado sin cambios de código/credenciales/datos. La pertenencia por código sigue pospuesta por el usuario.
+
 ## 2026-10-22 - Asociación: categoría y equipos inscritos
 
 - Corregida la lista del primer ingreso: Organización -> Campeonato -> Evento/Categoría -> Equipo. Solo ofrece equipos inscritos mediante `evento_equipos`; IDs repetidos se deduplican y homónimos distintos conservan identidad. Cambiar selección limpia las dependientes. Backend valida la categoría recibida.

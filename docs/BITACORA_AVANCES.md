@@ -1,3 +1,10 @@
+## 2026-10-22 - Build documental fallido y filtro de despliegues
+
+- Falló `e11ae716-9407-4a87-ac43-30156553c4f0` (commit documental `3578a8e`) durante `BUILD_IMAGE`, antes del despliegue. Error genérico, sin detalle adicional: solo un registro de inicio del builder. No se atribuye una causa exacta sin evidencia.
+- La versión `003956f` seguía activa y saludable: API 200 con 23 inscritos sin nombres repetidos, catálogo sin sesión 401 y frontend actualizado. Conteos: 212 equipos, 3.594 jugadores, 910 partidos; verificaciones de lectura, sin reasignaciones ni cambios de datos para probar.
+- Aplicados Watch Paths al backend/production para `backend/**`, `database/**`, `Dockerfile.railway`, `.dockerignore` y configuración Railway. Evitan reconstrucciones por commits solo documentales/frontend. Respaldo previo cifrado, lectura posterior coincidente y 10/10 comprobaciones de patrones. No se cambiaron variables ni otros ajustes del servicio.
+- Único reintento `21fce9f8-1340-4576-a75b-698060e37888`, mismo commit `3578a8e`, **SUCCESS** y único activo. Salud 200, catálogo sin sesión 401 y autenticado 200 con 23 inscritos/23 nombres únicos; frontend vigente, patrones conservados tras el despliegue. Compatible con fallo transitorio de construcción; causa exacta no detallada. Sin cambios de código, credenciales ni datos para recuperarlo. La verificación de pertenencia/código de registro sigue en espera por instrucción del usuario.
+
 ## 2026-10-22 - Primer ingreso: equipos inscritos por categoría
 
 - La captura mostraba nombres repetidos porque se ofrecían todos los registros del campeonato. Confirmación de solo lectura: campeonato 22, 36 creados; evento 36 «ABIERTA VARONES», 23 inscritos y 23 nombres únicos. Diez pares tenían un registro inscrito y otro sin categoría; no se borró ni fusionó ninguno.

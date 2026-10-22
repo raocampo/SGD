@@ -2,7 +2,15 @@
 
 Actualizada: 2026-10-22 (America/Guayaquil).
 
-## Último trabajo: equipos inscritos por categoría al primer ingreso (22-oct)
+## Último trabajo: fallo de build documental y filtros de despliegue (22-oct)
+
+- La captura corresponde al build `e11ae716-9407-4a87-ac43-30156553c4f0`, commit documental `3578a8e`, **FAILED antes del despliegue**. Eventos: `BUILD_IMAGE` con error genérico; único registro de build: inicio de builder v4. No hay detalle que permita afirmar la causa exacta ni evidencia de un error de aplicación en ese intento. Evidencia respaldada localmente con DPAPI.
+- La versión funcional `003956f`, despliegue `f21f6b91-c6d6-4031-8ecb-c43f705439f3`, seguía **SUCCESS**: salud 200, catálogo sin token 401 y autenticado 200, 23 inscritos sin nombres repetidos en campeonato 22/categoría 36, frontend actualizado. El fallo documental no revirtió el código ni las credenciales rotadas.
+- **Reintento completado:** `21fce9f8-1340-4576-a75b-698060e37888`, mismo commit `3578a8e`, **SUCCESS**, único despliegue activo. No se lanzaron reintentos duplicados mientras estaba pendiente. Sin cambios de código, dependencias ni credenciales para recuperarlo: compatible con fallo transitorio de construcción, sin causa exacta detallada en los registros. Railway todavía reportaba recuperación del servicio y recomendaba un reintento para fallos al inicio: https://status.railway.com/.
+- **Configuración aplicada en Railway, backend/production:** Watch Paths `/backend/**`, `/database/**`, `/Dockerfile.railway`, `/.dockerignore`, `/railway.json`, `/railway.toml`. Antes estaban vacíos: cualquier cambio, incluso de memoria, disparaba builds. Ahora los commits solo de documentación/frontend no requieren reconstruir este backend; Vercel conserva su despliegue propio. Root `/`, Dockerfile, builder, healthcheck y variables sin cambios. Respaldo previo cifrado y lectura posterior coincidente; 10/10 comprobaciones de patrones con Git. Referencia: https://docs.railway.com/builds/build-configuration.
+- Comprobación después del reintento: salud 200, catálogo sin token 401 y autenticado 200 para dirigente sin equipo, **23 inscritos y 23 nombres únicos** iguales a la tabla de inscripciones; frontend vigente. Conteos: 212 equipos, 3.594 jugadores, 910 partidos. Watch Paths conservados tras el despliegue. El intento fallido permanece como antecedente en el historial, sin afectar al nuevo activo.
+
+## Trabajo anterior: equipos inscritos por categoría al primer ingreso (22-oct)
 
 - Causa confirmada con lectura de producción: campeonato 22 con **36 equipos creados**, pero categoría 36 «ABIERTA VARONES» con **23 inscritos**. Diez nombres aparecían dos veces porque el selector incluía un registro inscrito y otro sin categoría. No había nombres duplicados dentro de esa categoría.
 - El primer ingreso pasa a **Organización -> Campeonato -> Evento/Categoría -> Equipo**. El catálogo usa `evento_equipos`, deduplica por ID dentro de cada categoría y conserva equipos homónimos distintos, identificándolos por número si coinciden en la misma categoría. Cambiar cualquier selección limpia las dependientes; vacíos explícitos. No se eliminan ni fusionan equipos y no requiere migración.
