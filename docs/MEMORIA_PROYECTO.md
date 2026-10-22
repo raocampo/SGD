@@ -1,8 +1,19 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-10-21 (America/Guayaquil).
+Actualizada: 2026-10-22 (America/Guayaquil).
 
-## Último trabajo: contención del incidente de Railway (21-oct)
+## Último trabajo: despliegue y cierre de rotación de credenciales (22-oct)
+
+- `sgd-ltc/production` continúa en **Hobby**. Railway aceptó el despliegue real aunque su aviso público todavía indicaba Hobby pendiente. Sin cambio de plan. Despliegues `077a9b8d-66d4-409e-98fe-dd2a16c14890` y `98c75b86-90c6-4de8-bf92-8dc93e3dce0f`, **SUCCESS**, fuente `e3b5ed3` que incluye la corrección `b28f702`.
+- **Backend de asociación publicado y comprobado:** `/api/auth/mi-equipo/opciones` ya devuelve 401 sin token y **200 para un dirigente real sin equipo**, con **4 organizadores, 7 campeonatos y 212 equipos**. Frontend publicado contiene la cascada y el método API nuevos. No se asignaron equipos ni se inscribieron jugadores reales de prueba; QA visual y selección/carga del usuario siguen pendientes.
+- **JWT activo:** firma anterior rechazada y nueva reconocida. **PostgreSQL rotado:** contraseña cambiada en el rol real mediante verificador SCRAM, variables/referencias sincronizadas y segundo despliegue exitoso. Conexión nueva correcta y anterior rechazada con **28P01**. Sin cambios de rol/permisos ni nuevas migraciones. No quedaban conexiones antiguas elegibles al cerrar la conexión de mantenimiento.
+- **Gmail activo en configuración del despliegue:** clave válida nuevamente autenticada desde este equipo y coincidente con Railway. Se detectó una copia local de `.env.local` que había vuelto a valores antiguos; se respaldó y reconcilió con Railway y el respaldo verificado. El archivo ahora contiene valores vigentes en `SMTP_PASS`, `JWT_SECRET`, `POSTGRES_PASSWORD` y URLs. Secretos `_NEXT` consumidos; anteriores solo en respaldos locales cifrados DPAPI. ACL usuario actual/SYSTEM, ignorado por Git.
+- **Sesiones:** 16 refresh tokens revocados el 21-oct y **3 adicionales el 22-oct: 19 en total**. Verificación final: **0 vigentes**, sin enlaces de recuperación pendientes. No se cambiaron contraseñas de usuarios ni datos deportivos. Conteos iguales al respaldo: **38 usuarios, 212 equipos, 3.594 jugadores, 910 partidos**; no es una comparación íntegra de contenido.
+- Cierre local `SECURITY_CREDENTIAL_ROTATION_COMPLETE=true`, limitado a secretos conocidos de SGD y revocación de sesiones. Estado final de las credenciales y evidencia en `.env.local` y respaldos privados. `node tmp/railway-resume.cjs final-verify` consulta la verificación; no repetir preparación/rotación. Ambos auxiliares en `tmp/` son gitignored; no quedan procesos de rotación ni reintentos programados.
+- **Correo pendiente por separado:** Hobby bloquea SMTP saliente según la documentación de Railway. Rotar Gmail y desplegar no acredita envíos; no se enviaron mensajes de prueba, no se contrató proveedor ni se cambió el plan. Requiere API HTTPS o plan compatible. La revisión de registros del incidente sigue siendo parcial, sin certificación de ausencia de intrusión.
+- Informe actualizado: `docs/INCIDENTE_RAILWAY_2026-10-21.md`. Los demás pendientes funcionales A–D conservan su alcance; la falta de despliegue de `b28f702` ya está resuelta.
+
+## Trabajo anterior: contención parcial del incidente de Railway (21-oct)
 
 - Autorizada la rotación de secretos y su conservación en `.env.local` de la raíz. Sesión de Railway renovada por el usuario; proyecto verificado `sgd-ltc/production`. Archivo normalizado, ignorado por Git y restringido por ACL al usuario Windows actual/SYSTEM. Respaldos cifrados DPAPI en `database/backups/`; no publicar secretos ni respaldos.
 - **Aplicado:** revocación transaccional de 16 refresh tokens vigentes, con respaldo previo y comprobación de 0 restantes. Sin cambios de contraseñas de usuarios, jugadores, equipos ni otros datos deportivos.
@@ -52,13 +63,13 @@ Actualizada: 2026-10-21 (America/Guayaquil).
 
 - Sincronización del 15-oct: `git pull --ff-only` completado en Windows de `e9e8aa4` a `20f37d9`. Los siete archivos modificados y dos nuevos coincidían íntegramente con los commits remotos; se respaldaron con stash y se retiró ese respaldo solo tras comparar los nueve archivos con `HEAD`. La documentación se publicó después en `0a12a0e`.
 - Sistema de gestión deportiva LT&C: frontend HTML/CSS/JS y backend Node/Express con PostgreSQL. Scripts operativos en `backend/package.json`.
-- Última migración disponible: `076_partidos_arbitro_suplente.sql` (20-oct, planilla móvil). El cambio de asociación del 21-oct no ejecutó migraciones ni modificó datos reales; la respuesta posterior al incidente sí revocó 16 refresh tokens en producción, con respaldo cifrado.
+- Última migración disponible: `076_partidos_arbitro_suplente.sql` (20-oct, planilla móvil). La asociación no añadió migraciones; la respuesta al incidente del 21/22-oct revocó 19 refresh tokens y rotó las credenciales conocidas de producción, con respaldos cifrados. No se modificaron datos deportivos ni contraseñas de usuarios.
 - Producción, según la bitácora reciente: backend Railway y frontend Vercel, con despliegue automático desde `main`. Las menciones antiguas a Render son referencias históricas que deben contrastarse antes de operar.
 - Validación del 15-oct: `node backend/scripts/qaPublicacionJornadas.js` **PASS** (filtros, guardado, errores y logos con frontend/backend separados); `npm --prefix backend run smoke:frontend` **49/49 PASS**. Son pruebas locales sin BD ni credenciales; no acreditan QA visual ni flujos reales de backend/producción.
 
 ## Fuentes para retomar
 
-1. `docs/BITACORA_AVANCES.md`: entradas del 21-oct para el incidente Railway, cierre de Gmail en proveedor/configuración y asociación inicial; las del 20-oct para planilla móvil; «2026-10-14 - Estado consolidado» para la lista A–D, complementada por las entradas posteriores.
+1. `docs/BITACORA_AVANCES.md`: entrada del 22-oct para despliegue y cierre de rotación; entradas del 21-oct para el incidente y asociación inicial; las del 20-oct para planilla móvil; «2026-10-14 - Estado consolidado» para la lista A–D, complementada por las entradas posteriores.
 2. `docs/ESTADO_IMPLEMENTACION_SGD.md`: primera entrada del 21-oct; asociación inicial y continuidad de Usuarios y Roles.
 3. `docs/INDICE_DOCUMENTACION.md`: mapa de guías y planes.
 

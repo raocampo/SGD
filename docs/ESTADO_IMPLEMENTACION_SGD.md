@@ -1,3 +1,12 @@
+## 2026-10-22 - Backend desplegado y credenciales rotadas
+
+- `sgd-ltc` Hobby aceptó despliegues reales: `077a9b8d` y `98c75b86`, ambos **SUCCESS**, fuente `e3b5ed3` con asociación `b28f702`. Salud 200. Sin cambio de plan ni migraciones nuevas.
+- Catálogo autenticado probado con un dirigente sin equipo: **200, 4 organizadores, 7 campeonatos, 212 equipos**; sin token, 401. Frontend publicado incluye la selección dependiente. Resuelta la ausencia del endpoint en producción; falta QA visual y selección/carga real del usuario.
+- JWT nuevo activo y firma antigua rechazada. PostgreSQL: contraseña real y variables sincronizadas, conexión nueva correcta y antigua rechazada con **28P01**. SMTP válido incluido en el despliegue. `.env.local` contiene los valores vigentes; anteriores solo en respaldos locales cifrados. No contiene campos de secretos `_NEXT` pendientes.
+- **19 refresh tokens revocados** (16 + 3), 0 vigentes al cierre, sin enlaces de recuperación pendientes. Conteos conservados: 38 usuarios, 212 equipos, 3.594 jugadores, 910 partidos. Sin cambios de contraseñas de usuarios ni datos deportivos.
+- Rotación de secretos conocidos de SGD completada, con alcance explícito y revisión de registros parcial. **Correo sigue pendiente:** Hobby bloquea SMTP saliente; requiere API HTTPS o plan compatible. No se enviaron correos ni se contrató servicio/cambió el plan.
+- Continuidad y evidencia: `docs/INCIDENTE_RAILWAY_2026-10-21.md` y `docs/MEMORIA_PROYECTO.md`. No quedan tareas automáticas de rotación. Los demás pendientes funcionales conservan su alcance.
+
 ## 2026-10-21 - Incidente Railway: contención parcial
 
 - `.env.local` raíz normalizado, con ACL restringida y exclusión de Git. Respaldos de configuración y evidencia cifrados DPAPI en `database/backups/`.
