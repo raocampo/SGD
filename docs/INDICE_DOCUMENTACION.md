@@ -6,7 +6,7 @@ Ultima actualizacion: 2026-10-21
 - `docs/MEMORIA_PROYECTO.md`
   - Memoria breve para retomar: sincronización verificada, fuentes vigentes, próximos pasos y límites de las verificaciones realizadas.
 - `docs/INCIDENTE_RAILWAY_2026-10-21.md`
-  - Respuesta al incidente: sesiones revocadas, secretos preparados y límites de la activación por despliegues pausados; cierre pendiente de PostgreSQL/JWT/Gmail. No contiene credenciales.
+  - Respuesta al incidente: sesiones revocadas, Gmail rotado/configurado y límites por despliegues pausados; pendientes de activación del backend y rotación PostgreSQL/JWT. No contiene credenciales.
 - `docs/BITACORA_AVANCES.md`
   - Registro vivo por fecha de todo lo implementado y pendientes de la siguiente sesion.
   - La entrada mas reciente va arriba. Las del 2026-10-21 registran la respuesta parcial al incidente Railway y la asociacion inicial de dirigente/tecnico/jugador; las del 2026-10-20, planilla movil y migracion 076; la del 2026-10-16, el selector Campeonato en Usuarios y Roles. "2026-10-14 - Estado consolidado" trae la lista de pendientes A-D, complementada por las entradas posteriores. Los cierres del 2026-10-10/11 explican el entorno Fedora y la continuidad entre equipos (MEGA no sincroniza `.git` ni `.env`).

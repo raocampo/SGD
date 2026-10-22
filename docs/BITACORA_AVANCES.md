@@ -1,3 +1,12 @@
+## 2026-10-21 - Gmail: reemplazo verificado, anterior rechazado y Railway actualizado
+
+- Resuelto el bloqueo de validación al generar la contraseña para la cuenta correcta de `SMTP_USER` y guardar en el `.env.local` raíz, abierto explícitamente en Bloc de notas. Se renovó automáticamente la sesión de Railway mediante CLI, sin pedir otro inicio de sesión al usuario.
+- Prueba real desde Windows mediante TLS y autenticación SMTP: **nueva clave aceptada**, **anterior rechazada con `EAUTH/535`**. La anterior se había contrastado con la variable productiva. No se enviaron mensajes ni se imprimieron contraseñas.
+- `SMTP_PASS` actualizado en Railway con `skipDeploys: true`, con lectura posterior coincidente. Tras respaldar, se promovió la clave válida a `SMTP_PASS` en `.env.local` y se retiró el campo consumido `SMTP_PASS_NEXT`. Copia local anterior únicamente en respaldos cifrados DPAPI; referencia conservada para evitar probar por error la nueva como si fuera la antigua.
+- Nuevo intento de desplegar imagen existente rechazado con **`Paused temporarily`**. Estado local `PROVIDER_ROTATED_RAILWAY_CONFIGURED_RUNTIME_PENDING`: rotación Gmail completada en proveedor/configuración, **activación en el proceso backend pendiente**. Hobby sigue bloqueando SMTP saliente; autenticar desde Windows no acredita entrega desde Railway.
+- Verificación final: `/salud` 200, PostgreSQL conectado, 0 refresh tokens vigentes, firma JWT antigua reconocida y nueva rechazada, catálogo de asociación 404. JWT/PostgreSQL siguen pendientes por la pausa de despliegues. No se cambiaron datos deportivos, contraseñas de usuarios ni roles/contraseñas PostgreSQL; sin migraciones.
+- Memoria, estado, informe e índice actualizados. Secretos y respaldos ignorados por Git, fuera de los commits. Sin reintentos automáticos en segundo plano.
+
 ## 2026-10-21 - Validación del reemplazo Gmail: credencial rechazada
 
 - Seguimiento posterior: el rechazo persistió con los 16 caracteres completos. La contraseña anterior autenticó correctamente y se comprobó que coincidía con la variable productiva de Railway; la revocación no era efectiva. El usuario indicó que estaba generando las claves en otra cuenta Google. Se contrastó cuál es la configurada en `SMTP_USER` y se le indicó emitir la nueva y revocar la anterior allí. Ninguna clave rechazada fue aplicada a Railway; cero mensajes enviados.
