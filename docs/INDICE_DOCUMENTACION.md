@@ -8,7 +8,7 @@ Ultima actualizacion: 2026-10-22
 - `docs/INCIDENTE_RAILWAY_2026-10-21.md`
   - Respuesta al incidente y cierre del 22-oct: backend desplegado, JWT/PostgreSQL/Gmail rotados, 19 refresh tokens revocados, evidencia y límites de la revisión. Correo SMTP de Hobby y QA visual pendientes. No contiene credenciales.
 - `docs/BITACORA_AVANCES.md`
-  - Registro vivo por fecha de todo lo implementado y pendientes de la siguiente sesion.
+  - Registro vivo por fecha de todo lo implementado y pendientes de la siguiente sesion. Último cierre: equipos inscritos por categoría al primer ingreso, publicado y comprobado el 22-oct; código de pertenencia en espera por instrucción del usuario.
   - La entrada mas reciente va arriba. La del 2026-10-22 cierra el despliegue y rotacion de credenciales; las del 2026-10-21 registran la respuesta inicial al incidente Railway y la asociacion inicial de dirigente/tecnico/jugador; las del 2026-10-20, planilla movil y migracion 076; la del 2026-10-16, el selector Campeonato en Usuarios y Roles. "2026-10-14 - Estado consolidado" trae la lista de pendientes A-D, complementada por las entradas posteriores. Los cierres del 2026-10-10/11 explican el entorno Fedora y la continuidad entre equipos (MEGA no sincroniza `.git` ni `.env`).
 - `docs/ESTADO_IMPLEMENTACION_SGD.md`
   - Estado por modulo frente a la propuesta original; priorizar las entradas del 2026-10-22 y la memoria vigente sobre las tablas historicas.
