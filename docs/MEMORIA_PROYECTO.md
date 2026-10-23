@@ -1,8 +1,16 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-10-22 (America/Guayaquil).
+Actualizada: 2026-10-23 (America/Guayaquil).
 
-## Último trabajo: filas impresas según los planteles reales (22-oct)
+## Último trabajo: error al cargar equipos del campeonato 22 (23-oct)
+
+- Causa reproducida en producción con administrador y organizador: `GET /api/equipos/campeonato/22` devuelve 500 por `idx_equipos_numero_campeonato`. La lectura intentaba compactar números con un hueco y el UPDATE colisionaba con el índice único. La categoría 36 «ABIERTA VARONES» conserva **23 inscritos**; el campeonato tiene **37 registros creados** y 171 jugadores. No confundir creados con inscritos ni borrar/fusionar equipos.
+- `backend/models/Equipo.js`: listar deja de renumerar. Crear, editar y eliminar guardan el cambio y su numeración en una sola transacción, con bloqueo del campeonato para serializar altas/cambios. Renumerado en dos pasos dentro de la transacción para conservar el índice único; un fallo revierte también la escritura principal. Traslados bloquean origen/destino en orden y devuelven el número definitivo. Inicialización de números nulos a partir del máximo existente, sin modificar los ya asignados.
+- Regresión `npm --prefix backend run test:equipo-numeracion`: **12/12 PASS** con `SGD_TEST_LOCAL_DB=1`, PostgreSQL local y esquema aislado que se elimina al terminar. Incluye colisión real del índice, consulta READ ONLY, alta/edición/baja, rollback de cada operación, traslado y concurrencia/límite de equipos. Sin activación explícita solo ejecuta las dos pruebas unitarias. Asociación existente **12/12 PASS**; sintaxis y diff correctos.
+- Respaldo previo local cifrado DPAPI de IDs/números e inscritos: 213 equipos, 3.627 jugadores y 910 partidos en total. Sin reparación manual de datos productivos, migración ni rotación adicional de credenciales. El organizador de este campeonato está activo; los avisos de limpieza de cuentas y `ENOENT /app/frontend/index.html` compartidos en Railway son distintos del error reproducido.
+- **Publicación pendiente de comprobar:** publicar el backend y repetir ambas consultas con administrador/organizador; comparar IDs, números e inscritos contra el respaldo. La asociación directa sigue vigente; la verificación de pertenencia por código permanece en espera por instrucción del usuario.
+
+## Trabajo anterior: filas impresas según los planteles reales (22-oct)
 
 - Solicitud del usuario: ambos lados de la planilla deben tener `max(inscritos local, inscritos visitante)` filas. Ejemplos: 20/15 -> 20 filas (5 vacías solo en visitante); 15/15 -> 15, sin filas vacías; ambos sin inscritos -> 0 filas de jugadores. La regla aplica a todos los deportes/modelos del sistema.
 - `frontend/js/planilla.js`: vista previa oficial/resumen, impresión y PDF con/sin observaciones usan el plantel real; se retiraron el relleno por `max_jugador`, los mínimos por modalidad y el recorte fijo a 30. Se conserva el orden por apellido, los datos y las estadísticas; el reporte tampoco recorta un plantel ya inscrito que supere el cupo configurado. Los límites de inscripción siguen validándose en backend.

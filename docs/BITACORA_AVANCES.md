@@ -1,3 +1,10 @@
+## 2026-10-23 - Carga de equipos y numeración transaccional
+
+- Reproducido 500 al listar campeonato 22 con administrador y organizador: renumerar durante GET colisiona con `idx_equipos_numero_campeonato` al compactar un hueco. Los 23 equipos de categoría 36 siguen inscritos (37 creados en el campeonato, 171 jugadores); endpoint de categoría responde 200. No hay evidencia de pérdida de esos equipos.
+- Listado sin renumeración; alta/edición/baja y renumerado en la misma transacción. Bloqueo por campeonato, números definitivos asignados sin colisiones y rollback completo ante fallo; traslado entre campeonatos y relleno inicial de números nulos corregidos. Se conserva el índice único, sin migración ni eliminación/fusión de equipos.
+- Pruebas de numeración **12/12 PASS**, con PostgreSQL local aislado (`SGD_TEST_LOCAL_DB=1 npm --prefix backend run test:equipo-numeracion`, adaptar la variable al shell), incluyendo concurrencia, cupos y reversión. Asociación **12/12 PASS**. Respaldo cifrado previo de IDs/números e inscritos; conteos generales: 213 equipos, 3.627 jugadores y 910 partidos.
+- Pendiente comprobar publicación y respuestas reales después del despliegue. Sin cambios en secretos, políticas de cuentas bloqueadas ni asociación directa; código de pertenencia sigue pospuesto. Memoria, estado e índice actualizados.
+
 ## 2026-10-22 - Planillas con filas según jugadores inscritos
 
 - Implementada la regla solicitada: ambas columnas usan el mayor de los dos planteles reales. Con 20/15 se imprimen 20 filas y solo cinco vacías en el menor; con 15/15 se imprimen 15 sin relleno. Con 0/0 no se agregan filas de jugadores. No depende del cupo ni del deporte.

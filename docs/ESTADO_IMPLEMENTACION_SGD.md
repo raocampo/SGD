@@ -1,3 +1,10 @@
+## 2026-10-23 - Equipos: error de lectura y numeración
+
+- Causa del 500 de campeonato 22 confirmada en API: la lectura renumeraba y violaba `idx_equipos_numero_campeonato` al compactar un hueco. Categoría 36 «ABIERTA VARONES» mantiene 23 inscritos; campeonato con 37 creados y 171 jugadores. El organizador está activo.
+- Implementado listado sin renumerar, renumeración sin colisiones y alta/edición/baja atómicas, con bloqueo de campeonatos para concurrencia/traslados y rollback completo. Inicialización de números nulos conserva los existentes. Índice único conservado, sin migración ni reparación manual productiva.
+- Numeración **12/12 PASS** en PostgreSQL local aislado, asociación **12/12 PASS**, sintaxis y diff correctos. Respaldo previo cifrado de IDs/números e inscritos. Pendiente comprobar despliegue, API real y conservación de datos tras publicar.
+- Verificación de pertenencia por código continúa en espera; asociación directa sin cambios.
+
 ## 2026-10-22 - Impresión de planillas según planteles reales
 
 - Implementado para vista previa oficial/resumen, PDF con/sin observaciones e impresión: número de filas = mayor plantel inscrito del partido, independiente de cupo/deporte. 20/15 -> 20 filas, cinco vacías solo en el menor; 15/15 -> 15 sin relleno. Sin mínimos ni recorte fijo a 30.
