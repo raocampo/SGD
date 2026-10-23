@@ -2,7 +2,8 @@
 
 - Causa del 500 de campeonato 22 confirmada en API: la lectura renumeraba y violaba `idx_equipos_numero_campeonato` al compactar un hueco. Categoría 36 «ABIERTA VARONES» mantiene 23 inscritos; campeonato con 37 creados y 171 jugadores. El organizador está activo.
 - Implementado listado sin renumerar, renumeración sin colisiones y alta/edición/baja atómicas, con bloqueo de campeonatos para concurrencia/traslados y rollback completo. Inicialización de números nulos conserva los existentes. Índice único conservado, sin migración ni reparación manual productiva.
-- Numeración **12/12 PASS** en PostgreSQL local aislado, asociación **12/12 PASS**, sintaxis y diff correctos. Respaldo previo cifrado de IDs/números e inscritos. Pendiente comprobar despliegue, API real y conservación de datos tras publicar.
+- Numeración **12/12 PASS** en PostgreSQL local aislado, asociación **12/12 PASS**, sintaxis y diff correctos. Respaldo previo cifrado de IDs/números e inscritos.
+- Publicado `e7d5e9b`; Railway `838e4e58-1fa2-4ae0-bb31-b933e291f159` **SUCCESS**, salud 200. Listado **200/37** y categoría **200/23** con administrador/organizador; demás consultas de esa carga **200**. Comparación READ ONLY: IDs/campeonatos/números de 213 equipos y 23 inscripciones conservados, 910 partidos. Conteo de jugadores varió de 3.627 a 3.630 durante la sesión, sin escrituras de QA. Sin QA visual del navegador.
 - Verificación de pertenencia por código continúa en espera; asociación directa sin cambios.
 
 ## 2026-10-22 - Impresión de planillas según planteles reales
