@@ -6767,6 +6767,10 @@ function recargarPlanilla() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.location.pathname.endsWith("planilla.html")) return;
+  // Dirigente/tecnico: solo lectura desde el inicio (aviso visible y
+  // estado/inasistencia bloqueados aun antes de elegir partido);
+  // cargarPlanilla() lo reaplica tras renderizar la planilla.
+  aplicarModoSoloLecturaPlanilla();
 
   const routeContext = leerContextoRetornoPlanilla();
   partidoId = aEntero(routeContext.partido, NaN);

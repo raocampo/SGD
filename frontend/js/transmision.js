@@ -73,69 +73,75 @@
     const modal = document.createElement("div");
     modal.id = "modal-transmision";
     modal.className = "modal-overlay";
-    modal.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;overflow-y:auto;";
+    modal.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10050;overflow-y:auto;";
     modal.innerHTML = `
-      <div class="modal-box" style="background:#fff;max-width:560px;margin:2rem auto;border-radius:10px;padding:1.5rem;position:relative;">
-        <button type="button" id="btn-cerrar-modal-transmision" style="position:absolute;top:.75rem;right:.75rem;background:none;border:none;font-size:1.4rem;cursor:pointer;" aria-label="Cerrar">✕</button>
-        <h3 style="margin-top:0;">📡 Transmisión del Partido</h3>
+      <div class="modal-box tx-modal-box">
+        <div class="tx-modal-header">
+          <h3>📡 Transmisión del Partido</h3>
+          <button type="button" id="btn-cerrar-modal-transmision" class="tx-modal-close" aria-label="Cerrar">✕</button>
+        </div>
 
-        <div id="transmision-estado-badge" style="margin-bottom:1rem;"></div>
+        <div class="tx-modal-body">
+          <div id="transmision-estado-badge" style="margin-bottom:1rem;"></div>
 
-        <form id="form-transmision" autocomplete="off">
-          <div class="form-group">
-            <label for="tx-plataforma">Plataforma</label>
-            <select id="tx-plataforma" class="form-control">
-              <option value="">— Selecciona —</option>
-              <option value="YouTube Live">YouTube Live</option>
-              <option value="Facebook Live">Facebook Live</option>
-              <option value="Twitch">Twitch</option>
-              <option value="StreamYard">StreamYard</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="tx-url-publica">URL pública de la transmisión</label>
-            <input type="url" id="tx-url-publica" class="form-control" placeholder="https://..." />
-          </div>
-          <div class="form-group">
-            <label for="tx-titulo">Título (opcional)</label>
-            <input type="text" id="tx-titulo" class="form-control" placeholder="Nombre descriptivo del partido" />
-          </div>
-          <div class="form-group">
-            <label for="tx-descripcion">Descripción (opcional)</label>
-            <textarea id="tx-descripcion" class="form-control" rows="2" placeholder="Detalles adicionales..."></textarea>
-          </div>
-          <div class="form-group">
-            <label for="tx-embed-url">URL de embed (opcional)</label>
-            <input type="url" id="tx-embed-url" class="form-control" placeholder="https://..." />
-          </div>
-          <div class="form-group">
-            <label for="tx-fecha-inicio">Fecha/hora programada (opcional)</label>
-            <input type="datetime-local" id="tx-fecha-inicio" class="form-control" />
-          </div>
-
-          <div id="transmision-modal-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;">
+          <form id="form-transmision" autocomplete="off">
             <input type="hidden" id="tx-estado-destino" value="" />
-            <button type="submit" class="btn btn-primary" onclick="document.getElementById('tx-estado-destino').value=''">
-              <i class="fas fa-save"></i> Guardar
-            </button>
-            <button type="button" class="btn btn-secondary" id="btn-tx-borrador">
-              <i class="fas fa-file-alt"></i> Guardar como borrador
-            </button>
-            <button type="button" id="btn-tx-iniciar" class="btn btn-success" style="display:none;">
-              <i class="fas fa-play"></i> Iniciar transmisión
-            </button>
-            <button type="button" id="btn-tx-finalizar" class="btn btn-warning" style="display:none;">
-              <i class="fas fa-stop"></i> Finalizar
-            </button>
-            <button type="button" id="btn-tx-cancelar" class="btn btn-danger" style="display:none;">
-              <i class="fas fa-ban"></i> Cancelar transmisión
-            </button>
-          </div>
-        </form>
+            <div class="form-group">
+              <label for="tx-plataforma">Plataforma</label>
+              <select id="tx-plataforma" class="form-control">
+                <option value="">— Selecciona —</option>
+                <option value="YouTube Live">YouTube Live</option>
+                <option value="Facebook Live">Facebook Live</option>
+                <option value="Twitch">Twitch</option>
+                <option value="StreamYard">StreamYard</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="tx-url-publica">URL pública de la transmisión</label>
+              <input type="url" id="tx-url-publica" class="form-control" placeholder="https://..." />
+            </div>
+            <div class="form-group">
+              <label for="tx-titulo">Título (opcional)</label>
+              <input type="text" id="tx-titulo" class="form-control" placeholder="Nombre descriptivo del partido" />
+            </div>
+            <div class="form-group">
+              <label for="tx-descripcion">Descripción (opcional)</label>
+              <textarea id="tx-descripcion" class="form-control" rows="2" placeholder="Detalles adicionales..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="tx-embed-url">URL de embed (opcional)</label>
+              <input type="url" id="tx-embed-url" class="form-control" placeholder="https://..." />
+            </div>
+            <div class="form-group">
+              <label for="tx-fecha-inicio">Fecha/hora programada (opcional)</label>
+              <input type="datetime-local" id="tx-fecha-inicio" class="form-control" />
+            </div>
 
-        <div id="transmision-modal-error" style="color:red;margin-top:.75rem;display:none;"></div>
-        <div id="transmision-modal-ok" style="color:green;margin-top:.75rem;display:none;"></div>
+          </form>
+
+          <div id="transmision-modal-error" style="color:red;margin-top:.75rem;display:none;"></div>
+          <div id="transmision-modal-ok" style="color:green;margin-top:.75rem;display:none;"></div>
+        </div>
+
+        <!-- Pie fijo: las acciones quedan visibles aunque el cuerpo haga scroll (celular). -->
+        <div id="transmision-modal-actions" class="tx-modal-footer">
+          <button type="submit" form="form-transmision" class="btn btn-primary" onclick="document.getElementById('tx-estado-destino').value=''">
+            <i class="fas fa-save"></i> Guardar
+          </button>
+          <button type="button" class="btn btn-secondary" id="btn-tx-borrador">
+            <i class="fas fa-file-alt"></i> Guardar como borrador
+          </button>
+          <button type="button" id="btn-tx-iniciar" class="btn btn-success" style="display:none;">
+            <i class="fas fa-play"></i> Iniciar transmisión
+          </button>
+          <button type="button" id="btn-tx-finalizar" class="btn btn-warning" style="display:none;">
+            <i class="fas fa-stop"></i> Finalizar
+          </button>
+          <button type="button" id="btn-tx-cancelar" class="btn btn-danger" style="display:none;">
+            <i class="fas fa-ban"></i> Cancelar transmisión
+          </button>
+        </div>
       </div>
     `;
     document.body.appendChild(modal);

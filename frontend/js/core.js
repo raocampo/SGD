@@ -1873,6 +1873,11 @@
         document
           .querySelectorAll('a[href="pases.html"], a[href="finanzas.html"]')
           .forEach((lnk) => lnk.remove());
+        const descripcionPortal = document.getElementById("portal-tecnico-descripcion");
+        if (descripcionPortal) {
+          descripcionPortal.textContent =
+            "Consulta tu equipo, la nómina de jugadores y las tablas de posiciones.";
+        }
       } else {
         // Solo tecnico/dirigente (no jugador): consulta de planilla propia
         // en modo lectura.
