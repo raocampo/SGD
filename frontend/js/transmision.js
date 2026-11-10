@@ -92,6 +92,7 @@
                 <option value="">— Selecciona —</option>
                 <option value="YouTube Live">YouTube Live</option>
                 <option value="Facebook Live">Facebook Live</option>
+                <option value="TikTok Live">TikTok Live</option>
                 <option value="Twitch">Twitch</option>
                 <option value="StreamYard">StreamYard</option>
                 <option value="Otro">Otro</option>

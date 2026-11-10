@@ -447,6 +447,24 @@ function limpiarResumenPortal(texto = "", max = 180) {
   return `${clean.slice(0, max - 1).trim()}...`;
 }
 
+// Nombre corto de la plataforma de una transmisión, para el botón del portal
+// ("Ver en YouTube"). Usa la plataforma registrada y, si falta, el dominio del
+// enlace. Los directos se abren en la plataforma (TikTok no permite incrustarlos).
+function nombrePlataformaTransmision(tx) {
+  const texto = `${tx?.plataforma || ""} ${tx?.url_publica || ""}`.toLowerCase();
+  if (/youtube|youtu\.be/.test(texto)) return "YouTube";
+  if (/facebook|fb\.watch/.test(texto)) return "Facebook";
+  if (/tiktok/.test(texto)) return "TikTok";
+  if (/twitch/.test(texto)) return "Twitch";
+  return "";
+}
+
+function textoBotonTransmision(tx, enVivo) {
+  const plataforma = nombrePlataformaTransmision(tx);
+  if (enVivo) return plataforma ? `📺 Ver en vivo en ${plataforma}` : "📺 Ver en vivo";
+  return plataforma ? `Ver en ${plataforma} →` : "Ver →";
+}
+
 function escPortal(texto) {
   return String(texto ?? "")
     .replace(/&/g, "&amp;")
@@ -2086,7 +2104,7 @@ function renderPartidoJornadaPortal(partido = {}) {
     ? `<span class="badge-en-vivo" style="background:#e53e3e;color:#fff;font-weight:700;font-size:.8rem;padding:.2em .55em;border-radius:4px;margin-left:.4rem;vertical-align:middle;">&#128308; EN VIVO</span>`
     : "";
   const btnVerTransmision = enVivo && transmision?.url_publica
-    ? `<div style="text-align:center;margin-top:.5rem;"><a href="${escPortal(transmision.url_publica)}" target="_blank" rel="noopener noreferrer" class="btn btn-danger" style="font-size:.82rem;padding:.25em .7em;">&#128250; Ver transmision</a></div>`
+    ? `<div style="text-align:center;margin-top:.5rem;"><a href="${escPortal(transmision.url_publica)}" target="_blank" rel="noopener noreferrer" class="btn btn-danger" style="font-size:.82rem;padding:.25em .7em;">${escPortal(textoBotonTransmision(transmision, true))}</a></div>`
     : "";
 
   const localNombre = partido.equipo_local_nombre || "";
@@ -3001,7 +3019,7 @@ function renderProximaTransmisionPortal(contenedor) {
         } catch (_) {}
       }
       const verBtn = tx.url_publica
-        ? `<a href="${escPortal(tx.url_publica)}" target="_blank" rel="noopener noreferrer" style="background:${enVivo ? "#e53e3e" : "#3182ce"};color:#fff;padding:.35em .85em;border-radius:6px;text-decoration:none;font-weight:700;font-size:.88rem;white-space:nowrap;">${enVivo ? "📺 Ver en vivo" : "Ver →"}</a>`
+        ? `<a href="${escPortal(tx.url_publica)}" target="_blank" rel="noopener noreferrer" style="background:${enVivo ? "#e53e3e" : "#3182ce"};color:#fff;padding:.35em .85em;border-radius:6px;text-decoration:none;font-weight:700;font-size:.88rem;white-space:nowrap;">${escPortal(textoBotonTransmision(tx, enVivo))}</a>`
         : "";
       const card = document.createElement("div");
       card.id = "portal-proxima-tx-card";
