@@ -1,4 +1,5 @@
 const pool = require("../config/database");
+const { cuentaActual } = require("./contextoCuenta");
 
 // ── Asegurar tabla ────────────────────────────────────────────────────────────
 let _tablaAsegurada = false;
@@ -62,6 +63,13 @@ function extraerIp(req) {
 
 // ── Registrar (no lanza excepción — auditoría no debe romper el flujo) ────────
 async function registrar({ usuarioId, accion, entidad, entidadId, detalle, ip } = {}) {
+  // Co-organizador: las llamadas pasan req.user.id (el titular). Se registra
+  // la cuenta que hizo la acción y el titular queda en el detalle.
+  const sesion = cuentaActual();
+  if (sesion?.cuentaUsuarioId && Number(usuarioId) === sesion.titularId) {
+    detalle = { ...(detalle || {}), organizacion_titular_id: sesion.titularId };
+    usuarioId = sesion.cuentaUsuarioId;
+  }
   try {
     await asegurarTabla();
     await pool.query(

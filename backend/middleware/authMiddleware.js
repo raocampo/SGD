@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const UsuarioAuth = require("../models/UsuarioAuth");
+const { ejecutarConCuenta } = require("../services/contextoCuenta");
 
 function getJwtSecret() {
   return process.env.JWT_SECRET || "sgd-dev-secret-change-me";
@@ -34,7 +35,7 @@ async function requireAuth(req, res, next) {
         error: "Tu cuenta está en modo solo lectura. No tienes permisos de modificación.",
       });
     }
-    return next();
+    return ejecutarConCuenta(req.user, next);
   } catch (error) {
     return res.status(401).json({ error: "Token inválido o expirado." });
   }
@@ -50,7 +51,7 @@ async function optionalAuth(req, res, next) {
     if (!user || !user.activo) return next();
 
     req.user = await UsuarioAuth.resolverIdentidadEfectiva(UsuarioAuth.limpiarUsuario(user));
-    return next();
+    return ejecutarConCuenta(req.user, next);
   } catch (_) {
     return next();
   }

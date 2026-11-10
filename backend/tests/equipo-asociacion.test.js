@@ -130,7 +130,10 @@ test("flujo HTTP autenticado: asociación, alcance operativo e inscripción de j
       return model.limpiarUsuario(user);
     },
   };
-  const auth = load("middleware/authMiddleware.js", { jsonwebtoken: jwt, "../models/UsuarioAuth": model });
+  const auth = load("middleware/authMiddleware.js", {
+    jsonwebtoken: jwt, "../models/UsuarioAuth": model,
+    "../services/contextoCuenta": require("../services/contextoCuenta"),
+  });
   const controller = load("controllers/authController.js", {
     "../config/database": pool, "../models/UsuarioAuth": model,
     "../services/equipoAsociacionService": service,
