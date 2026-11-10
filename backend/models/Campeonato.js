@@ -1,5 +1,6 @@
 const pool = require("../config/database");
 const OrganizadorPortal = require("./OrganizadorPortal");
+const { CONFIGS: DEPORTES } = require("../config/sportsConfig");
 
 // Estados del torneo según propuesta SGD
 const ESTADOS_TORNEO = ["borrador", "inscripcion", "en_curso", "finalizado", "archivado"];
@@ -32,6 +33,27 @@ class Campeonato {
       UPDATE campeonatos SET tipo_deporte = tipo_futbol
       WHERE tipo_deporte IS NULL AND tipo_futbol IS NOT NULL
     `);;
+    // tipo_futbol (alias de tipo_deporte) era VARCHAR(10) con CHECK solo de
+    // fútbol: los campeonatos de básquetbol fallaban al crearse (migración 078).
+    // Solo se altera si el esquema aún no está al día.
+    const tiposDeporte = Object.keys(DEPORTES);
+    const esquemaTipo = await pool.query(`
+      SELECT
+        (SELECT character_maximum_length FROM information_schema.columns
+          WHERE table_name = 'campeonatos' AND column_name = 'tipo_futbol') AS largo,
+        (SELECT pg_get_constraintdef(oid) FROM pg_constraint
+          WHERE conrelid = 'campeonatos'::regclass AND conname = 'campeonatos_tipo_futbol_check') AS regla
+    `);
+    const { largo, regla } = esquemaTipo.rows[0] || {};
+    const reglaAlDia = regla && tiposDeporte.every((t) => regla.includes(`'${t}'`));
+    if ((largo && Number(largo) < 30) || (regla && !reglaAlDia)) {
+      const lista = tiposDeporte.map((t) => `'${t}'`).join(", ");
+      await pool.query(`ALTER TABLE campeonatos ALTER COLUMN tipo_futbol TYPE VARCHAR(30)`);
+      await pool.query(`ALTER TABLE campeonatos DROP CONSTRAINT IF EXISTS campeonatos_tipo_futbol_check`);
+      await pool.query(
+        `ALTER TABLE campeonatos ADD CONSTRAINT campeonatos_tipo_futbol_check CHECK (tipo_futbol IN (${lista}))`
+      );
+    }
     await pool.query(`
       UPDATE campeonatos
       SET
