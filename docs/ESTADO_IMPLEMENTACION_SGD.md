@@ -1,3 +1,9 @@
+## 2026-11-09 - Transmisiones con OBS/Prism; paneles reparados
+
+- TURN descartado por costo: se transmite con OBS/Prism Live a YouTube/Facebook y se registra el enlace en el partido. Guía en el Panel de Director.
+- Corregido: Director, Broadcast, Viewer y Overlay leían la sesión de claves obsoletas y llamaban a la API en el dominio del frontend; en producción no funcionaban. Verificado entre dominios con transmisión de prueba (marcador en vivo en el overlay).
+- Pendiente: una transmisión real en producción con el overlay.
+
 ## 2026-11-09 - Nuevo Campeonato por secciones y alta de básquetbol corregida
 
 - «Nuevo Campeonato» organizado en 5 secciones con botones fijos (verificado en celular y escritorio).

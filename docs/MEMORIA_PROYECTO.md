@@ -2,11 +2,16 @@
 
 Actualizada: 2026-11-09 (America/Guayaquil).
 
-## Último trabajo: Nuevo Campeonato por secciones y básquetbol (09-nov)
+## Último trabajo: transmisiones con OBS/Prism y paneles reparados (09-nov)
+
+- **Decisión del usuario:** sin servidor TURN (el proyecto no lo costea). Transmisiones vía OBS Studio o Prism Live → YouTube/Facebook, con el enlace registrado en el partido y el overlay del Panel de Director en OBS. El modo cámara WebRTC queda para pocos espectadores.
+- Corregidos `director.html`/`broadcast.html` (sesión desde `window.Auth`, no `localStorage.token`) y las 4 páginas de transmisión (backend por `resolveBackendBaseUrl`, no `location.origin`). Verificado entre dominios. Pendiente: transmisión real en producción.
+
+## Trabajo anterior: Nuevo Campeonato por secciones y básquetbol (09-nov)
 
 - «Nuevo Campeonato» en 5 secciones con botones fijos. Corregido el alta de campeonatos de básquetbol (500 por `tipo_futbol VARCHAR(10)`/CHECK de fútbol): migración `078` y ajuste condicional en `Campeonato.asegurarColumnasDocumentos`.
 - Cerrados por confirmación del usuario: co-organizador en producción y Excel de Induloja. «80 FC» no es duplicado (dos categorías del mismo club). SRI/RUC/certificado en pausa: se usa AELA ERP.
-- Abiertos: TURN (elegir proveedor y credenciales; el código se puede preparar con variables de entorno), código de pertenencia (en espera), SMTP Hobby, partidos pasados sin planilla y validaciones restantes de la lista A.
+- Abiertos: código de pertenencia (en espera), SMTP Hobby, partidos pasados sin planilla y validaciones restantes de la lista A. TURN descartado (se usa OBS/Prism).
 
 ## Trabajo anterior: pendientes de código cerrados (09-nov)
 
@@ -154,7 +159,7 @@ El README conserva un cierre de junio y la tabla histórica de módulos tiene fe
 ## Decisiones e insumos pendientes
 
 - Definir situación de partidos pasados aún programados sin planilla; eventual renumeración de eventos 16, 18, 19 y 30 de otros organizadores. No aplicar correcciones de datos sin resolver esas decisiones. («80 FC» cerrado el 09-nov: no es duplicado.)
-- Credenciales PayPhone/PayPal, proveedor TURN y credenciales/contrato para QA mobile. RUC/certificado SRI en pausa por decisión del usuario (se usa AELA ERP).
+- Credenciales PayPhone/PayPal y credenciales/contrato para QA mobile. TURN descartado por decisión del usuario (OBS/Prism con YouTube/Facebook). RUC/certificado SRI en pausa por decisión del usuario (se usa AELA ERP).
 
 ## Entorno y cautelas de continuidad
 

@@ -1,3 +1,13 @@
+## 2026-11-09 - Transmisiones: OBS/Prism en lugar de TURN y paneles reparados
+
+- **Decisión del usuario: no se contratará servidor TURN** (el proyecto no lo puede costear). Las transmisiones se harán con **OBS Studio o Prism Live → YouTube/Facebook**, registrando el enlace del directo en el partido: la plataforma reparte el video gratis y sin límite de espectadores, y funciona con datos móviles. El modo cámara del navegador (WebRTC, `broadcast.html`) queda para pocos espectadores y en buenas redes, con una advertencia en el Panel de Director.
+- **Guía en el Panel de Director** (`director.html`): «¿Cómo transmitir con OBS o Prism Live?» en dos partes: (1) transmitir a YouTube/Facebook con OBS o Prism y registrar la URL pública en Partidos; (2) marcador superpuesto (overlay) en OBS y nota para Prism (en PC, como widget web; en celular depende de la versión, no verificado). Paso 3 de `transmisiones.html` actualizado.
+- **Error encontrado y corregido: Director, Broadcast, Viewer y Overlay no funcionaban con la configuración actual.**
+  1. `director.html` y `broadcast.html` buscaban la sesión en `localStorage["token"]`/`["rol"]`, claves que ya nadie escribe (la sesión vive en `sgd_auth_*`). Redirigían siempre fuera del panel. Ahora usan `window.Auth`.
+  2. Las 4 páginas usaban `API_BASE = location.origin` (de cuando todo estaba en un solo dominio). En producción el frontend está en `ltyc.corpsimtelec.com` y el backend en `api.ltyc.corpsimtelec.com`, y Vercel no reenvía `/api` ni `/socket.io`. Ahora la API, el socket y los logos usan `resolveBackendBaseUrl()` de `core.js`; `viewer.html`/`overlay.html`, que no cargan `core.js`, llevan la misma regla en línea. Los enlaces a `overlay.html` y `viewer.html` siguen en el dominio del frontend.
+- Verificación entre dominios (frontend en `:5500`, backend en `:5000`, igual que en producción), con una transmisión de prueba borrada al final: Director carga y conecta el socket; overlay con la URL del frontend; «Enviar ahora» con 2-1 → el overlay muestra 2-1 y los equipos en tiempo real; Broadcast muestra el enlace del espectador en el dominio del frontend; Viewer consulta el backend (200). Con el código anterior, el Director no llegaba a mostrar el panel. Guards **49/49**; sintaxis de los scripts en línea correcta.
+- Pendiente para el usuario: probar en producción una transmisión real (OBS o Prism → YouTube) con el overlay del Panel de Director.
+
 ## 2026-11-09 - Nuevo Campeonato por secciones, básquetbol al crear y cierre de pendientes
 
 - **Confirmado por el usuario:** el co-organizador funciona en producción y la importación del Excel de Induloja (multihoja) funcionó. Ambos pendientes quedan cerrados.

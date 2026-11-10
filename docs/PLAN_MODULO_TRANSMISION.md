@@ -176,6 +176,7 @@ cambia automáticamente a mostrar el embed de YouTube/Facebook (fallback).
 ### Tecnología STUN/TURN
 - **STUN** (Google, gratuito): permite que las cámaras detrás de routers descubran su IP pública. Cubre ~80% de los casos.
 - **TURN** (Metered.ca, gratuito hasta cierto volumen): para redes corporativas estrictas que bloquean P2P.
+- **Decisión 2026-11-09:** no se contratará TURN. Para partidos con público se usa OBS Studio o Prism Live → YouTube/Facebook con el enlace registrado en el partido; WebRTC queda para pocos espectadores.
 
 ### Nueva tabla BD
 
