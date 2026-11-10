@@ -73,6 +73,15 @@ Que comparte y que no:
 - En el listado de usuarios aparece dentro de la tarjeta de su organizacion, en `Accesos adicionales de la organizacion`.
 - En la auditoria, las acciones de cada acceso quedan a nombre de la persona que las hizo; el detalle indica la organizacion (`organizacion_titular_id`).
 
+## Transmisiones en vivo (OBS / Prism Live)
+1. Transmitir con camaras (OBS en PC) o con el celular (Prism Live) hacia YouTube, Facebook y TikTok al mismo tiempo.
+2. En `Partidos`, boton de transmision del partido: `Agregar plataforma` por cada directo y pegar su enlace. El portal muestra un boton por plataforma.
+3. En `Transmisiones` abrir el `Panel de Director` del partido y copiar la URL del overlay. En OBS agregarla como `Browser Source` del tamano del lienzo (1920 x 1080).
+4. Durante el partido, desde el Panel de Director:
+   - actualizar marcador y periodo con `Enviar ahora`;
+   - los auspiciantes activos del campeonato rotan en una esquina (se administran en `Auspiciantes`, con su logo);
+   - en el descanso elegir el periodo `Entretiempo`: se muestra la pantalla de entretiempo con el marcador y los auspiciantes; al elegir `2T` se quita.
+
 ## Portal publico y CMS institucional
 - Contenido gestionado por `administrador` u `operador`:
   - noticias/blog,

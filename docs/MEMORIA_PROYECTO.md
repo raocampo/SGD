@@ -2,7 +2,13 @@
 
 Actualizada: 2026-11-09 (America/Guayaquil).
 
-## Último trabajo: transmisiones con OBS/Prism y paneles reparados (09-nov)
+## Último trabajo: transmisión multiplataforma y publicidad (09-nov)
+
+- `partido_transmisiones.enlaces` (migración `079`): varios enlaces por transmisión; el primero se conserva en `url_publica`. Portal con un botón por plataforma.
+- Overlay a 1920×1080 con auspiciantes del campeonato (esquina rotando) y pantalla de entretiempo; Panel de Director con período «Entretiempo» y tarjeta Publicidad.
+- Propuesto y sin aplicar: quitar el reenvío de `overlay:update` por socket sin autenticación y comprobar la propiedad de la transmisión en las rutas del overlay.
+
+## Trabajo anterior: transmisiones con OBS/Prism y paneles reparados (09-nov)
 
 - **Decisión del usuario:** sin servidor TURN (el proyecto no lo costea). Transmisión oficial: cámaras o celular → OBS Studio o Prism Live → YouTube, Facebook o TikTok, con el enlace registrado en el partido (el portal muestra «Ver en vivo en <plataforma>») y el overlay del Panel de Director en OBS. El modo cámara WebRTC queda para pocos espectadores.
 - Corregidos `director.html`/`broadcast.html` (sesión desde `window.Auth`, no `localStorage.token`) y las 4 páginas de transmisión (backend por `resolveBackendBaseUrl`, no `location.origin`). Verificado entre dominios. Pendiente: transmisión real en producción.

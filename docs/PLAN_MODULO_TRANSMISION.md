@@ -177,6 +177,7 @@ cambia automáticamente a mostrar el embed de YouTube/Facebook (fallback).
 - **STUN** (Google, gratuito): permite que las cámaras detrás de routers descubran su IP pública. Cubre ~80% de los casos.
 - **TURN** (Metered.ca, gratuito hasta cierto volumen): para redes corporativas estrictas que bloquean P2P.
 - **Decisión 2026-11-09:** no se contratará TURN. Transmisión oficial: cámaras o celular → OBS Studio o Prism Live → YouTube, Facebook o TikTok, con el enlace registrado en el partido; WebRTC queda para pocos espectadores.
+- **2026-11-09:** transmisión simultánea (varios enlaces por transmisión, migración 079) y publicidad en el overlay: auspiciantes en la esquina y pantalla de entretiempo controlada desde el Panel de Director.
 
 ### Nueva tabla BD
 

@@ -1,3 +1,9 @@
+## 2026-11-09 - Transmisión multiplataforma y publicidad
+
+- Una transmisión registra varios enlaces (YouTube, Facebook, TikTok…); el portal muestra un botón por plataforma. Migración `079`.
+- Overlay de OBS a lienzo completo: marcador, auspiciantes rotando en la esquina y pantalla de entretiempo con publicidad, controlados desde el Panel de Director (período «Entretiempo»).
+- Verificado entre dominios con datos de prueba eliminados. Pendiente: prueba real en producción. Propuesto: cerrar el reenvío de estado sin autenticación por socket y validar la propiedad de la transmisión en las rutas del overlay.
+
 ## 2026-11-09 - Transmisiones con OBS/Prism; paneles reparados
 
 - TURN descartado por costo: se transmite con OBS/Prism Live a YouTube/Facebook y se registra el enlace en el partido. Guía en el Panel de Director.
