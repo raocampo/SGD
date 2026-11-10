@@ -181,6 +181,9 @@
         <form id="form-campeonato" enctype="multipart/form-data">
           <input type="hidden" id="campeonato-id" />
 
+          <div class="sgd-form-section">
+            <span class="sgd-form-section-title"><i class="fas fa-pen"></i>Datos generales</span>
+          </div>
           <div class="form-group">
             <label for="campeonato-nombre">Nombre del Campeonato:</label>
             <input type="text" id="campeonato-nombre" required maxlength="200" />
@@ -195,26 +198,21 @@
             />
           </div>
 
-          <div class="form-group">
-            <label for="campeonato-logo">Logo del Campeonato:</label>
-            <input type="file" id="campeonato-logo" accept="image/*" />
-            <small>Formatos permitidos: JPG, PNG, WEBP. Máx: 2MB.</small>
-            <div id="campeonato-logo-actual" class="media-current-preview"></div>
+          <div class="form-group" id="form-group-estado">
+            <label for="campeonato-estado">Estado del torneo:</label>
+            <select id="campeonato-estado">
+              <option value="borrador">Borrador</option>
+              <option value="inscripcion">Inscripción</option>
+              <option value="en_curso">En Curso</option>
+              <option value="finalizado">Finalizado</option>
+              <option value="archivado">Archivado</option>
+            </select>
           </div>
 
-          <div class="form-group">
-            <label for="campeonato-carnet-fondo">Fondo de carné / marca de agua:</label>
-            <input type="file" id="campeonato-carnet-fondo" accept="image/*" />
-            <small>Se mezclará con los colores del campeonato y el logo para el diseño del carné. Máx: 2MB.</small>
-            <div id="campeonato-carnet-fondo-actual" class="media-current-preview"></div>
-            <div class="fixture-generation-options">
-              <div class="form-group checkbox-inline-control">
-                <input type="checkbox" id="campeonato-eliminar-carnet-fondo" />
-                <label for="campeonato-eliminar-carnet-fondo">Eliminar fondo actual del carné</label>
-              </div>
-            </div>
+          <div class="sgd-form-section">
+            <span class="sgd-form-section-title"><i class="fas fa-futbol"></i>Deporte y competencia</span>
+            <span class="sgd-form-section-hint">El tipo de deporte define la planilla y las reglas de cada partido.</span>
           </div>
-
           <div class="form-group">
             <label>Tipo de Deporte:</label>
             <input type="hidden" id="campeonato-tipo" value="futbol_11" />
@@ -251,14 +249,16 @@
             </select>
           </div>
 
-          <div class="form-group">
-            <label for="campeonato-fecha-inicio">Fecha de Inicio:</label>
-            <input type="date" id="campeonato-fecha-inicio" required />
-          </div>
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="campeonato-fecha-inicio">Fecha de Inicio:</label>
+              <input type="date" id="campeonato-fecha-inicio" required />
+            </div>
 
-          <div class="form-group">
-            <label for="campeonato-fecha-fin">Fecha de Fin:</label>
-            <input type="date" id="campeonato-fecha-fin" required />
+            <div class="form-group half">
+              <label for="campeonato-fecha-fin">Fecha de Fin:</label>
+              <input type="date" id="campeonato-fecha-fin" required />
+            </div>
           </div>
 
           <div class="form-row">
@@ -283,7 +283,16 @@
             </div>
           </div>
 
-          <h4>🎨 Colores del campeonato</h4>
+          <div class="sgd-form-section">
+            <span class="sgd-form-section-title"><i class="fas fa-palette"></i>Identidad visual</span>
+            <span class="sgd-form-section-hint">Logo, colores y fondo se usan en el portal, los carnés y las plantillas impresas.</span>
+          </div>
+          <div class="form-group">
+            <label for="campeonato-logo">Logo del Campeonato:</label>
+            <input type="file" id="campeonato-logo" accept="image/*" />
+            <small>Formatos permitidos: JPG, PNG, WEBP. Máx: 2MB.</small>
+            <div id="campeonato-logo-actual" class="media-current-preview"></div>
+          </div>
 
           <div class="form-row">
             <div class="form-group half">
@@ -311,6 +320,22 @@
           </div>
 
           <div class="form-group">
+            <label for="campeonato-carnet-fondo">Fondo de carné / marca de agua:</label>
+            <input type="file" id="campeonato-carnet-fondo" accept="image/*" />
+            <small>Se mezclará con los colores del campeonato y el logo para el diseño del carné. Máx: 2MB.</small>
+            <div id="campeonato-carnet-fondo-actual" class="media-current-preview"></div>
+            <div class="fixture-generation-options">
+              <div class="form-group checkbox-inline-control">
+                <input type="checkbox" id="campeonato-eliminar-carnet-fondo" />
+                <label for="campeonato-eliminar-carnet-fondo">Eliminar fondo actual del carné</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="sgd-form-section">
+            <span class="sgd-form-section-title"><i class="fas fa-id-card"></i>Inscripción de jugadores</span>
+          </div>
+          <div class="form-group">
             <label>Requisitos de inscripción de jugadores:</label>
             <div class="fixture-generation-options">
               <div class="form-group checkbox-inline-control">
@@ -332,6 +357,10 @@
             </div>
           </div>
 
+          <div class="sgd-form-section">
+            <span class="sgd-form-section-title"><i class="fas fa-wallet"></i>Costos y morosidad</span>
+            <span class="sgd-form-section-hint">Los costos alimentan Finanzas; la morosidad puede bloquear el registro de planillas.</span>
+          </div>
           <div class="form-group">
             <label>Configuración de costos del campeonato:</label>
             <div class="form-row campeonato-costos-grid">
@@ -397,17 +426,6 @@
                 <small>Ejemplo: 0 bloquea cualquier deuda; 20 bloquea desde $20.01.</small>
               </div>
             </div>
-          </div>
-
-          <div class="form-group" id="form-group-estado">
-            <label for="campeonato-estado">Estado del torneo:</label>
-            <select id="campeonato-estado">
-              <option value="borrador">Borrador</option>
-              <option value="inscripcion">Inscripción</option>
-              <option value="en_curso">En Curso</option>
-              <option value="finalizado">Finalizado</option>
-              <option value="archivado">Archivado</option>
-            </select>
           </div>
 
           <div class="form-actions">
