@@ -72,6 +72,8 @@ function mapearPlanCatalogo(item, precios = {}) {
 
 async function sincronizarPerfilOrganizador(usuario, data = {}) {
   if (String(usuario?.rol || "").toLowerCase() !== "organizador") return;
+  // El co-organizador comparte la landing del titular; no tiene configuración propia.
+  if (usuario?.organizacion_titular_id) return;
 
   const organizacionNombre = String(
     data.organizacion_nombre ?? usuario.organizacion_nombre ?? ""
@@ -585,8 +587,10 @@ const authController = {
         return res.status(400).json({ error: "identificador y password son obligatorios" });
       }
 
-      const user = await UsuarioAuth.validarCredenciales(identificador, password);
-      if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
+      const cuenta = await UsuarioAuth.validarCredenciales(identificador, password);
+      if (!cuenta) return res.status(401).json({ error: "Credenciales inválidas" });
+      // Co-organizador: la sesión opera con la organización y el plan del titular.
+      const user = await UsuarioAuth.resolverIdentidadEfectiva(cuenta);
 
       if (String(user.plan_estado || "").toLowerCase() === "pendiente_pago") {
         const plan = obtenerPlan(user.plan_codigo);
@@ -604,15 +608,19 @@ const authController = {
       });
 
       // Marca de última actividad (para bloqueo/eliminación de cuentas inactivas).
-      UsuarioAuth.registrarAcceso(user.id).catch(() => {});
+      UsuarioAuth.registrarAcceso(cuenta.id).catch(() => {});
 
       // Auditoría: login exitoso
       registrarAuditoria({
-        usuarioId: user.id,
+        usuarioId: cuenta.id,
         accion: ACCIONES.LOGIN,
         entidad: "usuarios",
-        entidadId: user.id,
-        detalle: { rol: user.rol, plan: user.plan_codigo },
+        entidadId: cuenta.id,
+        detalle: {
+          rol: user.rol,
+          plan: user.plan_codigo,
+          ...(user.es_co_organizador ? { organizacion_titular_id: user.id } : {}),
+        },
         ip: extraerIp(req),
       });
 
@@ -743,7 +751,13 @@ const authController = {
       } else if (esAdmin) {
         const rolDestino = String(body?.rol || "").trim().toLowerCase();
         body.debe_cambiar_password = true;
-        if (rolDestino === "organizador") {
+        if (rolDestino === "organizador" && body?.organizacion_titular_id) {
+          // Co-organizador: organización, plan y landing se heredan del titular
+          // (UsuarioAuth.crear valida el titular y copia el nombre de la organización).
+          body.plan_codigo = "free";
+          body.plan_estado = "activo";
+        } else if (rolDestino === "organizador") {
+          body.organizacion_titular_id = null;
           const organizacionNombre = String(body?.organizacion_nombre || "").trim();
           if (!organizacionNombre) {
             return res
@@ -1031,19 +1045,22 @@ const authController = {
         });
       }
 
-      const usuario = await UsuarioAuth.cambiarPasswordActual(
-        req.user?.id,
+      // Co-organizador: la contraseña es la de su propia cuenta, no la del titular.
+      const cuentaId = req.user?.cuenta_usuario_id || req.user?.id;
+      const cuenta = await UsuarioAuth.cambiarPasswordActual(
+        cuentaId,
         currentPassword,
         newPassword,
         pool
       );
+      const usuario = await UsuarioAuth.resolverIdentidadEfectiva(cuenta);
 
       // Auditoría: cambio de contraseña
       registrarAuditoria({
-        usuarioId: req.user?.id,
+        usuarioId: cuentaId,
         accion: ACCIONES.CAMBIO_PASSWORD,
         entidad: "usuarios",
-        entidadId: req.user?.id,
+        entidadId: cuentaId,
         ip: extraerIp(req),
       });
 
@@ -1175,13 +1192,14 @@ const authController = {
 
       // Organizadores activos totales
       const rOrgs = await pool.query(
-        `SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'organizador' AND activo = true`
+        `SELECT COUNT(*) AS total FROM usuarios
+         WHERE rol = 'organizador' AND activo = true AND organizacion_titular_id IS NULL`
       );
 
       // Nuevos este mes
       const rNuevos = await pool.query(
         `SELECT COUNT(*) AS total FROM usuarios
-         WHERE rol = 'organizador' AND activo = true
+         WHERE rol = 'organizador' AND activo = true AND organizacion_titular_id IS NULL
            AND created_at >= DATE_TRUNC('month', CURRENT_DATE)`
       );
 
@@ -1189,7 +1207,7 @@ const authController = {
       const rPorPlan = await pool.query(
         `SELECT COALESCE(plan_codigo, 'free') AS plan_codigo, COUNT(*) AS total
          FROM usuarios
-         WHERE rol = 'organizador' AND activo = true
+         WHERE rol = 'organizador' AND activo = true AND organizacion_titular_id IS NULL
          GROUP BY plan_codigo
          ORDER BY total DESC`
       );
@@ -1213,7 +1231,7 @@ const authController = {
                 COUNT(c.id) FILTER (WHERE c.estado NOT IN ('archivado')) AS torneos_activos
          FROM usuarios u
          LEFT JOIN campeonatos c ON c.creador_usuario_id = u.id
-         WHERE u.rol = 'organizador'
+         WHERE u.rol = 'organizador' AND u.organizacion_titular_id IS NULL
          GROUP BY u.id
          ORDER BY u.created_at DESC
          LIMIT 50`

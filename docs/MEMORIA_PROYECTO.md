@@ -1,8 +1,14 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-10-23 (America/Guayaquil).
+Actualizada: 2026-11-09 (America/Guayaquil).
 
-## Último trabajo: error al cargar equipos del campeonato 22 (23-oct)
+## Último trabajo: co-organizador de una organización existente (09-nov)
+
+- El admin ya puede crear otro usuario Organizador vinculado a una organización existente («Organización del organizador» en `usuarios.html`). Comparte campeonatos, equipos, finanzas, landing y plan del titular, pero tiene usuario, contraseña y estado propios.
+- Modelo: `usuarios.organizacion_titular_id` (migración `077`, también en `asegurarEsquema`). `UsuarioAuth.resolverIdentidadEfectiva` sustituye la identidad en `requireAuth`/`optionalAuth`, login y refresh; tokens y cambio de clave usan `cuenta_usuario_id`. Detalle y pruebas en la bitácora del 09-nov.
+- Pendiente: QA visual del formulario y crear el acceso real en producción tras el despliegue. La auditoría operativa registra el id del titular.
+
+## Trabajo anterior: error al cargar equipos del campeonato 22 (23-oct)
 
 - Causa reproducida en producción con administrador y organizador: `GET /api/equipos/campeonato/22` devolvía 500 por `idx_equipos_numero_campeonato`. La lectura intentaba compactar números con un hueco y el UPDATE colisionaba con el índice único. La categoría 36 «ABIERTA VARONES» conserva **23 inscritos**; el campeonato tiene **37 registros creados** y tenía 171 jugadores al diagnosticar. No confundir creados con inscritos ni borrar/fusionar equipos.
 - `backend/models/Equipo.js`: listar deja de renumerar. Crear, editar y eliminar guardan el cambio y su numeración en una sola transacción, con bloqueo del campeonato para serializar altas/cambios. Renumerado en dos pasos dentro de la transacción para conservar el índice único; un fallo revierte también la escritura principal. Traslados bloquean origen/destino en orden y devuelven el número definitivo. Inicialización de números nulos a partir del máximo existente, sin modificar los ya asignados.

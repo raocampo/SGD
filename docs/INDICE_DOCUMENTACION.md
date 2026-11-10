@@ -1,6 +1,6 @@
 # Indice de Documentacion LT&C
 
-Ultima actualizacion: 2026-10-23
+Ultima actualizacion: 2026-11-09
 
 ## Documentos clave
 - `docs/MEMORIA_PROYECTO.md`

@@ -122,6 +122,7 @@ test("flujo HTTP autenticado: asociación, alcance operativo e inscripción de j
     obtenerPorId: async id => users.get(Number(id)),
     obtenerEquipoIds: async id => users.get(Number(id)).equipo_ids,
     limpiarUsuario: user => ({ ...user, equipo_ids: [...user.equipo_ids] }),
+    resolverIdentidadEfectiva: async user => user,
     asignarEquipo: async (id, team) => {
       assignmentWrites++;
       const user = users.get(Number(id));

@@ -48,9 +48,75 @@ class UsuarioAuth {
         ? row.equipo_ids.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0)
         : [],
       ultimo_acceso_at: row.ultimo_acceso_at || null,
+      organizacion_titular_id: Number.parseInt(row.organizacion_titular_id, 10) || null,
       created_at: row.created_at,
       updated_at: row.updated_at,
     };
+  }
+
+  // Co-organizador: cuenta adicional de una organización existente. Para todo el
+  // sistema actúa como el organizador titular (id, organización, plan), así los
+  // filtros por campeonatos.creador_usuario_id no necesitan cambios. Conserva lo
+  // personal de la cuenta (nombre, correo, usuario, estado, cambio de clave) y
+  // expone su id real en cuenta_usuario_id para tokens y cambio de contraseña.
+  static async resolverIdentidadEfectiva(usuario, client = pool) {
+    if (!usuario) return null;
+    if (String(usuario.rol || "").toLowerCase() !== "organizador") return usuario;
+    const titularId = Number.parseInt(usuario.organizacion_titular_id, 10);
+    if (!Number.isFinite(titularId) || titularId <= 0 || titularId === Number(usuario.id)) {
+      return usuario;
+    }
+    const titular = this.limpiarUsuario(await this.obtenerPorId(titularId, client));
+    if (!titular || String(titular.rol || "").toLowerCase() !== "organizador") return usuario;
+    return {
+      ...titular,
+      nombre: usuario.nombre,
+      email: usuario.email,
+      username: usuario.username,
+      activo: usuario.activo,
+      solo_lectura: usuario.solo_lectura,
+      debe_cambiar_password: usuario.debe_cambiar_password,
+      ultimo_acceso_at: usuario.ultimo_acceso_at,
+      organizacion_titular_id: titular.id,
+      cuenta_usuario_id: Number(usuario.id),
+      es_co_organizador: true,
+    };
+  }
+
+  // Valida que titularId sea un organizador principal al que se puede vincular
+  // la cuenta usuarioId (null al crear). Devuelve el titular limpio.
+  static async validarTitularOrganizacion(titularId, usuarioId = null, client = pool) {
+    const tId = Number.parseInt(titularId, 10);
+    if (!Number.isFinite(tId) || tId <= 0) throw new Error("organizacion_titular_id invalido");
+    if (usuarioId && tId === Number(usuarioId)) {
+      throw new Error("organizacion_titular_id invalido: no puede ser el mismo usuario");
+    }
+    const titular = this.limpiarUsuario(await this.obtenerPorId(tId, client));
+    if (!titular || String(titular.rol || "").toLowerCase() !== "organizador") {
+      throw new Error("organizacion_titular_id invalido: la organización no existe");
+    }
+    if (titular.organizacion_titular_id) {
+      throw new Error("organizacion_titular_id invalido: elige al organizador principal de la organización");
+    }
+    if (usuarioId) {
+      const r = await client.query(
+        `SELECT
+           (SELECT COUNT(*)::int FROM campeonatos WHERE creador_usuario_id = $1) AS nc,
+           (SELECT COUNT(*)::int FROM usuarios WHERE organizacion_titular_id = $1) AS nco`,
+        [Number(usuarioId)]
+      );
+      if (Number(r.rows[0]?.nc) > 0) {
+        throw new Error(
+          "organizacion_titular_id invalido: este organizador ya tiene campeonatos propios"
+        );
+      }
+      if (Number(r.rows[0]?.nco) > 0) {
+        throw new Error(
+          "organizacion_titular_id invalido: este organizador ya es titular de otros accesos"
+        );
+      }
+    }
+    return titular;
   }
 
   static async registrarAcceso(usuarioId, client = pool) {
@@ -121,6 +187,14 @@ class UsuarioAuth {
       SET ultimo_acceso_at = COALESCE(ultimo_acceso_at, updated_at, created_at, CURRENT_TIMESTAMP)
       WHERE ultimo_acceso_at IS NULL
     `);
+    // Co-organizadores (ver migración 077 y resolverIdentidadEfectiva).
+    await client.query(`
+      ALTER TABLE usuarios
+      ADD COLUMN IF NOT EXISTS organizacion_titular_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL
+    `);
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_usuarios_organizacion_titular ON usuarios(organizacion_titular_id)`
+    );
     await client.query(`
       ALTER TABLE usuarios
       ALTER COLUMN email DROP NOT NULL
@@ -421,7 +495,7 @@ class UsuarioAuth {
       data.activo === undefined
         ? true
         : data.activo === true || String(data.activo).toLowerCase() === "true";
-    const organizacionNombre = String(data.organizacion_nombre || "").trim();
+    let organizacionNombre = String(data.organizacion_nombre || "").trim();
     const rolEsJugador = rol === "jugador";
     const soloLectura = rolEsJugador
       ? true
@@ -450,6 +524,12 @@ class UsuarioAuth {
     }
     if (!ROLES.has(rol)) {
       throw new Error("rol invalido. Use: administrador, operador, operador_sistema, organizador, tecnico, dirigente o jugador");
+    }
+    let organizacionTitularId = null;
+    if (rol === "organizador" && data.organizacion_titular_id) {
+      const titular = await this.validarTitularOrganizacion(data.organizacion_titular_id, null, client);
+      organizacionTitularId = titular.id;
+      organizacionNombre = titular.organizacion_nombre || titular.nombre;
     }
     if (rol === "organizador" && !organizacionNombre) {
       throw new Error("organizacion_nombre es obligatorio para organizador");
@@ -484,9 +564,10 @@ class UsuarioAuth {
           solo_lectura,
           debe_cambiar_password,
           plan_codigo,
-          plan_estado
+          plan_estado,
+          organizacion_titular_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *
       `,
       [
@@ -501,6 +582,7 @@ class UsuarioAuth {
         debeCambiarPassword,
         planCodigo,
         planEstado,
+        organizacionTitularId,
       ]
     );
     return this.limpiarUsuario(r.rows[0]);
@@ -518,6 +600,21 @@ class UsuarioAuth {
     const campos = [];
     const valores = [];
     let idx = 1;
+
+    const rolFinal = String(data.rol || actual.rol || "").trim().toLowerCase();
+    if (data.organizacion_titular_id !== undefined || rolFinal !== "organizador") {
+      let titularId = null;
+      if (rolFinal === "organizador" && data.organizacion_titular_id) {
+        const titular = await this.validarTitularOrganizacion(data.organizacion_titular_id, uId, client);
+        titularId = titular.id;
+        // El nombre de la organización siempre es el del titular.
+        data = { ...data, organizacion_nombre: titular.organizacion_nombre || titular.nombre };
+      }
+      if (titularId !== (Number.parseInt(actual.organizacion_titular_id, 10) || null)) {
+        campos.push(`organizacion_titular_id = $${idx++}`);
+        valores.push(titularId);
+      }
+    }
 
     if (data.nombre !== undefined) {
       const nombre = String(data.nombre || "").trim();

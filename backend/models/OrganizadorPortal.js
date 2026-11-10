@@ -138,6 +138,9 @@ class OrganizadorPortal {
         NULLIF(TRIM(COALESCE(u.email, '')), '')
       FROM usuarios u
       WHERE LOWER(COALESCE(u.rol, '')) = 'organizador'
+        -- Los co-organizadores comparten la configuración del titular.
+        -- (to_jsonb: tolera que la columna aún no exista al arrancar.)
+        AND (to_jsonb(u) ->> 'organizacion_titular_id') IS NULL
         AND NOT EXISTS (
           SELECT 1
           FROM organizador_portal_config opc

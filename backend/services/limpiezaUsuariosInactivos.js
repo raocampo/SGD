@@ -4,7 +4,7 @@
 // Reglas (configurables por env):
 //   - Usuarios con rol organizador/tecnico/dirigente/jugador que NO están ligados
 //     a ninguna organización/campeonato/equipo:
-//       · organizador  → 0 campeonatos creados
+//       · organizador  → 0 campeonatos creados (co-organizador: los de su titular)
 //       · téc/dir/jug  → 0 equipos asignados (usuario_equipos)
 //   - Sin actividad (ultimo_acceso_at) por más de DIAS_BLOQUEO (30) → se desactivan.
 //   - Si siguen inactivos y desactivados más de DIAS_ELIMINACION (60) → se eliminan.
@@ -28,7 +28,8 @@ async function obtenerCandidatos(client = pool) {
       SELECT
         u.id, u.rol, u.nombre, u.email, u.username, u.activo,
         COALESCE(u.ultimo_acceso_at, u.updated_at, u.created_at) AS ultimo_acceso_at,
-        (SELECT COUNT(*)::int FROM campeonatos c WHERE c.creador_usuario_id = u.id) AS n_campeonatos,
+        (SELECT COUNT(*)::int FROM campeonatos c
+          WHERE c.creador_usuario_id = COALESCE(u.organizacion_titular_id, u.id)) AS n_campeonatos,
         (SELECT COUNT(*)::int FROM usuario_equipos ue WHERE ue.usuario_id = u.id) AS n_equipos
       FROM usuarios u
       WHERE LOWER(u.rol) = ANY($1)
@@ -108,7 +109,9 @@ async function ejecutarLimpiezaUsuariosInactivos(opts = {}) {
         // Re-verificación defensiva: no eliminar si adquirió vínculos.
         const check = await pool.query(
           `SELECT
-             (SELECT COUNT(*)::int FROM campeonatos c WHERE c.creador_usuario_id = $1) AS nc,
+             (SELECT COUNT(*)::int FROM campeonatos c
+               WHERE c.creador_usuario_id = COALESCE(
+                 (SELECT organizacion_titular_id FROM usuarios WHERE id = $1), $1)) AS nc,
              (SELECT COUNT(*)::int FROM usuario_equipos ue WHERE ue.usuario_id = $1) AS ne`,
           [u.id]
         );

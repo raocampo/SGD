@@ -25,6 +25,7 @@ async function consultarOpciones(client, equipoId = null) {
     LEFT JOIN equipos e ON e.id = ee.equipo_id AND e.campeonato_id = c.id
     WHERE org.activo = TRUE
       AND LOWER(org.rol) = 'organizador'
+      AND org.organizacion_titular_id IS NULL
       AND LOWER(c.estado) IN ('inscripcion', 'en_curso', 'finalizado')
       ${equipoId === null ? "" : "AND e.id = $1"}
     ORDER BY org.organizacion_nombre, org.nombre, c.nombre, ev.nombre, e.nombre, e.id

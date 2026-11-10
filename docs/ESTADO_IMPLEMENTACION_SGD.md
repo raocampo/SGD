@@ -1,3 +1,10 @@
+## 2026-11-09 - Usuarios: co-organizador de una organización existente
+
+- Implementado: el administrador puede crear otro acceso de organizador para una organización existente (`usuarios.organizacion_titular_id`, migración `077`). El acceso opera la misma organización (campeonatos, equipos, finanzas, landing y plan) con usuario y contraseña propios; cada cuenta se bloquea por separado.
+- Resolución centralizada en el middleware de auth (`UsuarioAuth.resolverIdentidadEfectiva`); sin cambios en los filtros por `creador_usuario_id`. Excluido de conteos del dashboard, de la landing, del catálogo de primer ingreso y protegido en la limpieza de inactivos.
+- Verificado: QA de modelo 15/15, flujo de auth real con BD local, asociación 12/12, móvil 22/22 y guards 49/49. Pendiente: QA visual del formulario y crear el acceso real en producción tras el despliegue.
+- Limitación: la auditoría de acciones operativas sigue registrando el id del titular (login y cambio de clave sí registran la cuenta real).
+
 ## 2026-10-23 - Equipos: error de lectura y numeración
 
 - Causa del 500 de campeonato 22 confirmada en API: la lectura renumeraba y violaba `idx_equipos_numero_campeonato` al compactar un hueco. Categoría 36 «ABIERTA VARONES» mantiene 23 inscritos; campeonato con 37 creados y 171 jugadores. El organizador está activo.

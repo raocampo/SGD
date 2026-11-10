@@ -24,7 +24,7 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ error: "Usuario inválido o inactivo." });
     }
 
-    req.user = UsuarioAuth.limpiarUsuario(user);
+    req.user = await UsuarioAuth.resolverIdentidadEfectiva(UsuarioAuth.limpiarUsuario(user));
     const metodo = String(req.method || "").toUpperCase();
     const esLectura = metodo === "GET" || metodo === "HEAD" || metodo === "OPTIONS";
     const rutaActual = `${req.baseUrl || ""}${req.path || ""}`;
@@ -49,7 +49,7 @@ async function optionalAuth(req, res, next) {
     const user = await UsuarioAuth.obtenerPorId(payload?.id);
     if (!user || !user.activo) return next();
 
-    req.user = UsuarioAuth.limpiarUsuario(user);
+    req.user = await UsuarioAuth.resolverIdentidadEfectiva(UsuarioAuth.limpiarUsuario(user));
     return next();
   } catch (_) {
     return next();

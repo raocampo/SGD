@@ -132,10 +132,16 @@ function permisosPorRol(user) {
   return [];
 }
 
+// Id de la cuenta que inicia sesión. Para un co-organizador, user es la
+// identidad efectiva del titular y la cuenta real está en cuenta_usuario_id.
+function idCuenta(user) {
+  return user?.cuenta_usuario_id || user?.id;
+}
+
 function signAccessToken(user) {
   return jwt.sign(
     {
-      id: user.id,
+      id: idCuenta(user),
       email: user.email,
       rol: user.rol,
     },
@@ -169,7 +175,7 @@ function buildSessionPayload(user, tokens = {}) {
 
 async function crearSession(user, context = {}) {
   const accessToken = signAccessToken(user);
-  const refreshData = await UsuarioAuth.crearRefreshToken(user.id, {
+  const refreshData = await UsuarioAuth.crearRefreshToken(idCuenta(user), {
     ttl_days: context.ttl_days || REFRESH_TOKEN_TTL_DAYS,
     client_type: context.client_type || "web",
     user_agent: context.user_agent || null,
@@ -195,8 +201,9 @@ async function refrescarSession(refreshToken, context = {}) {
     throw new Error("No se pudo refrescar la sesión");
   }
 
-  return buildSessionPayload(rotated.usuario, {
-    accessToken: signAccessToken(rotated.usuario),
+  const usuario = await UsuarioAuth.resolverIdentidadEfectiva(rotated.usuario);
+  return buildSessionPayload(usuario, {
+    accessToken: signAccessToken(usuario),
     refreshToken: rotated.refreshToken,
     refreshTokenExpiresAt: rotated.refreshTokenExpiresAt,
   });

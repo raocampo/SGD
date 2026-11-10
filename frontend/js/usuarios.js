@@ -56,6 +56,15 @@
     return PLANES_PAGADOS.has(String(plan || "").trim().toLowerCase());
   }
 
+  // Organizador principal de una organización (no es un acceso adicional de otra).
+  function esOrganizadorTitular(u) {
+    return String(u?.rol || "").toLowerCase() === "organizador" && !u?.organizacion_titular_id;
+  }
+
+  function titularSeleccionado() {
+    return Number.parseInt(document.getElementById("usr-organizacion-titular")?.value || "", 10) || null;
+  }
+
   function obtenerLandingUrl(usuarioId) {
     const base = new URL("index.html", window.location.href);
     base.searchParams.set("organizador", String(usuarioId));
@@ -83,6 +92,7 @@
 
   function idsCamposOrganizador() {
     return [
+      "usr-organizacion-titular-group",
       "usr-organizacion-group",
       "usr-lema-group",
       "usr-contact-email-group",
@@ -254,6 +264,11 @@
     const rol = String(rolSel?.value || "").toLowerCase();
     const habilitar = esAdmin && rol === "organizador";
     const usaEquipo = esRolConEquipo(rol);
+    const titularSel = document.getElementById("usr-organizacion-titular");
+    if (titularSel && !habilitar) titularSel.value = "";
+    // Acceso adicional de una organización existente: organización, plan y
+    // landing se heredan del titular, así que esos campos no aplican.
+    const coOrg = habilitar && Boolean(titularSeleccionado());
 
     if (planGroup) {
       planGroup.style.opacity = habilitar ? "1" : "0.6";
@@ -274,19 +289,27 @@
     }
     if (organizacionGroup) {
       organizacionGroup.style.opacity = habilitar ? "1" : "0.6";
-      organizacionGroup.style.display = habilitar ? "" : "none";
+      organizacionGroup.style.display = habilitar && !coOrg ? "" : "none";
     }
     if (organizacionInput) {
-      organizacionInput.disabled = !habilitar;
-      organizacionInput.required = habilitar;
+      organizacionInput.disabled = !habilitar || coOrg;
+      organizacionInput.required = habilitar && !coOrg;
       if (!habilitar && !usuarioEditandoId) organizacionInput.value = "";
     }
     idsCamposOrganizador()
       .filter((id) => id !== "usr-organizacion-group")
       .forEach((id) => {
         const group = document.getElementById(id);
-        if (group) group.style.display = habilitar ? "" : "none";
+        const visible = id === "usr-organizacion-titular-group" ? habilitar : habilitar && !coOrg;
+        if (group) group.style.display = visible ? "" : "none";
       });
+    if (habilitar) {
+      if (planGroup) planGroup.style.display = coOrg ? "none" : "";
+      if (planEstadoGroup) planEstadoGroup.style.display = coOrg ? "none" : "";
+    } else if (esAdmin) {
+      if (planGroup) planGroup.style.display = "";
+      if (planEstadoGroup) planEstadoGroup.style.display = "";
+    }
     if (lemaInput) lemaInput.disabled = !habilitar;
     if (contactEmailInput) contactEmailInput.disabled = !habilitar;
     if (contactPhoneInput) contactPhoneInput.disabled = !habilitar;
@@ -353,7 +376,7 @@
     const sel = document.getElementById("usr-organizacion-ref");
     if (!sel) return;
     const orgs = usuariosCache
-      .filter((u) => String(u.rol || "").toLowerCase() === "organizador")
+      .filter(esOrganizadorTitular)
       .sort((a, b) =>
         String(a.organizacion_nombre || a.nombre || "").localeCompare(
           String(b.organizacion_nombre || b.nombre || "")
@@ -368,6 +391,23 @@
       sel.innerHTML += `<option value="${Number(o.id)}">${esc(etiqueta)}</option>`;
     });
     if (actual) sel.value = actual;
+    poblarTitularesOrganizacion(orgs);
+  }
+
+  // Select "Organización del organizador": nueva organización o acceso adicional
+  // de una existente. Se excluye la propia cuenta en edición.
+  function poblarTitularesOrganizacion(orgs) {
+    const sel = document.getElementById("usr-organizacion-titular");
+    if (!sel) return;
+    const actual = sel.value;
+    sel.innerHTML = '<option value="">— Nueva organización —</option>';
+    orgs
+      .filter((o) => Number(o.id) !== Number(usuarioEditandoId))
+      .forEach((o) => {
+        const etiqueta = `${o.organizacion_nombre || o.nombre || `Organizador ${o.id}`} — acceso adicional`;
+        sel.innerHTML += `<option value="${Number(o.id)}">${esc(etiqueta)}</option>`;
+      });
+    if (actual && [...sel.options].some((op) => op.value === actual)) sel.value = actual;
   }
 
   function campeonatosAsignables() {
@@ -536,13 +576,21 @@
     const orgs = new Map(); // orgId -> { orgUser, campMap: Map<campId,{nombre, users:[]}>, sinCampeonato: [] }
 
     const organizadoresUser = usuarios.filter((u) => String(u.rol || "").toLowerCase() === "organizador");
-    organizadoresUser.forEach((orgUser) => {
+    organizadoresUser.filter(esOrganizadorTitular).forEach((orgUser) => {
       const campMap = new Map();
       (orgUser.campeonatos_propios || []).forEach((c) => {
         campMap.set(Number(c.id), { nombre: c.nombre || `Campeonato ${c.id}`, users: [] });
       });
-      orgs.set(Number(orgUser.id), { orgUser, campMap, sinCampeonato: [] });
+      orgs.set(Number(orgUser.id), { orgUser, campMap, sinCampeonato: [], accesos: [] });
     });
+    // Accesos adicionales (co-organizadores) dentro de la tarjeta de su organización.
+    organizadoresUser
+      .filter((u) => !esOrganizadorTitular(u))
+      .forEach((u) => {
+        const bucket = orgs.get(Number(u.organizacion_titular_id));
+        if (bucket) bucket.accesos.push(u);
+        else orgs.set(Number(u.id), { orgUser: u, campMap: new Map(), sinCampeonato: [], accesos: [] });
+      });
 
     usuarios.forEach((u) => {
       const rol = String(u.rol || "").toLowerCase();
@@ -600,6 +648,15 @@
       )
       .join("");
 
+    const accesosHtml = bucket.accesos.length
+      ? `<div class="usuarios-camp-block">
+           <h5 class="usuarios-camp-title"><i class="fas fa-user-plus"></i> Accesos adicionales de la organización
+             <span class="usuarios-camp-count">${bucket.accesos.length} usuario(s)</span>
+           </h5>
+           ${tablaSub(bucket.accesos)}
+         </div>`
+      : "";
+
     const sinCampHtml = bucket.sinCampeonato.length
       ? `<div class="usuarios-camp-block">
            <h5 class="usuarios-camp-title usuarios-camp-title-warn"><i class="fas fa-circle-question"></i> Sin campeonato / equipo asignado</h5>
@@ -631,6 +688,7 @@
           </div>
         </summary>
         <div class="usuarios-org-body">
+          ${accesosHtml}
           ${campeonatosHtml || '<p class="usuarios-empty-mini">Este organizador todavía no tiene campeonatos.</p>'}
           ${sinCampHtml}
         </div>
@@ -742,6 +800,9 @@
     if (planEstadoSel) planEstadoSel.value = "activo";
     if (orgInput) orgInput.value = "";
     limpiarPerfilOrganizador();
+    poblarOrganizaciones();
+    const titularSel = document.getElementById("usr-organizacion-titular");
+    if (titularSel) titularSel.value = "";
 
     const selRol = document.getElementById("usr-rol");
     if (selRol) {
@@ -766,6 +827,9 @@
     if (planSel) planSel.value = String(u.plan_codigo || "free").toLowerCase();
     if (planEstadoSel) planEstadoSel.value = String(u.plan_estado || "activo").toLowerCase();
     if (orgInput) orgInput.value = u.organizacion_nombre || "";
+    poblarOrganizaciones();
+    const titularSel = document.getElementById("usr-organizacion-titular");
+    if (titularSel) titularSel.value = u.organizacion_titular_id ? String(u.organizacion_titular_id) : "";
 
     actualizarTituloFormulario();
     actualizarCamposPlan();
@@ -848,6 +912,7 @@
     const contactEmailPublico = String(document.getElementById("usr-contact-email")?.value || "").trim();
     const contactPhone = String(document.getElementById("usr-contact-phone")?.value || "").trim();
     const logoFile = document.getElementById("usr-organizacion-logo")?.files?.[0] || null;
+    const titularId = esAdminActual() && rol === "organizador" ? titularSeleccionado() : null;
 
     if (!nombre || (!email && !username)) {
       mostrarNotificacion("Nombre y al menos un correo o usuario son obligatorios", "warning");
@@ -891,7 +956,7 @@
       mostrarNotificacion("Debes seleccionar un equipo para el dirigente o técnico", "warning");
       return;
     }
-    if (esAdminActual() && rol === "organizador" && organizacionNombre.length < 3) {
+    if (esAdminActual() && rol === "organizador" && !titularId && organizacionNombre.length < 3) {
       mostrarNotificacion("La organización del organizador es obligatoria (mínimo 3 caracteres)", "warning");
       return;
     }
@@ -902,6 +967,7 @@
     if (
       esAdminActual() &&
       rol === "organizador" &&
+      !titularId &&
       !email &&
       !contactEmailPublico &&
       !contactPhone
@@ -916,7 +982,9 @@
     try {
       if (!usuarioEditandoId) {
         const payload = { nombre, email: email || null, username: username || null, password, rol, activo };
-        if (esAdminActual() && rol === "organizador") {
+        if (titularId) {
+          payload.organizacion_titular_id = titularId;
+        } else if (esAdminActual() && rol === "organizador") {
           payload.plan_codigo = planCodigo;
           payload.plan_estado = planEstado;
           payload.organizacion_nombre = organizacionNombre;
@@ -926,7 +994,7 @@
         }
         if (esRolConEquipo(rol) && equipo) payload.equipo_id = Number.parseInt(equipo, 10);
         const respuesta = await AuthAPI.crearUsuario(payload);
-        if (esAdminActual() && rol === "organizador" && logoFile && respuesta?.usuario?.id) {
+        if (esAdminActual() && rol === "organizador" && !titularId && logoFile && respuesta?.usuario?.id) {
           try {
             await sincronizarConfigOrganizador(
               respuesta.usuario.id,
@@ -956,7 +1024,10 @@
       } else {
         const antes = usuariosCache.find((u) => Number(u.id) === Number(usuarioEditandoId));
         const payload = { nombre, email: email || null, username: username || null, rol, activo };
-        if (esAdminActual() && rol === "organizador") {
+        if (titularId) {
+          payload.organizacion_titular_id = titularId;
+        } else if (esAdminActual() && rol === "organizador") {
+          payload.organizacion_titular_id = null;
           payload.plan_codigo = planCodigo;
           payload.plan_estado = planEstado;
           payload.organizacion_nombre = organizacionNombre;
@@ -969,7 +1040,7 @@
         if (password) payload.password = password;
         const respuesta = await AuthAPI.actualizarUsuario(usuarioEditandoId, payload);
         if (antes) await sincronizarEquipoTecnico(antes, rol, equipo);
-        if (esAdminActual() && rol === "organizador" && logoFile && respuesta?.usuario?.id) {
+        if (esAdminActual() && rol === "organizador" && !titularId && logoFile && respuesta?.usuario?.id) {
           try {
             await sincronizarConfigOrganizador(
               respuesta.usuario.id,
@@ -1016,7 +1087,7 @@
       return;
     }
     cargarFormularioDesdeUsuario(user);
-    if (String(user.rol || "").toLowerCase() === "organizador") {
+    if (esOrganizadorTitular(user)) {
       try {
         const contexto = await obtenerContextoOrganizador(user.id, true);
         poblarPerfilOrganizador(contexto, user);
@@ -1083,6 +1154,8 @@
       actualizarCamposPlan();
       if (asignacionesOk) mostrarNotificacion("Datos actualizados", "success");
     });
+
+    document.getElementById("usr-organizacion-titular")?.addEventListener("change", actualizarCamposPlan);
 
     // Cascada Organización → Campeonato → Equipo
     document.getElementById("usr-organizacion-ref")?.addEventListener("change", () => {
