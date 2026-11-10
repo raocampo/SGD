@@ -188,7 +188,17 @@
     { urls: "stun:stun1.l.google.com:19302" },
   ];
 
-  const API_BASE = location.origin;
+  // Backend: en producción vive en otro dominio. Misma regla que
+  // resolveApiBaseUrl() en core.js (esta página pública no carga core.js;
+  // overlay.html se abre en OBS como Browser Source).
+  const API_BASE = (() => {
+    const host = location.hostname;
+    if (location.protocol === "file:" || (/^(localhost|127\.0\.0\.1)$/i.test(host) && location.port && location.port !== "5000")) {
+      return "http://localhost:5000";
+    }
+    const PROD_HOST_BACKEND_MAP = { "ltyc.corpsimtelec.com": "https://api.ltyc.corpsimtelec.com" };
+    return PROD_HOST_BACKEND_MAP[host] || location.origin;
+  })();
   let transmisionId = null;
   let socket = null;
   let pc = null;

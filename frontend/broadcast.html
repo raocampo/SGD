@@ -307,12 +307,18 @@
   let broadcasting   = false;
   const peerConns    = {};  // viewer_id → RTCPeerConnection
 
-  const API_BASE = location.origin;
+  // Backend: en producción vive en otro dominio (api.ltyc...), ver
+  // resolveApiBaseUrl() en core.js. Las páginas (overlay/viewer) se enlazan
+  // con location.origin, el dominio del frontend.
+  const API_BASE = window.resolveBackendBaseUrl ? window.resolveBackendBaseUrl() : location.origin;
+  const tokenSesion = () => (window.Auth?.getToken?.() || "");
 
   // ── Auth ────────────────────────────────────────────────────────
   document.addEventListener("DOMContentLoaded", () => {
-    const token = localStorage.getItem("token");
-    const rol   = localStorage.getItem("rol");
+    // Sesión real de core.js (sgd_auth_*); las claves antiguas "token"/"rol"
+    // ya no se escriben y dejaban este panel siempre en el login.
+    const token = tokenSesion();
+    const rol   = String(window.Auth?.getUser?.()?.rol || "").toLowerCase();
     if (!token) { location.href = "login.html"; return; }
     if (!["administrador", "organizador", "operador"].includes(rol)) {
       location.href = "index.html"; return;
@@ -325,7 +331,7 @@
       // Actualizar enlace de vuelta al director
       document.getElementById("btn-volver").href = `director.html?tx=${txParam}`;
       // Mostrar URL viewer
-      const viewerUrl = `${API_BASE}/viewer.html?tx=${txParam}`;
+      const viewerUrl = `${location.origin}/viewer.html?tx=${txParam}`;
       document.getElementById("viewer-url-text").textContent = viewerUrl;
       document.getElementById("card-viewer-url").style.display = "block";
     }

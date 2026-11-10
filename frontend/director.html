@@ -298,6 +298,11 @@
     }
     .obs-steps li { margin-bottom: 2px; }
     .obs-steps strong { color: #f1f5f9; }
+    .obs-subtitulo {
+      margin: 10px 0 4px;
+      font-size: 13px;
+      color: #e2e8f0;
+    }
     .obs-note {
       margin: 12px 0 0;
       font-size: 12px;
@@ -558,6 +563,9 @@
       <p style="font-size:13px;color:#94a3b8;margin:0 0 14px;">
         Retransmite tu cámara o pantalla directamente desde el navegador. Los espectadores verán el stream en tiempo real sin necesidad de OBS.
       </p>
+      <div class="obs-note" style="margin:0 0 14px;">
+        ⚠️ Pensado para pocos espectadores (unos 12–15) y puede fallar si tú o el público usan datos móviles. Para partidos con más público usa <strong>OBS o Prism Live con YouTube/Facebook</strong> (ver «¿Cómo transmitir con OBS o Prism Live?»): es gratis y sin límite de espectadores.
+      </div>
       <a id="btn-ir-broadcast" href="broadcast.html" class="btn-action btn-enviar" style="text-decoration:none;display:inline-flex;">
         <i class="fas fa-play-circle"></i> Abrir panel de transmisión
       </a>
@@ -566,10 +574,21 @@
     <!-- Instrucciones OBS -->
     <div class="card">
       <h2 class="obs-toggle-hdr" id="obs-hdr" onclick="toggleInstrucciones()">
-        <span><i class="fas fa-video" style="margin-right:6px;"></i>¿Cómo agregar a OBS?</span>
+        <span><i class="fas fa-video" style="margin-right:6px;"></i>¿Cómo transmitir con OBS o Prism Live?</span>
         <i class="fas fa-chevron-down chevron"></i>
       </h2>
       <div id="obs-body" style="display:none;">
+        <p class="obs-subtitulo"><strong>1. Transmitir gratis por YouTube o Facebook</strong></p>
+        <ol class="obs-steps">
+          <li><strong>OBS Studio (PC):</strong> en <strong>Settings → Stream (Ajustes → Emisión)</strong> elige YouTube o Facebook Live y conecta tu cuenta o pega la clave de transmisión. Luego <strong>Start Streaming</strong>.</li>
+          <li><strong>Prism Live (celular o PC):</strong> elige la plataforma (YouTube o Facebook), inicia sesión con tu cuenta y presiona <strong>Go Live</strong>.</li>
+          <li>Copia el enlace público del directo y regístralo en el sistema: <strong>Partidos</strong> → botón <i class="fas fa-broadcast-tower"></i> del partido → <strong>URL pública</strong> (y la de embed si la tienes). El portal lo mostrará a los espectadores.</li>
+        </ol>
+        <div class="obs-note">
+          ✅ La plataforma reparte el video a todos los espectadores; tú solo subes una señal. No hay costo ni límite de público.
+        </div>
+
+        <p class="obs-subtitulo"><strong>2. Marcador en vivo sobre el video (overlay)</strong></p>
         <ol class="obs-steps">
           <li>Abre <strong>OBS Studio</strong> y ve a la sección <strong>Sources (Fuentes)</strong>.</li>
           <li>Haz clic en <strong>"+"</strong> y selecciona <strong>Browser (Navegador)</strong>.</li>
@@ -581,6 +600,9 @@
         </ol>
         <div class="obs-note">
           ✅ El overlay se actualiza automáticamente cada vez que presionas <strong>"Enviar ahora"</strong> — no necesitas reiniciar OBS.
+        </div>
+        <div class="obs-note">
+          📱 <strong>Prism Live:</strong> en la versión de PC agrega una fuente o widget de tipo web y pega la misma URL (1280 × 180 px). En la app de celular, mostrar una página web como capa depende de la versión; si no está disponible, transmite sin marcador o usa OBS.
         </div>
       </div>
     </div>
@@ -631,12 +653,18 @@
     mostrar_texto_evento: false,
   };
 
-  const API_BASE = location.origin;
+  // Backend: en producción vive en otro dominio (api.ltyc...), ver
+  // resolveApiBaseUrl() en core.js. Las páginas (overlay/viewer) se enlazan
+  // con location.origin, el dominio del frontend.
+  const API_BASE = window.resolveBackendBaseUrl ? window.resolveBackendBaseUrl() : location.origin;
+  const tokenSesion = () => (window.Auth?.getToken?.() || "");
 
   // ── Auth ──────────────────────────────────────────────────────
   document.addEventListener("DOMContentLoaded", () => {
-    const token = localStorage.getItem("token");
-    const rol   = localStorage.getItem("rol");
+    // Sesión real de core.js (sgd_auth_*); las claves antiguas "token"/"rol"
+    // ya no se escriben y dejaban este panel siempre en el login.
+    const token = tokenSesion();
+    const rol   = String(window.Auth?.getUser?.()?.rol || "").toLowerCase();
     if (!token) { location.href = "login.html"; return; }
     if (!["administrador", "organizador", "operador"].includes(rol)) {
       location.href = "index.html"; return;
@@ -672,7 +700,7 @@
     const id = parseInt(document.getElementById("input-tx-id").value, 10);
     if (!id) { toast("Ingresa un ID válido"); return; }
 
-    const jwtToken = localStorage.getItem("token");
+    const jwtToken = tokenSesion();
     try {
       // Cargar datos de la transmisión (incluye overlay_token y nombres de equipo)
       const txRes = await fetch(`${API_BASE}/api/transmisiones/${id}`, {
@@ -700,10 +728,10 @@
       if (txData.overlay_token) {
         overlayToken = txData.overlay_token;
         document.getElementById("overlay-url-text").textContent =
-          `${API_BASE}/overlay.html?token=${txData.overlay_token}`;
+          `${location.origin}/overlay.html?token=${txData.overlay_token}`;
       } else {
         document.getElementById("overlay-url-text").textContent =
-          `${API_BASE}/overlay.html?token=… (recarga)`;
+          `${location.origin}/overlay.html?token=… (recarga)`;
       }
 
       // Actualizar vista previa de compartir
@@ -771,7 +799,7 @@
   // ── Enviar estado ────────────────────────────────────────────
   async function enviarEstado() {
     if (!transmisionId) { toast("No hay transmisión activa"); return; }
-    const token = localStorage.getItem("token");
+    const token = tokenSesion();
 
     // Leer valores actuales de inputs
     estadoLocal.minuto  = parseInt(document.getElementById("input-minuto").value, 10) || 0;
@@ -801,7 +829,7 @@
 
   async function confirmarReset() {
     if (!confirm("¿Resetear el marcador a 0-0?")) return;
-    const token = localStorage.getItem("token");
+    const token = tokenSesion();
     try {
       const res = await fetch(`${API_BASE}/api/transmisiones/${transmisionId}/overlay/reset`, {
         method: "POST",
