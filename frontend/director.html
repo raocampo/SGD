@@ -143,7 +143,8 @@
       gap: 12px;
       margin-bottom: 10px;
     }
-    .toggle-row label { font-size: 14px; color: #cbd5e1; flex: 1; }
+    /* Solo el texto ocupa el espacio libre; el interruptor (label.toggle) mide 44 px. */
+    .toggle-row label:not(.toggle) { font-size: 14px; color: #cbd5e1; flex: 1; }
     .toggle {
       position: relative;
       display: inline-block;
@@ -472,8 +473,9 @@
       </div>
       <div class="row-ctrl">
         <label>Período</label>
-        <select id="select-periodo" class="select-sm" onchange="estadoLocal.periodo = this.value">
+        <select id="select-periodo" class="select-sm" onchange="cambiarPeriodo(this.value)">
           <option value="1T">1T</option>
+          <option value="Entretiempo">Entretiempo</option>
           <option value="2T">2T</option>
           <option value="PT">PT</option>
           <option value="ST">ST</option>
@@ -510,6 +512,43 @@
           <span class="toggle-slider"></span>
         </label>
       </div>
+    </div>
+
+    <!-- Publicidad -->
+    <div class="card">
+      <h2><i class="fas fa-bullhorn" style="margin-right:6px;"></i>Publicidad (auspiciantes)</h2>
+      <p id="pub-resumen" style="font-size:13px;color:#94a3b8;margin:0 0 12px;">Cargando auspiciantes…</p>
+      <div class="toggle-row">
+        <label>Auspiciantes en la esquina durante el juego</label>
+        <label class="toggle">
+          <input type="checkbox" id="tog-publicidad" checked
+                 onchange="estadoLocal.mostrar_publicidad = this.checked; enviarEstado()" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <label>Pantalla de entretiempo</label>
+        <label class="toggle">
+          <input type="checkbox" id="tog-entretiempo"
+                 onchange="estadoLocal.pantalla_entretiempo = this.checked; enviarEstado()" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="row-ctrl">
+        <label>Cambiar de auspiciante cada</label>
+        <select id="select-pub-segundos" class="select-sm"
+                onchange="estadoLocal.publicidad_segundos = parseInt(this.value, 10) || 8; enviarEstado()">
+          <option value="5">5 s</option>
+          <option value="8">8 s</option>
+          <option value="10">10 s</option>
+          <option value="15">15 s</option>
+          <option value="20">20 s</option>
+        </select>
+      </div>
+      <p style="font-size:12px;color:#64748b;margin:10px 0 0;">
+        Los cambios de esta tarjeta se envían al instante. Al elegir el período <strong>Entretiempo</strong> se activa la pantalla de entretiempo; al pasar al 2T se quita.
+        Los logos se administran en <a href="auspiciantes.html" style="color:#93c5fd;">Auspiciantes</a>.
+      </p>
     </div>
 
     <!-- Texto de evento -->
@@ -553,7 +592,7 @@
         </button>
       </div>
       <p style="font-size:12px;color:#64748b;margin:8px 0 0;">
-        Dimensión recomendada: 1280 × 180 px. Fondo transparente activado.
+        Tamaño: igual al lienzo de OBS (1920 × 1080 px). Una sola fuente muestra el marcador, los auspiciantes y la pantalla de entretiempo. Fondo transparente.
       </p>
     </div>
 
@@ -583,25 +622,26 @@
           <li><strong>Cámaras:</strong> con <strong>OBS</strong> en una PC puedes usar varias cámaras (USB o capturadora) como fuentes de <em>Video Capture Device</em> y cambiar de escena durante el partido. Con <strong>Prism Live</strong> transmites directamente con la cámara del celular.</li>
           <li><strong>OBS Studio (PC):</strong> en <strong>Settings → Stream (Ajustes → Emisión)</strong> elige YouTube o Facebook Live y conecta tu cuenta o pega la clave de transmisión. Luego <strong>Start Streaming</strong>.</li>
           <li><strong>Prism Live (celular o PC):</strong> elige la plataforma (YouTube, Facebook o TikTok), inicia sesión con tu cuenta y presiona <strong>Go Live</strong>.</li>
+          <li><strong>Varias plataformas a la vez:</strong> Prism Live permite elegir varias plataformas en la misma transmisión. En OBS se necesita un complemento de salidas múltiples (por ejemplo, «Multiple RTMP outputs») o un servicio de retransmisión. Revisa en cada herramienta cuántas plataformas simultáneas admite.</li>
           <li><strong>TikTok:</strong> la cuenta debe tener habilitado LIVE, y para OBS se necesita la clave de transmisión de TikTok, que no todas las cuentas tienen. Revisa los requisitos actuales en la app de TikTok antes del partido.</li>
-          <li>Copia el enlace público del directo y regístralo en el sistema: <strong>Partidos</strong> → botón <i class="fas fa-broadcast-tower"></i> del partido → elige la <strong>plataforma</strong> y pega la <strong>URL pública</strong>. El portal muestra el botón «Ver en vivo en YouTube/Facebook/TikTok».</li>
+          <li>Copia el enlace público de cada directo y regístralos en el sistema: <strong>Partidos</strong> → botón <i class="fas fa-broadcast-tower"></i> del partido → <strong>Agregar plataforma</strong> por cada una (YouTube, Facebook, TikTok…). El portal muestra un botón por plataforma.</li>
         </ol>
         <div class="obs-note">
           ✅ La plataforma reparte el video a todos los espectadores; tú solo subes una señal. No hay costo ni límite de público.
         </div>
 
-        <p class="obs-subtitulo"><strong>2. Marcador en vivo sobre el video (overlay)</strong></p>
+        <p class="obs-subtitulo"><strong>2. Marcador y publicidad sobre el video (overlay)</strong></p>
         <ol class="obs-steps">
           <li>Abre <strong>OBS Studio</strong> y ve a la sección <strong>Sources (Fuentes)</strong>.</li>
           <li>Haz clic en <strong>"+"</strong> y selecciona <strong>Browser (Navegador)</strong>.</li>
           <li>Ponle un nombre (ej: <em>Overlay Marcador</em>) y haz clic en <strong>OK</strong>.</li>
           <li>Pega la URL del overlay en el campo <strong>URL</strong>.</li>
-          <li>Configura el tamaño: <strong>Ancho 1280 px — Alto 180 px</strong>.</li>
+          <li>Configura el tamaño igual al lienzo: <strong>Ancho 1920 px — Alto 1080 px</strong> (o 1280 × 720 si tu lienzo es 720p).</li>
           <li>Activa <strong>"Shutdown source when not visible"</strong> para liberar recursos.</li>
           <li>Haz clic en <strong>OK</strong>. El overlay aparecerá en tu escena.</li>
         </ol>
         <div class="obs-note">
-          ✅ El overlay se actualiza automáticamente cada vez que presionas <strong>"Enviar ahora"</strong> — no necesitas reiniciar OBS.
+          ✅ El overlay se actualiza automáticamente cada vez que presionas <strong>"Enviar ahora"</strong> — no necesitas reiniciar OBS. Como OBS mezcla el overlay en el video antes de enviarlo, el marcador y la publicidad salen en <strong>todas</strong> las plataformas a la vez.
         </div>
         <div class="obs-note">
           📱 <strong>Prism Live:</strong> en la versión de PC agrega una fuente o widget de tipo web y pega la misma URL (1280 × 180 px). En la app de celular, mostrar una página web como capa depende de la versión; si no está disponible, transmite sin marcador o usa OBS.
@@ -653,6 +693,9 @@
     mostrar_marcador:     true,
     mostrar_cronometro:   true,
     mostrar_texto_evento: false,
+    mostrar_publicidad:   true,
+    pantalla_entretiempo: false,
+    publicidad_segundos:  8,
   };
 
   // Backend: en producción vive en otro dominio (api.ltyc...), ver
@@ -738,6 +781,7 @@
 
       // Actualizar vista previa de compartir
       actualizarSharePreview(txData);
+      cargarResumenPublicidad();
 
       // Actualizar enlace al broadcaster WebRTC
       const btnBcast = document.getElementById("btn-ir-broadcast");
@@ -764,6 +808,9 @@
     estadoLocal.mostrar_marcador     = data.mostrar_marcador     ?? true;
     estadoLocal.mostrar_cronometro   = data.mostrar_cronometro   ?? true;
     estadoLocal.mostrar_texto_evento = data.mostrar_texto_evento ?? false;
+    estadoLocal.mostrar_publicidad   = data.mostrar_publicidad   ?? true;
+    estadoLocal.pantalla_entretiempo = data.pantalla_entretiempo ?? false;
+    estadoLocal.publicidad_segundos  = data.publicidad_segundos  ?? 8;
     refrescarUI();
   }
 
@@ -776,6 +823,37 @@
     document.getElementById("tog-marcador").checked           = estadoLocal.mostrar_marcador;
     document.getElementById("tog-cronometro").checked         = estadoLocal.mostrar_cronometro;
     document.getElementById("tog-texto").checked              = estadoLocal.mostrar_texto_evento;
+    document.getElementById("tog-publicidad").checked         = estadoLocal.mostrar_publicidad;
+    document.getElementById("tog-entretiempo").checked        = estadoLocal.pantalla_entretiempo;
+    document.getElementById("select-pub-segundos").value      = String(estadoLocal.publicidad_segundos);
+  }
+
+  // Entretiempo: elegir el período muestra la pantalla de publicidad; salir
+  // de él la quita. Se envía al instante (es lo que se hace en el descanso).
+  function cambiarPeriodo(valor) {
+    const veniaDeEntretiempo = estadoLocal.periodo === "Entretiempo";
+    estadoLocal.periodo = valor;
+    if (valor === "Entretiempo" || veniaDeEntretiempo) {
+      estadoLocal.pantalla_entretiempo = valor === "Entretiempo";
+      document.getElementById("tog-entretiempo").checked = estadoLocal.pantalla_entretiempo;
+      enviarEstado();
+    }
+  }
+
+  // Cuántos auspiciantes verá el overlay (endpoint público por token).
+  async function cargarResumenPublicidad() {
+    const el = document.getElementById("pub-resumen");
+    if (!el || !overlayToken) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/public/overlay/${overlayToken}`);
+      const data = await res.json();
+      const lista = Array.isArray(data.auspiciantes) ? data.auspiciantes : [];
+      el.textContent = lista.length
+        ? `${lista.length} auspiciante(s) activo(s) del campeonato: ${lista.map((a) => a.nombre).join(", ")}.`
+        : "Este campeonato no tiene auspiciantes activos: la publicidad no se mostrará.";
+    } catch (_) {
+      el.textContent = "No se pudieron cargar los auspiciantes.";
+    }
   }
 
   // ── Controles ─────────────────────────────────────────────────
@@ -867,8 +945,11 @@
     const local     = tx.equipo_local_nombre     || "LOCAL";
     const visitante = tx.equipo_visitante_nombre || "VISITANTE";
     const titulo    = tx.titulo ? `"${tx.titulo}" — ` : "";
-    const portal    = tx.url_publica || location.origin;
-    const texto     = `⚽ En vivo | ${local} vs ${visitante}\n${titulo}¡Sigue el marcador en tiempo real!\n${portal}`;
+    // Transmisión simultánea: un enlace por plataforma.
+    const enlaces   = Array.isArray(tx.enlaces) && tx.enlaces.length
+      ? tx.enlaces.map((e) => (e.plataforma ? `${e.plataforma}: ${e.url}` : e.url)).join("\n")
+      : (tx.url_publica || location.origin);
+    const texto     = `⚽ En vivo | ${local} vs ${visitante}\n${titulo}¡Sigue el partido en vivo!\n${enlaces}`;
     const el = document.getElementById("share-preview-text");
     if (el) el.textContent = texto;
   }

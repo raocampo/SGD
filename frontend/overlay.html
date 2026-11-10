@@ -160,6 +160,116 @@
     }
     #conn-dot.conectado  { background: #22c55e; }
     #conn-dot.error      { background: #ef4444; }
+
+    /* ===== PUBLICIDAD (auspiciantes del campeonato) =====
+       Medidas en vh/vw: funciona con lienzo de OBS 1920×1080 o 1280×720. */
+    #overlay-root.oculto { opacity: 0; }
+    #overlay-root { transition: opacity 0.4s; }
+
+    #publicidad-esquina {
+      position: fixed;
+      right: 2.2vw;
+      bottom: 3.5vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6vh;
+      min-width: 12vw;
+      max-width: 20vw;
+      padding: 1.1vh 1.2vw;
+      background: rgba(255, 255, 255, 0.94);
+      border-radius: 1vh;
+      box-shadow: 0 0.6vh 2vh rgba(0, 0, 0, 0.45);
+      transition: opacity 0.5s;
+      pointer-events: none;
+    }
+    #publicidad-esquina.oculto { opacity: 0; }
+    .pub-etiqueta {
+      font-size: 1.3vh;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    #pub-esquina-logo {
+      max-width: 17vw;
+      max-height: 9vh;
+      object-fit: contain;
+    }
+    #pub-esquina-nombre {
+      font-size: 1.9vh;
+      font-weight: 700;
+      color: #0f172a;
+      text-align: center;
+    }
+
+    #pantalla-entretiempo {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3vh;
+      background: radial-gradient(circle at 50% 30%, rgba(30, 41, 59, 0.94), rgba(2, 6, 23, 0.97));
+      color: #fff;
+      transition: opacity 0.6s;
+      pointer-events: none;
+    }
+    #pantalla-entretiempo.oculto { opacity: 0; }
+    .et-titulo {
+      font-size: 6.5vh;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+    }
+    .et-marcador {
+      display: flex;
+      align-items: center;
+      gap: 2.5vw;
+      font-size: 3.6vh;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    #et-goles {
+      font-size: 6vh;
+      font-weight: 900;
+      padding: 0.5vh 1.6vw;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 1vh;
+    }
+    .et-pub {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5vh;
+      transition: opacity 0.5s;
+    }
+    .et-pub.oculto { opacity: 0; }
+    .et-pub-etiqueta {
+      font-size: 2vh;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #cbd5e1;
+    }
+    .et-pub-tarjeta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 30vw;
+      min-height: 22vh;
+      padding: 3vh 3vw;
+      background: #fff;
+      border-radius: 2vh;
+    }
+    #et-pub-logo {
+      max-width: 52vw;
+      max-height: 32vh;
+      object-fit: contain;
+    }
+    #et-pub-nombre {
+      font-size: 3.4vh;
+      font-weight: 800;
+    }
   </style>
 </head>
 <body>
@@ -193,6 +303,28 @@
   </div>
 
   <div id="texto-evento" class="oculto">GOL!</div>
+</div>
+
+<!-- Publicidad durante el juego: un auspiciante a la vez, rotando. -->
+<div id="publicidad-esquina" class="oculto">
+  <span class="pub-etiqueta">Auspicia</span>
+  <img id="pub-esquina-logo" alt="" />
+  <div id="pub-esquina-nombre"></div>
+</div>
+
+<!-- Entretiempo: pantalla completa con marcador y auspiciantes. -->
+<div id="pantalla-entretiempo" class="oculto">
+  <div class="et-titulo">ENTRETIEMPO</div>
+  <div class="et-marcador">
+    <span id="et-local">LOCAL</span>
+    <span id="et-goles">0 – 0</span>
+    <span id="et-visitante">VISITANTE</span>
+  </div>
+  <div class="et-pub oculto" id="et-pub">
+    <div class="et-pub-etiqueta">Gracias a nuestros auspiciantes</div>
+    <div class="et-pub-tarjeta"><img id="et-pub-logo" alt="" /></div>
+    <div id="et-pub-nombre"></div>
+  </div>
 </div>
 
 <div id="conn-dot" title="Conexión Socket.io"></div>
@@ -230,7 +362,79 @@
 
   let transmisionId = null;
 
+  // ── Publicidad ──────────────────────────────────────────────────
+  const elRoot          = document.getElementById("overlay-root");
+  const elPubEsquina    = document.getElementById("publicidad-esquina");
+  const elPubLogo       = document.getElementById("pub-esquina-logo");
+  const elPubNombre     = document.getElementById("pub-esquina-nombre");
+  const elEntretiempo   = document.getElementById("pantalla-entretiempo");
+  const elEtPub         = document.getElementById("et-pub");
+  const elEtPubLogo     = document.getElementById("et-pub-logo");
+  const elEtPubNombre   = document.getElementById("et-pub-nombre");
+  let auspiciantes = [];
+  let indicePub = 0;
+  let timerPub = null;
+  let segundosPub = 8;
+  let ultimoState = {};
+
+  function urlMedia(url) {
+    if (!url) return "";
+    return /^https?:\/\//i.test(url) ? url : API_BASE + "/" + String(url).replace(/^\//, "");
+  }
+
+  function mostrarAuspicianteActual() {
+    const a = auspiciantes[indicePub % Math.max(auspiciantes.length, 1)];
+    if (!a) return;
+    const src = urlMedia(a.logo_url);
+    for (const [img, nombre] of [[elPubLogo, elPubNombre], [elEtPubLogo, elEtPubNombre]]) {
+      img.style.display = src ? "" : "none";
+      if (src) img.src = src;
+      // Con logo basta la imagen; sin logo se muestra el nombre.
+      nombre.textContent = src ? "" : a.nombre || "";
+    }
+  }
+
+  function reiniciarRotacion() {
+    clearInterval(timerPub);
+    if (auspiciantes.length < 2) return;
+    timerPub = setInterval(() => {
+      indicePub = (indicePub + 1) % auspiciantes.length;
+      mostrarAuspicianteActual();
+    }, segundosPub * 1000);
+  }
+
+  function aplicarPublicidad(state) {
+    const hayPub = auspiciantes.length > 0;
+    const entretiempo = state.pantalla_entretiempo === true;
+    const nuevosSegundos = Math.max(3, Number(state.publicidad_segundos) || 8);
+    if (nuevosSegundos !== segundosPub) {
+      segundosPub = nuevosSegundos;
+      reiniciarRotacion();
+    }
+    elEntretiempo.classList.toggle("oculto", !entretiempo);
+    elRoot.classList.toggle("oculto", entretiempo);
+    elEtPub.classList.toggle("oculto", !hayPub);
+    elPubEsquina.classList.toggle("oculto", entretiempo || !hayPub || state.mostrar_publicidad === false);
+    document.getElementById("et-goles").textContent =
+      `${state.goles_local ?? 0} – ${state.goles_visitante ?? 0}`;
+  }
+
+  async function cargarAuspiciantes() {
+    try {
+      const res = await fetch(`${API_BASE}/api/public/overlay/${overlayToken}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      auspiciantes = Array.isArray(data.auspiciantes) ? data.auspiciantes : [];
+      if (indicePub >= auspiciantes.length) indicePub = 0;
+      mostrarAuspicianteActual();
+      reiniciarRotacion();
+      aplicarPublicidad(ultimoState);
+    } catch (_) {}
+  }
+
   function aplicarState(state) {
+    ultimoState = { ...ultimoState, ...state };
+    aplicarPublicidad(ultimoState);
     elGolLocal.textContent     = state.goles_local ?? 0;
     elGolVisitante.textContent = state.goles_visitante ?? 0;
     elPeriodo.textContent      = state.periodo ?? "1T";
@@ -272,8 +476,15 @@
       elNombreVisit.textContent  = data.equipo_visitante?.nombre || "VISITANTE";
       setLogo(elLogoLocalWrap, data.equipo_local?.logo_url);
       setLogo(elLogoVisitWrap, data.equipo_visitante?.logo_url);
+      document.getElementById("et-local").textContent = elNombreLocal.textContent;
+      document.getElementById("et-visitante").textContent = elNombreVisit.textContent;
 
+      auspiciantes = Array.isArray(data.auspiciantes) ? data.auspiciantes : [];
+      mostrarAuspicianteActual();
       if (data.overlay) aplicarState(data.overlay);
+      reiniciarRotacion();
+      // Los auspiciantes se pueden editar durante el partido: se recargan cada 5 min.
+      setInterval(cargarAuspiciantes, 5 * 60 * 1000);
 
       // Conectar Socket.io y unirse a la sala
       conectarSocket();

@@ -13,7 +13,19 @@ const ESTADO_INICIAL = {
   mostrar_marcador: true,
   mostrar_cronometro: true,
   mostrar_texto_evento: false,
+  // Publicidad (auspiciantes del campeonato): rotación en una esquina durante
+  // el juego y pantalla completa en el entretiempo.
+  mostrar_publicidad: true,
+  pantalla_entretiempo: false,
+  publicidad_segundos: 8,
 };
+
+const PUBLICIDAD_SEGUNDOS_MIN = 3;
+const PUBLICIDAD_SEGUNDOS_MAX = 60;
+
+function aBooleano(valor) {
+  return valor === true || String(valor).toLowerCase() === "true";
+}
 
 class TransmisionOverlay {
   static _tablaAsegurada = false;
@@ -46,6 +58,13 @@ class TransmisionOverlay {
           CREATE INDEX IF NOT EXISTS idx_overlay_transmision
           ON transmision_overlay_state(transmision_id)
         `);
+        // Migración 079: publicidad en el overlay.
+        await pool.query(`
+          ALTER TABLE transmision_overlay_state
+            ADD COLUMN IF NOT EXISTS mostrar_publicidad BOOLEAN NOT NULL DEFAULT TRUE,
+            ADD COLUMN IF NOT EXISTS pantalla_entretiempo BOOLEAN NOT NULL DEFAULT FALSE,
+            ADD COLUMN IF NOT EXISTS publicidad_segundos INTEGER NOT NULL DEFAULT 8
+        `);
         this._tablaAsegurada = true;
       })().finally(() => {
         this._initTablaPromise = null;
@@ -69,6 +88,9 @@ class TransmisionOverlay {
       mostrar_marcador: row.mostrar_marcador,
       mostrar_cronometro: row.mostrar_cronometro,
       mostrar_texto_evento: row.mostrar_texto_evento,
+      mostrar_publicidad: row.mostrar_publicidad !== false,
+      pantalla_entretiempo: row.pantalla_entretiempo === true,
+      publicidad_segundos: Number(row.publicidad_segundos) || ESTADO_INICIAL.publicidad_segundos,
       updated_at: row.updated_at,
     };
   }
@@ -127,7 +149,20 @@ class TransmisionOverlay {
       "mostrar_marcador",
       "mostrar_cronometro",
       "mostrar_texto_evento",
+      "mostrar_publicidad",
+      "pantalla_entretiempo",
+      "publicidad_segundos",
     ];
+
+    data = { ...data };
+    if (data.mostrar_publicidad !== undefined) data.mostrar_publicidad = aBooleano(data.mostrar_publicidad);
+    if (data.pantalla_entretiempo !== undefined) data.pantalla_entretiempo = aBooleano(data.pantalla_entretiempo);
+    if (data.publicidad_segundos !== undefined) {
+      const seg = Number.parseInt(data.publicidad_segundos, 10);
+      data.publicidad_segundos = Number.isFinite(seg)
+        ? Math.min(PUBLICIDAD_SEGUNDOS_MAX, Math.max(PUBLICIDAD_SEGUNDOS_MIN, seg))
+        : ESTADO_INICIAL.publicidad_segundos;
+    }
 
     const sets = [];
     const values = [];
@@ -175,7 +210,7 @@ class TransmisionOverlay {
        SET goles_local = 0, goles_visitante = 0, minuto = 0,
            periodo = '1T', estado = 'esperando', texto_evento = NULL,
            mostrar_marcador = TRUE, mostrar_cronometro = TRUE,
-           mostrar_texto_evento = FALSE, updated_at = NOW()
+           mostrar_texto_evento = FALSE, pantalla_entretiempo = FALSE, updated_at = NOW()
        WHERE transmision_id = $1
        RETURNING *`,
       [transmisionId]

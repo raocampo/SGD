@@ -3,6 +3,7 @@
 const pool = require("../config/database");
 const PartidoTransmision = require("../models/PartidoTransmision");
 const TransmisionOverlay = require("../models/TransmisionOverlay");
+const Auspiciante = require("../models/Auspiciante");
 const { emitOverlayState } = require("../services/socketService");
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -76,11 +77,13 @@ async function getOverlayPublico(req, res) {
     await PartidoTransmision.asegurarTabla();
     const txResult = await pool.query(
       `SELECT t.id, t.overlay_token, t.titulo,
+              COALESCE(t.campeonato_id, ev.campeonato_id) AS campeonato_id,
               p.equipo_local_id, p.equipo_visitante_id,
               el.nombre AS equipo_local_nombre, el.logo_url AS equipo_local_logo,
               ev2.nombre AS equipo_visitante_nombre, ev2.logo_url AS equipo_visitante_logo
        FROM partido_transmisiones t
        LEFT JOIN partidos p ON p.id = t.partido_id
+       LEFT JOIN eventos ev ON ev.id = p.evento_id
        LEFT JOIN equipos el ON el.id = p.equipo_local_id
        LEFT JOIN equipos ev2 ON ev2.id = p.equipo_visitante_id
        WHERE t.overlay_token = $1`,
@@ -93,6 +96,10 @@ async function getOverlayPublico(req, res) {
 
     const tx = txResult.rows[0];
     const state = await TransmisionOverlay.obtenerOCrear(tx.id);
+    // Publicidad: auspiciantes activos del campeonato, en su orden.
+    const auspiciantes = (await Auspiciante.listarPorCampeonato(tx.campeonato_id, true))
+      .filter((a) => a.logo_url || a.nombre)
+      .map((a) => ({ nombre: a.nombre, logo_url: a.logo_url || null }));
 
     res.json({
       transmision_id: tx.id,
@@ -106,6 +113,7 @@ async function getOverlayPublico(req, res) {
         logo_url: tx.equipo_visitante_logo,
       },
       overlay: state,
+      auspiciantes,
     });
   } catch (err) {
     console.error("overlayController.getOverlayPublico:", err);
