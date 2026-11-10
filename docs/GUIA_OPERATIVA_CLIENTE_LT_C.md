@@ -71,6 +71,7 @@ Que comparte y que no:
 - Para quitarle el acceso a la organizacion: editarlo y ponerlo `Inactivo`, o elegir `Nueva organizacion` para desvincularlo.
 - No se puede vincular una cuenta que ya tenga campeonatos propios ni encadenar accesos (siempre se elige al organizador principal).
 - En el listado de usuarios aparece dentro de la tarjeta de su organizacion, en `Accesos adicionales de la organizacion`.
+- En la auditoria, las acciones de cada acceso quedan a nombre de la persona que las hizo; el detalle indica la organizacion (`organizacion_titular_id`).
 
 ## Portal publico y CMS institucional
 - Contenido gestionado por `administrador` u `operador`:

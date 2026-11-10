@@ -2,12 +2,17 @@
 
 Actualizada: 2026-11-09 (America/Guayaquil).
 
-## Último trabajo: co-organizador de una organización existente (09-nov)
+## Último trabajo: pendientes de código cerrados (09-nov)
+
+- Planilla en solo lectura desde el inicio; modales de Facturación/Playoff/Transmisión con cabecera y pie fijos y cierre por encima de la barra superior (en celular, Facturación no se podía cerrar); bienvenida del jugador sin finanzas; auditoría por persona del co-organizador (`services/contextoCuenta.js`). Detalle y verificación en la bitácora del 09-nov.
+- QA visual: Brave headless + `puppeteer-core` en el scratchpad (reinstalar si se borró), backend local en el puerto **5000** (el frontend en localhost exige ese puerto) y token firmado localmente. La prueba de jugador necesita un jugador real con equipo: el frontend refresca el rol desde `/auth/me`.
+
+## Trabajo anterior: co-organizador de una organización existente (09-nov)
 
 - El admin ya puede crear otro usuario Organizador vinculado a una organización existente («Organización del organizador» en `usuarios.html`). Comparte campeonatos, equipos, finanzas, landing y plan del titular, pero tiene usuario, contraseña y estado propios.
 - Modelo: `usuarios.organizacion_titular_id` (migración `077`, también en `asegurarEsquema`). `UsuarioAuth.resolverIdentidadEfectiva` sustituye la identidad en `requireAuth`/`optionalAuth`, login y refresh; tokens y cambio de clave usan `cuenta_usuario_id`. Detalle y pruebas en la bitácora del 09-nov.
 - Publicado `eb062be`/`282eb99`; QA visual local en navegador OK; frontend de producción ya tiene el selector. Guía de uso: `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`.
-- Pendientes: (1) confirmar el backend desplegado en Railway (columna `usuarios.organizacion_titular_id` presente); (2) crear el acceso real del socio y validar su ingreso; (3) opcional, auditoría por persona, ya que las acciones del co-organizador se registran con el id del titular. Siguen vigentes los pendientes anteriores (lista A-D, SMTP Hobby, código de pertenencia pospuesto).
+- Pendientes: (1) confirmar el backend desplegado en Railway (columna `usuarios.organizacion_titular_id` presente); (2) crear el acceso real del socio y validar su ingreso. La auditoría por persona ya está resuelta. Siguen vigentes los pendientes anteriores (lista A-D, SMTP Hobby, código de pertenencia pospuesto).
 
 ## Trabajo anterior: error al cargar equipos del campeonato 22 (23-oct)
 
@@ -134,7 +139,7 @@ El README conserva un cierre de junio y la tabla histórica de módulos tiene fe
 - **En espera por instrucción del usuario:** diseñar código de registro/invitación para verificar pertenencia. Mantener la asociación directa hasta retomar esta decisión; no activar validación telefónica ni aprobación sin esa nueva definición.
 - Confirmar en producción Usuarios y Roles: campeonatos propios visibles para organizador, equipos filtrados y equipo anterior limpio al cambiar campeonato; revisar el formulario en celular.
 - Confirmar visualmente en producción las correcciones de jornadas y logos ya presentes en `origin/main`; no necesitan volver a publicarse. Según la sesión del 14-oct, el evento 34 se restauró a `null` con respaldo previo y 84 partidos intactos; la API devolvió 84 partidos, 10 jornadas y 20 finalizados con marcador. Es evidencia histórica, no una consulta del 15-oct.
-- Código pendiente comprobado el 15-oct: aplicar el modo lectura de `planilla.html` desde el inicio (actualmente se aplica al cargar una planilla); revisar scroll y botones fijos de los modales de Facturación, Playoff y Transmisión en celular; adaptar la bienvenida de `portal-tecnico.html` para que el jugador no vea la mención al estado financiero. Son candidatos para la siguiente tarea, todavía sin implementar.
+- Resuelto el 09-nov: modo lectura de `planilla.html` desde el inicio, modales de Facturación/Playoff/Transmisión en celular y bienvenida del jugador sin finanzas. No quedan pendientes de código sin decisión; lo restante requiere producción, decisiones del usuario o insumos externos.
 - Evaluar dividir «Nuevo Campeonato» en secciones, como «Editar categoría», si se continúa el ajuste de formularios.
 - Validación pendiente en producción: 12 resultados en landing, póster/selector tras renumeración, guardado real de categoría, modales en celular, Excel Induloja multihoja, permisos por rol y vínculo de jugador por cédula. Detalle completo en la lista A de la bitácora.
 - QA pendiente: `smoke:matrix` y `smoke:roles` requieren usuarios QA sembrados; prueba real de transmisiones entre dispositivos; QA responsive con datos reales.

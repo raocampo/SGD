@@ -1,3 +1,11 @@
+## 2026-11-09 - Pendientes de código cerrados
+
+- Planilla en solo lectura desde el inicio para dirigente/técnico.
+- Modales de Facturación, Playoff y Transmisión usables en celular: cabecera y pie fijos, y cierre por encima de la barra superior. Facturación no se podía cerrar en celular porque la barra tapaba su botón.
+- Bienvenida del jugador sin mención financiera.
+- Auditoría por persona del co-organizador, vía contexto de petición (sin migración).
+- Verificado con pruebas automáticas y en navegador headless (celular y escritorio). Los pendientes que quedan dependen de producción, decisiones del usuario o insumos externos; ver bitácora del 09-nov.
+
 ## 2026-11-09 - Usuarios: co-organizador de una organización existente
 
 - Implementado: el administrador puede crear otro acceso de organizador para una organización existente (`usuarios.organizacion_titular_id`, migración `077`). El acceso opera la misma organización (campeonatos, equipos, finanzas, landing y plan) con usuario y contraseña propios; cada cuenta se bloquea por separado.
