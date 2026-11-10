@@ -1,6 +1,6 @@
 # Guia Operativa para Cliente - LT&C
 
-Ultima actualizacion: 2026-03-05
+Ultima actualizacion: 2026-11-09
 
 ## Objetivo
 Entregar una guia practica para operar LT&C (Loja Torneos & Competencias) en un campeonato real, sin depender del equipo tecnico.
@@ -9,6 +9,7 @@ Entregar una guia practica para operar LT&C (Loja Torneos & Competencias) en un 
 - `administrador`: configura todo el sistema, usuarios, CMS institucional y operacion deportiva completa.
 - `operador`: administra solo portal publico (noticias, galeria, contenido y contacto).
 - `organizador`: administra solo sus campeonatos/categorias/equipos/jugadores/sorteo/partidos/planilla/tablas/finanzas.
+  - Una organizacion puede tener varios accesos de organizador (ver "Accesos adicionales de una organizacion").
 - `tecnico` y `dirigente`: gestion limitada de su equipo y consulta de informacion autorizada.
 - `jugador`: consulta de informacion de su equipo en modo solo lectura.
 
@@ -53,6 +54,23 @@ Entregar una guia practica para operar LT&C (Loja Torneos & Competencias) en un 
 - Historial disponible:
   - por jugador (resumen + detalle).
   - por equipo (entradas/salidas + detalle).
+
+## Accesos adicionales de una organizacion (co-organizador)
+Cuando otra persona de la misma organizacion necesita entrar con sus propias credenciales (por ejemplo, socios que no comparten la contraseña):
+1. Iniciar sesion como `administrador` y abrir `Usuarios`.
+2. Completar nombre, correo o usuario y una contraseña temporal.
+3. En `Rol` elegir `Organizador`.
+4. En `Organizacion del organizador` elegir `<organizacion> — acceso adicional` (no `Nueva organizacion`).
+   - Se ocultan nombre de organizacion, plan, contacto y logo: se toman del organizador principal.
+5. `Crear usuario`. Al primer ingreso el sistema obliga a cambiar la contraseña.
+
+Que comparte y que no:
+- Comparte con el organizador principal: campeonatos, categorias, equipos, jugadores, partidos, planillas, finanzas, Mi Landing y plan.
+- Es propio de cada cuenta: usuario, correo, contraseña y estado (activo/inactivo).
+- Desactivar o eliminar al organizador principal no desactiva el acceso adicional, y viceversa. Si se elimina al principal, el acceso queda desvinculado y sin campeonatos.
+- Para quitarle el acceso a la organizacion: editarlo y ponerlo `Inactivo`, o elegir `Nueva organizacion` para desvincularlo.
+- No se puede vincular una cuenta que ya tenga campeonatos propios ni encadenar accesos (siempre se elige al organizador principal).
+- En el listado de usuarios aparece dentro de la tarjeta de su organizacion, en `Accesos adicionales de la organizacion`.
 
 ## Portal publico y CMS institucional
 - Contenido gestionado por `administrador` u `operador`:

@@ -6,7 +6,8 @@ Actualizada: 2026-11-09 (America/Guayaquil).
 
 - El admin ya puede crear otro usuario Organizador vinculado a una organización existente («Organización del organizador» en `usuarios.html`). Comparte campeonatos, equipos, finanzas, landing y plan del titular, pero tiene usuario, contraseña y estado propios.
 - Modelo: `usuarios.organizacion_titular_id` (migración `077`, también en `asegurarEsquema`). `UsuarioAuth.resolverIdentidadEfectiva` sustituye la identidad en `requireAuth`/`optionalAuth`, login y refresh; tokens y cambio de clave usan `cuenta_usuario_id`. Detalle y pruebas en la bitácora del 09-nov.
-- QA visual local en navegador OK. Pendiente: crear el acceso real en producción tras el despliegue. La auditoría operativa registra el id del titular.
+- Publicado `eb062be`/`282eb99`; QA visual local en navegador OK; frontend de producción ya tiene el selector. Guía de uso: `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`.
+- Pendientes: (1) confirmar el backend desplegado en Railway (columna `usuarios.organizacion_titular_id` presente); (2) crear el acceso real del socio y validar su ingreso; (3) opcional, auditoría por persona, ya que las acciones del co-organizador se registran con el id del titular. Siguen vigentes los pendientes anteriores (lista A-D, SMTP Hobby, código de pertenencia pospuesto).
 
 ## Trabajo anterior: error al cargar equipos del campeonato 22 (23-oct)
 

@@ -2,7 +2,8 @@
 
 - Implementado: el administrador puede crear otro acceso de organizador para una organización existente (`usuarios.organizacion_titular_id`, migración `077`). El acceso opera la misma organización (campeonatos, equipos, finanzas, landing y plan) con usuario y contraseña propios; cada cuenta se bloquea por separado.
 - Resolución centralizada en el middleware de auth (`UsuarioAuth.resolverIdentidadEfectiva`); sin cambios en los filtros por `creador_usuario_id`. Excluido de conteos del dashboard, de la landing, del catálogo de primer ingreso y protegido en la limpieza de inactivos.
-- Verificado: QA de modelo 15/15, flujo de auth real con BD local, asociación 12/12, móvil 22/22 y guards 49/49. QA visual local en navegador OK (alta desde el formulario, listado e ingreso del socio). Pendiente: crear el acceso real en producción tras el despliegue.
+- Verificado: QA de modelo 15/15, flujo de auth real con BD local, asociación 12/12, móvil 22/22 y guards 49/49. QA visual local en navegador OK (alta desde el formulario, listado e ingreso del socio). Publicado `eb062be`/`282eb99`; frontend de producción con el selector comprobado.
+- Pendientes: confirmar el despliegue del backend en Railway (si no, el alta crearía una organización nueva vacía), crear el acceso real del socio y validar su ingreso. Opcional: auditoría por persona (`actor_usuario_id`). Guía de uso en `docs/GUIA_OPERATIVA_CLIENTE_LT_C.md`.
 - Limitación: la auditoría de acciones operativas sigue registrando el id del titular (login y cambio de clave sí registran la cuenta real).
 
 ## 2026-10-23 - Equipos: error de lectura y numeración
