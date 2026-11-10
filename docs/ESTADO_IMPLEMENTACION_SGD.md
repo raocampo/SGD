@@ -1,3 +1,10 @@
+## 2026-11-09 - Nuevo Campeonato por secciones y alta de básquetbol corregida
+
+- «Nuevo Campeonato» organizado en 5 secciones con botones fijos (verificado en celular y escritorio).
+- Corregido: crear campeonatos de básquetbol fallaba con 500 por `tipo_futbol VARCHAR(10)`/CHECK de fútbol. Migración `078` y ajuste automático en el modelo; altas reales de básquet y fútbol probadas.
+- Cerrados: co-organizador (funciona en producción), Excel de Induloja, «80 FC» (no es duplicado: dos categorías del mismo club). SRI en pausa: se usa AELA ERP.
+- Abiertos: servidor TURN (pendiente de elegir proveedor), código de pertenencia (en espera), SMTP en Hobby, decisiones de partidos pasados sin planilla y validaciones restantes de la lista A.
+
 ## 2026-11-09 - Pendientes de código cerrados
 
 - Planilla en solo lectura desde el inicio para dirigente/técnico.

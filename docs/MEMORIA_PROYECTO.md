@@ -2,7 +2,13 @@
 
 Actualizada: 2026-11-09 (America/Guayaquil).
 
-## Último trabajo: pendientes de código cerrados (09-nov)
+## Último trabajo: Nuevo Campeonato por secciones y básquetbol (09-nov)
+
+- «Nuevo Campeonato» en 5 secciones con botones fijos. Corregido el alta de campeonatos de básquetbol (500 por `tipo_futbol VARCHAR(10)`/CHECK de fútbol): migración `078` y ajuste condicional en `Campeonato.asegurarColumnasDocumentos`.
+- Cerrados por confirmación del usuario: co-organizador en producción y Excel de Induloja. «80 FC» no es duplicado (dos categorías del mismo club). SRI/RUC/certificado en pausa: se usa AELA ERP.
+- Abiertos: TURN (elegir proveedor y credenciales; el código se puede preparar con variables de entorno), código de pertenencia (en espera), SMTP Hobby, partidos pasados sin planilla y validaciones restantes de la lista A.
+
+## Trabajo anterior: pendientes de código cerrados (09-nov)
 
 - Planilla en solo lectura desde el inicio; modales de Facturación/Playoff/Transmisión con cabecera y pie fijos y cierre por encima de la barra superior (en celular, Facturación no se podía cerrar); bienvenida del jugador sin finanzas; auditoría por persona del co-organizador (`services/contextoCuenta.js`). Detalle y verificación en la bitácora del 09-nov.
 - QA visual: Brave headless + `puppeteer-core` en el scratchpad (reinstalar si se borró), backend local en el puerto **5000** (el frontend en localhost exige ese puerto) y token firmado localmente. La prueba de jugador necesita un jugador real con equipo: el frontend refresca el rol desde `/auth/me`.
@@ -147,8 +153,8 @@ El README conserva un cierre de junio y la tabla histórica de módulos tiene fe
 
 ## Decisiones e insumos pendientes
 
-- Definir situación de partidos pasados aún programados sin planilla; eventual renumeración de eventos 16, 18, 19 y 30 de otros organizadores; duplicado «80 FC» (IDs 81 y 54). No aplicar correcciones de datos sin resolver esas decisiones.
-- RUC/razón social reales, certificado digital para SRI, credenciales PayPhone/PayPal, proveedor TURN y credenciales/contrato para QA mobile.
+- Definir situación de partidos pasados aún programados sin planilla; eventual renumeración de eventos 16, 18, 19 y 30 de otros organizadores. No aplicar correcciones de datos sin resolver esas decisiones. («80 FC» cerrado el 09-nov: no es duplicado.)
+- Credenciales PayPhone/PayPal, proveedor TURN y credenciales/contrato para QA mobile. RUC/certificado SRI en pausa por decisión del usuario (se usa AELA ERP).
 
 ## Entorno y cautelas de continuidad
 
