@@ -1,3 +1,11 @@
+## 2026-11-09 - Transmisión oficial: cámaras/celular → OBS o Prism → YouTube, Facebook o TikTok
+
+- **Definición del usuario:** las transmisiones se hacen con un sistema de cámaras o con el celular, a través de OBS Studio o Prism Live, y salen a YouTube, Facebook o TikTok. El sistema registra el enlace y lleva al público a la plataforma.
+- `js/transmision.js`: «TikTok Live» como opción de plataforma. La columna `plataforma` es texto libre, sin migración.
+- `js/portal.js`: el botón del portal indica la plataforma («📺 Ver en vivo en YouTube/Facebook/TikTok», «Ver en … →» si está programada), tomada de la plataforma registrada o del dominio del enlace; sin dato queda el texto anterior. Los directos de TikTok no se pueden incrustar en otras páginas, así que se abren en la plataforma, como ya ocurría con todas.
+- `director.html` y `transmisiones.html`: la guía incluye cámaras (varias en OBS como *Video Capture Device*; celular con Prism), TikTok en Prism y la nota de que TikTok exige LIVE habilitado y clave de transmisión para OBS (requisitos de TikTok sujetos a cambio, no verificados aquí).
+- Pruebas: textos del botón en 5 casos (plataforma registrada, deducida del enlace, en vivo/programada, sin datos), guards **49/49**, sintaxis correcta. Sin QA visual del portal con una transmisión en vivo.
+
 ## 2026-11-09 - Transmisiones: OBS/Prism en lugar de TURN y paneles reparados
 
 - **Decisión del usuario: no se contratará servidor TURN** (el proyecto no lo puede costear). Las transmisiones se harán con **OBS Studio o Prism Live → YouTube/Facebook**, registrando el enlace del directo en el partido: la plataforma reparte el video gratis y sin límite de espectadores, y funciona con datos móviles. El modo cámara del navegador (WebRTC, `broadcast.html`) queda para pocos espectadores y en buenas redes, con una advertencia en el Panel de Director.

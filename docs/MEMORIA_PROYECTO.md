@@ -4,7 +4,7 @@ Actualizada: 2026-11-09 (America/Guayaquil).
 
 ## Último trabajo: transmisiones con OBS/Prism y paneles reparados (09-nov)
 
-- **Decisión del usuario:** sin servidor TURN (el proyecto no lo costea). Transmisiones vía OBS Studio o Prism Live → YouTube/Facebook, con el enlace registrado en el partido y el overlay del Panel de Director en OBS. El modo cámara WebRTC queda para pocos espectadores.
+- **Decisión del usuario:** sin servidor TURN (el proyecto no lo costea). Transmisión oficial: cámaras o celular → OBS Studio o Prism Live → YouTube, Facebook o TikTok, con el enlace registrado en el partido (el portal muestra «Ver en vivo en <plataforma>») y el overlay del Panel de Director en OBS. El modo cámara WebRTC queda para pocos espectadores.
 - Corregidos `director.html`/`broadcast.html` (sesión desde `window.Auth`, no `localStorage.token`) y las 4 páginas de transmisión (backend por `resolveBackendBaseUrl`, no `location.origin`). Verificado entre dominios. Pendiente: transmisión real en producción.
 
 ## Trabajo anterior: Nuevo Campeonato por secciones y básquetbol (09-nov)
