@@ -1,5 +1,10 @@
 const PartidoTransmision = require("../models/PartidoTransmision");
 
+// Errores de validación del modelo (p. ej. URL de enlace inválida) → 400.
+function estadoError(err) {
+  return /inválid/i.test(String(err?.message || "")) ? 400 : 500;
+}
+
 async function obtenerTransmision(req, res) {
   try {
     const partidoId = Number.parseInt(req.params.id, 10);
@@ -45,6 +50,7 @@ async function crearTransmision(req, res) {
       descripcion: descripcion || null,
       plataforma: plataforma || null,
       url_publica: url_publica || null,
+      enlaces: req.body.enlaces,
       embed_url: embed_url || null,
       estado: req.body.estado || 'programada',
       fecha_inicio_programada: fecha_inicio_programada || null,
@@ -54,7 +60,7 @@ async function crearTransmision(req, res) {
 
     return res.status(201).json({ transmision });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(estadoError(err)).json({ error: err.message });
   }
 }
 
@@ -82,6 +88,7 @@ async function actualizarTransmision(req, res) {
       descripcion,
       plataforma,
       url_publica,
+      enlaces: req.body.enlaces,
       embed_url,
       fecha_inicio_programada: fecha_inicio_programada || null,
       thumbnail_url,
@@ -94,7 +101,7 @@ async function actualizarTransmision(req, res) {
     }
     return res.json({ transmision });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(estadoError(err)).json({ error: err.message });
   }
 }
 
@@ -165,7 +172,7 @@ async function obtenerTransmisionViewer(req, res) {
     if (!id) return res.json({ transmision: null });
     await PartidoTransmision.asegurarTabla();
     const result = await require("../config/database").query(
-      `SELECT t.id, t.titulo, t.descripcion, t.plataforma, t.url_publica,
+      `SELECT t.id, t.titulo, t.descripcion, t.plataforma, t.url_publica, t.enlaces,
               t.estado, t.fecha_inicio_programada, t.fecha_inicio_real,
               p.equipo_local_id, p.equipo_visitante_id,
               el.nombre AS equipo_local_nombre,  el.logo_url AS equipo_local_logo,
@@ -186,6 +193,7 @@ async function obtenerTransmisionViewer(req, res) {
         descripcion: row.descripcion,
         plataforma: row.plataforma,
         url_publica: row.url_publica,
+        enlaces: PartidoTransmision.enlacesDeFila(row),
         estado: row.estado,
         fecha_inicio_programada: row.fecha_inicio_programada,
         fecha_inicio_real: row.fecha_inicio_real,

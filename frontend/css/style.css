@@ -10826,7 +10826,29 @@ body.page-eliminatorias .modal-body {
   background: #fff;
 }
 
+#modal-transmision .tx-enlaces-ayuda {
+  display: block;
+  margin: 0.15rem 0 0.5rem;
+  color: #64748b;
+}
+
+#modal-transmision .tx-enlace-fila {
+  display: grid;
+  grid-template-columns: minmax(130px, 34%) 1fr auto;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+}
+
 @media (max-width: 560px) {
+  #modal-transmision .tx-enlace-fila {
+    grid-template-columns: 1fr auto;
+  }
+
+  #modal-transmision .tx-enlace-fila .tx-enlace-url {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
   #modal-transmision {
     padding: 0;
   }

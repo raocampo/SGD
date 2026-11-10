@@ -87,20 +87,12 @@
           <form id="form-transmision" autocomplete="off">
             <input type="hidden" id="tx-estado-destino" value="" />
             <div class="form-group">
-              <label for="tx-plataforma">Plataforma</label>
-              <select id="tx-plataforma" class="form-control">
-                <option value="">— Selecciona —</option>
-                <option value="YouTube Live">YouTube Live</option>
-                <option value="Facebook Live">Facebook Live</option>
-                <option value="TikTok Live">TikTok Live</option>
-                <option value="Twitch">Twitch</option>
-                <option value="StreamYard">StreamYard</option>
-                <option value="Otro">Otro</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="tx-url-publica">URL pública de la transmisión</label>
-              <input type="url" id="tx-url-publica" class="form-control" placeholder="https://..." />
+              <label>Plataformas del directo</label>
+              <small class="tx-enlaces-ayuda">Agrega un enlace por cada plataforma donde transmites al mismo tiempo. El primero es el principal.</small>
+              <div id="tx-enlaces" class="tx-enlaces"></div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-tx-agregar-enlace">
+                <i class="fas fa-plus"></i> Agregar plataforma
+              </button>
             </div>
             <div class="form-group">
               <label for="tx-titulo">Título (opcional)</label>
@@ -148,6 +140,7 @@
     document.body.appendChild(modal);
 
     document.getElementById("btn-cerrar-modal-transmision").addEventListener("click", cerrarModalTransmision);
+    document.getElementById("btn-tx-agregar-enlace").addEventListener("click", () => agregarFilaEnlace());
     document.getElementById("form-transmision").addEventListener("submit", (e) => {
       e.preventDefault();
       guardarTransmision();
@@ -195,9 +188,75 @@
     }
   }
 
+  // ── Enlaces por plataforma (transmisión simultánea) ───────────────
+  const PLATAFORMAS = ["YouTube Live", "Facebook Live", "TikTok Live", "Twitch", "Otro"];
+
+  function detectarPlataforma(url) {
+    const u = String(url || "").toLowerCase();
+    if (/youtube\.com|youtu\.be/.test(u)) return "YouTube Live";
+    if (/facebook\.com|fb\.watch/.test(u)) return "Facebook Live";
+    if (/tiktok\.com/.test(u)) return "TikTok Live";
+    if (/twitch\.tv/.test(u)) return "Twitch";
+    return "";
+  }
+
+  function agregarFilaEnlace(enlace = {}) {
+    const cont = document.getElementById("tx-enlaces");
+    if (!cont) return;
+    const fila = document.createElement("div");
+    fila.className = "tx-enlace-fila";
+    const plataforma = String(enlace.plataforma || "");
+    const opciones = PLATAFORMAS.concat(plataforma && !PLATAFORMAS.includes(plataforma) ? [plataforma] : []);
+    fila.innerHTML = `
+      <select class="form-control tx-enlace-plataforma" aria-label="Plataforma">
+        <option value="">— Plataforma —</option>
+        ${opciones.map((op) => `<option value="${escapeAttr(op)}">${escapeAttr(op)}</option>`).join("")}
+      </select>
+      <input type="url" class="form-control tx-enlace-url" placeholder="https://..." aria-label="Enlace del directo" />
+      <button type="button" class="btn btn-danger btn-sm tx-enlace-quitar" title="Quitar plataforma" aria-label="Quitar plataforma">
+        <i class="fas fa-trash"></i>
+      </button>`;
+    const select = fila.querySelector(".tx-enlace-plataforma");
+    const input = fila.querySelector(".tx-enlace-url");
+    select.value = plataforma;
+    input.value = enlace.url || "";
+    // Al pegar el enlace se completa la plataforma si aún no se eligió.
+    input.addEventListener("input", () => {
+      if (!select.value) select.value = detectarPlataforma(input.value);
+    });
+    fila.querySelector(".tx-enlace-quitar").addEventListener("click", () => {
+      fila.remove();
+      if (!cont.children.length) agregarFilaEnlace();
+    });
+    cont.appendChild(fila);
+  }
+
+  function escapeAttr(texto) {
+    return String(texto ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  }
+
+  function leerEnlaces() {
+    const filas = [...document.querySelectorAll("#tx-enlaces .tx-enlace-fila")];
+    const enlaces = [];
+    for (const fila of filas) {
+      const url = fila.querySelector(".tx-enlace-url").value.trim();
+      if (!url) continue;
+      if (!/^https?:\/\//i.test(url)) {
+        throw new Error(`El enlace "${url}" debe empezar con http:// o https://`);
+      }
+      const plataforma = fila.querySelector(".tx-enlace-plataforma").value || detectarPlataforma(url) || "Otro";
+      enlaces.push({ plataforma, url });
+    }
+    return enlaces;
+  }
+
   function rellenarFormulario(transmision) {
-    document.getElementById("tx-plataforma").value = transmision?.plataforma || "";
-    document.getElementById("tx-url-publica").value = transmision?.url_publica || "";
+    const cont = document.getElementById("tx-enlaces");
+    if (cont) cont.innerHTML = "";
+    const enlaces = Array.isArray(transmision?.enlaces) && transmision.enlaces.length
+      ? transmision.enlaces
+      : (transmision?.url_publica ? [{ plataforma: transmision.plataforma, url: transmision.url_publica }] : [{}]);
+    enlaces.forEach((enlace) => agregarFilaEnlace(enlace));
     document.getElementById("tx-titulo").value = transmision?.titulo || "";
     document.getElementById("tx-descripcion").value = transmision?.descripcion || "";
     document.getElementById("tx-embed-url").value = transmision?.embed_url || "";
@@ -269,9 +328,15 @@
   async function guardarTransmision() {
     limpiarMensajes();
     const estadoDestino = (document.getElementById("tx-estado-destino")?.value || "").trim();
+    let enlaces;
+    try {
+      enlaces = leerEnlaces();
+    } catch (err) {
+      mostrarError(err.message);
+      return;
+    }
     const payload = {
-      plataforma: document.getElementById("tx-plataforma").value || null,
-      url_publica: document.getElementById("tx-url-publica").value || null,
+      enlaces,
       titulo: document.getElementById("tx-titulo").value || null,
       descripcion: document.getElementById("tx-descripcion").value || null,
       embed_url: document.getElementById("tx-embed-url").value || null,

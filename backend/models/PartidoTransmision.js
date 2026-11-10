@@ -11,7 +11,14 @@ const CAMPOS_EDITABLES = [
   "thumbnail_url",
   "campeonato_id",
   "evento_id",
+  "enlaces",
 ];
+
+// Transmisión simultánea: varios enlaces del mismo directo (YouTube, Facebook,
+// TikTok...). plataforma/url_publica quedan como el enlace principal (el
+// primero) para el código que solo conoce un enlace.
+const ENLACES_MAX = 8;
+const URL_HTTP_RE = /^https?:\/\/[^\s<>"']+$/i;
 
 class PartidoTransmision {
   static _tablaAsegurada = false;
@@ -81,6 +88,19 @@ class PartidoTransmision {
         SET overlay_token = gen_random_uuid()
         WHERE overlay_token IS NULL
       `);
+      // Migración 079: enlaces por plataforma (transmisión simultánea).
+      await db.query(`
+        ALTER TABLE partido_transmisiones
+        ADD COLUMN IF NOT EXISTS enlaces JSONB NOT NULL DEFAULT '[]'::jsonb
+      `);
+      await db.query(`
+        UPDATE partido_transmisiones
+        SET enlaces = jsonb_build_array(
+          jsonb_build_object('plataforma', COALESCE(plataforma, ''), 'url', url_publica)
+        )
+        WHERE COALESCE(TRIM(url_publica), '') <> ''
+          AND enlaces = '[]'::jsonb
+      `);
       await db.query(`
         UPDATE partido_transmisiones
         SET director_token = gen_random_uuid()
@@ -121,6 +141,58 @@ class PartidoTransmision {
     await this._initTablaPromise;
   }
 
+  // Normaliza la lista de enlaces: solo URLs http(s), sin repetidos, máx. 8.
+  static normalizarEnlaces(lista) {
+    let items = lista;
+    if (typeof items === "string") {
+      try { items = JSON.parse(items); } catch (_) { items = []; }
+    }
+    if (!Array.isArray(items)) return [];
+    const vistos = new Set();
+    const salida = [];
+    for (const item of items) {
+      const url = String(item?.url || "").trim();
+      if (!url) continue;
+      if (!URL_HTTP_RE.test(url)) {
+        throw new Error(`URL inválida: ${url.slice(0, 80)}. Usa un enlace que empiece con http:// o https://`);
+      }
+      if (vistos.has(url)) continue;
+      vistos.add(url);
+      salida.push({ plataforma: String(item?.plataforma || "").trim().slice(0, 60), url });
+      if (salida.length >= ENLACES_MAX) break;
+    }
+    return salida;
+  }
+
+  // Sincroniza enlaces con plataforma/url_publica antes de guardar.
+  // Con enlaces: el primero pasa a ser el principal. Sin enlaces (clientes
+  // anteriores): la url_publica recibida se convierte en la lista.
+  static prepararEnlaces(data) {
+    const out = { ...data };
+    if (out.enlaces !== undefined) {
+      const lista = PartidoTransmision.normalizarEnlaces(out.enlaces);
+      out.enlaces = JSON.stringify(lista);
+      out.url_publica = lista[0]?.url || null;
+      out.plataforma = lista[0]?.plataforma || null;
+    } else if (out.url_publica !== undefined) {
+      const lista = PartidoTransmision.normalizarEnlaces(
+        out.url_publica ? [{ plataforma: out.plataforma, url: out.url_publica }] : []
+      );
+      out.enlaces = JSON.stringify(lista);
+      out.url_publica = lista[0]?.url || null;
+    }
+    return out;
+  }
+
+  static enlacesDeFila(row) {
+    let lista = row?.enlaces;
+    if (typeof lista === "string") {
+      try { lista = JSON.parse(lista); } catch (_) { lista = []; }
+    }
+    if (Array.isArray(lista) && lista.length) return lista;
+    return row?.url_publica ? [{ plataforma: row.plataforma || "", url: row.url_publica }] : [];
+  }
+
   static limpiar(row) {
     if (!row) return null;
     return {
@@ -132,6 +204,7 @@ class PartidoTransmision {
       descripcion: row.descripcion,
       plataforma: row.plataforma,
       url_publica: row.url_publica,
+      enlaces: PartidoTransmision.enlacesDeFila(row),
       embed_url: row.embed_url,
       estado: row.estado,
       fecha_inicio_programada: row.fecha_inicio_programada,
@@ -157,9 +230,10 @@ class PartidoTransmision {
     return result.rows.length ? PartidoTransmision.limpiar(result.rows[0]) : null;
   }
 
-  static async crear(data) {
+  static async crear(datos) {
     await this.asegurarTabla();
 
+    const data = PartidoTransmision.prepararEnlaces(datos);
     const {
       partido_id,
       campeonato_id = null,
@@ -173,32 +247,36 @@ class PartidoTransmision {
       fecha_inicio_programada = null,
       thumbnail_url = null,
       creado_por = null,
+      enlaces = "[]",
     } = data;
 
     const result = await pool.query(
       `INSERT INTO partido_transmisiones
         (partido_id, campeonato_id, evento_id, titulo, descripcion, plataforma,
-         url_publica, embed_url, estado, fecha_inicio_programada, thumbnail_url, creado_por)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         url_publica, embed_url, estado, fecha_inicio_programada, thumbnail_url, creado_por,
+         enlaces)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb)
        RETURNING *`,
       [
         partido_id, campeonato_id, evento_id, titulo, descripcion, plataforma,
         url_publica, embed_url, estado, fecha_inicio_programada, thumbnail_url, creado_por,
+        enlaces || "[]",
       ]
     );
     return PartidoTransmision.limpiar(result.rows[0]);
   }
 
-  static async actualizar(id, data) {
+  static async actualizar(id, datos) {
     await this.asegurarTabla();
 
+    const data = PartidoTransmision.prepararEnlaces(datos);
     const sets = [];
     const values = [];
     let idx = 1;
 
     for (const campo of CAMPOS_EDITABLES) {
-      if (Object.prototype.hasOwnProperty.call(data, campo)) {
-        sets.push(`${campo} = $${idx++}`);
+      if (Object.prototype.hasOwnProperty.call(data, campo) && data[campo] !== undefined) {
+        sets.push(campo === "enlaces" ? `enlaces = $${idx++}::jsonb` : `${campo} = $${idx++}`);
         values.push(data[campo]);
       }
     }

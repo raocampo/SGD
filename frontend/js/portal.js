@@ -465,6 +465,30 @@ function textoBotonTransmision(tx, enVivo) {
   return plataforma ? `Ver en ${plataforma} →` : "Ver →";
 }
 
+// Enlaces del directo (transmisión simultánea en varias plataformas). Solo
+// http(s); si la transmisión es anterior a los enlaces, usa url_publica.
+function enlacesTransmision(tx) {
+  const lista = Array.isArray(tx?.enlaces) && tx.enlaces.length
+    ? tx.enlaces
+    : (tx?.url_publica ? [{ plataforma: tx.plataforma, url: tx.url_publica }] : []);
+  return lista.filter((e) => /^https?:\/\//i.test(String(e?.url || "")));
+}
+
+// Un botón por plataforma; con varias, cada botón dice solo la plataforma.
+function botonesTransmisionHtml(tx, enVivo, estilo) {
+  const enlaces = enlacesTransmision(tx);
+  return enlaces
+    .map((e) => {
+      const datos = { plataforma: e.plataforma, url_publica: e.url };
+      const plataforma = nombrePlataformaTransmision(datos);
+      const texto = enlaces.length > 1 && plataforma
+        ? `${enVivo ? "📺 " : ""}${plataforma}`
+        : textoBotonTransmision(datos, enVivo);
+      return `<a href="${escPortal(e.url)}" target="_blank" rel="noopener noreferrer" ${estilo}>${escPortal(texto)}</a>`;
+    })
+    .join("");
+}
+
 function escPortal(texto) {
   return String(texto ?? "")
     .replace(/&/g, "&amp;")
@@ -2103,8 +2127,11 @@ function renderPartidoJornadaPortal(partido = {}) {
   const badgeEnVivo = enVivo
     ? `<span class="badge-en-vivo" style="background:#e53e3e;color:#fff;font-weight:700;font-size:.8rem;padding:.2em .55em;border-radius:4px;margin-left:.4rem;vertical-align:middle;">&#128308; EN VIVO</span>`
     : "";
-  const btnVerTransmision = enVivo && transmision?.url_publica
-    ? `<div style="text-align:center;margin-top:.5rem;"><a href="${escPortal(transmision.url_publica)}" target="_blank" rel="noopener noreferrer" class="btn btn-danger" style="font-size:.82rem;padding:.25em .7em;">${escPortal(textoBotonTransmision(transmision, true))}</a></div>`
+  const botonesEnVivo = enVivo
+    ? botonesTransmisionHtml(transmision, true, 'class="btn btn-danger" style="font-size:.82rem;padding:.25em .7em;"')
+    : "";
+  const btnVerTransmision = botonesEnVivo
+    ? `<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:.35rem;margin-top:.5rem;">${botonesEnVivo}</div>`
     : "";
 
   const localNombre = partido.equipo_local_nombre || "";
@@ -3018,8 +3045,13 @@ function renderProximaTransmisionPortal(contenedor) {
           fechaHtml = `<span style="font-size:.82rem;opacity:.8;margin-left:.5rem;">${new Date(tx.fecha_inicio_programada).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short" })}</span>`;
         } catch (_) {}
       }
-      const verBtn = tx.url_publica
-        ? `<a href="${escPortal(tx.url_publica)}" target="_blank" rel="noopener noreferrer" style="background:${enVivo ? "#e53e3e" : "#3182ce"};color:#fff;padding:.35em .85em;border-radius:6px;text-decoration:none;font-weight:700;font-size:.88rem;white-space:nowrap;">${escPortal(textoBotonTransmision(tx, enVivo))}</a>`
+      const botones = botonesTransmisionHtml(
+        tx,
+        enVivo,
+        `style="background:${enVivo ? "#e53e3e" : "#3182ce"};color:#fff;padding:.35em .85em;border-radius:6px;text-decoration:none;font-weight:700;font-size:.88rem;white-space:nowrap;"`
+      );
+      const verBtn = botones
+        ? `<div style="display:flex;flex-wrap:wrap;gap:.4rem;">${botones}</div>`
         : "";
       const card = document.createElement("div");
       card.id = "portal-proxima-tx-card";
