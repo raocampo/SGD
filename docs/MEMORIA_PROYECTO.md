@@ -1,6 +1,14 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-11-09 (America/Guayaquil).
+Actualizada: 2026-11-09 (America/Guayaquil), cierre en Fedora.
+
+## Para retomar (oficina)
+
+- `main` = `origin/main` en `b768e8a` + cierre documental. En Windows: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- Migraciones 077–079 se aplican solas en el backend; no hay pasos manuales de BD.
+- **Primero:** confirmar en Railway el despliegue del backend; luego la lista A de la primera entrada de `docs/BITACORA_AVANCES.md` (básquet de prueba, transmisión real con 3 plataformas, overlay, entretiempo y auspiciantes con logo).
+- **Decisión pendiente del usuario (recomendada):** cerrar la seguridad del overlay (socket `overlay:update` sin autenticación y propiedad de la transmisión).
+- Cerrados el 09-nov: co-organizador, Excel de Induloja, «80 FC», SRI en pausa (AELA ERP), TURN descartado, pendientes de código del 15-oct y «Nuevo Campeonato» por secciones.
 
 ## Último trabajo: transmisión multiplataforma y publicidad (09-nov)
 
@@ -157,9 +165,9 @@ El README conserva un cierre de junio y la tabla histórica de módulos tiene fe
 - Confirmar en producción Usuarios y Roles: campeonatos propios visibles para organizador, equipos filtrados y equipo anterior limpio al cambiar campeonato; revisar el formulario en celular.
 - Confirmar visualmente en producción las correcciones de jornadas y logos ya presentes en `origin/main`; no necesitan volver a publicarse. Según la sesión del 14-oct, el evento 34 se restauró a `null` con respaldo previo y 84 partidos intactos; la API devolvió 84 partidos, 10 jornadas y 20 finalizados con marcador. Es evidencia histórica, no una consulta del 15-oct.
 - Resuelto el 09-nov: modo lectura de `planilla.html` desde el inicio, modales de Facturación/Playoff/Transmisión en celular y bienvenida del jugador sin finanzas. No quedan pendientes de código sin decisión; lo restante requiere producción, decisiones del usuario o insumos externos.
-- Evaluar dividir «Nuevo Campeonato» en secciones, como «Editar categoría», si se continúa el ajuste de formularios.
 - Validación pendiente en producción: 12 resultados en landing, póster/selector tras renumeración, guardado real de categoría, modales en celular, Excel Induloja multihoja, permisos por rol y vínculo de jugador por cédula. Detalle completo en la lista A de la bitácora.
-- QA pendiente: `smoke:matrix` y `smoke:roles` requieren usuarios QA sembrados; prueba real de transmisiones entre dispositivos; QA responsive con datos reales.
+- QA pendiente: `smoke:matrix` y `smoke:roles` requieren usuarios QA sembrados; transmisión real con OBS/Prism hacia YouTube, Facebook y TikTok con el overlay; QA responsive con datos reales.
+- Seguridad del overlay (propuesta, sin aplicar): quitar el reenvío `overlay:update` sin autenticación en `socketService.js` y validar la propiedad de la transmisión en las rutas del overlay.
 - Mantener en backlog: formatos libres de importación, reportes financieros por periodos, desempates avanzados, formatos adicionales de playoff y actualización del resumen histórico por módulos.
 
 ## Decisiones e insumos pendientes

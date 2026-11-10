@@ -1,3 +1,8 @@
+## 2026-11-09 - Cierre del día y pendientes
+
+- Publicado hasta `b768e8a`: co-organizador (confirmado en producción), auditoría por persona, correcciones de planilla/modales/portal del jugador, Nuevo Campeonato por secciones, alta de básquetbol, paneles de transmisión reparados, transmisión multiplataforma y publicidad en el overlay. Migraciones 077–079, que se aplican solas.
+- Pendientes: verificar en producción (despliegue, básquet, transmisión real con overlay y publicidad), decisión sobre la seguridad del overlay, partidos pasados sin planilla y código de pertenencia. Lista completa en la primera entrada de la bitácora.
+
 ## 2026-11-09 - Transmisión multiplataforma y publicidad
 
 - Una transmisión registra varios enlaces (YouTube, Facebook, TikTok…); el portal muestra un botón por plataforma. Migración `079`.

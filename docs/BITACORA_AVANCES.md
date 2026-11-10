@@ -1,3 +1,43 @@
+## 2026-11-09 - Cierre de sesión (Fedora) y pendientes para continuar en la oficina
+
+### Estado al cerrar
+- `main` = `origin/main` en `b768e8a` + este cierre documental. Sin cambios locales pendientes; datos de prueba de la BD local eliminados.
+- 17 commits funcionales/documentales desde `dce1460`. Migraciones nuevas: `077` (co-organizador), `078` (tipo de deporte de básquet), `079` (enlaces multiplataforma y publicidad). Las tres **se aplican solas** al arrancar o en el primer uso del backend (`asegurarEsquema`/`asegurarTabla`), así que no hace falta ejecutarlas a mano en Railway.
+- Detalle de cada tema en las entradas inferiores del 09-nov.
+
+### Lo realizado hoy (resumen)
+1. **Co-organizador** (`eb062be`): otro usuario con los mismos privilegios de una organización existente. **Confirmado en producción por el usuario.**
+2. **Auditoría por persona** del co-organizador (`4881bed`).
+3. **Frontend** (`56219f4`): planilla en solo lectura desde el inicio; modales de Facturación, Playoff y Transmisión usables en celular (Facturación no se podía cerrar); bienvenida del jugador sin finanzas.
+4. **Nuevo Campeonato por secciones** (`e4cab29`) y **alta de campeonatos de básquetbol corregida** (`b46f630`; antes respondía 500).
+5. **Transmisiones** (`02197ad` a `21f2191`): Director, Broadcast, Viewer y Overlay reparados (no funcionaban en producción); guía OBS/Prism; TikTok; **varias plataformas por transmisión**; **publicidad** (auspiciantes rotando en la esquina) y **pantalla de entretiempo** en el overlay 1920×1080.
+6. **Cerrados por decisión o confirmación del usuario:** Excel de Induloja (funcionó), «80 FC» (no es duplicado: dos categorías del mismo club), SRI/RUC/certificado en pausa (se usa AELA ERP), servidor TURN descartado (se transmite con OBS/Prism).
+
+### Cómo retomar en la oficina (Windows)
+- MEGA sincroniza los archivos pero no `.git`: hacer `git fetch origin` y, si `git diff --stat origin/main` sale vacío, `git reset origin/main`. Si no sale vacío, revisar antes (trabajo sin subir o MEGA a medias). Procedimiento de la entrada del 15-oct.
+- Leer primero `docs/MEMORIA_PROYECTO.md` (sección «Para retomar»).
+
+### Pendientes (por prioridad)
+
+**A. Verificar en producción tras el despliegue (los hace el usuario)**
+1. Railway: despliegue del backend de hoy en SUCCESS (incluye `e393864`, `21f2191`, `b46f630`, `4881bed`).
+2. Crear un campeonato de **básquetbol** de prueba y eliminarlo (comprueba la migración 078 en producción).
+3. **Transmisión real:** OBS o Prism hacia YouTube + Facebook + TikTok a la vez; en el partido, «Agregar plataforma» con los 3 enlaces; overlay del Panel de Director como fuente de 1920×1080; pasar por «Entretiempo» y volver al 2T. Revisar que los **auspiciantes del campeonato tengan logo**.
+4. Portal con transmisión en vivo: un botón por plataforma.
+5. TikTok: confirmar que la cuenta tiene LIVE y, para OBS, clave de transmisión.
+6. Revisar «Nuevo Campeonato» por secciones, planilla de un dirigente (solo lectura al entrar), cerrar los modales de Facturación en el celular y la bienvenida de un jugador.
+
+**B. Decisiones del usuario**
+1. **Seguridad del overlay (recomendado antes de transmitir con publicidad):** quitar el reenvío `overlay:update` por socket sin autenticación (hoy cualquiera con el id de la transmisión puede cambiar marcador, texto o publicidad en el directo) y validar que el organizador sea dueño de la transmisión en `/api/transmisiones/:id/overlay`. Cambio pequeño; pendiente de aprobación.
+2. Partidos pasados aún «programados» sin planilla; posible renumeración de jornadas de los eventos 16, 18, 19 y 30.
+3. Código de pertenencia al registrarse (en espera por instrucción del usuario).
+
+**C. Insumos externos**
+- Proveedor de correo (Railway Hobby bloquea SMTP), credenciales PayPhone/PayPal, credenciales/contrato para QA mobile.
+
+**D. Validaciones heredadas en producción (lista A del 14-oct)**
+- Primer ingreso de dirigente/técnico (organización → campeonato → categoría → equipo), Usuarios y Roles en celular, resultados de la landing, póster/selector de jornadas, guardado real de categoría, permisos por rol y vínculo de jugador por cédula.
+
 ## 2026-11-09 - Transmisión simultánea multiplataforma y publicidad en el overlay
 
 - **Pedido del usuario:** transmitir en todas las plataformas a la vez (YouTube, Facebook, TikTok) y mostrar publicidad, también en el entretiempo.
