@@ -6,7 +6,7 @@ Actualizada: 2026-11-09 (America/Guayaquil).
 
 - El admin ya puede crear otro usuario Organizador vinculado a una organización existente («Organización del organizador» en `usuarios.html`). Comparte campeonatos, equipos, finanzas, landing y plan del titular, pero tiene usuario, contraseña y estado propios.
 - Modelo: `usuarios.organizacion_titular_id` (migración `077`, también en `asegurarEsquema`). `UsuarioAuth.resolverIdentidadEfectiva` sustituye la identidad en `requireAuth`/`optionalAuth`, login y refresh; tokens y cambio de clave usan `cuenta_usuario_id`. Detalle y pruebas en la bitácora del 09-nov.
-- Pendiente: QA visual del formulario y crear el acceso real en producción tras el despliegue. La auditoría operativa registra el id del titular.
+- QA visual local en navegador OK. Pendiente: crear el acceso real en producción tras el despliegue. La auditoría operativa registra el id del titular.
 
 ## Trabajo anterior: error al cargar equipos del campeonato 22 (23-oct)
 
