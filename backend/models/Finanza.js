@@ -1190,13 +1190,16 @@ class Finanza {
   // categoría, así que se cruzan en la misma fila. Montos sin categoría van a
   // una fila aparte para que los totales coincidan con la fila "Inscripción"
   // de obtenerUtilidadPorRubro (mismos abonos cobrados y mismos premios).
+  // "equipos" son los inscritos en la categoría (evento_equipos); los cargos
+  // de inscripción a equipos NO inscritos se devuelven aparte en
+  // cargos_no_inscritos para que el usuario vea de dónde sale la diferencia.
   static async obtenerInscripcionPorCategoria(filtros = {}) {
     await this.asegurarEsquema();
     const campeonatoId = this.parseEntero(filtros.campeonato_id, "campeonato_id");
 
     await this.sincronizarCargosInscripcion({ campeonato_id: campeonatoId }, pool);
 
-    const [eventosR, movR, premiosR] = await Promise.all([
+    const [eventosR, movR, premiosR, inscritosR, noInscritosR] = await Promise.all([
       pool.query(
         `SELECT id, nombre, COALESCE(costo_inscripcion, 0)::numeric(12,2) AS costo_inscripcion
          FROM eventos
@@ -1207,8 +1210,7 @@ class Finanza {
       pool.query(
         `SELECT evento_id,
                 COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' THEN monto ELSE 0 END), 0)::numeric(12,2) AS esperado,
-                COALESCE(SUM(CASE WHEN tipo_movimiento = 'abono' THEN monto ELSE 0 END), 0)::numeric(12,2) AS cobrado,
-                COUNT(DISTINCT CASE WHEN tipo_movimiento = 'cargo' THEN equipo_id END)::int AS equipos
+                COALESCE(SUM(CASE WHEN tipo_movimiento = 'abono' THEN monto ELSE 0 END), 0)::numeric(12,2) AS cobrado
          FROM finanzas_movimientos
          WHERE campeonato_id = $1
            AND concepto = 'inscripcion'
@@ -1221,6 +1223,35 @@ class Finanza {
          FROM gastos_operativos
          WHERE campeonato_id = $1 AND categoria = 'premios'
          GROUP BY evento_id`,
+        [campeonatoId]
+      ),
+      pool.query(
+        `SELECT ee.evento_id, COUNT(DISTINCT ee.equipo_id)::int AS equipos
+         FROM evento_equipos ee
+         JOIN eventos ev ON ev.id = ee.evento_id
+         JOIN equipos e ON e.id = ee.equipo_id AND e.campeonato_id = ev.campeonato_id
+         WHERE ev.campeonato_id = $1
+         GROUP BY ee.evento_id`,
+        [campeonatoId]
+      ),
+      pool.query(
+        `SELECT fm.evento_id, fm.equipo_id, e.nombre AS equipo_nombre,
+                COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS cargos,
+                COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS cobrado,
+                STRING_AGG(DISTINCT CASE WHEN fm.tipo_movimiento = 'cargo' THEN fm.origen END, ', ') AS origen
+         FROM finanzas_movimientos fm
+         LEFT JOIN equipos e ON e.id = fm.equipo_id
+         WHERE fm.campeonato_id = $1
+           AND fm.concepto = 'inscripcion'
+           AND fm.estado <> 'anulado'
+           AND fm.evento_id IS NOT NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM evento_equipos ee
+             WHERE ee.evento_id = fm.evento_id AND ee.equipo_id = fm.equipo_id
+           )
+         GROUP BY fm.evento_id, fm.equipo_id, e.nombre
+         HAVING SUM(CASE WHEN fm.tipo_movimiento = 'cargo' THEN fm.monto ELSE 0 END) > 0
+         ORDER BY fm.evento_id, e.nombre`,
         [campeonatoId]
       ),
     ]);
@@ -1249,7 +1280,9 @@ class Finanza {
       const f = asegurar(row.evento_id);
       f.esperado += Number(row.esperado || 0);
       f.cobrado += Number(row.cobrado || 0);
-      f.equipos += Number(row.equipos || 0);
+    });
+    inscritosR.rows.forEach((row) => {
+      asegurar(row.evento_id).equipos = Number(row.equipos || 0);
     });
     premiosR.rows.forEach((row) => {
       asegurar(row.evento_id).premios += Number(row.premios || 0);
@@ -1280,7 +1313,18 @@ class Finanza {
     total.utilidad = redondear(total.cobrado - total.premios);
     total.utilidad_proyectada = redondear(total.esperado - total.premios);
 
-    return { campeonato_id: campeonatoId, categorias, total };
+    const nombreCategoria = (eventoId) => filas.get(clave(eventoId))?.categoria || `Categoría ${eventoId}`;
+    const cargos_no_inscritos = noInscritosR.rows.map((row) => ({
+      evento_id: Number(row.evento_id),
+      categoria: nombreCategoria(row.evento_id),
+      equipo_id: row.equipo_id ? Number(row.equipo_id) : null,
+      equipo_nombre: row.equipo_nombre || (row.equipo_id ? `Equipo ${row.equipo_id}` : "Sin equipo"),
+      cargos: redondear(row.cargos),
+      cobrado: redondear(row.cobrado),
+      origen: row.origen || "",
+    }));
+
+    return { campeonato_id: campeonatoId, categorias, total, cargos_no_inscritos };
   }
 
   static async marcarMovimientoPagado(movimiento_id, data = {}, client = pool) {

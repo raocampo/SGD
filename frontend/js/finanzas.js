@@ -1145,6 +1145,37 @@ function renderInscripcionPorCategoria(data) {
         </tr>
       </tfoot>
     </table>
+    ${renderAvisoCargosNoInscritos(data?.cargos_no_inscritos)}
+  `;
+}
+
+// "Equipos" cuenta los inscritos en la categoría. Si hay cargos de inscripción
+// a equipos que no están inscritos, el Esperado los incluye: se listan para
+// que se puedan revisar o anular en Movimientos.
+function renderAvisoCargosNoInscritos(lista) {
+  const items = Array.isArray(lista) ? lista : [];
+  if (!items.length) return "";
+  const origenTexto = (origen) => {
+    const o = String(origen || "");
+    if (o.includes("manual") && o.includes("sistema")) return "registrado a mano y por el sistema";
+    if (o.includes("manual")) return "registrado a mano";
+    if (o.includes("sistema")) return "generado por el sistema (el equipo figura en partidos de la categoría)";
+    return o ? `origen: ${escaparHtml(o)}` : "";
+  };
+  const filas = items
+    .map((x) => `
+      <li>
+        <strong>${escaparHtml(x.categoria)}</strong>: «${escaparHtml(x.equipo_nombre)}» tiene cargos de inscripción por
+        ${formatoMoneda(x.cargos)}${x.cobrado > 0 ? ` (pagado ${formatoMoneda(x.cobrado)})` : ""}, ${origenTexto(x.origen)}.
+      </li>
+    `)
+    .join("");
+  return `
+    <div class="fin-aviso-no-inscritos" style="margin-top:12px;padding:10px 14px;border:1px solid #fcd34d;background:#fffbeb;border-radius:8px;color:#78350f;font-size:13px;">
+      <strong><i class="fas fa-triangle-exclamation"></i> Cargos de inscripción a equipos no inscritos en la categoría</strong>
+      <p style="margin:4px 0 6px;">Se suman en «Esperado» pero no en «Equipos». Revísalos en Movimientos (anúlalos si no corresponden).</p>
+      <ul style="margin:0;padding-left:18px;">${filas}</ul>
+    </div>
   `;
 }
 
