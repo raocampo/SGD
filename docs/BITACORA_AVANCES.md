@@ -1,3 +1,11 @@
+## 2026-11-12 (parte 2) - Inscripción por categoría: «Equipos» cuenta los inscritos
+
+- **Reporte del usuario (producción):** Liga InterEmpresarial / Abierta mostraba 29 equipos, pero hay 28 inscritos. La captura mostraba Esperado $2.850 con inscripción de $100: 29 × $100 sería $2.900, así que uno de los cargos es de otro monto.
+- **Causa:** «Equipos» contaba cualquier equipo con cargo de inscripción en la categoría, no los inscritos. Lo más probable es un cargo registrado a mano (≈ $50) a un equipo no inscrito. La otra vía posible: la sincronización automática también genera cargos a equipos que aparecen en partidos de la categoría sin estar en `evento_equipos`. No se pudo confirmar cuál en producción (no se consultó su BD); la copia local es del 05-oct y no tiene el caso.
+- **Corrección** (sin tocar movimientos de dinero): «Equipos» = inscritos en `evento_equipos` (equipos del mismo campeonato). La respuesta incluye `cargos_no_inscritos` (equipo, monto de cargos, pagado, origen manual/sistema) y Finanzas muestra un aviso debajo del cuadro: «se suman en Esperado pero no en Equipos; revísalos en Movimientos». Los totales siguen iguales a la Utilidad por Rubro.
+- **Verificación:** caso reproducido en local (campeonato 20, equipo temporal con cargo manual de $50 y abono de $20): Equipos 26 (antes habría dado 27), Esperado +$50, aviso con equipo/monto/pagado/origen, totales iguales al rubro; navegador correcto. Datos temporales eliminados. Guards 49/49, asociación sin fallos.
+- **Pendiente para el usuario:** en producción, abrir Finanzas → Resumen Ejecutivo de la Liga InterEmpresarial y revisar el equipo del aviso. Si su origen es «sistema», el equipo figura en partidos de la Abierta sin estar inscrito: decidir si se inscribe o se corrige la sincronización.
+
 ## 2026-11-12 - Finanzas: inscripción y premios por categoría
 
 - **Pedido del usuario:** separar por categoría la inscripción del resumen financiero, para cruzarla con los premios, que ya se registran por categoría.
