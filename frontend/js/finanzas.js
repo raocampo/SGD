@@ -16,6 +16,7 @@ let finanzasState = {
   },
   ultimoResumenEquipos: [],
   ultimaUtilidadPorRubro: null,
+  ultimaInscripcionPorCategoria: null,
   ultimoMovimientosEquipo: {
     equipo_id: null,
     equipo_nombre: "",
@@ -987,6 +988,9 @@ async function cargarResumenPorEquipoFinanzas() {
 }
 
 async function cargarUtilidadPorRubroFinanzas() {
+  // La tabla por categoría se recarga siempre junto con la utilidad por rubro
+  // (cambio de filtros, alta/edición de premios), así ambas cuadran.
+  cargarInscripcionPorCategoriaFinanzas();
   const campeonatoId = document.getElementById("fin-campeonato")?.value || "";
   const cont = document.getElementById("fin-utilidad-rubro-contenido");
 
@@ -1055,6 +1059,89 @@ function renderUtilidadPorRubro(data) {
           <td>${formatoMoneda(total.ingresos)}</td>
           <td>${formatoMoneda(total.egresos)}</td>
           <td class="${total.utilidad > 0 ? "fin-saldo-ok" : total.utilidad < 0 ? "fin-saldo-deuda" : ""}">${formatoMoneda(total.utilidad)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+}
+
+async function cargarInscripcionPorCategoriaFinanzas() {
+  const campeonatoId = document.getElementById("fin-campeonato")?.value || "";
+  const cont = document.getElementById("fin-inscripcion-categoria-contenido");
+  if (!cont) return;
+
+  if (!campeonatoId) {
+    finanzasState.ultimaInscripcionPorCategoria = null;
+    cont.innerHTML = renderVacio(
+      "Selecciona un campeonato en los filtros para ver la inscripción por categoría."
+    );
+    return;
+  }
+
+  cont.innerHTML = renderCargando("Calculando inscripción por categoría...");
+  try {
+    const resp = await FinanzasAPI.inscripcionPorCategoria({ campeonato_id: campeonatoId });
+    finanzasState.ultimaInscripcionPorCategoria = resp;
+    renderInscripcionPorCategoria(resp);
+  } catch (error) {
+    console.error(error);
+    finanzasState.ultimaInscripcionPorCategoria = null;
+    cont.innerHTML = renderVacio(error.message || "No se pudo calcular la inscripción por categoría.");
+  }
+}
+
+function claseUtilidadFinanzas(valor) {
+  return valor > 0 ? "fin-saldo-ok" : valor < 0 ? "fin-saldo-deuda" : "";
+}
+
+function renderInscripcionPorCategoria(data) {
+  const cont = document.getElementById("fin-inscripcion-categoria-contenido");
+  if (!cont) return;
+
+  const categorias = Array.isArray(data?.categorias) ? data.categorias : [];
+  if (!categorias.length) {
+    cont.innerHTML = renderVacio("Este campeonato no tiene categorías con inscripción ni premios.");
+    return;
+  }
+
+  const celdas = (c) => `
+    <td class="num">${Number(c.equipos || 0)}</td>
+    <td>${formatoMoneda(c.esperado)}</td>
+    <td>${formatoMoneda(c.cobrado)}</td>
+    <td class="${c.pendiente > 0 ? "fin-saldo-deuda" : ""}">${formatoMoneda(c.pendiente)}</td>
+    <td>${formatoMoneda(c.premios)}</td>
+    <td class="${claseUtilidadFinanzas(c.utilidad)}">${formatoMoneda(c.utilidad)}</td>
+    <td class="${claseUtilidadFinanzas(c.utilidad_proyectada)}">${formatoMoneda(c.utilidad_proyectada)}</td>
+  `;
+
+  const rows = categorias
+    .map((c) => `
+      <tr>
+        <td>${escaparHtml(c.categoria || "-")}${c.costo_inscripcion > 0 ? `<br><small>Inscripción: ${formatoMoneda(c.costo_inscripcion)}</small>` : ""}</td>
+        ${celdas(c)}
+      </tr>
+    `)
+    .join("");
+
+  cont.innerHTML = `
+    <table class="fin-tabla-rubros">
+      <thead>
+        <tr>
+          <th>Categoría</th>
+          <th>Equipos</th>
+          <th>Esperado</th>
+          <th>Cobrado</th>
+          <th>Pendiente</th>
+          <th>Premios</th>
+          <th>Utilidad</th>
+          <th>Proyectada</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr>
+          <td>Total</td>
+          ${celdas(data?.total || {})}
         </tr>
       </tfoot>
     </table>
@@ -2107,6 +2194,45 @@ async function imprimirReporteSancionesFinancieras() {
   });
 }
 
+// Tabla "Inscripción y premios por categoría" para el reporte impreso; solo
+// si los datos cargados son del campeonato seleccionado.
+function renderTablaReporteInscripcionPorCategoria(campeonatoId) {
+  const data = finanzasState.ultimaInscripcionPorCategoria;
+  const categorias = Array.isArray(data?.categorias) ? data.categorias : [];
+  if (!categorias.length || Number(data?.campeonato_id) !== Number(campeonatoId)) return "";
+  const celdas = (c) => `
+    <td class="num">${Number(c.equipos || 0)}</td>
+    <td class="num">${formatoMoneda(c.esperado)}</td>
+    <td class="num">${formatoMoneda(c.cobrado)}</td>
+    <td class="num ${c.pendiente > 0 ? "deuda" : ""}">${formatoMoneda(c.pendiente)}</td>
+    <td class="num">${formatoMoneda(c.premios)}</td>
+    <td class="num ${c.utilidad < 0 ? "deuda" : "ok"}">${formatoMoneda(c.utilidad)}</td>
+    <td class="num ${c.utilidad_proyectada < 0 ? "deuda" : "ok"}">${formatoMoneda(c.utilidad_proyectada)}</td>
+  `;
+  const filas = categorias
+    .map((c) => `<tr><td>${escaparHtml(c.categoria || "-")}</td>${celdas(c)}</tr>`)
+    .join("");
+  return `
+    <h2 style="margin:18px 0 6px;font-size:15px;">Inscripción y premios por categoría</h2>
+    <table class="fin-report-table">
+      <thead>
+        <tr>
+          <th>Categoría</th>
+          <th class="num">Equipos</th>
+          <th class="num">Esperado</th>
+          <th class="num">Cobrado</th>
+          <th class="num">Pendiente</th>
+          <th class="num">Premios</th>
+          <th class="num">Utilidad</th>
+          <th class="num">Proyectada</th>
+        </tr>
+      </thead>
+      <tbody>${filas}</tbody>
+      <tfoot><tr><td><strong>Total</strong></td>${celdas(data.total || {})}</tr></tfoot>
+    </table>
+  `;
+}
+
 async function imprimirReporteEjecutivoFinanzas() {
   const data = finanzasState.ultimoEjecutivo || {};
   const filasData = Array.isArray(data.filas) ? data.filas : [];
@@ -2171,6 +2297,7 @@ async function imprimirReporteEjecutivoFinanzas() {
         </thead>
         <tbody>${filas}</tbody>
       </table>
+      ${renderTablaReporteInscripcionPorCategoria(campeonatoId)}
     </div>
     ${renderPieAuspiciantes(auspiciantes)}
   `;

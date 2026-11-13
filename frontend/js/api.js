@@ -439,6 +439,14 @@
       const suffix = qs.toString() ? `?${qs.toString()}` : "";
       return window.ApiClient.get(`/finanzas/utilidad-por-rubro${suffix}`);
     },
+    inscripcionPorCategoria(params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && `${v}`.trim() !== "") qs.set(k, v);
+      });
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return window.ApiClient.get(`/finanzas/inscripcion-por-categoria${suffix}`);
+    },
   };
 
   window.AuspiciantesAPI = window.AuspiciantesAPI || {

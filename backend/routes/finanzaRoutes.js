@@ -56,6 +56,12 @@ router.get(
   finanzaController.obtenerUtilidadPorRubro
 );
 router.get(
+  "/inscripcion-por-categoria",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  finanzaController.obtenerInscripcionPorCategoria
+);
+router.get(
   "/dashboard",
   requireAuth,
   requireRoles("administrador", "organizador"),

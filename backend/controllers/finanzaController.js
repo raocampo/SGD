@@ -358,6 +358,24 @@ const finanzaController = {
     }
   },
 
+  async obtenerInscripcionPorCategoria(req, res) {
+    try {
+      const campId = Number.parseInt(req.query?.campeonato_id, 10);
+      if (isOrganizador(req.user)) {
+        const campeonatos = await obtenerCampeonatoIdsOrganizador(req.user);
+        if (!campeonatos.includes(campId)) {
+          return res.status(403).json({ error: "No autorizado para consultar ese campeonato" });
+        }
+      }
+
+      const data = await Finanza.obtenerInscripcionPorCategoria({ campeonato_id: req.query?.campeonato_id });
+      return res.json({ ok: true, ...data });
+    } catch (error) {
+      console.error("Error obteniendo inscripción por categoría:", error);
+      return res.status(statusParaError(error)).json({ error: error.message });
+    }
+  },
+
   async dashboardOrganizador(req, res) {
     try {
       const user = req.user;

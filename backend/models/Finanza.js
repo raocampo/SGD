@@ -1185,6 +1185,104 @@ class Finanza {
     return { rubros, total };
   }
 
+  // Inscripción vs premios por categoría (evento) de un campeonato. Los cargos
+  // de inscripción se generan por categoría y los premios se registran por
+  // categoría, así que se cruzan en la misma fila. Montos sin categoría van a
+  // una fila aparte para que los totales coincidan con la fila "Inscripción"
+  // de obtenerUtilidadPorRubro (mismos abonos cobrados y mismos premios).
+  static async obtenerInscripcionPorCategoria(filtros = {}) {
+    await this.asegurarEsquema();
+    const campeonatoId = this.parseEntero(filtros.campeonato_id, "campeonato_id");
+
+    await this.sincronizarCargosInscripcion({ campeonato_id: campeonatoId }, pool);
+
+    const [eventosR, movR, premiosR] = await Promise.all([
+      pool.query(
+        `SELECT id, nombre, COALESCE(costo_inscripcion, 0)::numeric(12,2) AS costo_inscripcion
+         FROM eventos
+         WHERE campeonato_id = $1
+         ORDER BY id`,
+        [campeonatoId]
+      ),
+      pool.query(
+        `SELECT evento_id,
+                COALESCE(SUM(CASE WHEN tipo_movimiento = 'cargo' THEN monto ELSE 0 END), 0)::numeric(12,2) AS esperado,
+                COALESCE(SUM(CASE WHEN tipo_movimiento = 'abono' THEN monto ELSE 0 END), 0)::numeric(12,2) AS cobrado,
+                COUNT(DISTINCT CASE WHEN tipo_movimiento = 'cargo' THEN equipo_id END)::int AS equipos
+         FROM finanzas_movimientos
+         WHERE campeonato_id = $1
+           AND concepto = 'inscripcion'
+           AND estado <> 'anulado'
+         GROUP BY evento_id`,
+        [campeonatoId]
+      ),
+      pool.query(
+        `SELECT evento_id, COALESCE(SUM(monto), 0)::numeric(12,2) AS premios
+         FROM gastos_operativos
+         WHERE campeonato_id = $1 AND categoria = 'premios'
+         GROUP BY evento_id`,
+        [campeonatoId]
+      ),
+    ]);
+
+    const clave = (eventoId) => (eventoId ? String(eventoId) : "sin_categoria");
+    const filas = new Map();
+    const fila = (eventoId, nombre, costo = 0) => ({
+      evento_id: eventoId || null,
+      categoria: nombre,
+      costo_inscripcion: Number(costo || 0),
+      equipos: 0,
+      esperado: 0,
+      cobrado: 0,
+      premios: 0,
+    });
+
+    eventosR.rows.forEach((ev) => {
+      filas.set(clave(ev.id), fila(Number(ev.id), ev.nombre || `Categoría ${ev.id}`, ev.costo_inscripcion));
+    });
+    const asegurar = (eventoId) => {
+      const k = clave(eventoId);
+      if (!filas.has(k)) filas.set(k, fila(eventoId, eventoId ? `Categoría ${eventoId}` : "Sin categoría"));
+      return filas.get(k);
+    };
+    movR.rows.forEach((row) => {
+      const f = asegurar(row.evento_id);
+      f.esperado += Number(row.esperado || 0);
+      f.cobrado += Number(row.cobrado || 0);
+      f.equipos += Number(row.equipos || 0);
+    });
+    premiosR.rows.forEach((row) => {
+      asegurar(row.evento_id).premios += Number(row.premios || 0);
+    });
+
+    const redondear = (n) => Number(Number(n || 0).toFixed(2));
+    const categorias = [...filas.values()]
+      // La fila "Sin categoría" solo aparece si tiene montos.
+      .filter((f) => f.evento_id || f.esperado || f.cobrado || f.premios)
+      .map((f) => ({
+        ...f,
+        esperado: redondear(f.esperado),
+        cobrado: redondear(f.cobrado),
+        premios: redondear(f.premios),
+        pendiente: redondear(Math.max(f.esperado - f.cobrado, 0)),
+        utilidad: redondear(f.cobrado - f.premios),
+        utilidad_proyectada: redondear(f.esperado - f.premios),
+      }));
+
+    const total = categorias.reduce(
+      (acc, f) => {
+        ["equipos", "esperado", "cobrado", "pendiente", "premios"].forEach((k) => { acc[k] += f[k]; });
+        return acc;
+      },
+      { equipos: 0, esperado: 0, cobrado: 0, pendiente: 0, premios: 0 }
+    );
+    ["esperado", "cobrado", "pendiente", "premios"].forEach((k) => { total[k] = redondear(total[k]); });
+    total.utilidad = redondear(total.cobrado - total.premios);
+    total.utilidad_proyectada = redondear(total.esperado - total.premios);
+
+    return { campeonato_id: campeonatoId, categorias, total };
+  }
+
   static async marcarMovimientoPagado(movimiento_id, data = {}, client = pool) {
     await this.asegurarEsquema(client);
 
