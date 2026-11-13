@@ -1,3 +1,8 @@
+## 2026-11-12 - Cierre del día
+
+- Publicado hasta `5526f6d`: inscripción y premios por categoría en Finanzas, con «Equipos» = inscritos y un aviso de cargos a equipos no inscritos.
+- Pendientes: revisar en producción el caso de la Liga InterEmpresarial y los pendientes del 09-nov; decisión sobre la seguridad del overlay. Lista completa en la primera entrada de la bitácora.
+
 ## 2026-11-12 - Finanzas: inscripción y premios por categoría
 
 - Nuevo cuadro por categoría en el Resumen Ejecutivo: esperado, cobrado, pendiente, premios, utilidad y proyectada; también en el reporte impreso. Endpoint `GET /api/finanzas/inscripcion-por-categoria`. Totales iguales a la fila «Inscripción» de Utilidad por Rubro. Sin migración.

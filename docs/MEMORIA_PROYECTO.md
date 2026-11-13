@@ -6,15 +6,16 @@ Actualizada: 2026-11-12 (America/Guayaquil).
 
 - Finanzas → Resumen Ejecutivo: tarjeta «Inscripción y premios por categoría» (`Finanza.obtenerInscripcionPorCategoria`, `GET /api/finanzas/inscripcion-por-categoria`). Totales iguales a la fila «Inscripción» de Utilidad por Rubro; montos sin categoría en fila aparte. Sin migración. «Equipos» cuenta los inscritos (`evento_equipos`); los cargos de inscripción a equipos no inscritos se muestran en un aviso (caso Liga InterEmpresarial: 29 vs 28). Pendiente: revisar en producción el equipo del aviso y su origen.
 
-## Para retomar (oficina)
+## Para retomar (13-nov)
 
-- `main` = `origin/main` en `b768e8a` + cierre documental. En Windows: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
-- Migraciones 077–079 se aplican solas en el backend; no hay pasos manuales de BD.
-- **Primero:** confirmar en Railway el despliegue del backend; luego la lista A de la primera entrada de `docs/BITACORA_AVANCES.md` (básquet de prueba, transmisión real con 3 plataformas, overlay, entretiempo y auspiciantes con logo).
-- **Decisión pendiente del usuario (recomendada):** cerrar la seguridad del overlay (socket `overlay:update` sin autenticación y propiedad de la transmisión).
-- Cerrados el 09-nov: co-organizador, Excel de Induloja, «80 FC», SRI en pausa (AELA ERP), TURN descartado, pendientes de código del 15-oct y «Nuevo Campeonato» por secciones.
+- `main` = `origin/main` en `5526f6d` + cierre documental. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- Sin migraciones nuevas desde la `079` (todas se aplican solas en el backend).
+- **Primero:** en producción, Liga InterEmpresarial → Finanzas → Resumen Ejecutivo: confirmar 28 equipos y revisar el equipo del aviso y su origen (manual → revisar o anular el movimiento; sistema → decidir si se corrige la sincronización de cargos).
+- Después, los pendientes del 09-nov sin confirmar: despliegue en Railway, básquet de prueba, transmisión real con overlay y publicidad.
+- **Decisión recomendada:** seguridad del overlay (socket `overlay:update` sin autenticación y propiedad de la transmisión).
+- Lista completa y priorizada: primera entrada de `docs/BITACORA_AVANCES.md` (cierre del 12-nov).
 
-## Último trabajo: transmisión multiplataforma y publicidad (09-nov)
+## Trabajo anterior: transmisión multiplataforma y publicidad (09-nov)
 
 - `partido_transmisiones.enlaces` (migración `079`): varios enlaces por transmisión; el primero se conserva en `url_publica`. Portal con un botón por plataforma.
 - Overlay a 1920×1080 con auspiciantes del campeonato (esquina rotando) y pantalla de entretiempo; Panel de Director con período «Entretiempo» y tarjeta Publicidad.

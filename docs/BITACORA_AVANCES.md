@@ -1,3 +1,33 @@
+## 2026-11-12 - Cierre del día y pendientes para continuar
+
+### Estado al cerrar
+- `main` = `origin/main` en `5526f6d` + este cierre documental. Sin cambios locales; datos de prueba de la BD local eliminados. Sin migraciones nuevas hoy (última: `079`).
+
+### Lo realizado hoy
+1. **Inscripción y premios por categoría** (`6d2b45f`): cuadro en Finanzas → Resumen Ejecutivo con equipos, esperado, cobrado, pendiente, premios, utilidad y proyectada por categoría; endpoint `GET /api/finanzas/inscripcion-por-categoria`; incluido en «Imprimir ejecutivo». Totales iguales a la fila «Inscripción» de la Utilidad por Rubro.
+2. **«Equipos» cuenta los inscritos** (`cd601c7`): por el reporte de la Liga InterEmpresarial (29 en lugar de 28). Los cargos de inscripción a equipos no inscritos se muestran en un aviso con equipo, monto, pagado y origen; no se modificó ningún movimiento.
+
+### Cómo retomar
+- En otro equipo (MEGA no sincroniza `.git`): `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`. Si no, revisar antes.
+- Leer `docs/MEMORIA_PROYECTO.md`, sección «Para retomar».
+
+### Pendientes (por prioridad)
+
+**A. Revisar en producción (usuario)**
+1. **Liga InterEmpresarial → Finanzas → Resumen Ejecutivo:** confirmar que «Equipos» marca 28 y ver el equipo del aviso. Si dice «registrado a mano», revisar o anular ese movimiento. Si dice «generado por el sistema», el equipo figura en partidos de la Abierta sin estar inscrito: decidir si se inscribe o si se corrige la sincronización de cargos para cobrar solo a los inscritos (cambio de código pendiente de esa decisión).
+2. Revisar el cuadro por categoría con un campeonato de varias categorías y premios reales.
+3. Pendientes del 09-nov aún sin confirmar: despliegue del backend en Railway; campeonato de básquetbol de prueba; transmisión real con OBS/Prism hacia YouTube, Facebook y TikTok con el overlay, el entretiempo y los auspiciantes con logo; TikTok con LIVE habilitado; Nuevo Campeonato por secciones, planilla de dirigente en solo lectura, modales de Facturación en celular y bienvenida del jugador.
+
+**B. Decisiones del usuario**
+1. **Seguridad del overlay** (recomendado antes de transmitir con publicidad): quitar el reenvío `overlay:update` por socket sin autenticación y validar que la transmisión sea del organizador.
+2. Cargos automáticos de inscripción a equipos que solo aparecen en partidos (según lo que muestre el punto A.1).
+3. Partidos pasados aún «programados» sin planilla; posible renumeración de jornadas de los eventos 16, 18, 19 y 30.
+4. Código de pertenencia al registrarse (en espera).
+
+**C. Insumos externos:** proveedor de correo (Railway Hobby bloquea SMTP), credenciales PayPhone/PayPal, credenciales/contrato para QA mobile.
+
+**D. Validaciones heredadas (lista A del 14-oct):** primer ingreso de dirigente/técnico, Usuarios y Roles en celular, resultados de la landing, póster/selector de jornadas, guardado real de categoría, permisos por rol y vínculo de jugador por cédula.
+
 ## 2026-11-12 (parte 2) - Inscripción por categoría: «Equipos» cuenta los inscritos
 
 - **Reporte del usuario (producción):** Liga InterEmpresarial / Abierta mostraba 29 equipos, pero hay 28 inscritos. La captura mostraba Esperado $2.850 con inscripción de $100: 29 × $100 sería $2.900, así que uno de los cargos es de otro monto.
