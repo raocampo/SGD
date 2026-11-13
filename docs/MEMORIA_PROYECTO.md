@@ -1,6 +1,10 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-11-09 (America/Guayaquil), cierre en Fedora.
+Actualizada: 2026-11-12 (America/Guayaquil).
+
+## Último trabajo: inscripción y premios por categoría (12-nov)
+
+- Finanzas → Resumen Ejecutivo: tarjeta «Inscripción y premios por categoría» (`Finanza.obtenerInscripcionPorCategoria`, `GET /api/finanzas/inscripcion-por-categoria`). Totales iguales a la fila «Inscripción» de Utilidad por Rubro; montos sin categoría en fila aparte. Sin migración. Pendiente: revisar en producción con premios reales.
 
 ## Para retomar (oficina)
 

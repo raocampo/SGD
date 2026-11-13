@@ -1,3 +1,12 @@
+## 2026-11-12 - Finanzas: inscripción y premios por categoría
+
+- **Pedido del usuario:** separar por categoría la inscripción del resumen financiero, para cruzarla con los premios, que ya se registran por categoría.
+- **Análisis:** los cargos de inscripción ya se generan por categoría (`evento_id`, uno por equipo inscrito) y el formulario de premios exige categoría (02-oct). La «Utilidad por Rubro» los sumaba en una sola fila por campeonato. En la BD local todos los abonos de inscripción y los premios tienen categoría; en producción podría haber montos sin ella.
+- **Backend:** `Finanza.obtenerInscripcionPorCategoria` y `GET /api/finanzas/inscripcion-por-categoria?campeonato_id=` (administrador, u organizador de sus campeonatos; 403 si es ajeno, 400 sin campeonato). Sincroniza los cargos antes de calcular y devuelve por categoría: equipos, valor de inscripción, esperado (cargos), cobrado (abonos), pendiente, premios, utilidad (cobrado − premios) y utilidad proyectada (esperado − premios). Los montos sin categoría van a una fila «Sin categoría», así que el total coincide con la fila «Inscripción» de la Utilidad por Rubro. Sin migración.
+- **Frontend:** tarjeta «Inscripción y premios por categoría» en la pestaña del Resumen Ejecutivo, debajo de la Utilidad por Rubro. Se recarga siempre junto con ella (filtros, alta/edición de premios). También se incluye en «Imprimir ejecutivo» si hay un campeonato seleccionado.
+- **Verificación** (BD local, datos temporales eliminados): campeonato 20 con una categoría, total igual a la Utilidad por Rubro (688 / 1 850). Campeonato 2 con 3 categorías y premios temporales en dos: cada categoría con sus premios, esperado = equipos × valor (23×85, 18×80, 8×60), fila «Sin categoría» con un abono temporal, totales iguales a la Utilidad por Rubro. Navegador como organizador, en escritorio y celular (scroll horizontal como las demás tablas); 403/400; reporte impreso con la tabla. Guards **49/49**, asociación **12/12**, móvil **22/22**, planilla **15/15**.
+- Siguen vigentes los pendientes del cierre del 09-nov (entrada inferior), sobre todo verificar en producción el despliegue y la transmisión, y la decisión sobre la seguridad del overlay.
+
 ## 2026-11-09 - Cierre de sesión (Fedora) y pendientes para continuar en la oficina
 
 ### Estado al cerrar

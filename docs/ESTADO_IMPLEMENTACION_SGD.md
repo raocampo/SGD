@@ -1,3 +1,8 @@
+## 2026-11-12 - Finanzas: inscripción y premios por categoría
+
+- Nuevo cuadro por categoría en el Resumen Ejecutivo: esperado, cobrado, pendiente, premios, utilidad y proyectada; también en el reporte impreso. Endpoint `GET /api/finanzas/inscripcion-por-categoria`. Totales iguales a la fila «Inscripción» de Utilidad por Rubro. Sin migración.
+- Pendiente: revisarlo en producción con un campeonato real de varias categorías y premios cargados.
+
 ## 2026-11-09 - Cierre del día y pendientes
 
 - Publicado hasta `b768e8a`: co-organizador (confirmado en producción), auditoría por persona, correcciones de planilla/modales/portal del jugador, Nuevo Campeonato por secciones, alta de básquetbol, paneles de transmisión reparados, transmisión multiplataforma y publicidad en el overlay. Migraciones 077–079, que se aplican solas.
