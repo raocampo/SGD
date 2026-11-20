@@ -2,11 +2,15 @@
 
 Actualizada: 2026-11-20 (America/Guayaquil).
 
-## Último trabajo: sanciones cronológicas y novedades en la planilla (20-nov)
+## Último trabajo: seguridad de transmisiones (20-nov, parte 2)
+
+- `services/transmisionAcceso.js`: un organizador solo opera transmisiones/overlay de sus campeonatos (403/404). Socket sin `overlay:update`; `webrtc:broadcaster-join` con token y propiedad.
+
+## Trabajo anterior: sanciones cronológicas y novedades en la planilla (20-nov)
 
 - `calcularEstadoDisciplinarioEquipo` ordena los partidos por fecha/hora (`ordenarPartidosCronologicamenteDisciplina`), no por jornada. Planilla de un partido por jugar = estado del día (como el reporte y la tarjeta); de uno jugado = antes de él. Caso LojaSystem/Melvin Quilca.
 - Planilla: bloque por equipo con sancionados y saldo al día del partido sin los cobros del propio partido (`estado_cuenta_equipos`; dirigente/técnico solo su equipo, jugador nada). También en la vista previa oficial y el PDF.
-- Pendiente: confirmar en producción que la planilla LojaSystem vs Municipio y el Reporte de Sanciones coinciden.
+- Confirmado en producción por el usuario.
 
 ## Trabajo anterior: inscripción y premios por categoría (12-nov)
 
@@ -14,11 +18,11 @@ Actualizada: 2026-11-20 (America/Guayaquil).
 
 ## Para retomar (20-nov)
 
-- `main` = `origin/main` en `3c44e16` (sanciones cronológicas y novedades en la planilla) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- `main` = `origin/main` en `bddf01c` (propiedad de transmisiones y sockets autenticados) + docs. Sanciones cronológicas confirmadas en producción por el usuario. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
 - Sin migraciones nuevas desde la `079` (todas se aplican solas en el backend).
-- **Primero:** en producción, comprobar que la planilla LojaSystem vs Municipio de Loja y el Reporte de Sanciones de la Abierta coinciden. Después, Liga InterEmpresarial → Finanzas → Resumen Ejecutivo: confirmar 28 equipos y revisar el equipo del aviso y su origen (manual → revisar o anular el movimiento; sistema → decidir si se corrige la sincronización de cargos).
+- **Primero:** en producción, Liga InterEmpresarial → Finanzas → Resumen Ejecutivo: confirmar 28 equipos y revisar el equipo del aviso y su origen (manual → revisar o anular el movimiento; sistema → decidir si se corrige la sincronización de cargos).
 - Después, los pendientes del 09-nov sin confirmar: despliegue en Railway, básquet de prueba, transmisión real con overlay y publicidad.
-- **Decisión recomendada:** seguridad del overlay (socket `overlay:update` sin autenticación y propiedad de la transmisión).
+- Seguridad del overlay **resuelta** (20-nov): propiedad del organizador en todas las rutas de transmisión/overlay, sin `overlay:update` anónimo y broadcaster WebRTC con token.
 - Lista completa y priorizada: primera entrada de `docs/BITACORA_AVANCES.md` (cierre del 12-nov).
 
 ## Trabajo anterior: transmisión multiplataforma y publicidad (09-nov)

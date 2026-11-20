@@ -1,3 +1,7 @@
+## 2026-11-20 - Seguridad de transmisiones
+
+- Transmisiones y overlay restringidos al organizador dueño del campeonato; sin reenvío de overlay por socket sin autenticación; broadcaster WebRTC con token. Sanciones cronológicas confirmadas en producción.
+
 ## 2026-11-20 - Sanciones cronológicas y novedades en la planilla
 
 - Las suspensiones se cumplen por fecha de juego, no por jornada; la planilla de un partido por jugar coincide con el Reporte de Sanciones y la tarjeta del equipo.
