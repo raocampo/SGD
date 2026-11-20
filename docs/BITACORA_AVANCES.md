@@ -1,3 +1,37 @@
+## 2026-11-20 - Cierre del día y pendientes para continuar
+
+### Estado al cerrar
+- `main` = `origin/main` en `7f6136a` + este cierre documental. Sin cambios locales; sin datos de prueba en la BD local (transmisiones temporales eliminadas). Sin migraciones nuevas (última: `079`).
+
+### Lo realizado hoy
+1. **Sanciones en orden cronológico** (`3c44e16`): las suspensiones se cumplen por fecha de juego, no por jornada; la planilla de un partido por jugar coincide con el Reporte de Sanciones y la tarjeta del equipo (caso LojaSystem / Melvin Quilca). **Confirmado en producción por el usuario.**
+2. **Novedades por equipo en la planilla** (`3c44e16`): sancionados y saldo al día del partido (inscripción, arbitraje, multas), también en la vista previa oficial y el PDF; el dirigente/técnico ve solo el saldo de su equipo. Corregido el desborde de la captura en celular.
+3. **Seguridad de transmisiones** (`bddf01c`, pendiente B.1 cerrado): propiedad del organizador en todas las rutas de transmisión y overlay, sin `overlay:update` anónimo por socket, broadcaster WebRTC con token.
+4. **Revisión de BD en solo lectura** (autorizada por el usuario, sin cambios): **producción no accesible**, porque la URL de `.env.local` es del 10-oct y falla la contraseña desde la rotación del 21-oct. Se revisó la copia local (producción al 05-oct):
+   - 30 partidos con fecha pasada siguen «programados». Destacan Interjorgas Financiero / Abierta (7, entre 07-jun y 30-ago, sin planilla) y 5 partidos del Fútsala de Padres (eventos 27, 29 y 30, junio) **con planilla cargada pero sin cerrar**: no cuentan para la tabla ni las sanciones. Los 11 de la Liga InterEmpresarial (02/03-oct) probablemente se jugaron después de la copia. Resto: Copa Ciudad de Loja Master (1, dic-2025), Copa Velocity U35/U40/U50 (4, ago–sep), Barrial Senior (1, jul), Fútsala Abierta Femenino (1, jun).
+   - Cargos de inscripción a equipos no inscritos en la copia: solo GALÁCTICOS S.C. (campeonato 7, $20, manual, sin categoría). El caso de la Liga InterEmpresarial (29 vs 28) es posterior a la copia.
+
+### Cómo retomar
+- En otro equipo (MEGA no sincroniza `.git`): `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`. Si no, revisar antes.
+- Leer `docs/MEMORIA_PROYECTO.md`, sección «Para retomar».
+
+### Pendientes (por prioridad)
+
+**A. Necesita al usuario**
+1. **Actualizar la URL de producción** en la última línea de `.env.local` (Railway → Postgres → Connect → URL pública). Con eso, repetir en **solo lectura**: equipo del aviso de la Liga InterEmpresarial y su origen (manual/sistema), y la lista vigente de partidos pasados sin cerrar.
+2. Recargar el Panel de Director y `broadcast.html` antes de la próxima transmisión (versión con permisos nuevos).
+3. Pendientes del 09-nov aún sin confirmar: transmisión real con OBS/Prism hacia YouTube, Facebook y TikTok con overlay, entretiempo y auspiciantes con logo; TikTok con LIVE; campeonato de básquetbol de prueba; Nuevo Campeonato por secciones, planilla de dirigente en solo lectura, modales de Facturación en celular, bienvenida del jugador.
+4. Revisar en producción el bloque de sancionados/saldo de la planilla con un partido real.
+
+**B. Decisiones del usuario**
+1. Cargos automáticos de inscripción a equipos que solo aparecen en partidos (según A.1).
+2. Partidos pasados «programados»: cerrar los 5 del Fútsala que ya tienen planilla; decidir el resto (no jugados, reprogramar o dejar). Posible renumeración de jornadas de los eventos 16, 18, 19 y 30.
+3. Código de pertenencia al registrarse (en espera).
+
+**C. Insumos externos:** proveedor de correo (Railway Hobby bloquea SMTP), credenciales PayPhone/PayPal, credenciales/contrato para QA mobile.
+
+**D. Validaciones heredadas (lista A del 14-oct):** primer ingreso de dirigente/técnico, Usuarios y Roles en celular, resultados de la landing, póster/selector de jornadas, guardado real de categoría, permisos por rol y vínculo de jugador por cédula.
+
 ## 2026-11-20 (parte 2) - Transmisiones: propiedad del organizador y sockets autenticados
 
 - **Confirmado por el usuario en producción:** el Reporte de Sanciones ya muestra a los sancionados y ya no depende del número de jornada (entrada inferior). Cerrado.

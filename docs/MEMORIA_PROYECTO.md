@@ -1,6 +1,6 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-11-20 (America/Guayaquil).
+Actualizada: 2026-11-20, cierre del día (America/Guayaquil).
 
 ## Último trabajo: seguridad de transmisiones (20-nov, parte 2)
 
@@ -16,14 +16,13 @@ Actualizada: 2026-11-20 (America/Guayaquil).
 
 - Finanzas → Resumen Ejecutivo: tarjeta «Inscripción y premios por categoría» (`Finanza.obtenerInscripcionPorCategoria`, `GET /api/finanzas/inscripcion-por-categoria`). Totales iguales a la fila «Inscripción» de Utilidad por Rubro; montos sin categoría en fila aparte. Sin migración. «Equipos» cuenta los inscritos (`evento_equipos`); los cargos de inscripción a equipos no inscritos se muestran en un aviso (caso Liga InterEmpresarial: 29 vs 28). Pendiente: revisar en producción el equipo del aviso y su origen.
 
-## Para retomar (20-nov)
+## Para retomar (21-nov)
 
-- `main` = `origin/main` en `bddf01c` (propiedad de transmisiones y sockets autenticados) + docs. Sanciones cronológicas confirmadas en producción por el usuario. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- `main` = `origin/main` en `7f6136a` + cierre documental del 20-nov. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
 - Sin migraciones nuevas desde la `079` (todas se aplican solas en el backend).
-- **Primero:** en producción, Liga InterEmpresarial → Finanzas → Resumen Ejecutivo: confirmar 28 equipos y revisar el equipo del aviso y su origen (manual → revisar o anular el movimiento; sistema → decidir si se corrige la sincronización de cargos).
-- Después, los pendientes del 09-nov sin confirmar: despliegue en Railway, básquet de prueba, transmisión real con overlay y publicidad.
-- Seguridad del overlay **resuelta** (20-nov): propiedad del organizador en todas las rutas de transmisión/overlay, sin `overlay:update` anónimo y broadcaster WebRTC con token.
-- Lista completa y priorizada: primera entrada de `docs/BITACORA_AVANCES.md` (cierre del 12-nov).
+- **Primero:** pedir al usuario la URL actual de producción en la última línea de `.env.local` (la guardada falla desde la rotación del 21-oct). Autorizó consultas **solo de lectura** (`PGOPTIONS='-c default_transaction_read_only=on'`), sin cambios. Revisar el aviso de la Liga InterEmpresarial y los partidos pasados sin cerrar.
+- Luego, decisiones: cerrar los 5 partidos del Fútsala con planilla, resto de partidos pasados y cargos a equipos no inscritos.
+- Lista completa y priorizada: primera entrada de `docs/BITACORA_AVANCES.md` (cierre del 20-nov).
 
 ## Trabajo anterior: transmisión multiplataforma y publicidad (09-nov)
 

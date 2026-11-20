@@ -1,3 +1,8 @@
+## 2026-11-20 - Cierre del día
+
+- Publicado hasta `7f6136a`: sanciones cronológicas (confirmadas en producción), novedades por equipo en la planilla y seguridad de transmisiones.
+- Pendientes: URL de producción vencida (pedir la nueva para revisar en solo lectura la Liga InterEmpresarial y los partidos pasados sin cerrar); decisiones sobre esos partidos. Lista completa en la primera entrada de la bitácora.
+
 ## 2026-11-20 - Seguridad de transmisiones
 
 - Transmisiones y overlay restringidos al organizador dueño del campeonato; sin reenvío de overlay por socket sin autenticación; broadcaster WebRTC con token. Sanciones cronológicas confirmadas en producción.
