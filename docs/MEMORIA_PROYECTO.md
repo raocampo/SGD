@@ -1,16 +1,22 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-11-12 (America/Guayaquil).
+Actualizada: 2026-11-20 (America/Guayaquil).
 
-## Último trabajo: inscripción y premios por categoría (12-nov)
+## Último trabajo: sanciones cronológicas y novedades en la planilla (20-nov)
+
+- `calcularEstadoDisciplinarioEquipo` ordena los partidos por fecha/hora (`ordenarPartidosCronologicamenteDisciplina`), no por jornada. Planilla de un partido por jugar = estado del día (como el reporte y la tarjeta); de uno jugado = antes de él. Caso LojaSystem/Melvin Quilca.
+- Planilla: bloque por equipo con sancionados y saldo al día del partido sin los cobros del propio partido (`estado_cuenta_equipos`; dirigente/técnico solo su equipo, jugador nada). También en la vista previa oficial y el PDF.
+- Pendiente: confirmar en producción que la planilla LojaSystem vs Municipio y el Reporte de Sanciones coinciden.
+
+## Trabajo anterior: inscripción y premios por categoría (12-nov)
 
 - Finanzas → Resumen Ejecutivo: tarjeta «Inscripción y premios por categoría» (`Finanza.obtenerInscripcionPorCategoria`, `GET /api/finanzas/inscripcion-por-categoria`). Totales iguales a la fila «Inscripción» de Utilidad por Rubro; montos sin categoría en fila aparte. Sin migración. «Equipos» cuenta los inscritos (`evento_equipos`); los cargos de inscripción a equipos no inscritos se muestran en un aviso (caso Liga InterEmpresarial: 29 vs 28). Pendiente: revisar en producción el equipo del aviso y su origen.
 
-## Para retomar (13-nov)
+## Para retomar (20-nov)
 
-- `main` = `origin/main` en `5526f6d` + cierre documental. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- `main` = `origin/main` en `3c44e16` (sanciones cronológicas y novedades en la planilla) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
 - Sin migraciones nuevas desde la `079` (todas se aplican solas en el backend).
-- **Primero:** en producción, Liga InterEmpresarial → Finanzas → Resumen Ejecutivo: confirmar 28 equipos y revisar el equipo del aviso y su origen (manual → revisar o anular el movimiento; sistema → decidir si se corrige la sincronización de cargos).
+- **Primero:** en producción, comprobar que la planilla LojaSystem vs Municipio de Loja y el Reporte de Sanciones de la Abierta coinciden. Después, Liga InterEmpresarial → Finanzas → Resumen Ejecutivo: confirmar 28 equipos y revisar el equipo del aviso y su origen (manual → revisar o anular el movimiento; sistema → decidir si se corrige la sincronización de cargos).
 - Después, los pendientes del 09-nov sin confirmar: despliegue en Railway, básquet de prueba, transmisión real con overlay y publicidad.
 - **Decisión recomendada:** seguridad del overlay (socket `overlay:update` sin autenticación y propiedad de la transmisión).
 - Lista completa y priorizada: primera entrada de `docs/BITACORA_AVANCES.md` (cierre del 12-nov).

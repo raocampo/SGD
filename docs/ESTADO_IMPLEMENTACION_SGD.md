@@ -1,3 +1,8 @@
+## 2026-11-20 - Sanciones cronológicas y novedades en la planilla
+
+- Las suspensiones se cumplen por fecha de juego, no por jornada; la planilla de un partido por jugar coincide con el Reporte de Sanciones y la tarjeta del equipo.
+- La planilla muestra por equipo los sancionados y el saldo al día del partido (inscripción, arbitraje, multas), también en la impresión y el PDF. Sin migración.
+
 ## 2026-11-12 - Cierre del día
 
 - Publicado hasta `5526f6d`: inscripción y premios por categoría en Finanzas, con «Equipos» = inscritos y un aviso de cargos a equipos no inscritos.
