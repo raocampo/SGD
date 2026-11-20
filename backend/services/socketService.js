@@ -11,6 +11,22 @@ const { Server } = require("socket.io");
 
 let io = null;
 
+// Usuario de un token de sesión, con la misma resolución que requireAuth
+// (incluida la identidad efectiva del co-organizador). null si no es válido.
+async function usuarioDesdeToken(token) {
+  try {
+    if (!token) return null;
+    const jwt = require("jsonwebtoken");
+    const UsuarioAuth = require("../models/UsuarioAuth");
+    const payload = jwt.verify(String(token), process.env.JWT_SECRET || "sgd-dev-secret-change-me");
+    const user = await UsuarioAuth.obtenerPorId(payload?.id);
+    if (!user || !user.activo) return null;
+    return UsuarioAuth.resolverIdentidadEfectiva(UsuarioAuth.limpiarUsuario(user));
+  } catch (_) {
+    return null;
+  }
+}
+
 // Mapa broadcaster activo por transmisión: transmision_id → socket.id
 const webrtcBroadcasters = new Map();
 
@@ -44,14 +60,22 @@ function initSocket(httpServer) {
       socket.join(`overlay:${transmision_id}`);
     });
 
-    socket.on("overlay:update", ({ transmision_id, state }) => {
-      if (!transmision_id || !state) return;
-      socket.to(`overlay:${transmision_id}`).emit("overlay:state", state);
-    });
+    // El estado del overlay solo se cambia por PUT /api/transmisiones/:id/overlay
+    // (autenticado y con propiedad verificada), que lo emite con emitOverlayState.
+    // Antes existía un reenvío "overlay:update" sin autenticación: cualquiera que
+    // conociera el id de una transmisión podía cambiar marcador, texto o publicidad.
 
     // ── WebRTC Broadcaster ─────────────────────────────────────────
-    socket.on("webrtc:broadcaster-join", ({ transmision_id }) => {
+    // Solo el organizador dueño (o el administrador) puede transmitir: antes
+    // cualquiera con el id podía reemplazar al broadcaster y emitir su video.
+    socket.on("webrtc:broadcaster-join", async ({ transmision_id, token } = {}) => {
       if (!transmision_id) return;
+      const { usuarioPuedeOperarTransmision } = require("./transmisionAcceso");
+      const user = await usuarioDesdeToken(token);
+      if (!user || !(await usuarioPuedeOperarTransmision(user, transmision_id))) {
+        socket.emit("webrtc:broadcaster-denied", { error: "No autorizado para transmitir en esta transmisión." });
+        return;
+      }
       const room = `broadcast:${transmision_id}`;
       socket.join(room);
       webrtcBroadcasters.set(String(transmision_id), socket.id);

@@ -1,4 +1,10 @@
 const PartidoTransmision = require("../models/PartidoTransmision");
+const {
+  campeonatoDePartido,
+  verificarAccesoTransmision,
+  verificarAccesoPartido,
+  verificarAccesoCampeonato,
+} = require("../services/transmisionAcceso");
 
 // Errores de validación del modelo (p. ej. URL de enlace inválida) → 400.
 function estadoError(err) {
@@ -11,6 +17,7 @@ async function obtenerTransmision(req, res) {
     if (!Number.isFinite(partidoId) || partidoId <= 0) {
       return res.status(400).json({ error: "ID de partido inválido." });
     }
+    if (!(await verificarAccesoPartido(req, res, partidoId))) return;
     const transmision = await PartidoTransmision.obtenerPorPartido(partidoId);
     return res.json({ transmision: transmision || null });
   } catch (err) {
@@ -25,6 +32,7 @@ async function crearTransmision(req, res) {
       return res.status(400).json({ error: "ID de partido inválido." });
     }
 
+    if (!(await verificarAccesoPartido(req, res, partidoId))) return;
     const existente = await PartidoTransmision.obtenerPorPartido(partidoId);
     if (existente) {
       return res.status(409).json({ error: "Ya existe una transmisión para este partido.", transmision: existente });
@@ -44,7 +52,8 @@ async function crearTransmision(req, res) {
 
     const transmision = await PartidoTransmision.crear({
       partido_id: partidoId,
-      campeonato_id: campeonato_id || null,
+      // El campeonato sale del partido: el del cuerpo podría ser ajeno.
+      campeonato_id: (await campeonatoDePartido(partidoId)).campeonatoId || campeonato_id || null,
       evento_id: evento_id || null,
       titulo: titulo || null,
       descripcion: descripcion || null,
@@ -70,6 +79,7 @@ async function actualizarTransmision(req, res) {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ error: "ID de transmisión inválido." });
     }
+    if (!(await verificarAccesoTransmision(req, res, id))) return;
 
     const {
       titulo,
@@ -82,6 +92,8 @@ async function actualizarTransmision(req, res) {
       campeonato_id,
       evento_id,
     } = req.body;
+
+    if (campeonato_id && !(await verificarAccesoCampeonato(req, res, campeonato_id))) return;
 
     const transmision = await PartidoTransmision.actualizar(id, {
       titulo,
@@ -111,6 +123,7 @@ async function iniciarTransmision(req, res) {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ error: "ID de transmisión inválido." });
     }
+    if (!(await verificarAccesoTransmision(req, res, id))) return;
     const transmision = await PartidoTransmision.iniciar(id);
     if (!transmision) {
       return res.status(404).json({ error: "Transmisión no encontrada." });
@@ -127,6 +140,7 @@ async function finalizarTransmision(req, res) {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ error: "ID de transmisión inválido." });
     }
+    if (!(await verificarAccesoTransmision(req, res, id))) return;
     const transmision = await PartidoTransmision.finalizar(id);
     if (!transmision) {
       return res.status(404).json({ error: "Transmisión no encontrada." });
@@ -143,6 +157,7 @@ async function cancelarTransmision(req, res) {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ error: "ID de transmisión inválido." });
     }
+    if (!(await verificarAccesoTransmision(req, res, id))) return;
     const transmision = await PartidoTransmision.cancelar(id);
     if (!transmision) {
       return res.status(404).json({ error: "Transmisión no encontrada." });
@@ -227,6 +242,7 @@ async function listarTransmisionesPorCampeonato(req, res) {
     if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) {
       return res.status(400).json({ error: "campeonato_id inválido." });
     }
+    if (!(await verificarAccesoCampeonato(req, res, campeonatoId))) return;
     const transmisiones = await PartidoTransmision.listarPorCampeonato(campeonatoId);
     return res.json({ transmisiones });
   } catch (err) {
@@ -240,6 +256,7 @@ async function toggleDestacado(req, res) {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ error: "ID de transmisión inválido." });
     }
+    if (!(await verificarAccesoTransmision(req, res, id))) return;
     const transmision = await PartidoTransmision.toggleDestacado(id);
     if (!transmision) {
       return res.status(404).json({ error: "Transmisión no encontrada." });
@@ -263,6 +280,7 @@ async function obtenerTransmisionPorId(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
     if (!id) return res.status(400).json({ error: "ID inválido" });
+    if (!(await verificarAccesoTransmision(req, res, id))) return;
     await PartidoTransmision.asegurarTabla();
     const result = await require("../config/database").query(
       `SELECT t.*,

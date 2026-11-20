@@ -897,11 +897,7 @@
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
       toast("✓ Overlay actualizado");
-
-      // También emitir por Socket.io directamente (respaldo)
-      if (socket && socket.connected) {
-        socket.emit("overlay:update", { transmision_id: transmisionId, state: estadoLocal });
-      }
+      // El backend emite el nuevo estado a los overlays tras guardar.
     } catch (err) {
       toast("Error enviando: " + err.message);
     }

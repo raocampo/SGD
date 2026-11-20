@@ -5,6 +5,7 @@ const PartidoTransmision = require("../models/PartidoTransmision");
 const TransmisionOverlay = require("../models/TransmisionOverlay");
 const Auspiciante = require("../models/Auspiciante");
 const { emitOverlayState } = require("../services/socketService");
+const { verificarAccesoTransmision } = require("../services/transmisionAcceso");
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -16,6 +17,7 @@ async function getOverlay(req, res) {
   try {
     const transmisionId = parseInt(req.params.id, 10);
     if (!transmisionId) return res.status(400).json({ error: "ID inválido" });
+    if (!(await verificarAccesoTransmision(req, res, transmisionId))) return;
 
     const state = await TransmisionOverlay.obtenerOCrear(transmisionId);
     res.json(state);
@@ -33,6 +35,7 @@ async function putOverlay(req, res) {
   try {
     const transmisionId = parseInt(req.params.id, 10);
     if (!transmisionId) return res.status(400).json({ error: "ID inválido" });
+    if (!(await verificarAccesoTransmision(req, res, transmisionId))) return;
 
     const state = await TransmisionOverlay.actualizar(transmisionId, req.body);
     emitOverlayState(transmisionId, state);
@@ -51,6 +54,7 @@ async function resetOverlay(req, res) {
   try {
     const transmisionId = parseInt(req.params.id, 10);
     if (!transmisionId) return res.status(400).json({ error: "ID inválido" });
+    if (!(await verificarAccesoTransmision(req, res, transmisionId))) return;
 
     const state = await TransmisionOverlay.reset(transmisionId);
     emitOverlayState(transmisionId, state);

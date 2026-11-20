@@ -392,7 +392,7 @@
     setStatus("live", "⬤ En vivo");
 
     if (transmisionId && socket?.connected) {
-      socket.emit("webrtc:broadcaster-join", { transmision_id: transmisionId });
+      socket.emit("webrtc:broadcaster-join", { transmision_id: transmisionId, token: tokenSesion() });
     }
   }
 
@@ -443,8 +443,14 @@
 
     socket.on("connect", () => {
       if (broadcasting && transmisionId) {
-        socket.emit("webrtc:broadcaster-join", { transmision_id: transmisionId });
+        socket.emit("webrtc:broadcaster-join", { transmision_id: transmisionId, token: tokenSesion() });
       }
+    });
+
+    // El backend rechazó al broadcaster (sin sesión o transmisión ajena)
+    socket.on("webrtc:broadcaster-denied", ({ error } = {}) => {
+      setStatus("", error || "No autorizado para transmitir");
+      if (broadcasting) detenerTransmision();
     });
 
     // Un viewer nuevo quiere ver la transmisión
