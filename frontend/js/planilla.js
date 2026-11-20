@@ -577,6 +577,112 @@ function formatearMoneda(valor) {
   }).format(n);
 }
 
+// ---- Novedades por equipo: sancionados y saldo al día del partido ----
+function obtenerSancionadosEquipoPlanilla(lado) {
+  const plantel = lado === "visitante" ? dataPlanilla?.plantel_visitante : dataPlanilla?.plantel_local;
+  return ordenarJugadoresPorApellidoPlanilla(Array.isArray(plantel) ? plantel : [])
+    .filter((j) => j?.suspension?.suspendido === true)
+    .map((j) => {
+      const registro = obtenerRegistroPlanillaJugador(j);
+      const pendientes = Number(j?.suspension?.partidos_pendientes || 0);
+      return {
+        numero: registro?.numero_camiseta || j?.numero_camiseta || "",
+        nombre: `${j?.nombre || ""} ${j?.apellido || ""}`.trim() || "Jugador",
+        motivo: String(j?.suspension?.motivo || "Suspendido").replace(/^Suspensión por\s+/i, ""),
+        pendientes,
+      };
+    });
+}
+
+function obtenerEstadoCuentaEquipoPlanilla(lado) {
+  const cuenta = dataPlanilla?.estado_cuenta_equipos?.[lado === "visitante" ? "visitante" : "local"];
+  return cuenta && typeof cuenta === "object" ? cuenta : null;
+}
+
+function formatearSaldoConceptoPlanilla(valor) {
+  const n = Number(valor || 0);
+  return n < 0 ? `${formatearMoneda(-n)} a favor` : formatearMoneda(n);
+}
+
+function textoPartidosPendientesPlanilla(n) {
+  return `${n} partido${n === 1 ? "" : "s"} pendiente${n === 1 ? "" : "s"}`;
+}
+
+function textoSancionadosPlanilla(lado) {
+  const items = obtenerSancionadosEquipoPlanilla(lado);
+  if (!items.length) return "Ninguno";
+  return items
+    .map((s) => `${s.numero ? `#${s.numero} ` : ""}${s.nombre} (${s.motivo}, ${textoPartidosPendientesPlanilla(s.pendientes)})`)
+    .join("; ");
+}
+
+function textoSaldoPlanilla(lado) {
+  const cuenta = obtenerEstadoCuentaEquipoPlanilla(lado);
+  if (!cuenta) return "";
+  const fecha = formatearFecha(cuenta.fecha_corte);
+  if (Number(cuenta.saldo_total || 0) <= 0) return `Al día (${fecha})`;
+  const partes = [
+    ["Insc.", cuenta.saldo_inscripcion],
+    ["Arb.", cuenta.saldo_arbitraje],
+    ["Multas", cuenta.saldo_multa],
+    ["Otros", cuenta.saldo_otros],
+  ]
+    .filter(([, v]) => Number(v || 0) > 0)
+    .map(([k, v]) => `${k} ${formatearMoneda(v)}`);
+  return `${formatearMoneda(cuenta.saldo_total)} al ${fecha}${partes.length ? ` (${partes.join(" · ")})` : ""}`;
+}
+
+function renderNovedadesEquipoPlanillaHtml(lado) {
+  const sancionados = obtenerSancionadosEquipoPlanilla(lado);
+  const cuenta = obtenerEstadoCuentaEquipoPlanilla(lado);
+
+  const sancionHtml = sancionados.length
+    ? `<ul class="planilla-novedades-lista">${sancionados
+        .map(
+          (s) => `<li>
+            <strong>${s.numero ? `#${escapeHtml(String(s.numero))} ` : ""}${escapeHtml(s.nombre)}</strong>
+            <span>${escapeHtml(s.motivo)} · ${textoPartidosPendientesPlanilla(s.pendientes)}</span>
+          </li>`
+        )
+        .join("")}</ul>`
+    : `<p class="planilla-novedades-ok">Sin jugadores sancionados para este partido.</p>`;
+
+  let cuentaHtml = "";
+  if (cuenta) {
+    const deuda = Number(cuenta.saldo_total || 0) > 0;
+    const filas = [
+      ["Inscripción", cuenta.saldo_inscripcion],
+      ["Arbitraje", cuenta.saldo_arbitraje],
+      ["Multas", cuenta.saldo_multa],
+      ...(Number(cuenta.saldo_otros || 0) !== 0 ? [["Otros", cuenta.saldo_otros]] : []),
+    ];
+    cuentaHtml = `
+      <div class="planilla-novedades-col">
+        <h6><i class="fas fa-wallet"></i> Saldo al ${escapeHtml(formatearFecha(cuenta.fecha_corte))}</h6>
+        <div class="planilla-novedades-saldos">
+          ${filas
+            .map(
+              ([label, valor]) => `<span class="${Number(valor || 0) > 0 ? "is-debe" : ""}">${label}
+                <strong>${formatearSaldoConceptoPlanilla(valor)}</strong></span>`
+            )
+            .join("")}
+          <span class="planilla-novedades-total ${deuda ? "is-debe" : "is-ok"}">Total
+            <strong>${deuda ? formatearMoneda(cuenta.saldo_total) : "Al día"}</strong></span>
+        </div>
+        <small class="form-hint">Sin incluir los cobros de este partido.</small>
+      </div>`;
+  }
+
+  return `
+    <div class="planilla-novedades-equipo ${sancionados.length ? "has-sanciones" : ""}">
+      <div class="planilla-novedades-col">
+        <h6><i class="fas fa-ban"></i> Sancionados (${sancionados.length})</h6>
+        ${sancionHtml}
+      </div>
+      ${cuentaHtml}
+    </div>`;
+}
+
 function formatearAvisoMorosidadPlanilla(aviso = null) {
   if (!aviso || typeof aviso !== "object") return "";
   const equipos = Array.isArray(aviso.equipos)
@@ -2742,9 +2848,12 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
     `
     : "";
 
+  const novedades = renderNovedadesEquipoPlanillaHtml(
+    idContenedor === "captura-visitante" ? "visitante" : "local"
+  );
   const jugadoresOrdenados = ordenarJugadoresPorApellidoPlanilla(jugadores || []);
   if (!jugadoresOrdenados.length) {
-    cont.innerHTML = `${acciones}<p class='form-hint'>No hay jugadores registrados en este equipo.</p>`;
+    cont.innerHTML = `${acciones}${novedades}<p class='form-hint'>No hay jugadores registrados en este equipo.</p>`;
     return;
   }
 
@@ -2847,6 +2956,7 @@ function renderTablaCapturaEquipo(idContenedor, jugadores, equipoId, equipoNombr
 
   cont.innerHTML = `
     ${acciones}
+    ${novedades}
     <div class="planilla-captura-table-wrap">
       <table class="planilla-captura-table">
         <thead>
@@ -4850,6 +4960,28 @@ function renderBloqueFaltasEquipo(label, faltasPrimerTiempo = 0, faltasSegundoTi
   `;
 }
 
+function construirNotasNovedadesEquipoPdf(lado, compacto = false, ultraCompacto = false) {
+  const fontSize = ultraCompacto ? 5.8 : compacto ? 6.3 : 7.2;
+  const notas = [
+    {
+      text: [{ text: "Sancionados: ", bold: true }, textoSancionadosPlanilla(lado)],
+      fontSize,
+      color: obtenerSancionadosEquipoPlanilla(lado).length ? "#991b1b" : "#111827",
+      margin: [0, 1, 0, 0],
+    },
+  ];
+  const saldo = textoSaldoPlanilla(lado);
+  if (saldo) notas.push({ text: [{ text: "Saldo: ", bold: true }, saldo], fontSize, margin: [0, 1, 0, 0] });
+  return notas;
+}
+
+function renderNotasNovedadesEquipoReporteHtml(lado) {
+  const saldo = textoSaldoPlanilla(lado);
+  return `<p class="planilla-oficial-novedad"><strong>Sancionados:</strong> ${escapeHtml(textoSancionadosPlanilla(lado))}</p>${
+    saldo ? `<p class="planilla-oficial-novedad"><strong>Saldo:</strong> ${escapeHtml(saldo)}</p>` : ""
+  }`;
+}
+
 function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
   const cont = document.getElementById("planilla-preview-content");
   if (!cont) return;
@@ -4979,6 +5111,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           </table>
           <div class="planilla-oficial-team-notes">
             <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(valorReportePlanilla(p.equipo_local_director_tecnico))}</p>
+            ${renderNotasNovedadesEquipoReporteHtml("local")}
             <div class="planilla-oficial-signature-row"><strong>Firma tecnico:</strong><span class="planilla-oficial-signature-line" aria-hidden="true"></span></div>
             <p><strong>TA:</strong> ${formatearConteoPlanilla(stats.totalAmarillasLocal, mostrarEnBlanco)} <strong>TR:</strong> ${formatearConteoPlanilla(stats.totalRojasLocal, mostrarEnBlanco)}</p>
           </div>
@@ -4994,6 +5127,7 @@ function renderVistaPreviaOficial(p, payload, stats, maxFilas, fecha, hora) {
           </table>
           <div class="planilla-oficial-team-notes">
             <p><strong>Dirigente / Director tecnico:</strong> ${escapeHtml(valorReportePlanilla(p.equipo_visitante_director_tecnico))}</p>
+            ${renderNotasNovedadesEquipoReporteHtml("visitante")}
             <div class="planilla-oficial-signature-row"><strong>Firma tecnico:</strong><span class="planilla-oficial-signature-line" aria-hidden="true"></span></div>
             <p><strong>TA:</strong> ${formatearConteoPlanilla(stats.totalAmarillasVisitante, mostrarEnBlanco)} <strong>TR:</strong> ${formatearConteoPlanilla(stats.totalRojasVisitante, mostrarEnBlanco)}</p>
           </div>
@@ -6206,6 +6340,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                   margin: [0, modoUltraCompactoPdf ? 3 : modoCompactoPdf ? 1 : 5, 0, 0],
                   fontSize: modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 6.8 : 7.8,
                 },
+                ...construirNotasNovedadesEquipoPdf("local", modoCompactoPdf, modoUltraCompactoPdf),
                 {
                   table: {
                     widths: [modoUltraCompactoPdf ? 56 : modoCompactoPdf ? 38 : 44, "*"],
@@ -6275,6 +6410,7 @@ async function imprimirPDFPlanilla(conObservaciones = true) {
                   margin: [0, modoUltraCompactoPdf ? 3 : modoCompactoPdf ? 1 : 5, 0, 0],
                   fontSize: modoUltraCompactoPdf ? 6.2 : modoCompactoPdf ? 6.8 : 7.8,
                 },
+                ...construirNotasNovedadesEquipoPdf("visitante", modoCompactoPdf, modoUltraCompactoPdf),
                 {
                   table: {
                     widths: [modoUltraCompactoPdf ? 56 : modoCompactoPdf ? 38 : 44, "*"],

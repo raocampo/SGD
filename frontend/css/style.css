@@ -3708,6 +3708,9 @@ body.modal-open {
   border-radius: 10px;
   background: #f8fbff;
   padding: 0.65rem;
+  /* Sin esto, en celular la tarjeta crecía al ancho mínimo de la tabla y la
+     página recortaba G/TA/TR; así la tabla se desplaza dentro de su wrap. */
+  min-width: 0;
 }
 
 .planilla-captura-card h5 {
@@ -3903,6 +3906,84 @@ body.modal-open {
 .planilla-player-suspension {
   color: #b91c1c !important;
   font-weight: 700;
+}
+
+/* Novedades del equipo en la planilla: sancionados y saldo al día del partido */
+.planilla-novedades-equipo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.6rem 1rem;
+  margin: 0 0 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #94a3b8;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 0.82rem;
+}
+
+.planilla-novedades-equipo.has-sanciones {
+  border-left-color: #dc2626;
+  background: #fff7f7;
+}
+
+.planilla-novedades-col h6 {
+  margin: 0 0 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.planilla-novedades-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planilla-novedades-lista li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.4rem;
+  padding: 0.1rem 0;
+}
+
+.planilla-novedades-lista li strong {
+  color: #991b1b;
+}
+
+.planilla-novedades-lista li span {
+  color: #b91c1c;
+}
+
+.planilla-novedades-ok {
+  margin: 0;
+  color: #15803d;
+}
+
+.planilla-novedades-saldos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+}
+
+.planilla-novedades-saldos span {
+  color: #475569;
+}
+
+.planilla-novedades-saldos span.is-debe strong {
+  color: #b45309;
+}
+
+.planilla-novedades-total.is-debe strong {
+  color: #b91c1c;
+}
+
+.planilla-novedades-total.is-ok strong {
+  color: #15803d;
+}
+
+.planilla-oficial-novedad {
+  font-size: 0.92em;
 }
 
 .planilla-captura-table input {

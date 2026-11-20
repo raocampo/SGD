@@ -1189,6 +1189,55 @@ function partidoCuentaParaSuspension(estado = "") {
   return value === "finalizado" || value === "no_presentaron_ambos";
 }
 
+function claveFechaPartidoDisciplina(fecha) {
+  if (!fecha) return "";
+  if (fecha instanceof Date) {
+    if (Number.isNaN(fecha.getTime())) return "";
+    const y = String(fecha.getFullYear()).padStart(4, "0");
+    const m = String(fecha.getMonth() + 1).padStart(2, "0");
+    const d = String(fecha.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  const texto = String(fecha).trim();
+  return /^\d{4}-\d{2}-\d{2}/.test(texto) ? texto.slice(0, 10) : "";
+}
+
+// Las suspensiones se cumplen en el orden en que se JUEGAN los partidos, no
+// en el de las jornadas: un partido aplazado de la J3 jugado después de la J5
+// va después de la J5. Los partidos sin fecha se ubican junto al último
+// partido con fecha de una jornada igual o anterior (históricos sin fecha).
+function ordenarPartidosCronologicamenteDisciplina(partidos = []) {
+  const lista = (Array.isArray(partidos) ? partidos : []).map((item) => ({
+    item,
+    fecha: claveFechaPartidoDisciplina(item?.fecha_partido),
+    hora: item?.fecha_partido ? String(item?.hora_partido || "").slice(0, 8) : "",
+    jornada: Number.isFinite(Number.parseInt(item?.jornada, 10))
+      ? Number.parseInt(item.jornada, 10)
+      : Number.MAX_SAFE_INTEGER,
+    id: Number.parseInt(item?.id, 10) || 0,
+  }));
+
+  const conFecha = lista.filter((x) => x.fecha);
+  lista.forEach((x) => {
+    if (x.fecha) {
+      x.clave = x.fecha;
+      return;
+    }
+    const previos = conFecha.filter((y) => y.jornada <= x.jornada).map((y) => y.fecha).sort();
+    x.clave = previos.length ? previos[previos.length - 1] : "";
+    x.hora = "99:99:99";
+  });
+
+  lista.sort(
+    (a, b) =>
+      a.clave.localeCompare(b.clave) ||
+      a.hora.localeCompare(b.hora) ||
+      a.jornada - b.jornada ||
+      a.id - b.id
+  );
+  return lista.map((x) => x.item);
+}
+
 function normalizarIdsJugadores(jugadores = []) {
   return (Array.isArray(jugadores) ? jugadores : [])
     .map((jugador) => Number.parseInt(jugador?.id, 10))
@@ -1235,14 +1284,23 @@ async function calcularEstadoDisciplinarioEquipo({
     ORDER BY p.jornada NULLS LAST, p.fecha_partido NULLS LAST, p.hora_partido NULLS LAST, p.id
   `;
   const partidosEquipoR = await pool.query(partidosEquipoQ, [eventoId, equipoId]);
-  const partidosEquipo = partidosEquipoR.rows || [];
+  const partidosEquipo = ordenarPartidosCronologicamenteDisciplina(partidosEquipoR.rows || []);
   if (!partidosEquipo.length) return resultado;
 
   let limitePartidos = partidosEquipo.length;
   if (Number.isFinite(partidoId) && partidoId > 0) {
     const indexPartidoActual = partidosEquipo.findIndex((item) => Number(item.id) === partidoId);
     if (indexPartidoActual < 0) return resultado;
-    limitePartidos = indexPartidoActual;
+    // Partido ya jugado: estado disciplinario con los partidos jugados antes
+    // que él. Partido por jugar: estado al día de hoy (todos los jugados),
+    // igual que el Reporte de Sanciones y la tarjeta del equipo, aunque su
+    // fecha programada haya quedado atrás por un aplazamiento.
+    if (partidoCuentaParaSuspension(partidosEquipo[indexPartidoActual]?.estado)) {
+      limitePartidos = indexPartidoActual;
+    } else {
+      partidosEquipo.splice(indexPartidoActual, 1);
+      limitePartidos = partidosEquipo.length;
+    }
   }
 
   const tipoFutbolNormalizado =
@@ -3633,9 +3691,10 @@ class Partido {
       Jugador.obtenerPorEquipo(partido.equipo_visitante_id, partido.evento_id),
     ]);
 
-    const [suspensionesLocal, suspensionesVisitante] = await Promise.all([
+    const [suspensionesLocal, suspensionesVisitante, estadoCuentaEquipos] = await Promise.all([
       this.calcularSuspensionesEquipoParaPartido(partido, plantelLocal, partido.equipo_local_id),
       this.calcularSuspensionesEquipoParaPartido(partido, plantelVisitante, partido.equipo_visitante_id),
+      this.obtenerEstadoCuentaEquiposPlanilla(partido),
     ]);
 
     const esFutbol11 = String(partido?.tipo_futbol || "").toLowerCase().includes("11");
@@ -3737,6 +3796,7 @@ class Partido {
       cambios: cambiosR.rows,
       plantel_local: plantelLocalConSuspension,
       plantel_visitante: plantelVisitanteConSuspension,
+      estado_cuenta_equipos: estadoCuentaEquipos,
     };
   }
 
@@ -3757,6 +3817,100 @@ class Partido {
       jugadores,
       tipoFutbol,
     });
+  }
+
+  // Saldo de cada equipo en la categoría al día del partido, sin los
+  // movimientos del propio partido (arbitraje y tarjetas de esta planilla):
+  // es lo que el equipo debía al llegar a jugar. Los cargos de inscripción se
+  // cuentan siempre, porque el sistema los re-fecha en cada sincronización.
+  static async obtenerEstadoCuentaEquiposPlanilla(partido = {}, client = pool) {
+    const vacio = { local: null, visitante: null };
+    try {
+      const campeonatoId = Number.parseInt(partido?.campeonato_id, 10);
+      const eventoId = Number.parseInt(partido?.evento_id, 10);
+      const partidoId = Number.parseInt(partido?.id, 10);
+      const ids = {
+        local: Number.parseInt(partido?.equipo_local_id, 10),
+        visitante: Number.parseInt(partido?.equipo_visitante_id, 10),
+      };
+      if (!Number.isFinite(campeonatoId) || campeonatoId <= 0) return vacio;
+      const idsValidos = Object.values(ids).filter((id) => Number.isFinite(id) && id > 0);
+      if (!idsValidos.length) return vacio;
+
+      await Finanza.asegurarEsquema(client);
+      const fechaPartido = claveFechaPartidoDisciplina(partido?.fecha_partido) || null;
+      const hayEvento = Number.isFinite(eventoId) && eventoId > 0;
+
+      const r = await client.query(
+        `
+          SELECT
+            fm.equipo_id,
+            fm.concepto,
+            COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS cargos,
+            COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS abonos
+          FROM finanzas_movimientos fm
+          WHERE fm.campeonato_id = $1
+            AND fm.equipo_id = ANY($2::int[])
+            AND fm.estado <> 'anulado'
+            AND ($3::int IS NULL OR fm.evento_id = $3::int)
+            AND ($4::int IS NULL OR fm.partido_id IS NULL OR fm.partido_id <> $4::int)
+            AND (
+              (fm.tipo_movimiento = 'cargo' AND fm.concepto = 'inscripcion')
+              OR fm.fecha_movimiento <= COALESCE(
+                $5::date,
+                (CURRENT_TIMESTAMP AT TIME ZONE 'America/Guayaquil')::date
+              )
+            )
+          GROUP BY fm.equipo_id, fm.concepto
+        `,
+        [
+          campeonatoId,
+          idsValidos,
+          hayEvento ? eventoId : null,
+          Number.isFinite(partidoId) && partidoId > 0 ? partidoId : null,
+          fechaPartido,
+        ]
+      );
+
+      const fechaCorteR = await client.query(
+        `SELECT COALESCE($1::date, (CURRENT_TIMESTAMP AT TIME ZONE 'America/Guayaquil')::date)::text AS fecha`,
+        [fechaPartido]
+      );
+      const fechaCorte = fechaCorteR.rows[0]?.fecha || fechaPartido;
+
+      const construir = (equipoId) => {
+        if (!Number.isFinite(equipoId) || equipoId <= 0) return null;
+        const conceptos = { inscripcion: 0, arbitraje: 0, multa: 0, otros: 0 };
+        r.rows
+          .filter((row) => Number(row.equipo_id) === equipoId)
+          .forEach((row) => {
+            const neto = Number(row.cargos || 0) - Number(row.abonos || 0);
+            const clave = Object.prototype.hasOwnProperty.call(conceptos, row.concepto)
+              ? row.concepto
+              : "otros";
+            conceptos[clave] += neto;
+          });
+        Object.keys(conceptos).forEach((k) => {
+          conceptos[k] = Number(conceptos[k].toFixed(2));
+        });
+        const total = Number(
+          Math.max(Object.values(conceptos).reduce((acc, v) => acc + v, 0), 0).toFixed(2)
+        );
+        return {
+          fecha_corte: fechaCorte,
+          saldo_inscripcion: conceptos.inscripcion,
+          saldo_arbitraje: conceptos.arbitraje,
+          saldo_multa: conceptos.multa,
+          saldo_otros: conceptos.otros,
+          saldo_total: total,
+        };
+      };
+
+      return { local: construir(ids.local), visitante: construir(ids.visitante) };
+    } catch (error) {
+      console.warn("No se pudo calcular el estado de cuenta de la planilla:", error?.message || error);
+      return vacio;
+    }
   }
 
   static async detectarColumnasBloqueoMorosidad(client = pool) {

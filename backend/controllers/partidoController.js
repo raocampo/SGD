@@ -484,6 +484,13 @@ exports.obtenerPlanillaPartido = async (req, res) => {
       if (!puedeLocal && !puedeVisitante) {
         return res.status(403).json({ error: "No autorizado para consultar este partido" });
       }
+      // Saldos: cada dirigente/técnico ve solo el de su equipo; el jugador, ninguno.
+      const esJugador = String(req.user?.rol || "").toLowerCase() === "jugador";
+      planilla.estado_cuenta_equipos = {
+        local: !esJugador && puedeLocal ? planilla.estado_cuenta_equipos?.local || null : null,
+        visitante:
+          !esJugador && puedeVisitante ? planilla.estado_cuenta_equipos?.visitante || null : null,
+      };
     }
 
     return res.json({ ok: true, ...planilla });
