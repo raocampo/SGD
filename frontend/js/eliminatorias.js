@@ -9,6 +9,9 @@ let eliminatoriaState = {
   eventos: [],
   gruposEvento: [],
   cruces: [],
+  // Llave proyectada (sin crear): configuración guardada + posiciones actuales.
+  proyeccion: [],
+  proyeccionInfo: null,
   eventoSeleccionado: null,
   configuracionPlayoff: null,
   esAdminLike: false,
@@ -1532,10 +1535,7 @@ function renderCabeceraPublicacion() {
   const logoEl = document.getElementById("eli-export-logo");
   const ctx = eliminatoriaState.contextoPublicacion || {};
 
-  if (tituloEl) {
-    const base = String(ctx.campeonatoNombre || "Campeonato").toUpperCase();
-    tituloEl.textContent = `${base} - PLAYOFF`;
-  }
+  actualizarTituloPublicacionLlave();
   if (subtituloEl) {
     subtituloEl.textContent = `Categoría: ${ctx.eventoNombre || "-"}`;
   }
@@ -1553,6 +1553,19 @@ function renderCabeceraPublicacion() {
   }
   restaurarFondoPublicacionGuardado();
   renderJornadaPlayoffPoster();
+}
+
+function actualizarTituloPublicacionLlave() {
+  const tituloEl = document.getElementById("eli-export-titulo");
+  if (!tituloEl) return;
+  const ctx = eliminatoriaState.contextoPublicacion || {};
+  const base = String(ctx.campeonatoNombre || "Campeonato").toUpperCase();
+  if (esLlaveProyectada()) {
+    const hoy = new Date().toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit", year: "numeric" });
+    tituloEl.textContent = `${base} - PLAYOFF PROYECTADO (al ${hoy})`;
+  } else {
+    tituloEl.textContent = `${base} - PLAYOFF`;
+  }
 }
 
 function renderAuspiciantesPosterEnGrid(wrapId, gridId, lista = [], fallbackTexto = "") {
@@ -2447,6 +2460,7 @@ async function cargarLlaveEliminatoria() {
   try {
     const resp = await ApiClient.get(`/eliminatorias/evento/${eventoId}`);
     eliminatoriaState.cruces = Array.isArray(resp?.partidos) ? resp.partidos : [];
+    await cargarProyeccionLlave(eventoId);
     actualizarBarraProgPlayoff();
     renderBracket();
     renderSembradoManualAsistido();
@@ -2463,6 +2477,48 @@ async function cargarLlaveEliminatoria() {
         </div>`;
     }
   }
+}
+
+async function cargarProyeccionLlave(eventoId) {
+  eliminatoriaState.proyeccion = [];
+  eliminatoriaState.proyeccionInfo = null;
+  if (eliminatoriaState.cruces.length || !eliminatoriaState.esAdminLike) return;
+  try {
+    const resp = await ApiClient.get(`/eliminatorias/evento/${eventoId}/proyeccion`);
+    if (Number(eliminatoriaState.eventoSeleccionado) !== Number(eventoId)) return;
+    eliminatoriaState.proyeccion = resp?.disponible && Array.isArray(resp?.partidos) ? resp.partidos : [];
+    eliminatoriaState.proyeccionInfo = resp || null;
+  } catch (error) {
+    console.warn("No se pudo calcular la llave proyectada:", error);
+  }
+}
+
+function esLlaveProyectada() {
+  return !eliminatoriaState.cruces.length && eliminatoriaState.proyeccion.length > 0;
+}
+
+function obtenerCrucesParaMostrar() {
+  return eliminatoriaState.cruces.length ? eliminatoriaState.cruces : eliminatoriaState.proyeccion;
+}
+
+function renderAvisoProyeccionLlave() {
+  if (esLlaveProyectada()) {
+    const pendientes = Number(eliminatoriaState.proyeccionInfo?.reclasificaciones_pendientes || 0);
+    return `
+      <div class="eli-proyeccion-aviso">
+        <i class="fas fa-eye"></i>
+        <div>
+          <strong>Llave proyectada</strong> con la configuración guardada y las posiciones actuales.
+          Cambia a medida que se juegan los partidos; puedes publicarla desde «Plantilla para publicar».
+          Para programar y registrar resultados, genérala en «Configuración de llave».
+          ${pendientes ? `<br><small>Hay ${pendientes} reclasificación${pendientes === 1 ? "" : "es"} pendiente${pendientes === 1 ? "" : "s"}: esos cupos figuran «Por definir».</small>` : ""}
+        </div>
+      </div>`;
+  }
+  const motivo = eliminatoriaState.proyeccionInfo?.motivo;
+  return motivo && !eliminatoriaState.cruces.length
+    ? `<p class="form-hint eli-proyeccion-motivo">Sin proyección: ${escapeHtml(motivo)}</p>`
+    : "";
 }
 
 async function recomponerLlaveEliminatoria() {
@@ -2635,7 +2691,9 @@ function renderMatchCardEliminatoria(c, { compact = false } = {}) {
   const finalizado = String(c.estado || "").toLowerCase() === "finalizado";
   const seedL = c.seed_local_ref ? `<small>${escapeHtml(c.seed_local_ref)}</small>` : "";
   const seedV = c.seed_visitante_ref ? `<small>${escapeHtml(c.seed_visitante_ref)}</small>` : "";
-  const estadoBadge = finalizado
+  const estadoBadge = c.proyectado
+    ? '<span class="eli-match-badge eli-badge-pendiente">Proyectado</span>'
+    : finalizado
     ? '<span class="eli-match-badge eli-badge-finalizado">Finalizado</span>'
     : c.fecha_partido
     ? '<span class="eli-match-badge eli-badge-programado">Programado</span>'
@@ -2664,14 +2722,16 @@ function renderMatchCardEliminatoria(c, { compact = false } = {}) {
         <span class="eli-score${visitaEsGanador ? " eli-score-ganador" : ""}">${escapeHtml(String(rv))}</span>
       </div>
       ${
-        !finalizado
+        c.proyectado
+          ? ""
+          : !finalizado
           ? '<div class="eli-winner eli-winner-pendiente"><i class="fas fa-clock"></i> Partido pendiente</div>'
           : c.ganador_nombre
             ? `<div class="eli-winner eli-winner-ok"><i class="fas fa-trophy"></i> ${escapeHtml(c.ganador_nombre)}</div>`
             : ""
       }
       ${
-        eliminatoriaState.esAdminLike
+        eliminatoriaState.esAdminLike && !c.proyectado
           ? `<div class="eli-match-actions">
               <button class="btn btn-warning" onclick="registrarResultadoEliminatoria(${Number(c.id)})">
                 <i class="fas fa-edit"></i> Resultado
@@ -3210,11 +3270,16 @@ function renderBracket() {
   const cont = document.getElementById("eli-bracket");
   if (!cont) return;
 
-  if (!eliminatoriaState.cruces.length) {
+  actualizarTituloPublicacionLlave();
+  const fuente = obtenerCrucesParaMostrar();
+  const avisoEl = document.getElementById("eli-proyeccion-aviso");
+  if (avisoEl) avisoEl.innerHTML = esLlaveProyectada() ? renderAvisoProyeccionLlave() : "";
+  if (!fuente.length) {
     cont.innerHTML = `
       <div class="empty-state">
         <i class="fas fa-sitemap"></i>
         <p>No hay llave creada para esta categoría.</p>
+        ${renderAvisoProyeccionLlave()}
       </div>`;
     renderPlantillaPreviewEliminatoria([]);
     renderPosterPublicacion([]);
@@ -3222,7 +3287,7 @@ function renderBracket() {
     return;
   }
 
-  const columnas = normalizarColumnasPlayoff(agruparPorRonda(eliminatoriaState.cruces));
+  const columnas = normalizarColumnasPlayoff(agruparPorRonda(fuente));
   const html = columnas
     .map((col) => {
       const cards = (col.cruces || []).map((c) => renderMatchCardEliminatoria(c)).join("");
@@ -3245,7 +3310,7 @@ function renderBracket() {
     })
     .join("");
 
-  cont.innerHTML = html;
+  cont.innerHTML = esLlaveProyectada() ? `<div class="eli-bracket-proyectado">${html}</div>` : html;
   renderPlantillaPreviewEliminatoria(columnas);
   renderPosterPublicacion(columnas);
   renderJornadaPlayoffPoster();
@@ -3857,7 +3922,7 @@ async function exportarEliminatoriaPNG() {
   try {
     const zona = getZonaExportEliminatoria();
     if (!zona) return;
-    if (!eliminatoriaState.cruces.length) {
+    if (!obtenerCrucesParaMostrar().length) {
       mostrarNotificacion("No hay llave cargada para exportar", "warning");
       return;
     }
@@ -3897,7 +3962,7 @@ async function exportarEliminatoriaPDF() {
   try {
     const zona = getZonaExportEliminatoria();
     if (!zona) return;
-    if (!eliminatoriaState.cruces.length) {
+    if (!obtenerCrucesParaMostrar().length) {
       mostrarNotificacion("No hay llave cargada para exportar", "warning");
       return;
     }
@@ -3949,7 +4014,7 @@ async function compartirEliminatoria() {
   try {
     const zona = getZonaExportEliminatoria();
     if (!zona) return;
-    if (!eliminatoriaState.cruces.length) {
+    if (!obtenerCrucesParaMostrar().length) {
       mostrarNotificacion("No hay llave cargada para compartir", "warning");
       return;
     }

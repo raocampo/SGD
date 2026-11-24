@@ -10946,3 +10946,35 @@ body.page-eliminatorias .modal-body {
     justify-content: center;
   }
 }
+
+/* Llave proyectada (sin crear): aviso y tarjetas atenuadas */
+.eli-proyeccion-aviso {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #2563eb;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.eli-proyeccion-aviso i {
+  margin-top: 0.15rem;
+}
+
+.empty-state .eli-proyeccion-motivo {
+  margin-top: 0.5rem;
+}
+
+.eli-bracket-proyectado {
+  display: contents;
+}
+
+.eli-bracket-proyectado .eli-match-card {
+  border-style: dashed;
+}

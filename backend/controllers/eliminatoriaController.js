@@ -171,6 +171,96 @@ const eliminatoriaController = {
     }
   },
 
+  // GET /eliminatorias/evento/:id/proyeccion
+  // Llave proyectada con la configuración guardada y las posiciones actuales,
+  // para ir viéndola y compartirla antes de generarla. Se arma con la misma
+  // lógica que la llave real dentro de una transacción que se descarta.
+  proyectarBracket: async (req, res) => {
+    try {
+      const evento_id = parseInt(req.params.evento_id, 10);
+      if (!Number.isFinite(evento_id)) {
+        return res.status(400).json({ error: "evento_id inválido" });
+      }
+      const evento = await validarAccesoEventoGestion(req, res, evento_id);
+      if (!evento) return;
+
+      // Esquema fuera de la transacción simulada (el ROLLBACK desharía el DDL).
+      await Eliminatoria.asegurarEsquema();
+      const existente = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM partidos_eliminatoria WHERE evento_id = $1`,
+        [evento_id]
+      );
+      if (Number(existente.rows[0]?.total || 0) > 0) {
+        return res.json({ disponible: false, existe_llave: true, partidos: [] });
+      }
+
+      const config = await Eliminatoria.obtenerConfiguracionPlayoff(evento_id);
+      const cfg = config?.configuracion || {};
+      const ev = config?.evento || {};
+      if (String(cfg.origen || "").toLowerCase() !== "grupos") {
+        return res.json({
+          disponible: false,
+          motivo: "La proyección se calcula cuando el playoff sale de la fase de grupos.",
+          partidos: [],
+        });
+      }
+      if (String(cfg.plantilla_llave || "").toLowerCase() === "manual_asistida") {
+        return res.json({
+          disponible: false,
+          motivo: "La llave está configurada en modo manual asistido: genérala para verla.",
+          partidos: [],
+        });
+      }
+
+      const eventoDetalleR = await pool.query(
+        `SELECT clasificacion_tabla_acumulada FROM eventos WHERE id = $1 LIMIT 1`,
+        [evento_id]
+      );
+      const tablaAcumulada = eventoDetalleR.rows[0]?.clasificacion_tabla_acumulada === true;
+
+      const generado = await Eliminatoria.generarBracketDesdeGrupos(evento_id, {
+        simular: true,
+        origen: "grupos",
+        metodo_clasificacion: tablaAcumulada ? "tabla_unica" : cfg.metodo_clasificacion,
+        clasificados_por_grupo: ev.clasificados_por_grupo,
+        plantilla_llave: cfg.plantilla_llave,
+        incluir_tercer_puesto: cfg.incluir_tercer_puesto,
+        cruces_grupos: cfg.cruces_grupos,
+        cantidad_equipos: ev.eliminatoria_equipos || null,
+      });
+
+      // Solo lo necesario para dibujar: sin ids reales ni partidos enlazados.
+      const partidos = (generado?.partidos || []).map((p, idx) => ({
+        id: -(idx + 1),
+        proyectado: true,
+        ronda: p.ronda,
+        partido_numero: p.partido_numero,
+        equipo_local_id: p.equipo_local_id,
+        equipo_visitante_id: p.equipo_visitante_id,
+        equipo_local_nombre: p.equipo_local_nombre,
+        equipo_visitante_nombre: p.equipo_visitante_nombre,
+        equipo_local_logo: p.equipo_local_logo,
+        equipo_visitante_logo: p.equipo_visitante_logo,
+        seed_local_ref: p.seed_local_ref,
+        seed_visitante_ref: p.seed_visitante_ref,
+        ganador_id: p.ganador_id,
+        ganador_nombre: p.ganador_nombre,
+        estado: "pendiente",
+      }));
+
+      return res.json({
+        disponible: partidos.length > 0,
+        proyectado: true,
+        generado_en: new Date().toISOString(),
+        reclasificaciones_pendientes: Number(generado?.meta?.reclasificaciones_pendientes || 0),
+        partidos,
+      });
+    } catch (error) {
+      // Sin clasificados suficientes, cruces inválidos, etc.: no es un fallo del servidor.
+      return res.json({ disponible: false, motivo: error.message, partidos: [] });
+    }
+  },
+
   generarBracket: async (req, res) => {
     try {
       const evento_id = parseInt(req.params.evento_id, 10);

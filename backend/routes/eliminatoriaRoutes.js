@@ -23,6 +23,12 @@ router.get(
   requireRoles("administrador", "organizador"),
   eliminatoriaController.obtenerResumenClasificacion
 );
+router.get(
+  "/evento/:evento_id/proyeccion",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  eliminatoriaController.proyectarBracket
+);
 router.post(
   "/evento/:evento_id/generar",
   requireAuth,

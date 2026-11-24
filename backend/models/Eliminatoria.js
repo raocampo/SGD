@@ -4141,7 +4141,8 @@ class Eliminatoria {
             (row) => String(row?.estado || "pendiente").toLowerCase() !== "resuelto"
           )
         : [];
-      if (reclasPendientes.length) {
+      // En simulación (proyección) se dibuja igual: los cupos sin definir quedan "Por definir".
+      if (reclasPendientes.length && opciones?.simular !== true) {
         throw new Error(
           `Existe ${reclasPendientes.length === 1 ? "una reclasificación pendiente" : `${reclasPendientes.length} reclasificaciones pendientes`} para completar los cupos playoff. Registra el ganador antes de generar la llave.`
         );
@@ -4223,11 +4224,19 @@ class Eliminatoria {
             client
           );
 
-      await client.query("COMMIT");
+      // Proyección: la llave se arma con la misma lógica que la real y se
+      // descarta. Nada queda guardado (ni slots ni partidos operativos).
+      if (opciones?.simular === true) {
+        await client.query("ROLLBACK");
+      } else {
+        await client.query("COMMIT");
+      }
       return {
         partidos: bracket,
         meta: {
           ...meta,
+          simulado: opciones?.simular === true,
+          reclasificaciones_pendientes: reclasPendientes.length,
           total_clasificados: entradasValidas.length,
           grupos: clasificadosData.grupos,
           plantilla_llave: plantillaLlave,
