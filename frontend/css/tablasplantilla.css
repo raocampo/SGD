@@ -719,3 +719,43 @@
   .tblp-equipo-nombre { max-width: 130px; }
   .tblp-field-area { min-height: 88px; }
 }
+
+/* ── Una postal por grupo (Posiciones) ─────────────────────────────── */
+.tblp-posters {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tblp-posters-hint {
+  margin: 0;
+  text-align: center;
+}
+
+.tblp-poster-item-bar {
+  width: min(920px, 100%);
+  margin: 0 auto 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tblp-poster-item-label {
+  font-weight: 800;
+  font-size: 1rem;
+  color: #1f2937;
+}
+
+/* Letra del grupo bien visible dentro de la postal */
+.tblp-poster .tblp-group-label {
+  display: inline-block;
+  font-size: clamp(1rem, 1.6vw, 1.35rem);
+  letter-spacing: .1em;
+  padding: .3rem 1rem;
+  border-radius: 999px;
+  background: var(--p-title-bg, #313131);
+  color: var(--p-title-color, #ffffff);
+  margin: .2rem 0 .7rem;
+}

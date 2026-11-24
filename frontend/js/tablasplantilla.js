@@ -87,62 +87,93 @@
 
   // ── Render tabla posiciones ───────────────────────────────────────────────
 
-  function renderPosterPosiciones(data) {
-    const grupos = data?.grupos || [];
-    if (!grupos.length) return emptyMsg("No hay datos de posiciones para esta categoría.");
+  // El backend entrega cada grupo como { grupo: { letra_grupo, nombre_grupo,
+  // clasificados_por_grupo }, tabla }. Una categoría sin grupos llega como un
+  // único grupo «Tabla General» con letra "-".
+  function obtenerGruposPosiciones(data) {
+    const grupos = Array.isArray(data?.grupos) ? data.grupos : [];
+    const clasificanEvento = Number.parseInt(data?.evento?.clasificados_por_grupo, 10) || 0;
+    return grupos.map((g) => {
+      const info = g?.grupo || {};
+      const letra = String(info.letra_grupo || g?.letra_grupo || "").trim();
+      const letraValida = letra && letra !== "-" ? letra.toUpperCase() : "";
+      const nombre = String(info.nombre_grupo || g?.nombre_grupo || "").trim();
+      let etiqueta = "";
+      if (letraValida) {
+        etiqueta = nombre && nombre.toUpperCase().includes(letraValida) ? nombre : `Grupo ${letraValida}`;
+      }
+      return {
+        letra: letraValida,
+        etiqueta,
+        clasifican: Number.parseInt(info.clasificados_por_grupo, 10) || clasificanEvento,
+        tabla: Array.isArray(g?.tabla) ? g.tabla : [],
+      };
+    });
+  }
 
-    const clasifican = Number.parseInt(data?.evento?.clasificados_por_grupo, 10) || 0;
+  function esPosicionesPorGrupo() {
+    if (tipoActual !== "posiciones" || !dataPosiciones) return false;
+    const grupos = obtenerGruposPosiciones(dataPosiciones);
+    return grupos.length > 1 || (grupos.length === 1 && !!grupos[0].letra);
+  }
 
-    const gruposHtml = grupos.map((g) => {
-      const filas = (g.tabla || []).map((row, idx) => {
-        const est = row.estadisticas || {};
-        const eliminado = row.eliminado_competencia === true || row.eliminado_manual === true;
-        const fuera = row.fuera_clasificacion === true;
-        const claseTr = eliminado ? "tblp-eliminado" : fuera ? "tblp-fuera" : idx < clasifican ? "tblp-clasifica" : "";
-        const nombre = row?.equipo?.nombre || "-";
-        return `
-          <tr class="${claseTr}">
-            <td class="col-pos"><span class="tblp-pos-badge">${Number(row.posicion || idx + 1)}</span></td>
-            <td class="col-equipo">
-              <div class="tblp-equipo-cell">
-                ${logoEquipoHtml(row?.equipo?.logo_url || null, nombre)}
-                <span class="tblp-equipo-nombre">${esc(nombre)}</span>
-              </div>
-            </td>
-            <td>${Number(est.partidos_jugados || 0)}</td>
-            <td>${Number(est.partidos_ganados || 0)}</td>
-            <td>${Number(est.partidos_empatados || 0)}</td>
-            <td>${Number(est.partidos_perdidos || 0)}</td>
-            <td class="col-gf">${Number(est.goles_favor || 0)}</td>
-            <td class="col-gc">${Number(est.goles_contra || 0)}</td>
-            <td class="col-dg">${Number(est.diferencia_goles || 0)}</td>
-            <td class="col-pts">${Number(row.puntos || 0)}</td>
-          </tr>`;
-      }).join("");
-
-      const tituloGrupo = grupos.length > 1 ? g.nombre || `Grupo ${g.grupo_letra || ""}` : "";
-
+  function renderTablaGrupoPosiciones(grupo) {
+    const filas = grupo.tabla.map((row, idx) => {
+      const est = row.estadisticas || {};
+      const eliminado = row.eliminado_competencia === true || row.eliminado_manual === true;
+      const fuera = row.fuera_clasificacion === true;
+      const claseTr = eliminado ? "tblp-eliminado" : fuera ? "tblp-fuera" : idx < grupo.clasifican ? "tblp-clasifica" : "";
+      const nombre = row?.equipo?.nombre || "-";
       return `
-        ${tituloGrupo ? `<div class="tblp-group-label">${esc(tituloGrupo)}</div>` : ""}
-        <div class="tblp-tabla-wrap">
-          <table class="tblp-tabla">
-            <thead>
-              <tr>
-                <th class="col-pos">#</th>
-                <th class="col-equipo">Equipo</th>
-                <th>PJ</th><th>PG</th><th>PE</th><th>PP</th>
-                <th class="col-gf">GF</th>
-                <th class="col-gc">GC</th>
-                <th class="col-dg">DG</th>
-                <th class="col-pts">PTS</th>
-              </tr>
-            </thead>
-            <tbody>${filas}</tbody>
-          </table>
-        </div>`;
+        <tr class="${claseTr}">
+          <td class="col-pos"><span class="tblp-pos-badge">${Number(row.posicion || idx + 1)}</span></td>
+          <td class="col-equipo">
+            <div class="tblp-equipo-cell">
+              ${logoEquipoHtml(row?.equipo?.logo_url || null, nombre)}
+              <span class="tblp-equipo-nombre">${esc(nombre)}</span>
+            </div>
+          </td>
+          <td>${Number(est.partidos_jugados || 0)}</td>
+          <td>${Number(est.partidos_ganados || 0)}</td>
+          <td>${Number(est.partidos_empatados || 0)}</td>
+          <td>${Number(est.partidos_perdidos || 0)}</td>
+          <td class="col-gf">${Number(est.goles_favor || 0)}</td>
+          <td class="col-gc">${Number(est.goles_contra || 0)}</td>
+          <td class="col-dg">${Number(est.diferencia_goles || 0)}</td>
+          <td class="col-pts">${Number(row.puntos || 0)}</td>
+        </tr>`;
     }).join("");
 
-    return `<div class="tblp-poster-body">${gruposHtml}</div>`;
+    return `
+      ${grupo.etiqueta ? `<div class="tblp-group-label">${esc(grupo.etiqueta)}</div>` : ""}
+      <div class="tblp-tabla-wrap">
+        <table class="tblp-tabla">
+          <thead>
+            <tr>
+              <th class="col-pos">#</th>
+              <th class="col-equipo">Equipo</th>
+              <th>PJ</th><th>PG</th><th>PE</th><th>PP</th>
+              <th class="col-gf">GF</th>
+              <th class="col-gc">GC</th>
+              <th class="col-dg">DG</th>
+              <th class="col-pts">PTS</th>
+            </tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // Una postal por grupo: cada una lleva su tabla (con la letra del grupo).
+  function renderPosterPosicionesGrupo(grupo) {
+    if (!grupo || !grupo.tabla.length) return emptyMsg("No hay datos de posiciones para este grupo.");
+    return `<div class="tblp-poster-body">${renderTablaGrupoPosiciones(grupo)}</div>`;
+  }
+
+  function renderPosterPosiciones(data) {
+    const grupos = obtenerGruposPosiciones(data);
+    if (!grupos.length) return emptyMsg("No hay datos de posiciones para esta categoría.");
+    return renderPosterPosicionesGrupo(grupos[0]);
   }
 
   // ── Render goleadores ─────────────────────────────────────────────────────
@@ -294,6 +325,52 @@
       default:           html = emptyMsg("Tipo desconocido.");
     }
     cont.innerHTML = html;
+    sincronizarPostersPorGrupo();
+  }
+
+  // Posiciones con grupos: la postal principal muestra el primer grupo y se
+  // agrega una copia completa (cabecera, título, auspiciantes y fondo) por
+  // cada grupo restante. Se vuelve a armar cuando cambian datos o fondo.
+  function sincronizarPostersPorGrupo() {
+    const wrap = document.getElementById("tblp-posters");
+    const master = wrap?.querySelector('.tblp-poster-item[data-poster-master="true"]');
+    if (!wrap || !master) return;
+    wrap.querySelectorAll(".tblp-poster-item.is-clone").forEach((el) => el.remove());
+
+    const barMaster = master.querySelector(".tblp-poster-item-bar");
+    const hint = document.getElementById("tblp-posters-hint");
+    const porGrupo = esPosicionesPorGrupo();
+    if (barMaster) barMaster.style.display = porGrupo ? "" : "none";
+    if (!porGrupo) {
+      master.dataset.grupo = "";
+      if (hint) hint.style.display = "none";
+      return;
+    }
+
+    const grupos = obtenerGruposPosiciones(dataPosiciones);
+    const etiquetaMaster = master.querySelector(".tblp-poster-item-label");
+    if (etiquetaMaster) etiquetaMaster.textContent = grupos[0].etiqueta || "Grupo 1";
+    master.dataset.grupo = grupos[0].letra || "1";
+
+    let anterior = master;
+    grupos.slice(1).forEach((grupo, idx) => {
+      const clon = master.cloneNode(true);
+      clon.classList.add("is-clone");
+      clon.removeAttribute("data-poster-master");
+      clon.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+      clon.dataset.grupo = grupo.letra || String(idx + 2);
+      const label = clon.querySelector(".tblp-poster-item-label");
+      if (label) label.textContent = grupo.etiqueta || `Grupo ${idx + 2}`;
+      const contenido = clon.querySelector(".tblp-poster-content");
+      if (contenido) contenido.innerHTML = renderPosterPosicionesGrupo(grupo);
+      anterior.after(clon);
+      anterior = clon;
+    });
+
+    if (hint) {
+      hint.textContent = `${grupos.length} postales, una por grupo. «Exportar imagen» descarga todas; también puedes descargar cada una por separado.`;
+      hint.style.display = "";
+    }
   }
 
   // ── Cabecera del poster ───────────────────────────────────────────────────
@@ -427,6 +504,7 @@
     } catch (e) {
       console.warn("No se pudo cargar cabecera del poster:", e);
     }
+    sincronizarPostersPorGrupo();
   }
 
   // ── Fondos predefinidos ────────────────────────────────────────────────────
@@ -442,14 +520,38 @@
     document.querySelectorAll(".tblp-bg-swatch[data-fondo]").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.fondo === fondo);
     });
+    sincronizarPostersPorGrupo();
   }
 
   // ── Export ─────────────────────────────────────────────────────────────────
 
-  function getNombreArchivo() {
+  function getNombreArchivo(grupo = "") {
     const tipo = tipoActual.replace("_", "-");
     const evento = eventoActual || "sin-evento";
-    return `tabla-${tipo}-evento-${evento}`;
+    const sufijo = grupo ? `-grupo-${String(grupo).toLowerCase()}` : "";
+    return `tabla-${tipo}-evento-${evento}${sufijo}`;
+  }
+
+  // Postales a exportar: una por grupo en Posiciones, si no la única.
+  function obtenerPostersExportables() {
+    const items = Array.from(document.querySelectorAll("#tblp-posters .tblp-poster-item"));
+    return items
+      .map((item) => ({ zona: item.querySelector(".tblp-poster"), grupo: item.dataset.grupo || "" }))
+      .filter((x) => x.zona);
+  }
+
+  async function capturarPoster(zona) {
+    await esperarImagenes(zona);
+    await inlineImagesAsBase64(zona);
+    return html2canvas(zona, {
+      scale: 2,
+      backgroundColor: null,
+      useCors: true,
+      width: zona.scrollWidth,
+      height: zona.scrollHeight,
+      windowWidth: zona.scrollWidth,
+      windowHeight: zona.scrollHeight,
+    });
   }
 
   async function esperarImagenes(zona) {
@@ -484,7 +586,7 @@
     }));
   }
 
-  async function exportarPNG() {
+  async function exportarPNG(soloItem = null) {
     if (exportEnCurso) return;
     if (!eventoActual) { mostrarNotificacion("Selecciona una categoría antes de exportar", "warning"); return; }
     if (!window.html2canvas) { mostrarNotificacion("No se cargó html2canvas", "error"); return; }
@@ -492,22 +594,18 @@
     exportEnCurso = true;
     setBotonesExport(true);
     try {
-      const zona = document.getElementById("tblp-poster");
-      await esperarImagenes(zona);
-      await inlineImagesAsBase64(zona);
-      const canvas = await html2canvas(zona, {
-        scale: 2,
-        backgroundColor: null,
-        useCors: true,
-        width: zona.scrollWidth,
-        height: zona.scrollHeight,
-        windowWidth: zona.scrollWidth,
-        windowHeight: zona.scrollHeight,
-      });
-      const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
-      if (!blob) throw new Error("No se pudo generar imagen");
-      descargarBlob(blob, `${getNombreArchivo()}.png`);
-      mostrarNotificacion("Imagen exportada", "success");
+      const posters = soloItem
+        ? [{ zona: soloItem.querySelector(".tblp-poster"), grupo: soloItem.dataset.grupo || "" }]
+        : obtenerPostersExportables();
+      for (const { zona, grupo } of posters) {
+        const canvas = await capturarPoster(zona);
+        const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
+        if (!blob) throw new Error("No se pudo generar imagen");
+        descargarBlob(blob, `${getNombreArchivo(posters.length > 1 || soloItem ? grupo : "")}.png`);
+        // Pausa breve: algunos navegadores bloquean descargas seguidas.
+        if (posters.length > 1) await new Promise((r) => setTimeout(r, 400));
+      }
+      mostrarNotificacion(posters.length > 1 ? `${posters.length} imágenes exportadas (una por grupo)` : "Imagen exportada", "success");
     } catch (err) {
       console.error(err);
       mostrarNotificacion("No se pudo exportar la imagen", "error");
@@ -525,32 +623,27 @@
     exportEnCurso = true;
     setBotonesExport(true);
     try {
-      const zona = document.getElementById("tblp-poster");
-      await esperarImagenes(zona);
-      await inlineImagesAsBase64(zona);
-      const canvas = await html2canvas(zona, {
-        scale: 2,
-        backgroundColor: null,
-        useCors: true,
-        width: zona.scrollWidth,
-        height: zona.scrollHeight,
-        windowWidth: zona.scrollWidth,
-        windowHeight: zona.scrollHeight,
-      });
-      const imgData = canvas.toDataURL("image/png");
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF("p", "mm", "a4");
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const props = pdf.getImageProperties(imgData);
-      const renderW = pageW - 10;
-      const renderH = (props.height * renderW) / props.width;
-      const finalH = Math.min(renderH, pageH - 12);
-      const y = (pageH - finalH) / 2;
-      pdf.addImage(imgData, "PNG", 5, y, renderW, finalH);
+      const posters = obtenerPostersExportables();
+      for (let i = 0; i < posters.length; i += 1) {
+        const canvas = await capturarPoster(posters[i].zona);
+        const imgData = canvas.toDataURL("image/png");
+        if (i > 0) pdf.addPage();
+        const props = pdf.getImageProperties(imgData);
+        let renderW = pageW - 10;
+        let renderH = (props.height * renderW) / props.width;
+        if (renderH > pageH - 12) {
+          renderH = pageH - 12;
+          renderW = (props.width * renderH) / props.height;
+        }
+        pdf.addImage(imgData, "PNG", (pageW - renderW) / 2, (pageH - renderH) / 2, renderW, renderH);
+      }
       const blob = pdf.output("blob");
       descargarBlob(blob, `${getNombreArchivo()}.pdf`);
-      mostrarNotificacion("PDF exportado", "success");
+      mostrarNotificacion(posters.length > 1 ? `PDF exportado (${posters.length} páginas, una por grupo)` : "PDF exportado", "success");
     } catch (err) {
       console.error(err);
       mostrarNotificacion("No se pudo exportar el PDF", "error");
@@ -699,10 +792,18 @@
       // Limpiar fondos predefinidos del active
       document.querySelectorAll(".tblp-bg-swatch[data-fondo]").forEach((b) => b.classList.remove("active"));
       document.getElementById("tblp-bg-custom-label").classList.add("active");
+      sincronizarPostersPorGrupo();
     });
 
     // Export buttons
-    document.getElementById("tblp-btn-png")?.addEventListener("click", exportarPNG);
+    document.getElementById("tblp-btn-png")?.addEventListener("click", () => exportarPNG());
+    // Descarga individual de una postal (delegado: los clones se crean después).
+    document.getElementById("tblp-posters")?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tblp-btn-png-item");
+      if (!btn) return;
+      const item = btn.closest(".tblp-poster-item");
+      if (item) exportarPNG(item);
+    });
     document.getElementById("tblp-btn-pdf")?.addEventListener("click", exportarPDF);
 
     // Pre-seleccionar desde RouteContext o URL params
