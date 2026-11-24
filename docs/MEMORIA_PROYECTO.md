@@ -1,8 +1,14 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-11-20, cierre del día (America/Guayaquil).
+Actualizada: 2026-11-23 (America/Guayaquil).
 
-## Último trabajo: seguridad de transmisiones (20-nov, parte 2)
+## Último trabajo: postales por grupo y llave proyectada (23-nov)
+
+- Postales de Tablas → Posiciones: una postal por grupo («GRUPO X», título, auspiciantes); exporta una imagen por grupo y un PDF con una página por grupo. El rótulo leía campos inexistentes (`g.nombre`/`g.grupo_letra` en vez de `g.grupo.*`).
+- `GET /api/eliminatorias/evento/:id/proyeccion`: llave armada con `generarBracketDesdeGrupos({ simular: true })` y ROLLBACK (nada se guarda). Playoff / Llave la muestra si no hay llave, marcada «Proyectado» y sin acciones; se puede publicar.
+- Pendiente: revisarlo en producción (Liga InterEmpresarial / Abierta).
+
+## Trabajo anterior: seguridad de transmisiones (20-nov, parte 2)
 
 - `services/transmisionAcceso.js`: un organizador solo opera transmisiones/overlay de sus campeonatos (403/404). Socket sin `overlay:update`; `webrtc:broadcaster-join` con token y propiedad.
 
@@ -16,13 +22,13 @@ Actualizada: 2026-11-20, cierre del día (America/Guayaquil).
 
 - Finanzas → Resumen Ejecutivo: tarjeta «Inscripción y premios por categoría» (`Finanza.obtenerInscripcionPorCategoria`, `GET /api/finanzas/inscripcion-por-categoria`). Totales iguales a la fila «Inscripción» de Utilidad por Rubro; montos sin categoría en fila aparte. Sin migración. «Equipos» cuenta los inscritos (`evento_equipos`); los cargos de inscripción a equipos no inscritos se muestran en un aviso (caso Liga InterEmpresarial: 29 vs 28). Pendiente: revisar en producción el equipo del aviso y su origen.
 
-## Para retomar (21-nov)
+## Para retomar (24-nov)
 
-- `main` = `origin/main` en `7f6136a` + cierre documental del 20-nov. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
-- Sin migraciones nuevas desde la `079` (todas se aplican solas en el backend).
-- **Primero:** pedir al usuario la URL actual de producción en la última línea de `.env.local` (la guardada falla desde la rotación del 21-oct). Autorizó consultas **solo de lectura** (`PGOPTIONS='-c default_transaction_read_only=on'`), sin cambios. Revisar el aviso de la Liga InterEmpresarial y los partidos pasados sin cerrar.
-- Luego, decisiones: cerrar los 5 partidos del Fútsala con planilla, resto de partidos pasados y cargos a equipos no inscritos.
-- Lista completa y priorizada: primera entrada de `docs/BITACORA_AVANCES.md` (cierre del 20-nov).
+- `main` = `origin/main` en `8239b3e` (postales por grupo y llave proyectada) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- Sin migraciones nuevas desde la `079`.
+- **Primero:** que el usuario revise en producción las postales por grupo y la llave proyectada de la Liga InterEmpresarial / Abierta.
+- Sigue pendiente la URL actual de producción en la última línea de `.env.local` (la guardada falla desde el 21-oct). Consultas **solo de lectura**: aviso de la Liga InterEmpresarial y partidos pasados sin cerrar.
+- Lista completa: cierre del 20-nov en `docs/BITACORA_AVANCES.md` (segunda entrada desde arriba) + entrada del 23-nov.
 
 ## Trabajo anterior: transmisión multiplataforma y publicidad (09-nov)
 

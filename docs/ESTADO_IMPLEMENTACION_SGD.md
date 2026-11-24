@@ -1,3 +1,8 @@
+## 2026-11-23 - Postales por grupo y llave proyectada
+
+- Postales de posiciones: una por grupo con su letra, título y auspiciantes (imagen por grupo, PDF con una página por grupo).
+- Playoff: llave proyectada (configuración guardada + posiciones actuales) visible y publicable antes de generarla; no guarda nada (transacción descartada).
+
 ## 2026-11-20 - Cierre del día
 
 - Publicado hasta `7f6136a`: sanciones cronológicas (confirmadas en producción), novedades por equipo en la planilla y seguridad de transmisiones.
