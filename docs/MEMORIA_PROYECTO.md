@@ -1,6 +1,6 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-11-23 (America/Guayaquil).
+Actualizada: 2026-11-23, cierre del día (America/Guayaquil).
 
 ## Último trabajo: Finanzas respeta la categoría del equipo (23-nov, parte 4)
 
@@ -34,11 +34,11 @@ Actualizada: 2026-11-23 (America/Guayaquil).
 
 ## Para retomar (24-nov)
 
-- `main` = `origin/main` en `1724bc9` (Finanzas por categoría) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- `main` = `origin/main` en `080b613` + cierre documental del 23-nov. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
 - Sin migraciones nuevas desde la `079`.
 - **Primero:** que el usuario corrija en producción el movimiento de CORPORACIÓN PROAUTO (Femenino) si el resumen por equipo lo marca «No es su categoría» (`1724bc9`), y revise el manual de transmisiones y «Partidos en vivo» (`46facfa`). Marcas de clasificación de las postales: confirmadas.
-- Sigue pendiente la URL actual de producción en la última línea de `.env.local` (la guardada falla desde el 21-oct). Consultas **solo de lectura**: aviso de la Liga InterEmpresarial y partidos pasados sin cerrar.
-- Lista completa: cierre del 20-nov en `docs/BITACORA_AVANCES.md` (segunda entrada desde arriba) + entrada del 23-nov.
+- Sigue pendiente la URL actual de producción en la última línea de `.env.local` (la guardada falla desde el 21-oct). Consultas **solo de lectura**: partidos pasados sin cerrar (el aviso de la Liga InterEmpresarial ya está explicado: PROAUTO es del Femenino).
+- Lista completa y priorizada: **primera entrada** de `docs/BITACORA_AVANCES.md` (cierre del 23-nov).
 
 ## Trabajo anterior: transmisión multiplataforma y publicidad (09-nov)
 

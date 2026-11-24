@@ -1,3 +1,33 @@
+## 2026-11-23 - Cierre del día y pendientes para continuar
+
+### Estado al cerrar
+- `main` = `origin/main` en `080b613` + este cierre documental. Sin cambios locales; sin datos de prueba en la BD local (todo lo temporal se eliminó). Sin migraciones nuevas (última: `079`). Servidores locales detenidos.
+
+### Lo realizado hoy (detalle en las entradas inferiores del 23-nov)
+1. **Postales de posiciones por grupo** (`f471aea`): una postal por grupo con «GRUPO X», título y auspiciantes; imagen por grupo y PDF con una página por grupo. **Confirmado en producción.**
+2. **Llave proyectada** (`8239b3e`): Playoff / Llave muestra la llave con la configuración guardada y las posiciones actuales antes de generarla; no guarda nada. **Confirmado en producción.**
+3. **Marcas de clasificación en las postales** (`e16ff83`): verde clasifica, naranja fuera de clasificación, rojo «ELIMINADO», con leyenda. **Confirmado en producción.**
+4. **Manual interactivo de transmisiones** (`1b06c21`): `ayuda-transmisiones.html`, enlazado desde Transmisiones, el formulario y el Panel de Director.
+5. **Partidos en vivo en la portada y la landing** (`46facfa`): `GET /api/public/transmisiones/en-vivo` y sección «Partidos en vivo» en `index.html`.
+6. **Finanzas respeta la categoría del equipo** (`1724bc9`): caso CORPORACIÓN PROAUTO (Femenino) mezclado con la Abierta.
+
+### Pendientes (por prioridad)
+
+**A. Revisar o corregir en producción (usuario)**
+1. Finanzas → Resumen por equipo de la Liga InterEmpresarial: si «CORPORACIÓN PROAUTO» sale «Abierta · No es su categoría», cambiar la categoría de ese movimiento a **Femenino** (o anularlo si sobra). Después, la Abierta debería contar 28 equipos en el cuadro por categoría.
+2. Abrir el manual de transmisiones y, al iniciar una transmisión, ver la sección «Partidos en vivo» en la portada y en la landing del organizador.
+3. Recargar el Panel de Director y `broadcast.html` antes de transmitir (permisos del 20-nov).
+4. Pendientes del 09-nov aún sin confirmar: transmisión real con OBS/Prism hacia YouTube, Facebook y TikTok con overlay, entretiempo y auspiciantes con logo; campeonato de básquetbol de prueba; pantallas en celular (Nuevo Campeonato por secciones, planilla de dirigente, modales de Facturación, bienvenida del jugador).
+
+**B. Necesita al usuario**
+1. **URL de producción vencida** (última línea de `.env.local`, falla desde el 21-oct). Con la nueva: revisar en **solo lectura** los partidos pasados que siguen «programados» (en la copia local: 5 del Fútsala de Padres con planilla sin cerrar y 7 de Interjorgas sin planilla).
+2. Decisiones: qué hacer con esos partidos; posible renumeración de jornadas de los eventos 16, 18, 19 y 30; cargos automáticos a equipos que solo aparecen en partidos de una categoría; código de pertenencia al registrarse (en espera).
+3. Mejoras ofrecidas y no pedidas aún: aviso de nombre parecido al crear un equipo; aviso de equipos sin categoría en Equipos; quitar el campo «URL de embed» del formulario de transmisión (el portal no lo usa).
+
+**C. Insumos externos:** proveedor de correo (Railway Hobby bloquea SMTP), credenciales PayPhone/PayPal, credenciales/contrato para QA mobile.
+
+**D. Validaciones heredadas (lista A del 14-oct):** primer ingreso de dirigente/técnico, Usuarios y Roles en celular, resultados de la landing, póster/selector de jornadas, guardado real de categoría, permisos por rol y vínculo de jugador por cédula.
+
 ## 2026-11-23 (parte 4) - Finanzas: movimientos y resumen respetan la categoría del equipo
 
 - **Reporte del usuario (producción, Liga InterEmpresarial):** el resumen por equipo muestra «CORPORACIÓN PROAUTO» repetido junto a «CORPORACIÓN PROAUTO(MIRASOL)». Al principio se supuso un registro duplicado; el usuario aclaró que **«CORPORACIÓN PROAUTO» es un equipo de la categoría Femenino** y que el sistema lo mezcla con la Abierta. Es el caso del aviso del 12-nov (Abierta: 29 equipos contra 28 inscritos; esperado $2.850 = 28 × $100 + $50).

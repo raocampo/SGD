@@ -1,3 +1,8 @@
+## 2026-11-23 - Cierre del día
+
+- Publicado hasta `080b613`: postales por grupo con marcas de clasificación, llave proyectada, manual de transmisiones, partidos en vivo en la portada y Finanzas por categoría.
+- Pendientes: corregir en producción el movimiento de CORPORACIÓN PROAUTO si aparece «No es su categoría»; URL de producción vencida. Lista completa en la primera entrada de la bitácora.
+
 ## 2026-11-23 (parte 4) - Finanzas por categoría
 
 - Los movimientos manuales y el resumen por equipo respetan la categoría del equipo (validación, filtro en el formulario y aviso «No es su categoría»).
