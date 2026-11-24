@@ -759,3 +759,70 @@
   color: var(--p-title-color, #ffffff);
   margin: .2rem 0 .7rem;
 }
+
+/* ── Estado de clasificación (según cupos de la categoría) ─────────────────
+   Colores de la página de Tablas: naranja = fuera de clasificación,
+   rojo oscuro = eliminado. Bordes y fondos sólidos para que html2canvas
+   los capture igual en la imagen y el PDF. */
+.tblp-tabla tbody tr.tblp-clasifica td.col-pos { border-left: 6px solid #16a34a; }
+.tblp-tabla tbody tr.tblp-clasifica .tblp-pos-badge { background: #16a34a; color: #ffffff; }
+
+.tblp-tabla tbody tr.tblp-fuera td.col-pos { border-left: 6px solid #f97316; }
+.tblp-tabla tbody tr.tblp-fuera .tblp-pos-badge { background: #f97316; color: #ffffff; }
+.tblp-tabla tbody tr.tblp-fuera td { opacity: .62; }
+.tblp-tabla tbody tr.tblp-fuera td.col-pos { opacity: 1; }
+
+.tblp-tabla tbody tr.tblp-eliminado td {
+  background: #fee2e2 !important;
+  color: #7f1d1d !important;
+}
+.tblp-tabla tbody tr.tblp-eliminado td.col-pos { border-left: 6px solid #7f1d1d; }
+.tblp-tabla tbody tr.tblp-eliminado .tblp-pos-badge { background: #7f1d1d; color: #ffffff; }
+.tblp-tabla tbody tr.tblp-eliminado .tblp-equipo-nombre {
+  color: #7f1d1d;
+  text-decoration: line-through;
+}
+
+.tblp-chip-eliminado {
+  align-self: center;
+  flex-shrink: 0;
+  padding: .1rem .45rem;
+  border-radius: 999px;
+  background: #7f1d1d;
+  color: #ffffff;
+  font-size: clamp(.55rem, .7vw, .7rem);
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.tblp-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .4rem 1.1rem;
+  margin: .2rem 0 .6rem;
+  padding: .35rem .8rem;
+  border-radius: 999px;
+  background: var(--p-card-bg, #ffffff);
+  color: var(--p-card-text, #313131);
+  font-size: clamp(.62rem, .78vw, .82rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.tblp-leyenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.tblp-leyenda-dot {
+  display: inline-block;
+  width: .8rem;
+  height: .8rem;
+  border-radius: 3px;
+}
+.tblp-leyenda-dot.is-clasifica { background: #16a34a; }
+.tblp-leyenda-dot.is-fuera { background: #f97316; }
+.tblp-leyenda-dot.is-eliminado { background: #7f1d1d; }

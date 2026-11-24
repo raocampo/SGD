@@ -117,13 +117,51 @@
     return grupos.length > 1 || (grupos.length === 1 && !!grupos[0].letra);
   }
 
+  // Estado de clasificación según la configuración de la categoría. Se usan
+  // las marcas que calcula el backend (cupos por grupo, eliminados manuales o
+  // por no presentación, edición manual de la tabla), igual que en Tablas.
+  function estadoClasificacionFila(row, idx, clasifican) {
+    if (row.eliminado_competencia === true || row.eliminado_manual === true) return "eliminado";
+    if (clasifican > 0) {
+      if (row.fuera_clasificacion === true) return "fuera";
+      if (row.clasifica === true || (row.clasifica === undefined && idx < clasifican)) return "clasifica";
+    }
+    return "";
+  }
+
+  function motivoEliminacionFila(row) {
+    if (row.eliminado_manual === true) return row.motivo_eliminacion_label || "Eliminado";
+    const np = Number(row.no_presentaciones || 0);
+    if (row.eliminado_automatico === true && np > 0) return `${np} no presentaciones`;
+    return "Eliminado";
+  }
+
+  function renderLeyendaClasificacion(grupo, estados) {
+    const hayEliminados = estados.includes("eliminado");
+    if (!(grupo.clasifican > 0) && !hayEliminados) return "";
+    const items = [];
+    if (grupo.clasifican > 0) {
+      items.push(`<span class="tblp-leyenda-item"><i class="tblp-leyenda-dot is-clasifica"></i>Clasifican ${grupo.clasifican}</span>`);
+      if (estados.includes("fuera")) {
+        items.push('<span class="tblp-leyenda-item"><i class="tblp-leyenda-dot is-fuera"></i>Fuera de clasificación</span>');
+      }
+    }
+    if (hayEliminados) {
+      items.push('<span class="tblp-leyenda-item"><i class="tblp-leyenda-dot is-eliminado"></i>Eliminado</span>');
+    }
+    return `<div class="tblp-leyenda">${items.join("")}</div>`;
+  }
+
   function renderTablaGrupoPosiciones(grupo) {
+    const estados = grupo.tabla.map((row, idx) => estadoClasificacionFila(row, idx, grupo.clasifican));
     const filas = grupo.tabla.map((row, idx) => {
       const est = row.estadisticas || {};
-      const eliminado = row.eliminado_competencia === true || row.eliminado_manual === true;
-      const fuera = row.fuera_clasificacion === true;
-      const claseTr = eliminado ? "tblp-eliminado" : fuera ? "tblp-fuera" : idx < grupo.clasifican ? "tblp-clasifica" : "";
+      const estado = estados[idx];
+      const claseTr = estado ? `tblp-${estado}` : "";
       const nombre = row?.equipo?.nombre || "-";
+      const chipEliminado = estado === "eliminado"
+        ? `<span class="tblp-chip-eliminado" title="${esc(motivoEliminacionFila(row))}">ELIMINADO</span>`
+        : "";
       return `
         <tr class="${claseTr}">
           <td class="col-pos"><span class="tblp-pos-badge">${Number(row.posicion || idx + 1)}</span></td>
@@ -131,6 +169,7 @@
             <div class="tblp-equipo-cell">
               ${logoEquipoHtml(row?.equipo?.logo_url || null, nombre)}
               <span class="tblp-equipo-nombre">${esc(nombre)}</span>
+              ${chipEliminado}
             </div>
           </td>
           <td>${Number(est.partidos_jugados || 0)}</td>
@@ -161,7 +200,8 @@
           </thead>
           <tbody>${filas}</tbody>
         </table>
-      </div>`;
+      </div>
+      ${renderLeyendaClasificacion(grupo, estados)}`;
   }
 
   // Una postal por grupo: cada una lleva su tabla (con la letra del grupo).
