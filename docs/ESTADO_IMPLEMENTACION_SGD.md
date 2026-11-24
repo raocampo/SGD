@@ -1,3 +1,7 @@
+## 2026-11-23 (parte 4) - Finanzas por categoría
+
+- Los movimientos manuales y el resumen por equipo respetan la categoría del equipo (validación, filtro en el formulario y aviso «No es su categoría»).
+
 ## 2026-11-23 (parte 3) - Manual de transmisiones y partidos en vivo
 
 - Manual interactivo de transmisiones dentro del sistema (`ayuda-transmisiones.html`).
