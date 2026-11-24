@@ -88,7 +88,7 @@
             <input type="hidden" id="tx-estado-destino" value="" />
             <div class="form-group">
               <label>Plataformas del directo</label>
-              <small class="tx-enlaces-ayuda">Agrega un enlace por cada plataforma donde transmites al mismo tiempo. El primero es el principal.</small>
+              <small class="tx-enlaces-ayuda">Agrega el enlace público del directo de cada plataforma donde transmites al mismo tiempo (no la clave de transmisión). El primero es el principal. <a href="ayuda-transmisiones.html#ayt-plataformas" target="_blank" rel="noopener">¿De dónde saco el enlace?</a></small>
               <div id="tx-enlaces" class="tx-enlaces"></div>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-tx-agregar-enlace">
                 <i class="fas fa-plus"></i> Agregar plataforma

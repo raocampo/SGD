@@ -1,0 +1,584 @@
+/* frontend/css/ayuda-transmisiones.css — Manual interactivo de transmisiones */
+
+.ayt {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 1100px;
+}
+
+/* ── Portada ───────────────────────────────────────────────────────── */
+.ayt-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: center;
+  padding: 1.4rem 1.5rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+  color: #ffffff;
+}
+
+.ayt-hero h2 {
+  margin: 0 0 .5rem;
+  font-size: 1.35rem;
+  color: #ffffff;
+}
+
+.ayt-hero p {
+  margin: 0;
+  color: rgba(255, 255, 255, .85);
+  line-height: 1.55;
+}
+
+.ayt-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-top: 1rem;
+}
+
+.ayt-flujo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+}
+
+.ayt-flujo-item {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .2rem;
+  min-width: 86px;
+  padding: .6rem .7rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .1);
+  font-size: .8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.ayt-flujo-item i {
+  font-size: 1.2rem;
+  color: #b7e853;
+}
+
+.ayt-flujo-item small {
+  font-weight: 500;
+  font-size: .68rem;
+  opacity: .8;
+}
+
+.ayt-flujo-sep {
+  opacity: .6;
+  font-size: .8rem;
+}
+
+/* ── Índice ────────────────────────────────────────────────────────── */
+.ayt-indice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.ayt-indice a {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .45rem .8rem;
+  border: 1px solid #dbe4ef;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: .85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ayt-indice a:hover,
+.ayt-indice a:focus-visible {
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+/* ── Secciones ─────────────────────────────────────────────────────── */
+.ayt-seccion {
+  scroll-margin-top: 80px;
+}
+
+.ayt-seccion h3 {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0 0 .6rem;
+}
+
+.ayt-seccion-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.ayt-seccion-acciones {
+  display: flex;
+  gap: .5rem;
+}
+
+.ayt-seccion ol,
+.ayt-seccion ul {
+  margin: .4rem 0 .6rem;
+  padding-left: 1.3rem;
+  line-height: 1.6;
+}
+
+.ayt-seccion code {
+  padding: .05rem .35rem;
+  border-radius: 4px;
+  background: #f1f5f9;
+  font-size: .85em;
+  word-break: break-all;
+}
+
+/* Botones de la interfaz citados en el texto */
+.ayt-ui {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .05rem .45rem;
+  border-radius: 5px;
+  background: #374151;
+  color: #ffffff;
+  font-size: .8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ayt-ui-rojo { background: #fee2e2; color: #b91c1c; }
+.ayt-ui-morado { background: #7c3aed; }
+.ayt-ui-verde { background: #16a34a; }
+.ayt-ui-amarillo { background: #f59e0b; color: #1f2937; }
+
+.ayt-nota {
+  display: flex;
+  gap: .55rem;
+  align-items: flex-start;
+  margin: .6rem 0;
+  padding: .6rem .8rem;
+  border-left: 4px solid #2563eb;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: .9rem;
+}
+
+.ayt-nota i { margin-top: .2rem; }
+
+.ayt-nota-alerta {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+/* ── Progreso y pasos ──────────────────────────────────────────────── */
+.ayt-progreso {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+  font-size: .85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.ayt-progreso-barra {
+  width: 160px;
+  height: 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.ayt-progreso-barra span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: #16a34a;
+  transition: width .3s ease;
+}
+
+.ayt-pasos {
+  list-style: none;
+  margin: .5rem 0 0 !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.ayt-paso {
+  border: 1px solid #dbe4ef;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.ayt-paso.is-done {
+  border-color: #86efac;
+}
+
+.ayt-paso-head {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  width: 100%;
+  padding: .75rem .9rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: #1f2937;
+}
+
+.ayt-paso-head:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+.ayt-paso-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  background: #1f2937;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.ayt-paso.is-done .ayt-paso-num {
+  background: #16a34a;
+}
+
+.ayt-paso.is-done .ayt-paso-num::before {
+  content: "✓";
+}
+
+.ayt-paso.is-done .ayt-paso-num {
+  font-size: 0;
+}
+
+.ayt-paso.is-done .ayt-paso-num::before {
+  font-size: 1rem;
+}
+
+.ayt-paso-titulo {
+  flex: 1;
+  font-weight: 700;
+}
+
+.ayt-paso-flecha {
+  transition: transform .2s ease;
+  color: #64748b;
+}
+
+.ayt-paso.is-open .ayt-paso-flecha {
+  transform: rotate(180deg);
+}
+
+.ayt-paso-cuerpo {
+  display: none;
+  padding: 0 1rem .9rem 3.5rem;
+}
+
+.ayt-paso.is-open .ayt-paso-cuerpo {
+  display: block;
+}
+
+.ayt-check {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  margin: .5rem 0 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ayt-check input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: .15rem;
+  flex-shrink: 0;
+}
+
+/* ── Pestañas ──────────────────────────────────────────────────────── */
+.ayt-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin: .4rem 0 .8rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ayt-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem .85rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ayt-tab.active {
+  border-bottom-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.ayt-tab-panel { display: none; }
+.ayt-tab-panel.active { display: block; }
+
+/* ── Campos y FAQ ──────────────────────────────────────────────────── */
+.ayt-campos,
+.ayt-faq {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+}
+
+.ayt-campos details,
+.ayt-faq details {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: .6rem .85rem;
+}
+
+.ayt-campos summary,
+.ayt-faq summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.ayt-campos details p,
+.ayt-faq details p {
+  margin: .5rem 0 .1rem;
+  line-height: 1.55;
+  color: #334155;
+}
+
+.ayt-tag {
+  display: inline-block;
+  margin-left: .35rem;
+  padding: .05rem .5rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.ayt-tag-requerido {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ayt-buscar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0 0 .7rem;
+  padding: .45rem .75rem;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ayt-buscar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  font: inherit;
+  background: transparent;
+}
+
+/* ── Varios partidos y calculadora ─────────────────────────────────── */
+.ayt-lista-iconos {
+  list-style: none;
+  padding: 0 !important;
+}
+
+.ayt-lista-iconos li {
+  display: flex;
+  gap: .6rem;
+  align-items: flex-start;
+  margin-bottom: .45rem;
+}
+
+.ayt-lista-iconos i {
+  width: 1.2rem;
+  margin-top: .3rem;
+  color: #2563eb;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.ayt-calc {
+  margin-top: .8rem;
+  padding: 1rem;
+  border: 1px solid #dbe4ef;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.ayt-calc h4 {
+  margin: 0 0 .7rem;
+}
+
+.ayt-calc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: .7rem 1rem;
+}
+
+.ayt-calc-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  font-size: .85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.ayt-calc-grid input,
+.ayt-calc-grid select {
+  padding: .45rem .6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+  background: #ffffff;
+  min-width: 0;
+}
+
+.ayt-calc-resultado {
+  margin-top: .9rem;
+}
+
+.ayt-calc-cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: .6rem;
+}
+
+.ayt-calc-cifras > div {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  padding: .65rem .8rem;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.ayt-calc-cifras span {
+  font-size: .78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.ayt-calc-cifras strong {
+  font-size: 1.3rem;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.ayt-calc-cifras .is-destacado {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.ayt-calc-veredicto {
+  display: flex;
+  gap: .5rem;
+  align-items: flex-start;
+  margin-top: .7rem;
+  padding: .6rem .8rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.ayt-calc-veredicto.is-ok { background: #dcfce7; color: #166534; }
+.ayt-calc-veredicto.is-justo { background: #fef3c7; color: #92400e; }
+.ayt-calc-veredicto.is-mal { background: #fee2e2; color: #991b1b; }
+
+.ayt-calc-extra {
+  margin: .6rem 0 0;
+  font-size: .88rem;
+  color: #475569;
+}
+
+/* ── Checklist ─────────────────────────────────────────────────────── */
+.ayt-checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: .5rem;
+}
+
+.ayt-checklist-grid h4 {
+  margin: 0 0 .3rem;
+  font-size: .95rem;
+}
+
+/* ── Celular ───────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .ayt-hero {
+    grid-template-columns: 1fr;
+    padding: 1.1rem;
+  }
+
+  .ayt-flujo-sep {
+    transform: rotate(90deg);
+  }
+
+  .ayt-flujo {
+    flex-direction: column;
+  }
+
+  .ayt-paso-cuerpo {
+    padding-left: 1rem;
+  }
+
+  .ayt-progreso-barra {
+    width: 110px;
+  }
+}
+
+/* ── Impresión: solo la lista del día ──────────────────────────────── */
+@media print {
+  body.ayt-imprimiendo-checklist .sidebar,
+  body.ayt-imprimiendo-checklist .top-bar,
+  body.ayt-imprimiendo-checklist .ayt-hero,
+  body.ayt-imprimiendo-checklist .ayt-indice,
+  body.ayt-imprimiendo-checklist .ayt-seccion:not(#ayt-checklist),
+  body.ayt-imprimiendo-checklist .ayt-seccion-acciones,
+  body.ayt-imprimiendo-checklist .nav-overlay {
+    display: none !important;
+  }
+
+  body.ayt-imprimiendo-checklist .ayt-checklist-grid {
+    grid-template-columns: 1fr;
+  }
+}

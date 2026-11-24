@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LT&amp;C Manual de Transmisiones</title>
+    <link rel="icon" href="assets/ltc/Icono.png" type="image/png" />
+    <link rel="shortcut icon" href="assets/ltc/Icono.png" type="image/png" />
+    <link rel="apple-touch-icon" href="assets/ltc/Icono.png" type="image/png" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/ayuda-transmisiones.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  </head>
+  <body class="app-layout page-ayuda-transmisiones">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">⚽ LT&amp;C</div>
+      <nav class="sidebar-nav">
+        <a class="nav-btn" href="admin.html"><i class="fas fa-home"></i> Inicio</a>
+        <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
+        <a class="nav-btn active" href="transmisiones.html"><i class="fas fa-broadcast-tower"></i> Transmisiones</a>
+        <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
+      </nav>
+    </aside>
+
+    <div class="app-content">
+      <header class="top-bar">
+        <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
+        <h1><i class="fas fa-book-open"></i> Manual de transmisiones</h1>
+      </header>
+
+      <main class="main">
+        <section class="section active">
+          <div class="container ayt">
+
+            <!-- ── Portada ─────────────────────────────────────────────── -->
+            <div class="ayt-hero">
+              <div>
+                <h2>¿Cómo transmitir un partido en vivo?</h2>
+                <p>
+                  El video sale de <strong>OBS Studio</strong> o <strong>Prism Live</strong> hacia YouTube, Facebook,
+                  TikTok o Twitch. El sistema guarda los enlaces del directo, muestra el botón «Ver en vivo» en el portal
+                  y entrega el <strong>overlay</strong>: el marcador, los auspiciantes y la pantalla de entretiempo que se
+                  ven encima del video.
+                </p>
+                <div class="ayt-hero-actions">
+                  <a class="btn btn-primary" href="transmisiones.html"><i class="fas fa-arrow-left"></i> Volver a Transmisiones</a>
+                  <a class="btn btn-secondary" href="partidos.html"><i class="fas fa-futbol"></i> Ir a Partidos</a>
+                </div>
+              </div>
+              <div class="ayt-flujo" aria-label="Recorrido del video">
+                <span class="ayt-flujo-item"><i class="fas fa-video"></i> Cámaras o celular</span>
+                <i class="fas fa-arrow-right ayt-flujo-sep" aria-hidden="true"></i>
+                <span class="ayt-flujo-item"><i class="fas fa-desktop"></i> OBS / Prism<small>+ overlay del sistema</small></span>
+                <i class="fas fa-arrow-right ayt-flujo-sep" aria-hidden="true"></i>
+                <span class="ayt-flujo-item"><i class="fab fa-youtube"></i> Plataformas</span>
+                <i class="fas fa-arrow-right ayt-flujo-sep" aria-hidden="true"></i>
+                <span class="ayt-flujo-item"><i class="fas fa-users"></i> Público<small>desde el portal</small></span>
+              </div>
+            </div>
+
+            <!-- ── Índice ──────────────────────────────────────────────── -->
+            <nav class="ayt-indice" aria-label="Contenido del manual">
+              <a href="#ayt-pasos"><i class="fas fa-list-check"></i> Paso a paso</a>
+              <a href="#ayt-plataformas"><i class="fas fa-tower-broadcast"></i> Enlace y clave por plataforma</a>
+              <a href="#ayt-programas"><i class="fas fa-sliders"></i> OBS y Prism</a>
+              <a href="#ayt-formulario"><i class="fas fa-pen-to-square"></i> Campos del formulario</a>
+              <a href="#ayt-varios"><i class="fas fa-clone"></i> Varios partidos a la vez</a>
+              <a href="#ayt-faq"><i class="fas fa-circle-question"></i> Preguntas frecuentes</a>
+              <a href="#ayt-checklist"><i class="fas fa-clipboard-check"></i> Lista para el día del partido</a>
+            </nav>
+
+            <!-- ── Paso a paso ─────────────────────────────────────────── -->
+            <section class="card ayt-seccion" id="ayt-pasos">
+              <div class="ayt-seccion-head">
+                <h3><i class="fas fa-list-check"></i> Paso a paso</h3>
+                <div class="ayt-progreso" aria-live="polite">
+                  <div class="ayt-progreso-barra"><span id="ayt-progreso-relleno"></span></div>
+                  <span id="ayt-progreso-texto">0 de 7 pasos</span>
+                  <button type="button" class="btn btn-outline btn-sm" id="ayt-reiniciar-pasos">
+                    <i class="fas fa-rotate-left"></i> Reiniciar
+                  </button>
+                </div>
+              </div>
+              <p class="form-hint">Marca cada paso al completarlo. El avance queda guardado en este navegador.</p>
+
+              <ol class="ayt-pasos" id="ayt-pasos-lista">
+                <li class="ayt-paso" data-paso="1">
+                  <button type="button" class="ayt-paso-head" aria-expanded="true">
+                    <span class="ayt-paso-num">1</span>
+                    <span class="ayt-paso-titulo">Crear el directo en cada plataforma</span>
+                    <i class="fas fa-chevron-down ayt-paso-flecha" aria-hidden="true"></i>
+                  </button>
+                  <div class="ayt-paso-cuerpo">
+                    <p>Antes de abrir el sistema, crea el directo en YouTube, Facebook, TikTok o Twitch. De cada una necesitas dos datos:</p>
+                    <ul>
+                      <li><strong>Enlace público</strong> del directo: lo que se pega en el sistema para que el público llegue a verlo.</li>
+                      <li><strong>Clave de transmisión</strong>: va en OBS o Prism. <strong>Es privada</strong>: no la compartas ni la pegues en el sistema.</li>
+                    </ul>
+                    <p>Cómo obtenerlos en cada plataforma: <a href="#ayt-plataformas">Enlace y clave por plataforma</a>.</p>
+                    <label class="ayt-check"><input type="checkbox" data-paso-check="1" /> Ya tengo el enlace y la clave de cada plataforma</label>
+                  </div>
+                </li>
+
+                <li class="ayt-paso" data-paso="2">
+                  <button type="button" class="ayt-paso-head" aria-expanded="false">
+                    <span class="ayt-paso-num">2</span>
+                    <span class="ayt-paso-titulo">Registrar la transmisión del partido</span>
+                    <i class="fas fa-chevron-down ayt-paso-flecha" aria-hidden="true"></i>
+                  </button>
+                  <div class="ayt-paso-cuerpo">
+                    <ol>
+                      <li>Ve a <a href="partidos.html">Partidos</a>, busca el partido y pulsa <span class="ayt-ui"><i class="fas fa-broadcast-tower"></i> Transmitir</span>.</li>
+                      <li>En <strong>Plataformas del directo</strong>, elige la plataforma y pega su enlace público. Usa <span class="ayt-ui"><i class="fas fa-plus"></i> Agregar plataforma</span> para cada plataforma adicional. El primero es el principal.</li>
+                      <li>Borra con <span class="ayt-ui ayt-ui-rojo"><i class="fas fa-trash"></i></span> las filas que no uses.</li>
+                      <li>Pulsa <span class="ayt-ui"><i class="fas fa-save"></i> Guardar</span> (queda «Programada») o <span class="ayt-ui"><i class="fas fa-file-alt"></i> Guardar como borrador</span> si aún no quieres que se vea en el portal.</li>
+                    </ol>
+                    <p>Qué significa cada campo: <a href="#ayt-formulario">Campos del formulario</a>.</p>
+                    <label class="ayt-check"><input type="checkbox" data-paso-check="2" /> La transmisión del partido está guardada</label>
+                  </div>
+                </li>
+
+                <li class="ayt-paso" data-paso="3">
+                  <button type="button" class="ayt-paso-head" aria-expanded="false">
+                    <span class="ayt-paso-num">3</span>
+                    <span class="ayt-paso-titulo">Preparar OBS o Prism con la clave</span>
+                    <i class="fas fa-chevron-down ayt-paso-flecha" aria-hidden="true"></i>
+                  </button>
+                  <div class="ayt-paso-cuerpo">
+                    <p>Configura el programa con el que vas a emitir: cámaras, audio y la clave de cada plataforma.</p>
+                    <p>Guía de cada programa: <a href="#ayt-programas">OBS y Prism</a>.</p>
+                    <label class="ayt-check"><input type="checkbox" data-paso-check="3" /> OBS o Prism tiene las claves y las cámaras listas</label>
+                  </div>
+                </li>
+
+                <li class="ayt-paso" data-paso="4">
+                  <button type="button" class="ayt-paso-head" aria-expanded="false">
+                    <span class="ayt-paso-num">4</span>
+                    <span class="ayt-paso-titulo">Agregar el overlay (marcador y auspiciantes)</span>
+                    <i class="fas fa-chevron-down ayt-paso-flecha" aria-hidden="true"></i>
+                  </button>
+                  <div class="ayt-paso-cuerpo">
+                    <ol>
+                      <li>En <a href="transmisiones.html">Transmisiones</a>, pulsa el botón morado <span class="ayt-ui ayt-ui-morado"><i class="fas fa-sliders-h"></i></span> del partido para abrir el <strong>Panel de Director</strong>.</li>
+                      <li>En la tarjeta <strong>«URL para OBS Browser Source»</strong>, pulsa <span class="ayt-ui"><i class="fas fa-copy"></i> Copiar</span>.</li>
+                      <li>En OBS: <em>Fuentes → + → Navegador</em> (Browser Source). Pega la URL, ancho <strong>1920</strong> y alto <strong>1080</strong>, y déjala encima de la cámara.</li>
+                    </ol>
+                    <div class="ayt-nota">
+                      <i class="fas fa-lightbulb"></i>
+                      Como el overlay va dentro del video, sale igual en todas las plataformas. Los auspiciantes que rotan son los activos del campeonato en <a href="auspiciantes.html">Auspiciantes</a>: revisa que tengan logo.
+                    </div>
+                    <label class="ayt-check"><input type="checkbox" data-paso-check="4" /> El overlay se ve en OBS sobre la cámara</label>
+                  </div>
+                </li>
+
+                <li class="ayt-paso" data-paso="5">
+                  <button type="button" class="ayt-paso-head" aria-expanded="false">
+                    <span class="ayt-paso-num">5</span>
+                    <span class="ayt-paso-titulo">Salir en vivo</span>
+                    <i class="fas fa-chevron-down ayt-paso-flecha" aria-hidden="true"></i>
+                  </button>
+                  <div class="ayt-paso-cuerpo">
+                    <ol>
+                      <li>En OBS pulsa <strong>Iniciar transmisión</strong> (o «Go Live» en Prism) y confirma en cada plataforma que el video llegó.</li>
+                      <li>En el sistema, vuelve a abrir <span class="ayt-ui"><i class="fas fa-broadcast-tower"></i> Transmitir</span> del partido y pulsa <span class="ayt-ui ayt-ui-verde"><i class="fas fa-play"></i> Iniciar transmisión</span>.</li>
+                      <li>Desde ese momento el portal muestra el partido «EN VIVO», con un botón por plataforma.</li>
+                    </ol>
+                    <label class="ayt-check"><input type="checkbox" data-paso-check="5" /> El partido aparece en vivo en el portal</label>
+                  </div>
+                </li>
+
+                <li class="ayt-paso" data-paso="6">
+                  <button type="button" class="ayt-paso-head" aria-expanded="false">
+                    <span class="ayt-paso-num">6</span>
+                    <span class="ayt-paso-titulo">Durante el partido: Panel de Director</span>
+                    <i class="fas fa-chevron-down ayt-paso-flecha" aria-hidden="true"></i>
+                  </button>
+                  <div class="ayt-paso-cuerpo">
+                    <ul>
+                      <li><strong>Marcador:</strong> suma o resta goles. Los cambios se ven en el overlay al instante.</li>
+                      <li><strong>Cronómetro y período:</strong> elige «Entretiempo» para mostrar la pantalla de entretiempo con los auspiciantes; al pasar al 2.º tiempo se quita sola.</li>
+                      <li><strong>Publicidad:</strong> enciende o apaga los auspiciantes de la esquina y elige cuántos segundos dura cada uno.</li>
+                      <li><strong>Texto de evento:</strong> un mensaje corto («¡GOL!», «Cambio»…) y <span class="ayt-ui"><i class="fas fa-broadcast-tower"></i> Enviar ahora</span>.</li>
+                    </ul>
+                    <div class="ayt-nota">
+                      <i class="fas fa-rotate"></i>
+                      Si el panel muestra un error al enviar, recárgalo (F5): toma tu sesión y la versión más reciente.
+                    </div>
+                    <label class="ayt-check"><input type="checkbox" data-paso-check="6" /> Sé manejar el marcador, el período y la publicidad</label>
+                  </div>
+                </li>
+
+                <li class="ayt-paso" data-paso="7">
+                  <button type="button" class="ayt-paso-head" aria-expanded="false">
+                    <span class="ayt-paso-num">7</span>
+                    <span class="ayt-paso-titulo">Terminar la transmisión</span>
+                    <i class="fas fa-chevron-down ayt-paso-flecha" aria-hidden="true"></i>
+                  </button>
+                  <div class="ayt-paso-cuerpo">
+                    <ol>
+                      <li>Detén la emisión en OBS o Prism y finaliza el directo en cada plataforma.</li>
+                      <li>En el sistema, abre <span class="ayt-ui"><i class="fas fa-broadcast-tower"></i> Transmitir</span> del partido y pulsa <span class="ayt-ui ayt-ui-amarillo"><i class="fas fa-stop"></i> Finalizar</span>. El botón «EN VIVO» desaparece del portal.</li>
+                      <li>Registra el resultado oficial en la <a href="planilla.html">Planilla</a>, como siempre: el overlay no cambia la tabla.</li>
+                    </ol>
+                    <label class="ayt-check"><input type="checkbox" data-paso-check="7" /> La transmisión quedó finalizada</label>
+                  </div>
+                </li>
+              </ol>
+            </section>
+
+            <!-- ── Plataformas ─────────────────────────────────────────── -->
+            <section class="card ayt-seccion" id="ayt-plataformas">
+              <h3><i class="fas fa-tower-broadcast"></i> Enlace y clave por plataforma</h3>
+              <p class="form-hint">Los menús de cada plataforma cambian con el tiempo; si un nombre no coincide, busca la opción equivalente.</p>
+
+              <div class="ayt-tabs" role="tablist" data-tabs="plataformas">
+                <button type="button" role="tab" class="ayt-tab active" data-tab="youtube"><i class="fab fa-youtube"></i> YouTube</button>
+                <button type="button" role="tab" class="ayt-tab" data-tab="facebook"><i class="fab fa-facebook"></i> Facebook</button>
+                <button type="button" role="tab" class="ayt-tab" data-tab="tiktok"><i class="fab fa-tiktok"></i> TikTok</button>
+                <button type="button" role="tab" class="ayt-tab" data-tab="twitch"><i class="fab fa-twitch"></i> Twitch</button>
+              </div>
+
+              <div class="ayt-tab-panel active" data-panel="youtube" role="tabpanel">
+                <ol>
+                  <li>Entra a <strong>YouTube Studio</strong> → <em>Crear → Emitir en directo</em>. La primera vez, YouTube puede tardar hasta 24 horas en habilitar los directos del canal: hazlo con anticipación.</li>
+                  <li>Elige transmitir con <strong>software de streaming</strong> y completa título, miniatura y visibilidad (Público o No listado para pruebas).</li>
+                  <li><strong>Clave:</strong> en la configuración del directo, copia la <em>clave de transmisión</em> → va en OBS o Prism.</li>
+                  <li><strong>Enlace:</strong> pulsa <em>Compartir</em> y copia el enlace (<code>https://youtube.com/live/…</code>) → va en el sistema.</li>
+                </ol>
+                <div class="ayt-nota"><i class="fas fa-clone"></i> Para dos partidos a la vez, crea un directo por partido, cada uno con <strong>su propia clave</strong> (no reutilices la clave predeterminada en ambos).</div>
+              </div>
+
+              <div class="ayt-tab-panel" data-panel="facebook" role="tabpanel">
+                <ol>
+                  <li>Desde tu <strong>página</strong> de Facebook, abre <em>Live Producer</em> (Video en vivo) y elige <em>Usar clave de transmisión</em>.</li>
+                  <li><strong>Clave:</strong> copia la clave de transmisión → va en OBS o Prism.</li>
+                  <li><strong>Enlace:</strong> cuando el directo esté creado, copia el enlace de la publicación → va en el sistema.</li>
+                </ol>
+                <div class="ayt-nota"><i class="fas fa-flask"></i> Para varios partidos a la vez, crea un directo por partido y haz una prueba antes con tu página.</div>
+              </div>
+
+              <div class="ayt-tab-panel" data-panel="tiktok" role="tabpanel">
+                <ol>
+                  <li>La cuenta debe tener <strong>LIVE habilitado</strong> (TikTok exige requisitos como edad y seguidores, que pueden cambiar).</li>
+                  <li><strong>Desde el celular:</strong> transmite con Prism Live o con la app de TikTok.</li>
+                  <li><strong>Desde OBS:</strong> solo si tu cuenta tiene acceso a la <em>clave de transmisión</em> de TikTok.</li>
+                  <li><strong>Enlace:</strong> el del directo o el de tu perfil → va en el sistema. Los directos de TikTok no se pueden incrustar: el portal los abre en TikTok.</li>
+                </ol>
+                <div class="ayt-nota ayt-nota-alerta"><i class="fas fa-triangle-exclamation"></i> TikTok permite <strong>un solo LIVE por cuenta a la vez</strong>. Para dos partidos simultáneos necesitas dos cuentas.</div>
+              </div>
+
+              <div class="ayt-tab-panel" data-panel="twitch" role="tabpanel">
+                <ol>
+                  <li>En el <strong>Panel de control del creador</strong> → <em>Configuración → Transmisión</em>, copia la <em>clave de transmisión principal</em> → va en OBS.</li>
+                  <li><strong>Enlace:</strong> el de tu canal (<code>https://twitch.tv/tu_canal</code>) → va en el sistema.</li>
+                </ol>
+                <div class="ayt-nota ayt-nota-alerta"><i class="fas fa-triangle-exclamation"></i> Un canal de Twitch emite un solo directo a la vez.</div>
+              </div>
+            </section>
+
+            <!-- ── Programas ───────────────────────────────────────────── -->
+            <section class="card ayt-seccion" id="ayt-programas">
+              <h3><i class="fas fa-sliders"></i> OBS y Prism</h3>
+
+              <div class="ayt-tabs" role="tablist" data-tabs="programas">
+                <button type="button" role="tab" class="ayt-tab active" data-tab="obs"><i class="fas fa-desktop"></i> OBS Studio (computadora)</button>
+                <button type="button" role="tab" class="ayt-tab" data-tab="prism-pc"><i class="fas fa-laptop"></i> Prism Live (computadora)</button>
+                <button type="button" role="tab" class="ayt-tab" data-tab="prism-movil"><i class="fas fa-mobile-screen"></i> Prism Live (celular)</button>
+              </div>
+
+              <div class="ayt-tab-panel active" data-panel="obs" role="tabpanel">
+                <ol>
+                  <li><strong>Ajustes → Emisión:</strong> elige el servicio (YouTube, Facebook, Twitch…) y pega la clave.</li>
+                  <li><strong>Ajustes → Vídeo:</strong> resolución 1920×1080 (o 1280×720 si el internet es justo), 30 FPS.</li>
+                  <li><strong>Cámaras:</strong> <em>Fuentes → + → Dispositivo de captura de vídeo</em>, una por cámara. Usa escenas para cambiar de cámara.</li>
+                  <li><strong>Overlay:</strong> <em>Fuentes → + → Navegador</em> con la URL del Panel de Director, 1920×1080, encima de todo.</li>
+                  <li><strong>Varias plataformas a la vez:</strong> OBS emite a un solo servicio por defecto. Para más, usa un complemento de salidas múltiples o un servicio de retransmisión, que recibe una sola señal y la reparte (además gasta menos internet).</li>
+                </ol>
+              </div>
+
+              <div class="ayt-tab-panel" data-panel="prism-pc" role="tabpanel">
+                <ol>
+                  <li>Inicia sesión en Prism y conecta tus cuentas o canales (YouTube, Facebook, Twitch…). Prism permite emitir a varias plataformas a la vez.</li>
+                  <li>Agrega las cámaras como fuentes de video.</li>
+                  <li><strong>Overlay:</strong> agrégalo como fuente o widget <em>web</em> con la URL del Panel de Director, a 1920×1080.</li>
+                  <li>Pulsa <em>Go Live</em>. Prism envía una señal por plataforma: suma el internet de cada una (ver la <a href="#ayt-varios">calculadora</a>).</li>
+                </ol>
+              </div>
+
+              <div class="ayt-tab-panel" data-panel="prism-movil" role="tabpanel">
+                <ol>
+                  <li>Instala Prism Live en el celular, inicia sesión y conecta las plataformas.</li>
+                  <li>Usa la cámara del celular, en horizontal y con trípode si es posible.</li>
+                  <li><strong>Overlay:</strong> según la versión de la app, se puede agregar un widget web con la URL del Panel de Director. Si tu versión no lo permite, transmite sin overlay o usa una computadora con OBS.</li>
+                  <li>Conecta el celular al cargador y, si puedes, a WiFi: con datos móviles el directo puede cortarse.</li>
+                </ol>
+              </div>
+            </section>
+
+            <!-- ── Formulario ──────────────────────────────────────────── -->
+            <section class="card ayt-seccion" id="ayt-formulario">
+              <h3><i class="fas fa-pen-to-square"></i> Campos del formulario «Transmisión del Partido»</h3>
+              <div class="ayt-campos">
+                <details open>
+                  <summary><strong>Plataformas del directo</strong> <span class="ayt-tag ayt-tag-requerido">Necesario</span></summary>
+                  <p>Una fila por plataforma con el <strong>enlace público</strong> del directo (no la clave). La plataforma se detecta sola al pegar el enlace. El primero es el principal. Solo se aceptan enlaces <code>https://</code>; hasta 8.</p>
+                </details>
+                <details>
+                  <summary><strong>Título</strong> <span class="ayt-tag">Opcional</span></summary>
+                  <p>Nombre descriptivo, por ejemplo «Semifinal: Equipo A vs Equipo B». Si lo dejas vacío, se usa el del partido.</p>
+                </details>
+                <details>
+                  <summary><strong>Descripción</strong> <span class="ayt-tag">Opcional</span></summary>
+                  <p>Detalles para el público: cancha, narradores, etc.</p>
+                </details>
+                <details>
+                  <summary><strong>URL de embed</strong> <span class="ayt-tag">Déjala vacía</span></summary>
+                  <p>Hoy el portal no la usa: siempre abre el directo en la plataforma. Puedes dejarla en blanco.</p>
+                </details>
+                <details>
+                  <summary><strong>Fecha/hora programada</strong> <span class="ayt-tag">Opcional</span></summary>
+                  <p>Cuándo empieza el directo. Sirve para mostrarlo como «programado» antes de salir en vivo.</p>
+                </details>
+                <details>
+                  <summary><strong>Guardar · Guardar como borrador · Iniciar · Finalizar</strong></summary>
+                  <ul>
+                    <li><strong>Guardar como borrador:</strong> queda guardada, pero no se anuncia en el portal.</li>
+                    <li><strong>Guardar:</strong> queda «Programada».</li>
+                    <li><strong>Iniciar transmisión</strong> (aparece al volver a abrir el formulario): el portal la muestra «EN VIVO».</li>
+                    <li><strong>Finalizar:</strong> se quita del portal.</li>
+                  </ul>
+                </details>
+              </div>
+            </section>
+
+            <!-- ── Varios partidos ─────────────────────────────────────── -->
+            <section class="card ayt-seccion" id="ayt-varios">
+              <h3><i class="fas fa-clone"></i> Varios partidos a la vez</h3>
+              <p>
+                El sistema lo permite: cada partido tiene su propia transmisión, su propio <strong>Panel de Director</strong> y su
+                propia <strong>URL de overlay</strong>, y el portal muestra todos los que estén en vivo. Lo que hace falta fuera del sistema:
+              </p>
+              <ul class="ayt-lista-iconos">
+                <li><i class="fas fa-desktop"></i> <span><strong>Una emisión por partido:</strong> una computadora con OBS (o un celular con Prism) por partido, cada una con sus cámaras y con el overlay de <em>su</em> partido.</span></li>
+                <li><i class="fas fa-key"></i> <span><strong>Un directo y una clave distintos por partido</strong> en cada plataforma. TikTok y Twitch: uno a la vez por cuenta o canal.</span></li>
+                <li><i class="fas fa-wifi"></i> <span><strong>Internet de subida suficiente:</strong> calcúlalo aquí abajo y mídelo antes del día (por ejemplo, en un test de velocidad).</span></li>
+              </ul>
+
+              <div class="ayt-calc" id="ayt-calc">
+                <h4><i class="fas fa-calculator"></i> Calculadora de internet</h4>
+                <div class="ayt-calc-grid">
+                  <label>
+                    Partidos al mismo tiempo
+                    <input type="number" id="ayt-calc-partidos" min="1" max="8" value="1" />
+                  </label>
+                  <label>
+                    Plataformas por partido
+                    <input type="number" id="ayt-calc-plataformas" min="1" max="4" value="2" />
+                  </label>
+                  <label>
+                    Calidad
+                    <select id="ayt-calc-calidad">
+                      <option value="6">1080p (≈ 6 Mbps)</option>
+                      <option value="4" selected>720p (≈ 4 Mbps)</option>
+                      <option value="2">480p (≈ 2 Mbps)</option>
+                    </select>
+                  </label>
+                  <label>
+                    ¿Cómo emites a varias plataformas?
+                    <select id="ayt-calc-modo">
+                      <option value="directo">Una señal por plataforma (Prism, complemento de OBS)</option>
+                      <option value="restream">Servicio de retransmisión (una sola señal)</option>
+                    </select>
+                  </label>
+                  <label>
+                    Tu velocidad de subida medida (Mbps, opcional)
+                    <input type="number" id="ayt-calc-medida" min="0" step="0.5" placeholder="Ej.: 20" />
+                  </label>
+                </div>
+                <div class="ayt-calc-resultado" id="ayt-calc-resultado" aria-live="polite"></div>
+                <p class="form-hint">Estimación con un margen del 50 % para que el directo no se corte. Las cifras por calidad son aproximadas para 30 FPS.</p>
+              </div>
+            </section>
+
+            <!-- ── FAQ ─────────────────────────────────────────────────── -->
+            <section class="card ayt-seccion" id="ayt-faq">
+              <h3><i class="fas fa-circle-question"></i> Preguntas frecuentes</h3>
+              <div class="ayt-buscar">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="search" id="ayt-faq-buscar" placeholder="Buscar en las preguntas (ej.: overlay, TikTok, portal)" />
+              </div>
+              <div class="ayt-faq" id="ayt-faq-lista">
+                <details>
+                  <summary>¿El sistema transmite el video?</summary>
+                  <p>No. El video sale de OBS o Prism hacia las plataformas. El sistema guarda los enlaces, anuncia el directo en el portal y entrega el overlay. Existe un modo de cámara desde el navegador (Panel de Director → «Transmitir video en vivo»), pero solo sirve para pocos espectadores y en buenas redes.</p>
+                </details>
+                <details>
+                  <summary>El portal no muestra el botón «Ver en vivo»</summary>
+                  <p>Revisa que hayas pulsado <strong>Iniciar transmisión</strong> en el formulario del partido (el estado debe ser «EN VIVO») y que el enlace esté guardado. Recarga el portal.</p>
+                </details>
+                <details>
+                  <summary>El overlay no se actualiza en OBS</summary>
+                  <p>En el Panel de Director pulsa <strong>Enviar ahora</strong>. Si sigue igual, recarga el panel (F5) y, en OBS, haz clic derecho en la fuente del navegador → <em>Actualizar</em>. Comprueba que la URL del overlay sea la de <em>ese</em> partido.</p>
+                </details>
+                <details>
+                  <summary>No aparecen los auspiciantes en el overlay</summary>
+                  <p>Se muestran los auspiciantes <strong>activos y con logo</strong> del campeonato (menú Auspiciantes). Revisa también que «Publicidad» esté encendida en el Panel de Director.</p>
+                </details>
+                <details>
+                  <summary>El Panel de Director dice «No autorizado»</summary>
+                  <p>Solo el organizador dueño del campeonato (o un administrador) puede operar sus transmisiones. Inicia sesión con esa cuenta y recarga el panel.</p>
+                </details>
+                <details>
+                  <summary>¿Puedo transmitir dos o más partidos a la misma hora?</summary>
+                  <p>Sí. Configura la transmisión de cada partido por separado; cada uno tiene su Panel de Director y su overlay. Necesitas una emisión, un directo y una clave por partido, e internet suficiente (<a href="#ayt-varios">calculadora</a>). En TikTok, un solo LIVE por cuenta.</p>
+                </details>
+                <details>
+                  <summary>¿Dónde pego la clave de transmisión?</summary>
+                  <p>Solo en OBS o Prism. <strong>Nunca</strong> en el sistema ni en el portal: con la clave, cualquiera podría emitir en tu canal.</p>
+                </details>
+                <details>
+                  <summary>El directo se corta o se ve pixelado</summary>
+                  <p>Casi siempre es el internet de subida. Baja a 720p, emite a menos plataformas o usa un servicio de retransmisión. Prefiere cable o WiFi antes que datos móviles.</p>
+                </details>
+                <details>
+                  <summary>¿El marcador del overlay actualiza la tabla de posiciones?</summary>
+                  <p>No. El overlay es solo para el video. El resultado oficial se registra en la Planilla.</p>
+                </details>
+                <details>
+                  <summary>¿Qué hago con «URL de embed»?</summary>
+                  <p>Déjala vacía: hoy el portal no la usa.</p>
+                </details>
+              </div>
+              <p class="form-hint" id="ayt-faq-vacio" style="display:none;">No hay preguntas que coincidan con la búsqueda.</p>
+            </section>
+
+            <!-- ── Checklist ───────────────────────────────────────────── -->
+            <section class="card ayt-seccion" id="ayt-checklist">
+              <div class="ayt-seccion-head">
+                <h3><i class="fas fa-clipboard-check"></i> Lista para el día del partido</h3>
+                <div class="ayt-seccion-acciones">
+                  <button type="button" class="btn btn-outline btn-sm" id="ayt-limpiar-checklist"><i class="fas fa-eraser"></i> Limpiar</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="ayt-imprimir"><i class="fas fa-print"></i> Imprimir</button>
+                </div>
+              </div>
+              <div class="ayt-checklist-grid">
+                <div>
+                  <h4>El día anterior</h4>
+                  <label class="ayt-check"><input type="checkbox" data-check="dia-1" /> Directos creados en cada plataforma (enlace y clave)</label>
+                  <label class="ayt-check"><input type="checkbox" data-check="dia-2" /> Transmisión del partido guardada en el sistema</label>
+                  <label class="ayt-check"><input type="checkbox" data-check="dia-3" /> Auspiciantes del campeonato activos y con logo</label>
+                  <label class="ayt-check"><input type="checkbox" data-check="dia-4" /> Prueba corta de emisión en privado / no listado</label>
+                </div>
+                <div>
+                  <h4>Antes de empezar</h4>
+                  <label class="ayt-check"><input type="checkbox" data-check="antes-1" /> Internet de subida medido y suficiente</label>
+                  <label class="ayt-check"><input type="checkbox" data-check="antes-2" /> Cámaras, trípodes, cargadores y audio listos</label>
+                  <label class="ayt-check"><input type="checkbox" data-check="antes-3" /> Panel de Director abierto (recargado) y overlay visible en OBS</label>
+                  <label class="ayt-check"><input type="checkbox" data-check="antes-4" /> Marcador en 0-0 y período en 1.er tiempo</label>
+                </div>
+                <div>
+                  <h4>En vivo y al terminar</h4>
+                  <label class="ayt-check"><input type="checkbox" data-check="vivo-1" /> OBS / Prism emitiendo y video visible en cada plataforma</label>
+                  <label class="ayt-check"><input type="checkbox" data-check="vivo-2" /> «Iniciar transmisión» pulsado en el sistema</label>
+                  <label class="ayt-check"><input type="checkbox" data-check="vivo-3" /> Entretiempo activado y desactivado a tiempo</label>
+                  <label class="ayt-check"><input type="checkbox" data-check="vivo-4" /> Emisión detenida y «Finalizar» pulsado; resultado en la Planilla</label>
+                </div>
+              </div>
+            </section>
+
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="nav-overlay" id="nav-overlay"></div>
+
+    <script src="js/core.js"></script>
+    <script src="js/ayuda-transmisiones.js"></script>
+  </body>
+</html>
