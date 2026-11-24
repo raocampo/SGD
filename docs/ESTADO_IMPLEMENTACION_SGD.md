@@ -1,3 +1,7 @@
+## 2026-11-23 (parte 2) - Postales: estado de clasificación
+
+- Las postales de posiciones distinguen clasificados, fuera de clasificación y eliminados según la configuración de la categoría, con leyenda. Llave proyectada y postales por grupo confirmadas en producción.
+
 ## 2026-11-23 - Postales por grupo y llave proyectada
 
 - Postales de posiciones: una por grupo con su letra, título y auspiciantes (imagen por grupo, PDF con una página por grupo).

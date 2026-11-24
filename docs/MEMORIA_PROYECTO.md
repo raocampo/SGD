@@ -6,7 +6,7 @@ Actualizada: 2026-11-23 (America/Guayaquil).
 
 - Postales de Tablas → Posiciones: una postal por grupo («GRUPO X», título, auspiciantes); exporta una imagen por grupo y un PDF con una página por grupo. El rótulo leía campos inexistentes (`g.nombre`/`g.grupo_letra` en vez de `g.grupo.*`).
 - `GET /api/eliminatorias/evento/:id/proyeccion`: llave armada con `generarBracketDesdeGrupos({ simular: true })` y ROLLBACK (nada se guarda). Playoff / Llave la muestra si no hay llave, marcada «Proyectado» y sin acciones; se puede publicar.
-- Pendiente: revisarlo en producción (Liga InterEmpresarial / Abierta).
+- Confirmado en producción por el usuario. Parte 2: la postal marca clasificados (verde), fuera de clasificación (naranja) y eliminados (rojo, «ELIMINADO») con las marcas del backend, más una leyenda de cupos.
 
 ## Trabajo anterior: seguridad de transmisiones (20-nov, parte 2)
 
@@ -24,9 +24,9 @@ Actualizada: 2026-11-23 (America/Guayaquil).
 
 ## Para retomar (24-nov)
 
-- `main` = `origin/main` en `8239b3e` (postales por grupo y llave proyectada) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- `main` = `origin/main` en `e16ff83` (marcas de clasificación en las postales) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
 - Sin migraciones nuevas desde la `079`.
-- **Primero:** que el usuario revise en producción las postales por grupo y la llave proyectada de la Liga InterEmpresarial / Abierta.
+- **Primero:** que el usuario revise en producción las marcas de clasificación de las postales (`e16ff83`).
 - Sigue pendiente la URL actual de producción en la última línea de `.env.local` (la guardada falla desde el 21-oct). Consultas **solo de lectura**: aviso de la Liga InterEmpresarial y partidos pasados sin cerrar.
 - Lista completa: cierre del 20-nov en `docs/BITACORA_AVANCES.md` (segunda entrada desde arriba) + entrada del 23-nov.
 

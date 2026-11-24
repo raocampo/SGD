@@ -1,3 +1,11 @@
+## 2026-11-23 (parte 2) - Postales de posiciones: clasificados, fuera y eliminados
+
+- **Confirmado por el usuario en producción:** la llave proyectada y las postales por grupo funcionan (entrada inferior).
+- **Pedido:** en las postales falta distinguir a los equipos eliminados según la configuración de la categoría.
+- **Causa:** `tablasplantilla.js` ya asignaba `tblp-clasifica`, `tblp-fuera` y `tblp-eliminado`, pero `tablasplantilla.css` no tenía estilos para esas clases, así que todas las filas se veían iguales. Además «clasifica» se deducía de la posición en la lista, en lugar de usar la marca del backend.
+- **Corrección:** el estado sale de las marcas que calcula `aplicarEstadoClasificacionTabla` en el backend (cupos `clasificados_por_grupo` del grupo o de la categoría, eliminados manuales o automáticos por no presentación, edición manual de la tabla), con los colores de la página de Tablas: **verde** = clasifica (borde y círculo de posición), **naranja atenuado** = fuera de clasificación, **rojo oscuro** = eliminado (fila roja, nombre tachado y rótulo «ELIMINADO» con el motivo como título). Debajo de la tabla, una leyenda «Clasifican N · Fuera de clasificación · Eliminado» (solo los estados presentes). Bordes y fondos sólidos para que html2canvas los capture igual en la imagen y el PDF.
+- **Verificación** (BD local, evento 8 de Copa Ciudad de Loja: 4 grupos, 4 cupos, 7 eliminados): marcas iguales a las del backend en los 4 grupos (A: 4 clasifican, 2 eliminados; B: 4, 1 fuera, 1 eliminado; C: 2 clasifican porque 3 de 5 están eliminados; D: 4, 1, 1), motivos en los rótulos («No paga cuentas», «5 no presentaciones»…), y captura real de html2canvas con fondo Deportivo y Nocturno. Guards **49/49**.
+
 ## 2026-11-23 - Postales de posiciones por grupo y llave proyectada
 
 - **Pedido del usuario (capturas de producción, Liga InterEmpresarial / Abierta):** (1) la postal de posiciones junta todos los grupos en una sola imagen y el rótulo dice solo «GRUPO», sin letra: debe salir una postal por grupo, con título y auspiciantes; (2) en Playoff / Llave aparece «No hay llave creada» aunque la clasificación ya está configurada: quiere verla y compartirla mientras se va formando.
