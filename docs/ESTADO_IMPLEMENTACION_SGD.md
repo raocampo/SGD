@@ -1,3 +1,8 @@
+## 2026-11-23 (parte 3) - Manual de transmisiones y partidos en vivo
+
+- Manual interactivo de transmisiones dentro del sistema (`ayuda-transmisiones.html`).
+- La portada y la landing de cada organizador muestran los partidos en vivo y los próximos directos, con un botón por plataforma.
+
 ## 2026-11-23 (parte 2) - Postales: estado de clasificación
 
 - Las postales de posiciones distinguen clasificados, fuera de clasificación y eliminados según la configuración de la categoría, con leyenda. Llave proyectada y postales por grupo confirmadas en producción.
