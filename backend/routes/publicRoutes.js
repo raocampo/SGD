@@ -44,6 +44,7 @@ router.post("/contacto", contactoController.enviar);
 
 // 📡 Transmisiones públicas (destacadas antes de /:id para que no colisione)
 router.get("/transmisiones/destacadas", transmisionController.listarDestacadasPublicas);
+router.get("/transmisiones/en-vivo", transmisionController.listarEnVivoPublicas);
 router.get("/transmisiones/:id", transmisionController.obtenerTransmisionViewer);
 router.get("/partidos/:id/transmision", transmisionController.obtenerTransmisionPublica);
 router.get("/campeonatos/:id/transmisiones-activas", transmisionController.listarTransmisionesActivasPorCampeonato);

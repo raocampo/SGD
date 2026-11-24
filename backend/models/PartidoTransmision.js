@@ -397,6 +397,78 @@ class PartidoTransmision {
     return result.rows.length ? PartidoTransmision.limpiar(result.rows[0]) : null;
   }
 
+  // Portada y landing del organizador: partidos en vivo y próximos
+  // programados (con enlace) de campeonatos públicos. Las transmisiones en
+  // borrador no se muestran. organizadorId filtra por dueño del campeonato.
+  static async listarPublicasEnVivo({ organizadorId = null, limite = 12 } = {}) {
+    await this.asegurarTabla();
+    const orgId = Number.parseInt(organizadorId, 10);
+    const tope = Math.min(Math.max(Number.parseInt(limite, 10) || 12, 1), 30);
+    const result = await pool.query(
+      `
+        SELECT t.*,
+               COALESCE(t.campeonato_id, p.campeonato_id) AS campeonato_id,
+               p.evento_id AS partido_evento_id,
+               p.fecha_partido, p.hora_partido, p.cancha, p.jornada,
+               el.nombre AS equipo_local_nombre, el.logo_url AS equipo_local_logo,
+               ev2.nombre AS equipo_visitante_nombre, ev2.logo_url AS equipo_visitante_logo,
+               c.nombre AS campeonato_nombre, c.logo_url AS campeonato_logo,
+               evt.nombre AS evento_nombre
+        FROM partido_transmisiones t
+        JOIN partidos p ON p.id = t.partido_id
+        JOIN campeonatos c ON c.id = p.campeonato_id
+        LEFT JOIN eventos evt ON evt.id = p.evento_id
+        LEFT JOIN equipos el ON el.id = p.equipo_local_id
+        LEFT JOIN equipos ev2 ON ev2.id = p.equipo_visitante_id
+        WHERE LOWER(COALESCE(c.estado, '')) IN ('inscripcion', 'en_curso', 'finalizado')
+          AND ($1::int IS NULL OR c.creador_usuario_id = $1::int)
+          AND (
+            t.estado = 'en_vivo'
+            OR (
+              t.estado = 'programada'
+              AND (t.url_publica IS NOT NULL OR jsonb_array_length(COALESCE(t.enlaces, '[]'::jsonb)) > 0)
+              AND (
+                t.fecha_inicio_programada BETWEEN NOW() - INTERVAL '3 hours' AND NOW() + INTERVAL '7 days'
+                OR (
+                  t.fecha_inicio_programada IS NULL
+                  AND p.fecha_partido BETWEEN CURRENT_DATE AND CURRENT_DATE + 7
+                )
+              )
+            )
+          )
+        ORDER BY (t.estado = 'en_vivo') DESC,
+                 COALESCE(t.fecha_inicio_programada, (p.fecha_partido + COALESCE(p.hora_partido, '00:00'::time))::timestamptz) ASC NULLS LAST,
+                 t.id
+        LIMIT $2
+      `,
+      [Number.isFinite(orgId) && orgId > 0 ? orgId : null, tope]
+    );
+    return result.rows.map((row) => ({
+      id: row.id,
+      partido_id: row.partido_id,
+      campeonato_id: Number(row.campeonato_id) || null,
+      evento_id: Number(row.partido_evento_id) || null,
+      titulo: row.titulo,
+      plataforma: row.plataforma,
+      url_publica: row.url_publica,
+      enlaces: PartidoTransmision.enlacesDeFila(row),
+      estado: row.estado,
+      fecha_inicio_programada: row.fecha_inicio_programada,
+      fecha_inicio_real: row.fecha_inicio_real,
+      fecha_partido: row.fecha_partido,
+      hora_partido: row.hora_partido,
+      cancha: row.cancha,
+      jornada: row.jornada,
+      equipo_local_nombre: row.equipo_local_nombre,
+      equipo_local_logo: row.equipo_local_logo,
+      equipo_visitante_nombre: row.equipo_visitante_nombre,
+      equipo_visitante_logo: row.equipo_visitante_logo,
+      campeonato_nombre: row.campeonato_nombre,
+      campeonato_logo: row.campeonato_logo,
+      evento_nombre: row.evento_nombre,
+    }));
+  }
+
   static async listarDestacadas() {
     await this.asegurarTabla();
 

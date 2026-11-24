@@ -276,6 +276,19 @@ async function listarDestacadasPublicas(req, res) {
   }
 }
 
+// GET /api/public/transmisiones/en-vivo?organizador_id=
+async function listarEnVivoPublicas(req, res) {
+  try {
+    const transmisiones = await PartidoTransmision.listarPublicasEnVivo({
+      organizadorId: req.query?.organizador_id,
+      limite: req.query?.limite,
+    });
+    return res.json({ transmisiones });
+  } catch (_err) {
+    return res.json({ transmisiones: [] });
+  }
+}
+
 async function obtenerTransmisionPorId(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -323,4 +336,5 @@ module.exports = {
   listarTransmisionesPorCampeonato,
   toggleDestacado,
   listarDestacadasPublicas,
+  listarEnVivoPublicas,
 };

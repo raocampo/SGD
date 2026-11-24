@@ -6526,3 +6526,206 @@ body.ltc-home-page .ltc-home-sponsors-track {
   background: #b7e853;
   color: #1a2e00;
 }
+
+/* ── Partidos en vivo (portada y landing del organizador) ─────────────── */
+.ltc-envivo-section {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+  color: #ffffff;
+}
+
+.ltc-envivo-section .ltc-home-section-heading h2,
+.ltc-envivo-section .ltc-home-section-heading p {
+  color: #ffffff;
+}
+
+.ltc-envivo-section .ltc-home-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ltc-lime);
+}
+
+.ltc-envivo-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: ltcEnVivoPulso 1.2s infinite;
+}
+
+@keyframes ltcEnVivoPulso {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ltc-envivo-dot { animation: none; }
+}
+
+.ltc-envivo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.ltc-envivo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .14);
+}
+
+.ltc-envivo-card.is-live {
+  border-color: rgba(239, 68, 68, .7);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, .35), 0 10px 30px rgba(0, 0, 0, .25);
+}
+
+.ltc-envivo-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ltc-envivo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+}
+
+.ltc-envivo-badge.is-live {
+  background: #dc2626;
+}
+
+.ltc-envivo-badge.is-live .ltc-envivo-dot {
+  background: #ffffff;
+  width: 8px;
+  height: 8px;
+}
+
+.ltc-envivo-jornada {
+  font-size: .78rem;
+  opacity: .75;
+}
+
+.ltc-envivo-vs {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.ltc-envivo-equipo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  min-width: 0;
+}
+
+.ltc-envivo-equipo img,
+.ltc-envivo-inicial {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #ffffff;
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+.ltc-envivo-inicial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1f2937;
+  font-weight: 900;
+  font-size: 1.3rem;
+}
+
+.ltc-envivo-equipo strong {
+  font-size: .9rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.ltc-envivo-vs-sep {
+  font-weight: 900;
+  color: var(--ltc-lime);
+  font-size: .9rem;
+}
+
+.ltc-envivo-meta {
+  margin: 0;
+  font-size: .82rem;
+  opacity: .8;
+  text-align: center;
+}
+
+.ltc-envivo-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ltc-envivo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff !important;
+  font-weight: 800;
+  font-size: .85rem;
+  text-decoration: none;
+}
+
+.ltc-envivo-btn.is-live {
+  background: #dc2626;
+}
+
+.ltc-envivo-btn:hover,
+.ltc-envivo-btn:focus-visible {
+  filter: brightness(1.1);
+}
+
+.ltc-envivo-sin-enlace {
+  font-size: .82rem;
+  opacity: .75;
+}
+
+.ltc-envivo-link {
+  align-self: center;
+  border: 0;
+  background: transparent;
+  color: var(--ltc-lime);
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ltc-envivo-link:hover,
+.ltc-envivo-link:focus-visible {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .ltc-envivo-section { padding: 56px 0; }
+  .ltc-envivo-equipo img,
+  .ltc-envivo-inicial { width: 44px; height: 44px; }
+}

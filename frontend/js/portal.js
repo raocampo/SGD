@@ -1430,6 +1430,114 @@ async function filtrarResultadosRecientes(campeonatoId, btnEl) {
   }
 }
 
+// ── Partidos en vivo en la portada y en la landing del organizador ────────
+let partidosEnVivoTimer = null;
+let partidosEnVivoOrganizadorId = null;
+
+function formatearHoraTransmisionPortal(tx) {
+  try {
+    if (tx.fecha_inicio_programada) {
+      return new Date(tx.fecha_inicio_programada).toLocaleString("es-EC", {
+        weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+      });
+    }
+    if (tx.fecha_partido) {
+      const fecha = String(tx.fecha_partido).slice(0, 10);
+      const hora = tx.hora_partido ? String(tx.hora_partido).slice(0, 5) : "";
+      const [y, m, d] = fecha.split("-");
+      return `${d}/${m}/${y}${hora ? ` · ${hora}` : ""}`;
+    }
+  } catch (_) {}
+  return "";
+}
+
+function renderEquipoEnVivoPortal(nombre, logo) {
+  const src = normalizarMediaPortal(logo);
+  const inicial = escPortal(String(nombre || "?").trim().charAt(0).toUpperCase() || "?");
+  return `
+    <div class="ltc-envivo-equipo">
+      ${src
+        ? `<img src="${escPortal(src)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';" /><span class="ltc-envivo-inicial" style="display:none;">${inicial}</span>`
+        : `<span class="ltc-envivo-inicial">${inicial}</span>`}
+      <strong>${escPortal(nombre || "Por definir")}</strong>
+    </div>`;
+}
+
+function renderTarjetaEnVivoPortal(tx) {
+  const enVivo = tx.estado === "en_vivo";
+  const botones = botonesTransmisionHtml(tx, enVivo, `class="ltc-envivo-btn${enVivo ? " is-live" : ""}"`);
+  const meta = [tx.campeonato_nombre, tx.evento_nombre].filter(Boolean).map(escPortal).join(" · ");
+  const cuando = enVivo ? "" : formatearHoraTransmisionPortal(tx);
+  const campeonatoId = Number(tx.campeonato_id) || 0;
+  const eventoId = Number(tx.evento_id) || 0;
+  return `
+    <article class="ltc-envivo-card${enVivo ? " is-live" : ""}">
+      <div class="ltc-envivo-card-top">
+        ${enVivo
+          ? '<span class="ltc-envivo-badge is-live"><span class="ltc-envivo-dot"></span> EN VIVO</span>'
+          : `<span class="ltc-envivo-badge"><i class="fas fa-calendar"></i> ${escPortal(cuando || "Próximamente")}</span>`}
+        ${tx.jornada ? `<span class="ltc-envivo-jornada">Jornada ${escPortal(tx.jornada)}</span>` : ""}
+      </div>
+      <div class="ltc-envivo-vs">
+        ${renderEquipoEnVivoPortal(tx.equipo_local_nombre, tx.equipo_local_logo)}
+        <span class="ltc-envivo-vs-sep">VS</span>
+        ${renderEquipoEnVivoPortal(tx.equipo_visitante_nombre, tx.equipo_visitante_logo)}
+      </div>
+      ${meta ? `<p class="ltc-envivo-meta">${meta}${tx.cancha ? ` · ${escPortal(tx.cancha)}` : ""}</p>` : ""}
+      <div class="ltc-envivo-acciones">
+        ${botones || '<span class="ltc-envivo-sin-enlace">Enlace próximamente</span>'}
+      </div>
+      ${campeonatoId
+        ? `<button type="button" class="ltc-envivo-link" onclick="portalVerCampeonato(${campeonatoId}, { eventoId: ${eventoId || "null"} })">
+             <i class="fas fa-trophy"></i> Ver campeonato
+           </button>`
+        : ""}
+    </article>`;
+}
+
+async function cargarPartidosEnVivoPortal(organizadorId = null) {
+  const seccion = document.getElementById("partidos-en-vivo");
+  const grid = document.getElementById("ltc-envivo-grid");
+  if (!seccion || !grid) return;
+  partidosEnVivoOrganizadorId = Number.parseInt(organizadorId, 10) || null;
+
+  const query = partidosEnVivoOrganizadorId ? `?organizador_id=${partidosEnVivoOrganizadorId}` : "";
+  let lista = [];
+  try {
+    const data = await fetch(`${API}/public/transmisiones/en-vivo${query}`).then((r) => r.json());
+    lista = Array.isArray(data?.transmisiones) ? data.transmisiones : [];
+  } catch (_) {
+    lista = [];
+  }
+
+  if (!lista.length) {
+    seccion.style.display = "none";
+    grid.innerHTML = "";
+  } else {
+    const enVivo = lista.filter((tx) => tx.estado === "en_vivo").length;
+    const titulo = document.getElementById("ltc-envivo-title");
+    const subtitulo = document.getElementById("ltc-envivo-subtitle");
+    const proximos = lista.length - enVivo;
+    if (titulo) {
+      const textoVivo = enVivo === 1 ? "Partido en vivo" : `${enVivo} partidos en vivo`;
+      titulo.textContent = enVivo
+        ? (proximos ? `${textoVivo} y próximos directos` : textoVivo)
+        : "Próximas transmisiones";
+    }
+    if (subtitulo) {
+      subtitulo.textContent = enVivo
+        ? "Elige la plataforma para ver el directo. Se actualiza solo."
+        : "Estos partidos se transmitirán pronto. Vuelve a la hora del partido.";
+    }
+    grid.innerHTML = lista.map(renderTarjetaEnVivoPortal).join("");
+    seccion.style.display = "";
+  }
+
+  // Refresco automático cada minuto (sin duplicar temporizadores).
+  if (partidosEnVivoTimer) clearTimeout(partidosEnVivoTimer);
+  partidosEnVivoTimer = setTimeout(() => cargarPartidosEnVivoPortal(partidosEnVivoOrganizadorId), 60000);
+}
+
 async function procesarPayloadLandingOrganizador(data) {
   // Si entramos por /liga/<slug> no teniamos el id; lo fijamos ahora para que los
   // enlaces internos (cards de campeonato, "volver al portal del organizador") lo lleven.
@@ -1441,6 +1549,8 @@ async function procesarPayloadLandingOrganizador(data) {
   }
   aplicarModoLandingOrganizador(data);
   await portalCargarCampeonatos(data.campeonatos || [], { mostrarProximos: false });
+  // Solo los partidos de este organizador.
+  if (Number.isFinite(orgId) && orgId > 0) cargarPartidosEnVivoPortal(orgId);
   return data;
 }
 
@@ -3669,6 +3779,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await cargarNoticiasPublicasPortal();
   await portalCargarCampeonatos();
+  cargarPartidosEnVivoPortal(null);
   await cargarClientesPortal();
   if (contexto.campeonatoId) {
     portalVerCampeonato(contexto.campeonatoId, { eventoId: contexto.eventoId });
