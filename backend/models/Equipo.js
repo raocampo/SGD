@@ -217,7 +217,11 @@ class Equipo {
     await this.asegurarEsquema();
 
     const query = `
-        SELECT e.*, c.nombre as nombre_campeonato 
+        SELECT e.*, c.nombre as nombre_campeonato,
+               COALESCE(
+                 (SELECT array_agg(ee.evento_id ORDER BY ee.evento_id) FROM evento_equipos ee WHERE ee.equipo_id = e.id),
+                 '{}'::int[]
+               ) AS evento_ids
         FROM equipos e 
         JOIN campeonatos c ON e.campeonato_id = c.id 
         ORDER BY c.nombre, e.numero_campeonato NULLS LAST, e.nombre

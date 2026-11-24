@@ -398,6 +398,51 @@ class Finanza {
     }
   }
 
+  // Categorías del campeonato en las que participa un equipo: inscrito en
+  // evento_equipos o con partidos en la categoría.
+  static async obtenerCategoriasEquipo(equipoId, campeonatoId, client = pool) {
+    const r = await client.query(
+      `
+        SELECT DISTINCT ev.id, ev.nombre
+        FROM eventos ev
+        WHERE ev.campeonato_id = $2
+          AND (
+            EXISTS (SELECT 1 FROM evento_equipos ee WHERE ee.evento_id = ev.id AND ee.equipo_id = $1)
+            OR EXISTS (
+              SELECT 1 FROM partidos p
+              WHERE p.evento_id = ev.id AND (p.equipo_local_id = $1 OR p.equipo_visitante_id = $1)
+            )
+          )
+        ORDER BY ev.nombre
+      `,
+      [equipoId, campeonatoId]
+    );
+    return r.rows.map((row) => ({ id: Number(row.id), nombre: row.nombre }));
+  }
+
+  // Movimientos manuales: la categoría debe ser una en la que el equipo
+  // participa (evita registrar a un equipo del Femenino con la Abierta por
+  // tener un nombre parecido o por quedar elegida la categoría anterior).
+  // Sin categoría y con una sola categoría posible, se asigna esa.
+  static async resolverCategoriaMovimiento(equipoId, campeonatoId, eventoId, client = pool) {
+    const categorias = await this.obtenerCategoriasEquipo(equipoId, campeonatoId, client);
+    if (!eventoId) {
+      return categorias.length === 1 ? categorias[0].id : null;
+    }
+    if (!categorias.length || categorias.some((c) => c.id === Number(eventoId))) {
+      return eventoId;
+    }
+    const [eqR, evR] = await Promise.all([
+      client.query("SELECT nombre FROM equipos WHERE id = $1", [equipoId]),
+      client.query("SELECT nombre FROM eventos WHERE id = $1", [eventoId]),
+    ]);
+    const equipo = eqR.rows[0]?.nombre || `Equipo ${equipoId}`;
+    const evento = evR.rows[0]?.nombre || `categoría ${eventoId}`;
+    throw new Error(
+      `El equipo «${equipo}» no pertenece a la categoría «${evento}». Está en: ${categorias.map((c) => c.nombre).join(", ")}.`
+    );
+  }
+
   static async crearMovimiento(data = {}, client = pool) {
     await this.asegurarEsquema(client);
 
@@ -410,10 +455,16 @@ class Finanza {
       ? this.parseEntero(data.campeonato_id, "campeonato_id")
       : await this.resolverCampeonatoIdPorEquipo(equipo_id, client);
 
-    const evento_id =
+    let evento_id =
       data.evento_id === undefined || data.evento_id === null || data.evento_id === ""
         ? null
         : this.parseEntero(data.evento_id, "evento_id");
+    // Solo movimientos manuales: los de planilla y sistema ya traen la
+    // categoría del partido o de la inscripción.
+    const origenMovimiento = ((data.origen || "manual").toString().trim() || "manual").toLowerCase();
+    if (origenMovimiento === "manual" && Number.isFinite(campeonato_id)) {
+      evento_id = await this.resolverCategoriaMovimiento(equipo_id, campeonato_id, evento_id, client);
+    }
     const partido_id =
       data.partido_id === undefined || data.partido_id === null || data.partido_id === ""
         ? null
@@ -546,6 +597,16 @@ class Finanza {
         : data.evento_id === null || data.evento_id === ""
         ? null
         : this.parseEntero(data.evento_id, "evento_id");
+
+    // Al cambiar la categoría de un movimiento, debe ser una del equipo. No
+    // se valida si no cambia, para poder anular o editar movimientos viejos.
+    if (
+      evento_id &&
+      Number(evento_id) !== Number(actual.evento_id || 0) &&
+      String(actual.origen || "manual").toLowerCase() === "manual"
+    ) {
+      await this.resolverCategoriaMovimiento(actual.equipo_id, actual.campeonato_id, evento_id, client);
+    }
 
     if (evento_id) {
       const ev = await client.query(
@@ -976,6 +1037,16 @@ class Finanza {
         e.nombre AS equipo_nombre,
         c.id AS campeonato_id,
         c.nombre AS campeonato_nombre,
+        evt.id AS evento_id,
+        evt.nombre AS evento_nombre,
+        (
+          evt.id IS NULL
+          OR EXISTS (SELECT 1 FROM evento_equipos ee WHERE ee.evento_id = evt.id AND ee.equipo_id = e.id)
+          OR EXISTS (
+            SELECT 1 FROM partidos px
+            WHERE px.evento_id = evt.id AND (px.equipo_local_id = e.id OR px.equipo_visitante_id = e.id)
+          )
+        ) AS equipo_en_categoria,
         COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.concepto = 'inscripcion' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS cargos_inscripcion,
         COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'abono' AND fm.concepto = 'inscripcion' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS abonos_inscripcion,
         COALESCE(SUM(CASE WHEN fm.tipo_movimiento = 'cargo' AND fm.concepto = 'arbitraje' AND fm.estado <> 'anulado' THEN fm.monto ELSE 0 END), 0)::numeric(12,2) AS cargos_arbitraje,
@@ -991,9 +1062,10 @@ class Finanza {
       FROM finanzas_movimientos fm
       JOIN equipos e ON e.id = fm.equipo_id
       JOIN campeonatos c ON c.id = fm.campeonato_id
+      LEFT JOIN eventos evt ON evt.id = fm.evento_id
       ${baseWhere}
-      GROUP BY e.id, e.nombre, c.id, c.nombre
-      ORDER BY e.nombre ASC
+      GROUP BY e.id, e.nombre, c.id, c.nombre, evt.id, evt.nombre
+      ORDER BY e.nombre ASC, evt.nombre ASC NULLS LAST
     `;
     const r = await pool.query(q, values);
 
@@ -1029,6 +1101,11 @@ class Finanza {
       return {
         equipo_id: row.equipo_id,
         equipo_nombre: row.equipo_nombre,
+        // Una fila por equipo y categoría: un movimiento registrado con una
+        // categoría que no es la del equipo queda a la vista.
+        evento_id: row.evento_id ? Number(row.evento_id) : null,
+        evento_nombre: row.evento_nombre || null,
+        equipo_en_categoria: row.equipo_en_categoria !== false,
         campeonato_id: row.campeonato_id,
         campeonato_nombre: row.campeonato_nombre,
         inscripcion: {

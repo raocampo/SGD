@@ -169,8 +169,15 @@ function bindEventosFinanzas() {
     ?.addEventListener("change", sincronizarFormularioMovimiento);
 
   document
+    .getElementById("mov-evento")
+    ?.addEventListener("change", sincronizarFormularioMovimiento);
+
+  document
     .getElementById("mov-equipo")
-    ?.addEventListener("change", () => cargarMovimientosEquipoFinanzas());
+    ?.addEventListener("change", () => {
+      ajustarCategoriaSegunEquipoMovimiento();
+      cargarMovimientosEquipoFinanzas();
+    });
 
   document
     .getElementById("btn-fin-recibo-ultimo")
@@ -495,7 +502,7 @@ function sincronizarFormularioMovimiento() {
     ? finanzasState.eventos.filter((e) => Number(e.campeonato_id) === campeonatoId)
     : [];
 
-  const equiposFiltrados = Number.isFinite(campeonatoId)
+  const equiposCampeonato = Number.isFinite(campeonatoId)
     ? finanzasState.equipos.filter((e) => Number(e.campeonato_id) === campeonatoId)
     : [];
 
@@ -509,20 +516,64 @@ function sincronizarFormularioMovimiento() {
     op.textContent = e.nombre || "Categoría";
     eventoSelect.appendChild(op);
   });
+  if ([...eventoSelect.options].some((x) => x.value === prevEvento)) {
+    eventoSelect.value = prevEvento;
+  }
+
+  // Con una categoría elegida, solo sus equipos inscritos: evita registrar a
+  // un equipo de otra categoría con nombre parecido. Sin categoría, todos,
+  // con su categoría al lado del nombre.
+  const eventoId = Number.parseInt(eventoSelect.value || "", 10);
+  const nombresEvento = new Map(eventosFiltrados.map((e) => [Number(e.id), e.nombre || "Categoría"]));
+  const categoriasDe = (eq) => (Array.isArray(eq.evento_ids) ? eq.evento_ids.map(Number) : []);
+  const equiposFiltrados = Number.isFinite(eventoId)
+    ? equiposCampeonato.filter((eq) => {
+        const cats = categoriasDe(eq);
+        return !cats.length || cats.includes(eventoId);
+      })
+    : equiposCampeonato;
 
   equipoSelect.innerHTML = '<option value="">Selecciona equipo</option>';
   equiposFiltrados.forEach((e) => {
     const op = document.createElement("option");
     op.value = String(e.id);
-    op.textContent = e.nombre || "Equipo";
+    const cats = categoriasDe(e).map((id) => nombresEvento.get(id)).filter(Boolean);
+    op.textContent = !Number.isFinite(eventoId) && cats.length
+      ? `${e.nombre || "Equipo"} — ${cats.join(", ")}`
+      : e.nombre || "Equipo";
     equipoSelect.appendChild(op);
   });
 
-  if ([...eventoSelect.options].some((x) => x.value === prevEvento)) {
-    eventoSelect.value = prevEvento;
+  // Editando (equipo bloqueado): el equipo del movimiento no cambia aunque se
+  // elija otra categoría, así que siempre se conserva en la lista.
+  if (prevEquipo && equipoSelect.disabled && ![...equipoSelect.options].some((x) => x.value === prevEquipo)) {
+    const equipo = equiposCampeonato.find((e) => String(e.id) === String(prevEquipo));
+    const op = document.createElement("option");
+    op.value = String(prevEquipo);
+    op.textContent = `${equipo?.nombre || "Equipo"} (no es de esta categoría)`;
+    equipoSelect.appendChild(op);
   }
   if ([...equipoSelect.options].some((x) => x.value === prevEquipo)) {
     equipoSelect.value = prevEquipo;
+  }
+}
+
+// Al elegir equipo: si la categoría está vacía o no es una del equipo, se
+// pone la del equipo (si tiene una sola). Así no queda la categoría del
+// movimiento anterior.
+function ajustarCategoriaSegunEquipoMovimiento() {
+  const eventoSelect = document.getElementById("mov-evento");
+  const equipoSelect = document.getElementById("mov-equipo");
+  if (!eventoSelect || !equipoSelect) return;
+  const equipo = finanzasState.equipos.find((e) => String(e.id) === String(equipoSelect.value));
+  const cats = Array.isArray(equipo?.evento_ids) ? equipo.evento_ids.map(Number) : [];
+  if (!equipo || !cats.length) return;
+  const actual = Number.parseInt(eventoSelect.value || "", 10);
+  if (Number.isFinite(actual) && cats.includes(actual)) return;
+  if (cats.length === 1 && [...eventoSelect.options].some((o) => o.value === String(cats[0]))) {
+    eventoSelect.value = String(cats[0]);
+    sincronizarFormularioMovimiento();
+    equipoSelect.value = String(equipo.id);
   }
 }
 
@@ -1379,9 +1430,19 @@ function editarMovimientoFinanzas(movimientoId) {
   sincronizarFormularioMovimiento();
 
   setTimeout(() => {
+    const equipoSelect = document.getElementById("mov-equipo");
     document.getElementById("mov-evento").value = movimiento.evento_id || "";
-    document.getElementById("mov-equipo").value = movimiento.equipo_id || "";
-    document.getElementById("mov-equipo").disabled = true;
+    // Se bloquea y se fija el equipo antes de volver a filtrar por la
+    // categoría del movimiento, para que se conserve aunque no sea suya.
+    equipoSelect.disabled = true;
+    if (![...equipoSelect.options].some((o) => o.value === String(movimiento.equipo_id))) {
+      const op = document.createElement("option");
+      op.value = String(movimiento.equipo_id || "");
+      op.textContent = movimiento.equipo_nombre || "Equipo";
+      equipoSelect.appendChild(op);
+    }
+    equipoSelect.value = movimiento.equipo_id || "";
+    sincronizarFormularioMovimiento();
   }, 100);
 
   document.getElementById("mov-tipo").value = movimiento.tipo_movimiento || "cargo";
@@ -2363,7 +2424,7 @@ async function imprimirReporteResumenEquipos() {
         <tr>
           <td>${idx + 1}</td>
           <td>${escaparHtml(x.equipo_nombre || "-")}</td>
-          <td>${escaparHtml(x.campeonato_nombre || "-")}</td>
+          <td>${escaparHtml(x.evento_nombre || "Sin categoría")}${x.equipo_en_categoria === false ? ' <strong class="deuda">(no es su categoría)</strong>' : ""}</td>
           <td class="num">
             <div>Pagado: <span class="${x.inscripcion.abonos > 0 ? "ok" : ""}">${formatoMoneda(x.inscripcion.abonos || 0)}</span></div>
             <div>Debe: <span class="${x.inscripcion.saldo > 0 ? "deuda" : "ok"}">${formatoMoneda(Math.max(0, x.inscripcion.saldo))}</span></div>
@@ -2378,7 +2439,9 @@ async function imprimirReporteResumenEquipos() {
     })
     .join("");
 
-  const equiposDeudores = filasData.filter((x) => x.total.saldo > 0).length;
+  // Una fila por equipo y categoría: los conteos son por equipo.
+  const equiposDeudores = new Set(filasData.filter((x) => x.total.saldo > 0).map((x) => x.equipo_id)).size;
+  const totalEquiposResumen = new Set(filasData.map((x) => x.equipo_id)).size;
 
   const html = `
     <div class="fin-report-wrap">
@@ -2387,7 +2450,7 @@ async function imprimirReporteResumenEquipos() {
         <div class="fin-report-sub">Corte: ${escaparHtml(formatearFechaHoraReporte(new Date().toISOString()))}</div>
       </div>
       <div class="fin-report-grid">
-        <div><strong>Equipos:</strong> ${filasData.length}</div>
+        <div><strong>Equipos:</strong> ${totalEquiposResumen}</div>
         <div><strong>Equipos con saldo pendiente:</strong> ${equiposDeudores}</div>
       </div>
       <table class="fin-report-table">
@@ -2395,7 +2458,7 @@ async function imprimirReporteResumenEquipos() {
           <tr>
             <th>#</th>
             <th>Equipo</th>
-            <th>Campeonato</th>
+            <th>Categoría</th>
             <th class="num">Inscripción</th>
             <th class="num">Arbitraje</th>
             <th class="num">T. Amarillas</th>
@@ -2866,6 +2929,16 @@ function renderCeldaRubroFinanzas(rubro) {
   `;
 }
 
+// Categoría de la fila del resumen. Si los movimientos están registrados con
+// una categoría en la que el equipo no participa, se avisa para corregirlos.
+function renderCategoriaResumenEquipo(x = {}) {
+  const nombre = escaparHtml(x.evento_nombre || "Sin categoría");
+  if (x.equipo_en_categoria === false) {
+    return `${nombre}<br><span class="fin-badge-estado fin-badge-pendiente" title="Corrige la categoría de estos movimientos en Movimientos">No es su categoría</span>`;
+  }
+  return nombre;
+}
+
 function renderTablaResumenEquipos(equipos = []) {
   const cont = document.getElementById("fin-resumen-equipos-contenido");
   if (!cont) return;
@@ -2880,7 +2953,7 @@ function renderTablaResumenEquipos(equipos = []) {
         <tr>
           <td>${idx + 1}</td>
           <td>${escaparHtml(x.equipo_nombre || "-")}</td>
-          <td>${escaparHtml(x.campeonato_nombre || "-")}</td>
+          <td>${renderCategoriaResumenEquipo(x)}</td>
           <td>${renderCeldaRubroFinanzas(x.inscripcion)}</td>
           <td>${renderCeldaRubroFinanzas(x.arbitraje)}</td>
           <td>${renderCeldaRubroFinanzas(x.tarjetas_amarillas)}</td>
@@ -2898,7 +2971,7 @@ function renderTablaResumenEquipos(equipos = []) {
         <tr>
           <th>#</th>
           <th>Equipo</th>
-          <th>Campeonato</th>
+          <th>Categoría</th>
           <th>Inscripción</th>
           <th>Arbitraje</th>
           <th>T. Amarillas</th>
