@@ -1,3 +1,8 @@
+## 2026-11-24 - Cierre del día
+
+- Publicado hasta `40d2dd5`: Transmisiones rediseñada con Reabrir, Panel de Director con pestañas, anuncios con imágenes y videos (migración 080) y control de videos locales vía OBS WebSocket.
+- Pendientes: probar todo el módulo de transmisiones en producción (OBS real); URL de producción vencida. Lista completa en la primera entrada de la bitácora.
+
 ## 2026-11-24 (parte 4) - Videos locales vía OBS
 
 - El Panel de Director controla los videos e imágenes que están en la computadora que transmite, como fuentes de OBS y vía OBS WebSocket, sin subirlos. Convive con los anuncios subidos al sistema.

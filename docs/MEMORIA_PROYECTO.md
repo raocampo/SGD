@@ -1,6 +1,6 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-11-24 (America/Guayaquil).
+Actualizada: 2026-11-24, cierre del día (America/Guayaquil).
 
 ## Último trabajo: videos locales de OBS desde el Panel de Director (24-nov, parte 4)
 
@@ -48,13 +48,13 @@ Actualizada: 2026-11-24 (America/Guayaquil).
 
 - Finanzas → Resumen Ejecutivo: tarjeta «Inscripción y premios por categoría» (`Finanza.obtenerInscripcionPorCategoria`, `GET /api/finanzas/inscripcion-por-categoria`). Totales iguales a la fila «Inscripción» de Utilidad por Rubro; montos sin categoría en fila aparte. Sin migración. «Equipos» cuenta los inscritos (`evento_equipos`); los cargos de inscripción a equipos no inscritos se muestran en un aviso (caso Liga InterEmpresarial: 29 vs 28). Pendiente: revisar en producción el equipo del aviso y su origen.
 
-## Para retomar (24-nov)
+## Para retomar (25-nov)
 
-- `main` = `origin/main` en `9b3c9f1` (videos locales de OBS) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
-- Migración nueva: `080_transmision_anuncios.sql` (se aplica en el `prestart` y también la asegura el modelo).
-- **Primero:** que el usuario pruebe en producción el Panel de Director (envío automático, vista previa) los **anuncios con video** y el control de **videos locales vía OBS WebSocket** (con OBS 28+ real) en Publicidad, con ILELSA vs INDUGLAS y corrija en producción el movimiento de CORPORACIÓN PROAUTO (Femenino) si el resumen por equipo lo marca «No es su categoría» (`1724bc9`), y revise el manual de transmisiones y «Partidos en vivo» (`46facfa`). Marcas de clasificación de las postales: confirmadas.
-- Sigue pendiente la URL actual de producción en la última línea de `.env.local` (la guardada falla desde el 21-oct). Consultas **solo de lectura**: partidos pasados sin cerrar (el aviso de la Liga InterEmpresarial ya está explicado: PROAUTO es del Femenino).
-- Lista completa y priorizada: **primera entrada** de `docs/BITACORA_AVANCES.md` (cierre del 23-nov).
+- `main` = `origin/main` en `40d2dd5` + cierre documental del 24-nov. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- Migración nueva: `080_transmision_anuncios.sql` (la aplica el `prestart`; también la aseguran los modelos).
+- **Primero:** que el usuario pruebe en producción el módulo de transmisiones de hoy: página de Transmisiones (Reabrir / Panel de Director de ILELSA vs INDUGLAS), Panel de Director (envío automático, vista previa), anuncios con video subidos y control de videos locales vía OBS WebSocket con OBS real.
+- Luego, pendientes previos: PROAUTO (Femenino) en Finanzas, manual y «Partidos en vivo», URL de producción vencida (consultas solo de lectura).
+- Lista completa y priorizada: **primera entrada** de `docs/BITACORA_AVANCES.md` (cierre del 24-nov).
 
 ## Trabajo anterior: transmisión multiplataforma y publicidad (09-nov)
 

@@ -1,3 +1,38 @@
+## 2026-11-24 - Cierre del día y pendientes para continuar
+
+### Estado al cerrar
+- `main` = `origin/main` en `40d2dd5` + este cierre documental. Sin cambios locales; servidores locales detenidos; sin datos ni archivos de prueba en la BD local (todo lo temporal se eliminó, también los archivos de `uploads/anuncios`).
+- **Migración nueva: `080_transmision_anuncios.sql`.** Se aplica en el `prestart` del backend (Railway) y también la crean `TransmisionAnuncio.asegurarTabla` y `TransmisionOverlay.asegurarTabla`.
+
+### Lo realizado hoy (detalle en las entradas inferiores del 24-nov)
+1. **Página de Transmisiones rediseñada** (`411b815`): contenedor corregido (`.app-content` sin estilos → `.main-wrapper`, también en el manual), tarjetas por transmisión, filtros con contadores, selector de partido en «Nueva transmisión» y `POST /api/transmisiones/:id/reabrir`. El Panel de Director queda visible salvo en canceladas (el usuario no lo encontraba porque su transmisión estaba «Finalizada»).
+2. **Panel de Director con pestañas** (`267f5c8`): estado real de la transmisión (antes siempre «EN VIVO») con Iniciar/Finalizar/Reabrir, envío automático al overlay, períodos como botones, vista previa en vivo del overlay y barra inferior en celular.
+3. **Anuncios pagados con imágenes y videos/reels** (`68e561d`, migración 080): `/api/transmision-anuncios` (subida MP4/WEBM/imagen hasta 60 MB, alcance campeonato o partido, vigencia), overlay con reproductores de esquina y entretiempo, aviso por socket `overlay:publicidad`, gestión en Publicidad.
+4. **Videos e imágenes locales vía OBS WebSocket** (`9b3c9f1`): `js/obs-control.js` y tarjeta en Publicidad para reproducir, mostrar y ocultar fuentes de OBS con archivos de la portátil, sin subirlos.
+
+### Pendientes (por prioridad)
+
+**A. Probar en producción (usuario)**
+1. **Transmisiones** → Liga InterEmpresarial → ILELSA vs INDUGLAS: «Panel de Director» o «Reabrir».
+2. **Panel de Director**: «+ Gol» con envío automático y la vista previa; Entretiempo; Iniciar/Finalizar desde el encabezado.
+3. **Anuncios subidos** (Publicidad → Nuevo anuncio): subir una imagen y un video MP4 corto; verlos rotar en el overlay de OBS (esquina y entretiempo); pausar y eliminar. Confirmar que Railway conserva los archivos subidos (volumen de `UPLOADS_DIR`) y vigilar su espacio.
+4. **Videos locales vía OBS** (solo probado contra un OBS simulado): en la portátil con OBS 28+, Herramientas → Ajustes del servidor WebSocket → Habilitar; fuentes multimedia en una escena; Panel de Director **en esa misma computadora** → Publicidad → Conectar con OBS. Brave puede pedir permiso de red local.
+5. Pendientes previos sin confirmar: Finanzas → Resumen por equipo de la Liga InterEmpresarial (si «CORPORACIÓN PROAUTO» sale «Abierta · No es su categoría», cambiar la categoría del movimiento a Femenino); manual de transmisiones y sección «Partidos en vivo» de la portada y la landing; transmisión real con OBS/Prism hacia varias plataformas; campeonato de básquetbol de prueba.
+
+**B. Necesita al usuario**
+1. **URL de producción vencida** (última línea de `.env.local`, falla desde el 21-oct). Con la nueva: revisar en **solo lectura** los partidos pasados que siguen «programados» (en la copia local: 5 del Fútsala de Padres con planilla sin cerrar y 7 de Interjorgas sin planilla).
+2. Decisiones: qué hacer con esos partidos; renumeración de jornadas de los eventos 16, 18, 19 y 30; cargos automáticos a equipos que solo aparecen en partidos; código de pertenencia al registrarse (en espera).
+3. Mejoras ofrecidas sin respuesta: aviso de nombre parecido al crear un equipo; aviso de equipos sin categoría; quitar «URL de embed» del formulario de transmisión.
+
+**C. Insumos externos:** proveedor de correo (Railway Hobby bloquea SMTP), credenciales PayPhone/PayPal, credenciales/contrato para QA mobile.
+
+**D. Validaciones heredadas (lista A del 14-oct):** primer ingreso de dirigente/técnico, Usuarios y Roles en celular, resultados de la landing, póster/selector de jornadas, guardado real de categoría, permisos por rol y vínculo de jugador por cédula.
+
+### Notas técnicas para retomar
+- QA en navegador: `puppeteer-core` y Brave headless en el scratchpad (se borra entre días: `npm i puppeteer-core@23`). Backend en `:5000`, frontend con `python3 -m http.server 5500`. Detener los servidores en un comando aparte (si `kill` va junto a otros comandos, corta la ejecución).
+- El `ffmpeg` del sistema no tiene H.264: para videos de prueba usar WEBM (`libvpx-vp9`).
+- Para probar OBS WebSocket sin OBS: servidor simulado con `ws` (ya está en `backend/node_modules`).
+
 ## 2026-11-24 (parte 4) - Videos e imágenes locales de OBS controlados desde el Panel de Director
 
 - **Pregunta del usuario:** ¿no sería mejor no subir los videos e imágenes, sino tomarlos de la carpeta del equipo que transmite (portátil o celular)?
