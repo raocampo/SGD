@@ -1,3 +1,7 @@
+## 2026-11-24 (parte 3) - Anuncios en las transmisiones
+
+- Publicidad pagada con imágenes y videos/reels por campeonato o por partido, con vigencia, gestionada desde el Panel de Director y reproducida en el overlay (esquina y entretiempo). Migración `080`.
+
 ## 2026-11-24 (parte 2) - Panel de Director rediseñado
 
 - Panel de Director con pestañas, estado real de la transmisión, envío automático al overlay y vista previa en vivo.
