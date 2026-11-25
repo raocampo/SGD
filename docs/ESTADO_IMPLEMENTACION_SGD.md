@@ -1,3 +1,7 @@
+## 2026-11-24 (parte 2) - Panel de Director rediseñado
+
+- Panel de Director con pestañas, estado real de la transmisión, envío automático al overlay y vista previa en vivo.
+
 ## 2026-11-24 - Transmisiones rediseñada
 
 - Página de Transmisiones con tarjetas, filtros, selector de partido y acción «Reabrir»; Panel de Director siempre accesible salvo en canceladas.

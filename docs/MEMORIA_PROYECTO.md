@@ -2,7 +2,11 @@
 
 Actualizada: 2026-11-24 (America/Guayaquil).
 
-## Último trabajo: página de Transmisiones rediseñada (24-nov)
+## Último trabajo: Panel de Director con pestañas (24-nov, parte 2)
+
+- `director.html` + `css/director.css`: encabezado fijo con estado real e Iniciar/Finalizar/Reabrir, pestañas (En vivo, Publicidad, Overlay y OBS, Compartir), envío automático con aviso de cambios pendientes y vista previa en vivo del overlay.
+
+## Trabajo anterior: página de Transmisiones rediseñada (24-nov)
 
 - Tarjetas por transmisión con Panel de Director (salvo canceladas), Iniciar/Finalizar/Reabrir, Editar; selector de partido en «Nueva transmisión»; `POST /api/transmisiones/:id/reabrir`. Corregido el contenedor `.app-content` (sin estilos) en Transmisiones y en el manual.
 
@@ -38,9 +42,9 @@ Actualizada: 2026-11-24 (America/Guayaquil).
 
 ## Para retomar (24-nov)
 
-- `main` = `origin/main` en `411b815` (Transmisiones rediseñada) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- `main` = `origin/main` en `267f5c8` (Panel de Director con pestañas) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
 - Sin migraciones nuevas desde la `079`.
-- **Primero:** que el usuario pruebe la nueva página de Transmisiones (Reabrir / Panel de Director de ILELSA vs INDUGLAS) y corrija en producción el movimiento de CORPORACIÓN PROAUTO (Femenino) si el resumen por equipo lo marca «No es su categoría» (`1724bc9`), y revise el manual de transmisiones y «Partidos en vivo» (`46facfa`). Marcas de clasificación de las postales: confirmadas.
+- **Primero:** que el usuario pruebe la página de Transmisiones y el nuevo Panel de Director (envío automático y vista previa) con ILELSA vs INDUGLAS y corrija en producción el movimiento de CORPORACIÓN PROAUTO (Femenino) si el resumen por equipo lo marca «No es su categoría» (`1724bc9`), y revise el manual de transmisiones y «Partidos en vivo» (`46facfa`). Marcas de clasificación de las postales: confirmadas.
 - Sigue pendiente la URL actual de producción en la última línea de `.env.local` (la guardada falla desde el 21-oct). Consultas **solo de lectura**: partidos pasados sin cerrar (el aviso de la Liga InterEmpresarial ya está explicado: PROAUTO es del Femenino).
 - Lista completa y priorizada: **primera entrada** de `docs/BITACORA_AVANCES.md` (cierre del 23-nov).
 
