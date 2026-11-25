@@ -158,12 +158,62 @@
         <section class="dir-panel" data-dir-panel="publicidad" role="tabpanel">
           <div class="card">
             <div class="card-head">
-              <h2><i class="fas fa-rectangle-ad"></i> Anuncios de la transmisión</h2>
+              <h2><i class="fas fa-laptop"></i> Videos e imágenes de esta computadora (OBS)</h2>
+              <span class="obs-estado" id="obs-estado"><span class="conn-dot" id="obs-dot"></span><span id="obs-estado-texto">Sin conectar</span></span>
+            </div>
+            <p class="card-nota" style="margin:0 0 12px;">Los archivos <strong>no se suben</strong>: quedan en la portátil que transmite. Agrégalos en OBS como <em>Fuente multimedia</em> o <em>Imagen</em> en una escena (por ejemplo, «Publicidad» o tu escena del partido) y contrólalos desde aquí. Requiere OBS 28 o superior con <strong>Herramientas → Ajustes del servidor WebSocket → Habilitar</strong>, y abrir este panel en la misma computadora.</p>
+            <form id="obs-form" class="obs-form" novalidate>
+              <label class="campo">
+                <span class="campo-label">Dirección de OBS</span>
+                <input type="text" id="obs-url" class="input-sm" value="ws://localhost:4455" autocomplete="off" />
+              </label>
+              <label class="campo">
+                <span class="campo-label">Contraseña del servidor WebSocket</span>
+                <input type="password" id="obs-password" class="input-sm" autocomplete="off" placeholder="La de Ajustes del servidor WebSocket" />
+              </label>
+              <label class="radio campo-ancho"><input type="checkbox" id="obs-recordar" checked /> Recordar en este equipo</label>
+              <div class="obs-form-acciones campo-ancho">
+                <button type="submit" class="btn-action btn-enviar btn-chico" id="obs-btn-conectar"><i class="fas fa-plug"></i> Conectar con OBS</button>
+                <button type="button" class="btn-action btn-secundario btn-chico" id="obs-btn-desconectar" style="display:none;"><i class="fas fa-plug-circle-xmark"></i> Desconectar</button>
+              </div>
+            </form>
+            <p class="anuncio-error" id="obs-error" role="alert"></p>
+
+            <div id="obs-controles" style="display:none;">
+              <div class="obs-escena">
+                <label class="campo" style="flex:1;">
+                  <span class="campo-label">Escena con tus videos e imágenes</span>
+                  <select id="obs-escena" class="select-sm"></select>
+                </label>
+                <button type="button" class="btn-action btn-secundario btn-chico" id="obs-btn-actualizar" title="Volver a leer las fuentes de OBS"><i class="fas fa-rotate"></i> Actualizar</button>
+                <button type="button" class="btn-action btn-secundario btn-chico" id="obs-btn-ir-escena" title="Poner esta escena al aire"><i class="fas fa-tower-broadcast"></i> Poner al aire</button>
+              </div>
+              <div class="toggle-row">
+                <span>Ocultar el video al terminar<small>Vuelve a esconder la fuente cuando el video acaba.</small></span>
+                <label class="toggle"><input type="checkbox" id="obs-ocultar-fin" checked /><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <span>Ocultar imágenes después de</span>
+                <select id="obs-seg-imagen" class="select-sm">
+                  <option value="0">No ocultar</option>
+                  <option value="5">5 s</option>
+                  <option value="10" selected>10 s</option>
+                  <option value="15">15 s</option>
+                  <option value="30">30 s</option>
+                </select>
+              </div>
+              <div id="obs-fuentes" class="lista-anuncios"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2><i class="fas fa-rectangle-ad"></i> Anuncios subidos al sistema</h2>
               <button type="button" class="btn-action btn-enviar btn-chico" id="btn-nuevo-anuncio" onclick="abrirFormAnuncio()">
                 <i class="fas fa-plus"></i> Nuevo anuncio
               </button>
             </div>
-            <p class="card-nota" style="margin:0 0 12px;">Publicidad de anunciantes que pagan por aparecer en las transmisiones: <strong>imágenes</strong> o <strong>videos cortos / reels</strong> (MP4 o WEBM, hasta 60 MB). Rotan junto con los auspiciantes del campeonato.</p>
+            <p class="card-nota" style="margin:0 0 12px;">Se guardan en el servidor y <strong>rotan solos</strong> en el overlay, en cualquier equipo o celular que transmita, con vigencia por campaña: <strong>imágenes</strong> o <strong>videos cortos / reels</strong> (MP4 o WEBM, hasta 60 MB). Úsalos cuando transmitan varias personas o equipos; para archivos pesados, usa la tarjeta de arriba.</p>
 
             <form id="form-anuncio" class="anuncio-form" style="display:none;" novalidate>
               <input type="hidden" id="anuncio-id" />
@@ -362,6 +412,7 @@
 <!-- Socket.io -->
 <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
 <script src="js/core.js"></script>
+<script src="js/obs-control.js"></script>
 <script>
   // ── Estado ──────────────────────────────────────────────────────
   let transmisionId    = null;
@@ -413,6 +464,7 @@
 
     iniciarPestanas();
     iniciarPeriodos();
+    iniciarObs();
     const togAuto = document.getElementById("tog-auto");
     togAuto.checked = leerPref(CLAVE_AUTO, "1") === "1";
     togAuto.addEventListener("change", () => {
@@ -1077,6 +1129,185 @@
     } catch (err) {
       toast("Error: " + err.message);
     }
+  }
+
+  // ── Videos e imágenes locales vía OBS WebSocket ────────────────
+  // Los archivos viven en la computadora que transmite; el panel solo
+  // muestra/oculta y reinicia las fuentes de OBS.
+  const obs = window.ObsControl ? new window.ObsControl() : null;
+  const CLAVE_OBS = "sgd_director_obs";
+  let obsItems = [];
+  const obsTemporizadores = new Map();
+  const TIPOS_MEDIA_OBS = new Set(["ffmpeg_source", "vlc_source"]);
+  const TIPOS_IMAGEN_OBS = new Set(["image_source", "slideshow", "slideshow_v2"]);
+
+  function obsEstado(estado, texto) {
+    document.getElementById("obs-dot").className = "conn-dot " + estado;
+    document.getElementById("obs-estado-texto").textContent = texto;
+  }
+
+  function obsError(msg) { document.getElementById("obs-error").textContent = msg || ""; }
+
+  function obsLeerPref() {
+    try { return JSON.parse(localStorage.getItem(CLAVE_OBS) || "{}"); } catch (_) { return {}; }
+  }
+  function obsGuardarPref(datos) {
+    try { localStorage.setItem(CLAVE_OBS, JSON.stringify({ ...obsLeerPref(), ...datos })); } catch (_) {}
+  }
+
+  function obsTipoTexto(kind) {
+    if (TIPOS_MEDIA_OBS.has(kind)) return { texto: "Video", icono: "fa-film" };
+    if (TIPOS_IMAGEN_OBS.has(kind)) return { texto: kind === "image_source" ? "Imagen" : "Presentación", icono: "fa-image" };
+    if (kind === "browser_source") return { texto: "Navegador", icono: "fa-globe" };
+    if (!kind) return { texto: "Grupo / escena", icono: "fa-layer-group" };
+    return { texto: kind, icono: "fa-cube" };
+  }
+
+  function renderObsFuentes() {
+    const cont = document.getElementById("obs-fuentes");
+    if (!obsItems.length) {
+      cont.innerHTML = '<div class="anuncios-vacio"><i class="fas fa-film"></i><p>Esta escena no tiene fuentes. En OBS agrega <strong>Fuente multimedia</strong> (video) o <strong>Imagen</strong> con tus archivos y pulsa <strong>Actualizar</strong>.</p></div>';
+      return;
+    }
+    cont.innerHTML = obsItems.map((it) => {
+      const tipo = obsTipoTexto(it.inputKind);
+      const esMedia = TIPOS_MEDIA_OBS.has(it.inputKind);
+      return `
+        <article class="anuncio-item obs-item${it.sceneItemEnabled ? " is-visible" : ""}">
+          <div class="obs-icono"><i class="fas ${tipo.icono}"></i></div>
+          <div class="anuncio-info">
+            <strong>${escHtml(it.sourceName)}</strong>
+            <span class="anuncio-meta">${escHtml(tipo.texto)} · ${it.sceneItemEnabled ? '<span class="obs-al-aire">Visible</span>' : "Oculta"}</span>
+          </div>
+          <div class="anuncio-acciones">
+            ${it.sceneItemEnabled
+              ? `<button type="button" class="btn-action btn-secundario btn-chico" onclick="obsMostrar(${Number(it.sceneItemId)}, false)"><i class="fas fa-eye-slash"></i> Ocultar</button>`
+              : `<button type="button" class="btn-action btn-enviar btn-chico" onclick="obsMostrar(${Number(it.sceneItemId)}, true)"><i class="fas ${esMedia ? "fa-play" : "fa-eye"}"></i> ${esMedia ? "Reproducir" : "Mostrar"}</button>`}
+            ${esMedia && it.sceneItemEnabled ? `<button type="button" class="btn-icono" title="Reiniciar video" aria-label="Reiniciar video" onclick="obsReiniciar(${Number(it.sceneItemId)})"><i class="fas fa-rotate-left"></i></button>` : ""}
+          </div>
+        </article>`;
+    }).join("");
+  }
+
+  async function obsCargarEscenas() {
+    const sel = document.getElementById("obs-escena");
+    const data = await obs.request("GetSceneList");
+    const escenas = (data.scenes || []).map((x) => x.sceneName).reverse();
+    const preferida = obsLeerPref().escena;
+    sel.innerHTML = escenas.map((n) => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join("");
+    sel.value = escenas.includes(preferida) ? preferida : (data.currentProgramSceneName || escenas[0] || "");
+    await obsCargarFuentes();
+  }
+
+  async function obsCargarFuentes() {
+    const escena = document.getElementById("obs-escena").value;
+    if (!escena) { obsItems = []; renderObsFuentes(); return; }
+    const data = await obs.request("GetSceneItemList", { sceneName: escena });
+    obsItems = (data.sceneItems || []).slice().sort((a, b) => (b.sceneItemIndex ?? 0) - (a.sceneItemIndex ?? 0));
+    renderObsFuentes();
+  }
+
+  async function obsMostrar(sceneItemId, visible) {
+    const escena = document.getElementById("obs-escena").value;
+    const it = obsItems.find((x) => Number(x.sceneItemId) === Number(sceneItemId));
+    if (!it) return;
+    try {
+      clearTimeout(obsTemporizadores.get(it.sourceName));
+      await obs.request("SetSceneItemEnabled", { sceneName: escena, sceneItemId: Number(sceneItemId), sceneItemEnabled: visible });
+      it.sceneItemEnabled = visible;
+      if (visible && TIPOS_MEDIA_OBS.has(it.inputKind)) {
+        await obs.request("TriggerMediaInputAction", { inputName: it.sourceName, mediaAction: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART" });
+      }
+      if (visible && TIPOS_IMAGEN_OBS.has(it.inputKind)) {
+        const seg = Number(document.getElementById("obs-seg-imagen").value) || 0;
+        if (seg > 0) obsTemporizadores.set(it.sourceName, setTimeout(() => obsMostrar(sceneItemId, false), seg * 1000));
+      }
+      renderObsFuentes();
+      toast(visible ? `«${it.sourceName}» al aire` : `«${it.sourceName}» oculta`);
+    } catch (err) {
+      toast("OBS: " + err.message);
+    }
+  }
+
+  async function obsReiniciar(sceneItemId) {
+    const it = obsItems.find((x) => Number(x.sceneItemId) === Number(sceneItemId));
+    if (!it) return;
+    try {
+      await obs.request("TriggerMediaInputAction", { inputName: it.sourceName, mediaAction: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART" });
+    } catch (err) { toast("OBS: " + err.message); }
+  }
+
+  function iniciarObs() {
+    if (!obs) return;
+    const pref = obsLeerPref();
+    if (pref.url) document.getElementById("obs-url").value = pref.url;
+    if (pref.password) document.getElementById("obs-password").value = pref.password;
+
+    document.getElementById("obs-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      obsError("");
+      const url = document.getElementById("obs-url").value.trim() || "ws://localhost:4455";
+      const password = document.getElementById("obs-password").value;
+      const btn = document.getElementById("obs-btn-conectar");
+      btn.disabled = true;
+      obsEstado("", "Conectando…");
+      try {
+        await obs.conectar(url, password);
+        if (document.getElementById("obs-recordar").checked) obsGuardarPref({ url, password });
+        else obsGuardarPref({ url, password: "" });
+        await obsCargarEscenas();
+      } catch (err) {
+        obsEstado("error", "Sin conectar");
+        obsError(err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    document.getElementById("obs-btn-desconectar").addEventListener("click", () => obs.desconectar());
+    document.getElementById("obs-btn-actualizar").addEventListener("click", () => obsCargarFuentes().catch((err) => toast("OBS: " + err.message)));
+    document.getElementById("obs-escena").addEventListener("change", (e) => {
+      obsGuardarPref({ escena: e.target.value });
+      obsCargarFuentes().catch((err) => toast("OBS: " + err.message));
+    });
+    document.getElementById("obs-btn-ir-escena").addEventListener("click", async () => {
+      try {
+        await obs.request("SetCurrentProgramScene", { sceneName: document.getElementById("obs-escena").value });
+        toast("Escena al aire");
+      } catch (err) { toast("OBS: " + err.message); }
+    });
+
+    // Con conexión activa, los datos de acceso se esconden (solo Desconectar).
+    const camposAcceso = () => document.querySelectorAll("#obs-form > .campo, #obs-form > .radio");
+    obs.on("conectado", () => {
+      camposAcceso().forEach((el) => { el.style.display = "none"; });
+      obsEstado("conectado", "Conectado a OBS");
+      document.getElementById("obs-controles").style.display = "";
+      document.getElementById("obs-btn-desconectar").style.display = "";
+      document.getElementById("obs-btn-conectar").style.display = "none";
+    });
+    obs.on("desconectado", () => {
+      camposAcceso().forEach((el) => { el.style.display = ""; });
+      obsEstado("", "Sin conectar");
+      document.getElementById("obs-controles").style.display = "none";
+      document.getElementById("obs-btn-desconectar").style.display = "none";
+      document.getElementById("obs-btn-conectar").style.display = "";
+      obsTemporizadores.forEach((t) => clearTimeout(t));
+      obsTemporizadores.clear();
+    });
+    // Cambios hechos directamente en OBS se reflejan en el panel.
+    obs.on("SceneItemEnableStateChanged", (d) => {
+      if (d.sceneName !== document.getElementById("obs-escena").value) return;
+      const it = obsItems.find((x) => Number(x.sceneItemId) === Number(d.sceneItemId));
+      if (it) { it.sceneItemEnabled = d.sceneItemEnabled; renderObsFuentes(); }
+    });
+    ["SceneItemCreated", "SceneItemRemoved", "InputNameChanged", "SceneListChanged"].forEach((ev) => {
+      obs.on(ev, () => obsCargarFuentes().catch(() => {}));
+    });
+    obs.on("MediaInputPlaybackEnded", (d) => {
+      if (!document.getElementById("obs-ocultar-fin").checked) return;
+      const it = obsItems.find((x) => x.sourceName === d.inputName && x.sceneItemEnabled);
+      if (it) obsMostrar(it.sceneItemId, false);
+    });
   }
 
   // ── Compartir ────────────────────────────────────────────────

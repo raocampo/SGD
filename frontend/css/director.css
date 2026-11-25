@@ -913,3 +913,45 @@ body.page-director {
   .anuncio-miniatura { width: 88px; }
   .anuncio-acciones { grid-column: 1 / -1; justify-content: flex-end; }
 }
+
+/* ── Videos locales vía OBS WebSocket ─────────────────────────────── */
+.obs-estado { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--dir-muted); }
+
+.obs-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.obs-form-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.obs-escena {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 6px;
+}
+
+.obs-item { grid-template-columns: 52px minmax(0, 1fr) auto; }
+
+.obs-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  background: var(--dir-surface-2);
+  color: #c4b5fd;
+  font-size: 1.2rem;
+}
+
+.obs-item.is-visible { border-color: var(--dir-ok); }
+.obs-al-aire { color: #4ade80; font-weight: 700; }
+
+@media (max-width: 560px) {
+  .obs-form { grid-template-columns: 1fr; }
+  .obs-item { grid-template-columns: 44px minmax(0, 1fr); }
+  .obs-icono { width: 44px; height: 44px; }
+}
