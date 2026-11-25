@@ -168,6 +168,23 @@ async function cancelarTransmision(req, res) {
   }
 }
 
+async function reabrirTransmision(req, res) {
+  try {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ error: "ID de transmisión inválido." });
+    }
+    if (!(await verificarAccesoTransmision(req, res, id))) return;
+    const transmision = await PartidoTransmision.reabrir(id);
+    if (!transmision) {
+      return res.status(409).json({ error: "Solo se puede reabrir una transmisión finalizada o cancelada." });
+    }
+    return res.json({ transmision });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 async function obtenerTransmisionPublica(req, res) {
   try {
     const partidoId = Number.parseInt(req.params.id, 10);
@@ -331,6 +348,7 @@ module.exports = {
   iniciarTransmision,
   finalizarTransmision,
   cancelarTransmision,
+  reabrirTransmision,
   obtenerTransmisionPublica,
   listarTransmisionesActivasPorCampeonato,
   listarTransmisionesPorCampeonato,

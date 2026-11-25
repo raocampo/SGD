@@ -8,125 +8,8 @@
     <link rel="shortcut icon" href="assets/ltc/Icono.png" type="image/png" />
     <link rel="apple-touch-icon" href="assets/ltc/Icono.png" type="image/png" />
     <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/grupos.css" />
+    <link rel="stylesheet" href="css/transmisiones.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
-    <style>
-      .tx-guia {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
-        color: #fff;
-        border-radius: 12px;
-        padding: 1.1rem 1.4rem;
-        margin-bottom: 1.5rem;
-      }
-      .tx-guia-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        cursor: pointer;
-        user-select: none;
-        gap: .5rem;
-      }
-      .tx-guia-title {
-        font-weight: 700;
-        font-size: 1rem;
-        display: flex;
-        align-items: center;
-        gap: .5rem;
-      }
-      .tx-guia-toggle {
-        font-size: .85rem;
-        opacity: .7;
-        transition: transform .2s;
-      }
-      .tx-guia-toggle.open { transform: rotate(180deg); }
-      .tx-guia-body {
-        margin-top: 1rem;
-        display: none;
-      }
-      .tx-guia-body.open { display: block; }
-      .tx-pasos {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin-top: .5rem;
-      }
-      .tx-paso {
-        flex: 1;
-        min-width: 180px;
-        background: rgba(255,255,255,.07);
-        border-radius: 8px;
-        padding: .75rem 1rem;
-      }
-      .tx-paso-num {
-        font-size: 1.5rem;
-        font-weight: 800;
-        opacity: .5;
-        line-height: 1;
-      }
-      .tx-paso-titulo {
-        font-weight: 700;
-        margin: .25rem 0 .2rem;
-        font-size: .95rem;
-      }
-      .tx-paso-desc {
-        font-size: .82rem;
-        opacity: .8;
-        line-height: 1.4;
-      }
-      .tx-empty-guide {
-        text-align: center;
-        padding: 2.5rem 1rem;
-        color: #64748b;
-      }
-      .tx-empty-guide .tx-empty-icon {
-        font-size: 3rem;
-        margin-bottom: .75rem;
-      }
-      .tx-empty-guide h3 {
-        font-size: 1.1rem;
-        font-weight: 700;
-        margin-bottom: .4rem;
-        color: #374151;
-      }
-      .tx-empty-guide p {
-        font-size: .9rem;
-        margin-bottom: 1rem;
-        max-width: 400px;
-        margin-left: auto;
-        margin-right: auto;
-      }
-      .tx-tab-count {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 18px;
-        height: 18px;
-        padding: 0 5px;
-        border-radius: 99px;
-        font-size: .7rem;
-        font-weight: 700;
-        background: rgba(0,0,0,.15);
-        color: inherit;
-        margin-left: .35rem;
-        vertical-align: middle;
-      }
-      .partidos-main-tab.active .tx-tab-count {
-        background: rgba(255,255,255,.25);
-      }
-      .tx-top-bar {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-        margin-bottom: 1.25rem;
-      }
-      .tx-top-bar .form-group {
-        flex: 1;
-        min-width: 200px;
-        max-width: 380px;
-        margin: 0;
-      }
-    </style>
   </head>
 
   <body class="app-layout page-transmisiones">
@@ -137,127 +20,78 @@
         <a class="nav-btn" href="campeonatos.html"><i class="fas fa-trophy"></i> Campeonatos</a>
         <a class="nav-btn" href="eventos.html"><i class="fas fa-calendar-alt"></i> Categorías</a>
         <a class="nav-btn" href="equipos.html"><i class="fas fa-users"></i> Equipos</a>
-        <a class="nav-btn" href="jugadores.html"><i class="fas fa-user-friends"></i> Jugadores</a>
-        <a class="nav-btn" href="sorteo.html"><i class="fas fa-random"></i> Sorteo</a>
-        <a class="nav-btn" href="gruposgen.html"><i class="fas fa-layer-group"></i> Grupos</a>
         <a class="nav-btn" href="partidos.html"><i class="fas fa-futbol"></i> Partidos</a>
         <a class="nav-btn active" href="transmisiones.html"><i class="fas fa-broadcast-tower"></i> Transmisiones</a>
         <a class="nav-btn" href="planilla.html"><i class="fas fa-clipboard-list"></i> Planillaje</a>
         <a class="nav-btn" href="tablas.html"><i class="fas fa-table"></i> Tablas</a>
-      <a class="nav-btn" href="facturacion.html"><i class="fas fa-file-invoice-dollar"></i> Facturación</a>
         <a class="nav-btn" href="index.html"><i class="fas fa-globe"></i> Ver Portal</a>
       </nav>
     </aside>
 
-    <div class="app-content">
+    <div class="main-wrapper">
       <header class="top-bar">
         <button class="nav-toggle" id="nav-toggle" title="Mostrar/ocultar menú"><i class="fas fa-bars"></i></button>
-        <h1>📡 Transmisiones</h1>
+        <h1><i class="fas fa-broadcast-tower"></i> Transmisiones</h1>
       </header>
 
       <main class="main">
         <section class="section active">
-          <div class="container">
+          <div class="container tx-page">
 
-            <!-- Guía de uso -->
-            <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem;">
-              <a class="btn btn-secondary" href="ayuda-transmisiones.html">
-                <i class="fas fa-book-open"></i> Manual de transmisiones
-              </a>
-            </div>
-            <div class="tx-guia">
-              <div class="tx-guia-header" id="tx-guia-header">
-                <span class="tx-guia-title"><i class="fas fa-info-circle"></i> ¿Cómo funciona el módulo de transmisiones?</span>
-                <i class="fas fa-chevron-down tx-guia-toggle" id="tx-guia-toggle"></i>
+            <!-- ── Encabezado ─────────────────────────────────────────── -->
+            <div class="tx-header">
+              <div>
+                <h2>Transmisiones en vivo</h2>
+                <p>Registra los directos de cada partido, controla el marcador desde el <strong>Panel de Director</strong> y anúncialos en el portal.</p>
               </div>
-              <div class="tx-guia-body" id="tx-guia-body">
-                <div class="tx-pasos">
-                  <div class="tx-paso">
-                    <div class="tx-paso-num">1</div>
-                    <div class="tx-paso-titulo"><i class="fas fa-futbol"></i> Configurar desde Partidos</div>
-                    <div class="tx-paso-desc">Ve a <strong>Partidos</strong>, abre un partido y usa el botón <i class="fas fa-broadcast-tower"></i> para crear o editar su transmisión (plataforma, título, fecha programada, URL pública).</div>
-                  </div>
-                  <div class="tx-paso">
-                    <div class="tx-paso-num">2</div>
-                    <div class="tx-paso-titulo"><i class="fas fa-sliders-h"></i> Controlar en vivo</div>
-                    <div class="tx-paso-desc">Usa el botón <span style="background:#7c3aed;color:#fff;padding:1px 6px;border-radius:4px;font-size:.75rem;"><i class="fas fa-sliders-h"></i></span> de esta tabla para abrir el <strong>Panel de Director</strong>: controla el marcador, el cronómetro y el período en tiempo real.</div>
-                  </div>
-                  <div class="tx-paso">
-                    <div class="tx-paso-num">3</div>
-                    <div class="tx-paso-titulo"><i class="fas fa-tv"></i> Transmitir con OBS o Prism Live</div>
-                    <div class="tx-paso-desc">Transmite gratis y en simultáneo a <strong>YouTube, Facebook y TikTok</strong> con OBS Studio o Prism Live (varias cámaras en OBS o la del celular) y registra un enlace por plataforma y registra el enlace en el partido (paso 1). El Panel de Director te da la <strong>URL del overlay</strong> con el marcador, los auspiciantes y la pantalla de entretiempo: en OBS se agrega como <em>Browser Source</em> del tamaño del lienzo (1920×1080). Las instrucciones completas están en el Panel de Director.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Próxima transmisión card -->
-            <div id="tx-proxima-card" style="display:none; margin-bottom:1.5rem; padding:1rem 1.25rem; border-radius:10px; background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%); color:#fff; box-shadow:0 4px 18px rgba(0,0,0,.25);">
-              <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
-                <span style="font-size:1.5rem;">📡</span>
-                <div style="flex:1;">
-                  <span id="tx-proxima-label" style="font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;opacity:.8;"></span>
-                  <div style="font-weight:700;font-size:1rem;" id="tx-proxima-titulo"></div>
-                  <div style="font-size:.85rem;opacity:.85;" id="tx-proxima-meta"></div>
-                </div>
-                <a id="tx-proxima-link" href="#" target="_blank" rel="noopener noreferrer"
-                   style="background:#e53e3e;color:#fff;padding:.4em .9em;border-radius:6px;text-decoration:none;font-weight:700;font-size:.9rem;white-space:nowrap;">
-                  Ver →
+              <div class="tx-header-actions">
+                <a class="btn btn-outline" href="ayuda-transmisiones.html">
+                  <i class="fas fa-book-open"></i> Manual
+                </a>
+                <a id="tx-btn-crear" href="partidos.html" class="btn btn-primary">
+                  <i class="fas fa-plus"></i> Nueva transmisión
                 </a>
               </div>
             </div>
 
-            <!-- Selector campeonato + botón crear -->
-            <div class="tx-top-bar">
-              <div class="form-group">
+            <!-- ── Cómo funciona (compacto) ───────────────────────────── -->
+            <details class="tx-guia" id="tx-guia">
+              <summary><i class="fas fa-circle-info"></i> ¿Cómo funciona? <span>4 pasos</span></summary>
+              <ol class="tx-guia-pasos">
+                <li><strong>Crea el directo</strong> en YouTube, Facebook o TikTok y copia su enlace público.</li>
+                <li><strong>Registra la transmisión</strong> del partido con «Nueva transmisión» (desde Partidos → <i class="fas fa-broadcast-tower"></i> Transmitir).</li>
+                <li><strong>Abre el Panel de Director</strong> en la tarjeta del partido: copia la URL del overlay para OBS y controla el marcador.</li>
+                <li><strong>Pulsa «Iniciar»</strong> cuando salgas en vivo (el portal lo anuncia) y <strong>«Finalizar»</strong> al terminar.</li>
+              </ol>
+              <a href="ayuda-transmisiones.html">Ver el manual completo →</a>
+            </details>
+
+            <!-- ── Filtros ────────────────────────────────────────────── -->
+            <div class="tx-filtros">
+              <div class="tx-filtro-campeonato">
                 <label for="tx-campeonato-select"><i class="fas fa-trophy"></i> Campeonato</label>
                 <select id="tx-campeonato-select" class="form-control">
                   <option value="">— Selecciona un campeonato —</option>
                 </select>
               </div>
-              <a id="tx-btn-crear" href="partidos.html" class="btn btn-primary" style="white-space:nowrap;align-self:flex-end;">
-                <i class="fas fa-plus"></i> Nueva transmisión
-              </a>
-            </div>
-
-            <!-- Tabs con contadores -->
-            <div class="partidos-main-tabs" id="tx-tabs" style="margin-bottom:1rem;">
-              <button type="button" class="partidos-main-tab" data-tx-tab="todas">
-                Todas <span class="tx-tab-count" id="tx-count-todas">0</span>
-              </button>
-              <button type="button" class="partidos-main-tab" data-tx-tab="activas">
-                🔴 En vivo <span class="tx-tab-count" id="tx-count-activas">0</span>
-              </button>
-              <button type="button" class="partidos-main-tab" data-tx-tab="programadas">
-                Programadas <span class="tx-tab-count" id="tx-count-programadas">0</span>
-              </button>
-            </div>
-
-            <!-- Tabla / estados vacíos -->
-            <div id="tx-tabla-wrap">
-              <div id="tx-empty-msg" style="display:none;"></div>
-              <div class="table-responsive" id="tx-table-container" style="display:none;">
-                <table class="table" id="tx-tabla">
-                  <thead>
-                    <tr>
-                      <th>Partido</th>
-                      <th>Jornada</th>
-                      <th>Plataforma</th>
-                      <th>Estado</th>
-                      <th>Fecha programada</th>
-                      <th>Dest.</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tx-tabla-body"></tbody>
-                </table>
+              <div class="tx-tabs" id="tx-tabs" role="tablist" aria-label="Filtrar por estado">
+                <button type="button" class="tx-tab" data-tx-tab="todas" role="tab">Todas <span class="tx-tab-count" id="tx-count-todas">0</span></button>
+                <button type="button" class="tx-tab" data-tx-tab="activas" role="tab"><span class="tx-dot" aria-hidden="true"></span> En vivo <span class="tx-tab-count" id="tx-count-activas">0</span></button>
+                <button type="button" class="tx-tab" data-tx-tab="programadas" role="tab">Programadas <span class="tx-tab-count" id="tx-count-programadas">0</span></button>
+                <button type="button" class="tx-tab" data-tx-tab="finalizadas" role="tab">Finalizadas <span class="tx-tab-count" id="tx-count-finalizadas">0</span></button>
               </div>
             </div>
+
+            <!-- ── Lista ──────────────────────────────────────────────── -->
+            <div id="tx-empty-msg" style="display:none;"></div>
+            <div id="tx-lista" class="tx-lista" aria-live="polite"></div>
 
           </div>
         </section>
       </main>
     </div>
+
+    <div class="nav-overlay" id="nav-overlay"></div>
 
     <script src="js/core.js"></script>
     <script src="js/api.js"></script>

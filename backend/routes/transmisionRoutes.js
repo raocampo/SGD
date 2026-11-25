@@ -51,6 +51,13 @@ router.post(
 );
 
 router.post(
+  "/:id/reabrir",
+  requireAuth,
+  requireRoles("administrador", "organizador"),
+  transmisionController.reabrirTransmision
+);
+
+router.post(
   "/:id/destacar",
   requireAuth,
   requireRoles("administrador", "organizador"),

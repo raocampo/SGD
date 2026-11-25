@@ -318,7 +318,15 @@
     }
   }
 
+  // Avisa a la página (p. ej. Transmisiones) que la transmisión cambió.
+  function notificarCambioTransmision() {
+    try {
+      window.dispatchEvent(new CustomEvent("transmision:cambio", { detail: _transmisionActual || null }));
+    } catch (_) { /* navegadores sin CustomEvent: sin aviso */ }
+  }
+
   function cerrarModalTransmision() {
+    notificarCambioTransmision();
     const modal = document.getElementById("modal-transmision");
     if (modal) modal.style.display = "none";
     _transmisionActual = null;
@@ -355,6 +363,7 @@
       mostrarEstadoBadge(_transmisionActual?.estado);
       actualizarBotonesEstado(_transmisionActual);
       mostrarOk("✅ Transmisión guardada correctamente.");
+      notificarCambioTransmision();
     } catch (err) {
       mostrarError(err.message);
     }
@@ -369,6 +378,7 @@
       mostrarEstadoBadge(_transmisionActual?.estado);
       actualizarBotonesEstado(_transmisionActual);
       mostrarOk("🔴 ¡Transmisión iniciada!");
+      notificarCambioTransmision();
     } catch (err) {
       mostrarError(err.message);
     }
@@ -383,6 +393,7 @@
       mostrarEstadoBadge(_transmisionActual?.estado);
       actualizarBotonesEstado(_transmisionActual);
       mostrarOk("✅ Transmisión finalizada.");
+      notificarCambioTransmision();
     } catch (err) {
       mostrarError(err.message);
     }
@@ -397,6 +408,7 @@
       mostrarEstadoBadge(_transmisionActual?.estado);
       actualizarBotonesEstado(_transmisionActual);
       mostrarOk("Transmisión cancelada.");
+      notificarCambioTransmision();
     } catch (err) {
       mostrarError(err.message);
     }

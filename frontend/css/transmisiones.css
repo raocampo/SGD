@@ -1,0 +1,511 @@
+/* frontend/css/transmisiones.css — Gestión de transmisiones */
+
+.tx-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+/* ── Encabezado ───────────────────────────────────────────────────── */
+.tx-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.2rem 1.4rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+  color: #ffffff;
+}
+
+.tx-header h2 {
+  margin: 0 0 .3rem;
+  font-size: 1.3rem;
+  color: #ffffff;
+}
+
+.tx-header p {
+  margin: 0;
+  max-width: 620px;
+  color: rgba(255, 255, 255, .82);
+  font-size: .92rem;
+}
+
+.tx-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+
+.tx-header .btn-outline {
+  border-color: rgba(255, 255, 255, .55);
+  color: #ffffff;
+  background: transparent;
+}
+
+.tx-header .btn-outline:hover,
+.tx-header .btn-outline:focus-visible {
+  background: rgba(255, 255, 255, .12);
+}
+
+/* ── Cómo funciona ────────────────────────────────────────────────── */
+.tx-guia {
+  border: 1px solid #dbe4ef;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: .7rem 1rem;
+}
+
+.tx-guia summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.tx-guia summary span {
+  margin-left: auto;
+  font-size: .78rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.tx-guia-pasos {
+  margin: .7rem 0 .4rem;
+  padding-left: 1.3rem;
+  display: grid;
+  gap: .35rem;
+  color: #334155;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+.tx-guia a {
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+/* ── Filtros ──────────────────────────────────────────────────────── */
+.tx-filtros {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .9rem;
+}
+
+.tx-filtro-campeonato {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.tx-filtro-campeonato label {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: .9rem;
+}
+
+.tx-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
+.tx-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .45rem .85rem;
+  border: 1px solid #dbe4ef;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font: inherit;
+  font-size: .86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tx-tab.active {
+  background: #1f2937;
+  border-color: #1f2937;
+  color: #ffffff;
+}
+
+.tx-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 .35rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #1f2937;
+  font-size: .72rem;
+}
+
+.tx-tab.active .tx-tab-count {
+  background: rgba(255, 255, 255, .22);
+  color: #ffffff;
+}
+
+.tx-dot {
+  display: inline-block;
+  width: .55rem;
+  height: .55rem;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+/* ── Lista de tarjetas ────────────────────────────────────────────── */
+.tx-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 1rem;
+}
+
+.tx-card {
+  display: flex;
+  flex-direction: column;
+  gap: .8rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid #dbe4ef;
+  border-left: 5px solid #94a3b8;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.tx-card.is-en_vivo { border-left-color: #dc2626; box-shadow: 0 0 0 1px rgba(220, 38, 38, .25); }
+.tx-card.is-programada { border-left-color: #2563eb; }
+.tx-card.is-borrador { border-left-color: #94a3b8; }
+.tx-card.is-finalizada { border-left-color: #16a34a; }
+.tx-card.is-cancelada { border-left-color: #ea580c; opacity: .85; }
+
+.tx-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.tx-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .2rem .6rem;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: .76rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.tx-estado.is-en_vivo { background: #dc2626; }
+.tx-estado.is-programada { background: #2563eb; }
+.tx-estado.is-borrador { background: #64748b; }
+.tx-estado.is-finalizada { background: #16a34a; }
+.tx-estado.is-cancelada { background: #ea580c; }
+
+.tx-estado.is-en_vivo .tx-dot {
+  background: #ffffff;
+  animation: txPulso 1.1s infinite;
+}
+
+@keyframes txPulso {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tx-estado.is-en_vivo .tx-dot { animation: none; }
+}
+
+.tx-destacar {
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+}
+
+.tx-destacar.is-on { color: #d97706; }
+
+.tx-card-partido {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.tx-card-partido span {
+  color: #94a3b8;
+  font-weight: 700;
+  margin: 0 .3rem;
+}
+
+.tx-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem .9rem;
+  color: #64748b;
+  font-size: .84rem;
+}
+
+.tx-card-meta i { margin-right: .25rem; }
+
+.tx-plataformas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+
+.tx-plataforma {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .2rem .55rem;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #1e293b;
+  font-size: .8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tx-plataforma:hover,
+.tx-plataforma:focus-visible { background: #e2e8f0; }
+
+.tx-sin-enlace {
+  color: #b45309;
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+.tx-card-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  padding-top: .7rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.tx-card-acciones .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .84rem;
+  padding: .42rem .75rem;
+}
+
+.btn.tx-btn-director {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: #ffffff;
+}
+
+.btn.tx-btn-director:hover,
+.btn.tx-btn-director:focus-visible { background: #6d28d9; }
+
+.tx-card-acciones .tx-acciones-sec {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-left: auto;
+}
+
+.tx-btn-icono {
+  padding: .42rem .6rem !important;
+}
+
+/* ── Estados vacíos ───────────────────────────────────────────────── */
+.tx-empty-guide {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #64748b;
+}
+
+.tx-empty-guide .tx-empty-icon {
+  font-size: 2.6rem;
+  margin-bottom: .6rem;
+}
+
+.tx-empty-guide h3 {
+  margin: 0 0 .4rem;
+  font-size: 1.08rem;
+  color: #1f2937;
+}
+
+.tx-empty-guide p {
+  max-width: 440px;
+  margin: 0 auto 1rem;
+  font-size: .9rem;
+}
+
+/* ── Celular ──────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .tx-header { padding: 1rem; }
+  .tx-header-actions { width: 100%; }
+  .tx-header-actions .btn { flex: 1; justify-content: center; }
+  .tx-lista { grid-template-columns: 1fr; }
+  .tx-filtro-campeonato { max-width: none; }
+  .tx-card-acciones .tx-acciones-sec { margin-left: 0; }
+}
+
+/* ── Selector de partido (Nueva transmisión) ──────────────────────── */
+.tx-modal-partido-box {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(80vh, 680px);
+  display: flex;
+  flex-direction: column;
+}
+
+.tx-modal-partido-box .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  overflow: hidden;
+}
+
+.tx-check-pasados {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .85rem;
+  color: #475569;
+}
+
+.tx-lista-partidos {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  overflow-y: auto;
+  padding-right: .2rem;
+}
+
+.tx-partido-opcion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .15rem;
+  width: 100%;
+  padding: .6rem .8rem;
+  border: 1px solid #dbe4ef;
+  border-radius: 10px;
+  background: #ffffff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tx-partido-opcion:hover,
+.tx-partido-opcion:focus-visible {
+  border-color: #7c3aed;
+  background: #faf5ff;
+}
+
+.tx-partido-equipos {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tx-partido-equipos em {
+  font-style: normal;
+  color: #94a3b8;
+  margin: 0 .25rem;
+}
+
+.tx-partido-meta {
+  font-size: .8rem;
+  color: #64748b;
+}
+
+.tx-partido-tiene {
+  display: inline-block;
+  margin-left: .4rem;
+  padding: .05rem .45rem;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #6d28d9;
+  font-weight: 700;
+}
+
+#tx-modal-partido.modal-overlay {
+  position: fixed;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, .55);
+  z-index: 10050;
+}
+
+#tx-modal-partido .modal-box {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .3);
+}
+
+#tx-modal-partido .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .9rem 1.1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+#tx-modal-partido .modal-header h3 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+#tx-modal-partido .modal-close {
+  border: 0;
+  background: transparent;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: #475569;
+}
+
+#tx-modal-partido .modal-body {
+  padding: .9rem 1.1rem 1.1rem;
+}
+
+/* Campos con el mismo estilo que el resto del sistema */
+.page-transmisiones #tx-campeonato-select,
+.page-transmisiones #tx-buscar-partido {
+  width: 100%;
+  min-height: 42px;
+  padding: .55rem .75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: .95rem;
+  box-sizing: border-box;
+}
+
+.page-transmisiones #tx-campeonato-select:focus-visible,
+.page-transmisiones #tx-buscar-partido:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 1px;
+  border-color: #7c3aed;
+}

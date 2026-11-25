@@ -335,6 +335,20 @@ class PartidoTransmision {
     return result.rows.length ? PartidoTransmision.limpiar(result.rows[0]) : null;
   }
 
+  // Vuelve a «programada» una transmisión finalizada o cancelada (pruebas,
+  // partido reprogramado o finalizada por error). Conserva enlaces y overlay.
+  static async reabrir(id) {
+    await this.asegurarTabla();
+
+    const result = await pool.query(
+      `UPDATE partido_transmisiones
+       SET estado = 'programada', fecha_fin_real = NULL, updated_at = NOW()
+       WHERE id = $1 AND estado IN ('finalizada', 'cancelada') RETURNING *`,
+      [id]
+    );
+    return result.rows.length ? PartidoTransmision.limpiar(result.rows[0]) : null;
+  }
+
   static async listarActivas() {
     await this.asegurarTabla();
 
