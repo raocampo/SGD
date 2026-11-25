@@ -1,3 +1,7 @@
+## 2026-11-24 (parte 4) - Videos locales vía OBS
+
+- El Panel de Director controla los videos e imágenes que están en la computadora que transmite, como fuentes de OBS y vía OBS WebSocket, sin subirlos. Convive con los anuncios subidos al sistema.
+
 ## 2026-11-24 (parte 3) - Anuncios en las transmisiones
 
 - Publicidad pagada con imágenes y videos/reels por campeonato o por partido, con vigencia, gestionada desde el Panel de Director y reproducida en el overlay (esquina y entretiempo). Migración `080`.

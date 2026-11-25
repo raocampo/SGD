@@ -2,7 +2,11 @@
 
 Actualizada: 2026-11-24 (America/Guayaquil).
 
-## Último trabajo: anuncios pagados con imágenes y videos (24-nov, parte 3)
+## Último trabajo: videos locales de OBS desde el Panel de Director (24-nov, parte 4)
+
+- `js/obs-control.js` (OBS WebSocket v5) y tarjeta en Publicidad para reproducir, mostrar y ocultar fuentes de OBS con archivos de la portátil, sin subirlos. Probado contra un OBS simulado; **falta probar con OBS real**.
+
+## Trabajo anterior: anuncios pagados con imágenes y videos (24-nov, parte 3)
 
 - Migración `080`: `transmision_anuncios` + `overlay_state.incluir_auspiciantes`. API `/api/transmision-anuncios` (subida MP4/WEBM/imagen hasta 60 MB). El overlay reproduce anuncios y auspiciantes en la esquina y el entretiempo; aviso por socket `overlay:publicidad`. Gestión en Panel de Director → Publicidad.
 
@@ -46,9 +50,9 @@ Actualizada: 2026-11-24 (America/Guayaquil).
 
 ## Para retomar (24-nov)
 
-- `main` = `origin/main` en `68e561d` (anuncios con imágenes y videos) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- `main` = `origin/main` en `9b3c9f1` (videos locales de OBS) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
 - Migración nueva: `080_transmision_anuncios.sql` (se aplica en el `prestart` y también la asegura el modelo).
-- **Primero:** que el usuario pruebe en producción el Panel de Director (envío automático, vista previa) y los **anuncios con video** en Publicidad, con ILELSA vs INDUGLAS y corrija en producción el movimiento de CORPORACIÓN PROAUTO (Femenino) si el resumen por equipo lo marca «No es su categoría» (`1724bc9`), y revise el manual de transmisiones y «Partidos en vivo» (`46facfa`). Marcas de clasificación de las postales: confirmadas.
+- **Primero:** que el usuario pruebe en producción el Panel de Director (envío automático, vista previa) los **anuncios con video** y el control de **videos locales vía OBS WebSocket** (con OBS 28+ real) en Publicidad, con ILELSA vs INDUGLAS y corrija en producción el movimiento de CORPORACIÓN PROAUTO (Femenino) si el resumen por equipo lo marca «No es su categoría» (`1724bc9`), y revise el manual de transmisiones y «Partidos en vivo» (`46facfa`). Marcas de clasificación de las postales: confirmadas.
 - Sigue pendiente la URL actual de producción en la última línea de `.env.local` (la guardada falla desde el 21-oct). Consultas **solo de lectura**: partidos pasados sin cerrar (el aviso de la Liga InterEmpresarial ya está explicado: PROAUTO es del Femenino).
 - Lista completa y priorizada: **primera entrada** de `docs/BITACORA_AVANCES.md` (cierre del 23-nov).
 
