@@ -3,677 +3,290 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Director de Transmisión</title>
+  <title>LT&amp;C Panel de Director</title>
+  <link rel="icon" href="assets/ltc/Icono.png" type="image/png" />
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/director.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <style>
-    body { background: #242424; color: #e2e8f0; }
-
-    .director-wrap {
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 24px 16px 60px;
-    }
-
-    .director-header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 28px;
-    }
-    .director-header h1 {
-      font-size: 1.4rem;
-      font-weight: 700;
-      margin: 0;
-      color: #f1f5f9;
-    }
-    .director-header .badge-live {
-      background: #dc2626;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 20px;
-      letter-spacing: 1px;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .card {
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 20px 24px;
-      margin-bottom: 18px;
-    }
-    .card h2 {
-      font-size: 0.85rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #94a3b8;
-      margin: 0 0 16px;
-    }
-
-    /* ── Marcador ── */
-    .marcador-grid {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 12px;
-      align-items: center;
-      text-align: center;
-    }
-    .equipo-ctrl label {
-      display: block;
-      font-size: 12px;
-      color: #64748b;
-      margin-bottom: 6px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    .equipo-nombre-display {
-      font-size: 13px;
-      font-weight: 600;
-      color: #cbd5e1;
-      margin-bottom: 10px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .gol-display {
-      font-size: 52px;
-      font-weight: 900;
-      color: #f1f5f9;
-      line-height: 1;
-    }
-    .btn-gol {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      border: none;
-      font-size: 18px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
-    }
-    .btn-gol:active { transform: scale(0.92); }
-    .btn-gol-mas  { background: #16a34a; color: #fff; }
-    .btn-gol-mas:hover { background: #15803d; }
-    .btn-gol-menos { background: #7f1d1d; color: #fca5a5; }
-    .btn-gol-menos:hover { background: #991b1b; }
-    .gol-btns { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
-
-    .vs-col { color: #475569; font-size: 28px; font-weight: 300; }
-
-    /* ── Cronómetro / Período ── */
-    .row-ctrl {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .row-ctrl label { font-size: 12px; color: #64748b; font-weight: 600; min-width: 80px; }
-    .input-sm {
-      background: #242424;
-      border: 1px solid #334155;
-      color: #e2e8f0;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 14px;
-      width: 80px;
-    }
-    .select-sm {
-      background: #242424;
-      border: 1px solid #334155;
-      color: #e2e8f0;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-
-    /* ── Toggles ── */
-    .toggle-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-    /* Solo el texto ocupa el espacio libre; el interruptor (label.toggle) mide 44 px. */
-    .toggle-row label:not(.toggle) { font-size: 14px; color: #cbd5e1; flex: 1; }
-    .toggle {
-      position: relative;
-      display: inline-block;
-      width: 44px;
-      height: 24px;
-      flex-shrink: 0;
-    }
-    .toggle input { opacity: 0; width: 0; height: 0; }
-    .toggle-slider {
-      position: absolute;
-      cursor: pointer;
-      inset: 0;
-      background: #334155;
-      border-radius: 24px;
-      transition: background 0.2s;
-    }
-    .toggle-slider::before {
-      content: "";
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      left: 3px;
-      bottom: 3px;
-      background: #fff;
-      border-radius: 50%;
-      transition: transform 0.2s;
-    }
-    .toggle input:checked + .toggle-slider { background: #16a34a; }
-    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
-
-    /* ── Texto evento ── */
-    .texto-evento-wrap { display: flex; gap: 10px; align-items: center; }
-    .input-texto {
-      flex: 1;
-      background: #242424;
-      border: 1px solid #334155;
-      color: #e2e8f0;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-
-    /* ── Presets ── */
-    .preset-btns {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .btn-preset {
-      background: #334155;
-      color: #e2e8f0;
-      border: none;
-      padding: 5px 14px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-preset:hover { background: #475569; }
-
-    /* ── Acciones ── */
-    .action-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .btn-action {
-      padding: 10px 20px;
-      border-radius: 8px;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s, opacity 0.15s;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-    .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-enviar  { background: #313131; color: #fff; }
-    .btn-enviar:hover:not(:disabled)  { background: #242424; }
-    .btn-reset   { background: #7f1d1d; color: #fca5a5; }
-    .btn-reset:hover:not(:disabled)   { background: #991b1b; }
-
-    /* ── URL Overlay ── */
-    .overlay-url-box {
-      background: #242424;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      padding: 10px 14px;
-      font-size: 12px;
-      color: #94a3b8;
-      word-break: break-all;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .overlay-url-box span { flex: 1; }
-    .btn-copy {
-      background: #334155;
-      border: none;
-      color: #e2e8f0;
-      padding: 5px 12px;
-      border-radius: 5px;
-      font-size: 12px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .btn-copy:hover { background: #475569; }
-
-    /* ── Estado conexión ── */
-    .conn-status {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 12px;
-      color: #64748b;
-      margin-bottom: 18px;
-    }
-    .conn-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: #475569;
-      flex-shrink: 0;
-    }
-    .conn-dot.conectado { background: #22c55e; }
-    .conn-dot.error     { background: #ef4444; }
-
-    /* ── Instrucciones OBS ── */
-    .obs-toggle-hdr {
-      cursor: pointer;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .obs-toggle-hdr .chevron {
-      transition: transform 0.2s;
-      font-size: 11px;
-      color: #64748b;
-    }
-    .obs-toggle-hdr.open .chevron { transform: rotate(180deg); }
-    .obs-steps {
-      margin: 12px 0 0;
-      padding: 0 0 0 20px;
-      color: #cbd5e1;
-      font-size: 13px;
-      line-height: 1.9;
-    }
-    .obs-steps li { margin-bottom: 2px; }
-    .obs-steps strong { color: #f1f5f9; }
-    .obs-subtitulo {
-      margin: 10px 0 4px;
-      font-size: 13px;
-      color: #e2e8f0;
-    }
-    .obs-note {
-      margin: 12px 0 0;
-      font-size: 12px;
-      color: #64748b;
-      background: #242424;
-      border-radius: 6px;
-      padding: 8px 12px;
-    }
-
-    /* ── Compartir ── */
-    .share-preview {
-      font-size: 13px;
-      color: #94a3b8;
-      background: #242424;
-      border-radius: 6px;
-      padding: 10px 14px;
-      margin-bottom: 14px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .share-btns {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .btn-share {
-      padding: 9px 16px;
-      border-radius: 8px;
-      border: none;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      transition: opacity 0.15s;
-    }
-    .btn-share:hover { opacity: 0.82; }
-    .btn-wa   { background: #25d366; color: #fff; }
-    .btn-fb   { background: #1877f2; color: #fff; }
-    .btn-tw   { background: #111; color: #fff; }
-    .btn-copy-share { background: #334155; color: #e2e8f0; }
-
-    /* ── Toast ── */
-    #toast {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #1e293b;
-      color: #e2e8f0;
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-size: 14px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-      transform: translateY(60px);
-      opacity: 0;
-      transition: transform 0.25s, opacity 0.25s;
-      z-index: 9999;
-    }
-    #toast.show { transform: translateY(0); opacity: 1; }
-
-    @media (max-width: 600px) {
-      .director-wrap { padding: 16px 12px 60px; }
-      .director-header { gap: 8px; margin-bottom: 18px; }
-      .director-header h1 { font-size: 1.1rem; }
-      .card { padding: 14px 14px; }
-
-      /* Bigger touch targets for goal buttons */
-      .btn-gol {
-        width: 52px;
-        height: 52px;
-        font-size: 22px;
-        border-radius: 10px;
-      }
-      .gol-display { font-size: 48px; }
-
-      /* iOS auto-zoom prevention */
-      .input-sm, .select-sm, .input-texto {
-        font-size: 16px !important;
-      }
-
-      /* Preset buttons easier to tap */
-      .btn-preset {
-        padding: 8px 14px;
-        font-size: 14px;
-      }
-
-      /* Action buttons full width */
-      .action-row { flex-direction: column; }
-      .btn-action { width: 100%; justify-content: center; }
-
-      /* Share buttons 2-col grid */
-      .share-btns {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-      }
-      .btn-share { justify-content: center; }
-    }
-  </style>
 </head>
-<body>
+<body class="page-director">
 
-<div class="director-wrap">
-  <div class="director-header">
-    <a href="transmisiones.html" style="color:#94a3b8;font-size:1.1rem;text-decoration:none;margin-right:4px;" title="Volver a transmisiones"><i class="fas fa-arrow-left"></i></a>
-    <i class="fas fa-broadcast-tower" style="font-size:1.5rem;color:#dc2626;"></i>
-    <h1>Director de Transmisión</h1>
-    <span class="badge-live" id="badge-live" style="display:none;">EN VIVO</span>
-  </div>
+<div class="dir-wrap">
 
-  <!-- Conexión -->
-  <div class="conn-status">
-    <div class="conn-dot" id="conn-dot"></div>
-    <span id="conn-label">Conectando…</span>
-  </div>
+  <!-- ── Encabezado fijo ───────────────────────────────────────────── -->
+  <header class="dir-header">
+    <div class="dir-header-info">
+      <a href="transmisiones.html" class="dir-back" title="Volver a Transmisiones" aria-label="Volver a Transmisiones"><i class="fas fa-arrow-left"></i></a>
+      <div class="dir-titulo">
+        <small><i class="fas fa-sliders-h"></i> Panel de Director</small>
+        <h1 id="dir-partido">Selecciona una transmisión</h1>
+      </div>
+    </div>
+    <div class="dir-header-estado">
+      <span class="dir-estado" id="badge-live" style="display:none;"><span class="dir-dot"></span><span id="badge-live-texto">—</span></span>
+      <button type="button" class="btn-action btn-chico" id="btn-estado-tx" style="display:none;" onclick="cambiarEstadoTransmision()"></button>
+      <span class="conn-status"><span class="conn-dot" id="conn-dot"></span><span id="conn-label">Conectando…</span></span>
+    </div>
+    <div class="dir-envio">
+      <span class="dir-pendiente" id="dir-pendiente"><i class="fas fa-circle-exclamation"></i> Cambios sin enviar</span>
+      <label class="dir-auto" title="Cada cambio se envía al overlay al instante">
+        <span class="toggle"><input type="checkbox" id="tog-auto" checked /><span class="toggle-slider"></span></span>
+        Envío automático
+      </label>
+      <button class="btn-action btn-enviar" onclick="enviarEstado()"><i class="fas fa-broadcast-tower"></i> Enviar al overlay</button>
+    </div>
+  </header>
 
-  <!-- Sin transmisión seleccionada -->
-  <div id="panel-seleccion" class="card">
-    <h2>Seleccionar Transmisión</h2>
-    <p style="color:#94a3b8;font-size:14px;margin:0 0 14px;">
-      Ingresa el ID de la transmisión que vas a dirigir.
+  <!-- ── Sin transmisión seleccionada ─────────────────────────────── -->
+  <div id="panel-seleccion" class="card dir-seleccion">
+    <h2><i class="fas fa-plug"></i> Seleccionar transmisión</h2>
+    <p class="card-nota" style="margin:0 0 14px;">
+      Abre el panel desde <a href="transmisiones.html">Transmisiones</a> con el botón «Panel de Director» de cada partido, o ingresa el número de la transmisión.
     </p>
-    <div style="display:flex;gap:10px;align-items:center;">
-      <input type="number" id="input-tx-id" class="input-sm" style="width:120px;"
-             placeholder="ID" min="1" />
-      <button class="btn-action btn-enviar" onclick="cargarTransmision()">
-        <i class="fas fa-plug"></i> Conectar
-      </button>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <input type="number" id="input-tx-id" class="input-sm" style="width:120px;" placeholder="N.º" min="1" />
+      <button class="btn-action btn-enviar" onclick="cargarTransmision()"><i class="fas fa-plug"></i> Conectar</button>
     </div>
   </div>
 
-  <!-- Panel principal (oculto hasta conectar) -->
+  <!-- ── Panel principal ──────────────────────────────────────────── -->
   <div id="panel-principal" style="display:none;">
+    <div class="dir-layout">
 
-    <!-- Marcador -->
-    <div class="card">
-      <h2><i class="fas fa-futbol" style="margin-right:6px;"></i>Marcador</h2>
-      <div class="marcador-grid">
-        <div class="equipo-ctrl">
-          <div class="equipo-nombre-display" id="nombre-local">LOCAL</div>
-          <div class="gol-display" id="disp-gol-local">0</div>
-          <div class="gol-btns">
-            <button class="btn-gol btn-gol-mas"   onclick="ajustarGol('local',+1)">+</button>
-            <button class="btn-gol btn-gol-menos" onclick="ajustarGol('local',-1)">−</button>
+      <div class="dir-principal">
+        <nav class="dir-tabs" role="tablist" aria-label="Secciones del panel">
+          <button type="button" class="dir-tab active" role="tab" data-dir-tab="vivo"><i class="fas fa-futbol"></i><span>En vivo</span></button>
+          <button type="button" class="dir-tab" role="tab" data-dir-tab="publicidad"><i class="fas fa-bullhorn"></i><span>Publicidad</span></button>
+          <button type="button" class="dir-tab" role="tab" data-dir-tab="overlay"><i class="fas fa-layer-group"></i><span>Overlay y OBS</span></button>
+          <button type="button" class="dir-tab" role="tab" data-dir-tab="compartir"><i class="fas fa-share-alt"></i><span>Compartir</span></button>
+        </nav>
+
+        <!-- Pestaña: En vivo -->
+        <section class="dir-panel active" data-dir-panel="vivo" role="tabpanel">
+          <div class="card">
+            <h2><i class="fas fa-futbol"></i> Marcador</h2>
+            <div class="marcador-grid">
+              <div class="equipo-ctrl">
+                <div class="equipo-nombre-display" id="nombre-local">LOCAL</div>
+                <div class="gol-display" id="disp-gol-local" aria-live="polite">0</div>
+                <div class="gol-btns">
+                  <button class="btn-gol btn-gol-mas" onclick="ajustarGol('local',+1)" aria-label="Gol del local">+ Gol</button>
+                  <button class="btn-gol btn-gol-menos" onclick="ajustarGol('local',-1)" aria-label="Quitar gol del local">−</button>
+                </div>
+              </div>
+              <div class="vs-col">vs</div>
+              <div class="equipo-ctrl">
+                <div class="equipo-nombre-display" id="nombre-visitante">VISITANTE</div>
+                <div class="gol-display" id="disp-gol-visitante" aria-live="polite">0</div>
+                <div class="gol-btns">
+                  <button class="btn-gol btn-gol-mas" onclick="ajustarGol('visitante',+1)" aria-label="Gol del visitante">+ Gol</button>
+                  <button class="btn-gol btn-gol-menos" onclick="ajustarGol('visitante',-1)" aria-label="Quitar gol del visitante">−</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2><i class="fas fa-clock"></i> Minuto y período</h2>
+            <div class="crono-grid">
+              <div>
+                <span class="campo-label">Minuto</span>
+                <div class="minuto-ctrl">
+                  <button type="button" class="btn-gol btn-gol-menos" onclick="ajustarMinuto(-1)" aria-label="Restar un minuto">−</button>
+                  <input type="number" id="input-minuto" class="input-sm" min="0" max="120" value="0"
+                         oninput="estadoLocal.minuto = parseInt(this.value)||0; marcarCambio()" aria-label="Minuto" />
+                  <button type="button" class="btn-gol btn-gol-mas" onclick="ajustarMinuto(1)" aria-label="Sumar un minuto">+</button>
+                </div>
+              </div>
+              <div>
+                <span class="campo-label">Período</span>
+                <div class="periodos" id="periodos">
+                  <button type="button" class="btn-periodo" data-periodo="1T">1.er tiempo</button>
+                  <button type="button" class="btn-periodo is-entretiempo" data-periodo="Entretiempo">Entretiempo</button>
+                  <button type="button" class="btn-periodo" data-periodo="2T">2.º tiempo</button>
+                  <button type="button" class="btn-periodo" data-periodo="PT">Prórroga 1</button>
+                  <button type="button" class="btn-periodo" data-periodo="ST">Prórroga 2</button>
+                  <button type="button" class="btn-periodo" data-periodo="Pen.">Penales</button>
+                  <button type="button" class="btn-periodo" data-periodo="FT">Final</button>
+                </div>
+                <select id="select-periodo" class="select-oculto" tabindex="-1" aria-hidden="true" onchange="cambiarPeriodo(this.value)">
+                  <option value="1T">1T</option>
+                  <option value="Entretiempo">Entretiempo</option>
+                  <option value="2T">2T</option>
+                  <option value="PT">PT</option>
+                  <option value="ST">ST</option>
+                  <option value="Pen.">Pen.</option>
+                  <option value="FT">FT</option>
+                </select>
+              </div>
+            </div>
+            <p class="card-nota">«Entretiempo» muestra en el overlay la pantalla de entretiempo con los auspiciantes; al pasar a otro período se quita sola.</p>
+          </div>
+
+          <div class="card">
+            <h2><i class="fas fa-comment-alt"></i> Texto de evento</h2>
+            <input type="text" id="input-texto" class="input-texto" maxlength="80"
+                   placeholder="Ej.: ¡GOL! Ramírez #10"
+                   oninput="estadoLocal.texto_evento = this.value; marcarCambio()" />
+            <div class="preset-btns">
+              <button class="btn-preset" onclick="setPreset('⚽ ¡GOL!')">⚽ ¡GOL!</button>
+              <button class="btn-preset" onclick="setPreset('🟨 Tarjeta Amarilla')">🟨 Amarilla</button>
+              <button class="btn-preset" onclick="setPreset('🟥 Tarjeta Roja')">🟥 Roja</button>
+              <button class="btn-preset" onclick="setPreset('🔄 Sustitución')">🔄 Sustitución</button>
+              <button class="btn-preset" onclick="setPreset('⏱ Tiempo Extra')">⏱ Tiempo extra</button>
+              <button class="btn-preset" onclick="setPreset('')">✕ Quitar texto</button>
+            </div>
+            <div class="toggle-row" style="margin-top:8px;">
+              <span>Mostrar el texto en el overlay</span>
+              <label class="toggle">
+                <input type="checkbox" id="tog-texto" onchange="estadoLocal.mostrar_texto_evento = this.checked; marcarCambio()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2><i class="fas fa-undo"></i> Reiniciar</h2>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+              <button class="btn-action btn-reset" onclick="confirmarReset()"><i class="fas fa-undo"></i> Marcador a 0-0</button>
+              <span class="card-nota" style="margin:0;">Pone el marcador en 0-0, el minuto en 0 y el período en 1.er tiempo.</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Pestaña: Publicidad -->
+        <section class="dir-panel" data-dir-panel="publicidad" role="tabpanel">
+          <div class="card">
+            <h2><i class="fas fa-bullhorn"></i> Auspiciantes en el overlay</h2>
+            <p id="pub-resumen" class="card-nota" style="margin:0 0 8px;">Cargando auspiciantes…</p>
+            <div class="toggle-row">
+              <span>Auspiciantes en la esquina durante el juego<small>Rotan uno a la vez en la esquina inferior derecha.</small></span>
+              <label class="toggle">
+                <input type="checkbox" id="tog-publicidad" checked data-envio-inmediato
+                       onchange="estadoLocal.mostrar_publicidad = this.checked; enviarEstado()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <span>Pantalla de entretiempo<small>Pantalla completa con el marcador y los logos.</small></span>
+              <label class="toggle">
+                <input type="checkbox" id="tog-entretiempo" data-envio-inmediato
+                       onchange="estadoLocal.pantalla_entretiempo = this.checked; enviarEstado()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <span>Cambiar de auspiciante cada</span>
+              <select id="select-pub-segundos" class="select-sm" data-envio-inmediato
+                      onchange="estadoLocal.publicidad_segundos = parseInt(this.value, 10) || 8; enviarEstado()">
+                <option value="5">5 s</option>
+                <option value="8">8 s</option>
+                <option value="10">10 s</option>
+                <option value="15">15 s</option>
+                <option value="20">20 s</option>
+              </select>
+            </div>
+            <p class="card-nota">Estos cambios se envían al instante. Los logos se administran en <a href="auspiciantes.html">Auspiciantes</a> (solo se muestran los activos y con logo).</p>
+          </div>
+        </section>
+
+        <!-- Pestaña: Overlay y OBS -->
+        <section class="dir-panel" data-dir-panel="overlay" role="tabpanel">
+          <div class="card">
+            <h2><i class="fas fa-link"></i> URL para OBS (fuente «Navegador»)</h2>
+            <div class="overlay-url-box">
+              <span id="overlay-url-text">—</span>
+              <button class="btn-copy" onclick="copiarUrl()"><i class="fas fa-copy"></i> Copiar</button>
+            </div>
+            <p class="card-nota">Tamaño igual al lienzo de OBS: <strong>1920 × 1080</strong>. Una sola fuente muestra el marcador, los auspiciantes y la pantalla de entretiempo, con fondo transparente.</p>
+          </div>
+
+          <div class="card">
+            <h2><i class="fas fa-eye"></i> Qué se ve en el overlay</h2>
+            <div class="toggle-row">
+              <span>Marcador</span>
+              <label class="toggle">
+                <input type="checkbox" id="tog-marcador" checked onchange="estadoLocal.mostrar_marcador = this.checked; marcarCambio()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <span>Minuto y período</span>
+              <label class="toggle">
+                <input type="checkbox" id="tog-cronometro" checked onchange="estadoLocal.mostrar_cronometro = this.checked; marcarCambio()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2><i class="fas fa-video"></i> Cómo agregarlo en OBS o Prism</h2>
+            <ol class="obs-steps">
+              <li>En OBS: <strong>Fuentes → + → Navegador</strong> (Browser).</li>
+              <li>Pega la URL de arriba, ancho <strong>1920</strong> y alto <strong>1080</strong>, y déjala encima de la cámara.</li>
+              <li>Activa «Apagar la fuente cuando no esté visible» para ahorrar recursos.</li>
+              <li>En Prism (PC), agrégala como fuente o widget web. En el celular depende de la versión de la app.</li>
+            </ol>
+            <div class="obs-note">Como el overlay va dentro del video, sale igual en todas las plataformas a la vez. Si no se actualiza, en OBS haz clic derecho en la fuente → <em>Actualizar</em>.</div>
+            <p class="card-nota"><a href="ayuda-transmisiones.html" target="_blank" rel="noopener"><i class="fas fa-book-open"></i> Manual completo de transmisiones</a></p>
+          </div>
+        </section>
+
+        <!-- Pestaña: Compartir -->
+        <section class="dir-panel" data-dir-panel="compartir" role="tabpanel">
+          <div class="card">
+            <h2><i class="fas fa-share-alt"></i> Compartir el directo</h2>
+            <div class="share-preview" id="share-preview-text">⚽ En vivo | LOCAL vs VISITANTE</div>
+            <div class="share-btns">
+              <button class="btn-share btn-wa" onclick="compartir('whatsapp')"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+              <button class="btn-share btn-fb" onclick="compartir('facebook')"><i class="fab fa-facebook"></i> Facebook</button>
+              <button class="btn-share btn-tw" onclick="compartir('twitter')"><i class="fab fa-x-twitter"></i> X</button>
+              <button class="btn-share btn-copy-share" onclick="compartir('copy')"><i class="fas fa-copy"></i> Copiar texto</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2><i class="fas fa-camera"></i> Transmitir con la cámara del navegador</h2>
+            <p class="card-nota" style="margin:0 0 12px;">Emite la cámara o la pantalla sin OBS. Sirve para pocos espectadores (unos 12–15) y puede fallar con datos móviles; para partidos con público usa OBS o Prism hacia YouTube o Facebook.</p>
+            <a id="btn-ir-broadcast" href="broadcast.html" class="btn-action btn-secundario"><i class="fas fa-play-circle"></i> Abrir panel de cámara</a>
+          </div>
+        </section>
+      </div>
+
+      <!-- Columna lateral: vista previa -->
+      <aside class="dir-lateral">
+        <div class="card">
+          <h2><i class="fas fa-tv"></i> Vista previa del overlay</h2>
+          <div class="preview-box" id="preview-box">
+            <div class="preview-vacio" id="preview-vacio">Cargando vista previa…</div>
+            <iframe id="preview-overlay" title="Vista previa del overlay" tabindex="-1"></iframe>
+          </div>
+          <div class="preview-pie">
+            <span>Así lo ve OBS (fondo transparente).</span>
+            <a id="preview-abrir" href="#" target="_blank" rel="noopener">Abrir <i class="fas fa-up-right-from-square"></i></a>
           </div>
         </div>
-        <div class="vs-col">–</div>
-        <div class="equipo-ctrl">
-          <div class="equipo-nombre-display" id="nombre-visitante">VISITANTE</div>
-          <div class="gol-display" id="disp-gol-visitante">0</div>
-          <div class="gol-btns">
-            <button class="btn-gol btn-gol-mas"   onclick="ajustarGol('visitante',+1)">+</button>
-            <button class="btn-gol btn-gol-menos" onclick="ajustarGol('visitante',-1)">−</button>
+        <div class="card">
+          <h2><i class="fas fa-gauge"></i> Estado enviado</h2>
+          <div class="resumen-rapido">
+            <div>Marcador<strong id="res-marcador">0 - 0</strong></div>
+            <div>Minuto<strong id="res-minuto">0' · 1T</strong></div>
+            <div>Publicidad<strong id="res-publicidad">—</strong></div>
+            <div>Último envío<strong id="res-envio">—</strong></div>
           </div>
         </div>
-      </div>
+      </aside>
     </div>
-
-    <!-- Cronómetro y período -->
-    <div class="card">
-      <h2><i class="fas fa-clock" style="margin-right:6px;"></i>Cronómetro &amp; Período</h2>
-      <div class="row-ctrl" style="margin-bottom:12px;">
-        <label>Minuto</label>
-        <input type="number" id="input-minuto" class="input-sm" min="0" max="120" value="0"
-               oninput="estadoLocal.minuto = parseInt(this.value)||0" />
-      </div>
-      <div class="row-ctrl">
-        <label>Período</label>
-        <select id="select-periodo" class="select-sm" onchange="cambiarPeriodo(this.value)">
-          <option value="1T">1T</option>
-          <option value="Entretiempo">Entretiempo</option>
-          <option value="2T">2T</option>
-          <option value="PT">PT</option>
-          <option value="ST">ST</option>
-          <option value="Pen.">Pen.</option>
-          <option value="FT">FT</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Visibilidad -->
-    <div class="card">
-      <h2><i class="fas fa-eye" style="margin-right:6px;"></i>Visibilidad</h2>
-      <div class="toggle-row">
-        <label>Mostrar marcador</label>
-        <label class="toggle">
-          <input type="checkbox" id="tog-marcador" checked
-                 onchange="estadoLocal.mostrar_marcador = this.checked" />
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="toggle-row">
-        <label>Mostrar cronómetro</label>
-        <label class="toggle">
-          <input type="checkbox" id="tog-cronometro" checked
-                 onchange="estadoLocal.mostrar_cronometro = this.checked" />
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="toggle-row">
-        <label>Mostrar texto de evento</label>
-        <label class="toggle">
-          <input type="checkbox" id="tog-texto"
-                 onchange="estadoLocal.mostrar_texto_evento = this.checked" />
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    </div>
-
-    <!-- Publicidad -->
-    <div class="card">
-      <h2><i class="fas fa-bullhorn" style="margin-right:6px;"></i>Publicidad (auspiciantes)</h2>
-      <p id="pub-resumen" style="font-size:13px;color:#94a3b8;margin:0 0 12px;">Cargando auspiciantes…</p>
-      <div class="toggle-row">
-        <label>Auspiciantes en la esquina durante el juego</label>
-        <label class="toggle">
-          <input type="checkbox" id="tog-publicidad" checked
-                 onchange="estadoLocal.mostrar_publicidad = this.checked; enviarEstado()" />
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="toggle-row">
-        <label>Pantalla de entretiempo</label>
-        <label class="toggle">
-          <input type="checkbox" id="tog-entretiempo"
-                 onchange="estadoLocal.pantalla_entretiempo = this.checked; enviarEstado()" />
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="row-ctrl">
-        <label>Cambiar de auspiciante cada</label>
-        <select id="select-pub-segundos" class="select-sm"
-                onchange="estadoLocal.publicidad_segundos = parseInt(this.value, 10) || 8; enviarEstado()">
-          <option value="5">5 s</option>
-          <option value="8">8 s</option>
-          <option value="10">10 s</option>
-          <option value="15">15 s</option>
-          <option value="20">20 s</option>
-        </select>
-      </div>
-      <p style="font-size:12px;color:#64748b;margin:10px 0 0;">
-        Los cambios de esta tarjeta se envían al instante. Al elegir el período <strong>Entretiempo</strong> se activa la pantalla de entretiempo; al pasar al 2T se quita.
-        Los logos se administran en <a href="auspiciantes.html" style="color:#93c5fd;">Auspiciantes</a>.
-      </p>
-    </div>
-
-    <!-- Texto de evento -->
-    <div class="card">
-      <h2><i class="fas fa-comment-alt" style="margin-right:6px;"></i>Texto de Evento</h2>
-      <div class="texto-evento-wrap">
-        <input type="text" id="input-texto" class="input-texto"
-               placeholder="Ej: ¡GOL! Ramírez #10"
-               oninput="estadoLocal.texto_evento = this.value" />
-      </div>
-      <div class="preset-btns">
-        <button class="btn-preset" onclick="setPreset('⚽ ¡GOL!')">⚽ ¡GOL!</button>
-        <button class="btn-preset" onclick="setPreset('🟨 Tarjeta Amarilla')">🟨 Amarilla</button>
-        <button class="btn-preset" onclick="setPreset('🟥 Tarjeta Roja')">🟥 Roja</button>
-        <button class="btn-preset" onclick="setPreset('🔄 Sustitución')">🔄 Sustitución</button>
-        <button class="btn-preset" onclick="setPreset('⏱ Tiempo Extra')">⏱ T. Extra</button>
-        <button class="btn-preset" onclick="setPreset('')">✕ Limpiar</button>
-      </div>
-    </div>
-
-    <!-- Acciones -->
-    <div class="card">
-      <h2><i class="fas fa-paper-plane" style="margin-right:6px;"></i>Enviar al Overlay</h2>
-      <div class="action-row">
-        <button class="btn-action btn-enviar" onclick="enviarEstado()">
-          <i class="fas fa-broadcast-tower"></i> Enviar ahora
-        </button>
-        <button class="btn-action btn-reset" onclick="confirmarReset()">
-          <i class="fas fa-undo"></i> Reset marcador
-        </button>
-      </div>
-    </div>
-
-    <!-- URL Overlay OBS -->
-    <div class="card">
-      <h2><i class="fas fa-link" style="margin-right:6px;"></i>URL para OBS Browser Source</h2>
-      <div class="overlay-url-box">
-        <span id="overlay-url-text">—</span>
-        <button class="btn-copy" onclick="copiarUrl()">
-          <i class="fas fa-copy"></i> Copiar
-        </button>
-      </div>
-      <p style="font-size:12px;color:#64748b;margin:8px 0 0;">
-        Tamaño: igual al lienzo de OBS (1920 × 1080 px). Una sola fuente muestra el marcador, los auspiciantes y la pantalla de entretiempo. Fondo transparente.
-      </p>
-    </div>
-
-    <!-- Cámara WebRTC -->
-    <div class="card">
-      <h2><i class="fas fa-video" style="margin-right:6px;"></i>Transmitir video en vivo</h2>
-      <p style="font-size:13px;color:#94a3b8;margin:0 0 14px;">
-        Retransmite tu cámara o pantalla directamente desde el navegador. Los espectadores verán el stream en tiempo real sin necesidad de OBS.
-      </p>
-      <div class="obs-note" style="margin:0 0 14px;">
-        ⚠️ Pensado para pocos espectadores (unos 12–15) y puede fallar si tú o el público usan datos móviles. Para partidos con más público usa <strong>OBS o Prism Live con YouTube/Facebook</strong> (ver «¿Cómo transmitir con OBS o Prism Live?»): es gratis y sin límite de espectadores.
-      </div>
-      <a id="btn-ir-broadcast" href="broadcast.html" class="btn-action btn-enviar" style="text-decoration:none;display:inline-flex;">
-        <i class="fas fa-play-circle"></i> Abrir panel de transmisión
-      </a>
-    </div>
-
-    <!-- Instrucciones OBS -->
-    <div class="card">
-      <h2 class="obs-toggle-hdr" id="obs-hdr" onclick="toggleInstrucciones()">
-        <span><i class="fas fa-video" style="margin-right:6px;"></i>¿Cómo transmitir con OBS o Prism Live?</span>
-        <i class="fas fa-chevron-down chevron"></i>
-      </h2>
-      <div id="obs-body" style="display:none;">
-        <p style="margin:0 0 10px;"><a href="ayuda-transmisiones.html" target="_blank" rel="noopener" style="color:#7c3aed;font-weight:700;"><i class="fas fa-book-open"></i> Abrir el manual completo de transmisiones</a></p>
-        <p class="obs-subtitulo"><strong>1. Transmitir gratis por YouTube, Facebook o TikTok</strong></p>
-        <ol class="obs-steps">
-          <li><strong>Cámaras:</strong> con <strong>OBS</strong> en una PC puedes usar varias cámaras (USB o capturadora) como fuentes de <em>Video Capture Device</em> y cambiar de escena durante el partido. Con <strong>Prism Live</strong> transmites directamente con la cámara del celular.</li>
-          <li><strong>OBS Studio (PC):</strong> en <strong>Settings → Stream (Ajustes → Emisión)</strong> elige YouTube o Facebook Live y conecta tu cuenta o pega la clave de transmisión. Luego <strong>Start Streaming</strong>.</li>
-          <li><strong>Prism Live (celular o PC):</strong> elige la plataforma (YouTube, Facebook o TikTok), inicia sesión con tu cuenta y presiona <strong>Go Live</strong>.</li>
-          <li><strong>Varias plataformas a la vez:</strong> Prism Live permite elegir varias plataformas en la misma transmisión. En OBS se necesita un complemento de salidas múltiples (por ejemplo, «Multiple RTMP outputs») o un servicio de retransmisión. Revisa en cada herramienta cuántas plataformas simultáneas admite.</li>
-          <li><strong>TikTok:</strong> la cuenta debe tener habilitado LIVE, y para OBS se necesita la clave de transmisión de TikTok, que no todas las cuentas tienen. Revisa los requisitos actuales en la app de TikTok antes del partido.</li>
-          <li>Copia el enlace público de cada directo y regístralos en el sistema: <strong>Partidos</strong> → botón <i class="fas fa-broadcast-tower"></i> del partido → <strong>Agregar plataforma</strong> por cada una (YouTube, Facebook, TikTok…). El portal muestra un botón por plataforma.</li>
-        </ol>
-        <div class="obs-note">
-          ✅ La plataforma reparte el video a todos los espectadores; tú solo subes una señal. No hay costo ni límite de público.
-        </div>
-
-        <p class="obs-subtitulo"><strong>2. Marcador y publicidad sobre el video (overlay)</strong></p>
-        <ol class="obs-steps">
-          <li>Abre <strong>OBS Studio</strong> y ve a la sección <strong>Sources (Fuentes)</strong>.</li>
-          <li>Haz clic en <strong>"+"</strong> y selecciona <strong>Browser (Navegador)</strong>.</li>
-          <li>Ponle un nombre (ej: <em>Overlay Marcador</em>) y haz clic en <strong>OK</strong>.</li>
-          <li>Pega la URL del overlay en el campo <strong>URL</strong>.</li>
-          <li>Configura el tamaño igual al lienzo: <strong>Ancho 1920 px — Alto 1080 px</strong> (o 1280 × 720 si tu lienzo es 720p).</li>
-          <li>Activa <strong>"Shutdown source when not visible"</strong> para liberar recursos.</li>
-          <li>Haz clic en <strong>OK</strong>. El overlay aparecerá en tu escena.</li>
-        </ol>
-        <div class="obs-note">
-          ✅ El overlay se actualiza automáticamente cada vez que presionas <strong>"Enviar ahora"</strong> — no necesitas reiniciar OBS. Como OBS mezcla el overlay en el video antes de enviarlo, el marcador y la publicidad salen en <strong>todas</strong> las plataformas a la vez.
-        </div>
-        <div class="obs-note">
-          📱 <strong>Prism Live:</strong> en la versión de PC agrega una fuente o widget de tipo web y pega la misma URL (1280 × 180 px). En la app de celular, mostrar una página web como capa depende de la versión; si no está disponible, transmite sin marcador o usa OBS.
-        </div>
-      </div>
-    </div>
-
-    <!-- Compartir transmisión -->
-    <div class="card">
-      <h2><i class="fas fa-share-alt" style="margin-right:6px;"></i>Compartir</h2>
-      <div class="share-preview" id="share-preview-text">⚽ En vivo | LOCAL vs VISITANTE</div>
-      <div class="share-btns">
-        <button class="btn-share btn-wa"  onclick="compartir('whatsapp')">
-          <i class="fab fa-whatsapp"></i> WhatsApp
-        </button>
-        <button class="btn-share btn-fb"  onclick="compartir('facebook')">
-          <i class="fab fa-facebook"></i> Facebook
-        </button>
-        <button class="btn-share btn-tw"  onclick="compartir('twitter')">
-          <i class="fab fa-x-twitter"></i> Twitter/X
-        </button>
-        <button class="btn-share btn-copy-share" onclick="compartir('copy')">
-          <i class="fas fa-copy"></i> Copiar texto
-        </button>
-      </div>
-    </div>
-
   </div><!-- /panel-principal -->
 </div>
 
-<div id="toast"></div>
+<!-- Barra inferior en celular: acción principal siempre a mano -->
+<div class="dir-barra-movil" id="dir-barra-movil">
+  <span class="dir-pendiente" id="dir-pendiente-movil"><i class="fas fa-circle-exclamation"></i> Sin enviar</span>
+  <button class="btn-action btn-enviar" onclick="enviarEstado()"><i class="fas fa-broadcast-tower"></i> Enviar al overlay</button>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
 
 <!-- Socket.io -->
 <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
@@ -705,6 +318,16 @@
   const API_BASE = window.resolveBackendBaseUrl ? window.resolveBackendBaseUrl() : location.origin;
   const tokenSesion = () => (window.Auth?.getToken?.() || "");
 
+  // ── Preferencias del panel (solo en este navegador) ─────────────
+  const CLAVE_AUTO = "sgd_director_envio_auto";
+  const CLAVE_TAB = "sgd_director_tab";
+  function leerPref(clave, porDefecto) {
+    try { const v = localStorage.getItem(clave); return v === null ? porDefecto : v; } catch (_) { return porDefecto; }
+  }
+  function guardarPref(clave, valor) {
+    try { localStorage.setItem(clave, String(valor)); } catch (_) { /* sin almacenamiento */ }
+  }
+
   // ── Auth ──────────────────────────────────────────────────────
   document.addEventListener("DOMContentLoaded", () => {
     // Sesión real de core.js (sgd_auth_*); las claves antiguas "token"/"rol"
@@ -716,6 +339,16 @@
       location.href = "index.html"; return;
     }
 
+    iniciarPestanas();
+    iniciarPeriodos();
+    const togAuto = document.getElementById("tog-auto");
+    togAuto.checked = leerPref(CLAVE_AUTO, "1") === "1";
+    togAuto.addEventListener("change", () => {
+      guardarPref(CLAVE_AUTO, togAuto.checked ? "1" : "0");
+      if (togAuto.checked && hayCambiosPendientes) enviarEstado();
+    });
+    window.addEventListener("resize", ajustarPreview);
+
     // Pre-cargar ID si viene en URL: /director.html?tx=123
     const params = new URLSearchParams(location.search);
     const txParam = params.get("tx");
@@ -725,12 +358,87 @@
     }
   });
 
+  // ── Pestañas ──────────────────────────────────────────────────
+  function activarPestana(nombre) {
+    const tabs = document.querySelectorAll("[data-dir-tab]");
+    const existe = [...tabs].some((t) => t.dataset.dirTab === nombre);
+    const destino = existe ? nombre : "vivo";
+    tabs.forEach((t) => {
+      const activa = t.dataset.dirTab === destino;
+      t.classList.toggle("active", activa);
+      t.setAttribute("aria-selected", activa ? "true" : "false");
+    });
+    document.querySelectorAll("[data-dir-panel]").forEach((p) => {
+      p.classList.toggle("active", p.dataset.dirPanel === destino);
+    });
+    guardarPref(CLAVE_TAB, destino);
+  }
+
+  function iniciarPestanas() {
+    document.querySelectorAll("[data-dir-tab]").forEach((t) => {
+      t.addEventListener("click", () => activarPestana(t.dataset.dirTab));
+    });
+    activarPestana(leerPref(CLAVE_TAB, "vivo"));
+  }
+
+  // ── Períodos con botones (el select oculto conserva el valor) ────
+  function iniciarPeriodos() {
+    document.querySelectorAll("[data-periodo]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const sel = document.getElementById("select-periodo");
+        sel.value = btn.dataset.periodo;
+        cambiarPeriodo(btn.dataset.periodo);
+        marcarPeriodoActivo();
+      });
+    });
+  }
+
+  function marcarPeriodoActivo() {
+    const actual = document.getElementById("select-periodo").value;
+    document.querySelectorAll("[data-periodo]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.periodo === actual);
+      btn.setAttribute("aria-pressed", btn.dataset.periodo === actual ? "true" : "false");
+    });
+  }
+
+  // ── Cambios pendientes y envío automático ───────────────────────
+  let hayCambiosPendientes = false;
+  let temporizadorEnvio = null;
+
+  function mostrarPendiente(visible) {
+    hayCambiosPendientes = visible;
+    document.getElementById("dir-pendiente").classList.toggle("is-visible", visible);
+    document.getElementById("dir-pendiente-movil").classList.toggle("is-visible", visible);
+  }
+
+  function marcarCambio() {
+    if (!transmisionId) return;
+    if (document.getElementById("tog-auto")?.checked) {
+      clearTimeout(temporizadorEnvio);
+      temporizadorEnvio = setTimeout(() => enviarEstado({ silencioso: true }), 450);
+    } else {
+      mostrarPendiente(true);
+    }
+  }
+
+  function actualizarResumen(enviado = false) {
+    document.getElementById("res-marcador").textContent = `${estadoLocal.goles_local} - ${estadoLocal.goles_visitante}`;
+    document.getElementById("res-minuto").textContent = `${estadoLocal.minuto}' · ${estadoLocal.periodo}`;
+    document.getElementById("res-publicidad").textContent = estadoLocal.pantalla_entretiempo
+      ? "Entretiempo"
+      : estadoLocal.mostrar_publicidad ? "Esquina" : "Apagada";
+    if (enviado) {
+      document.getElementById("res-envio").textContent = new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+  }
+
   // ── Helpers ──────────────────────────────────────────────────
   function toast(msg, ms = 2500) {
     const el = document.getElementById("toast");
     el.textContent = msg;
     el.classList.add("show");
-    setTimeout(() => el.classList.remove("show"), ms);
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => el.classList.remove("show"), ms);
   }
 
   function setConexion(estado) {
@@ -741,10 +449,83 @@
     label.textContent = textos[estado] || estado;
   }
 
+  // Estado real de la transmisión (antes siempre decía «EN VIVO»).
+  const ESTADOS_TX = {
+    borrador: { texto: "BORRADOR", accion: "iniciar", boton: '<i class="fas fa-play"></i> Iniciar', clase: "btn-iniciar" },
+    programada: { texto: "PROGRAMADA", accion: "iniciar", boton: '<i class="fas fa-play"></i> Iniciar', clase: "btn-iniciar" },
+    en_vivo: { texto: "EN VIVO", accion: "finalizar", boton: '<i class="fas fa-stop"></i> Finalizar', clase: "btn-finalizar" },
+    finalizada: { texto: "FINALIZADA", accion: "reabrir", boton: '<i class="fas fa-rotate-left"></i> Reabrir', clase: "btn-secundario" },
+    cancelada: { texto: "CANCELADA", accion: "reabrir", boton: '<i class="fas fa-rotate-left"></i> Reabrir', clase: "btn-secundario" },
+  };
+
+  function mostrarEstadoTransmision(estado) {
+    const cfg = ESTADOS_TX[estado] || { texto: String(estado || "—").toUpperCase(), accion: null };
+    const badge = document.getElementById("badge-live");
+    badge.className = `dir-estado is-${estado}`;
+    badge.style.display = "inline-flex";
+    document.getElementById("badge-live-texto").textContent = cfg.texto;
+    const btn = document.getElementById("btn-estado-tx");
+    if (cfg.accion) {
+      btn.innerHTML = cfg.boton;
+      btn.className = `btn-action btn-chico ${cfg.clase}`;
+      btn.dataset.accion = cfg.accion;
+      btn.style.display = "inline-flex";
+    } else {
+      btn.style.display = "none";
+    }
+  }
+
+  async function cambiarEstadoTransmision() {
+    const accion = document.getElementById("btn-estado-tx").dataset.accion;
+    if (!accion || !transmisionId) return;
+    const mensajes = {
+      iniciar: "¿Iniciar la transmisión? El portal la mostrará «EN VIVO». Hazlo cuando ya estés emitiendo desde OBS o Prism.",
+      finalizar: "¿Finalizar la transmisión? Se quitará el «EN VIVO» del portal.",
+      reabrir: "¿Reabrir la transmisión? Volverá a «Programada».",
+    };
+    if (!confirm(mensajes[accion])) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/transmisiones/${transmisionId}/${accion}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + tokenSesion() },
+        body: "{}",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+      txInfoGlobal = { ...(txInfoGlobal || {}), ...(data.transmision || {}) };
+      mostrarEstadoTransmision(data.transmision?.estado);
+      toast({ iniciar: "🔴 Transmisión iniciada", finalizar: "Transmisión finalizada", reabrir: "Transmisión reabierta" }[accion]);
+    } catch (err) {
+      toast("Error: " + err.message);
+    }
+  }
+
+  // ── Vista previa del overlay (iframe a 1920×1080 escalado) ───────
+  function ajustarPreview() {
+    const box = document.getElementById("preview-box");
+    const frame = document.getElementById("preview-overlay");
+    if (!box || !frame) return;
+    frame.style.transform = `scale(${box.clientWidth / 1920})`;
+  }
+
+  function cargarPreview(url) {
+    const frame = document.getElementById("preview-overlay");
+    const vacio = document.getElementById("preview-vacio");
+    const abrir = document.getElementById("preview-abrir");
+    if (!url) {
+      vacio.textContent = "Sin token de overlay: recarga la página.";
+      return;
+    }
+    frame.addEventListener("load", () => { vacio.style.display = "none"; ajustarPreview(); }, { once: true });
+    frame.src = url;
+    abrir.href = url;
+    requestAnimationFrame(ajustarPreview);
+  }
+
   // ── Cargar transmisión ────────────────────────────────────────
   async function cargarTransmision() {
     const id = parseInt(document.getElementById("input-tx-id").value, 10);
-    if (!id) { toast("Ingresa un ID válido"); return; }
+    if (!id) { toast("Ingresa un número de transmisión válido"); return; }
 
     const jwtToken = tokenSesion();
     try {
@@ -752,7 +533,8 @@
       const txRes = await fetch(`${API_BASE}/api/transmisiones/${id}`, {
         headers: { Authorization: "Bearer " + jwtToken }
       });
-      if (!txRes.ok) throw new Error("Transmisión no encontrada (ID " + id + ")");
+      if (txRes.status === 403) throw new Error("No autorizado para esta transmisión");
+      if (!txRes.ok) throw new Error("Transmisión no encontrada (N.º " + id + ")");
       const txData = await txRes.json();
 
       // Cargar estado actual del overlay
@@ -767,14 +549,19 @@
       sincronizarDesdeServidor(overlayData);
 
       // Mostrar nombres de equipo
-      document.getElementById("nombre-local").textContent     = txData.equipo_local_nombre    || "LOCAL";
-      document.getElementById("nombre-visitante").textContent = txData.equipo_visitante_nombre || "VISITANTE";
+      const local = txData.equipo_local_nombre || "LOCAL";
+      const visitante = txData.equipo_visitante_nombre || "VISITANTE";
+      document.getElementById("nombre-local").textContent     = local;
+      document.getElementById("nombre-visitante").textContent = visitante;
+      document.getElementById("dir-partido").textContent = `${local} vs ${visitante}`;
+      document.title = `Director · ${local} vs ${visitante}`;
 
       // URL del overlay para OBS
+      let overlayUrl = "";
       if (txData.overlay_token) {
         overlayToken = txData.overlay_token;
-        document.getElementById("overlay-url-text").textContent =
-          `${location.origin}/overlay.html?token=${txData.overlay_token}`;
+        overlayUrl = `${location.origin}/overlay.html?token=${txData.overlay_token}`;
+        document.getElementById("overlay-url-text").textContent = overlayUrl;
       } else {
         document.getElementById("overlay-url-text").textContent =
           `${location.origin}/overlay.html?token=… (recarga)`;
@@ -790,7 +577,8 @@
 
       document.getElementById("panel-seleccion").style.display = "none";
       document.getElementById("panel-principal").style.display  = "block";
-      document.getElementById("badge-live").style.display = "inline-block";
+      mostrarEstadoTransmision(txData.estado);
+      cargarPreview(overlayUrl);
 
       conectarSocket();
     } catch (err) {
@@ -827,6 +615,8 @@
     document.getElementById("tog-publicidad").checked         = estadoLocal.mostrar_publicidad;
     document.getElementById("tog-entretiempo").checked        = estadoLocal.pantalla_entretiempo;
     document.getElementById("select-pub-segundos").value      = String(estadoLocal.publicidad_segundos);
+    marcarPeriodoActivo();
+    actualizarResumen();
   }
 
   // Entretiempo: elegir el período muestra la pantalla de publicidad; salir
@@ -838,7 +628,10 @@
       estadoLocal.pantalla_entretiempo = valor === "Entretiempo";
       document.getElementById("tog-entretiempo").checked = estadoLocal.pantalla_entretiempo;
       enviarEstado();
+    } else {
+      marcarCambio();
     }
+    actualizarResumen();
   }
 
   // Cuántos auspiciantes verá el overlay (endpoint público por token).
@@ -866,6 +659,17 @@
       estadoLocal.goles_visitante = Math.max(0, (estadoLocal.goles_visitante || 0) + delta);
       document.getElementById("disp-gol-visitante").textContent = estadoLocal.goles_visitante;
     }
+    actualizarResumen();
+    marcarCambio();
+  }
+
+  function ajustarMinuto(delta) {
+    const input = document.getElementById("input-minuto");
+    const valor = Math.min(Math.max((parseInt(input.value, 10) || 0) + delta, 0), 120);
+    input.value = valor;
+    estadoLocal.minuto = valor;
+    actualizarResumen();
+    marcarCambio();
   }
 
   function setPreset(texto) {
@@ -875,11 +679,13 @@
       estadoLocal.mostrar_texto_evento = true;
       document.getElementById("tog-texto").checked = true;
     }
+    marcarCambio();
   }
 
   // ── Enviar estado ────────────────────────────────────────────
-  async function enviarEstado() {
+  async function enviarEstado(opciones = {}) {
     if (!transmisionId) { toast("No hay transmisión activa"); return; }
+    clearTimeout(temporizadorEnvio);
     const token = tokenSesion();
 
     // Leer valores actuales de inputs
@@ -897,15 +703,18 @@
         body: JSON.stringify(estadoLocal),
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
-      toast("✓ Overlay actualizado");
+      mostrarPendiente(false);
+      actualizarResumen(true);
+      if (!opciones?.silencioso) toast("✓ Overlay actualizado");
       // El backend emite el nuevo estado a los overlays tras guardar.
     } catch (err) {
-      toast("Error enviando: " + err.message);
+      mostrarPendiente(true);
+      toast("Error enviando: " + err.message + " (recarga si persiste)");
     }
   }
 
   async function confirmarReset() {
-    if (!confirm("¿Resetear el marcador a 0-0?")) return;
+    if (!confirm("¿Poner el marcador en 0-0?")) return;
     const token = tokenSesion();
     try {
       const res = await fetch(`${API_BASE}/api/transmisiones/${transmisionId}/overlay/reset`, {
@@ -915,7 +724,9 @@
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
       sincronizarDesdeServidor(data);
-      toast("Marcador reseteado");
+      mostrarPendiente(false);
+      actualizarResumen(true);
+      toast("Marcador en 0-0");
     } catch (err) {
       toast("Error: " + err.message);
     }
@@ -926,15 +737,6 @@
     navigator.clipboard.writeText(url).then(() => toast("URL copiada")).catch(() => {
       prompt("Copia esta URL:", url);
     });
-  }
-
-  // ── Instrucciones OBS (collapsible) ─────────────────────────
-  function toggleInstrucciones() {
-    const body = document.getElementById("obs-body");
-    const hdr  = document.getElementById("obs-hdr");
-    const open = body.style.display === "block";
-    body.style.display = open ? "none" : "block";
-    hdr.classList.toggle("open", !open);
   }
 
   // ── Compartir ────────────────────────────────────────────────
@@ -988,9 +790,10 @@
     socket.on("disconnect", () => setConexion(""));
     socket.on("connect_error", () => setConexion("error"));
 
-    // El director NO necesita escuchar overlay:state (él es la fuente)
-    // pero lo hacemos para sincronizar si hay otro director conectado
+    // Sincroniza si hay otro director conectado. Si hay cambios propios sin
+    // enviar, no se pisan.
     socket.on("overlay:state", (state) => {
+      if (hayCambiosPendientes) return;
       sincronizarDesdeServidor(state);
     });
   }
