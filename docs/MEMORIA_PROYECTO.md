@@ -1,8 +1,12 @@
 # Memoria de continuidad LT&C
 
-Actualizada: 2026-11-23, cierre del día (America/Guayaquil).
+Actualizada: 2026-11-24 (America/Guayaquil).
 
-## Último trabajo: Finanzas respeta la categoría del equipo (23-nov, parte 4)
+## Último trabajo: página de Transmisiones rediseñada (24-nov)
+
+- Tarjetas por transmisión con Panel de Director (salvo canceladas), Iniciar/Finalizar/Reabrir, Editar; selector de partido en «Nueva transmisión»; `POST /api/transmisiones/:id/reabrir`. Corregido el contenedor `.app-content` (sin estilos) en Transmisiones y en el manual.
+
+## Trabajo anterior: Finanzas respeta la categoría del equipo (23-nov, parte 4)
 
 - Movimientos manuales validan que el equipo esté en la categoría (o la asignan si tiene una sola); el formulario filtra equipos por categoría; el resumen por equipo va por equipo y categoría con aviso «No es su categoría». Caso PROAUTO (Femenino) mezclado con la Abierta.
 - Pendiente del usuario: corregir en producción la categoría del movimiento de PROAUTO si aparece el aviso.
@@ -34,9 +38,9 @@ Actualizada: 2026-11-23, cierre del día (America/Guayaquil).
 
 ## Para retomar (24-nov)
 
-- `main` = `origin/main` en `080b613` + cierre documental del 23-nov. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
+- `main` = `origin/main` en `411b815` (Transmisiones rediseñada) + docs. En otro equipo: `git fetch origin`; si `git diff --stat origin/main` sale vacío, `git reset origin/main`.
 - Sin migraciones nuevas desde la `079`.
-- **Primero:** que el usuario corrija en producción el movimiento de CORPORACIÓN PROAUTO (Femenino) si el resumen por equipo lo marca «No es su categoría» (`1724bc9`), y revise el manual de transmisiones y «Partidos en vivo» (`46facfa`). Marcas de clasificación de las postales: confirmadas.
+- **Primero:** que el usuario pruebe la nueva página de Transmisiones (Reabrir / Panel de Director de ILELSA vs INDUGLAS) y corrija en producción el movimiento de CORPORACIÓN PROAUTO (Femenino) si el resumen por equipo lo marca «No es su categoría» (`1724bc9`), y revise el manual de transmisiones y «Partidos en vivo» (`46facfa`). Marcas de clasificación de las postales: confirmadas.
 - Sigue pendiente la URL actual de producción en la última línea de `.env.local` (la guardada falla desde el 21-oct). Consultas **solo de lectura**: partidos pasados sin cerrar (el aviso de la Liga InterEmpresarial ya está explicado: PROAUTO es del Femenino).
 - Lista completa y priorizada: **primera entrada** de `docs/BITACORA_AVANCES.md` (cierre del 23-nov).
 

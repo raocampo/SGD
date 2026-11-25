@@ -1,3 +1,7 @@
+## 2026-11-24 - Transmisiones rediseñada
+
+- Página de Transmisiones con tarjetas, filtros, selector de partido y acción «Reabrir»; Panel de Director siempre accesible salvo en canceladas.
+
 ## 2026-11-23 - Cierre del día
 
 - Publicado hasta `080b613`: postales por grupo con marcas de clasificación, llave proyectada, manual de transmisiones, partidos en vivo en la portada y Finanzas por categoría.
