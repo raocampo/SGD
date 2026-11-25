@@ -18,6 +18,9 @@ const ESTADO_INICIAL = {
   mostrar_publicidad: true,
   pantalla_entretiempo: false,
   publicidad_segundos: 8,
+  // Migración 080: incluir o no a los auspiciantes del campeonato en la
+  // rotación (los anuncios pagados se muestran siempre que estén activos).
+  incluir_auspiciantes: true,
 };
 
 const PUBLICIDAD_SEGUNDOS_MIN = 3;
@@ -65,6 +68,11 @@ class TransmisionOverlay {
             ADD COLUMN IF NOT EXISTS pantalla_entretiempo BOOLEAN NOT NULL DEFAULT FALSE,
             ADD COLUMN IF NOT EXISTS publicidad_segundos INTEGER NOT NULL DEFAULT 8
         `);
+        // Migración 080: auspiciantes opcionales en la rotación.
+        await pool.query(`
+          ALTER TABLE transmision_overlay_state
+            ADD COLUMN IF NOT EXISTS incluir_auspiciantes BOOLEAN NOT NULL DEFAULT TRUE
+        `);
         this._tablaAsegurada = true;
       })().finally(() => {
         this._initTablaPromise = null;
@@ -91,6 +99,7 @@ class TransmisionOverlay {
       mostrar_publicidad: row.mostrar_publicidad !== false,
       pantalla_entretiempo: row.pantalla_entretiempo === true,
       publicidad_segundos: Number(row.publicidad_segundos) || ESTADO_INICIAL.publicidad_segundos,
+      incluir_auspiciantes: row.incluir_auspiciantes !== false,
       updated_at: row.updated_at,
     };
   }
@@ -152,11 +161,13 @@ class TransmisionOverlay {
       "mostrar_publicidad",
       "pantalla_entretiempo",
       "publicidad_segundos",
+      "incluir_auspiciantes",
     ];
 
     data = { ...data };
     if (data.mostrar_publicidad !== undefined) data.mostrar_publicidad = aBooleano(data.mostrar_publicidad);
     if (data.pantalla_entretiempo !== undefined) data.pantalla_entretiempo = aBooleano(data.pantalla_entretiempo);
+    if (data.incluir_auspiciantes !== undefined) data.incluir_auspiciantes = aBooleano(data.incluir_auspiciantes);
     if (data.publicidad_segundos !== undefined) {
       const seg = Number.parseInt(data.publicidad_segundos, 10);
       data.publicidad_segundos = Number.isFinite(seg)

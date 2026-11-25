@@ -157,10 +157,81 @@
         <!-- Pestaña: Publicidad -->
         <section class="dir-panel" data-dir-panel="publicidad" role="tabpanel">
           <div class="card">
+            <div class="card-head">
+              <h2><i class="fas fa-rectangle-ad"></i> Anuncios de la transmisión</h2>
+              <button type="button" class="btn-action btn-enviar btn-chico" id="btn-nuevo-anuncio" onclick="abrirFormAnuncio()">
+                <i class="fas fa-plus"></i> Nuevo anuncio
+              </button>
+            </div>
+            <p class="card-nota" style="margin:0 0 12px;">Publicidad de anunciantes que pagan por aparecer en las transmisiones: <strong>imágenes</strong> o <strong>videos cortos / reels</strong> (MP4 o WEBM, hasta 60 MB). Rotan junto con los auspiciantes del campeonato.</p>
+
+            <form id="form-anuncio" class="anuncio-form" style="display:none;" novalidate>
+              <input type="hidden" id="anuncio-id" />
+              <div class="anuncio-form-grid">
+                <label class="campo">
+                  <span class="campo-label">Anunciante</span>
+                  <input type="text" id="anuncio-anunciante" class="input-sm" maxlength="120" placeholder="Ej.: Ferretería El Constructor" required />
+                </label>
+                <label class="campo">
+                  <span class="campo-label" id="anuncio-archivo-label">Imagen o video</span>
+                  <input type="file" id="anuncio-archivo" class="input-sm" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" />
+                  <small class="campo-ayuda" id="anuncio-archivo-ayuda">JPG, PNG, WEBP o GIF; video MP4/WEBM de hasta 60 MB (horizontal o vertical tipo reel).</small>
+                </label>
+                <label class="campo">
+                  <span class="campo-label">Dónde se muestra</span>
+                  <select id="anuncio-ubicacion" class="select-sm">
+                    <option value="ambos">Esquina y entretiempo</option>
+                    <option value="esquina">Solo en la esquina (durante el juego)</option>
+                    <option value="entretiempo">Solo en el entretiempo (pantalla completa)</option>
+                  </select>
+                </label>
+                <label class="campo">
+                  <span class="campo-label" id="anuncio-duracion-label">Segundos en pantalla</span>
+                  <input type="number" id="anuncio-duracion" class="input-sm" min="3" max="120" value="10" />
+                  <small class="campo-ayuda" id="anuncio-duracion-ayuda">Para videos es el máximo: si el video es más corto, pasa al siguiente al terminar.</small>
+                </label>
+                <fieldset class="campo campo-ancho">
+                  <legend class="campo-label">Alcance</legend>
+                  <label class="radio"><input type="radio" name="anuncio-alcance" value="campeonato" checked /> Todas las transmisiones del campeonato</label>
+                  <label class="radio"><input type="radio" name="anuncio-alcance" value="transmision" /> Solo este partido</label>
+                </fieldset>
+                <label class="campo">
+                  <span class="campo-label">Vigente desde (opcional)</span>
+                  <input type="date" id="anuncio-desde" class="input-sm" />
+                </label>
+                <label class="campo">
+                  <span class="campo-label">Vigente hasta (opcional)</span>
+                  <input type="date" id="anuncio-hasta" class="input-sm" />
+                </label>
+                <label class="radio campo-ancho" id="anuncio-sonido-wrap">
+                  <input type="checkbox" id="anuncio-sonido" /> Reproducir con sonido (solo videos; en OBS activa «Controlar audio mediante OBS» en la fuente)
+                </label>
+              </div>
+              <div class="anuncio-preview" id="anuncio-preview"></div>
+              <div class="anuncio-progreso" id="anuncio-progreso" style="display:none;"><span id="anuncio-progreso-barra"></span><em id="anuncio-progreso-texto">0 %</em></div>
+              <p class="anuncio-error" id="anuncio-error" role="alert"></p>
+              <div class="anuncio-form-acciones">
+                <button type="submit" class="btn-action btn-enviar" id="btn-guardar-anuncio"><i class="fas fa-save"></i> Guardar anuncio</button>
+                <button type="button" class="btn-action btn-secundario" onclick="cerrarFormAnuncio()">Cancelar</button>
+              </div>
+            </form>
+
+            <div id="lista-anuncios" class="lista-anuncios"><p class="card-nota">Cargando anuncios…</p></div>
+          </div>
+
+          <div class="card">
             <h2><i class="fas fa-bullhorn"></i> Auspiciantes en el overlay</h2>
             <p id="pub-resumen" class="card-nota" style="margin:0 0 8px;">Cargando auspiciantes…</p>
             <div class="toggle-row">
-              <span>Auspiciantes en la esquina durante el juego<small>Rotan uno a la vez en la esquina inferior derecha.</small></span>
+              <span>Incluir a los auspiciantes del campeonato<small>Si lo apagas, rotan solo los anuncios de arriba.</small></span>
+              <label class="toggle">
+                <input type="checkbox" id="tog-incluir-ausp" checked data-envio-inmediato
+                       onchange="estadoLocal.incluir_auspiciantes = this.checked; enviarEstado()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <span>Publicidad en la esquina durante el juego<small>Un anuncio o auspiciante a la vez en la esquina inferior derecha.</small></span>
               <label class="toggle">
                 <input type="checkbox" id="tog-publicidad" checked data-envio-inmediato
                        onchange="estadoLocal.mostrar_publicidad = this.checked; enviarEstado()" />
@@ -176,7 +247,7 @@
               </label>
             </div>
             <div class="toggle-row">
-              <span>Cambiar de auspiciante cada</span>
+              <span>Segundos por auspiciante<small>Los anuncios usan sus propios segundos.</small></span>
               <select id="select-pub-segundos" class="select-sm" data-envio-inmediato
                       onchange="estadoLocal.publicidad_segundos = parseInt(this.value, 10) || 8; enviarEstado()">
                 <option value="5">5 s</option>
@@ -310,6 +381,7 @@
     mostrar_publicidad:   true,
     pantalla_entretiempo: false,
     publicidad_segundos:  8,
+    incluir_auspiciantes: true,
   };
 
   // Backend: en producción vive en otro dominio (api.ltyc...), ver
@@ -579,6 +651,7 @@
       document.getElementById("panel-principal").style.display  = "block";
       mostrarEstadoTransmision(txData.estado);
       cargarPreview(overlayUrl);
+      cargarAnuncios();
 
       conectarSocket();
     } catch (err) {
@@ -600,6 +673,7 @@
     estadoLocal.mostrar_publicidad   = data.mostrar_publicidad   ?? true;
     estadoLocal.pantalla_entretiempo = data.pantalla_entretiempo ?? false;
     estadoLocal.publicidad_segundos  = data.publicidad_segundos  ?? 8;
+    estadoLocal.incluir_auspiciantes = data.incluir_auspiciantes ?? true;
     refrescarUI();
   }
 
@@ -615,6 +689,7 @@
     document.getElementById("tog-publicidad").checked         = estadoLocal.mostrar_publicidad;
     document.getElementById("tog-entretiempo").checked        = estadoLocal.pantalla_entretiempo;
     document.getElementById("select-pub-segundos").value      = String(estadoLocal.publicidad_segundos);
+    document.getElementById("tog-incluir-ausp").checked       = estadoLocal.incluir_auspiciantes !== false;
     marcarPeriodoActivo();
     actualizarResumen();
   }
@@ -644,7 +719,7 @@
       const lista = Array.isArray(data.auspiciantes) ? data.auspiciantes : [];
       el.textContent = lista.length
         ? `${lista.length} auspiciante(s) activo(s) del campeonato: ${lista.map((a) => a.nombre).join(", ")}.`
-        : "Este campeonato no tiene auspiciantes activos: la publicidad no se mostrará.";
+        : "Este campeonato no tiene auspiciantes activos.";
     } catch (_) {
       el.textContent = "No se pudieron cargar los auspiciantes.";
     }
@@ -739,6 +814,271 @@
     });
   }
 
+  // ── Anuncios de la transmisión (imágenes y videos/reels) ───────
+  let anunciosCache = [];
+  const MAX_MB_ANUNCIO = 60;
+
+  function escHtml(v) {
+    return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function urlArchivo(url) {
+    if (!url) return "";
+    return /^https?:\/\//i.test(url) ? url : `${API_BASE}/${String(url).replace(/^\//, "")}`;
+  }
+
+  function campeonatoIdActual() {
+    return Number(txInfoGlobal?.campeonato_id) || null;
+  }
+
+  function formatoFechaCorta(f) {
+    if (!f) return "";
+    const [y, m, d] = String(f).slice(0, 10).split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  function vigenciaTexto(a) {
+    const hoy = new Date();
+    const hoyIso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+    if (a.fecha_hasta && a.fecha_hasta < hoyIso) return { texto: `Venció el ${formatoFechaCorta(a.fecha_hasta)}`, clase: "is-vencido" };
+    if (a.fecha_desde && a.fecha_desde > hoyIso) return { texto: `Desde el ${formatoFechaCorta(a.fecha_desde)}`, clase: "is-futuro" };
+    if (a.fecha_desde || a.fecha_hasta) {
+      return { texto: `${a.fecha_desde ? formatoFechaCorta(a.fecha_desde) : "…"} – ${a.fecha_hasta ? formatoFechaCorta(a.fecha_hasta) : "…"}`, clase: "" };
+    }
+    return { texto: "Sin fecha de fin", clase: "" };
+  }
+
+  const UBICACION_TEXTO = { ambos: "Esquina y entretiempo", esquina: "Esquina", entretiempo: "Entretiempo" };
+
+  function renderAnuncios() {
+    const cont = document.getElementById("lista-anuncios");
+    if (!anunciosCache.length) {
+      cont.innerHTML = `<div class="anuncios-vacio"><i class="fas fa-rectangle-ad"></i><p>Aún no hay anuncios. Pulsa <strong>Nuevo anuncio</strong> para subir una imagen o un video.</p></div>`;
+      return;
+    }
+    cont.innerHTML = anunciosCache.map((a) => {
+      const src = urlArchivo(a.archivo_url);
+      const miniatura = a.tipo === "video"
+        ? `<video src="${escHtml(src)}" muted playsinline preload="metadata"></video><span class="anuncio-tipo"><i class="fas fa-play"></i> Video</span>`
+        : `<img src="${escHtml(src)}" alt="" loading="lazy" /><span class="anuncio-tipo"><i class="fas fa-image"></i> Imagen</span>`;
+      const vig = vigenciaTexto(a);
+      const alcance = a.transmision_id ? "Solo este partido" : "Todo el campeonato";
+      return `
+        <article class="anuncio-item${a.activo ? "" : " is-pausado"}">
+          <div class="anuncio-miniatura">${miniatura}</div>
+          <div class="anuncio-info">
+            <strong>${escHtml(a.anunciante)}</strong>
+            <span class="anuncio-meta">${escHtml(UBICACION_TEXTO[a.ubicacion] || a.ubicacion)} · ${a.tipo === "video" ? "hasta " : ""}${Number(a.duracion_segundos)} s${a.tipo === "video" && a.con_sonido ? " · con sonido" : ""}</span>
+            <span class="anuncio-meta">${escHtml(alcance)} · <span class="${vig.clase}">${escHtml(vig.texto)}</span></span>
+          </div>
+          <div class="anuncio-acciones">
+            <label class="toggle" title="${a.activo ? "Pausar" : "Activar"}">
+              <input type="checkbox" ${a.activo ? "checked" : ""} onchange="cambiarActivoAnuncio(${Number(a.id)}, this.checked)" aria-label="Activo" />
+              <span class="toggle-slider"></span>
+            </label>
+            <button type="button" class="btn-icono" onclick="abrirFormAnuncio(${Number(a.id)})" title="Editar" aria-label="Editar anuncio"><i class="fas fa-pen"></i></button>
+            <button type="button" class="btn-icono is-peligro" onclick="eliminarAnuncio(${Number(a.id)})" title="Eliminar" aria-label="Eliminar anuncio"><i class="fas fa-trash"></i></button>
+          </div>
+        </article>`;
+    }).join("");
+  }
+
+  async function cargarAnuncios() {
+    const cont = document.getElementById("lista-anuncios");
+    const camp = campeonatoIdActual();
+    if (!camp) {
+      cont.innerHTML = '<p class="card-nota">Esta transmisión no tiene campeonato asociado: edítala desde Transmisiones para poder agregar anuncios.</p>';
+      document.getElementById("btn-nuevo-anuncio").disabled = true;
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/transmision-anuncios?campeonato_id=${camp}&transmision_id=${transmisionId}`, {
+        headers: { Authorization: "Bearer " + tokenSesion() },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+      anunciosCache = Array.isArray(data.anuncios) ? data.anuncios : [];
+      renderAnuncios();
+    } catch (err) {
+      cont.innerHTML = `<p class="card-nota">No se pudieron cargar los anuncios: ${escHtml(err.message)}</p>`;
+    }
+  }
+
+  function mostrarErrorAnuncio(msg) {
+    document.getElementById("anuncio-error").textContent = msg || "";
+  }
+
+  function actualizarCamposSegunTipo(esVideo) {
+    document.getElementById("anuncio-sonido-wrap").style.display = esVideo ? "" : "none";
+    document.getElementById("anuncio-duracion-label").textContent = esVideo ? "Máximo de segundos" : "Segundos en pantalla";
+    document.getElementById("anuncio-duracion-ayuda").style.display = esVideo ? "" : "none";
+  }
+
+  function mostrarPreviewArchivo(src, esVideo) {
+    const prev = document.getElementById("anuncio-preview");
+    if (!src) { prev.innerHTML = ""; return; }
+    prev.innerHTML = esVideo
+      ? `<video src="${escHtml(src)}" controls muted playsinline></video>`
+      : `<img src="${escHtml(src)}" alt="Vista previa del anuncio" />`;
+  }
+
+  function abrirFormAnuncio(id = null) {
+    const form = document.getElementById("form-anuncio");
+    form.reset();
+    mostrarErrorAnuncio("");
+    document.getElementById("anuncio-progreso").style.display = "none";
+    const a = id ? anunciosCache.find((x) => Number(x.id) === Number(id)) : null;
+    document.getElementById("anuncio-id").value = a ? a.id : "";
+    document.getElementById("anuncio-archivo-label").textContent = a ? "Cambiar archivo (opcional)" : "Imagen o video";
+    if (a) {
+      document.getElementById("anuncio-anunciante").value = a.anunciante;
+      document.getElementById("anuncio-ubicacion").value = a.ubicacion;
+      document.getElementById("anuncio-duracion").value = a.duracion_segundos;
+      document.getElementById("anuncio-desde").value = a.fecha_desde || "";
+      document.getElementById("anuncio-hasta").value = a.fecha_hasta || "";
+      document.getElementById("anuncio-sonido").checked = a.con_sonido === true;
+      form.querySelector(`input[name="anuncio-alcance"][value="${a.transmision_id ? "transmision" : "campeonato"}"]`).checked = true;
+      actualizarCamposSegunTipo(a.tipo === "video");
+      mostrarPreviewArchivo(urlArchivo(a.archivo_url), a.tipo === "video");
+    } else {
+      actualizarCamposSegunTipo(false);
+      mostrarPreviewArchivo("", false);
+    }
+    form.style.display = "";
+    document.getElementById("anuncio-anunciante").focus();
+  }
+
+  function cerrarFormAnuncio() {
+    document.getElementById("form-anuncio").style.display = "none";
+    mostrarPreviewArchivo("", false);
+  }
+
+  // Al elegir archivo: vista previa, validación de tamaño y, en videos, la
+  // duración real como máximo sugerido.
+  document.addEventListener("change", (e) => {
+    if (e.target?.id !== "anuncio-archivo") return;
+    const file = e.target.files?.[0];
+    mostrarErrorAnuncio("");
+    if (!file) return;
+    const esVideo = file.type.startsWith("video/");
+    if (file.size > MAX_MB_ANUNCIO * 1024 * 1024) {
+      mostrarErrorAnuncio(`El archivo pesa ${(file.size / 1048576).toFixed(1)} MB; el máximo es ${MAX_MB_ANUNCIO} MB.`);
+    }
+    actualizarCamposSegunTipo(esVideo);
+    const url = URL.createObjectURL(file);
+    mostrarPreviewArchivo(url, esVideo);
+    if (esVideo) {
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.onloadedmetadata = () => {
+        if (Number.isFinite(v.duration) && v.duration > 0) {
+          document.getElementById("anuncio-duracion").value = Math.min(120, Math.max(3, Math.ceil(v.duration)));
+        }
+      };
+      v.src = url;
+    }
+  });
+
+  document.addEventListener("submit", (e) => {
+    if (e.target?.id !== "form-anuncio") return;
+    e.preventDefault();
+    guardarAnuncio();
+  });
+
+  function guardarAnuncio() {
+    mostrarErrorAnuncio("");
+    const id = document.getElementById("anuncio-id").value;
+    const anunciante = document.getElementById("anuncio-anunciante").value.trim();
+    const file = document.getElementById("anuncio-archivo").files?.[0];
+    if (!anunciante) { mostrarErrorAnuncio("Escribe el nombre del anunciante."); return; }
+    if (!id && !file) { mostrarErrorAnuncio("Elige una imagen o un video."); return; }
+    if (file && file.size > MAX_MB_ANUNCIO * 1024 * 1024) { mostrarErrorAnuncio(`El máximo es ${MAX_MB_ANUNCIO} MB.`); return; }
+
+    const fd = new FormData();
+    fd.append("campeonato_id", String(campeonatoIdActual()));
+    const alcance = document.querySelector('input[name="anuncio-alcance"]:checked')?.value;
+    fd.append("transmision_id", alcance === "transmision" ? String(transmisionId) : "");
+    fd.append("anunciante", anunciante);
+    fd.append("ubicacion", document.getElementById("anuncio-ubicacion").value);
+    fd.append("duracion_segundos", document.getElementById("anuncio-duracion").value || "10");
+    fd.append("fecha_desde", document.getElementById("anuncio-desde").value || "");
+    fd.append("fecha_hasta", document.getElementById("anuncio-hasta").value || "");
+    fd.append("con_sonido", document.getElementById("anuncio-sonido").checked ? "true" : "false");
+    if (file) fd.append("archivo", file);
+
+    // XHR para mostrar el progreso de subida (videos pesados).
+    const xhr = new XMLHttpRequest();
+    xhr.open(id ? "PUT" : "POST", `${API_BASE}/api/transmision-anuncios${id ? "/" + id : ""}`);
+    xhr.setRequestHeader("Authorization", "Bearer " + tokenSesion());
+    const prog = document.getElementById("anuncio-progreso");
+    const barra = document.getElementById("anuncio-progreso-barra");
+    const texto = document.getElementById("anuncio-progreso-texto");
+    const btn = document.getElementById("btn-guardar-anuncio");
+    btn.disabled = true;
+    if (file) { prog.style.display = ""; barra.style.width = "0%"; texto.textContent = "0 %"; }
+    xhr.upload.onprogress = (ev) => {
+      if (!ev.lengthComputable) return;
+      const pct = Math.round((ev.loaded / ev.total) * 100);
+      barra.style.width = pct + "%";
+      texto.textContent = pct < 100 ? `${pct} %` : "Procesando…";
+    };
+    xhr.onload = () => {
+      btn.disabled = false;
+      let data = {};
+      try { data = JSON.parse(xhr.responseText || "{}"); } catch (_) {}
+      if (xhr.status >= 200 && xhr.status < 300) {
+        toast(id ? "Anuncio actualizado" : "Anuncio agregado: ya rota en el overlay");
+        cerrarFormAnuncio();
+        cargarAnuncios();
+      } else {
+        prog.style.display = "none";
+        mostrarErrorAnuncio(data.error || `No se pudo guardar (HTTP ${xhr.status}).`);
+      }
+    };
+    xhr.onerror = () => {
+      btn.disabled = false;
+      prog.style.display = "none";
+      mostrarErrorAnuncio("Error de conexión al subir el archivo.");
+    };
+    xhr.send(fd);
+  }
+
+  async function cambiarActivoAnuncio(id, activo) {
+    try {
+      const fd = new FormData();
+      fd.append("activo", activo ? "true" : "false");
+      const res = await fetch(`${API_BASE}/api/transmision-anuncios/${id}`, {
+        method: "PUT",
+        headers: { Authorization: "Bearer " + tokenSesion() },
+        body: fd,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+      toast(activo ? "Anuncio activado" : "Anuncio en pausa");
+      cargarAnuncios();
+    } catch (err) {
+      toast("Error: " + err.message);
+      cargarAnuncios();
+    }
+  }
+
+  async function eliminarAnuncio(id) {
+    const a = anunciosCache.find((x) => Number(x.id) === Number(id));
+    if (!confirm(`¿Eliminar el anuncio de «${a?.anunciante || "anunciante"}»? Se borra también el archivo.`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/transmision-anuncios/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + tokenSesion() },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+      toast("Anuncio eliminado");
+      cargarAnuncios();
+    } catch (err) {
+      toast("Error: " + err.message);
+    }
+  }
+
   // ── Compartir ────────────────────────────────────────────────
   function actualizarSharePreview(tx) {
     const local     = tx.equipo_local_nombre     || "LOCAL";
@@ -796,6 +1136,9 @@
       if (hayCambiosPendientes) return;
       sincronizarDesdeServidor(state);
     });
+
+    // Otro director cambió los anuncios: refrescar la lista.
+    socket.on("overlay:publicidad", () => cargarAnuncios());
   }
 </script>
 </body>

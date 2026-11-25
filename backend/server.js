@@ -77,6 +77,7 @@ const contactoRoutes = require("./routes/contactoRoutes");
 const publicRoutes = require("./routes/publicRoutes");
 const comprobanteRoutes = require("./routes/comprobanteRoutes");
 const transmisionRoutes = require("./routes/transmisionRoutes");
+const transmisionAnuncioRoutes = require("./routes/transmisionAnuncioRoutes");
 const overlayRoutes = require("./routes/overlayRoutes");
 const facturacionRoutes = require("./routes/facturacionRoutes");
 
@@ -102,6 +103,7 @@ app.use("/api/organizador-portal", organizadorPortalRoutes);
 app.use("/api/contacto", contactoRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/comprobantes", comprobanteRoutes);
+app.use("/api/transmision-anuncios", transmisionAnuncioRoutes);
 app.use("/api/transmisiones", transmisionRoutes);
 app.use("/api/transmisiones/:id/overlay", overlayRoutes);
 app.use("/api/facturacion", facturacionRoutes);

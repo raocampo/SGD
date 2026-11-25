@@ -4,6 +4,7 @@ const pool = require("../config/database");
 const PartidoTransmision = require("../models/PartidoTransmision");
 const TransmisionOverlay = require("../models/TransmisionOverlay");
 const Auspiciante = require("../models/Auspiciante");
+const TransmisionAnuncio = require("../models/TransmisionAnuncio");
 const { emitOverlayState } = require("../services/socketService");
 const { verificarAccesoTransmision } = require("../services/transmisionAcceso");
 
@@ -104,6 +105,18 @@ async function getOverlayPublico(req, res) {
     const auspiciantes = (await Auspiciante.listarPorCampeonato(tx.campeonato_id, true))
       .filter((a) => a.logo_url || a.nombre)
       .map((a) => ({ nombre: a.nombre, logo_url: a.logo_url || null }));
+    // Anuncios pagados de la transmisión (imágenes y videos), activos y vigentes.
+    const anuncios = tx.campeonato_id
+      ? (await TransmisionAnuncio.listarVigentesParaTransmision(tx.id, tx.campeonato_id)).map((a) => ({
+          id: a.id,
+          anunciante: a.anunciante,
+          tipo: a.tipo,
+          url: a.archivo_url,
+          ubicacion: a.ubicacion,
+          duracion_segundos: a.duracion_segundos,
+          con_sonido: a.con_sonido,
+        }))
+      : [];
 
     res.json({
       transmision_id: tx.id,
@@ -118,6 +131,7 @@ async function getOverlayPublico(req, res) {
       },
       overlay: state,
       auspiciantes,
+      anuncios,
     });
   } catch (err) {
     console.error("overlayController.getOverlayPublico:", err);

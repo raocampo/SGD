@@ -130,4 +130,11 @@ function emitOverlayState(transmisionId, state) {
   io.to(`overlay:${transmisionId}`).emit("overlay:state", state);
 }
 
-module.exports = { initSocket, emitOverlayState };
+// Evento genérico para los overlays de una transmisión (p. ej. recargar la
+// publicidad cuando cambian los anuncios).
+function emitOverlayEvento(transmisionId, evento, payload = {}) {
+  if (!io) return;
+  io.to(`overlay:${transmisionId}`).emit(evento, payload);
+}
+
+module.exports = { initSocket, emitOverlayState, emitOverlayEvento };

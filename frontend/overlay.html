@@ -196,6 +196,22 @@
       max-height: 9vh;
       object-fit: contain;
     }
+    /* Anuncios en video (16:9 o vertical tipo reel) */
+    .pub-media-wrap { display: flex; align-items: center; justify-content: center; }
+    #publicidad-esquina.es-video {
+      padding: 0.6vh;
+      background: rgba(10, 10, 10, 0.85);
+      max-width: 26vw;
+    }
+    #publicidad-esquina.es-video .pub-etiqueta { color: #e2e8f0; }
+    #publicidad-esquina video {
+      display: block;
+      max-width: 25vw;
+      max-height: 26vh;
+      border-radius: 0.8vh;
+      object-fit: contain;
+      background: #000;
+    }
     #pub-esquina-nombre {
       font-size: 1.9vh;
       font-weight: 700;
@@ -266,6 +282,17 @@
       max-height: 32vh;
       object-fit: contain;
     }
+    .et-pub-tarjeta.es-video {
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+    }
+    .et-pub-tarjeta video {
+      display: block;
+      max-width: 64vw;
+      max-height: 52vh;
+      object-fit: contain;
+    }
     #et-pub-nombre {
       font-size: 3.4vh;
       font-weight: 800;
@@ -307,8 +334,8 @@
 
 <!-- Publicidad durante el juego: un auspiciante a la vez, rotando. -->
 <div id="publicidad-esquina" class="oculto">
-  <span class="pub-etiqueta">Auspicia</span>
-  <img id="pub-esquina-logo" alt="" />
+  <span class="pub-etiqueta" id="pub-esquina-etiqueta">Auspicia</span>
+  <div class="pub-media-wrap" id="pub-esquina-media"></div>
   <div id="pub-esquina-nombre"></div>
 </div>
 
@@ -321,8 +348,8 @@
     <span id="et-visitante">VISITANTE</span>
   </div>
   <div class="et-pub oculto" id="et-pub">
-    <div class="et-pub-etiqueta">Gracias a nuestros auspiciantes</div>
-    <div class="et-pub-tarjeta"><img id="et-pub-logo" alt="" /></div>
+    <div class="et-pub-etiqueta" id="et-pub-etiqueta">Gracias a nuestros auspiciantes</div>
+    <div class="et-pub-tarjeta" id="et-pub-media"></div>
     <div id="et-pub-nombre"></div>
   </div>
 </div>
@@ -362,18 +389,16 @@
 
   let transmisionId = null;
 
-  // ── Publicidad ──────────────────────────────────────────────────
+  // ── Publicidad: anuncios (imagen/video) + auspiciantes ───────────
+  // Dos reproductores: esquina (durante el juego) y entretiempo (pantalla
+  // completa). Imágenes: los segundos indicados. Videos: hasta terminar,
+  // con tope en sus segundos. Un solo video en la lista se repite.
   const elRoot          = document.getElementById("overlay-root");
   const elPubEsquina    = document.getElementById("publicidad-esquina");
-  const elPubLogo       = document.getElementById("pub-esquina-logo");
-  const elPubNombre     = document.getElementById("pub-esquina-nombre");
   const elEntretiempo   = document.getElementById("pantalla-entretiempo");
   const elEtPub         = document.getElementById("et-pub");
-  const elEtPubLogo     = document.getElementById("et-pub-logo");
-  const elEtPubNombre   = document.getElementById("et-pub-nombre");
   let auspiciantes = [];
-  let indicePub = 0;
-  let timerPub = null;
+  let anuncios = [];
   let segundosPub = 8;
   let ultimoState = {};
 
@@ -382,52 +407,145 @@
     return /^https?:\/\//i.test(url) ? url : API_BASE + "/" + String(url).replace(/^\//, "");
   }
 
-  function mostrarAuspicianteActual() {
-    const a = auspiciantes[indicePub % Math.max(auspiciantes.length, 1)];
-    if (!a) return;
-    const src = urlMedia(a.logo_url);
-    for (const [img, nombre] of [[elPubLogo, elPubNombre], [elEtPubLogo, elEtPubNombre]]) {
-      img.style.display = src ? "" : "none";
-      if (src) img.src = src;
-      // Con logo basta la imagen; sin logo se muestra el nombre.
-      nombre.textContent = src ? "" : a.nombre || "";
-    }
+  function crearReproductor({ caja, media, etiqueta, nombre, claseVideo, textoAuspicio, textoPublicidad }) {
+    return { caja, media, etiqueta, nombre, claseVideo, textoAuspicio, textoPublicidad, lista: [], idx: 0, timer: null, activo: false, firma: "" };
   }
 
-  function reiniciarRotacion() {
-    clearInterval(timerPub);
-    if (auspiciantes.length < 2) return;
-    timerPub = setInterval(() => {
-      indicePub = (indicePub + 1) % auspiciantes.length;
-      mostrarAuspicianteActual();
-    }, segundosPub * 1000);
+  const repEsquina = crearReproductor({
+    caja: elPubEsquina,
+    media: document.getElementById("pub-esquina-media"),
+    etiqueta: document.getElementById("pub-esquina-etiqueta"),
+    nombre: document.getElementById("pub-esquina-nombre"),
+    claseVideo: elPubEsquina,
+    textoAuspicio: "Auspicia",
+    textoPublicidad: "Publicidad",
+  });
+  const repEntretiempo = crearReproductor({
+    caja: elEtPub,
+    media: document.getElementById("et-pub-media"),
+    etiqueta: document.getElementById("et-pub-etiqueta"),
+    nombre: document.getElementById("et-pub-nombre"),
+    claseVideo: document.getElementById("et-pub-media"),
+    textoAuspicio: "Gracias a nuestros auspiciantes",
+    textoPublicidad: "Publicidad",
+  });
+
+  function construirListas() {
+    const incluirAusp = ultimoState.incluir_auspiciantes !== false;
+    const desdeAusp = incluirAusp
+      ? auspiciantes.map((a) => ({ tipo: a.logo_url ? "imagen" : "nombre", url: a.logo_url, nombre: a.nombre, ubicacion: "ambos", duracion_segundos: segundosPub, esAuspiciante: true }))
+      : [];
+    const desdeAnuncios = anuncios.map((a) => ({ tipo: a.tipo, url: a.url, nombre: a.anunciante, ubicacion: a.ubicacion, duracion_segundos: a.duracion_segundos, con_sonido: a.con_sonido === true, esAuspiciante: false }));
+    const todos = [...desdeAnuncios, ...desdeAusp];
+    return {
+      esquina: todos.filter((x) => x.ubicacion === "esquina" || x.ubicacion === "ambos"),
+      entretiempo: todos.filter((x) => x.ubicacion === "entretiempo" || x.ubicacion === "ambos"),
+    };
+  }
+
+  function detener(rep) {
+    clearTimeout(rep.timer);
+    rep.timer = null;
+    const v = rep.media.querySelector("video");
+    if (v) { try { v.pause(); } catch (_) {} v.removeAttribute("src"); v.load?.(); }
+    rep.media.innerHTML = "";
+  }
+
+  function siguiente(rep) {
+    if (!rep.lista.length) return;
+    rep.idx = (rep.idx + 1) % rep.lista.length;
+    reproducir(rep);
+  }
+
+  function reproducir(rep) {
+    detener(rep);
+    if (!rep.activo || !rep.lista.length) return;
+    const item = rep.lista[rep.idx % rep.lista.length];
+    rep.etiqueta.textContent = item.esAuspiciante ? rep.textoAuspicio : rep.textoPublicidad;
+    rep.claseVideo.classList.toggle("es-video", item.tipo === "video");
+    const segundos = Math.max(3, Number(item.esAuspiciante ? segundosPub : item.duracion_segundos) || 8);
+    const unico = rep.lista.length === 1;
+
+    if (item.tipo === "video") {
+      rep.nombre.textContent = "";
+      const v = document.createElement("video");
+      v.src = urlMedia(item.url);
+      v.playsInline = true;
+      v.autoplay = true;
+      v.muted = !item.con_sonido;
+      v.loop = unico;
+      v.preload = "auto";
+      v.addEventListener("ended", () => siguiente(rep));
+      v.addEventListener("error", () => { if (!unico) siguiente(rep); });
+      rep.media.appendChild(v);
+      // Los navegadores comunes bloquean el sonido automático; OBS no. Si se
+      // bloquea, se reproduce sin sonido.
+      v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+      if (!unico) rep.timer = setTimeout(() => siguiente(rep), segundos * 1000);
+      return;
+    }
+
+    if (item.tipo === "imagen" && item.url) {
+      const img = document.createElement("img");
+      img.src = urlMedia(item.url);
+      img.alt = "";
+      if (rep === repEsquina) img.id = "pub-esquina-logo"; else img.id = "et-pub-logo";
+      rep.media.appendChild(img);
+      rep.nombre.textContent = "";
+    } else {
+      rep.nombre.textContent = item.nombre || "";
+    }
+    if (!unico) rep.timer = setTimeout(() => siguiente(rep), segundos * 1000);
+  }
+
+  // Activa o detiene cada reproductor según el estado; si la lista cambió,
+  // vuelve a empezar.
+  function actualizarReproductor(rep, lista, activo) {
+    const firma = JSON.stringify(lista.map((x) => [x.tipo, x.url, x.nombre, x.duracion_segundos, x.con_sonido]));
+    const cambioLista = firma !== rep.firma;
+    rep.firma = firma;
+    rep.lista = lista;
+    if (cambioLista && rep.idx >= lista.length) rep.idx = 0;
+    if (!activo || !lista.length) {
+      if (rep.activo) detener(rep);
+      rep.activo = false;
+      return;
+    }
+    if (!rep.activo || cambioLista) {
+      rep.activo = true;
+      reproducir(rep);
+    }
   }
 
   function aplicarPublicidad(state) {
-    const hayPub = auspiciantes.length > 0;
     const entretiempo = state.pantalla_entretiempo === true;
     const nuevosSegundos = Math.max(3, Number(state.publicidad_segundos) || 8);
-    if (nuevosSegundos !== segundosPub) {
-      segundosPub = nuevosSegundos;
-      reiniciarRotacion();
-    }
+    const cambioSegundos = nuevosSegundos !== segundosPub;
+    segundosPub = nuevosSegundos;
+    const listas = construirListas();
+    if (cambioSegundos) { repEsquina.firma = ""; repEntretiempo.firma = ""; }
+
     elEntretiempo.classList.toggle("oculto", !entretiempo);
     elRoot.classList.toggle("oculto", entretiempo);
-    elEtPub.classList.toggle("oculto", !hayPub);
-    elPubEsquina.classList.toggle("oculto", entretiempo || !hayPub || state.mostrar_publicidad === false);
+    const esquinaVisible = !entretiempo && listas.esquina.length > 0 && state.mostrar_publicidad !== false;
+    elPubEsquina.classList.toggle("oculto", !esquinaVisible);
+    elEtPub.classList.toggle("oculto", !listas.entretiempo.length);
+    actualizarReproductor(repEsquina, listas.esquina, esquinaVisible);
+    actualizarReproductor(repEntretiempo, listas.entretiempo, entretiempo);
     document.getElementById("et-goles").textContent =
       `${state.goles_local ?? 0} – ${state.goles_visitante ?? 0}`;
+  }
+
+  function guardarPublicidad(data) {
+    auspiciantes = Array.isArray(data.auspiciantes) ? data.auspiciantes : [];
+    anuncios = Array.isArray(data.anuncios) ? data.anuncios : [];
   }
 
   async function cargarAuspiciantes() {
     try {
       const res = await fetch(`${API_BASE}/api/public/overlay/${overlayToken}`);
       if (!res.ok) return;
-      const data = await res.json();
-      auspiciantes = Array.isArray(data.auspiciantes) ? data.auspiciantes : [];
-      if (indicePub >= auspiciantes.length) indicePub = 0;
-      mostrarAuspicianteActual();
-      reiniciarRotacion();
+      guardarPublicidad(await res.json());
       aplicarPublicidad(ultimoState);
     } catch (_) {}
   }
@@ -479,11 +597,10 @@
       document.getElementById("et-local").textContent = elNombreLocal.textContent;
       document.getElementById("et-visitante").textContent = elNombreVisit.textContent;
 
-      auspiciantes = Array.isArray(data.auspiciantes) ? data.auspiciantes : [];
-      mostrarAuspicianteActual();
+      guardarPublicidad(data);
       if (data.overlay) aplicarState(data.overlay);
-      reiniciarRotacion();
-      // Los auspiciantes se pueden editar durante el partido: se recargan cada 5 min.
+      else aplicarPublicidad(ultimoState);
+      // Respaldo: además del aviso por socket, se recarga cada 5 min.
       setInterval(cargarAuspiciantes, 5 * 60 * 1000);
 
       // Conectar Socket.io y unirse a la sala
@@ -509,6 +626,9 @@
     socket.on("overlay:state", (state) => {
       aplicarState(state);
     });
+
+    // Cambiaron los anuncios del campeonato: recargar la publicidad.
+    socket.on("overlay:publicidad", () => cargarAuspiciantes());
 
     socket.on("connect_error", () => {
       connDot.className = "error";
